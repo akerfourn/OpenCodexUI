@@ -24,8 +24,10 @@ npm install
 npm run dev
 ```
 
-Ce script compile les packages, build l'application Electron, puis démarre
-Electron. Les logs du main process sont visibles dans le terminal.
+Ce script démarre le renderer Vite en mode dev, rebuild automatiquement les
+packages du monorepo utilisés par l'app, puis relance Electron quand le backend
+ou le main process changent. Les changements UI sont pris en compte sans
+relancer manuellement l'application.
 
 Par défaut, l'application utilise le dossier depuis lequel `npm run dev` a été
 lancé comme projet courant. Pour forcer un autre projet :
@@ -97,8 +99,6 @@ Les paramètres Electron sont stockés dans `settings.json` sous le dossier
 
 ## Limitations connues
 
-- Le mode dev rebuild l'app avant lancement ; le hot reload renderer complet
-  n'est pas encore branché.
 - La liste charge actuellement jusqu'à 2000 threads.
 - Les approvals principales sont gérées ; certains prompts Codex plus complexes
   peuvent nécessiter un mapping dédié.

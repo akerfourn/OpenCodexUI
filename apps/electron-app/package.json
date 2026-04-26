@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/main/main.cjs",
   "scripts": {
-    "dev": "npm run build && electron dist/main/main.cjs",
+    "dev": "node scripts/dev.mjs",
     "build": "npm run build:main && npm run build:renderer",
     "build:main": "esbuild src/main/main.ts --bundle --platform=node --format=cjs --target=node20 --external:electron --outfile=dist/main/main.cjs && esbuild src/main/preload.ts --bundle --platform=node --format=cjs --target=node20 --external:electron --outfile=dist/main/preload.cjs",
     "build:renderer": "vite build",

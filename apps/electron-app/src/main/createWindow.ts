@@ -5,6 +5,7 @@ import { BrowserWindow } from "electron";
 type CreateWindowOptions = {
   preloadPath: string;
   rendererPath: string;
+  devServerUrl?: string | null;
 };
 
 export function createWindow(options: CreateWindowOptions): BrowserWindow {
@@ -20,7 +21,11 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
     }
   });
 
-  void window.loadFile(path.join(options.rendererPath, "index.html"));
+  if (options.devServerUrl !== undefined && options.devServerUrl !== null) {
+    void window.loadURL(options.devServerUrl);
+  } else {
+    void window.loadFile(path.join(options.rendererPath, "index.html"));
+  }
 
   return window;
 }

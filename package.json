@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run build:packages && npm run dev -w open-codex-ui-electron-app",
+    "dev": "npm run dev -w open-codex-ui-electron-app",
     "build": "npm run build:packages && npm run build -w open-codex-ui-electron-app",
     "build:packages": "npm run build -w @open-codex-ui/codex-rpc && npm run build -w @open-codex-ui/opencodex-protocol && npm run build -w @open-codex-ui/opencodex-core && npm run build -w @open-codex-ui/opencodex-ui",
     "typecheck": "npm run build:packages && npm run typecheck -w open-codex-ui-electron-app",

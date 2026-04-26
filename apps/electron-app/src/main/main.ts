@@ -14,9 +14,11 @@ async function main(): Promise<void> {
   const settingsStore = new SettingsStore(app.getPath("userData"));
   const settings = await settingsStore.load();
   const projectPath = resolveProjectPath();
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? null;
   const window = createWindow({
     preloadPath: path.join(__dirname, "preload.cjs"),
-    rendererPath: path.join(__dirname, "..", "renderer")
+    rendererPath: path.join(__dirname, "..", "renderer"),
+    devServerUrl
   });
 
   bridgeServer = new ElectronBridgeServer({
@@ -31,7 +33,8 @@ async function main(): Promise<void> {
     if (BrowserWindow.getAllWindows().length === 0) {
       const nextWindow = createWindow({
         preloadPath: path.join(__dirname, "preload.cjs"),
-        rendererPath: path.join(__dirname, "..", "renderer")
+        rendererPath: path.join(__dirname, "..", "renderer"),
+        devServerUrl
       });
       bridgeServer?.attachWindow(nextWindow);
     }
