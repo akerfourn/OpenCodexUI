@@ -25,8 +25,20 @@ npm run dev
 ```
 
 Ce script compile les packages, build l'application Electron, puis démarre
-Electron. Les logs du main process sont visibles dans le terminal. Les DevTools
-du renderer s'ouvrent au démarrage.
+Electron. Les logs du main process sont visibles dans le terminal.
+
+Par défaut, l'application utilise le dossier depuis lequel `npm run dev` a été
+lancé comme projet courant. Pour forcer un autre projet :
+
+```bash
+OPENCODEX_PROJECT_PATH=/chemin/vers/projet npm run dev
+```
+
+## Debug VSCode
+
+Une configuration `Debug Electron app` est disponible dans VSCode. Elle build
+l'application, puis démarre Electron avec l'inspecteur Node attaché au main
+process.
 
 ## Build et validation
 
@@ -87,7 +99,7 @@ Les paramètres Electron sont stockés dans `settings.json` sous le dossier
 
 - Le mode dev rebuild l'app avant lancement ; le hot reload renderer complet
   n'est pas encore branché.
-- La pagination charge actuellement les 100 premiers threads.
+- La liste charge actuellement jusqu'à 2000 threads.
 - Les approvals principales sont gérées ; certains prompts Codex plus complexes
   peuvent nécessiter un mapping dédié.
 - Le bundle renderer est encore unique et Vite signale un chunk supérieur à

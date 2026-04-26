@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Electron app",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron",
+      "runtimeArgs": [
+        "--inspect=9229",
+        "${workspaceFolder}/apps/electron-app/dist/main/main.cjs"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "preLaunchTask": "build electron app",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ]
+}

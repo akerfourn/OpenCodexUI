@@ -21,7 +21,6 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
   });
 
   void window.loadFile(path.join(options.rendererPath, "index.html"));
-  window.webContents.openDevTools({ mode: "detach" });
 
   return window;
 }

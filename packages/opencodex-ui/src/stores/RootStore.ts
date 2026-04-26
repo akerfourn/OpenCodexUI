@@ -1,4 +1,5 @@
 import { makeAutoObservable } from "mobx";
+import Fuse from "fuse.js";
 
 import type {
   OpenCodexApproval,
@@ -41,6 +42,25 @@ export class RootStore {
   constructor(private readonly transport: OpenCodexClientTransport) {
     makeAutoObservable(this);
     this.transport.onEvent((event) => this.handleEvent(event));
+  }
+
+  get filteredThreads(): OpenCodexThread[] {
+    const searchTerm = this.searchTerm.trim();
+
+    if (searchTerm.length === 0) {
+      return this.threads;
+    }
+
+    const fuse = new Fuse(this.threads, {
+      ignoreLocation: true,
+      keys: ["title", "preview", "projectName", "projectPath"],
+      threshold: 0.35
+    });
+    const matchingThreadIds = new Set(
+      fuse.search(searchTerm).map((result) => result.item.id)
+    );
+
+    return this.threads.filter((thread) => matchingThreadIds.has(thread.id));
   }
 
   async bootstrap(): Promise<void> {
@@ -190,7 +210,6 @@ export class RootStore {
 
   setSearchTerm(value: string): void {
     this.searchTerm = value;
-    this.refreshThreads();
   }
 
   private appendAssistantDelta(threadId: string, turnId: string, itemId: string, delta: string): void {

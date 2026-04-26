@@ -9,7 +9,7 @@ type ThreadListProps = {
 };
 
 export const ThreadList = observer(function ThreadList({ store }: ThreadListProps) {
-  const groups = groupThreadsByProject(store.threads);
+  const groups = groupThreadsByProject(store.filteredThreads);
 
   function handleCurrentProjectScope(): void {
     store.setScope("currentProject");

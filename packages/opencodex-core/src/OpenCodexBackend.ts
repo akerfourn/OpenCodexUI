@@ -25,6 +25,44 @@ import {
 } from "./mapping.js";
 import type { OpenCodexBackendOptions } from "./types.js";
 
+const THREAD_LIST_PAGE_SIZE = 100;
+const THREAD_LIST_MAX_PAGES = 20;
+
+type ThreadSourceKind =
+  | "cli"
+  | "vscode"
+  | "exec"
+  | "appServer"
+  | "subAgent"
+  | "subAgentReview"
+  | "subAgentCompact"
+  | "subAgentThreadSpawn"
+  | "subAgentOther"
+  | "unknown";
+
+type ThreadListParams = {
+  cursor?: string | null;
+  limit?: number | null;
+  sortKey?: "created_at" | "updated_at" | null;
+  sortDirection?: "asc" | "desc" | null;
+  sourceKinds?: ThreadSourceKind[] | null;
+  cwd?: string | string[] | null;
+  searchTerm?: string | null;
+};
+
+const THREAD_SOURCE_KINDS: ThreadSourceKind[] = [
+  "cli",
+  "vscode",
+  "exec",
+  "appServer",
+  "subAgent",
+  "subAgentReview",
+  "subAgentCompact",
+  "subAgentThreadSpawn",
+  "subAgentOther",
+  "unknown"
+];
+
 export class OpenCodexBackend {
   private client: CodexAppServerClient | null = null;
   private settings: OpenCodexSettings;
@@ -114,10 +152,11 @@ export class OpenCodexBackend {
 
   private async listThreads(scope: "currentProject" | "all", searchTerm?: string): Promise<OpenCodexThread[]> {
     const client = await this.ensureClient();
-    const params: Record<string, unknown> = {
-      limit: 100,
+    const params: ThreadListParams = {
+      limit: THREAD_LIST_PAGE_SIZE,
       sortKey: "updated_at",
       sortDirection: "desc",
+      sourceKinds: THREAD_SOURCE_KINDS,
       searchTerm: searchTerm?.trim() || null
     };
 
@@ -125,8 +164,7 @@ export class OpenCodexBackend {
       params.cwd = this.options.projectPath;
     }
 
-    const response = await client.listThreads(params);
-    const threads = readThreads(response);
+    const threads = await readThreadPages(client, params);
 
     this.emit({
       type: "threads.updated",
@@ -329,6 +367,26 @@ export class OpenCodexBackend {
   private emit(event: OpenCodexEvent): void {
     this.options.emit(event);
   }
+}
+
+async function readThreadPages(
+  client: CodexAppServerClient,
+  baseParams: ThreadListParams
+): Promise<OpenCodexThread[]> {
+  const threads: OpenCodexThread[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < THREAD_LIST_MAX_PAGES; page += 1) {
+    const response = await client.listThreads({ ...baseParams, cursor });
+    threads.push(...readThreads(response));
+    cursor = readString(readObject(response).nextCursor) || null;
+
+    if (cursor === null) {
+      break;
+    }
+  }
+
+  return threads;
 }
 
 function readThreads(response: unknown): OpenCodexThread[] {

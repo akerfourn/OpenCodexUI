@@ -13,7 +13,7 @@ async function main(): Promise<void> {
 
   const settingsStore = new SettingsStore(app.getPath("userData"));
   const settings = await settingsStore.load();
-  const projectPath = process.cwd();
+  const projectPath = resolveProjectPath();
   const window = createWindow({
     preloadPath: path.join(__dirname, "preload.cjs"),
     rendererPath: path.join(__dirname, "..", "renderer")
@@ -49,3 +49,9 @@ app.on("before-quit", () => {
 });
 
 void main();
+
+function resolveProjectPath(): string {
+  return process.env.OPENCODEX_PROJECT_PATH
+    ?? process.env.INIT_CWD
+    ?? process.cwd();
+}

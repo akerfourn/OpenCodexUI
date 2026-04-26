@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@open-codex-ui/opencodex-protocol": "file:../opencodex-protocol",
+    "fuse.js": "^7.3.0",
     "highlight.js": "^11.10.0",
     "mobx": "^6.13.1",
     "mobx-react-lite": "^4.0.7",
