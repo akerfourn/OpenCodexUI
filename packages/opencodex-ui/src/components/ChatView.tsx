@@ -1,5 +1,5 @@
 import { observer } from "mobx-react-lite";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import type { RootStore } from "../stores/RootStore";
 import { MarkdownMessage } from "./MarkdownMessage";
@@ -11,6 +11,7 @@ type ChatViewProps = {
 export const ChatView = observer(function ChatView({ store }: ChatViewProps) {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const messagesRef = useRef<HTMLDivElement | null>(null);
   const currentThread = store.currentThread;
   const title = currentThread?.title || currentThread?.preview || "Nouvelle conversation";
   const emptyContent = currentThread === null ? <EmptyState store={store} /> : null;
@@ -45,7 +46,7 @@ export const ChatView = observer(function ChatView({ store }: ChatViewProps) {
         </div>
       </header>
 
-      <div className="messages">
+      <div className="messages" ref={messagesRef}>
         {store.messages.map((message) => (
           <article className={`message ${message.role}`} key={message.id}>
             <MarkdownMessage markdown={message.content} />
@@ -84,6 +85,16 @@ export const ChatView = observer(function ChatView({ store }: ChatViewProps) {
   function handleRefreshThread(): void {
     store.refreshCurrentThread();
   }
+
+  useLayoutEffect(() => {
+    const element = messagesRef.current;
+
+    if (element === null) {
+      return;
+    }
+
+    element.scrollTop = element.scrollHeight;
+  }, [currentThread?.id, store.messages.length]);
 
   return (
     <div className="chat-view">

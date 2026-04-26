@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import { Children, isValidElement, type ReactNode } from "react";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
@@ -12,6 +13,7 @@ export function MarkdownMessage({ markdown }: MarkdownMessageProps) {
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeHighlight]}
       components={{
+        pre: PreBlock,
         code: CodeBlock
       }}
     >
@@ -21,22 +23,32 @@ export function MarkdownMessage({ markdown }: MarkdownMessageProps) {
 }
 
 type CodeBlockProps = {
-  inline?: boolean;
   className?: string;
   children?: React.ReactNode;
 };
 
-function CodeBlock({ inline, className, children }: CodeBlockProps) {
-  const code = String(children ?? "").replace(/\n$/, "");
-  const match = /language-(\w+)/.exec(className ?? "");
+function CodeBlock({ className, children }: CodeBlockProps) {
+  return <code className={`inline-code ${className ?? ""}`.trim()}>{children}</code>;
+}
+
+type PreBlockProps = {
+  children?: ReactNode;
+};
+
+function PreBlock({ children }: PreBlockProps) {
+  const child = Children.toArray(children)[0];
+
+  if (!isValidElement(child)) {
+    return <pre>{children}</pre>;
+  }
+
+  const codeClassName = String(child.props.className ?? "");
+  const code = String(child.props.children ?? "").replace(/\n$/, "");
+  const match = /language-(\w+)/.exec(codeClassName);
   const language = match?.[1] ?? "";
 
   async function handleCopy(): Promise<void> {
     await navigator.clipboard.writeText(code);
-  }
-
-  if (inline === true) {
-    return <code className={className}>{children}</code>;
   }
 
   return (
@@ -57,7 +69,7 @@ function CodeBlock({ inline, className, children }: CodeBlockProps) {
         </button>
       </div>
       <pre>
-        <code className={className}>{children}</code>
+        <code className={codeClassName}>{code}</code>
       </pre>
     </div>
   );
