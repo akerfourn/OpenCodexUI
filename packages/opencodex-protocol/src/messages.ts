@@ -1,4 +1,4 @@
-export type OpenCodexReasoningEffort = "low" | "medium" | "high";
+export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 export type OpenCodexApprovalDecision = "accept" | "acceptForSession" | "decline" | "cancel";
 
@@ -16,6 +16,8 @@ export type OpenCodexThread = {
   id: string;
   title: string;
   preview: string;
+  model: string | null;
+  reasoningEffort: OpenCodexReasoningEffort | null;
   projectName: string | null;
   projectPath: string | null;
   branchName: string | null;

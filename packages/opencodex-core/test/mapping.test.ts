@@ -18,6 +18,8 @@ describe("OpenCodex mapping", () => {
       id: "thread-1",
       title: "Titre",
       preview: "Aperçu",
+      model: null,
+      reasoningEffort: null,
       projectName: "project",
       projectPath: "/tmp/project",
       branchName: "main",

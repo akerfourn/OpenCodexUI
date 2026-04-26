@@ -63,6 +63,16 @@ export class RootStore {
     return this.threads.filter((thread) => matchingThreadIds.has(thread.id));
   }
 
+  get modelOptions(): string[] {
+    const options = [...this.models];
+
+    if (this.selectedModel !== null && !options.includes(this.selectedModel)) {
+      options.unshift(this.selectedModel);
+    }
+
+    return options;
+  }
+
   async bootstrap(): Promise<void> {
     await this.transport.request({ type: "app.bootstrap" });
   }
@@ -90,6 +100,12 @@ export class RootStore {
         this.messages = event.messages;
         this.activity = [];
         this.errorMessage = null;
+        if (event.thread.model !== null) {
+          this.selectedModel = event.thread.model;
+        }
+        if (event.thread.reasoningEffort !== null) {
+          this.reasoningEffort = event.thread.reasoningEffort;
+        }
         return;
       case "thread.renamed":
         this.applyThreadRename(event.threadId, event.name);

@@ -6,10 +6,15 @@ import type {
   OpenCodexApproval,
   OpenCodexApprovalDecision,
   OpenCodexMessage,
+  OpenCodexReasoningEffort,
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
 
-export function mapThread(value: unknown): OpenCodexThread {
+export function mapThread(
+  value: unknown,
+  model: string | null = null,
+  reasoningEffort: OpenCodexReasoningEffort | null = null
+): OpenCodexThread {
   const thread = readObject(value);
   const gitInfo = readObject(thread.gitInfo);
   const projectPath = readNullableString(thread.cwd);
@@ -20,6 +25,8 @@ export function mapThread(value: unknown): OpenCodexThread {
     id: readString(thread.id),
     title,
     preview,
+    model,
+    reasoningEffort,
     projectName: projectPath === null ? null : path.basename(projectPath),
     projectPath,
     branchName: readNullableString(gitInfo.branch),

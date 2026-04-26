@@ -30,6 +30,8 @@ export const ChatView = observer(function ChatView({ store }: ChatViewProps) {
         <div className="chat-title">
           <h2>{title}</h2>
           <p>{currentThread.projectPath ?? "Workspace non renseigné"}</p>
+          {currentThread.model !== null ? <p>Modèle: {currentThread.model}</p> : null}
+          {currentThread.reasoningEffort !== null ? <p>Raisonnement: {currentThread.reasoningEffort}</p> : null}
         </div>
         <div className="chat-header-actions">
           <IconButton
@@ -249,7 +251,7 @@ const Composer = observer(function Composer({ store }: ChatViewProps) {
       />
       <div className="composer-controls">
         <select value={store.selectedModel ?? ""} onChange={handleModelChange}>
-          {store.models.map((model) => (
+          {store.modelOptions.map((model) => (
             <option value={model} key={model}>
               {model}
             </option>
@@ -259,6 +261,7 @@ const Composer = observer(function Composer({ store }: ChatViewProps) {
           <option value="low">low</option>
           <option value="medium">medium</option>
           <option value="high">high</option>
+          <option value="xhigh">xhigh</option>
         </select>
         <div className="spacer" />
         {store.isWorking ? (

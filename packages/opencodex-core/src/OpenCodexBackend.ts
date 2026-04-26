@@ -181,9 +181,14 @@ export class OpenCodexBackend {
 
   private async openThread(threadId: string): Promise<{ thread: OpenCodexThread; messages: OpenCodexMessage[] }> {
     const client = await this.ensureClient();
-    const response = await client.readThread(threadId, true);
-    const threadValue = readObject(response).thread;
-    const thread = mapThread(threadValue);
+    const response = await client.resumeThread(threadId);
+    const responseObject = readObject(response);
+    const threadValue = responseObject.thread;
+    const thread = mapThread(
+      threadValue,
+      readString(responseObject.model),
+      readReasoningEffort(responseObject.reasoningEffort)
+    );
     const messages = mapThreadMessages(threadValue);
 
     this.emit({ type: "thread.opened", thread, messages });
@@ -196,7 +201,12 @@ export class OpenCodexBackend {
       cwd: this.options.projectPath,
       model: this.settings.defaultModel
     });
-    const thread = mapThread(readObject(response).thread);
+    const responseObject = readObject(response);
+    const thread = mapThread(
+      responseObject.thread,
+      readString(responseObject.model),
+      readReasoningEffort(responseObject.reasoningEffort)
+    );
     const messages: OpenCodexMessage[] = [];
 
     this.emit({ type: "thread.created", thread, messages });
@@ -207,7 +217,7 @@ export class OpenCodexBackend {
     threadId: string | null,
     text: string,
     model: string | null,
-    reasoningEffort: "low" | "medium" | "high" | null
+    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
 
@@ -250,7 +260,12 @@ export class OpenCodexBackend {
       cwd: this.options.projectPath,
       model: this.settings.defaultModel
     });
-    const thread = mapThread(readObject(response).thread);
+    const responseObject = readObject(response);
+    const thread = mapThread(
+      responseObject.thread,
+      readString(responseObject.model),
+      readReasoningEffort(responseObject.reasoningEffort)
+    );
     this.emit({ type: "thread.created", thread, messages: [] });
     return thread.id;
   }
@@ -415,6 +430,14 @@ function readModels(response: unknown): string[] {
     .map((model) => readObject(model))
     .map((model) => readString(model.model) || readString(model.id))
     .filter((model) => model.length > 0);
+}
+
+function readReasoningEffort(value: unknown): "low" | "medium" | "high" | "xhigh" | null {
+  if (value === "low" || value === "medium" || value === "high" || value === "xhigh") {
+    return value;
+  }
+
+  return null;
 }
 
 function fallbackModels(): string[] {
