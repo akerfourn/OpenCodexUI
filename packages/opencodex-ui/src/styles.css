@@ -1,0 +1,518 @@
+:root {
+  --vscode-font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --vscode-foreground: #1f2328;
+  --vscode-descriptionForeground: #6b7280;
+  --vscode-editor-background: #f6f8fa;
+  --vscode-editorWidget-background: #ffffff;
+  --vscode-sideBar-background: #ffffff;
+  --vscode-sideBar-border: #d8dee4;
+  --vscode-panel-border: #d8dee4;
+  --vscode-focusBorder: #0969da;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-background: #0969da;
+  --vscode-button-hoverBackground: #0757b8;
+  --vscode-button-secondaryForeground: #1f2328;
+  --vscode-button-secondaryBackground: #f3f4f6;
+  --vscode-button-secondaryHoverBackground: #e5e7eb;
+  --vscode-button-border: #d1d5db;
+  --vscode-input-foreground: #1f2328;
+  --vscode-input-background: #ffffff;
+  --vscode-input-border: #d1d5db;
+  --vscode-list-activeSelectionForeground: #ffffff;
+  --vscode-list-activeSelectionBackground: #0969da;
+  --vscode-textCodeBlock-background: #f3f4f6;
+  --vscode-inputValidation-errorForeground: #7f1d1d;
+  --vscode-inputValidation-errorBackground: #fef2f2;
+  --vscode-inputValidation-errorBorder: #dc2626;
+  color-scheme: light dark;
+  font-family: var(--vscode-font-family);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 4px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  cursor: pointer;
+  padding: 6px 10px;
+}
+
+button:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.icon-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+}
+
+.icon-button svg,
+.chat-icon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.primary-button {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.primary-button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 32vw) minmax(0, 1fr);
+  height: 100vh;
+}
+
+.thread-list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border-right: 1px solid var(--vscode-sideBar-border);
+  background: var(--vscode-sideBar-background);
+}
+
+.side-header,
+.chat-header,
+.composer-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.side-header {
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.side-header h1,
+.chat-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 0 12px 10px;
+}
+
+.segmented-control button.active {
+  outline: 1px solid var(--vscode-focusBorder);
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.search-input,
+.composer textarea,
+.composer select {
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 4px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+}
+
+.search-input {
+  margin: 0 12px 10px;
+  padding: 7px 8px;
+}
+
+.notice {
+  margin: 0 12px 10px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.thread-groups {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px 12px;
+}
+
+.thread-group h2,
+.branch-group h3 {
+  margin: 14px 4px 6px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.branch-group h3 {
+  margin-left: 18px;
+  font-style: italic;
+  font-weight: 700;
+}
+
+.branch-threads {
+  padding-left: 14px;
+}
+
+.thread-button {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+  border-color: transparent;
+  color: var(--vscode-foreground);
+  background: transparent;
+  text-align: left;
+}
+
+.chat-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.thread-button span,
+.thread-button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thread-button small {
+  color: var(--vscode-descriptionForeground);
+}
+
+.thread-button.active {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.main-pane,
+.chat-view {
+  min-width: 0;
+  min-height: 0;
+}
+
+.main-pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-view {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  overflow: hidden;
+  padding: 12px 16px;
+}
+
+.chat-title {
+  min-width: 0;
+}
+
+.chat-title h2,
+.chat-title p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.chat-header p {
+  margin: 4px 0 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 18px;
+}
+
+.message {
+  width: 100%;
+  max-width: 820px;
+  min-width: 0;
+  margin: 0 0 14px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  padding: 12px 14px;
+}
+
+.message > * {
+  max-width: 100%;
+}
+
+.message p,
+.message li,
+.message blockquote,
+.message table {
+  overflow-wrap: anywhere;
+}
+
+.message.user {
+  background: var(--vscode-input-background);
+}
+
+.message.assistant {
+  background: var(--vscode-editorWidget-background);
+}
+
+.message.activity {
+  color: var(--vscode-descriptionForeground);
+  background: transparent;
+}
+
+.message p:first-child {
+  margin-top: 0;
+}
+
+.message p:last-child {
+  margin-bottom: 0;
+}
+
+.activity-panel {
+  width: 100%;
+  max-width: 820px;
+  min-width: 0;
+  justify-self: center;
+  border-top: 1px solid var(--vscode-panel-border);
+  padding: 8px 16px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.activity-panel ul {
+  max-height: 140px;
+  margin: 8px 0 0;
+  overflow: auto;
+  padding-left: 18px;
+}
+
+.composer {
+  display: grid;
+  justify-items: center;
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editor-background);
+  padding: 12px 16px 14px;
+}
+
+.composer textarea {
+  width: 100%;
+  max-width: 820px;
+  min-width: 0;
+  max-height: 180px;
+  resize: vertical;
+  padding: 10px;
+}
+
+.composer-controls {
+  width: 100%;
+  max-width: 820px;
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.composer select {
+  max-width: 220px;
+  padding: 6px 8px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.empty-state {
+  display: grid;
+  height: 100%;
+  place-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.empty-state h2 {
+  margin: 0;
+}
+
+.error-banner {
+  max-height: 160px;
+  margin: 0;
+  overflow: auto;
+  border-bottom: 1px solid var(--vscode-inputValidation-errorBorder);
+  color: var(--vscode-inputValidation-errorForeground);
+  background: var(--vscode-inputValidation-errorBackground);
+  padding: 10px 14px;
+  white-space: pre-wrap;
+}
+
+.code-block {
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  background: var(--vscode-textCodeBlock-background);
+}
+
+.code-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 6px 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.code-copy-button {
+  width: 26px;
+  height: 26px;
+}
+
+.code-block pre {
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 12px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 45%);
+}
+
+.approval-dialog,
+.rename-dialog {
+  display: grid;
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: var(--vscode-editorWidget-background);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 30%);
+}
+
+.approval-dialog header,
+.approval-actions,
+.rename-dialog header,
+.dialog-actions {
+  padding: 14px;
+}
+
+.approval-dialog h2,
+.approval-dialog p,
+.rename-dialog h2,
+.rename-dialog p {
+  margin: 0;
+}
+
+.approval-dialog p,
+.rename-dialog p {
+  margin-top: 6px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.approval-dialog pre {
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+  border-top: 1px solid var(--vscode-panel-border);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.rename-dialog {
+  width: min(520px, calc(100vw - 32px));
+  grid-template-rows: auto auto auto;
+}
+
+.rename-dialog input {
+  margin: 0 14px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 4px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  padding: 8px 10px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .thread-list {
+    max-height: 38vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--vscode-sideBar-border);
+  }
+}

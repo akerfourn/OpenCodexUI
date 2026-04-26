@@ -1,0 +1,233 @@
+import { makeAutoObservable } from "mobx";
+
+import type {
+  OpenCodexApproval,
+  OpenCodexClientTransport,
+  OpenCodexEvent,
+  OpenCodexMessage,
+  OpenCodexReasoningEffort,
+  OpenCodexSettings,
+  OpenCodexThread,
+  OpenCodexThreadScope
+} from "@open-codex-ui/opencodex-protocol";
+
+export class RootStore {
+  settings: OpenCodexSettings = {
+    codexCommand: "codex",
+    defaultModel: null,
+    defaultReasoningEffort: "medium",
+    showActivityPanel: true,
+    experimentalApi: true
+  };
+  projectPath: string | null = null;
+  threads: OpenCodexThread[] = [];
+  currentThread: OpenCodexThread | null = null;
+  messages: OpenCodexMessage[] = [];
+  activity: string[] = [];
+  approvals: OpenCodexApproval[] = [];
+  models: string[] = [];
+  selectedModel: string | null = null;
+  reasoningEffort: OpenCodexReasoningEffort = "medium";
+  scope: OpenCodexThreadScope = "currentProject";
+  searchTerm = "";
+  input = "";
+  errorMessage: string | null = null;
+  connectionStatus = "stopped";
+  isWorking = false;
+  isRefreshingThread = false;
+  activeTurnId: string | null = null;
+  currentProjectFilterAvailable = true;
+
+  constructor(private readonly transport: OpenCodexClientTransport) {
+    makeAutoObservable(this);
+    this.transport.onEvent((event) => this.handleEvent(event));
+  }
+
+  async bootstrap(): Promise<void> {
+    await this.transport.request({ type: "app.bootstrap" });
+  }
+
+  handleEvent(event: OpenCodexEvent): void {
+    switch (event.type) {
+      case "connection.status":
+        this.connectionStatus = event.status;
+        return;
+      case "app.bootstrap":
+        this.settings = event.settings;
+        this.projectPath = event.projectPath;
+        this.selectedModel = event.settings.defaultModel;
+        this.reasoningEffort = event.settings.defaultReasoningEffort ?? "medium";
+        return;
+      case "threads.updated":
+        this.threads = event.threads;
+        this.currentProjectFilterAvailable = event.currentProjectFilterAvailable;
+        return;
+      case "thread.opened":
+      case "thread.created":
+        this.isRefreshingThread = false;
+        this.currentThread = event.thread;
+        this.messages = event.messages;
+        this.activity = [];
+        this.errorMessage = null;
+        return;
+      case "thread.renamed":
+        this.applyThreadRename(event.threadId, event.name);
+        return;
+      case "message.started":
+        this.currentThread = this.currentThread ?? this.findThread(event.threadId);
+        this.messages.push(event.message);
+        this.input = "";
+        return;
+      case "message.delta":
+        this.appendAssistantDelta(event.threadId, event.turnId, event.messageId, event.delta);
+        return;
+      case "activity.updated":
+        if (this.settings.showActivityPanel && event.activity.content?.trim()) {
+          this.activity.push(event.activity.content);
+        }
+        return;
+      case "turn.started":
+        this.isWorking = true;
+        this.activeTurnId = event.turnId;
+        return;
+      case "turn.completed":
+        this.isWorking = false;
+        this.activeTurnId = null;
+        return;
+      case "approval.requested":
+        this.approvals.push(event.approval);
+        return;
+      case "approval.resolved":
+        this.approvals = this.approvals.filter((approval) => approval.id !== event.approvalId);
+        return;
+      case "models.updated":
+        this.models = event.models;
+        this.selectedModel = this.selectedModel ?? event.models[0] ?? null;
+        return;
+      case "error":
+        this.errorMessage = event.details === undefined
+          ? event.message
+          : `${event.message}\n${JSON.stringify(event.details, null, 2)}`;
+        this.isWorking = false;
+        this.isRefreshingThread = false;
+        return;
+    }
+  }
+
+  refreshThreads(): void {
+    void this.transport.request({
+      type: "threads.list",
+      scope: this.scope,
+      searchTerm: this.searchTerm
+    });
+  }
+
+  openThread(threadId: string): void {
+    void this.transport.request({ type: "threads.open", threadId });
+  }
+
+  refreshCurrentThread(): void {
+    if (this.currentThread === null || this.isRefreshingThread) {
+      return;
+    }
+
+    this.isRefreshingThread = true;
+    this.openThread(this.currentThread.id);
+  }
+
+  createThread(): void {
+    void this.transport.request({ type: "threads.create" });
+  }
+
+  sendMessage(): void {
+    const text = this.input.trim();
+
+    if (text.length === 0 || this.isWorking) {
+      return;
+    }
+
+    void this.transport.request({
+      type: "turn.start",
+      threadId: this.currentThread?.id ?? null,
+      text,
+      model: this.selectedModel,
+      reasoningEffort: this.reasoningEffort
+    });
+  }
+
+  interruptTurn(): void {
+    if (this.currentThread === null || this.activeTurnId === null) {
+      return;
+    }
+
+    void this.transport.request({
+      type: "turn.interrupt",
+      threadId: this.currentThread.id,
+      turnId: this.activeTurnId
+    });
+  }
+
+  renameCurrentThread(name: string): void {
+    if (this.currentThread === null) {
+      return;
+    }
+
+    void this.transport.request({
+      type: "threads.rename",
+      threadId: this.currentThread.id,
+      name
+    });
+  }
+
+  resolveApproval(approvalId: string, decision: OpenCodexApproval["choices"][number]): void {
+    void this.transport.request({ type: "approval.respond", approvalId, decision });
+  }
+
+  setScope(scope: OpenCodexThreadScope): void {
+    this.scope = scope;
+    this.refreshThreads();
+  }
+
+  setSearchTerm(value: string): void {
+    this.searchTerm = value;
+    this.refreshThreads();
+  }
+
+  private appendAssistantDelta(threadId: string, turnId: string, itemId: string, delta: string): void {
+    if (this.currentThread?.id !== threadId) {
+      return;
+    }
+
+    const existing = this.messages.find((message) => message.itemId === itemId);
+
+    if (existing !== undefined) {
+      existing.content += delta;
+      return;
+    }
+
+    this.messages.push({
+      id: itemId,
+      threadId,
+      role: "assistant",
+      content: delta,
+      status: "streaming",
+      createdAt: new Date().toISOString(),
+      turnId,
+      itemId
+    });
+  }
+
+  private applyThreadRename(threadId: string, name: string): void {
+    this.threads = this.threads.map((thread) => (
+      thread.id === threadId ? { ...thread, title: name } : thread
+    ));
+
+    if (this.currentThread?.id === threadId) {
+      this.currentThread = { ...this.currentThread, title: name };
+    }
+  }
+
+  private findThread(threadId: string): OpenCodexThread | null {
+    return this.threads.find((thread) => thread.id === threadId) ?? null;
+  }
+}

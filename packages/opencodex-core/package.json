@@ -1,0 +1,18 @@
+{
+  "name": "@open-codex-ui/opencodex-core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@open-codex-ui/codex-rpc": "file:../codex-rpc",
+    "@open-codex-ui/opencodex-protocol": "file:../opencodex-protocol"
+  }
+}
