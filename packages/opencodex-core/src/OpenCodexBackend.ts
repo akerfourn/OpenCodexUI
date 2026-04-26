@@ -156,9 +156,13 @@ export class OpenCodexBackend {
       limit: THREAD_LIST_PAGE_SIZE,
       sortKey: "updated_at",
       sortDirection: "desc",
-      sourceKinds: THREAD_SOURCE_KINDS,
-      searchTerm: searchTerm?.trim() || null
+      sourceKinds: THREAD_SOURCE_KINDS
     };
+    const trimmedSearchTerm = searchTerm?.trim() ?? "";
+
+    if (trimmedSearchTerm.length > 0) {
+      params.searchTerm = trimmedSearchTerm;
+    }
 
     if (scope === "currentProject" && this.options.projectPath !== null) {
       params.cwd = this.options.projectPath;
@@ -377,7 +381,8 @@ async function readThreadPages(
   let cursor: string | null = null;
 
   for (let page = 0; page < THREAD_LIST_MAX_PAGES; page += 1) {
-    const response = await client.listThreads({ ...baseParams, cursor });
+    const params = cursor === null ? baseParams : { ...baseParams, cursor };
+    const response = await client.listThreads(params);
     threads.push(...readThreads(response));
     cursor = readString(readObject(response).nextCursor) || null;
 

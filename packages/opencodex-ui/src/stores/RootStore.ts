@@ -81,6 +81,7 @@ export class RootStore {
       case "threads.updated":
         this.threads = event.threads;
         this.currentProjectFilterAvailable = event.currentProjectFilterAvailable;
+        logThreadsForDebug(event.threads, this.scope, this.searchTerm);
         return;
       case "thread.opened":
       case "thread.created":
@@ -135,6 +136,11 @@ export class RootStore {
   }
 
   refreshThreads(): void {
+    console.info("[OpenCodexUI] threads.list request", {
+      scope: this.scope,
+      searchTerm: this.searchTerm
+    });
+
     void this.transport.request({
       type: "threads.list",
       scope: this.scope,
@@ -249,4 +255,27 @@ export class RootStore {
   private findThread(threadId: string): OpenCodexThread | null {
     return this.threads.find((thread) => thread.id === threadId) ?? null;
   }
+}
+
+function logThreadsForDebug(
+  threads: OpenCodexThread[],
+  scope: OpenCodexThreadScope,
+  searchTerm: string
+): void {
+  console.info("[OpenCodexUI] threads.updated", {
+    count: threads.length,
+    scope,
+    searchTerm,
+    projects: Array.from(new Set(threads.map((thread) => thread.projectPath ?? "<sans projet>"))).sort()
+  });
+
+  console.table(
+    threads.map((thread) => ({
+      title: thread.title || thread.preview || "<sans titre>",
+      projectPath: thread.projectPath,
+      branchName: thread.branchName,
+      updatedAt: thread.updatedAt,
+      status: thread.status
+    }))
+  );
 }

@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { createInterface, type Interface } from "node:readline";
 
 import { isRecord, parseJsonRpcLine, stringifyJsonLine } from "./events";
@@ -104,6 +106,7 @@ export class CodexAppServerClient {
     this.nextId += 1;
 
     const request: JsonRpcRequest = {
+      jsonrpc: "2.0",
       id,
       method,
       params
@@ -129,6 +132,7 @@ export class CodexAppServerClient {
     const process = this.requireProcess();
     process.stdin.write(
       stringifyJsonLine({
+        jsonrpc: "2.0",
         method,
         params
       })
@@ -139,6 +143,7 @@ export class CodexAppServerClient {
     const process = this.requireProcess();
     process.stdin.write(
       stringifyJsonLine({
+        jsonrpc: "2.0",
         id,
         result
       })
@@ -149,6 +154,7 @@ export class CodexAppServerClient {
     const process = this.requireProcess();
     process.stdin.write(
       stringifyJsonLine({
+        jsonrpc: "2.0",
         id,
         error: {
           code: -32000,
@@ -342,9 +348,29 @@ export class CodexAppServerClient {
 }
 
 function defaultProcessFactory(command: string, args: string[]): ProcessLike {
-  return spawn(command, args, {
+  return spawn(resolveCodexCommand(command), args, {
     stdio: ["pipe", "pipe", "pipe"]
   });
+}
+
+function resolveCodexCommand(command: string): string {
+  if (command !== "codex") {
+    return command;
+  }
+
+  if (process.env.OPENCODEX_CODEX_COMMAND !== undefined) {
+    return process.env.OPENCODEX_CODEX_COMMAND;
+  }
+
+  const home = process.env.HOME;
+
+  if (home === undefined || home.length === 0) {
+    return command;
+  }
+
+  const voltaShim = path.join(home, ".volta", "bin", "codex");
+
+  return existsSync(voltaShim) ? voltaShim : command;
 }
 
 function createDisposable(dispose: () => void): Disposable {
