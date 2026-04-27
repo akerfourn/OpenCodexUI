@@ -299,6 +299,9 @@ button:disabled {
   max-width: 100%;
   overflow-wrap: anywhere;
   align-self: stretch;
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 96px;
 }
 
 .message.user {

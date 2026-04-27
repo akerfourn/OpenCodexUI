@@ -31,7 +31,6 @@ export class RootStore {
   reasoningEffort: OpenCodexReasoningEffort = "medium";
   scope: OpenCodexThreadScope = "currentProject";
   searchTerm = "";
-  input = "";
   errorMessage: string | null = null;
   connectionStatus = "stopped";
   isWorking = false;
@@ -113,7 +112,6 @@ export class RootStore {
       case "message.started":
         this.currentThread = this.currentThread ?? this.findThread(event.threadId);
         this.messages.push(event.message);
-        this.input = "";
         return;
       case "message.delta":
         this.appendAssistantDelta(event.threadId, event.turnId, event.messageId, event.delta);
@@ -181,20 +179,32 @@ export class RootStore {
     void this.transport.request({ type: "threads.create" });
   }
 
-  sendMessage(): void {
-    const text = this.input.trim();
+  sendMessage(
+    text: string,
+    model: string | null = this.selectedModel,
+    reasoningEffort: OpenCodexReasoningEffort = this.reasoningEffort
+  ): void {
+    const trimmedText = text.trim();
 
-    if (text.length === 0 || this.isWorking) {
+    if (trimmedText.length === 0 || this.isWorking) {
       return;
     }
 
     void this.transport.request({
       type: "turn.start",
       threadId: this.currentThread?.id ?? null,
-      text,
-      model: this.selectedModel,
-      reasoningEffort: this.reasoningEffort
+      text: trimmedText,
+      model,
+      reasoningEffort
     });
+  }
+
+  setSelectedModel(value: string | null): void {
+    this.selectedModel = value;
+  }
+
+  setReasoningEffort(value: OpenCodexReasoningEffort): void {
+    this.reasoningEffort = value;
   }
 
   interruptTurn(): void {

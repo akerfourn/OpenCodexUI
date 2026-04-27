@@ -1,5 +1,5 @@
 import ReactMarkdown from "react-markdown";
-import { Children, isValidElement, type ReactNode } from "react";
+import { memo, Children, isValidElement, type ReactNode } from "react";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
@@ -7,7 +7,7 @@ type MarkdownMessageProps = {
   markdown: string;
 };
 
-export function MarkdownMessage({ markdown }: MarkdownMessageProps) {
+function MarkdownMessageBase({ markdown }: MarkdownMessageProps) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -21,6 +21,8 @@ export function MarkdownMessage({ markdown }: MarkdownMessageProps) {
     </ReactMarkdown>
   );
 }
+
+export const MarkdownMessage = memo(MarkdownMessageBase);
 
 type CodeBlockProps = {
   className?: string;
