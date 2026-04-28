@@ -1,4 +1,5 @@
 import { observer } from "mobx-react-lite";
+import { Box } from "@mui/material";
 
 import type { RootStore } from "../stores/RootStore";
 import { ApprovalDialog } from "./ApprovalDialog";
@@ -15,13 +16,13 @@ export const App = observer(function App({ store }: AppProps) {
   );
 
   return (
-    <main className="app-shell">
+    <Box component="main" className="app-shell">
       <ThreadList store={store} />
       <section className="main-pane">
         {errorContent}
         <ChatView store={store} />
       </section>
       <ApprovalDialog store={store} />
-    </main>
+    </Box>
   );
 });
