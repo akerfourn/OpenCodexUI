@@ -165,7 +165,17 @@ function IconActionButton({ label, icon, disabled = false, onClick }: IconAction
 function Icon({ name }: { name: IconActionButtonProps["icon"] }) {
   if (name === "refresh") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      >
         <path d="M20 12a8 8 0 0 1-13.7 5.6" />
         <path d="M4 12A8 8 0 0 1 17.7 6.4" />
         <path d="M17 2v5h5" />
@@ -175,7 +185,17 @@ function Icon({ name }: { name: IconActionButtonProps["icon"] }) {
   }
 
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+    >
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </svg>

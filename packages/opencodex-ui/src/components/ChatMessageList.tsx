@@ -1,4 +1,5 @@
 import { observer } from "mobx-react-lite";
+import { Box, Paper } from "@mui/material";
 import { memo, useLayoutEffect, useRef } from "react";
 
 import type { OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
@@ -26,30 +27,94 @@ export const ChatMessageList = observer(function ChatMessageList({ store }: Chat
   }, [currentThread?.id, store.messages.length]);
 
   return (
-    <div className="messages" ref={messagesRef}>
+    <Box
+      ref={messagesRef}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "stretch",
+        minHeight: 0,
+        overflowX: "hidden",
+        overflowY: "auto",
+        gap: 1.5,
+        px: 2,
+        py: 2.25
+      }}
+    >
       {store.messages.map((message) => (
         <MessageRow
           key={message.id}
-          id={message.id}
           role={message.role}
           content={message.content}
         />
       ))}
-      <div className="messages-end" ref={endRef} aria-hidden="true" />
-    </div>
+      <Box ref={endRef} aria-hidden="true" sx={{ width: "100%", height: 1, flex: "0 0 auto" }} />
+    </Box>
   );
 });
 
 type MessageRowProps = {
-  id: string;
   role: OpenCodexMessage["role"];
   content: string;
 };
 
-const MessageRow = memo(function MessageRow({ id, role, content }: MessageRowProps) {
+const MessageRow = memo(function MessageRow({ role, content }: MessageRowProps) {
+  if (role === "user") {
+    return (
+      <Paper
+        component="article"
+        elevation={0}
+        variant="outlined"
+        sx={{
+          minWidth: 0,
+          width: "100%",
+          maxWidth: "100%",
+          alignSelf: "flex-end",
+          ml: "auto",
+          borderColor: "#b7cef3",
+          borderRadius: 2,
+          bgcolor: "#eff6ff",
+          boxShadow: "0 1px 2px rgb(15 23 42 / 8%)",
+          overflow: "visible",
+          p: 1.5,
+          contentVisibility: "auto",
+          containIntrinsicSize: "0 96px",
+          contain: "layout paint style",
+          overflowWrap: "anywhere",
+          "@media (min-width: 1280px)": {
+            width: "80%",
+            maxWidth: "80%"
+          }
+        }}
+      >
+        <MarkdownMessage markdown={content} />
+      </Paper>
+    );
+  }
+
   return (
-    <article className={`message ${role}`} key={id}>
+    <Box
+      component="article"
+      sx={{
+        minWidth: 0,
+        width: "100%",
+        maxWidth: "100%",
+        alignSelf: "stretch",
+        overflow: "visible",
+        px: 0.5,
+        color: role === "activity" ? "text.secondary" : "text.primary",
+        fontStyle: role === "activity" ? "italic" : "normal",
+        contentVisibility: "auto",
+        containIntrinsicSize: "0 96px",
+        contain: "layout paint style",
+        overflowWrap: "anywhere",
+        "@media (min-width: 1280px)": {
+          width: "80%",
+          maxWidth: "80%"
+        }
+      }}
+    >
       <MarkdownMessage markdown={content} />
-    </article>
+    </Box>
   );
 });

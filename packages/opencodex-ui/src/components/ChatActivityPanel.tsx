@@ -32,7 +32,6 @@ export const ChatActivityPanel = observer(function ChatActivityPanel({
 
   return (
     <Accordion
-      className="activity-panel"
       expanded={isExpanded}
       elevation={0}
       disableGutters
@@ -41,6 +40,13 @@ export const ChatActivityPanel = observer(function ChatActivityPanel({
         setIsExpanded(expanded);
       }}
       sx={{
+        width: "100%",
+        maxWidth: 820,
+        minWidth: 0,
+        justifySelf: "center",
+        borderTop: "1px solid",
+        borderColor: "divider",
+        color: "text.secondary",
         "&:before": {
           display: "none"
         }
@@ -48,14 +54,33 @@ export const ChatActivityPanel = observer(function ChatActivityPanel({
     >
       <AccordionSummary
         expandIcon={
-          <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          >
             <path d="M6 9l6 6 6-6" />
           </svg>
         }
       >
         <Typography variant="subtitle2">Activité en cours</Typography>
       </AccordionSummary>
-      <AccordionDetails>
+      <AccordionDetails
+        sx={{
+          "& ul": {
+            maxHeight: 140,
+            m: "8px 0 0",
+            overflow: "auto",
+            pl: 2.25
+          }
+        }}
+      >
         <ul>
           {store.activity.slice(-20).map((activity, index) => (
             <li key={`${index}-${activity}`}>{activity}</li>
