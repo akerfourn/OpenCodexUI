@@ -6,6 +6,7 @@ import type {
   OpenCodexClientTransport,
   OpenCodexEvent,
   OpenCodexMessage,
+  OpenCodexMessagePhase,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
   OpenCodexThread,
@@ -114,7 +115,7 @@ export class RootStore {
         this.messages.push(event.message);
         return;
       case "message.delta":
-        this.appendAssistantDelta(event.threadId, event.turnId, event.messageId, event.delta);
+        this.appendAssistantDelta(event.threadId, event.turnId, event.messageId, event.delta, event.phase ?? null);
         return;
       case "activity.updated":
         if (this.settings.showActivityPanel && event.activity.content?.trim()) {
@@ -244,7 +245,13 @@ export class RootStore {
     this.searchTerm = value;
   }
 
-  private appendAssistantDelta(threadId: string, turnId: string, itemId: string, delta: string): void {
+  private appendAssistantDelta(
+    threadId: string,
+    turnId: string,
+    itemId: string,
+    delta: string,
+    phase: OpenCodexMessagePhase | null
+  ): void {
     if (this.currentThread?.id !== threadId) {
       return;
     }
@@ -253,6 +260,9 @@ export class RootStore {
 
     if (existing !== undefined) {
       existing.content += delta;
+      if (existing.phase === undefined || existing.phase === null) {
+        existing.phase = phase;
+      }
       return;
     }
 
@@ -264,7 +274,8 @@ export class RootStore {
       status: "streaming",
       createdAt: new Date().toISOString(),
       turnId,
-      itemId
+      itemId,
+      phase
     });
   }
 

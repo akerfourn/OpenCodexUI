@@ -14,7 +14,7 @@ export type OpenCodexEvent =
   | { type: "thread.created"; thread: OpenCodexThread; messages: OpenCodexMessage[] }
   | { type: "thread.renamed"; threadId: string; name: string }
   | { type: "message.started"; threadId: string; message: OpenCodexMessage }
-  | { type: "message.delta"; threadId: string; messageId: string; turnId: string; delta: string }
+  | { type: "message.delta"; threadId: string; messageId: string; turnId: string; delta: string; phase?: OpenCodexMessage["phase"] }
   | { type: "message.completed"; threadId: string; messageId: string }
   | { type: "activity.started"; threadId: string; activity: OpenCodexActivity }
   | { type: "activity.updated"; threadId: string; activity: OpenCodexActivity }

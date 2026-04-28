@@ -1,4 +1,5 @@
 export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
+export type OpenCodexMessagePhase = "commentary" | "final_answer";
 
 export type OpenCodexApprovalDecision = "accept" | "acceptForSession" | "decline" | "cancel";
 
@@ -38,6 +39,10 @@ export type OpenCodexMessage = {
   createdAt: string | null;
   turnId?: string;
   itemId?: string;
+  phase?: OpenCodexMessagePhase | null;
+  kind?: string;
+  summary?: string | null;
+  details?: string | null;
 };
 
 export type OpenCodexActivity = {
@@ -46,6 +51,8 @@ export type OpenCodexActivity = {
   kind: string;
   title?: string;
   content?: string;
+  summary?: string | null;
+  details?: string | null;
   status: "running" | "completed" | "error";
 };
 

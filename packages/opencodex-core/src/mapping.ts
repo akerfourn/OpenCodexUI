@@ -6,6 +6,7 @@ import type {
   OpenCodexApproval,
   OpenCodexApprovalDecision,
   OpenCodexMessage,
+  OpenCodexMessagePhase,
   OpenCodexReasoningEffort,
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
@@ -52,6 +53,7 @@ export function mapThreadMessages(value: unknown): OpenCodexMessage[] {
 
       if (type === "userMessage") {
         messages.push(mapUserMessage(threadId, item, turnId));
+        continue;
       }
 
       if (type === "agentMessage") {
@@ -63,25 +65,16 @@ export function mapThreadMessages(value: unknown): OpenCodexMessage[] {
           status: "completed",
           createdAt: null,
           turnId,
-          itemId: readString(item.id)
+          itemId: readString(item.id),
+          phase: readMessagePhase(item.phase)
         });
+        continue;
       }
 
-      if (type === "plan" || type === "reasoning" || type === "commandExecution" || type === "mcpToolCall") {
-        const content = summarizeActivityItem(item);
+      const activityMessage = mapActivityMessage(threadId, item, turnId);
 
-        if (content.length > 0) {
-          messages.push({
-            id: readString(item.id) || createId("activity"),
-            threadId,
-            role: "activity",
-            content,
-            status: "completed",
-            createdAt: null,
-            turnId,
-            itemId: readString(item.id)
-          });
-        }
+      if (activityMessage !== null) {
+        messages.push(activityMessage);
       }
     }
   }
@@ -108,11 +101,11 @@ export function createActivityFromNotification(notification: CodexNotification):
   }
 
   if (notification.method === "item/mcpToolCall/progress") {
-    return createActivity(itemId, threadId, "mcpTool", turnId, readString(params.message));
+    return createActivity(itemId, threadId, "mcpToolCall", turnId, readString(params.message));
   }
 
   if (notification.method === "command/exec/outputDelta") {
-    return createActivity(itemId, threadId, "command", turnId, readString(params.delta));
+    return createActivity(itemId, threadId, "commandExecution", turnId, readString(params.delta));
   }
 
   if (notification.method === "item/fileChange/outputDelta") {
@@ -164,6 +157,16 @@ export function readString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+export function readMessagePhase(value: unknown): OpenCodexMessagePhase | null {
+  const phase = readString(value);
+
+  if (phase === "commentary" || phase === "final_answer") {
+    return phase;
+  }
+
+  return null;
+}
+
 function mapUserMessage(
   threadId: string,
   item: Record<string, unknown>,
@@ -188,6 +191,36 @@ function mapUserMessage(
   };
 }
 
+function mapActivityMessage(
+  threadId: string,
+  item: Record<string, unknown>,
+  turnId: string
+): OpenCodexMessage | null {
+  const type = readString(item.type);
+
+  if (type.length === 0) {
+    return null;
+  }
+
+  const summary = summarizeActivityItem(item);
+  const details = summarizeActivityDetails(item);
+  const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item);
+
+  return {
+    id: readString(item.id) || createId("activity"),
+    threadId,
+    role: "activity",
+    content,
+    status: "completed",
+    createdAt: null,
+    turnId,
+    itemId: readString(item.id),
+    kind: type,
+    summary: summary.length > 0 ? summary : null,
+    details: details.length > 0 ? details : null
+  };
+}
+
 function summarizeActivityItem(item: Record<string, unknown>): string {
   const type = readString(item.type);
 
@@ -209,6 +242,58 @@ function summarizeActivityItem(item: Record<string, unknown>): string {
   }
 
   return "";
+}
+
+function summarizeActivityFallback(type: string, item: Record<string, unknown>): string {
+  if (type === "fileChange") {
+    return `Modification fichier: ${readString(item.status) || "en cours"}`;
+  }
+
+  if (type === "webSearch") {
+    return `Recherche web: ${readString(item.query)}`;
+  }
+
+  if (type === "imageView") {
+    return `Image: ${readString(item.path)}`;
+  }
+
+  if (type === "imageGeneration") {
+    return "Génération image";
+  }
+
+  if (type === "dynamicToolCall") {
+    return `Outil dynamique: ${readString(item.tool)}`;
+  }
+
+  if (type === "collabAgentToolCall") {
+    return `Agent collaboratif: ${readString(item.tool)}`;
+  }
+
+  if (type === "enteredReviewMode") {
+    return "Entrée en mode revue";
+  }
+
+  if (type === "exitedReviewMode") {
+    return "Sortie du mode revue";
+  }
+
+  if (type === "contextCompaction") {
+    return "Compactage du contexte";
+  }
+
+  if (type === "hookPrompt") {
+    return "Hook";
+  }
+
+  return type;
+}
+
+function summarizeActivityDetails(item: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(item, null, 2);
+  } catch {
+    return "";
+  }
 }
 
 function createApprovalTitle(method: string, params: Record<string, unknown>): string {

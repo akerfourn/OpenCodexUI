@@ -9,6 +9,7 @@ import type {
   OpenCodexApprovalDecision,
   OpenCodexEvent,
   OpenCodexMessage,
+  OpenCodexMessagePhase,
   OpenCodexRequest,
   OpenCodexSettings,
   OpenCodexThread
@@ -20,6 +21,7 @@ import {
   createApprovalRequest,
   mapThread,
   mapThreadMessages,
+  readMessagePhase,
   readObject,
   readString
 } from "./mapping.js";
@@ -67,6 +69,7 @@ export class OpenCodexBackend {
   private client: CodexAppServerClient | null = null;
   private settings: OpenCodexSettings;
   private readonly pendingApprovals = new Map<string, CodexServerRequest>();
+  private readonly assistantMessagePhases = new Map<string, OpenCodexMessagePhase | null>();
   private activeTurnId: string | null = null;
 
   constructor(private readonly options: OpenCodexBackendOptions) {
@@ -318,9 +321,35 @@ export class OpenCodexBackend {
       const turnId = readString(params.turnId);
       const messageId = readString(params.itemId);
       const delta = readString(params.delta);
+      const phase = this.assistantMessagePhases.get(messageId) ?? null;
 
       if (threadId.length > 0 && turnId.length > 0 && messageId.length > 0 && delta.length > 0) {
-        this.emit({ type: "message.delta", threadId, turnId, messageId, delta });
+        this.emit({ type: "message.delta", threadId, turnId, messageId, delta, phase });
+      }
+    }
+
+    if (notification.method === "item/started") {
+      const item = readObject(params.item);
+
+      if (readString(item.type) === "agentMessage") {
+        const messageId = readString(item.id);
+        const phase = readMessagePhase(item.phase);
+
+        if (messageId.length > 0) {
+          this.assistantMessagePhases.set(messageId, phase);
+        }
+      }
+    }
+
+    if (notification.method === "item/completed") {
+      const item = readObject(params.item);
+
+      if (readString(item.type) === "agentMessage") {
+        const messageId = readString(item.id);
+
+        if (messageId.length > 0) {
+          this.assistantMessagePhases.delete(messageId);
+        }
       }
     }
 
