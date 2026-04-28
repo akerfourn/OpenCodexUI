@@ -1,3 +1,5 @@
+import { Button, Stack, Typography } from "@mui/material";
+
 import type { RootStore } from "../stores/RootStore";
 
 type ChatEmptyStateProps = {
@@ -10,11 +12,13 @@ export function ChatEmptyState({ store }: ChatEmptyStateProps) {
   }
 
   return (
-    <div className="empty-state">
-      <h2>Aucune conversation ouverte</h2>
-      <button className="primary-button" type="button" onClick={handleNewThread}>
+    <Stack className="empty-state" spacing={2} sx={{ alignItems: "center" }}>
+      <Typography variant="h6" component="h2">
+        Aucune conversation ouverte
+      </Typography>
+      <Button variant="contained" type="button" onClick={handleNewThread}>
         Démarrer un chat
-      </button>
-    </div>
+      </Button>
+    </Stack>
   );
 }

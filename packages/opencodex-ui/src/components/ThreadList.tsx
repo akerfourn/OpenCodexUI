@@ -1,6 +1,16 @@
 import { observer } from "mobx-react-lite";
+import {
+  Box,
+  Button,
+  ListItemButton,
+  ListItemIcon,
+  Tab,
+  Tabs,
+  TextField,
+  Typography
+} from "@mui/material";
 
-import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexThread, OpenCodexThreadScope } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../stores/RootStore";
 
@@ -10,14 +20,6 @@ type ThreadListProps = {
 
 export const ThreadList = observer(function ThreadList({ store }: ThreadListProps) {
   const groups = groupThreadsByProject(store.filteredThreads);
-
-  function handleCurrentProjectScope(): void {
-    store.setScope("currentProject");
-  }
-
-  function handleAllScope(): void {
-    store.setScope("all");
-  }
 
   function handleSearch(event: React.ChangeEvent<HTMLInputElement>): void {
     store.setSearchTerm(event.target.value);
@@ -34,46 +36,65 @@ export const ThreadList = observer(function ThreadList({ store }: ThreadListProp
   return (
     <aside className="thread-list">
       <header className="side-header">
-        <h1>OpenCodexUI</h1>
-        <button className="primary-button" type="button" onClick={handleNewThread}>
+        <Typography variant="h6" component="h1">
+          OpenCodexUI
+        </Typography>
+        <Button variant="contained" type="button" onClick={handleNewThread}>
           Nouveau
-        </button>
+        </Button>
       </header>
 
-      <div className="segmented-control" aria-label="Filtre des conversations">
-        <button
-          className={store.scope === "currentProject" ? "active" : ""}
-          type="button"
-          onClick={handleCurrentProjectScope}
-        >
-          Projet courant
-        </button>
-        <button
-          className={store.scope === "all" ? "active" : ""}
-          type="button"
-          onClick={handleAllScope}
-        >
-          Tous les chats
-        </button>
-      </div>
+      <Tabs
+        value={store.scope}
+        aria-label="Filtre des conversations"
+        variant="fullWidth"
+        sx={{ px: 1.5, pb: 1.25 }}
+        onChange={(_event, value: OpenCodexThreadScope) => {
+          store.setScope(value);
+        }}
+      >
+        <Tab value="currentProject" label="Projet courant" />
+        <Tab value="all" label="Tous les chats" />
+      </Tabs>
 
-      <input
-        className="search-input"
-        type="search"
-        placeholder="Rechercher"
-        value={store.searchTerm}
-        onChange={handleSearch}
-      />
+      <Box sx={{ px: 1.5, pb: 1.25 }}>
+        <TextField
+          type="search"
+          placeholder="Rechercher"
+          value={store.searchTerm}
+          fullWidth
+          size="small"
+          onChange={handleSearch}
+        />
+      </Box>
 
-      {filterNotice !== null ? <p className="notice">{filterNotice}</p> : null}
+      {filterNotice !== null ? (
+        <Typography variant="body2" color="text.secondary" sx={{ px: 1.5, pb: 1.25 }}>
+          {filterNotice}
+        </Typography>
+      ) : null}
 
       <div className="thread-groups">
         {groups.map((group) => (
           <section className="thread-group" key={group.project}>
-            <h2>{group.project}</h2>
+            <Typography
+              variant="overline"
+              component="div"
+              sx={{ display: "block", px: 0.5, pt: 1.75, pb: 0.75 }}
+            >
+              {group.project}
+            </Typography>
             {group.branches.map((branchGroup) => (
               <div className="branch-group" key={branchGroup.branch ?? "default"}>
-                {branchGroup.branch !== null ? <h3>{branchGroup.branch}</h3> : null}
+                {branchGroup.branch !== null ? (
+                  <Typography
+                    variant="caption"
+                    component="div"
+                    sx={{ display: "block", pl: 2.25, pb: 0.5, fontStyle: "italic", fontWeight: 700 }}
+                  >
+                    {branchGroup.branch}
+                  </Typography>
+                ) : null}
                 <div className={branchGroup.branch !== null ? "branch-threads" : undefined}>
                   {branchGroup.threads.map((thread) => (
                     <ThreadButton key={thread.id} store={store} thread={thread} />
@@ -101,19 +122,27 @@ const ThreadButton = observer(function ThreadButton({ store, thread }: ThreadBut
   const isActive = store.currentThread?.id === thread.id;
 
   return (
-    <button
-      className={isActive ? "thread-button active" : "thread-button"}
-      type="button"
+    <ListItemButton
+      selected={isActive}
       onClick={handleOpenThread}
+      sx={{ mb: 0.5, alignItems: "flex-start", borderRadius: 1 }}
     >
-      <span className="chat-row">
+      <ListItemIcon sx={{ minWidth: 28, color: "inherit", mt: "2px" }}>
         <svg className="chat-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 17 0Z" />
         </svg>
-        <span>{getThreadTitle(thread)}</span>
-      </span>
-      {thread.branchName !== null ? <small>{thread.branchName}</small> : null}
-    </button>
+      </ListItemIcon>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Typography variant="body2" noWrap>
+          {getThreadTitle(thread)}
+        </Typography>
+        {thread.branchName !== null ? (
+          <Typography variant="caption" component="div" noWrap>
+            {thread.branchName}
+          </Typography>
+        ) : null}
+      </Box>
+    </ListItemButton>
   );
 });
 

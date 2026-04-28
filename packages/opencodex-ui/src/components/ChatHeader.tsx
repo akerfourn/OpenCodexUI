@@ -1,5 +1,17 @@
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
 
 import type { RootStore } from "../stores/RootStore";
 
@@ -56,25 +68,33 @@ export const ChatHeader = observer(function ChatHeader({ store }: ChatHeaderProp
   return (
     <>
       <header className="chat-header">
-        <div className="chat-title">
-          <h2>{title}</h2>
-          <p>{currentThread.projectPath ?? "Workspace non renseigné"}</p>
-          {currentThread.model !== null ? <p>Modèle: {currentThread.model}</p> : null}
-          {currentThread.reasoningEffort !== null ? <p>Raisonnement: {currentThread.reasoningEffort}</p> : null}
-        </div>
-        <div className="chat-header-actions">
-          <IconButton
+        <Box className="chat-title" sx={{ minWidth: 0 }}>
+          <Typography variant="h6" component="h2" noWrap>
+            {title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" noWrap>
+            {currentThread.projectPath ?? "Workspace non renseigné"}
+          </Typography>
+          {currentThread.model !== null ? (
+            <Typography variant="body2" color="text.secondary" noWrap>
+              Modèle: {currentThread.model}
+            </Typography>
+          ) : null}
+          {currentThread.reasoningEffort !== null ? (
+            <Typography variant="body2" color="text.secondary" noWrap>
+              Raisonnement: {currentThread.reasoningEffort}
+            </Typography>
+          ) : null}
+        </Box>
+        <Stack className="chat-header-actions" direction="row" spacing={1}>
+          <IconActionButton
             label="Rafraîchir"
             icon="refresh"
-            onClick={handleRefreshThread}
             disabled={store.isRefreshingThread}
+            onClick={handleRefreshThread}
           />
-          <IconButton
-            label="Renommer"
-            icon="edit"
-            onClick={handleRenameOpen}
-          />
-        </div>
+          <IconActionButton label="Renommer" icon="edit" onClick={handleRenameOpen} />
+        </Stack>
       </header>
       {renameModal}
     </>
@@ -92,23 +112,25 @@ function RenameModal({ value, title, onCancel, onChange, onSubmit }: RenameModal
   }
 
   return (
-    <div className="modal-backdrop">
-      <form className="rename-dialog" role="dialog" aria-modal="true" onSubmit={handleSubmit}>
-        <header>
-          <h2>Renommer le chat</h2>
-          <p>{title}</p>
-        </header>
-        <input value={value} autoFocus onChange={handleChange} />
-        <div className="dialog-actions">
-          <button type="button" onClick={onCancel}>
+    <Dialog open fullWidth maxWidth="sm" onClose={onCancel}>
+      <Box component="form" onSubmit={handleSubmit}>
+        <DialogTitle>Renommer le chat</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {title}
+          </Typography>
+          <TextField value={value} autoFocus fullWidth onChange={handleChange} />
+        </DialogContent>
+        <DialogActions>
+          <Button type="button" onClick={onCancel}>
             Annuler
-          </button>
-          <button className="primary-button" type="submit">
+          </Button>
+          <Button variant="contained" type="submit">
             Renommer
-          </button>
-        </div>
-      </form>
-    </div>
+          </Button>
+        </DialogActions>
+      </Box>
+    </Dialog>
   );
 }
 
@@ -120,29 +142,27 @@ type RenameModalProps = {
   onSubmit(): void;
 };
 
-type IconButtonProps = {
+type IconActionButtonProps = {
   label: string;
   icon: "refresh" | "edit";
   disabled?: boolean;
   onClick(): void;
 };
 
-function IconButton({ label, icon, disabled = false, onClick }: IconButtonProps) {
+function IconActionButton({ label, icon, disabled = false, onClick }: IconActionButtonProps) {
   return (
-    <button
-      className="icon-button"
-      type="button"
+    <IconButton
       aria-label={label}
       title={label}
       disabled={disabled}
       onClick={onClick}
     >
       <Icon name={icon} />
-    </button>
+    </IconButton>
   );
 }
 
-function Icon({ name }: { name: IconButtonProps["icon"] }) {
+function Icon({ name }: { name: IconActionButtonProps["icon"] }) {
   if (name === "refresh") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">

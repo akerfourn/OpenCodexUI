@@ -46,14 +46,13 @@ body {
   overflow: hidden;
 }
 
-button,
 input,
 select,
 textarea {
   font: inherit;
 }
 
-button {
+button:not(.MuiButtonBase-root):not(.MuiButton-root):not(.MuiIconButton-root) {
   border: 1px solid var(--vscode-button-border, transparent);
   border-radius: 4px;
   color: var(--vscode-button-secondaryForeground);
@@ -62,11 +61,11 @@ button {
   padding: 6px 10px;
 }
 
-button:hover {
+button:not(.MuiButtonBase-root):not(.MuiButton-root):not(.MuiIconButton-root):hover {
   background: var(--vscode-button-secondaryHoverBackground);
 }
 
-button:disabled {
+button:not(.MuiButtonBase-root):not(.MuiButton-root):not(.MuiIconButton-root):disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -151,9 +150,7 @@ button:disabled {
   background: var(--vscode-button-background);
 }
 
-.search-input,
-.composer textarea,
-.composer select {
+.search-input {
   border: 1px solid var(--vscode-input-border, transparent);
   border-radius: 4px;
   color: var(--vscode-input-foreground);
@@ -415,25 +412,11 @@ button:disabled {
   padding: 12px 16px 14px;
 }
 
-.composer textarea {
-  width: 100%;
-  max-width: 820px;
-  min-width: 0;
-  max-height: 180px;
-  resize: none;
-  padding: 10px;
-}
-
 .composer-controls {
   width: 100%;
   max-width: 820px;
   min-width: 0;
   margin-top: 8px;
-}
-
-.composer select {
-  max-width: 220px;
-  padding: 6px 8px;
 }
 
 .spacer {

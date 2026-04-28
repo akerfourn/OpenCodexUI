@@ -1,4 +1,5 @@
 import { observer } from "mobx-react-lite";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from "@mui/material";
 
 import type { RootStore } from "../stores/RootStore";
 
@@ -14,25 +15,42 @@ export const ApprovalDialog = observer(function ApprovalDialog({ store }: Approv
   }
 
   return (
-    <div className="modal-backdrop">
-      <section className="approval-dialog" role="dialog" aria-modal="true">
-        <header>
-          <h2>Approbation requise</h2>
-          <p>{approval.title}</p>
-        </header>
-        <pre>{approval.body}</pre>
-        <div className="approval-actions">
+    <Dialog open maxWidth="md" fullWidth>
+      <Box component="section">
+        <DialogTitle>Approbation requise</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {approval.title}
+          </Typography>
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              maxHeight: "50vh",
+              overflow: "auto",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              fontFamily:
+                'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace',
+              fontSize: 13,
+              lineHeight: 1.5
+            }}
+          >
+            {approval.body}
+          </Box>
+        </DialogContent>
+        <DialogActions>
           {approval.choices.map((decision) => (
             <ApprovalButton
+              approvalId={approval.id}
               decision={decision}
               key={decision}
-              approvalId={approval.id}
               store={store}
             />
           ))}
-        </div>
-      </section>
-    </div>
+        </DialogActions>
+      </Box>
+    </Dialog>
   );
 });
 
@@ -52,9 +70,13 @@ const ApprovalButton = observer(function ApprovalButton({
   }
 
   return (
-    <button type="button" onClick={handleDecision}>
+    <Button
+      type="button"
+      variant={decision === "decline" || decision === "cancel" ? "outlined" : "contained"}
+      onClick={handleDecision}
+    >
       {labelDecision(decision)}
-    </button>
+    </Button>
   );
 });
 

@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
+import { Button, MenuItem, Stack, TextField } from "@mui/material";
 
-import type {
-  OpenCodexReasoningEffort
-} from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexReasoningEffort } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../stores/RootStore";
 
@@ -29,7 +28,7 @@ export function ChatComposer({
     setDraft("");
   }, [currentThreadId]);
 
-  function handleInput(event: React.ChangeEvent<HTMLTextAreaElement>): void {
+  function handleInput(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     setDraft(event.target.value);
   }
 
@@ -43,7 +42,7 @@ export function ChatComposer({
     submitDraft();
   }
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
     if (!event.ctrlKey || event.key !== "Enter") {
       return;
     }
@@ -52,11 +51,11 @@ export function ChatComposer({
     submitDraft();
   }
 
-  function handleModelChange(event: React.ChangeEvent<HTMLSelectElement>): void {
+  function handleModelChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     store.setSelectedModel(event.target.value.length > 0 ? event.target.value : null);
   }
 
-  function handleEffortChange(event: React.ChangeEvent<HTMLSelectElement>): void {
+  function handleEffortChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     store.setReasoningEffort(event.target.value as OpenCodexReasoningEffort);
   }
 
@@ -66,37 +65,54 @@ export function ChatComposer({
 
   return (
     <form className="composer" onSubmit={handleSubmit}>
-      <textarea
+      <TextField
         value={draft}
         placeholder="Message à Codex"
-        rows={4}
+        multiline
+        minRows={4}
+        fullWidth
+        sx={{ maxWidth: 820, justifySelf: "center" }}
         onChange={handleInput}
         onKeyDown={handleKeyDown}
       />
-      <div className="composer-controls">
-        <select value={selectedModel ?? ""} onChange={handleModelChange}>
+      <Stack className="composer-controls" direction="row" spacing={1}>
+        <TextField
+          select
+          size="small"
+        value={selectedModel ?? ""}
+          label="Modèle"
+          onChange={handleModelChange}
+          sx={{ maxWidth: 220, minWidth: 160 }}
+        >
           {modelOptions.map((model) => (
-            <option value={model} key={model}>
+            <MenuItem value={model} key={model}>
               {model}
-            </option>
+            </MenuItem>
           ))}
-        </select>
-        <select value={reasoningEffort} onChange={handleEffortChange}>
-          <option value="low">low</option>
-          <option value="medium">medium</option>
-          <option value="high">high</option>
-          <option value="xhigh">xhigh</option>
-        </select>
+        </TextField>
+        <TextField
+          select
+          size="small"
+          value={reasoningEffort}
+          label="Raisonnement"
+          onChange={handleEffortChange}
+          sx={{ maxWidth: 160, minWidth: 130 }}
+        >
+          <MenuItem value="low">low</MenuItem>
+          <MenuItem value="medium">medium</MenuItem>
+          <MenuItem value="high">high</MenuItem>
+          <MenuItem value="xhigh">xhigh</MenuItem>
+        </TextField>
         <div className="spacer" />
         {isWorking ? (
-          <button type="button" onClick={handleInterrupt}>
+          <Button type="button" variant="outlined" onClick={handleInterrupt}>
             Interrompre
-          </button>
+          </Button>
         ) : null}
-        <button className="primary-button" type="submit" disabled={isWorking}>
+        <Button variant="contained" type="submit" disabled={isWorking}>
           Envoyer
-        </button>
-      </div>
+        </Button>
+      </Stack>
     </form>
   );
 }

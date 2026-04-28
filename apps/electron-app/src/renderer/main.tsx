@@ -1,7 +1,9 @@
 import "highlight.js/styles/github-dark.min.css";
 import "@open-codex-ui/opencodex-ui/src/styles.css";
 
-import { App, RootStore } from "@open-codex-ui/opencodex-ui";
+import { App, RootStore, opencodexTheme } from "@open-codex-ui/opencodex-ui";
+import { CssBaseline } from "@mui/material";
+import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
 import { Profiler, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -15,9 +17,14 @@ void store.bootstrap();
 if (rootElement !== null) {
   createRoot(rootElement).render(
     <StrictMode>
-      <Profiler id="OpenCodexUI" onRender={handleRenderProfiler}>
-        <App store={store} />
-      </Profiler>
+      <StyledEngineProvider injectFirst>
+        <ThemeProvider theme={opencodexTheme}>
+          <CssBaseline />
+          <Profiler id="OpenCodexUI" onRender={handleRenderProfiler}>
+            <App store={store} />
+          </Profiler>
+        </ThemeProvider>
+      </StyledEngineProvider>
     </StrictMode>
   );
 }
