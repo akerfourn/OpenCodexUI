@@ -107,7 +107,6 @@ function PreBlock({ children }: PreBlockProps) {
           <IconButton
             size="small"
             aria-label="Copier le bloc de code"
-            title="Copier le bloc de code"
             onClick={handleCopy}
           >
             <CopyIcon />

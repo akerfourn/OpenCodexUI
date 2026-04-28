@@ -1,6 +1,6 @@
 import { observer } from "mobx-react-lite";
 import { Box, Paper } from "@mui/material";
-import { memo, useLayoutEffect, useRef } from "react";
+import { memo, useLayoutEffect, useRef, type RefObject } from "react";
 
 import type { OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
 
@@ -13,11 +13,11 @@ type ChatMessageListProps = {
 
 export const ChatMessageList = observer(function ChatMessageList({ store }: ChatMessageListProps) {
   const messagesRef = useRef<HTMLDivElement | null>(null);
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const lastMessageRef = useRef<HTMLElement | null>(null);
   const currentThread = store.currentThread;
 
   useLayoutEffect(() => {
-    const element = endRef.current;
+    const element = lastMessageRef.current;
 
     if (element === null) {
       return;
@@ -44,24 +44,35 @@ export const ChatMessageList = observer(function ChatMessageList({ store }: Chat
       {store.messages.map((message) => (
         <MessageRow
           key={message.id}
+          isLast={message.id === store.messages.at(-1)?.id}
+          lastMessageRef={lastMessageRef}
           role={message.role}
           content={message.content}
         />
       ))}
-      <Box ref={endRef} aria-hidden="true" sx={{ width: "100%", height: 1, flex: "0 0 auto" }} />
     </Box>
   );
 });
 
 type MessageRowProps = {
+  isLast: boolean;
+  lastMessageRef: RefObject<HTMLElement>;
   role: OpenCodexMessage["role"];
   content: string;
 };
 
-const MessageRow = memo(function MessageRow({ role, content }: MessageRowProps) {
+const MessageRow = memo(function MessageRow({
+  isLast,
+  lastMessageRef,
+  role,
+  content
+}: MessageRowProps) {
+  const articleRef = isLast ? lastMessageRef : undefined;
+
   if (role === "user") {
     return (
       <Paper
+        ref={articleRef}
         component="article"
         elevation={0}
         variant="outlined"
@@ -94,6 +105,7 @@ const MessageRow = memo(function MessageRow({ role, content }: MessageRowProps) 
 
   return (
     <Box
+      ref={articleRef}
       component="article"
       sx={{
         minWidth: 0,
