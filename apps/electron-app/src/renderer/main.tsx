@@ -1,7 +1,7 @@
 import "highlight.js/styles/github-dark.min.css";
 import "@open-codex-ui/opencodex-ui/src/styles.css";
 
-import { App, RootStore, opencodexTheme } from "@open-codex-ui/opencodex-ui";
+import { AppX, RootStore, opencodexTheme } from "@open-codex-ui/opencodex-ui";
 import { CssBaseline } from "@mui/material";
 import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
 import { StrictMode } from "react";
@@ -20,7 +20,7 @@ if (rootElement !== null) {
       <StyledEngineProvider injectFirst>
         <ThemeProvider theme={opencodexTheme}>
           <CssBaseline />
-          <App store={store} />
+          <AppX store={store} />
         </ThemeProvider>
       </StyledEngineProvider>
     </StrictMode>

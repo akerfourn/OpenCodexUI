@@ -1,13 +1,14 @@
 import { observer } from "mobx-react-lite";
-import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from "@mui/material";
+import { Box, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from "@mui/material";
 
 import type { RootStore } from "../stores/RootStore";
+import { ApprovalButton } from "./ApprovalButton";
 
 type ApprovalDialogProps = {
   store: RootStore;
 };
 
-export const ApprovalDialog = observer(function ApprovalDialog({ store }: ApprovalDialogProps) {
+export function ApprovalDialog({ store }: ApprovalDialogProps) {
   const approval = store.approvals[0];
 
   if (approval === undefined) {
@@ -52,46 +53,6 @@ export const ApprovalDialog = observer(function ApprovalDialog({ store }: Approv
       </Box>
     </Dialog>
   );
-});
-
-type ApprovalButtonProps = {
-  store: RootStore;
-  approvalId: string;
-  decision: NonNullable<RootStore["approvals"][number]>["choices"][number];
-};
-
-const ApprovalButton = observer(function ApprovalButton({
-  store,
-  approvalId,
-  decision
-}: ApprovalButtonProps) {
-  function handleDecision(): void {
-    store.resolveApproval(approvalId, decision);
-  }
-
-  return (
-    <Button
-      type="button"
-      variant={decision === "decline" || decision === "cancel" ? "outlined" : "contained"}
-      onClick={handleDecision}
-    >
-      {labelDecision(decision)}
-    </Button>
-  );
-});
-
-function labelDecision(decision: ApprovalButtonProps["decision"]): string {
-  if (decision === "accept") {
-    return "Accepter";
-  }
-
-  if (decision === "acceptForSession") {
-    return "Accepter pour la session";
-  }
-
-  if (decision === "decline") {
-    return "Refuser";
-  }
-
-  return "Annuler";
 }
+
+export const ApprovalDialogX = observer(ApprovalDialog);

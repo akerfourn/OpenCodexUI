@@ -2,17 +2,17 @@ import { observer } from "mobx-react-lite";
 import { Stack } from "@mui/material";
 
 import type { RootStore } from "../stores/RootStore";
-import { ChatActivityPanel } from "./ChatActivityPanel";
+import { ChatActivityPanelX } from "./ChatActivityPanel";
 import { ChatComposer } from "./ChatComposer";
-import { ChatHeader } from "./ChatHeader";
-import { ChatMessageList } from "./ChatMessageList";
+import { ChatHeaderX } from "./ChatHeader";
+import { ChatMessageListX } from "./ChatMessageList";
 import { ChatEmptyState } from "./ChatEmptyState";
 
 type ChatViewProps = {
   store: RootStore;
 };
 
-export const ChatView = observer(function ChatView({ store }: ChatViewProps) {
+export function ChatView({ store }: ChatViewProps) {
   const currentThread = store.currentThread;
 
   if (currentThread === null) {
@@ -25,9 +25,9 @@ export const ChatView = observer(function ChatView({ store }: ChatViewProps) {
 
   return (
     <Stack className="chat-view">
-      <ChatHeader store={store} />
-      <ChatMessageList store={store} />
-      <ChatActivityPanel store={store} />
+      <ChatHeaderX store={store} />
+      <ChatMessageListX store={store} />
+      <ChatActivityPanelX store={store} />
       <ChatComposer
         store={store}
         currentThreadId={currentThread.id}
@@ -38,4 +38,6 @@ export const ChatView = observer(function ChatView({ store }: ChatViewProps) {
       />
     </Stack>
   );
-});
+}
+
+export const ChatViewX = observer(ChatView);

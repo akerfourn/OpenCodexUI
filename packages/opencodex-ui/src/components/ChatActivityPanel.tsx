@@ -14,7 +14,7 @@ type ChatActivityPanelProps = {
   store: RootStore;
 };
 
-export const ChatActivityPanel = observer(function ChatActivityPanel({
+export function ChatActivityPanel({
   store
 }: ChatActivityPanelProps) {
   const [isExpanded, setIsExpanded] = useState(store.isWorking);
@@ -74,6 +74,8 @@ export const ChatActivityPanel = observer(function ChatActivityPanel({
           ))}
         </ul>
       </AccordionDetails>
-    </Accordion>
+      </Accordion>
   );
-});
+}
+
+export const ChatActivityPanelX = observer(ChatActivityPanel);

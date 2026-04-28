@@ -1,28 +1,27 @@
-import { observer } from "mobx-react-lite";
 import {
   Box,
   Button,
-  ListItemButton,
-  ListItemIcon,
   Tab,
   Tabs,
   TextField,
   Typography
 } from "@mui/material";
-import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
+import { observer } from "mobx-react-lite";
+import type { ChangeEvent } from "react";
 
 import type { OpenCodexThread, OpenCodexThreadScope } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../stores/RootStore";
+import { ThreadButtonX } from "./ThreadButton";
 
 type ThreadListProps = {
   store: RootStore;
 };
 
-export const ThreadList = observer(function ThreadList({ store }: ThreadListProps) {
+export function ThreadList({ store }: ThreadListProps) {
   const groups = groupThreadsByProject(store.filteredThreads);
 
-  function handleSearch(event: React.ChangeEvent<HTMLInputElement>): void {
+  function handleSearch(event: ChangeEvent<HTMLInputElement>): void {
     store.setSearchTerm(event.target.value);
   }
 
@@ -98,7 +97,7 @@ export const ThreadList = observer(function ThreadList({ store }: ThreadListProp
                 ) : null}
                 <div className={branchGroup.branch !== null ? "branch-threads" : undefined}>
                   {branchGroup.threads.map((thread) => (
-                    <ThreadButton key={thread.id} store={store} thread={thread} />
+                    <ThreadButtonX key={thread.id} store={store} thread={thread} />
                   ))}
                 </div>
               </div>
@@ -108,42 +107,9 @@ export const ThreadList = observer(function ThreadList({ store }: ThreadListProp
       </div>
     </aside>
   );
-});
+}
 
-type ThreadButtonProps = {
-  store: RootStore;
-  thread: OpenCodexThread;
-};
-
-const ThreadButton = observer(function ThreadButton({ store, thread }: ThreadButtonProps) {
-  function handleOpenThread(): void {
-    store.openThread(thread.id);
-  }
-
-  const isActive = store.currentThread?.id === thread.id;
-
-  return (
-    <ListItemButton
-      selected={isActive}
-      onClick={handleOpenThread}
-      sx={{ mb: 0.5, alignItems: "flex-start", borderRadius: 1 }}
-    >
-      <ListItemIcon sx={{ minWidth: 28, color: "inherit", mt: "2px" }}>
-        <ChatBubbleOutlineOutlinedIcon fontSize="small" />
-      </ListItemIcon>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Typography variant="body2" noWrap>
-          {getThreadTitle(thread)}
-        </Typography>
-        {thread.branchName !== null ? (
-          <Typography variant="caption" component="div" noWrap>
-            {thread.branchName}
-          </Typography>
-        ) : null}
-      </Box>
-    </ListItemButton>
-  );
-});
+export const ThreadListX = observer(ThreadList);
 
 type ThreadBranchGroup = {
   branch: string | null;
@@ -174,18 +140,6 @@ function groupThreadsByProject(threads: OpenCodexThread[]): ThreadProjectGroup[]
       threads: branchThreads
     }))
   }));
-}
-
-function getThreadTitle(thread: OpenCodexThread): string {
-  if (thread.title.trim().length > 0) {
-    return thread.title;
-  }
-
-  if (thread.preview.trim().length > 0) {
-    return thread.preview;
-  }
-
-  return "Conversation sans titre";
 }
 
 function getOrCreateMap(

@@ -1,27 +1,17 @@
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Stack,
-  TextField,
-  Typography
-} from "@mui/material";
+import { Box, IconButton, Stack, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 
 import type { RootStore } from "../stores/RootStore";
+import { RenameModal } from "./RenameModal";
 
 type ChatHeaderProps = {
   store: RootStore;
 };
 
-export const ChatHeader = observer(function ChatHeader({ store }: ChatHeaderProps) {
+export function ChatHeader({ store }: ChatHeaderProps) {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const currentThread = store.currentThread;
@@ -89,77 +79,22 @@ export const ChatHeader = observer(function ChatHeader({ store }: ChatHeaderProp
           ) : null}
         </Box>
         <Stack className="chat-header-actions" direction="row" spacing={1}>
-          <IconActionButton
-            label="Rafraîchir"
-            icon="refresh"
+          <IconButton
+            aria-label="Rafraîchir"
+            title="Rafraîchir"
             disabled={store.isRefreshingThread}
             onClick={handleRefreshThread}
-          />
-          <IconActionButton label="Renommer" icon="edit" onClick={handleRenameOpen} />
+          >
+            <RefreshOutlinedIcon fontSize="small" />
+          </IconButton>
+          <IconButton aria-label="Renommer" title="Renommer" onClick={handleRenameOpen}>
+            <EditOutlinedIcon fontSize="small" />
+          </IconButton>
         </Stack>
       </header>
       {renameModal}
     </>
   );
-});
-
-function RenameModal({ value, title, onCancel, onChange, onSubmit }: RenameModalProps) {
-  function handleChange(event: React.ChangeEvent<HTMLInputElement>): void {
-    onChange(event.target.value);
-  }
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    onSubmit();
-  }
-
-  return (
-    <Dialog open fullWidth maxWidth="sm" onClose={onCancel}>
-      <Box component="form" onSubmit={handleSubmit}>
-        <DialogTitle>Renommer le chat</DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {title}
-          </Typography>
-          <TextField value={value} autoFocus fullWidth onChange={handleChange} />
-        </DialogContent>
-        <DialogActions>
-          <Button type="button" onClick={onCancel}>
-            Annuler
-          </Button>
-          <Button variant="contained" type="submit">
-            Renommer
-          </Button>
-        </DialogActions>
-      </Box>
-    </Dialog>
-  );
 }
 
-type RenameModalProps = {
-  value: string;
-  title: string;
-  onCancel(): void;
-  onChange(value: string): void;
-  onSubmit(): void;
-};
-
-type IconActionButtonProps = {
-  label: string;
-  icon: "refresh" | "edit";
-  disabled?: boolean;
-  onClick(): void;
-};
-
-function IconActionButton({ label, icon, disabled = false, onClick }: IconActionButtonProps) {
-  return (
-    <IconButton
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {icon === "refresh" ? <RefreshOutlinedIcon fontSize="small" /> : <EditOutlinedIcon fontSize="small" />}
-    </IconButton>
-  );
-}
+export const ChatHeaderX = observer(ChatHeader);
