@@ -9,6 +9,7 @@ import {
   TextField,
   Typography
 } from "@mui/material";
+import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 
 import type { OpenCodexThread, OpenCodexThreadScope } from "@open-codex-ui/opencodex-protocol";
 
@@ -128,9 +129,7 @@ const ThreadButton = observer(function ThreadButton({ store, thread }: ThreadBut
       sx={{ mb: 0.5, alignItems: "flex-start", borderRadius: 1 }}
     >
       <ListItemIcon sx={{ minWidth: 28, color: "inherit", mt: "2px" }}>
-        <svg className="chat-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 17 0Z" />
-        </svg>
+        <ChatBubbleOutlineOutlinedIcon fontSize="small" />
       </ListItemIcon>
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Typography variant="body2" noWrap>

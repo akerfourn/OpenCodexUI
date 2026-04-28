@@ -6,6 +6,7 @@ import {
   AccordionSummary,
   Typography
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import type { RootStore } from "../stores/RootStore";
 
@@ -53,21 +54,7 @@ export const ChatActivityPanel = observer(function ChatActivityPanel({
       }}
     >
       <AccordionSummary
-        expandIcon={
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        }
+        expandIcon={<ExpandMoreIcon fontSize="small" />}
       >
         <Typography variant="subtitle2">Activité en cours</Typography>
       </AccordionSummary>

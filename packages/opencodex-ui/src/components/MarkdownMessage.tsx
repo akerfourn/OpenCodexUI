@@ -1,5 +1,6 @@
 import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 import { memo, Children, isValidElement, type ReactNode } from "react";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
@@ -146,7 +147,7 @@ function PreBlock({ children }: PreBlockProps) {
             aria-label="Copier le bloc de code"
             onClick={handleCopy}
           >
-            <CopyIcon />
+            <ContentCopyOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
       </Box>
@@ -174,24 +175,5 @@ function PreBlock({ children }: PreBlockProps) {
         </Box>
       </Box>
     </Paper>
-  );
-}
-
-function CopyIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-    >
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
   );
 }
