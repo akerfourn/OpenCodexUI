@@ -33,10 +33,23 @@ export function ChatComposer({
     setDraft(event.target.value);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
+  function submitDraft(): void {
     store.sendMessage(draft);
     setDraft("");
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    submitDraft();
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>): void {
+    if (!event.ctrlKey || event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    submitDraft();
   }
 
   function handleModelChange(event: React.ChangeEvent<HTMLSelectElement>): void {
@@ -58,6 +71,7 @@ export function ChatComposer({
         placeholder="Message à Codex"
         rows={4}
         onChange={handleInput}
+        onKeyDown={handleKeyDown}
       />
       <div className="composer-controls">
         <select value={selectedModel ?? ""} onChange={handleModelChange}>

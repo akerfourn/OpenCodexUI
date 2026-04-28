@@ -12,16 +12,17 @@ type ChatMessageListProps = {
 
 export const ChatMessageList = observer(function ChatMessageList({ store }: ChatMessageListProps) {
   const messagesRef = useRef<HTMLDivElement | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
   const currentThread = store.currentThread;
 
   useLayoutEffect(() => {
-    const element = messagesRef.current;
+    const element = endRef.current;
 
     if (element === null) {
       return;
     }
 
-    element.scrollTop = element.scrollHeight;
+    element.scrollIntoView({ block: "end" });
   }, [currentThread?.id, store.messages.length]);
 
   return (
@@ -34,6 +35,7 @@ export const ChatMessageList = observer(function ChatMessageList({ store }: Chat
           content={message.content}
         />
       ))}
+      <div className="messages-end" ref={endRef} aria-hidden="true" />
     </div>
   );
 });
