@@ -38,6 +38,7 @@ export type OpenCodexMessage = {
   status: OpenCodexMessageStatus;
   createdAt: string | null;
   turnId?: string;
+  turnDurationMs?: number | null;
   itemId?: string;
   phase?: OpenCodexMessagePhase | null;
   kind?: string;

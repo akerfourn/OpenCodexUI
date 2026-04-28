@@ -1,4 +1,6 @@
-import { BrowserWindow, ipcMain } from "electron";
+import { BrowserWindow, ipcMain, shell } from "electron";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 import { OpenCodexBackend } from "@open-codex-ui/opencodex-core";
 import type { OpenCodexEvent, OpenCodexRequest, OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
@@ -18,6 +20,9 @@ export class ElectronBridgeServer {
       settings: options.settings,
       projectPath: options.projectPath,
       saveSettings: options.saveSettings,
+      openExternalLink: async (href) => {
+        await openExternalLink(href, options.projectPath);
+      },
       logger: (message) => console.log(`[OpenCodexUI] ${message}`),
       emit: (event) => this.emit(event)
     });
@@ -41,4 +46,58 @@ export class ElectronBridgeServer {
   private emit(event: OpenCodexEvent): void {
     this.window?.webContents.send("opencodex:event", event);
   }
+}
+
+async function openExternalLink(href: string, projectPath: string | null): Promise<void> {
+  const target = href.trim();
+
+  if (target.length === 0) {
+    return;
+  }
+
+  const resolved = resolveOpenTarget(target, projectPath);
+
+  if (resolved.type === "url") {
+    await shell.openExternal(resolved.value);
+    return;
+  }
+
+  const error = await shell.openPath(resolved.value);
+
+  if (error.length > 0) {
+    shell.showItemInFolder(resolved.value);
+  }
+}
+
+function resolveOpenTarget(
+  href: string,
+  projectPath: string | null
+): { type: "url"; value: string } | { type: "path"; value: string } {
+  try {
+    const url = new URL(href);
+
+    if (url.protocol === "file:") {
+      return { type: "path", value: stripLocationSuffix(fileURLToPath(url)) };
+    }
+
+    return { type: "url", value: href };
+  } catch {
+    const cleanedPath = stripLocationSuffix(href);
+
+    if (path.isAbsolute(cleanedPath)) {
+      return { type: "path", value: cleanedPath };
+    }
+
+    if (projectPath !== null) {
+      return { type: "path", value: path.resolve(projectPath, cleanedPath) };
+    }
+
+    return { type: "path", value: path.resolve(process.cwd(), cleanedPath) };
+  }
+}
+
+function stripLocationSuffix(value: string): string {
+  return value
+    .replace(/#L\d+(?:-L\d+)?$/i, "")
+    .replace(/:(\d+)(?::(\d+))?$/, "");
 }

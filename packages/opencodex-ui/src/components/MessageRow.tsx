@@ -23,6 +23,7 @@ import { MarkdownMessageM } from "./MarkdownMessage";
 type MessageRowProps = {
   isLast: boolean;
   lastMessageRef: RefObject<HTMLElement>;
+  onOpenLink(href: string): void;
   role: OpenCodexMessage["role"];
   phase?: OpenCodexMessage["phase"];
   kind?: string;
@@ -32,6 +33,7 @@ type MessageRowProps = {
 export function MessageRow({
   isLast,
   lastMessageRef,
+  onOpenLink,
   role,
   phase,
   kind,
@@ -69,7 +71,7 @@ export function MessageRow({
           }
         }}
       >
-        <MarkdownMessageM markdown={content} />
+        <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
       </Paper>
     );
   }
@@ -108,11 +110,11 @@ export function MessageRow({
         >
           {isCommentary ? <PsychologyOutlinedIcon fontSize="small" /> : renderActivityKindIcon(kind)}
           <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-            <MarkdownMessageM markdown={content} />
+            <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
           </Box>
         </Box>
       ) : (
-        <MarkdownMessageM markdown={content} />
+        <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
       )}
     </Box>
   );

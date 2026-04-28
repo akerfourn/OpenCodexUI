@@ -5,5 +5,6 @@ export type OpenCodexBackendOptions = {
   projectPath: string | null;
   emit(event: OpenCodexEvent): void;
   saveSettings?(settings: OpenCodexSettings): Promise<void> | void;
+  openExternalLink?(href: string): Promise<void> | void;
   logger?: (message: string) => void;
 };

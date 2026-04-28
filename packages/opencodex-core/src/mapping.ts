@@ -45,6 +45,7 @@ export function mapThreadMessages(value: unknown): OpenCodexMessage[] {
   for (const turnValue of turns) {
     const turn = readObject(turnValue);
     const turnId = readString(turn.id);
+    const turnDurationMs = readNullableNumber(turn.durationMs);
     const items = Array.isArray(turn.items) ? turn.items : [];
 
     for (const itemValue of items) {
@@ -52,7 +53,7 @@ export function mapThreadMessages(value: unknown): OpenCodexMessage[] {
       const type = readString(item.type);
 
       if (type === "userMessage") {
-        messages.push(mapUserMessage(threadId, item, turnId));
+        messages.push(mapUserMessage(threadId, item, turnId, turnDurationMs));
         continue;
       }
 
@@ -65,13 +66,14 @@ export function mapThreadMessages(value: unknown): OpenCodexMessage[] {
           status: "completed",
           createdAt: null,
           turnId,
+          turnDurationMs,
           itemId: readString(item.id),
           phase: readMessagePhase(item.phase)
         });
         continue;
       }
 
-      const activityMessage = mapActivityMessage(threadId, item, turnId);
+      const activityMessage = mapActivityMessage(threadId, item, turnId, turnDurationMs);
 
       if (activityMessage !== null) {
         messages.push(activityMessage);
@@ -157,6 +159,10 @@ export function readString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+export function readNullableNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 export function readMessagePhase(value: unknown): OpenCodexMessagePhase | null {
   const phase = readString(value);
 
@@ -170,7 +176,8 @@ export function readMessagePhase(value: unknown): OpenCodexMessagePhase | null {
 function mapUserMessage(
   threadId: string,
   item: Record<string, unknown>,
-  turnId: string
+  turnId: string,
+  turnDurationMs: number | null
 ): OpenCodexMessage {
   const content = Array.isArray(item.content) ? item.content : [];
   const text = content
@@ -187,6 +194,7 @@ function mapUserMessage(
     status: "completed",
     createdAt: null,
     turnId,
+    turnDurationMs,
     itemId: readString(item.id)
   };
 }
@@ -194,7 +202,8 @@ function mapUserMessage(
 function mapActivityMessage(
   threadId: string,
   item: Record<string, unknown>,
-  turnId: string
+  turnId: string,
+  turnDurationMs: number | null
 ): OpenCodexMessage | null {
   const type = readString(item.type);
 
@@ -214,6 +223,7 @@ function mapActivityMessage(
     status: "completed",
     createdAt: null,
     turnId,
+    turnDurationMs,
     itemId: readString(item.id),
     kind: type,
     summary: summary.length > 0 ? summary : null,

@@ -22,6 +22,6 @@ export type OpenCodexEvent =
   | { type: "approval.requested"; approval: OpenCodexApproval }
   | { type: "approval.resolved"; approvalId: string }
   | { type: "turn.started"; threadId: string; turnId: string }
-  | { type: "turn.completed"; threadId: string; turnId: string }
+  | { type: "turn.completed"; threadId: string; turnId: string; durationMs: number | null }
   | { type: "models.updated"; models: string[] }
   | { type: "error"; message: string; details?: unknown };

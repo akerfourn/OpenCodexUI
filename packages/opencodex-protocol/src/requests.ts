@@ -11,6 +11,7 @@ export type OpenCodexRequest =
   | { type: "threads.open"; threadId: string }
   | { type: "threads.create" }
   | { type: "threads.rename"; threadId: string; name: string }
+  | { type: "system.openLink"; href: string }
   | {
       type: "turn.start";
       threadId: string | null;

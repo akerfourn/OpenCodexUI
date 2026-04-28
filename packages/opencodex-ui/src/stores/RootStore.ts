@@ -129,6 +129,7 @@ export class RootStore {
       case "turn.completed":
         this.isWorking = false;
         this.activeTurnId = null;
+        this.applyTurnDuration(event.turnId, event.durationMs);
         return;
       case "approval.requested":
         this.approvals.push(event.approval);
@@ -232,6 +233,16 @@ export class RootStore {
     });
   }
 
+  openExternalLink(href: string): void {
+    const trimmedHref = href.trim();
+
+    if (trimmedHref.length === 0) {
+      return;
+    }
+
+    void this.transport.request({ type: "system.openLink", href: trimmedHref });
+  }
+
   resolveApproval(approvalId: string, decision: OpenCodexApproval["choices"][number]): void {
     void this.transport.request({ type: "approval.respond", approvalId, decision });
   }
@@ -274,9 +285,22 @@ export class RootStore {
       status: "streaming",
       createdAt: new Date().toISOString(),
       turnId,
+      turnDurationMs: null,
       itemId,
       phase
     });
+  }
+
+  private applyTurnDuration(turnId: string, durationMs: number | null): void {
+    if (durationMs === null) {
+      return;
+    }
+
+    this.messages = this.messages.map((message) => (
+      message.turnId === turnId
+        ? { ...message, turnDurationMs: durationMs }
+        : message
+    ));
   }
 
   private applyThreadRename(threadId: string, name: string): void {

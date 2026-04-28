@@ -5,13 +5,15 @@ import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
 import { InlineCode } from "./InlineCode";
+import { MarkdownLink } from "./MarkdownLink";
 import { PreBlock } from "./PreBlock";
 
 type MarkdownMessageProps = {
   markdown: string;
+  onOpenLink(href: string): void;
 };
 
-export function MarkdownMessage({ markdown }: MarkdownMessageProps) {
+export function MarkdownMessage({ markdown, onOpenLink }: MarkdownMessageProps) {
   return (
     <Box
       sx={{
@@ -54,7 +56,12 @@ export function MarkdownMessage({ markdown }: MarkdownMessageProps) {
         rehypePlugins={[rehypeHighlight]}
         components={{
           pre: PreBlock,
-          code: InlineCode
+          code: InlineCode,
+          a: ({ href, children }) => (
+            <MarkdownLink href={href} onOpenLink={onOpenLink}>
+              {children}
+            </MarkdownLink>
+          )
         }}
       >
         {markdown}

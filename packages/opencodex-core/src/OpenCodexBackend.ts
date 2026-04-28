@@ -23,6 +23,7 @@ import {
   mapThreadMessages,
   readMessagePhase,
   readObject,
+  readNullableNumber,
   readString
 } from "./mapping.js";
 import type { OpenCodexBackendOptions } from "./types.js";
@@ -113,6 +114,8 @@ export class OpenCodexBackend {
         return this.createThread();
       case "threads.rename":
         return this.renameThread(request.threadId, request.name);
+      case "system.openLink":
+        return this.openLink(request.href);
       case "turn.start":
         return this.startTurn(request.threadId, request.text, request.model ?? null, request.reasoningEffort ?? null);
       case "turn.interrupt":
@@ -290,6 +293,21 @@ export class OpenCodexBackend {
     this.emit({ type: "thread.renamed", threadId, name: trimmedName });
   }
 
+  private async openLink(href: string): Promise<{ ok: true }> {
+    const target = href.trim();
+
+    if (target.length === 0) {
+      return { ok: true };
+    }
+
+    if (this.options.openExternalLink === undefined) {
+      throw new Error("Aucun gestionnaire d'ouverture de lien externe n'est configuré.");
+    }
+
+    await this.options.openExternalLink(target);
+    return { ok: true };
+  }
+
   private async listModels(): Promise<string[]> {
     const client = await this.ensureClient();
 
@@ -366,9 +384,10 @@ export class OpenCodexBackend {
     if (notification.method === "turn/completed") {
       const threadId = readString(params.threadId);
       const turnId = readString(readObject(params.turn).id) || this.activeTurnId;
+      const durationMs = readNullableNumber(readObject(params.turn).durationMs);
 
       if (threadId.length > 0 && turnId !== null && turnId.length > 0) {
-        this.emit({ type: "turn.completed", threadId, turnId });
+        this.emit({ type: "turn.completed", threadId, turnId, durationMs });
       }
     }
 
