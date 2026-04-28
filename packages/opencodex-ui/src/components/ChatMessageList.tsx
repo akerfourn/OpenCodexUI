@@ -36,7 +36,7 @@ export const ChatMessageList = observer(function ChatMessageList({ store }: Chat
         minHeight: 0,
         overflowX: "hidden",
         overflowY: "auto",
-        gap: 1.5,
+        gap: 1.25,
         px: 2,
         py: 2.25
       }}
@@ -87,7 +87,7 @@ const MessageRow = memo(function MessageRow({
           bgcolor: "#eff6ff",
           boxShadow: "0 1px 2px rgb(15 23 42 / 8%)",
           overflow: "visible",
-          p: 1.5,
+          p: 1.25,
           contentVisibility: "auto",
           containIntrinsicSize: "0 96px",
           contain: "layout paint style",

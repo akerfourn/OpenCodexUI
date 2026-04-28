@@ -10,16 +10,53 @@ type MarkdownMessageProps = {
 
 function MarkdownMessageBase({ markdown }: MarkdownMessageProps) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      rehypePlugins={[rehypeHighlight]}
-      components={{
-        pre: PreBlock,
-        code: InlineCode
+    <Box
+      sx={{
+        minWidth: 0,
+        lineHeight: 1.45,
+        "& > :first-of-type": {
+          mt: 0
+        },
+        "& > :last-child": {
+          mb: 0
+        },
+        "& p": {
+          my: 0.5
+        },
+        "& ul, & ol": {
+          my: 0.5,
+          pl: 2.5
+        },
+        "& li + li": {
+          mt: 0.25
+        },
+        "& blockquote": {
+          my: 0.75,
+          pl: 1.5,
+          borderLeft: "3px solid",
+          borderColor: "divider",
+          color: "text.secondary"
+        },
+        "& hr": {
+          my: 1
+        },
+        "& h1, & h2, & h3, & h4, & h5, & h6": {
+          mt: 1,
+          mb: 0.5
+        }
       }}
     >
-      {markdown}
-    </ReactMarkdown>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight]}
+        components={{
+          pre: PreBlock,
+          code: InlineCode
+        }}
+      >
+        {markdown}
+      </ReactMarkdown>
+    </Box>
   );
 }
 
