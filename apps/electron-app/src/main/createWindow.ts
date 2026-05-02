@@ -24,9 +24,6 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
 
   if (options.devServerUrl !== undefined && options.devServerUrl !== null) {
     void window.loadURL(options.devServerUrl);
-    window.webContents.once("did-finish-load", () => {
-      window.webContents.openDevTools({ mode: "detach" });
-    });
   } else {
     void window.loadFile(path.join(options.rendererPath, "index.html"));
   }

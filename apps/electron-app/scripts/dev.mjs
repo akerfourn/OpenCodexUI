@@ -14,6 +14,8 @@ const devServerUrl = "http://127.0.0.1:5173/";
 
 let electronProcess = null;
 let restartTimer = null;
+let isRestartingElectron = false;
+let shutdownDevServer = null;
 
 main().catch((error) => {
   console.error("[OpenCodexUI dev] startup failed");
@@ -31,8 +33,9 @@ async function main() {
   await mainContext.watch();
   await preloadContext.watch();
 
+  shutdownDevServer = createShutdown(viteServer, [mainContext, preloadContext]);
   startElectron();
-  installShutdownHandlers(viteServer, [mainContext, preloadContext]);
+  installShutdownHandlers();
 }
 
 async function rebuildNativeDependenciesForElectron() {
@@ -119,6 +122,8 @@ async function createBuildContext(entryPoint, outfile) {
 function startElectron() {
   electronProcess = spawnElectron();
   electronProcess.on("exit", (code, signal) => {
+    electronProcess = null;
+
     if (signal === "SIGTERM") {
       return;
     }
@@ -130,6 +135,14 @@ function startElectron() {
     if (signal !== null) {
       console.info(`[OpenCodexUI dev] electron exited with signal ${signal}`);
     }
+
+    if (isRestartingElectron) {
+      return;
+    }
+
+    void shutdownDevServer?.().then(() => {
+      process.exit(code ?? 0);
+    });
   });
 }
 
@@ -144,8 +157,16 @@ function spawnElectron() {
   });
 }
 
-function installShutdownHandlers(viteServer, contexts) {
-  const shutdown = async () => {
+function createShutdown(viteServer, contexts) {
+  let isShuttingDown = false;
+
+  return async () => {
+    if (isShuttingDown) {
+      return;
+    }
+
+    isShuttingDown = true;
+
     if (restartTimer !== null) {
       clearTimeout(restartTimer);
       restartTimer = null;
@@ -159,12 +180,14 @@ function installShutdownHandlers(viteServer, contexts) {
     await Promise.allSettled(contexts.map((context) => context.dispose()));
     await viteServer.close();
   };
+}
 
+function installShutdownHandlers() {
   process.once("SIGINT", () => {
-    void shutdown();
+    void shutdownDevServer?.();
   });
   process.once("SIGTERM", () => {
-    void shutdown();
+    void shutdownDevServer?.();
   });
 }
 
@@ -191,8 +214,10 @@ function restartElectron() {
   console.info("[OpenCodexUI dev] restarting electron");
   const currentProcess = electronProcess;
   electronProcess = null;
+  isRestartingElectron = true;
 
   currentProcess.once("exit", () => {
+    isRestartingElectron = false;
     startElectron();
   });
   currentProcess.kill("SIGTERM");
