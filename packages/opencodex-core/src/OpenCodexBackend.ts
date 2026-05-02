@@ -19,7 +19,8 @@ import type {
   OpenCodexMessagePhase,
   OpenCodexRequest,
   OpenCodexSettings,
-  OpenCodexThread
+  OpenCodexThread,
+  OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
 import {
@@ -27,7 +28,7 @@ import {
   createActivityFromNotification,
   createApprovalRequest,
   mapThread,
-  mapTurnsToMessages,
+  mapTurnsToOpenCodexTurns,
   readMessagePhase,
   readObject,
   readNullableNumber,
@@ -200,19 +201,19 @@ export class OpenCodexBackend {
     return threads;
   }
 
-  private async openThread(threadId: string): Promise<{ thread: OpenCodexThread; messages: OpenCodexMessage[] }> {
+  private async openThread(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     const cachedSnapshot = await this.readCachedThreadSnapshot(threadId);
 
     if (cachedSnapshot !== null && cachedSnapshot.syncState.hasLoadedLatest) {
       const cacheEntry = this.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
-      const messages = this.readCachedMessages(cacheEntry);
+      const turns = this.readCachedTurns(cacheEntry);
 
-      this.emitThreadOpened(cacheEntry, messages);
+      this.emitThreadOpened(cacheEntry, turns);
       void this.resumeAndSyncCachedThread(threadId).catch((error: unknown) => {
         this.handleClientError(toError(error));
       });
 
-      return { thread: cacheEntry.thread, messages };
+      return { thread: cacheEntry.thread, turns };
     }
 
     const client = await this.ensureClient();
@@ -227,19 +228,19 @@ export class OpenCodexBackend {
     const cacheEntry = this.threadTurnCache.getOrCreate(thread);
 
     if (cacheEntry.hasLoadedLatest) {
-      const messages = this.readCachedMessages(cacheEntry);
-      this.emitThreadOpened(cacheEntry, messages);
+      const turns = this.readCachedTurns(cacheEntry);
+      this.emitThreadOpened(cacheEntry, turns);
       void this.syncLatestTurns(client, cacheEntry).catch((error: unknown) => {
         this.handleClientError(toError(error));
       });
-      return { thread, messages };
+      return { thread, turns };
     }
 
     await this.loadLatestTurns(client, cacheEntry);
     await this.writeThreadSnapshot(cacheEntry);
-    const messages = this.readCachedMessages(cacheEntry);
-    this.emitThreadOpened(cacheEntry, messages);
-    return { thread, messages };
+    const turns = this.readCachedTurns(cacheEntry);
+    this.emitThreadOpened(cacheEntry, turns);
+    return { thread, turns };
   }
 
   private async loadLatestTurns(
@@ -260,12 +261,12 @@ export class OpenCodexBackend {
 
   private async loadOlderThreadMessages(
     threadId: string
-  ): Promise<{ messages: OpenCodexMessage[]; hasMoreOlderMessages: boolean }> {
+  ): Promise<{ turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }> {
     const client = await this.ensureClient();
     const cacheEntry = this.threadTurnCache.get(threadId);
 
     if (cacheEntry === null || cacheEntry.hasLoadedAllOlderTurns || cacheEntry.olderCursor === null) {
-      return { messages: [], hasMoreOlderMessages: false };
+      return { turns: [], hasMoreOlderMessages: false };
     }
 
     const response = await client.listThreadTurns({
@@ -275,29 +276,29 @@ export class OpenCodexBackend {
       sortDirection: "desc"
     });
     const responseObject = readObject(response);
-    const turns = Array.isArray(responseObject.data) ? responseObject.data : [];
+    const rawTurns = Array.isArray(responseObject.data) ? responseObject.data : [];
     const olderCursor = readString(responseObject.nextCursor) || null;
     const previousTurnIds = new Set(cacheEntry.orderedTurnIds);
 
-    this.threadTurnCache.mergeOlderTurns(cacheEntry, turns, olderCursor);
-    await this.writeThreadDelta(cacheEntry, turns);
+    this.threadTurnCache.mergeOlderTurns(cacheEntry, rawTurns, olderCursor);
+    await this.writeThreadDelta(cacheEntry, rawTurns);
 
     const addedTurns = this.threadTurnCache
       .toTurns(cacheEntry)
       .filter((turn) => !previousTurnIds.has(readString(readObject(turn).id)));
-    const messages = mapTurnsToMessages(threadId, addedTurns);
+    const turns = mapTurnsToOpenCodexTurns(threadId, addedTurns);
     const hasMoreOlderMessages = !cacheEntry.hasLoadedAllOlderTurns;
 
-    if (messages.length > 0) {
+    if (turns.length > 0) {
       this.emit({
-        type: "thread.messages.prepended",
+        type: "thread.turns.prepended",
         threadId,
-        messages,
+        turns,
         hasMoreOlderMessages
       });
     }
 
-    return { messages, hasMoreOlderMessages };
+    return { turns, hasMoreOlderMessages };
   }
 
   private async syncLatestTurns(
@@ -314,9 +315,9 @@ export class OpenCodexBackend {
 
       if (previousSignature !== nextSignature) {
         this.emit({
-          type: "thread.messages.synced",
+          type: "thread.turns.synced",
           threadId: cacheEntry.thread.id,
-          messages: this.readCachedMessages(cacheEntry),
+          turns: this.readCachedTurns(cacheEntry),
           hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns
         });
       }
@@ -325,8 +326,8 @@ export class OpenCodexBackend {
     }
   }
 
-  private readCachedMessages(cacheEntry: ThreadTurnCacheEntry): OpenCodexMessage[] {
-    return mapTurnsToMessages(cacheEntry.thread.id, this.threadTurnCache.toTurns(cacheEntry));
+  private readCachedTurns(cacheEntry: ThreadTurnCacheEntry): OpenCodexTurn[] {
+    return mapTurnsToOpenCodexTurns(cacheEntry.thread.id, this.threadTurnCache.toTurns(cacheEntry));
   }
 
   private async resumeAndSyncCachedThread(threadId: string): Promise<void> {
@@ -344,16 +345,16 @@ export class OpenCodexBackend {
     await this.syncLatestTurns(client, cacheEntry);
   }
 
-  private emitThreadOpened(cacheEntry: ThreadTurnCacheEntry, messages: OpenCodexMessage[]): void {
+  private emitThreadOpened(cacheEntry: ThreadTurnCacheEntry, turns: OpenCodexTurn[]): void {
     this.emit({
       type: "thread.opened",
       thread: cacheEntry.thread,
-      messages,
+      turns,
       hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns
     });
   }
 
-  private async createThread(): Promise<{ thread: OpenCodexThread; messages: OpenCodexMessage[] }> {
+  private async createThread(): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     const client = await this.ensureClient();
     const response = await client.startThread({
       cwd: this.options.projectPath,
@@ -365,11 +366,11 @@ export class OpenCodexBackend {
       readString(responseObject.model),
       readReasoningEffort(responseObject.reasoningEffort)
     );
-    const messages: OpenCodexMessage[] = [];
+    const turns: OpenCodexTurn[] = [];
 
-    this.emit({ type: "thread.created", thread, messages });
+    this.emit({ type: "thread.created", thread, turns });
     await this.writeThreadIndex([thread]);
-    return { thread, messages };
+    return { thread, turns };
   }
 
   private async startTurn(
@@ -426,7 +427,7 @@ export class OpenCodexBackend {
       readReasoningEffort(responseObject.reasoningEffort)
     );
     await this.writeThreadIndex([thread]);
-    this.emit({ type: "thread.created", thread, messages: [] });
+    this.emit({ type: "thread.created", thread, turns: [] });
     return thread.id;
   }
 

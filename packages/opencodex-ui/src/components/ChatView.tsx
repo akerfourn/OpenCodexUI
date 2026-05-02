@@ -32,7 +32,7 @@ export function ChatView({ store }: ChatViewProps) {
     );
   }
 
-  const isLoadingCurrentThread = store.loadingThreadId === currentThread.id && store.messages.length === 0;
+  const isLoadingCurrentThread = store.loadingThreadId === currentThread.id && store.turns.length === 0;
   const messageContent = isLoadingCurrentThread ? (
     <ChatLoadingState label="Chargement du chat..." />
   ) : (

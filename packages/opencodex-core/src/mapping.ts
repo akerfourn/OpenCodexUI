@@ -8,7 +8,9 @@ import type {
   OpenCodexMessage,
   OpenCodexMessagePhase,
   OpenCodexReasoningEffort,
-  OpenCodexThread
+  OpenCodexThread,
+  OpenCodexTurn,
+  OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
 export function mapThread(
@@ -87,6 +89,10 @@ export function mapTurnsToMessages(threadId: string, turns: unknown[]): OpenCode
   }
 
   return messages;
+}
+
+export function mapTurnsToOpenCodexTurns(threadId: string, turns: unknown[]): OpenCodexTurn[] {
+  return turns.map((turnValue) => mapTurnToOpenCodexTurn(threadId, turnValue));
 }
 
 export function createActivityFromNotification(notification: CodexNotification): OpenCodexActivity | null {
@@ -201,6 +207,81 @@ function mapUserMessage(
     turnId,
     turnDurationMs,
     itemId: readString(item.id)
+  };
+}
+
+function mapTurnToOpenCodexTurn(threadId: string, turnValue: unknown): OpenCodexTurn {
+  const turn = readObject(turnValue);
+  const turnId = readString(turn.id);
+  const items = Array.isArray(turn.items) ? turn.items : [];
+
+  return {
+    id: turnId,
+    threadId,
+    status: readNullableString(turn.status),
+    startedAt: readNullableString(turn.startedAt),
+    completedAt: readNullableString(turn.completedAt),
+    durationMs: readNullableNumber(turn.durationMs),
+    items: items
+      .map((itemValue) => mapTurnItem(itemValue))
+      .filter((item): item is OpenCodexTurnItem => item !== null)
+  };
+}
+
+function mapTurnItem(itemValue: unknown): OpenCodexTurnItem | null {
+  const item = readObject(itemValue);
+  const type = readString(item.type);
+
+  if (type === "userMessage") {
+    return mapUserTurnItem(item);
+  }
+
+  if (type === "agentMessage") {
+    return {
+      id: readString(item.id) || createId("assistant"),
+      role: "assistant",
+      content: readString(item.text),
+      status: "completed",
+      createdAt: null,
+      phase: readMessagePhase(item.phase)
+    };
+  }
+
+  return mapActivityTurnItem(item);
+}
+
+function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
+  const message = mapUserMessage("", item, "", null);
+
+  return {
+    id: message.id,
+    role: "user",
+    content: message.content,
+    status: "completed",
+    createdAt: null
+  };
+}
+
+function mapActivityTurnItem(item: Record<string, unknown>): OpenCodexTurnItem | null {
+  const type = readString(item.type);
+
+  if (type.length === 0) {
+    return null;
+  }
+
+  const summary = summarizeActivityItem(item);
+  const details = summarizeActivityDetails(item);
+  const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item);
+
+  return {
+    id: readString(item.id) || createId("activity"),
+    role: "activity",
+    content,
+    status: "completed",
+    createdAt: null,
+    kind: type,
+    summary: summary.length > 0 ? summary : null,
+    details: details.length > 0 ? details : null
   };
 }
 

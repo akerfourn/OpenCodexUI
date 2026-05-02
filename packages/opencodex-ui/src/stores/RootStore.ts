@@ -10,7 +10,9 @@ import type {
   OpenCodexReasoningEffort,
   OpenCodexSettings,
   OpenCodexThread,
-  OpenCodexThreadScope
+  OpenCodexThreadScope,
+  OpenCodexTurn,
+  OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
 export class RootStore {
@@ -24,7 +26,7 @@ export class RootStore {
   projectPath: string | null = null;
   threads: OpenCodexThread[] = [];
   currentThread: OpenCodexThread | null = null;
-  messages: OpenCodexMessage[] = [];
+  turns: OpenCodexTurn[] = [];
   activity: string[] = [];
   approvals: OpenCodexApproval[] = [];
   models: string[] = [];
@@ -121,7 +123,7 @@ export class RootStore {
         this.isSyncingCurrentThread = false;
         this.loadingThreadId = null;
         this.currentThread = event.thread;
-        this.messages = event.messages;
+        this.turns = event.turns;
         this.activity = [];
         this.errorMessage = null;
         this.hasMoreOlderMessages = event.type === "thread.opened"
@@ -135,20 +137,20 @@ export class RootStore {
           this.reasoningEffort = event.thread.reasoningEffort;
         }
         return;
-      case "thread.messages.prepended":
+      case "thread.turns.prepended":
         if (this.currentThread?.id !== event.threadId) {
           return;
         }
         this.isLoadingOlderMessages = false;
         this.hasMoreOlderMessages = event.hasMoreOlderMessages;
-        this.messages = [...event.messages, ...this.messages];
+        this.turns = [...event.turns, ...this.turns];
         this.olderMessagesPrependVersion += 1;
         return;
-      case "thread.messages.synced":
+      case "thread.turns.synced":
         if (this.currentThread?.id !== event.threadId) {
           return;
         }
-        this.messages = event.messages;
+        this.turns = event.turns;
         this.hasMoreOlderMessages = event.hasMoreOlderMessages;
         return;
       case "thread.sync.started":
@@ -168,7 +170,7 @@ export class RootStore {
       case "message.started":
         this.isStartingTurn = false;
         this.currentThread = this.currentThread ?? this.findThread(event.threadId);
-        this.messages.push(event.message);
+        this.upsertPendingUserTurn(event.threadId, event.message);
         this.scrollToBottomVersion += 1;
         return;
       case "message.delta":
@@ -183,6 +185,7 @@ export class RootStore {
         this.isStartingTurn = false;
         this.isWorking = true;
         this.activeTurnId = event.turnId;
+        this.movePendingTurnToStartedTurn(event.threadId, event.turnId);
         return;
       case "turn.completed":
         this.isWorking = false;
@@ -242,7 +245,7 @@ export class RootStore {
     if (isChangingThread) {
       this.loadingThreadId = threadId;
       this.currentThread = this.findThread(threadId) ?? this.currentThread;
-      this.messages = [];
+      this.turns = [];
       this.activity = [];
       this.hasMoreOlderMessages = false;
     } else {
@@ -265,7 +268,7 @@ export class RootStore {
     this.isCreatingThread = true;
     this.loadingThreadId = null;
     this.currentThread = null;
-    this.messages = [];
+    this.turns = [];
     this.activity = [];
     this.hasMoreOlderMessages = false;
     this.isSyncingCurrentThread = false;
@@ -289,7 +292,7 @@ export class RootStore {
     }).then((response) => {
       const result = readLoadOlderResult(response);
 
-      if (result.messages.length === 0) {
+      if (result.turns.length === 0) {
         runInAction(() => {
           this.isLoadingOlderMessages = false;
           this.hasMoreOlderMessages = result.hasMoreOlderMessages;
@@ -390,7 +393,8 @@ export class RootStore {
       return;
     }
 
-    const existing = this.messages.find((message) => message.itemId === itemId);
+    const turn = this.findOrCreateTurn(threadId, turnId);
+    const existing = turn.items.find((item) => item.id === itemId);
 
     if (existing !== undefined) {
       existing.content += delta;
@@ -400,16 +404,12 @@ export class RootStore {
       return;
     }
 
-    this.messages.push({
+    turn.items.push({
       id: itemId,
-      threadId,
       role: "assistant",
       content: delta,
       status: "streaming",
       createdAt: new Date().toISOString(),
-      turnId,
-      turnDurationMs: null,
-      itemId,
       phase
     });
   }
@@ -419,11 +419,11 @@ export class RootStore {
       return;
     }
 
-    this.messages = this.messages.map((message) => (
-      message.turnId === turnId
-        ? { ...message, turnDurationMs: durationMs }
-        : message
-    ));
+    const turn = this.turns.find((entry) => entry.id === turnId);
+
+    if (turn !== undefined) {
+      turn.durationMs = durationMs;
+    }
   }
 
   private applyThreadRename(threadId: string, name: string): void {
@@ -438,6 +438,51 @@ export class RootStore {
 
   private findThread(threadId: string): OpenCodexThread | null {
     return this.threads.find((thread) => thread.id === threadId) ?? null;
+  }
+
+  private upsertPendingUserTurn(threadId: string, message: OpenCodexMessage): void {
+    const turn = this.findOrCreateTurn(threadId, `pending:${message.id}`);
+    turn.items.push(toTurnItem(message));
+  }
+
+  private movePendingTurnToStartedTurn(threadId: string, turnId: string): void {
+    const pendingTurn = this.turns.find((turn) => turn.id.startsWith("pending:"));
+    const existingTurn = this.turns.find((turn) => turn.id === turnId);
+
+    if (pendingTurn === undefined) {
+      this.findOrCreateTurn(threadId, turnId);
+      return;
+    }
+
+    if (existingTurn !== undefined) {
+      existingTurn.items = [...pendingTurn.items, ...existingTurn.items];
+      this.turns = this.turns.filter((turn) => turn !== pendingTurn);
+      return;
+    }
+
+    pendingTurn.id = turnId;
+    pendingTurn.threadId = threadId;
+  }
+
+  private findOrCreateTurn(threadId: string, turnId: string): OpenCodexTurn {
+    const existing = this.turns.find((turn) => turn.id === turnId);
+
+    if (existing !== undefined) {
+      return existing;
+    }
+
+    const created: OpenCodexTurn = {
+      id: turnId,
+      threadId,
+      status: null,
+      startedAt: null,
+      completedAt: null,
+      durationMs: null,
+      items: []
+    };
+
+    this.turns.push(created);
+    return created;
   }
 }
 
@@ -465,20 +510,48 @@ function logThreadsForDebug(
 }
 
 function readLoadOlderResult(value: unknown): {
-  messages: OpenCodexMessage[];
+  turns: OpenCodexTurn[];
   hasMoreOlderMessages: boolean;
 } {
   if (typeof value !== "object" || value === null) {
-    return { messages: [], hasMoreOlderMessages: false };
+    return { turns: [], hasMoreOlderMessages: false };
   }
 
   const result = value as {
-    messages?: unknown;
+    turns?: unknown;
     hasMoreOlderMessages?: unknown;
   };
 
   return {
-    messages: Array.isArray(result.messages) ? result.messages as OpenCodexMessage[] : [],
+    turns: Array.isArray(result.turns) ? result.turns as OpenCodexTurn[] : [],
     hasMoreOlderMessages: result.hasMoreOlderMessages === true
   };
+}
+
+function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
+  const item: OpenCodexTurnItem = {
+    id: message.itemId ?? message.id,
+    role: message.role,
+    content: message.content,
+    status: message.status,
+    createdAt: message.createdAt
+  };
+
+  if (message.phase !== undefined) {
+    item.phase = message.phase;
+  }
+
+  if (message.kind !== undefined) {
+    item.kind = message.kind;
+  }
+
+  if (message.summary !== undefined) {
+    item.summary = message.summary;
+  }
+
+  if (message.details !== undefined) {
+    item.details = message.details;
+  }
+
+  return item;
 }

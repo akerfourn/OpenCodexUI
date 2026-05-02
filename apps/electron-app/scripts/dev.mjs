@@ -22,6 +22,8 @@ main().catch((error) => {
 });
 
 async function main() {
+  await rebuildNativeDependenciesForElectron();
+
   const viteServer = await startViteServer();
   const mainContext = await createBuildContext("src/main/main.ts", "dist/main/main.cjs");
   const preloadContext = await createBuildContext("src/main/preload.ts", "dist/main/preload.cjs");
@@ -31,6 +33,44 @@ async function main() {
 
   startElectron();
   installShutdownHandlers(viteServer, [mainContext, preloadContext]);
+}
+
+async function rebuildNativeDependenciesForElectron() {
+  if (process.env.OPENCODEX_SKIP_ELECTRON_REBUILD === "1") {
+    return;
+  }
+
+  console.info("[OpenCodexUI dev] rebuilding native SQLite dependency for Electron");
+  await runCommand("npx", [
+    "electron-rebuild",
+    "-f",
+    "-w",
+    "better-sqlite3",
+    "-v",
+    "32.3.3",
+    "-m",
+    repoRoot
+  ]);
+}
+
+async function runCommand(command, args) {
+  await new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(command, args, {
+      cwd: appRoot,
+      env: process.env,
+      stdio: "inherit"
+    });
+
+    child.on("error", rejectPromise);
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolvePromise();
+        return;
+      }
+
+      rejectPromise(new Error(`${command} ${args.join(" ")} exited with code ${code}`));
+    });
+  });
 }
 
 async function startViteServer() {

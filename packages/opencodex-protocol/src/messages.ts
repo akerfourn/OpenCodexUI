@@ -46,6 +46,28 @@ export type OpenCodexMessage = {
   details?: string | null;
 };
 
+export type OpenCodexTurnItem = {
+  id: string;
+  role: OpenCodexMessageRole;
+  content: string;
+  status: OpenCodexMessageStatus;
+  createdAt: string | null;
+  phase?: OpenCodexMessagePhase | null;
+  kind?: string;
+  summary?: string | null;
+  details?: string | null;
+};
+
+export type OpenCodexTurn = {
+  id: string;
+  threadId: string;
+  status: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  durationMs: number | null;
+  items: OpenCodexTurnItem[];
+};
+
 export type OpenCodexActivity = {
   id: string;
   threadId: string;

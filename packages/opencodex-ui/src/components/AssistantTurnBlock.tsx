@@ -10,27 +10,27 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 
-import type { OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
 import { MessageRowM } from "./MessageRow";
 
 type AssistantTurnBlockProps = {
-  messages: OpenCodexMessage[];
+  turn: OpenCodexTurn;
   lastMessageRef: RefObject<HTMLElement>;
   isLast: boolean;
   onOpenLink(href: string): void;
 };
 
 export function AssistantTurnBlock({
-  messages,
+  turn,
   lastMessageRef,
   isLast,
   onOpenLink
 }: AssistantTurnBlockProps) {
   const [expanded, setExpanded] = useState(false);
   const blockRef = isLast ? lastMessageRef : undefined;
-  const durationMs = getBlockDuration(messages);
-  const label = formatBlockLabel(getBlockKind(messages), durationMs);
+  const preludeItems = turn.items.filter(isPreludeItem);
+  const label = formatBlockLabel(getBlockKind(preludeItems), turn.durationMs);
 
   return (
     <Box ref={blockRef} component="article">
@@ -70,21 +70,21 @@ export function AssistantTurnBlock({
             {label}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            ({messages.length})
+            ({preludeItems.length})
           </Typography>
         </AccordionSummary>
         <AccordionDetails sx={{ pt: 0, pb: 1.25, px: 1.25 }}>
           <Stack spacing={1}>
-            {messages.map((message, index) => (
+            {preludeItems.map((item, index) => (
               <MessageRowM
-                key={buildMessageKey(message, index)}
+                key={buildMessageKey(item, index)}
                 isLast={false}
                 lastMessageRef={lastMessageRef}
                 onOpenLink={onOpenLink}
-                role={message.role}
-                phase={message.phase}
-                kind={message.kind}
-                content={message.content}
+                role={item.role}
+                phase={item.phase}
+                kind={item.kind}
+                content={item.content}
               />
             ))}
           </Stack>
@@ -94,11 +94,11 @@ export function AssistantTurnBlock({
   );
 }
 
-function getBlockKind(messages: OpenCodexMessage[]): "reasoning" | "activity" | "mixed" {
-  const hasCommentary = messages.some(
-    (message) => message.role === "assistant" && message.phase === "commentary"
+function getBlockKind(items: OpenCodexTurnItem[]): "reasoning" | "activity" | "mixed" {
+  const hasCommentary = items.some(
+    (item) => item.role === "assistant" && item.phase === "commentary"
   );
-  const hasActivities = messages.some((message) => message.role === "activity");
+  const hasActivities = items.some((item) => item.role === "activity");
 
   if (hasCommentary && hasActivities) {
     return "mixed";
@@ -109,12 +109,6 @@ function getBlockKind(messages: OpenCodexMessage[]): "reasoning" | "activity" | 
   }
 
   return "activity";
-}
-
-function getBlockDuration(messages: OpenCodexMessage[]): number | null {
-  const duration = messages.find((message) => message.turnDurationMs !== undefined && message.turnDurationMs !== null);
-
-  return duration?.turnDurationMs ?? null;
 }
 
 function formatBlockLabel(
@@ -155,15 +149,17 @@ function formatDuration(durationMs: number | null): string | null {
   return segments.join(" ");
 }
 
-function buildMessageKey(message: OpenCodexMessage, index: number): string {
+function isPreludeItem(item: OpenCodexTurnItem): boolean {
+  return item.role === "activity" || (item.role === "assistant" && item.phase === "commentary");
+}
+
+function buildMessageKey(item: OpenCodexTurnItem, index: number): string {
   return [
     "assistantTurn",
-    message.turnId ?? "no-turn",
-    message.role,
-    message.phase ?? "none",
-    message.kind ?? "none",
-    message.itemId ?? message.id,
-    message.id,
+    item.role,
+    item.phase ?? "none",
+    item.kind ?? "none",
+    item.id,
     index
   ].join(":");
 }

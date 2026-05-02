@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite";
 import { Box, CircularProgress } from "@mui/material";
 import { useCallback, useLayoutEffect, useRef, type UIEvent } from "react";
 
-import type { OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../stores/RootStore";
 import { AssistantTurnBlock } from "./AssistantTurnBlock";
@@ -18,7 +18,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
   const previousScrollStateRef = useRef<{ height: number; top: number } | null>(null);
   const currentThread = store.currentThread;
-  const entries = buildTimelineEntries(store.messages);
+  const entries = buildTimelineEntries(store.turns);
   const handleOpenLink = useCallback((href: string) => {
     store.openExternalLink(href);
   }, [store]);
@@ -97,7 +97,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
           return (
             <AssistantTurnBlock
               key={entry.key}
-              messages={entry.messages}
+              turn={entry.turn}
               lastMessageRef={lastMessageRef}
               isLast={isLast}
               onOpenLink={handleOpenLink}
@@ -111,10 +111,10 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
             isLast={isLast}
             lastMessageRef={lastMessageRef}
             onOpenLink={handleOpenLink}
-            role={entry.message.role}
-            phase={entry.message.phase}
-            kind={entry.message.kind}
-            content={entry.message.content}
+            role={entry.item.role}
+            phase={entry.item.phase}
+            kind={entry.item.kind}
+            content={entry.item.content}
           />
         );
       })}
@@ -137,97 +137,67 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
 export const ChatMessageListX = observer(ChatMessageList);
 
 type TimelineEntry =
-  | { type: "message"; key: string; message: OpenCodexMessage }
-  | { type: "turnPrelude"; key: string; turnId: string; messages: OpenCodexMessage[] };
+  | { type: "item"; key: string; turn: OpenCodexTurn; item: OpenCodexTurnItem }
+  | { type: "turnPrelude"; key: string; turn: OpenCodexTurn };
 
-function buildTimelineEntries(messages: OpenCodexMessage[]): TimelineEntry[] {
+function buildTimelineEntries(turns: OpenCodexTurn[]): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
-  let pendingPrelude: OpenCodexMessage[] = [];
-  let pendingPreludeTurnId: string | null = null;
 
-  function flushPrelude(): void {
-    if (pendingPrelude.length === 0) {
-      return;
+  for (const turn of turns) {
+    const preludeItems = turn.items.filter(isPreludeItem);
+    const userItems = turn.items.filter((item) => item.role === "user");
+    const finalItems = turn.items.filter((item) => item.role !== "user" && !isPreludeItem(item));
+
+    for (const item of userItems) {
+      entries.push({
+        type: "item",
+        key: buildItemKey(turn, item, entries.length),
+        turn,
+        item
+      });
     }
 
-    const firstPrelude = pendingPrelude[0];
-
-    if (firstPrelude === undefined) {
-      return;
+    if (preludeItems.length > 0) {
+      entries.push({
+        type: "turnPrelude",
+        key: buildTurnPreludeKey(turn, entries.length),
+        turn
+      });
     }
 
-    entries.push({
-      type: "turnPrelude",
-      key: buildTurnPreludeKey(pendingPreludeTurnId ?? firstPrelude.turnId ?? firstPrelude.id, firstPrelude, entries.length),
-      turnId: pendingPreludeTurnId ?? firstPrelude.turnId ?? firstPrelude.id,
-      messages: pendingPrelude
-    });
-    pendingPrelude = [];
-    pendingPreludeTurnId = null;
+    for (const item of finalItems) {
+      entries.push({
+        type: "item",
+        key: buildItemKey(turn, item, entries.length),
+        turn,
+        item
+      });
+    }
   }
 
-  for (const message of messages) {
-    if (isPreludeMessage(message)) {
-      if (pendingPreludeTurnId !== null && pendingPreludeTurnId !== message.turnId) {
-        flushPrelude();
-      }
-
-      pendingPreludeTurnId = message.turnId ?? pendingPreludeTurnId;
-      pendingPrelude.push(message);
-      continue;
-    }
-
-    if (isFinalAnswerMessage(message)) {
-      flushPrelude();
-      entries.push({ type: "message", key: buildMessageKey(message, entries.length), message });
-      continue;
-    }
-
-    if (message.role === "user") {
-      flushPrelude();
-      entries.push({ type: "message", key: buildMessageKey(message, entries.length), message });
-      continue;
-    }
-
-    flushPrelude();
-    entries.push({ type: "message", key: buildMessageKey(message, entries.length), message });
-  }
-
-  flushPrelude();
   return entries;
 }
 
-function isPreludeMessage(message: OpenCodexMessage): boolean {
-  return message.role === "activity" || (message.role === "assistant" && message.phase === "commentary");
+function isPreludeItem(item: OpenCodexTurnItem): boolean {
+  return item.role === "activity" || (item.role === "assistant" && item.phase === "commentary");
 }
 
-function isFinalAnswerMessage(message: OpenCodexMessage): boolean {
-  return message.role === "assistant" && message.phase === "final_answer";
-}
-
-function buildTurnPreludeKey(
-  turnId: string,
-  firstMessage: OpenCodexMessage,
-  index: number
-): string {
+function buildTurnPreludeKey(turn: OpenCodexTurn, index: number): string {
   return [
     "turnPrelude",
-    turnId.length > 0 ? turnId : "no-turn",
-    firstMessage.id,
-    firstMessage.itemId ?? "no-item",
+    turn.id.length > 0 ? turn.id : "no-turn",
     index
   ].join(":");
 }
 
-function buildMessageKey(message: OpenCodexMessage, index: number): string {
+function buildItemKey(turn: OpenCodexTurn, item: OpenCodexTurnItem, index: number): string {
   return [
-    "message",
-    message.turnId ?? "no-turn",
-    message.role,
-    message.phase ?? "none",
-    message.kind ?? "none",
-    message.itemId ?? message.id,
-    message.id,
+    "turnItem",
+    turn.id,
+    item.role,
+    item.phase ?? "none",
+    item.kind ?? "none",
+    item.id,
     index
   ].join(":");
 }
