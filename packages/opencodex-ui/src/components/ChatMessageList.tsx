@@ -18,7 +18,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
   const previousScrollStateRef = useRef<{ height: number; top: number } | null>(null);
   const currentThread = store.currentThread;
-  const entries = buildTimelineEntries(store.turns);
+  const entries = buildTimelineEntries(store.turns, store.activeTurnId, store.isWorking || store.isStartingTurn);
   const handleOpenLink = useCallback((href: string) => {
     store.openExternalLink(href);
   }, [store]);
@@ -98,6 +98,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
             <AssistantTurnBlock
               key={entry.key}
               turn={entry.turn}
+              isRunning={entry.isRunning}
               lastMessageRef={lastMessageRef}
               isLast={isLast}
               onOpenLink={handleOpenLink}
@@ -138,15 +139,20 @@ export const ChatMessageListX = observer(ChatMessageList);
 
 type TimelineEntry =
   | { type: "item"; key: string; turn: OpenCodexTurn; item: OpenCodexTurnItem }
-  | { type: "turnPrelude"; key: string; turn: OpenCodexTurn };
+  | { type: "turnPrelude"; key: string; turn: OpenCodexTurn; isRunning: boolean };
 
-function buildTimelineEntries(turns: OpenCodexTurn[]): TimelineEntry[] {
+function buildTimelineEntries(
+  turns: OpenCodexTurn[],
+  activeTurnId: string | null,
+  isWorking: boolean
+): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
 
   for (const turn of turns) {
     const preludeItems = turn.items.filter(isPreludeItem);
     const userItems = turn.items.filter((item) => item.role === "user");
     const finalItems = turn.items.filter((item) => item.role !== "user" && !isPreludeItem(item));
+    const isRunning = isTurnRunning(turn, activeTurnId, isWorking);
 
     for (const item of userItems) {
       entries.push({
@@ -157,11 +163,12 @@ function buildTimelineEntries(turns: OpenCodexTurn[]): TimelineEntry[] {
       });
     }
 
-    if (preludeItems.length > 0) {
+    if (preludeItems.length > 0 || isRunning) {
       entries.push({
         type: "turnPrelude",
         key: buildTurnPreludeKey(turn, entries.length),
-        turn
+        turn,
+        isRunning
       });
     }
 
@@ -176,6 +183,22 @@ function buildTimelineEntries(turns: OpenCodexTurn[]): TimelineEntry[] {
   }
 
   return entries;
+}
+
+function isTurnRunning(turn: OpenCodexTurn, activeTurnId: string | null, isWorking: boolean): boolean {
+  if (!isWorking) {
+    return false;
+  }
+
+  const hasFinalAnswer = turn.items.some(
+    (item) => item.role === "assistant" && item.phase === "final_answer"
+  );
+
+  if (hasFinalAnswer) {
+    return false;
+  }
+
+  return turn.id === activeTurnId || turn.id.startsWith("pending:");
 }
 
 function isPreludeItem(item: OpenCodexTurnItem): boolean {

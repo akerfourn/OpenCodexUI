@@ -1,9 +1,10 @@
-import { useState, type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
   Box,
+  CircularProgress,
   Stack,
   Typography
 } from "@mui/material";
@@ -16,6 +17,7 @@ import { MessageRowM } from "./MessageRow";
 
 type AssistantTurnBlockProps = {
   turn: OpenCodexTurn;
+  isRunning: boolean;
   lastMessageRef: RefObject<HTMLElement>;
   isLast: boolean;
   onOpenLink(href: string): void;
@@ -23,23 +25,50 @@ type AssistantTurnBlockProps = {
 
 export function AssistantTurnBlock({
   turn,
+  isRunning,
   lastMessageRef,
   isLast,
   onOpenLink
 }: AssistantTurnBlockProps) {
   const [expanded, setExpanded] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const blockRef = isLast ? lastMessageRef : undefined;
   const preludeItems = turn.items.filter(isPreludeItem);
-  const label = formatBlockLabel(getBlockKind(preludeItems), turn.durationMs);
+  const displayedDurationMs = isRunning
+    ? Math.max(0, now - readStartedAtTime(turn.startedAt))
+    : turn.durationMs;
+  const label = isRunning
+    ? `Réflexion en cours (${formatDuration(displayedDurationMs) ?? "0 s"})`
+    : formatBlockLabel(getBlockKind(preludeItems), turn.durationMs);
+  const isExpanded = isRunning || expanded;
+
+  useEffect(() => {
+    if (!isRunning) {
+      setExpanded(false);
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [isRunning]);
 
   return (
     <Box ref={blockRef} component="article">
       <Accordion
-        expanded={expanded}
+        expanded={isExpanded}
         elevation={0}
         disableGutters
         square
         onChange={(_event, nextExpanded) => {
+          if (isRunning) {
+            return;
+          }
+
           setExpanded(nextExpanded);
         }}
         sx={{
@@ -58,6 +87,10 @@ export function AssistantTurnBlock({
           sx={{
             minHeight: 0,
             px: 1.25,
+            position: isRunning ? "sticky" : "static",
+            top: 0,
+            zIndex: isRunning ? 2 : "auto",
+            bgcolor: "grey.50",
             "& .MuiAccordionSummary-content": {
               alignItems: "center",
               gap: 1,
@@ -65,13 +98,19 @@ export function AssistantTurnBlock({
             }
           }}
         >
-          <PsychologyOutlinedIcon fontSize="small" />
+          {isRunning ? (
+            <CircularProgress size={16} thickness={5} />
+          ) : (
+            <PsychologyOutlinedIcon fontSize="small" />
+          )}
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             {label}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            ({preludeItems.length})
-          </Typography>
+          {preludeItems.length > 0 ? (
+            <Typography variant="caption" color="text.secondary">
+              ({preludeItems.length})
+            </Typography>
+          ) : null}
         </AccordionSummary>
         <AccordionDetails sx={{ pt: 0, pb: 1.25, px: 1.25 }}>
           <Stack spacing={1}>
@@ -147,6 +186,15 @@ function formatDuration(durationMs: number | null): string | null {
 
   segments.push(`${seconds} s`);
   return segments.join(" ");
+}
+
+function readStartedAtTime(value: string | null): number {
+  if (value === null) {
+    return Date.now();
+  }
+
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? Date.now() : time;
 }
 
 function isPreludeItem(item: OpenCodexTurnItem): boolean {

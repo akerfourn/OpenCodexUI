@@ -3,6 +3,7 @@ import Fuse from "fuse.js";
 
 import type {
   OpenCodexApproval,
+  OpenCodexActivity,
   OpenCodexClientTransport,
   OpenCodexEvent,
   OpenCodexMessage,
@@ -49,6 +50,7 @@ export class RootStore {
   isRefreshingThread = false;
   loadingThreadId: string | null = null;
   activeTurnId: string | null = null;
+  pendingTurnId: string | null = null;
   currentProjectFilterAvailable = true;
 
   constructor(private readonly transport: OpenCodexClientTransport) {
@@ -124,6 +126,7 @@ export class RootStore {
         this.loadingThreadId = null;
         this.currentThread = event.thread;
         this.turns = event.turns;
+        this.pendingTurnId = null;
         this.activity = [];
         this.errorMessage = null;
         this.hasMoreOlderMessages = event.type === "thread.opened"
@@ -180,6 +183,7 @@ export class RootStore {
         if (this.settings.showActivityPanel && event.activity.content?.trim()) {
           this.activity.push(event.activity.content);
         }
+        this.appendActivityItem(event.threadId, event.activity);
         return;
       case "turn.started":
         this.isStartingTurn = false;
@@ -190,6 +194,7 @@ export class RootStore {
       case "turn.completed":
         this.isWorking = false;
         this.activeTurnId = null;
+        this.pendingTurnId = null;
         this.applyTurnDuration(event.turnId, event.durationMs);
         return;
       case "approval.requested":
@@ -243,9 +248,10 @@ export class RootStore {
     this.errorMessage = null;
 
     if (isChangingThread) {
-      this.loadingThreadId = threadId;
-      this.currentThread = this.findThread(threadId) ?? this.currentThread;
-      this.turns = [];
+        this.loadingThreadId = threadId;
+        this.currentThread = this.findThread(threadId) ?? this.currentThread;
+        this.turns = [];
+        this.pendingTurnId = null;
       this.activity = [];
       this.hasMoreOlderMessages = false;
     } else {
@@ -269,6 +275,7 @@ export class RootStore {
     this.loadingThreadId = null;
     this.currentThread = null;
     this.turns = [];
+    this.pendingTurnId = null;
     this.activity = [];
     this.hasMoreOlderMessages = false;
     this.isSyncingCurrentThread = false;
@@ -317,6 +324,7 @@ export class RootStore {
     }
 
     this.isStartingTurn = true;
+    this.createOptimisticUserTurn(trimmedText);
 
     void this.transport.request({
       type: "turn.start",
@@ -394,6 +402,7 @@ export class RootStore {
     }
 
     const turn = this.findOrCreateTurn(threadId, turnId);
+    turn.status = "running";
     const existing = turn.items.find((item) => item.id === itemId);
 
     if (existing !== undefined) {
@@ -426,6 +435,39 @@ export class RootStore {
     }
   }
 
+  private appendActivityItem(threadId: string, activity: OpenCodexActivity): void {
+    if (this.currentThread?.id !== threadId || activity.content === undefined) {
+      return;
+    }
+
+    const turnId = activity.title ?? this.activeTurnId ?? this.pendingTurnId;
+
+    if (turnId === null || turnId.length === 0) {
+      return;
+    }
+
+    const turn = this.findOrCreateTurn(threadId, turnId);
+    const existing = turn.items.find((item) => item.id === activity.id);
+    turn.status = "running";
+
+    if (existing !== undefined) {
+      existing.content += activity.content;
+      existing.status = toMessageStatus(activity.status);
+      return;
+    }
+
+    turn.items.push({
+      id: activity.id,
+      role: "activity",
+      content: activity.content,
+      status: toMessageStatus(activity.status),
+      createdAt: new Date().toISOString(),
+      kind: activity.kind,
+      summary: activity.summary,
+      details: activity.details
+    });
+  }
+
   private applyThreadRename(threadId: string, name: string): void {
     this.threads = this.threads.map((thread) => (
       thread.id === threadId ? { ...thread, title: name } : thread
@@ -441,12 +483,20 @@ export class RootStore {
   }
 
   private upsertPendingUserTurn(threadId: string, message: OpenCodexMessage): void {
+    const existingTurn = this.findPendingUserTurn(message.content);
+
+    if (existingTurn !== null) {
+      existingTurn.threadId = threadId;
+      return;
+    }
+
     const turn = this.findOrCreateTurn(threadId, `pending:${message.id}`);
     turn.items.push(toTurnItem(message));
+    this.pendingTurnId = turn.id;
   }
 
   private movePendingTurnToStartedTurn(threadId: string, turnId: string): void {
-    const pendingTurn = this.turns.find((turn) => turn.id.startsWith("pending:"));
+    const pendingTurn = this.findPendingTurn();
     const existingTurn = this.turns.find((turn) => turn.id === turnId);
 
     if (pendingTurn === undefined) {
@@ -462,6 +512,9 @@ export class RootStore {
 
     pendingTurn.id = turnId;
     pendingTurn.threadId = threadId;
+    pendingTurn.status = "running";
+    pendingTurn.startedAt = pendingTurn.startedAt ?? new Date().toISOString();
+    this.pendingTurnId = null;
   }
 
   private findOrCreateTurn(threadId: string, turnId: string): OpenCodexTurn {
@@ -483,6 +536,56 @@ export class RootStore {
 
     this.turns.push(created);
     return created;
+  }
+
+  private createOptimisticUserTurn(content: string): void {
+    const threadId = this.currentThread?.id ?? "pending-thread";
+    const turnId = `pending:${Date.now()}`;
+    const created: OpenCodexTurn = {
+      id: turnId,
+      threadId,
+      status: "running",
+      startedAt: new Date().toISOString(),
+      completedAt: null,
+      durationMs: null,
+      items: [
+        {
+          id: `${turnId}:user`,
+          role: "user",
+          content,
+          status: "completed",
+          createdAt: new Date().toISOString()
+        }
+      ]
+    };
+
+    this.pendingTurnId = turnId;
+    this.turns.push(created);
+    this.scrollToBottomVersion += 1;
+  }
+
+  private findPendingTurn(): OpenCodexTurn | undefined {
+    if (this.pendingTurnId !== null) {
+      return this.turns.find((turn) => turn.id === this.pendingTurnId);
+    }
+
+    return this.turns.find((turn) => turn.id.startsWith("pending:"));
+  }
+
+  private findPendingUserTurn(content: string): OpenCodexTurn | null {
+    const pendingTurn = this.findPendingTurn();
+
+    if (pendingTurn === undefined) {
+      return null;
+    }
+
+    const pendingUserItem = pendingTurn.items.find((item) => item.role === "user");
+
+    if (pendingUserItem?.content !== content) {
+      return null;
+    }
+
+    return pendingTurn;
   }
 }
 
@@ -554,4 +657,12 @@ function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
   }
 
   return item;
+}
+
+function toMessageStatus(status: OpenCodexActivity["status"]): OpenCodexTurnItem["status"] {
+  if (status === "running") {
+    return "streaming";
+  }
+
+  return status;
 }
