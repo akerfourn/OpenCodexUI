@@ -21,11 +21,14 @@ export function mapThread(
   const thread = readObject(value);
   const gitInfo = readObject(thread.gitInfo);
   const projectPath = readNullableString(thread.cwd);
-  const title = readString(thread.name);
+  const codexTitle = readString(thread.name);
   const preview = readString(thread.preview);
+  const title = resolveDisplayTitle(codexTitle, null, preview);
 
   return {
     id: readString(thread.id),
+    codexTitle,
+    customTitle: null,
     title,
     preview,
     model,
@@ -36,6 +39,25 @@ export function mapThread(
     updatedAt: readTimestamp(thread.updatedAt),
     status: readNullableString(thread.status) ?? undefined
   };
+}
+
+export function resolveDisplayTitle(
+  codexTitle: string,
+  customTitle: string | null,
+  preview: string
+): string {
+  const trimmedCustomTitle = customTitle?.trim() ?? "";
+  const trimmedCodexTitle = codexTitle.trim();
+
+  if (trimmedCustomTitle.length > 0) {
+    return trimmedCustomTitle;
+  }
+
+  if (trimmedCodexTitle.length > 0) {
+    return trimmedCodexTitle;
+  }
+
+  return preview;
 }
 
 export function mapThreadMessages(value: unknown): OpenCodexMessage[] {

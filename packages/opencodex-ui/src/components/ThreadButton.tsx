@@ -18,6 +18,7 @@ export function ThreadButton({ store, thread }: ThreadButtonProps) {
 
   const isActive = store.currentThread?.id === thread.id;
   const isLoading = store.loadingThreadId === thread.id;
+  const metadata = getThreadMetadata(thread);
 
   return (
     <ListItemButton
@@ -37,9 +38,9 @@ export function ThreadButton({ store, thread }: ThreadButtonProps) {
         <Typography variant="body2" noWrap>
           {getThreadTitle(thread)}
         </Typography>
-        {thread.branchName !== null ? (
-          <Typography variant="caption" component="div" noWrap>
-            {thread.branchName}
+        {metadata !== null ? (
+          <Typography variant="caption" component="div" color="text.secondary" noWrap>
+            {metadata}
           </Typography>
         ) : null}
       </Box>
@@ -48,6 +49,20 @@ export function ThreadButton({ store, thread }: ThreadButtonProps) {
 }
 
 export const ThreadButtonX = observer(ThreadButton);
+
+function getThreadMetadata(thread: OpenCodexThread): string | null {
+  const parts = [
+    thread.branchName,
+    thread.model,
+    thread.reasoningEffort
+  ].filter(isNonEmptyString);
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  return parts.join(" - ");
+}
 
 function getThreadTitle(thread: OpenCodexThread): string {
   if (thread.title.trim().length > 0) {
@@ -59,4 +74,8 @@ function getThreadTitle(thread: OpenCodexThread): string {
   }
 
   return "Conversation sans titre";
+}
+
+function isNonEmptyString(value: string | null | undefined): value is string {
+  return value !== null && value !== undefined && value.trim().length > 0;
 }

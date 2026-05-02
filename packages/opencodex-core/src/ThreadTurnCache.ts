@@ -26,7 +26,7 @@ export class ThreadTurnCache {
     const existing = this.entries.get(thread.id);
 
     if (existing !== undefined) {
-      existing.thread = thread;
+      existing.thread = mergeThreadMetadata(existing.thread, thread);
       return existing;
     }
 
@@ -55,8 +55,28 @@ export class ThreadTurnCache {
 
     entry.thread = {
       ...entry.thread,
+      customTitle: title,
       title
     };
+  }
+
+  updateCodexThreadTitle(threadId: string, codexTitle: string): ThreadTurnCacheEntry | null {
+    const entry = this.entries.get(threadId);
+
+    if (entry === undefined) {
+      return null;
+    }
+
+    const customTitle = entry.thread.customTitle?.trim() ?? "";
+    const title = resolveThreadTitle(codexTitle, customTitle, entry.thread.preview);
+
+    entry.thread = {
+      ...entry.thread,
+      codexTitle,
+      title
+    };
+
+    return entry;
   }
 
   mergeLatestTurns(
@@ -102,6 +122,31 @@ export class ThreadTurnCache {
       .map((turnId) => entry.turnsById.get(turnId))
       .filter((turn): turn is unknown => turn !== undefined);
   }
+}
+
+function resolveThreadTitle(codexTitle: string, customTitle: string, preview: string): string {
+  if (customTitle.length > 0) {
+    return customTitle;
+  }
+
+  if (codexTitle.length > 0) {
+    return codexTitle;
+  }
+
+  return preview;
+}
+
+function mergeThreadMetadata(
+  currentThread: OpenCodexThread,
+  nextThread: OpenCodexThread
+): OpenCodexThread {
+  const customTitle = nextThread.customTitle ?? currentThread.customTitle;
+
+  return {
+    ...nextThread,
+    customTitle,
+    title: resolveThreadTitle(nextThread.codexTitle, customTitle?.trim() ?? "", nextThread.preview)
+  };
 }
 
 function applySyncState(entry: ThreadTurnCacheEntry, syncState: CachedThreadSyncState): void {

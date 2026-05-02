@@ -2,6 +2,8 @@ export type CachedThreadScope = "currentProject" | "all";
 
 export type CachedThreadSummary = {
   id: string;
+  codexTitle: string;
+  customTitle: string | null;
   title: string;
   preview: string;
   model: string | null;
@@ -54,6 +56,7 @@ export type ThreadListCacheQuery = {
 export interface OpenCodexCacheRepository {
   upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void>;
   updateThreadTitle(threadId: string, title: string): Promise<void>;
+  updateThreadCodexTitle(threadId: string, title: string): Promise<void>;
   listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]>;
   getThread(threadId: string): Promise<CachedThreadSnapshot | null>;
   saveThreadSnapshot(snapshot: CachedThreadSnapshot): Promise<void>;

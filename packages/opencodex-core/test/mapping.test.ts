@@ -16,6 +16,8 @@ describe("OpenCodex mapping", () => {
       })
     ).toEqual({
       id: "thread-1",
+      codexTitle: "Titre",
+      customTitle: null,
       title: "Titre",
       preview: "Aperçu",
       model: null,

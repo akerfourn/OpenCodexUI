@@ -7,6 +7,8 @@ describe("ThreadTurnCache", () => {
     const cache = new ThreadTurnCache();
     const entry = cache.getOrCreate({
       id: "thread-1",
+      codexTitle: "Thread",
+      customTitle: null,
       title: "Thread",
       preview: "",
       model: null,
@@ -49,6 +51,8 @@ describe("ThreadTurnCache", () => {
     const cache = new ThreadTurnCache();
     const entry = cache.getOrCreate({
       id: "thread-1",
+      codexTitle: "Thread",
+      customTitle: null,
       title: "Thread",
       preview: "",
       model: null,

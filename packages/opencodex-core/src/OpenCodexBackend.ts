@@ -196,9 +196,11 @@ export class OpenCodexBackend {
     const threads = await readThreadPages(client, params);
     await this.writeThreadIndex(threads);
 
-    this.emitThreadsUpdated(threads);
+    const mergedThreads = await this.readCachedThreads(scope, searchTerm);
+    const updatedThreads = mergedThreads.length > 0 ? mergedThreads : threads;
+    this.emitThreadsUpdated(updatedThreads);
 
-    return threads;
+    return updatedThreads;
   }
 
   private async openThread(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
@@ -342,6 +344,7 @@ export class OpenCodexBackend {
     const cacheEntry = this.threadTurnCache.getOrCreate(thread);
 
     await this.writeThreadIndex([thread]);
+    this.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
     await this.syncLatestTurns(client, cacheEntry);
   }
 
@@ -553,7 +556,7 @@ export class OpenCodexBackend {
       const name = readString(params.name);
 
       if (threadId.length > 0) {
-        this.emit({ type: "thread.renamed", threadId, name });
+        this.applyCodexThreadTitle(threadId, name);
       }
     }
   }
@@ -681,6 +684,28 @@ export class OpenCodexBackend {
       this.options.logger?.(`thread cache rename write failed: ${String(error)}`);
     }
   }
+
+  private applyCodexThreadTitle(threadId: string, title: string): void {
+    const cacheEntry = this.threadTurnCache.updateCodexThreadTitle(threadId, title);
+
+    if (cacheEntry !== null) {
+      this.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
+    }
+
+    void this.writeThreadCodexTitle(threadId, title);
+  }
+
+  private async writeThreadCodexTitle(threadId: string, title: string): Promise<void> {
+    if (this.cacheRepository === null) {
+      return;
+    }
+
+    try {
+      await this.cacheRepository.updateThreadCodexTitle(threadId, title);
+    } catch (error) {
+      this.options.logger?.(`thread cache codex title write failed: ${String(error)}`);
+    }
+  }
 }
 
 async function readThreadPages(
@@ -784,6 +809,8 @@ function createCacheSignature(cacheEntry: ThreadTurnCacheEntry): string {
 function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread {
   const mappedThread: OpenCodexThread = {
     id: thread.id,
+    codexTitle: thread.codexTitle,
+    customTitle: thread.customTitle,
     title: thread.title,
     preview: thread.preview,
     model: thread.model,
@@ -804,6 +831,8 @@ function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread {
 function toCachedThreadSummary(thread: OpenCodexThread): CachedThreadSummary {
   const cachedThread: CachedThreadSummary = {
     id: thread.id,
+    codexTitle: thread.codexTitle,
+    customTitle: thread.customTitle,
     title: thread.title,
     preview: thread.preview,
     model: thread.model,

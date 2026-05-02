@@ -25,6 +25,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
     await repository.upsertThreadIndex([
       {
         id: "thread-1",
+        codexTitle: "OpenCodexUI",
+        customTitle: null,
         title: "OpenCodexUI",
         preview: "preview",
         model: "gpt-5.5",
@@ -44,6 +46,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(threads).toEqual([
       {
         id: "thread-1",
+        codexTitle: "OpenCodexUI",
+        customTitle: null,
         title: "OpenCodexUI",
         preview: "preview",
         model: "gpt-5.5",
@@ -60,6 +64,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
     await repository.saveThreadSnapshot({
       thread: {
         id: "thread-1",
+        codexTitle: "Thread",
+        customTitle: null,
         title: "Thread",
         preview: "",
         model: null,
@@ -122,6 +128,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
     await repository.upsertThreadIndex([
       {
         id: "thread-1",
+        codexTitle: "Old title",
+        customTitle: null,
         title: "Old title",
         preview: "preview",
         model: null,
@@ -142,6 +150,7 @@ describe("SqliteOpenCodexCacheRepository", () => {
 
     expect(threads[0]).toMatchObject({
       id: "thread-1",
+      customTitle: "Renamed chat",
       title: "Renamed chat"
     });
   });
@@ -150,6 +159,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
     await repository.upsertThreadIndex([
       {
         id: "thread-1",
+        codexTitle: "Old title",
+        customTitle: null,
         title: "Old title",
         preview: "preview",
         model: null,
@@ -166,6 +177,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
     await repository.upsertThreadIndex([
       {
         id: "thread-1",
+        codexTitle: "",
+        customTitle: null,
         title: "",
         preview: "preview",
         model: null,
@@ -184,7 +197,89 @@ describe("SqliteOpenCodexCacheRepository", () => {
 
     expect(threads[0]).toMatchObject({
       id: "thread-1",
+      customTitle: "Renamed chat",
       title: "Renamed chat"
+    });
+  });
+
+  it("should not replace a renamed title with the preview fallback", async () => {
+    await repository.upsertThreadIndex([
+      {
+        id: "thread-1",
+        codexTitle: "Old title",
+        customTitle: null,
+        title: "Old title",
+        preview: "First user message",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.updateThreadTitle("thread-1", "Renamed chat");
+
+    await repository.upsertThreadIndex([
+      {
+        id: "thread-1",
+        codexTitle: "First user message",
+        customTitle: null,
+        title: "First user message",
+        preview: "First user message",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:01.000Z"
+      }
+    ]);
+
+    const threads = await repository.listThreads({
+      scope: "all",
+      currentProjectPath: null
+    });
+
+    expect(threads[0]).toMatchObject({
+      id: "thread-1",
+      codexTitle: "First user message",
+      customTitle: "Renamed chat",
+      title: "Renamed chat"
+    });
+  });
+
+  it("should keep the custom title when Codex updates its own title", async () => {
+    await repository.upsertThreadIndex([
+      {
+        id: "thread-1",
+        codexTitle: "Old Codex title",
+        customTitle: null,
+        title: "Old Codex title",
+        preview: "First user message",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.updateThreadTitle("thread-1", "OpenCodex title");
+    await repository.updateThreadCodexTitle("thread-1", "First user message");
+
+    const threads = await repository.listThreads({
+      scope: "all",
+      currentProjectPath: null
+    });
+
+    expect(threads[0]).toMatchObject({
+      id: "thread-1",
+      codexTitle: "First user message",
+      customTitle: "OpenCodex title",
+      title: "OpenCodex title"
     });
   });
 });

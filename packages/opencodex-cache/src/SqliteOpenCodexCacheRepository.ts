@@ -24,6 +24,8 @@ type ThreadRow = {
   project_default_name: string | null;
   project_display_name: string | null;
   branch_name: string | null;
+  codex_title: string;
+  custom_title: string | null;
   title: string;
   preview: string | null;
   model: string | null;
@@ -70,7 +72,30 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       .prepare(
         `
         UPDATE threads SET
+          custom_title = @title,
           title = @title,
+          updated_at = @updatedAt
+        WHERE id = @threadId
+        `
+      )
+      .run({
+        threadId,
+        title,
+        updatedAt: new Date().toISOString()
+      });
+  }
+
+  async updateThreadCodexTitle(threadId: string, title: string): Promise<void> {
+    this.database
+      .prepare(
+        `
+        UPDATE threads SET
+          codex_title = @title,
+          title = CASE
+            WHEN COALESCE(custom_title, '') <> '' THEN custom_title
+            WHEN @title <> '' THEN @title
+            ELSE COALESCE(preview, '')
+          END,
           updated_at = @updatedAt
         WHERE id = @threadId
         `
@@ -256,6 +281,8 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         project_id,
         cwd,
         branch_name,
+        codex_title,
+        custom_title,
         title,
         preview,
         model,
@@ -268,6 +295,8 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         @projectId,
         @cwd,
         @branchName,
+        @codexTitle,
+        @customTitle,
         @title,
         @preview,
         @model,
@@ -279,9 +308,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         project_id = excluded.project_id,
         cwd = excluded.cwd,
         branch_name = excluded.branch_name,
+        codex_title = excluded.codex_title,
+        custom_title = COALESCE(excluded.custom_title, threads.custom_title),
         title = CASE
-          WHEN excluded.title <> '' THEN excluded.title
-          ELSE threads.title
+          WHEN COALESCE(excluded.custom_title, threads.custom_title, '') <> ''
+            THEN COALESCE(excluded.custom_title, threads.custom_title)
+          WHEN excluded.codex_title <> '' THEN excluded.codex_title
+          ELSE COALESCE(excluded.preview, '')
         END,
         preview = excluded.preview,
         model = COALESCE(excluded.model, threads.model),
@@ -304,6 +337,8 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
           projectId: project?.id ?? null,
           cwd: project?.path ?? null,
           branchName: thread.branchName ?? null,
+          codexTitle: thread.codexTitle,
+          customTitle: thread.customTitle,
           title: thread.title,
           preview: thread.preview ?? null,
           model: thread.model ?? null,
@@ -408,75 +443,127 @@ function runMigrations(database: BetterSqliteDatabase): void {
     .prepare("SELECT version FROM schema_migrations WHERE version = ?")
     .get(1);
 
+  if (migration === undefined) {
+    const applyMigration = database.transaction(() => {
+      database.exec(`
+        CREATE TABLE IF NOT EXISTS projects (
+          id TEXT PRIMARY KEY,
+          path TEXT NOT NULL UNIQUE,
+          default_name TEXT NOT NULL,
+          display_name TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          last_seen_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS threads (
+          id TEXT PRIMARY KEY,
+          project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+          cwd TEXT,
+          branch_name TEXT,
+          title TEXT NOT NULL,
+          preview TEXT,
+          model TEXT,
+          reasoning_effort TEXT,
+          status TEXT,
+          created_at TEXT,
+          updated_at TEXT,
+          last_synced_at TEXT,
+          newest_turn_id TEXT,
+          oldest_turn_id TEXT,
+          older_cursor TEXT,
+          has_loaded_latest INTEGER NOT NULL DEFAULT 0,
+          has_loaded_all_older_turns INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS turns (
+          thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+          id TEXT NOT NULL,
+          status TEXT,
+          started_at TEXT,
+          completed_at TEXT,
+          duration_ms INTEGER,
+          item_count INTEGER NOT NULL DEFAULT 0,
+          raw_json TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY(thread_id, id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_threads_project_updated
+          ON threads(project_id, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_threads_updated
+          ON threads(updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_turns_thread_started
+          ON turns(thread_id, started_at);
+      `);
+      database
+        .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
+        .run(1, new Date().toISOString());
+    });
+
+    applyMigration();
+  }
+
+  applySchemaMigrationV2(database);
+}
+
+function applySchemaMigrationV2(database: BetterSqliteDatabase): void {
+  const migration = database
+    .prepare("SELECT version FROM schema_migrations WHERE version = ?")
+    .get(2);
+
   if (migration !== undefined) {
     return;
   }
 
   const applyMigration = database.transaction(() => {
+    addColumnIfMissing(database, "threads", "codex_title", "TEXT NOT NULL DEFAULT ''");
+    addColumnIfMissing(database, "threads", "custom_title", "TEXT");
     database.exec(`
-      CREATE TABLE IF NOT EXISTS projects (
-        id TEXT PRIMARY KEY,
-        path TEXT NOT NULL UNIQUE,
-        default_name TEXT NOT NULL,
-        display_name TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        last_seen_at TEXT NOT NULL
-      );
-
-      CREATE TABLE IF NOT EXISTS threads (
-        id TEXT PRIMARY KEY,
-        project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
-        cwd TEXT,
-        branch_name TEXT,
-        title TEXT NOT NULL,
-        preview TEXT,
-        model TEXT,
-        reasoning_effort TEXT,
-        status TEXT,
-        created_at TEXT,
-        updated_at TEXT,
-        last_synced_at TEXT,
-        newest_turn_id TEXT,
-        oldest_turn_id TEXT,
-        older_cursor TEXT,
-        has_loaded_latest INTEGER NOT NULL DEFAULT 0,
-        has_loaded_all_older_turns INTEGER NOT NULL DEFAULT 0
-      );
-
-      CREATE TABLE IF NOT EXISTS turns (
-        thread_id TEXT NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
-        id TEXT NOT NULL,
-        status TEXT,
-        started_at TEXT,
-        completed_at TEXT,
-        duration_ms INTEGER,
-        item_count INTEGER NOT NULL DEFAULT 0,
-        raw_json TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        PRIMARY KEY(thread_id, id)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_threads_project_updated
-        ON threads(project_id, updated_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_threads_updated
-        ON threads(updated_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_turns_thread_started
-        ON turns(thread_id, started_at);
+      UPDATE threads SET
+        custom_title = CASE
+          WHEN title <> '' AND title <> COALESCE(preview, '') THEN title
+          ELSE custom_title
+        END,
+        codex_title = CASE
+          WHEN title = COALESCE(preview, '') THEN title
+          ELSE codex_title
+        END;
     `);
     database
       .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
-      .run(1, new Date().toISOString());
+      .run(2, new Date().toISOString());
   });
 
   applyMigration();
 }
 
+function addColumnIfMissing(
+  database: BetterSqliteDatabase,
+  tableName: string,
+  columnName: string,
+  definition: string
+): void {
+  const columns = database
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
+  const exists = columns.some((column) => column.name === columnName);
+
+  if (exists) {
+    return;
+  }
+
+  database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+}
+
 function mapThreadRow(row: ThreadRow): CachedThreadSummary {
   const projectName = row.project_display_name ?? row.project_default_name;
+  const title = resolveCachedThreadTitle(row.codex_title, row.custom_title, row.preview ?? "");
   const thread: CachedThreadSummary = {
     id: row.id,
-    title: row.title,
+    codexTitle: row.codex_title,
+    customTitle: row.custom_title,
+    title,
     preview: row.preview ?? "",
     model: row.model,
     reasoningEffort: row.reasoning_effort,
@@ -491,6 +578,25 @@ function mapThreadRow(row: ThreadRow): CachedThreadSummary {
   }
 
   return thread;
+}
+
+function resolveCachedThreadTitle(
+  codexTitle: string,
+  customTitle: string | null,
+  preview: string
+): string {
+  const trimmedCustomTitle = customTitle?.trim() ?? "";
+  const trimmedCodexTitle = codexTitle.trim();
+
+  if (trimmedCustomTitle.length > 0) {
+    return trimmedCustomTitle;
+  }
+
+  if (trimmedCodexTitle.length > 0) {
+    return trimmedCodexTitle;
+  }
+
+  return preview;
 }
 
 function mapSyncState(row: ThreadRow): CachedThreadSyncState {

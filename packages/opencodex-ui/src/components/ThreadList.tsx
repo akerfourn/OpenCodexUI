@@ -89,23 +89,8 @@ export function ThreadList({ store }: ThreadListProps) {
             >
               {group.project}
             </Typography>
-            {group.branches.map((branchGroup) => (
-              <div className="branch-group" key={branchGroup.branch ?? "default"}>
-                {branchGroup.branch !== null ? (
-                  <Typography
-                    variant="caption"
-                    component="div"
-                    sx={{ display: "block", pl: 2.25, pb: 0.5, fontStyle: "italic", fontWeight: 700 }}
-                  >
-                    {branchGroup.branch}
-                  </Typography>
-                ) : null}
-                <div className={branchGroup.branch !== null ? "branch-threads" : undefined}>
-                  {branchGroup.threads.map((thread) => (
-                    <ThreadButtonX key={thread.id} store={store} thread={thread} />
-                  ))}
-                </div>
-              </div>
+            {group.threads.map((thread) => (
+              <ThreadButtonX key={thread.id} store={store} thread={thread} />
             ))}
           </section>
         ))}
@@ -116,48 +101,23 @@ export function ThreadList({ store }: ThreadListProps) {
 
 export const ThreadListX = observer(ThreadList);
 
-type ThreadBranchGroup = {
-  branch: string | null;
+type ThreadProjectGroup = {
+  project: string;
   threads: OpenCodexThread[];
 };
 
-type ThreadProjectGroup = {
-  project: string;
-  branches: ThreadBranchGroup[];
-};
-
 function groupThreadsByProject(threads: OpenCodexThread[]): ThreadProjectGroup[] {
-  const projects = new Map<string, Map<string, OpenCodexThread[]>>();
+  const projects = new Map<string, OpenCodexThread[]>();
 
   for (const thread of threads) {
     const projectName = thread.projectPath ?? "Autres chats";
-    const branchName = thread.branchName ?? "";
-    const branches = getOrCreateMap(projects, projectName);
-    const branchThreads = branches.get(branchName) ?? [];
-    branchThreads.push(thread);
-    branches.set(branchName, branchThreads);
+    const projectThreads = projects.get(projectName) ?? [];
+    projectThreads.push(thread);
+    projects.set(projectName, projectThreads);
   }
 
-  return Array.from(projects.entries()).map(([project, branchMap]) => ({
+  return Array.from(projects.entries()).map(([project, projectThreads]) => ({
     project,
-    branches: Array.from(branchMap.entries()).map(([branch, branchThreads]) => ({
-      branch: branch.length > 0 ? branch : null,
-      threads: branchThreads
-    }))
+    threads: projectThreads
   }));
-}
-
-function getOrCreateMap(
-  projects: Map<string, Map<string, OpenCodexThread[]>>,
-  projectName: string
-): Map<string, OpenCodexThread[]> {
-  const existing = projects.get(projectName);
-
-  if (existing !== undefined) {
-    return existing;
-  }
-
-  const created = new Map<string, OpenCodexThread[]>();
-  projects.set(projectName, created);
-  return created;
 }

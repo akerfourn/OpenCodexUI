@@ -113,18 +113,20 @@ export class RootStore {
       case "threads.updated":
         this.isBootstrapping = false;
         this.isLoadingThreads = false;
-        this.threads = event.threads;
+        this.threads = event.threads.map((thread) => this.mergeThreadMetadata(thread));
         this.currentProjectFilterAvailable = event.currentProjectFilterAvailable;
-        logThreadsForDebug(event.threads, this.scope, this.searchTerm);
+        logThreadsForDebug(this.threads, this.scope, this.searchTerm);
         return;
       case "thread.opened":
       case "thread.created":
+        const openedThread = this.mergeThreadMetadata(event.thread);
         this.isCreatingThread = false;
         this.isRefreshingThread = false;
         this.isLoadingOlderMessages = false;
         this.isSyncingCurrentThread = false;
         this.loadingThreadId = null;
-        this.currentThread = event.thread;
+        this.currentThread = openedThread;
+        this.upsertThread(openedThread);
         this.turns = event.turns;
         this.pendingTurnId = null;
         this.activity = [];
@@ -133,11 +135,24 @@ export class RootStore {
           ? event.hasMoreOlderMessages ?? false
           : false;
         this.scrollToBottomVersion += 1;
-        if (event.thread.model !== null) {
-          this.selectedModel = event.thread.model;
+        if (openedThread.model !== null) {
+          this.selectedModel = openedThread.model;
         }
-        if (event.thread.reasoningEffort !== null) {
-          this.reasoningEffort = event.thread.reasoningEffort;
+        if (openedThread.reasoningEffort !== null) {
+          this.reasoningEffort = openedThread.reasoningEffort;
+        }
+        return;
+      case "thread.metadata.updated":
+        const updatedThread = this.mergeThreadMetadata(event.thread);
+        this.upsertThread(updatedThread);
+        if (this.currentThread?.id === updatedThread.id) {
+          this.currentThread = updatedThread;
+          if (updatedThread.model !== null) {
+            this.selectedModel = updatedThread.model;
+          }
+          if (updatedThread.reasoningEffort !== null) {
+            this.reasoningEffort = updatedThread.reasoningEffort;
+          }
         }
         return;
       case "thread.turns.prepended":
@@ -479,12 +494,44 @@ export class RootStore {
 
   private applyThreadRename(threadId: string, name: string): void {
     this.threads = this.threads.map((thread) => (
-      thread.id === threadId ? { ...thread, title: name } : thread
+      thread.id === threadId ? { ...thread, customTitle: name, title: name } : thread
     ));
 
     if (this.currentThread?.id === threadId) {
-      this.currentThread = { ...this.currentThread, title: name };
+      this.currentThread = { ...this.currentThread, customTitle: name, title: name };
     }
+  }
+
+  private upsertThread(thread: OpenCodexThread): void {
+    const mergedThread = this.mergeThreadMetadata(thread);
+    const existingThread = this.findThread(thread.id);
+
+    if (existingThread === null) {
+      this.threads = [mergedThread, ...this.threads];
+      return;
+    }
+
+    this.threads = this.threads.map((entry) => (
+      entry.id === thread.id ? mergedThread : entry
+    ));
+  }
+
+  private mergeThreadMetadata(thread: OpenCodexThread): OpenCodexThread {
+    const existingThread = this.findThread(thread.id) ?? this.currentThread;
+
+    if (existingThread === null || existingThread.id !== thread.id) {
+      return thread;
+    }
+
+    if (thread.customTitle !== null && thread.customTitle.trim().length > 0) {
+      return thread;
+    }
+
+    return {
+      ...thread,
+      customTitle: existingThread.customTitle,
+      title: resolveThreadTitle(thread.codexTitle, existingThread.customTitle, thread.preview)
+    };
   }
 
   private findThread(threadId: string): OpenCodexThread | null {
@@ -638,6 +685,25 @@ function readLoadOlderResult(value: unknown): {
     turns: Array.isArray(result.turns) ? result.turns as OpenCodexTurn[] : [],
     hasMoreOlderMessages: result.hasMoreOlderMessages === true
   };
+}
+
+function resolveThreadTitle(
+  codexTitle: string,
+  customTitle: string | null,
+  preview: string
+): string {
+  const trimmedCustomTitle = customTitle?.trim() ?? "";
+  const trimmedCodexTitle = codexTitle.trim();
+
+  if (trimmedCustomTitle.length > 0) {
+    return trimmedCustomTitle;
+  }
+
+  if (trimmedCodexTitle.length > 0) {
+    return trimmedCodexTitle;
+  }
+
+  return preview;
 }
 
 function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {

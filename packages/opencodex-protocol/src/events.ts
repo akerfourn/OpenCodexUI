@@ -13,6 +13,7 @@ export type OpenCodexEvent =
   | { type: "threads.updated"; threads: OpenCodexThread[]; currentProjectFilterAvailable: boolean }
   | { type: "thread.opened"; thread: OpenCodexThread; turns: OpenCodexTurn[]; hasMoreOlderMessages?: boolean }
   | { type: "thread.created"; thread: OpenCodexThread; turns: OpenCodexTurn[] }
+  | { type: "thread.metadata.updated"; thread: OpenCodexThread }
   | { type: "thread.turns.prepended"; threadId: string; turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }
   | { type: "thread.turns.synced"; threadId: string; turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }
   | { type: "thread.sync.started"; threadId: string }

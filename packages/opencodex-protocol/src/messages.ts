@@ -15,6 +15,8 @@ export type OpenCodexSettings = {
 
 export type OpenCodexThread = {
   id: string;
+  codexTitle: string;
+  customTitle: string | null;
   title: string;
   preview: string;
   model: string | null;
