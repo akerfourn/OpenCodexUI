@@ -360,10 +360,19 @@ export class RootStore {
       return;
     }
 
+    const trimmedName = name.trim();
+
+    if (trimmedName.length === 0) {
+      return;
+    }
+
+    const threadId = this.currentThread.id;
+    this.applyThreadRename(threadId, trimmedName);
+
     void this.transport.request({
       type: "threads.rename",
-      threadId: this.currentThread.id,
-      name
+      threadId,
+      name: trimmedName
     });
   }
 

@@ -445,6 +445,8 @@ export class OpenCodexBackend {
 
     const client = await this.ensureClient();
     await client.renameThread(threadId, trimmedName);
+    await this.writeThreadTitle(threadId, trimmedName);
+    this.threadTurnCache.renameThread(threadId, trimmedName);
     this.emit({ type: "thread.renamed", threadId, name: trimmedName });
   }
 
@@ -665,6 +667,18 @@ export class OpenCodexBackend {
       await this.cacheRepository.saveThreadDelta(toCachedThreadDelta(cacheEntry, turns));
     } catch (error) {
       this.options.logger?.(`thread cache delta write failed: ${String(error)}`);
+    }
+  }
+
+  private async writeThreadTitle(threadId: string, title: string): Promise<void> {
+    if (this.cacheRepository === null) {
+      return;
+    }
+
+    try {
+      await this.cacheRepository.updateThreadTitle(threadId, title);
+    } catch (error) {
+      this.options.logger?.(`thread cache rename write failed: ${String(error)}`);
     }
   }
 }

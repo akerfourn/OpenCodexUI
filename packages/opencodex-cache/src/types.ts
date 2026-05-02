@@ -53,6 +53,7 @@ export type ThreadListCacheQuery = {
 
 export interface OpenCodexCacheRepository {
   upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void>;
+  updateThreadTitle(threadId: string, title: string): Promise<void>;
   listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]>;
   getThread(threadId: string): Promise<CachedThreadSnapshot | null>;
   saveThreadSnapshot(snapshot: CachedThreadSnapshot): Promise<void>;

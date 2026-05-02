@@ -117,4 +117,74 @@ describe("SqliteOpenCodexCacheRepository", () => {
       }
     });
   });
+
+  it("should update the local thread title when a chat is renamed", async () => {
+    await repository.upsertThreadIndex([
+      {
+        id: "thread-1",
+        title: "Old title",
+        preview: "preview",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.updateThreadTitle("thread-1", "Renamed chat");
+
+    const threads = await repository.listThreads({
+      scope: "all",
+      currentProjectPath: null
+    });
+
+    expect(threads[0]).toMatchObject({
+      id: "thread-1",
+      title: "Renamed chat"
+    });
+  });
+
+  it("should not replace a renamed title with an empty index title", async () => {
+    await repository.upsertThreadIndex([
+      {
+        id: "thread-1",
+        title: "Old title",
+        preview: "preview",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.updateThreadTitle("thread-1", "Renamed chat");
+
+    await repository.upsertThreadIndex([
+      {
+        id: "thread-1",
+        title: "",
+        preview: "preview",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:01.000Z"
+      }
+    ]);
+
+    const threads = await repository.listThreads({
+      scope: "all",
+      currentProjectPath: null
+    });
+
+    expect(threads[0]).toMatchObject({
+      id: "thread-1",
+      title: "Renamed chat"
+    });
+  });
 });

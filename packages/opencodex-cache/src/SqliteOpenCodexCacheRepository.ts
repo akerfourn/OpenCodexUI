@@ -65,6 +65,23 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     this.writeThreadIndex(threads);
   }
 
+  async updateThreadTitle(threadId: string, title: string): Promise<void> {
+    this.database
+      .prepare(
+        `
+        UPDATE threads SET
+          title = @title,
+          updated_at = @updatedAt
+        WHERE id = @threadId
+        `
+      )
+      .run({
+        threadId,
+        title,
+        updatedAt: new Date().toISOString()
+      });
+  }
+
   async listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]> {
     const clauses: string[] = [];
     const params: Record<string, string> = {};
@@ -262,7 +279,10 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         project_id = excluded.project_id,
         cwd = excluded.cwd,
         branch_name = excluded.branch_name,
-        title = excluded.title,
+        title = CASE
+          WHEN excluded.title <> '' THEN excluded.title
+          ELSE threads.title
+        END,
         preview = excluded.preview,
         model = COALESCE(excluded.model, threads.model),
         reasoning_effort = COALESCE(excluded.reasoning_effort, threads.reasoning_effort),

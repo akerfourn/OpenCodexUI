@@ -46,6 +46,19 @@ export class ThreadTurnCache {
     return created;
   }
 
+  renameThread(threadId: string, title: string): void {
+    const entry = this.entries.get(threadId);
+
+    if (entry === undefined) {
+      return;
+    }
+
+    entry.thread = {
+      ...entry.thread,
+      title
+    };
+  }
+
   mergeLatestTurns(
     entry: ThreadTurnCacheEntry,
     turns: unknown[],
