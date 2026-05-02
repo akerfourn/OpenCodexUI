@@ -67,7 +67,7 @@ async function createBuildContext(entryPoint, outfile) {
     platform: "node",
     format: "cjs",
     target: "node20",
-    external: ["electron"],
+    external: ["electron", "better-sqlite3"],
     outfile,
     plugins: [createWorkspaceResolvePlugin(repoRoot), createRestartPlugin()]
   });

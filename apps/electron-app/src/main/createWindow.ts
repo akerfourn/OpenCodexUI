@@ -10,6 +10,7 @@ type CreateWindowOptions = {
 
 export function createWindow(options: CreateWindowOptions): BrowserWindow {
   const window = new BrowserWindow({
+    title: "OpenCodexUI",
     width: 1440,
     height: 960,
     minWidth: 960,

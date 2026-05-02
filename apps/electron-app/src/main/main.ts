@@ -8,12 +8,15 @@ import { SettingsStore } from "./settingsStore.js";
 
 let bridgeServer: ElectronBridgeServer | null = null;
 
+app.setName("OpenCodexUI");
+
 async function main(): Promise<void> {
   await app.whenReady();
 
   const settingsStore = new SettingsStore(app.getPath("userData"));
   const settings = await settingsStore.load();
   const projectPath = resolveProjectPath();
+  const userDataPath = app.getPath("userData");
   const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? null;
   const window = createWindow({
     preloadPath: path.join(__dirname, "preload.cjs"),
@@ -24,6 +27,7 @@ async function main(): Promise<void> {
   bridgeServer = new ElectronBridgeServer({
     settings,
     projectPath,
+    userDataPath,
     saveSettings: (nextSettings) => settingsStore.save(nextSettings)
   });
   bridgeServer.attachWindow(window);

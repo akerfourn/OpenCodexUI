@@ -2,12 +2,14 @@ import { BrowserWindow, ipcMain, shell } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
+import { createOpenCodexSqliteCacheRepository } from "@open-codex-ui/opencodex-cache";
 import { OpenCodexBackend } from "@open-codex-ui/opencodex-core";
 import type { OpenCodexEvent, OpenCodexRequest, OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
 
 type ElectronBridgeServerOptions = {
   settings: OpenCodexSettings;
   projectPath: string | null;
+  userDataPath: string;
   saveSettings(settings: OpenCodexSettings): Promise<void>;
 };
 
@@ -16,9 +18,12 @@ export class ElectronBridgeServer {
   private window: BrowserWindow | null = null;
 
   constructor(options: ElectronBridgeServerOptions) {
+    const cacheRepository = createCacheRepository(options.userDataPath);
+
     this.backend = new OpenCodexBackend({
       settings: options.settings,
       projectPath: options.projectPath,
+      cacheRepository,
       saveSettings: options.saveSettings,
       openExternalLink: async (href) => {
         await openExternalLink(href, options.projectPath);
@@ -45,6 +50,17 @@ export class ElectronBridgeServer {
 
   private emit(event: OpenCodexEvent): void {
     this.window?.webContents.send("opencodex:event", event);
+  }
+}
+
+function createCacheRepository(userDataPath: string) {
+  try {
+    return createOpenCodexSqliteCacheRepository({
+      directory: path.join(userDataPath, "cache")
+    });
+  } catch (error) {
+    console.log(`[OpenCodexUI] SQLite cache unavailable: ${String(error)}`);
+    return null;
   }
 }
 

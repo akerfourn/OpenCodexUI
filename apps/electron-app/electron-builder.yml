@@ -1,0 +1,27 @@
+appId: io.opencodexui.app
+productName: OpenCodexUI
+
+directories:
+  output: release
+
+files:
+  - dist/**/*
+  - package.json
+
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**/*"
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.developer-tools
+
+win:
+  target:
+    - nsis

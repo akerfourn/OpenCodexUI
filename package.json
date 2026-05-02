@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.1",
   "description": "Electron desktop UI for the local Codex app-server.",
+  "packageManager": "npm@11.11.0",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -10,7 +11,9 @@
   "scripts": {
     "dev": "npm run dev -w open-codex-ui-electron-app",
     "build": "npm run build:packages && npm run build -w open-codex-ui-electron-app",
-    "build:packages": "npm run build -w @open-codex-ui/codex-rpc && npm run build -w @open-codex-ui/opencodex-protocol && npm run build -w @open-codex-ui/opencodex-core && npm run build -w @open-codex-ui/opencodex-ui",
+    "build:packages": "npm run build -w @open-codex-ui/codex-rpc && npm run build -w @open-codex-ui/opencodex-protocol && npm run build -w @open-codex-ui/opencodex-cache && npm run build -w @open-codex-ui/opencodex-core && npm run build -w @open-codex-ui/opencodex-ui",
+    "dist": "npm run build:packages && npm run dist -w open-codex-ui-electron-app",
+    "dist:dir": "npm run build:packages && npm run dist:dir -w open-codex-ui-electron-app",
     "typecheck": "npm run build:packages && npm run typecheck -w open-codex-ui-electron-app",
     "check": "npm run typecheck",
     "test": "npm run test --workspaces --if-present",

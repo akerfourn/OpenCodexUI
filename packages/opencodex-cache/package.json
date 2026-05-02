@@ -1,5 +1,5 @@
 {
-  "name": "@open-codex-ui/opencodex-core",
+  "name": "@open-codex-ui/opencodex-cache",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -12,8 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@open-codex-ui/codex-rpc": "file:../codex-rpc",
-    "@open-codex-ui/opencodex-cache": "file:../opencodex-cache",
-    "@open-codex-ui/opencodex-protocol": "file:../opencodex-protocol"
+    "better-sqlite3": "^12.9.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13"
   }
 }

@@ -1,4 +1,5 @@
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
+import type { CachedThreadSnapshot, CachedThreadSyncState } from "@open-codex-ui/opencodex-cache";
 
 import { readNullableNumber, readObject, readString } from "./mapping.js";
 
@@ -74,11 +75,29 @@ export class ThreadTurnCache {
     entry.lastSyncedAt = new Date().toISOString();
   }
 
+  replaceFromSnapshot(snapshot: CachedThreadSnapshot): ThreadTurnCacheEntry {
+    const entry = this.getOrCreate(snapshot.thread);
+    entry.turnsById.clear();
+    entry.orderedTurnIds = [];
+    mergeTurns(entry, snapshot.turns);
+    applySyncState(entry, snapshot.syncState);
+    return entry;
+  }
+
   toTurns(entry: ThreadTurnCacheEntry): unknown[] {
     return entry.orderedTurnIds
       .map((turnId) => entry.turnsById.get(turnId))
       .filter((turn): turn is unknown => turn !== undefined);
   }
+}
+
+function applySyncState(entry: ThreadTurnCacheEntry, syncState: CachedThreadSyncState): void {
+  entry.newestTurnId = syncState.newestTurnId;
+  entry.oldestTurnId = syncState.oldestTurnId;
+  entry.olderCursor = syncState.olderCursor;
+  entry.hasLoadedLatest = syncState.hasLoadedLatest;
+  entry.hasLoadedAllOlderTurns = syncState.hasLoadedAllOlderTurns;
+  entry.lastSyncedAt = syncState.lastSyncedAt;
 }
 
 function mergeTurns(entry: ThreadTurnCacheEntry, turns: unknown[]): void {
