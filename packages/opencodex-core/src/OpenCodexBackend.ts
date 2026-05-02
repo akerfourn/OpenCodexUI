@@ -20,16 +20,18 @@ import {
   createActivityFromNotification,
   createApprovalRequest,
   mapThread,
-  mapThreadMessages,
+  mapTurnsToMessages,
   readMessagePhase,
   readObject,
   readNullableNumber,
   readString
 } from "./mapping.js";
+import { ThreadTurnCache, type ThreadTurnCacheEntry } from "./ThreadTurnCache.js";
 import type { OpenCodexBackendOptions } from "./types.js";
 
 const THREAD_LIST_PAGE_SIZE = 100;
 const THREAD_LIST_MAX_PAGES = 20;
+const THREAD_TURNS_PAGE_SIZE = 20;
 
 type ThreadSourceKind =
   | "cli"
@@ -71,6 +73,7 @@ export class OpenCodexBackend {
   private settings: OpenCodexSettings;
   private readonly pendingApprovals = new Map<string, CodexServerRequest>();
   private readonly assistantMessagePhases = new Map<string, OpenCodexMessagePhase | null>();
+  private readonly threadTurnCache = new ThreadTurnCache();
   private activeTurnId: string | null = null;
 
   constructor(private readonly options: OpenCodexBackendOptions) {
@@ -110,6 +113,8 @@ export class OpenCodexBackend {
         return this.listThreads(request.scope, request.searchTerm);
       case "threads.open":
         return this.openThread(request.threadId);
+      case "threads.loadOlder":
+        return this.loadOlderThreadMessages(request.threadId);
       case "threads.create":
         return this.createThread();
       case "threads.rename":
@@ -187,7 +192,7 @@ export class OpenCodexBackend {
 
   private async openThread(threadId: string): Promise<{ thread: OpenCodexThread; messages: OpenCodexMessage[] }> {
     const client = await this.ensureClient();
-    const response = await client.resumeThread(threadId);
+    const response = await client.resumeThread(threadId, { excludeTurns: true });
     const responseObject = readObject(response);
     const threadValue = responseObject.thread;
     const thread = mapThread(
@@ -195,10 +200,116 @@ export class OpenCodexBackend {
       readString(responseObject.model),
       readReasoningEffort(responseObject.reasoningEffort)
     );
-    const messages = mapThreadMessages(threadValue);
+    const cacheEntry = this.threadTurnCache.getOrCreate(thread);
 
-    this.emit({ type: "thread.opened", thread, messages });
+    if (cacheEntry.hasLoadedLatest) {
+      const messages = this.readCachedMessages(cacheEntry);
+      this.emit({
+        type: "thread.opened",
+        thread,
+        messages,
+        hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns
+      });
+      void this.syncLatestTurns(client, cacheEntry).catch((error: unknown) => {
+        this.handleClientError(toError(error));
+      });
+      return { thread, messages };
+    }
+
+    await this.loadLatestTurns(client, cacheEntry);
+    const messages = this.readCachedMessages(cacheEntry);
+    this.emit({
+      type: "thread.opened",
+      thread,
+      messages,
+      hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns
+    });
     return { thread, messages };
+  }
+
+  private async loadLatestTurns(
+    client: CodexAppServerClient,
+    cacheEntry: ThreadTurnCacheEntry
+  ): Promise<void> {
+    const response = await client.listThreadTurns({
+      threadId: cacheEntry.thread.id,
+      limit: THREAD_TURNS_PAGE_SIZE,
+      sortDirection: "desc"
+    });
+    const responseObject = readObject(response);
+    const turns = Array.isArray(responseObject.data) ? responseObject.data : [];
+    const olderCursor = readString(responseObject.nextCursor) || null;
+
+    this.threadTurnCache.mergeLatestTurns(cacheEntry, turns, olderCursor);
+  }
+
+  private async loadOlderThreadMessages(
+    threadId: string
+  ): Promise<{ messages: OpenCodexMessage[]; hasMoreOlderMessages: boolean }> {
+    const client = await this.ensureClient();
+    const cacheEntry = this.threadTurnCache.get(threadId);
+
+    if (cacheEntry === null || cacheEntry.hasLoadedAllOlderTurns || cacheEntry.olderCursor === null) {
+      return { messages: [], hasMoreOlderMessages: false };
+    }
+
+    const response = await client.listThreadTurns({
+      threadId,
+      cursor: cacheEntry.olderCursor,
+      limit: THREAD_TURNS_PAGE_SIZE,
+      sortDirection: "desc"
+    });
+    const responseObject = readObject(response);
+    const turns = Array.isArray(responseObject.data) ? responseObject.data : [];
+    const olderCursor = readString(responseObject.nextCursor) || null;
+    const previousTurnIds = new Set(cacheEntry.orderedTurnIds);
+
+    this.threadTurnCache.mergeOlderTurns(cacheEntry, turns, olderCursor);
+
+    const addedTurns = this.threadTurnCache
+      .toTurns(cacheEntry)
+      .filter((turn) => !previousTurnIds.has(readString(readObject(turn).id)));
+    const messages = mapTurnsToMessages(threadId, addedTurns);
+    const hasMoreOlderMessages = !cacheEntry.hasLoadedAllOlderTurns;
+
+    if (messages.length > 0) {
+      this.emit({
+        type: "thread.messages.prepended",
+        threadId,
+        messages,
+        hasMoreOlderMessages
+      });
+    }
+
+    return { messages, hasMoreOlderMessages };
+  }
+
+  private async syncLatestTurns(
+    client: CodexAppServerClient,
+    cacheEntry: ThreadTurnCacheEntry
+  ): Promise<void> {
+    this.emit({ type: "thread.sync.started", threadId: cacheEntry.thread.id });
+
+    try {
+      const previousSignature = createCacheSignature(cacheEntry);
+      await this.loadLatestTurns(client, cacheEntry);
+      const nextSignature = createCacheSignature(cacheEntry);
+
+      if (previousSignature !== nextSignature) {
+        this.emit({
+          type: "thread.messages.synced",
+          threadId: cacheEntry.thread.id,
+          messages: this.readCachedMessages(cacheEntry),
+          hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns
+        });
+      }
+    } finally {
+      this.emit({ type: "thread.sync.completed", threadId: cacheEntry.thread.id });
+    }
+  }
+
+  private readCachedMessages(cacheEntry: ThreadTurnCacheEntry): OpenCodexMessage[] {
+    return mapTurnsToMessages(cacheEntry.thread.id, this.threadTurnCache.toTurns(cacheEntry));
   }
 
   private async createThread(): Promise<{ thread: OpenCodexThread; messages: OpenCodexMessage[] }> {
@@ -515,6 +626,23 @@ function normalizeError(error: unknown): { message: string; details?: unknown } 
   }
 
   return { message: String(error) };
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function createCacheSignature(cacheEntry: ThreadTurnCacheEntry): string {
+  return cacheEntry.orderedTurnIds
+    .map((turnId) => {
+      const turn = readObject(cacheEntry.turnsById.get(turnId));
+      const status = readString(turn.status);
+      const durationMs = readNullableNumber(turn.durationMs);
+      const items = Array.isArray(turn.items) ? turn.items : [];
+
+      return `${turnId}:${status}:${durationMs ?? "none"}:${items.length}`;
+    })
+    .join("|");
 }
 
 function createId(prefix: string): string {

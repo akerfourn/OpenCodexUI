@@ -11,8 +11,19 @@ import { ElectronOpenCodexTransport } from "./electronTransport";
 
 const store = new RootStore(new ElectronOpenCodexTransport());
 const rootElement = document.getElementById("root");
+let lastFocusRefreshAt = 0;
 
 void store.bootstrap();
+window.addEventListener("focus", () => {
+  const now = Date.now();
+
+  if (now - lastFocusRefreshAt < 5_000) {
+    return;
+  }
+
+  lastFocusRefreshAt = now;
+  store.refreshCurrentThread();
+});
 
 if (rootElement !== null) {
   createRoot(rootElement).render(

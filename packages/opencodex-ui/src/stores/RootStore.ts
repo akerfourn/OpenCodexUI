@@ -1,4 +1,4 @@
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 import Fuse from "fuse.js";
 
 import type {
@@ -38,6 +38,11 @@ export class RootStore {
   isLoadingThreads = false;
   isCreatingThread = false;
   isStartingTurn = false;
+  isLoadingOlderMessages = false;
+  isSyncingCurrentThread = false;
+  hasMoreOlderMessages = false;
+  olderMessagesPrependVersion = 0;
+  scrollToBottomVersion = 0;
   isWorking = false;
   isRefreshingThread = false;
   loadingThreadId: string | null = null;
@@ -112,16 +117,49 @@ export class RootStore {
       case "thread.created":
         this.isCreatingThread = false;
         this.isRefreshingThread = false;
+        this.isLoadingOlderMessages = false;
+        this.isSyncingCurrentThread = false;
         this.loadingThreadId = null;
         this.currentThread = event.thread;
         this.messages = event.messages;
         this.activity = [];
         this.errorMessage = null;
+        this.hasMoreOlderMessages = event.type === "thread.opened"
+          ? event.hasMoreOlderMessages ?? false
+          : false;
+        this.scrollToBottomVersion += 1;
         if (event.thread.model !== null) {
           this.selectedModel = event.thread.model;
         }
         if (event.thread.reasoningEffort !== null) {
           this.reasoningEffort = event.thread.reasoningEffort;
+        }
+        return;
+      case "thread.messages.prepended":
+        if (this.currentThread?.id !== event.threadId) {
+          return;
+        }
+        this.isLoadingOlderMessages = false;
+        this.hasMoreOlderMessages = event.hasMoreOlderMessages;
+        this.messages = [...event.messages, ...this.messages];
+        this.olderMessagesPrependVersion += 1;
+        return;
+      case "thread.messages.synced":
+        if (this.currentThread?.id !== event.threadId) {
+          return;
+        }
+        this.messages = event.messages;
+        this.hasMoreOlderMessages = event.hasMoreOlderMessages;
+        return;
+      case "thread.sync.started":
+        if (this.currentThread?.id === event.threadId) {
+          this.isSyncingCurrentThread = true;
+        }
+        return;
+      case "thread.sync.completed":
+        if (this.currentThread?.id === event.threadId) {
+          this.isSyncingCurrentThread = false;
+          this.isRefreshingThread = false;
         }
         return;
       case "thread.renamed":
@@ -131,6 +169,7 @@ export class RootStore {
         this.isStartingTurn = false;
         this.currentThread = this.currentThread ?? this.findThread(event.threadId);
         this.messages.push(event.message);
+        this.scrollToBottomVersion += 1;
         return;
       case "message.delta":
         this.appendAssistantDelta(event.threadId, event.turnId, event.messageId, event.delta, event.phase ?? null);
@@ -168,6 +207,8 @@ export class RootStore {
         this.isLoadingThreads = false;
         this.isCreatingThread = false;
         this.isStartingTurn = false;
+        this.isLoadingOlderMessages = false;
+        this.isSyncingCurrentThread = false;
         this.isWorking = false;
         this.isRefreshingThread = false;
         this.loadingThreadId = null;
@@ -196,13 +237,16 @@ export class RootStore {
     }
 
     const isChangingThread = this.currentThread?.id !== threadId;
-    this.loadingThreadId = threadId;
     this.errorMessage = null;
 
     if (isChangingThread) {
+      this.loadingThreadId = threadId;
       this.currentThread = this.findThread(threadId) ?? this.currentThread;
       this.messages = [];
       this.activity = [];
+      this.hasMoreOlderMessages = false;
+    } else {
+      this.isSyncingCurrentThread = true;
     }
 
     void this.transport.request({ type: "threads.open", threadId });
@@ -223,7 +267,39 @@ export class RootStore {
     this.currentThread = null;
     this.messages = [];
     this.activity = [];
+    this.hasMoreOlderMessages = false;
+    this.isSyncingCurrentThread = false;
     void this.transport.request({ type: "threads.create" });
+  }
+
+  loadOlderMessages(): void {
+    if (
+      this.currentThread === null ||
+      this.isLoadingOlderMessages ||
+      !this.hasMoreOlderMessages ||
+      this.loadingThreadId !== null
+    ) {
+      return;
+    }
+
+    this.isLoadingOlderMessages = true;
+    void this.transport.request({
+      type: "threads.loadOlder",
+      threadId: this.currentThread.id
+    }).then((response) => {
+      const result = readLoadOlderResult(response);
+
+      if (result.messages.length === 0) {
+        runInAction(() => {
+          this.isLoadingOlderMessages = false;
+          this.hasMoreOlderMessages = result.hasMoreOlderMessages;
+        });
+      }
+    }).catch(() => {
+      runInAction(() => {
+        this.isLoadingOlderMessages = false;
+      });
+    });
   }
 
   sendMessage(
@@ -386,4 +462,23 @@ function logThreadsForDebug(
       status: thread.status
     }))
   );
+}
+
+function readLoadOlderResult(value: unknown): {
+  messages: OpenCodexMessage[];
+  hasMoreOlderMessages: boolean;
+} {
+  if (typeof value !== "object" || value === null) {
+    return { messages: [], hasMoreOlderMessages: false };
+  }
+
+  const result = value as {
+    messages?: unknown;
+    hasMoreOlderMessages?: unknown;
+  };
+
+  return {
+    messages: Array.isArray(result.messages) ? result.messages as OpenCodexMessage[] : [],
+    hasMoreOlderMessages: result.hasMoreOlderMessages === true
+  };
 }

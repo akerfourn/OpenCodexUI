@@ -10,8 +10,12 @@ export type OpenCodexEvent =
   | { type: "connection.status"; status: "starting" | "ready" | "stopped" | "error"; message?: string }
   | { type: "app.bootstrap"; settings: OpenCodexSettings; projectPath: string | null }
   | { type: "threads.updated"; threads: OpenCodexThread[]; currentProjectFilterAvailable: boolean }
-  | { type: "thread.opened"; thread: OpenCodexThread; messages: OpenCodexMessage[] }
+  | { type: "thread.opened"; thread: OpenCodexThread; messages: OpenCodexMessage[]; hasMoreOlderMessages?: boolean }
   | { type: "thread.created"; thread: OpenCodexThread; messages: OpenCodexMessage[] }
+  | { type: "thread.messages.prepended"; threadId: string; messages: OpenCodexMessage[]; hasMoreOlderMessages: boolean }
+  | { type: "thread.messages.synced"; threadId: string; messages: OpenCodexMessage[]; hasMoreOlderMessages: boolean }
+  | { type: "thread.sync.started"; threadId: string }
+  | { type: "thread.sync.completed"; threadId: string }
   | { type: "thread.renamed"; threadId: string; name: string }
   | { type: "message.started"; threadId: string; message: OpenCodexMessage }
   | { type: "message.delta"; threadId: string; messageId: string; turnId: string; delta: string; phase?: OpenCodexMessage["phase"] }

@@ -21,10 +21,13 @@ import { CodexProcessError, JsonRpcError } from "./types";
 import type { ThreadListParams } from "./generated/v2/ThreadListParams";
 import type { ThreadListResponse } from "./generated/v2/ThreadListResponse";
 import type { ThreadReadResponse } from "./generated/v2/ThreadReadResponse";
+import type { ThreadResumeParams } from "./generated/v2/ThreadResumeParams";
 import type { ThreadResumeResponse } from "./generated/v2/ThreadResumeResponse";
 import type { ThreadSetNameResponse } from "./generated/v2/ThreadSetNameResponse";
 import type { ThreadStartParams } from "./generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "./generated/v2/ThreadStartResponse";
+import type { ThreadTurnsListParams } from "./generated/v2/ThreadTurnsListParams";
+import type { ThreadTurnsListResponse } from "./generated/v2/ThreadTurnsListResponse";
 import type { TurnInterruptResponse } from "./generated/v2/TurnInterruptResponse";
 import type { TurnStartParams } from "./generated/v2/TurnStartParams";
 import type { TurnStartResponse } from "./generated/v2/TurnStartResponse";
@@ -191,15 +194,23 @@ export class CodexAppServerClient {
     });
   }
 
-  async resumeThread(threadId: string): Promise<ThreadResumeResponse> {
+  async resumeThread(
+    threadId: string,
+    params: Partial<Omit<ThreadResumeParams, "threadId" | "persistExtendedHistory">> = {}
+  ): Promise<ThreadResumeResponse> {
     return this.request<ThreadResumeResponse>("thread/resume", {
       threadId,
-      persistExtendedHistory: true
+      persistExtendedHistory: true,
+      ...params
     });
   }
 
   async readThread(threadId: string, includeTurns = true): Promise<ThreadReadResponse> {
     return this.request<ThreadReadResponse>("thread/read", { threadId, includeTurns });
+  }
+
+  async listThreadTurns(params: ThreadTurnsListParams): Promise<ThreadTurnsListResponse> {
+    return this.request<ThreadTurnsListResponse>("thread/turns/list", params);
   }
 
   async startTurn(params: TurnStartParams): Promise<TurnStartResponse> {

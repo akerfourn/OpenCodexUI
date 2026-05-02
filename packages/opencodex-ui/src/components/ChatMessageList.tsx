@@ -1,6 +1,6 @@
 import { observer } from "mobx-react-lite";
-import { Box } from "@mui/material";
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { Box, CircularProgress } from "@mui/material";
+import { useCallback, useLayoutEffect, useRef, type UIEvent } from "react";
 
 import type { OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
 
@@ -13,8 +13,10 @@ type ChatMessageListProps = {
 };
 
 export function ChatMessageList({ store }: ChatMessageListProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageRef = useRef<HTMLElement | null>(null);
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
+  const previousScrollStateRef = useRef<{ height: number; top: number } | null>(null);
   const currentThread = store.currentThread;
   const entries = buildTimelineEntries(store.messages);
   const handleOpenLink = useCallback((href: string) => {
@@ -35,10 +37,42 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [currentThread?.id, store.messages.length]);
+  }, [currentThread?.id, store.scrollToBottomVersion]);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const previousState = previousScrollStateRef.current;
+
+    if (container === null || previousState === null) {
+      return;
+    }
+
+    container.scrollTop = container.scrollHeight - previousState.height + previousState.top;
+    previousScrollStateRef.current = null;
+  }, [store.olderMessagesPrependVersion]);
+
+  function handleScroll(event: UIEvent<HTMLDivElement>): void {
+    const container = event.currentTarget;
+
+    if (
+      container.scrollTop > 80 ||
+      store.isLoadingOlderMessages ||
+      !store.hasMoreOlderMessages
+    ) {
+      return;
+    }
+
+    previousScrollStateRef.current = {
+      height: container.scrollHeight,
+      top: container.scrollTop
+    };
+    store.loadOlderMessages();
+  }
 
   return (
     <Box
+      ref={containerRef}
+      onScroll={handleScroll}
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -51,6 +85,11 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
         py: 2.25
       }}
     >
+      {store.isLoadingOlderMessages ? (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+          <CircularProgress size={18} thickness={5} />
+        </Box>
+      ) : null}
       {entries.map((entry, index) => {
         const isLast = index === entries.length - 1;
 

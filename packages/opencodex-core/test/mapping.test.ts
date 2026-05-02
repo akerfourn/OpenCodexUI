@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createApprovalRequest, mapThread, mapThreadMessages } from "../src/mapping";
+import { createApprovalRequest, mapThread, mapThreadMessages, mapTurnsToMessages } from "../src/mapping";
 
 describe("OpenCodex mapping", () => {
   it("should map a Codex thread to an OpenCodex thread", () => {
@@ -53,6 +53,48 @@ describe("OpenCodex mapping", () => {
     expect(messages).toMatchObject([
       { id: "user-1", threadId: "thread-1", role: "user", content: "Bonjour" },
       { id: "assistant-1", threadId: "thread-1", role: "assistant", content: "Salut" }
+    ]);
+  });
+
+  it("should map paginated Codex turns to OpenCodex messages", () => {
+    const messages = mapTurnsToMessages("thread-1", [
+      {
+        id: "turn-1",
+        durationMs: 1500,
+        items: [
+          {
+            type: "userMessage",
+            id: "user-1",
+            content: [{ type: "text", text: "Question" }]
+          },
+          {
+            type: "agentMessage",
+            id: "assistant-1",
+            text: "Réponse",
+            phase: "final_answer"
+          }
+        ]
+      }
+    ]);
+
+    expect(messages).toMatchObject([
+      {
+        id: "user-1",
+        threadId: "thread-1",
+        role: "user",
+        content: "Question",
+        turnId: "turn-1",
+        turnDurationMs: 1500
+      },
+      {
+        id: "assistant-1",
+        threadId: "thread-1",
+        role: "assistant",
+        content: "Réponse",
+        turnId: "turn-1",
+        turnDurationMs: 1500,
+        phase: "final_answer"
+      }
     ]);
   });
 

@@ -9,6 +9,7 @@ export type OpenCodexRequest =
   | { type: "app.bootstrap" }
   | { type: "threads.list"; scope: OpenCodexThreadScope; searchTerm?: string }
   | { type: "threads.open"; threadId: string }
+  | { type: "threads.loadOlder"; threadId: string }
   | { type: "threads.create" }
   | { type: "threads.rename"; threadId: string; name: string }
   | { type: "system.openLink"; href: string }

@@ -40,6 +40,11 @@ export function mapThreadMessages(value: unknown): OpenCodexMessage[] {
   const thread = readObject(value);
   const threadId = readString(thread.id);
   const turns = Array.isArray(thread.turns) ? thread.turns : [];
+
+  return mapTurnsToMessages(threadId, turns);
+}
+
+export function mapTurnsToMessages(threadId: string, turns: unknown[]): OpenCodexMessage[] {
   const messages: OpenCodexMessage[] = [];
 
   for (const turnValue of turns) {

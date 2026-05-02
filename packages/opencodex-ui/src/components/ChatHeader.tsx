@@ -1,6 +1,6 @@
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
-import { Box, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
+import { Box, CircularProgress, IconButton, LinearProgress, Stack, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 
@@ -59,43 +59,56 @@ export function ChatHeader({ store }: ChatHeaderProps) {
 
   return (
     <>
-      <header className="chat-header">
-        <Box className="chat-title" sx={{ minWidth: 0 }}>
-          <Typography variant="h6" component="h2" noWrap>
-            {title}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" noWrap>
-            {currentThread.projectPath ?? "Workspace non renseigné"}
-          </Typography>
-          {currentThread.model !== null ? (
-            <Typography variant="body2" color="text.secondary" noWrap>
-              Modèle: {currentThread.model}
+      <Box component="header" className="chat-header" sx={{ display: "block", position: "relative" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+          <Box className="chat-title" sx={{ minWidth: 0, flex: "1 1 auto" }}>
+            <Typography variant="h6" component="h2" noWrap>
+              {title}
             </Typography>
-          ) : null}
-          {currentThread.reasoningEffort !== null ? (
             <Typography variant="body2" color="text.secondary" noWrap>
-              Raisonnement: {currentThread.reasoningEffort}
+              {currentThread.projectPath ?? "Workspace non renseigné"}
             </Typography>
-          ) : null}
+            {currentThread.model !== null ? (
+              <Typography variant="body2" color="text.secondary" noWrap>
+                Modèle: {currentThread.model}
+              </Typography>
+            ) : null}
+            {currentThread.reasoningEffort !== null ? (
+              <Typography variant="body2" color="text.secondary" noWrap>
+                Raisonnement: {currentThread.reasoningEffort}
+              </Typography>
+            ) : null}
+          </Box>
+          <Stack className="chat-header-actions" direction="row" spacing={1}>
+            <IconButton
+              aria-label="Rafraîchir"
+              title="Rafraîchir"
+              disabled={store.isRefreshingThread || store.isSyncingCurrentThread}
+              onClick={handleRefreshThread}
+            >
+              {store.isRefreshingThread || store.isSyncingCurrentThread ? (
+                <CircularProgress size={18} thickness={5} />
+              ) : (
+                <RefreshOutlinedIcon fontSize="small" />
+              )}
+            </IconButton>
+            <IconButton aria-label="Renommer" title="Renommer" onClick={handleRenameOpen}>
+              <EditOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Stack>
         </Box>
-        <Stack className="chat-header-actions" direction="row" spacing={1}>
-          <IconButton
-            aria-label="Rafraîchir"
-            title="Rafraîchir"
-            disabled={store.isRefreshingThread}
-            onClick={handleRefreshThread}
-          >
-            {store.isRefreshingThread ? (
-              <CircularProgress size={18} thickness={5} />
-            ) : (
-              <RefreshOutlinedIcon fontSize="small" />
-            )}
-          </IconButton>
-          <IconButton aria-label="Renommer" title="Renommer" onClick={handleRenameOpen}>
-            <EditOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Stack>
-      </header>
+        {store.isSyncingCurrentThread ? (
+          <LinearProgress
+            sx={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: 2
+            }}
+          />
+        ) : null}
+      </Box>
       {renameModal}
     </>
   );
