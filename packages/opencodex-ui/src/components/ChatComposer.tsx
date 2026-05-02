@@ -33,6 +33,10 @@ export function ChatComposer({
   }
 
   function submitDraft(): void {
+    if (draft.trim().length === 0 || isWorking) {
+      return;
+    }
+
     store.sendMessage(draft);
     setDraft("");
   }

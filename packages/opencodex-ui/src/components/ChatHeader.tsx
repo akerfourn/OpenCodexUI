@@ -1,6 +1,6 @@
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
-import { Box, IconButton, Stack, Typography } from "@mui/material";
+import { Box, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 
@@ -85,7 +85,11 @@ export function ChatHeader({ store }: ChatHeaderProps) {
             disabled={store.isRefreshingThread}
             onClick={handleRefreshThread}
           >
-            <RefreshOutlinedIcon fontSize="small" />
+            {store.isRefreshingThread ? (
+              <CircularProgress size={18} thickness={5} />
+            ) : (
+              <RefreshOutlinedIcon fontSize="small" />
+            )}
           </IconButton>
           <IconButton aria-label="Renommer" title="Renommer" onClick={handleRenameOpen}>
             <EditOutlinedIcon fontSize="small" />

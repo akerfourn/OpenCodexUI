@@ -7,6 +7,7 @@ import { ChatComposer } from "./ChatComposer";
 import { ChatHeaderX } from "./ChatHeader";
 import { ChatMessageListX } from "./ChatMessageList";
 import { ChatEmptyState } from "./ChatEmptyState";
+import { ChatLoadingState } from "./ChatLoadingState";
 
 type ChatViewProps = {
   store: RootStore;
@@ -14,6 +15,14 @@ type ChatViewProps = {
 
 export function ChatView({ store }: ChatViewProps) {
   const currentThread = store.currentThread;
+
+  if (store.isCreatingThread) {
+    return (
+      <Stack className="chat-view">
+        <ChatLoadingState label="Création du chat..." fillView />
+      </Stack>
+    );
+  }
 
   if (currentThread === null) {
     return (
@@ -23,10 +32,17 @@ export function ChatView({ store }: ChatViewProps) {
     );
   }
 
+  const isLoadingCurrentThread = store.loadingThreadId === currentThread.id && store.messages.length === 0;
+  const messageContent = isLoadingCurrentThread ? (
+    <ChatLoadingState label="Chargement du chat..." />
+  ) : (
+    <ChatMessageListX store={store} />
+  );
+
   return (
     <Stack className="chat-view">
       <ChatHeaderX store={store} />
-      <ChatMessageListX store={store} />
+      {messageContent}
       <ChatActivityPanelX store={store} />
       <ChatComposer
         store={store}
@@ -34,7 +50,7 @@ export function ChatView({ store }: ChatViewProps) {
         selectedModel={store.selectedModel}
         reasoningEffort={store.reasoningEffort}
         modelOptions={store.modelOptions}
-        isWorking={store.isWorking}
+        isWorking={store.isWorking || store.isStartingTurn || store.loadingThreadId !== null}
       />
     </Stack>
   );

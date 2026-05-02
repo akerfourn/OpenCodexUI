@@ -1,5 +1,5 @@
 import { observer } from "mobx-react-lite";
-import { Box, ListItemButton, ListItemIcon, Typography } from "@mui/material";
+import { Box, CircularProgress, ListItemButton, ListItemIcon, Typography } from "@mui/material";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
@@ -17,15 +17,21 @@ export function ThreadButton({ store, thread }: ThreadButtonProps) {
   }
 
   const isActive = store.currentThread?.id === thread.id;
+  const isLoading = store.loadingThreadId === thread.id;
 
   return (
     <ListItemButton
       selected={isActive}
+      disabled={isLoading}
       onClick={handleOpenThread}
       sx={{ mb: 0.5, alignItems: "flex-start", borderRadius: 1 }}
     >
       <ListItemIcon sx={{ minWidth: 28, color: "inherit", mt: "2px" }}>
-        <ChatBubbleOutlineOutlinedIcon fontSize="small" />
+        {isLoading ? (
+          <CircularProgress size={16} thickness={5} />
+        ) : (
+          <ChatBubbleOutlineOutlinedIcon fontSize="small" />
+        )}
       </ListItemIcon>
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Typography variant="body2" noWrap>

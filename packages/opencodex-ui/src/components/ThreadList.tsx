@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  LinearProgress,
   Tab,
   Tabs,
   TextField,
@@ -72,6 +73,10 @@ export function ThreadList({ store }: ThreadListProps) {
         <Typography variant="body2" color="text.secondary" sx={{ px: 1.5, pb: 1.25 }}>
           {filterNotice}
         </Typography>
+      ) : null}
+
+      {store.isLoadingThreads ? (
+        <LinearProgress sx={{ mx: 1.5, mb: 1 }} />
       ) : null}
 
       <div className="thread-groups">

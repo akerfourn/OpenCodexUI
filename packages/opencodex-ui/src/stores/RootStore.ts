@@ -34,8 +34,13 @@ export class RootStore {
   searchTerm = "";
   errorMessage: string | null = null;
   connectionStatus = "stopped";
+  isBootstrapping = false;
+  isLoadingThreads = false;
+  isCreatingThread = false;
+  isStartingTurn = false;
   isWorking = false;
   isRefreshingThread = false;
+  loadingThreadId: string | null = null;
   activeTurnId: string | null = null;
   currentProjectFilterAvailable = true;
 
@@ -74,7 +79,15 @@ export class RootStore {
   }
 
   async bootstrap(): Promise<void> {
-    await this.transport.request({ type: "app.bootstrap" });
+    this.isBootstrapping = true;
+    this.isLoadingThreads = true;
+
+    try {
+      await this.transport.request({ type: "app.bootstrap" });
+    } catch {
+      this.isBootstrapping = false;
+      this.isLoadingThreads = false;
+    }
   }
 
   handleEvent(event: OpenCodexEvent): void {
@@ -89,13 +102,17 @@ export class RootStore {
         this.reasoningEffort = event.settings.defaultReasoningEffort ?? "medium";
         return;
       case "threads.updated":
+        this.isBootstrapping = false;
+        this.isLoadingThreads = false;
         this.threads = event.threads;
         this.currentProjectFilterAvailable = event.currentProjectFilterAvailable;
         logThreadsForDebug(event.threads, this.scope, this.searchTerm);
         return;
       case "thread.opened":
       case "thread.created":
+        this.isCreatingThread = false;
         this.isRefreshingThread = false;
+        this.loadingThreadId = null;
         this.currentThread = event.thread;
         this.messages = event.messages;
         this.activity = [];
@@ -111,6 +128,7 @@ export class RootStore {
         this.applyThreadRename(event.threadId, event.name);
         return;
       case "message.started":
+        this.isStartingTurn = false;
         this.currentThread = this.currentThread ?? this.findThread(event.threadId);
         this.messages.push(event.message);
         return;
@@ -123,6 +141,7 @@ export class RootStore {
         }
         return;
       case "turn.started":
+        this.isStartingTurn = false;
         this.isWorking = true;
         this.activeTurnId = event.turnId;
         return;
@@ -145,13 +164,20 @@ export class RootStore {
         this.errorMessage = event.details === undefined
           ? event.message
           : `${event.message}\n${JSON.stringify(event.details, null, 2)}`;
+        this.isBootstrapping = false;
+        this.isLoadingThreads = false;
+        this.isCreatingThread = false;
+        this.isStartingTurn = false;
         this.isWorking = false;
         this.isRefreshingThread = false;
+        this.loadingThreadId = null;
         return;
     }
   }
 
   refreshThreads(): void {
+    this.isLoadingThreads = true;
+
     console.info("[OpenCodexUI] threads.list request", {
       scope: this.scope,
       searchTerm: this.searchTerm
@@ -165,6 +191,20 @@ export class RootStore {
   }
 
   openThread(threadId: string): void {
+    if (this.loadingThreadId === threadId) {
+      return;
+    }
+
+    const isChangingThread = this.currentThread?.id !== threadId;
+    this.loadingThreadId = threadId;
+    this.errorMessage = null;
+
+    if (isChangingThread) {
+      this.currentThread = this.findThread(threadId) ?? this.currentThread;
+      this.messages = [];
+      this.activity = [];
+    }
+
     void this.transport.request({ type: "threads.open", threadId });
   }
 
@@ -178,6 +218,11 @@ export class RootStore {
   }
 
   createThread(): void {
+    this.isCreatingThread = true;
+    this.loadingThreadId = null;
+    this.currentThread = null;
+    this.messages = [];
+    this.activity = [];
     void this.transport.request({ type: "threads.create" });
   }
 
@@ -188,9 +233,11 @@ export class RootStore {
   ): void {
     const trimmedText = text.trim();
 
-    if (trimmedText.length === 0 || this.isWorking) {
+    if (trimmedText.length === 0 || this.isWorking || this.isStartingTurn) {
       return;
     }
+
+    this.isStartingTurn = true;
 
     void this.transport.request({
       type: "turn.start",
