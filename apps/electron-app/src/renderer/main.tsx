@@ -1,3 +1,6 @@
+/**
+ * Boots the React renderer inside Electron and refreshes the active thread on focus.
+ */
 import "highlight.js/styles/github-dark.min.css";
 import "@open-codex-ui/opencodex-ui/src/styles.css";
 

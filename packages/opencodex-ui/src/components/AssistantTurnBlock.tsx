@@ -1,3 +1,6 @@
+/**
+ * Renders the assistant turn block component for the OpenCodex UI.
+ */
 import { useEffect, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -21,9 +24,23 @@ type AssistantTurnBlockProps = {
   isRunning: boolean;
   lastMessageRef: RefObject<HTMLElement>;
   isLast: boolean;
-  onOpenLink(href: string): void;
+/**
+ * Handles on open link.
+ *
+ * @param href Link target to open.
+ *
+ * @returns Nothing.
+ */
+onOpenLink(href: string): void;
 };
 
+/**
+ * Renders the assistant turn block component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function AssistantTurnBlock({
   turn,
   isRunning,
@@ -138,6 +155,13 @@ export function AssistantTurnBlock({
   );
 }
 
+/**
+ * Returns block kind.
+ *
+ * @param items Items.
+ *
+ * @returns Computed value.
+ */
 function getBlockKind(items: OpenCodexTurnItem[]): "reasoning" | "activity" | "mixed" {
   const hasCommentary = items.some(
     (item) => item.role === "assistant" && item.phase === "commentary"
@@ -155,6 +179,15 @@ function getBlockKind(items: OpenCodexTurnItem[]): "reasoning" | "activity" | "m
   return "activity";
 }
 
+/**
+ * Handles format block label.
+ *
+ * @param kind Kind.
+ * @param durationMs Duration ms.
+ * @param t T.
+ *
+ * @returns Computed string value.
+ */
 function formatBlockLabel(
   kind: "reasoning" | "activity" | "mixed",
   durationMs: number | null,
@@ -171,6 +204,13 @@ function formatBlockLabel(
   return durationLabel === null ? baseLabel : `${baseLabel} (${durationLabel})`;
 }
 
+/**
+ * Handles format duration.
+ *
+ * @param durationMs Duration ms.
+ *
+ * @returns String value, or `null` when unavailable.
+ */
 function formatDuration(durationMs: number | null): string | null {
   if (durationMs === null || durationMs <= 0) {
     return null;
@@ -194,6 +234,13 @@ function formatDuration(durationMs: number | null): string | null {
   return segments.join(" ");
 }
 
+/**
+ * Reads started at time.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Computed value.
+ */
 function readStartedAtTime(value: string | null): number {
   if (value === null) {
     return Date.now();
@@ -203,10 +250,25 @@ function readStartedAtTime(value: string | null): number {
   return Number.isNaN(time) ? Date.now() : time;
 }
 
+/**
+ * Checks whether prelude item.
+ *
+ * @param item Item payload.
+ *
+ * @returns `true` when the condition is met.
+ */
 function isPreludeItem(item: OpenCodexTurnItem): boolean {
   return item.role === "activity" || (item.role === "assistant" && item.phase === "commentary");
 }
 
+/**
+ * Builds message key.
+ *
+ * @param item Item payload.
+ * @param index Index.
+ *
+ * @returns Computed string value.
+ */
 function buildMessageKey(item: OpenCodexTurnItem, index: number): string {
   return [
     "assistantTurn",

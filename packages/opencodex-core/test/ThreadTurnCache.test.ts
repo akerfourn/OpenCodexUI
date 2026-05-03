@@ -1,3 +1,6 @@
+/**
+ * Covers thread turn cache merging, ordering, and title updates.
+ */
 import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache } from "../src/ThreadTurnCache";

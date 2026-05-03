@@ -1,3 +1,6 @@
+/**
+ * Renders the chat loading state component for the OpenCodex UI.
+ */
 import { CircularProgress, Stack, Typography } from "@mui/material";
 
 type ChatLoadingStateProps = {
@@ -5,6 +8,13 @@ type ChatLoadingStateProps = {
   fillView?: boolean;
 };
 
+/**
+ * Renders the chat loading state component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ChatLoadingState({ label, fillView = false }: ChatLoadingStateProps) {
   return (
     <Stack

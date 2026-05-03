@@ -1,3 +1,6 @@
+/**
+ * Declares the shared protocol types exchanged between the UI, backend, and transport layers.
+ */
 export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
 export type OpenCodexMessagePhase = "commentary" | "final_answer";
 

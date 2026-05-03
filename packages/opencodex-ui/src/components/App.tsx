@@ -1,3 +1,6 @@
+/**
+ * Renders the app component for the OpenCodex UI.
+ */
 import { observer } from "mobx-react-lite";
 import { Box } from "@mui/material";
 
@@ -11,6 +14,13 @@ type AppProps = {
   store: RootStore;
 };
 
+/**
+ * Renders the app component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function App({ store }: AppProps) {
   const errorContent = store.errorMessage === null ? null : (
     <pre className="error-banner">{store.errorMessage}</pre>

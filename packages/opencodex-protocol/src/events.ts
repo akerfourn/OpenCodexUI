@@ -1,3 +1,6 @@
+/**
+ * Declares the backend events emitted to the OpenCodex UI.
+ */
 import type {
   OpenCodexActivity,
   OpenCodexApproval,

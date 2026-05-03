@@ -1,3 +1,6 @@
+/**
+ * Renders the message row component for the OpenCodex UI.
+ */
 import { memo, type ReactNode, type RefObject } from "react";
 import { Box, Paper } from "@mui/material";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
@@ -23,13 +26,27 @@ import { MarkdownMessageM } from "./MarkdownMessage";
 type MessageRowProps = {
   isLast: boolean;
   lastMessageRef: RefObject<HTMLElement>;
-  onOpenLink(href: string): void;
+/**
+ * Handles on open link.
+ *
+ * @param href Link target to open.
+ *
+ * @returns Nothing.
+ */
+onOpenLink(href: string): void;
   role: OpenCodexMessage["role"];
   phase?: OpenCodexMessage["phase"];
   kind?: string;
   content: string;
 };
 
+/**
+ * Renders the message row component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function MessageRow({
   isLast,
   lastMessageRef,
@@ -122,6 +139,13 @@ export function MessageRow({
 
 export const MessageRowM = memo(MessageRow);
 
+/**
+ * Handles render activity kind icon.
+ *
+ * @param kind Kind.
+ *
+ * @returns Computed value.
+ */
 function renderActivityKindIcon(kind?: string): ReactNode {
   if (kind === "reasoning") {
     return <PsychologyOutlinedIcon fontSize="small" />;

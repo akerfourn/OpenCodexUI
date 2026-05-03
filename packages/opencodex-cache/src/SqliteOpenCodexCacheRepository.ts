@@ -1,3 +1,6 @@
+/**
+ * Persists thread metadata, turns, and sync state inside a local SQLite cache.
+ */
 import fs from "node:fs";
 import path from "node:path";
 
@@ -48,15 +51,29 @@ type TurnRow = {
   raw_json: string;
 };
 
+/**
+ * Creates the SQLite-backed cache repository used by the desktop application.
+ *
+ * @param options Directory and optional file name for the SQLite database.
+ * @returns Cache repository implementation backed by SQLite.
+ */
 export function createOpenCodexSqliteCacheRepository(
   options: SqliteOpenCodexCacheRepositoryOptions
 ): OpenCodexCacheRepository {
   return new SqliteOpenCodexCacheRepository(options);
 }
 
+/**
+ * Implements the thread cache contract with a local SQLite database.
+ */
 export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository {
   private readonly database: BetterSqliteDatabase;
 
+  /**
+   * Opens the SQLite database, configures pragmas, and runs migrations.
+   *
+   * @param options Directory and optional file name for the database file.
+   */
   constructor(options: SqliteOpenCodexCacheRepositoryOptions) {
     fs.mkdirSync(options.directory, { recursive: true });
 
@@ -67,10 +84,23 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     runMigrations(this.database);
   }
 
+  /**
+   * Upserts the cached thread index entries.
+   *
+   * @param threads Thread summaries to persist.
+   * @returns Promise resolved once the index has been written.
+   */
   async upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void> {
     this.writeThreadIndex(threads);
   }
 
+  /**
+   * Persists a user-defined thread title.
+   *
+   * @param threadId Identifier of the thread to update.
+   * @param title Custom title chosen by the user.
+   * @returns Promise resolved once the title update has been written.
+   */
   async updateThreadTitle(threadId: string, title: string): Promise<void> {
     this.database
       .prepare(
@@ -89,6 +119,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       });
   }
 
+  /**
+   * Persists the title currently reported by Codex for a thread.
+   *
+   * @param threadId Identifier of the thread to update.
+   * @param title Codex-provided thread title.
+   * @returns Promise resolved once the title update has been written.
+   */
   async updateThreadCodexTitle(threadId: string, title: string): Promise<void> {
     this.database
       .prepare(
@@ -111,10 +148,22 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       });
   }
 
+  /**
+   * Deletes a cached thread and its associated turns.
+   *
+   * @param threadId Identifier of the thread to remove.
+   * @returns Promise resolved once the thread has been deleted.
+   */
   async deleteThread(threadId: string): Promise<void> {
     this.database.prepare("DELETE FROM threads WHERE id = ?").run(threadId);
   }
 
+  /**
+   * Lists cached threads filtered by scope and optional search term.
+   *
+   * @param query Scope, current project, and search filters.
+   * @returns Promise resolved with the matching cached thread summaries.
+   */
   async listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]> {
     const clauses: string[] = [];
     const params: Record<string, string> = {};
@@ -159,6 +208,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     return rows.map((row) => mapThreadRow(row));
   }
 
+  /**
+   * Reads a cached thread snapshot along with its latest cached turns.
+   *
+   * @param threadId Identifier of the thread to read.
+   * @param options Optional read settings such as the latest turn limit.
+   * @returns Promise resolved with the cached snapshot, or `null` when not found.
+   */
   async getThread(
     threadId: string,
     options: CachedThreadReadOptions = {}
@@ -188,6 +244,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     };
   }
 
+  /**
+   * Reads cached turns that come before a known turn identifier.
+   *
+   * @param query Thread identifier, pivot turn, and page size.
+   * @returns Promise resolved with older cached turns and pagination state.
+   */
   async getOlderTurns(query: CachedOlderTurnsQuery): Promise<CachedOlderTurnsResult> {
     const rows = this.readOlderTurnRows(query.threadId, query.beforeTurnId, query.limit);
     const turns = parseTurnRows(rows);
@@ -199,6 +261,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     };
   }
 
+  /**
+   * Replaces the stored thread snapshot with a full snapshot payload.
+   *
+   * @param snapshot Thread summary, turns, and sync state to persist.
+   * @returns Promise resolved once the snapshot transaction has completed.
+   */
   async saveThreadSnapshot(snapshot: CachedThreadSnapshot): Promise<void> {
     const writeSnapshot = this.database.transaction(() => {
       this.writeThreadIndex([snapshot.thread]);
@@ -210,6 +278,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     writeSnapshot();
   }
 
+  /**
+   * Persists incremental turn and sync-state updates for a thread.
+   *
+   * @param delta Partial thread update to store.
+   * @returns Promise resolved once the delta transaction has completed.
+   */
   async saveThreadDelta(delta: CachedThreadDelta): Promise<void> {
     const writeDelta = this.database.transaction(() => {
       this.writeTurns(delta.threadId, delta.turns);
@@ -219,6 +293,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     writeDelta();
   }
 
+  /**
+   * Reads the cached sync state for a thread.
+   *
+   * @param threadId Identifier of the thread to inspect.
+   * @returns Promise resolved with the sync state, or `null` when the thread is unknown.
+   */
   async getSyncState(threadId: string): Promise<CachedThreadSyncState | null> {
     const thread = this.readThreadRow(threadId);
 
@@ -229,15 +309,32 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     return mapSyncState(thread);
   }
 
+  /**
+   * Closes the underlying SQLite connection.
+   *
+   * @returns Promise resolved once the database has been closed.
+   */
   async close(): Promise<void> {
     this.database.close();
   }
 
+  /**
+   * Reads a cached thread summary by identifier.
+   *
+   * @param threadId Identifier of the thread to read.
+   * @returns Cached thread summary, or `null` when no row exists.
+   */
   private readThread(threadId: string): CachedThreadSummary | null {
     const row = this.readThreadRow(threadId);
     return row === null ? null : mapThreadRow(row);
   }
 
+  /**
+   * Reads the joined thread row and project metadata from SQLite.
+   *
+   * @param threadId Identifier of the thread to read.
+   * @returns Joined database row, or `null` when the thread is unknown.
+   */
   private readThreadRow(threadId: string): ThreadRow | null {
     const row = this.database
       .prepare(
@@ -256,6 +353,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     return row ?? null;
   }
 
+  /**
+   * Reads the cached sync state for a thread, or returns an empty default state.
+   *
+   * @param threadId Identifier of the thread to inspect.
+   * @returns Cached sync state for the thread.
+   */
   private readSyncState(threadId: string): CachedThreadSyncState {
     const row = this.readThreadRow(threadId);
 
@@ -266,6 +369,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     return createEmptySyncState(threadId);
   }
 
+  /**
+   * Reads the latest cached turns for a thread, optionally capped to a fixed count.
+   *
+   * @param threadId Identifier of the thread whose turns should be read.
+   * @param limit Optional maximum number of latest turns to keep.
+   * @returns Ordered turn rows from oldest to newest within the requested window.
+   */
   private readLatestTurnRows(threadId: string, limit: number | null): TurnRow[] {
     if (limit === null || limit <= 0) {
       return this.database
@@ -297,6 +407,14 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       .all({ threadId, limit }) as TurnRow[];
   }
 
+  /**
+   * Reads cached turns that come before a known turn identifier.
+   *
+   * @param threadId Identifier of the thread whose turns should be read.
+   * @param beforeTurnId Identifier used as the exclusive upper bound.
+   * @param limit Maximum number of older turns to read.
+   * @returns Ordered turn rows from oldest to newest within the requested page.
+   */
   private readOlderTurnRows(threadId: string, beforeTurnId: string, limit: number): TurnRow[] {
     return this.database
       .prepare(
@@ -323,6 +441,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       .all({ threadId, beforeTurnId, limit }) as TurnRow[];
   }
 
+  /**
+   * Checks whether more cached turns exist before a known turn identifier.
+   *
+   * @param threadId Identifier of the thread to inspect.
+   * @param beforeTurnId Identifier used as the exclusive upper bound.
+   * @returns `true` when at least one older cached turn exists.
+   */
   private hasMoreCachedTurnsBefore(threadId: string, beforeTurnId: string | null): boolean {
     if (beforeTurnId === null || beforeTurnId.length === 0) {
       return false;
@@ -350,6 +475,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     return row !== undefined;
   }
 
+  /**
+   * Upserts thread and project index rows inside a single transaction.
+   *
+   * @param threads Thread summaries to store.
+   * @returns Nothing.
+   */
   private writeThreadIndex(threads: CachedThreadSummary[]): void {
     const now = new Date().toISOString();
     const upsertProject = this.database.prepare(
@@ -456,6 +587,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     writeIndex();
   }
 
+  /**
+   * Upserts raw turn payloads for a thread.
+   *
+   * @param threadId Identifier of the thread owning the turns.
+   * @param turns Raw turn payloads to persist.
+   * @returns Nothing.
+   */
   private writeTurns(threadId: string, turns: unknown[]): void {
     const upsertTurn = this.database.prepare(
       `
@@ -509,6 +647,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     }
   }
 
+  /**
+   * Updates the persisted sync-state columns for a thread.
+   *
+   * @param syncState Sync state snapshot to write.
+   * @returns Nothing.
+   */
   private writeSyncState(syncState: CachedThreadSyncState): void {
     this.database
       .prepare(
@@ -535,6 +679,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
   }
 }
 
+/**
+ * Applies all database schema migrations required by the SQLite cache.
+ *
+ * @param database Open SQLite database connection.
+ * @returns Nothing.
+ */
 function runMigrations(database: BetterSqliteDatabase): void {
   database.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -611,6 +761,12 @@ function runMigrations(database: BetterSqliteDatabase): void {
   applySchemaMigrationV2(database);
 }
 
+/**
+ * Applies the second cache schema migration when it has not been installed yet.
+ *
+ * @param database Open SQLite database connection.
+ * @returns Nothing.
+ */
 function applySchemaMigrationV2(database: BetterSqliteDatabase): void {
   const migration = database
     .prepare("SELECT version FROM schema_migrations WHERE version = ?")
@@ -642,6 +798,15 @@ function applySchemaMigrationV2(database: BetterSqliteDatabase): void {
   applyMigration();
 }
 
+/**
+ * Adds a column to a table when the column is missing from the current schema.
+ *
+ * @param database Open SQLite database connection.
+ * @param tableName Table to alter.
+ * @param columnName Column to add when missing.
+ * @param definition SQL column definition appended to the `ALTER TABLE`.
+ * @returns Nothing.
+ */
 function addColumnIfMissing(
   database: BetterSqliteDatabase,
   tableName: string,
@@ -660,6 +825,12 @@ function addColumnIfMissing(
   database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
 }
 
+/**
+ * Maps a raw SQLite thread row into the public cached thread summary shape.
+ *
+ * @param row Joined thread row read from SQLite.
+ * @returns Normalized cached thread summary.
+ */
 function mapThreadRow(row: ThreadRow): CachedThreadSummary {
   const projectName = row.project_display_name ?? row.project_default_name;
   const title = resolveCachedThreadTitle(row.codex_title, row.custom_title, row.preview ?? "");
@@ -684,6 +855,14 @@ function mapThreadRow(row: ThreadRow): CachedThreadSummary {
   return thread;
 }
 
+/**
+ * Resolves the effective thread title stored in the cache.
+ *
+ * @param codexTitle Title reported by Codex.
+ * @param customTitle User-defined thread title.
+ * @param preview Fallback preview text from the thread.
+ * @returns Effective title shown by the application.
+ */
 function resolveCachedThreadTitle(
   codexTitle: string,
   customTitle: string | null,
@@ -703,16 +882,34 @@ function resolveCachedThreadTitle(
   return preview;
 }
 
+/**
+ * Parses serialized turn rows and drops rows that no longer contain valid JSON.
+ *
+ * @param rows Turn rows read from SQLite.
+ * @returns Parsed raw turn payloads.
+ */
 function parseTurnRows(rows: TurnRow[]): unknown[] {
   return rows
     .map((row) => parseTurn(row.raw_json))
     .filter((turn): turn is unknown => turn !== null);
 }
 
+/**
+ * Creates the synthetic cache cursor used to page through stored turns.
+ *
+ * @param turnId Oldest cached turn identifier currently exposed to the UI.
+ * @returns Synthetic cache cursor string.
+ */
 function createCacheOlderCursor(turnId: string): string {
   return `cache:${turnId}`;
 }
 
+/**
+ * Maps SQLite sync-state columns into the cache sync-state shape.
+ *
+ * @param row Joined thread row containing sync-state columns.
+ * @returns Normalized sync-state snapshot.
+ */
 function mapSyncState(row: ThreadRow): CachedThreadSyncState {
   return {
     threadId: row.id,
@@ -725,6 +922,12 @@ function mapSyncState(row: ThreadRow): CachedThreadSyncState {
   };
 }
 
+/**
+ * Creates an empty sync-state snapshot for an unknown thread.
+ *
+ * @param threadId Identifier of the thread being initialized.
+ * @returns Sync-state object with default empty values.
+ */
 function createEmptySyncState(threadId: string): CachedThreadSyncState {
   return {
     threadId,
@@ -737,6 +940,12 @@ function createEmptySyncState(threadId: string): CachedThreadSyncState {
   };
 }
 
+/**
+ * Extracts the persisted turn metadata used for sorting and indexing.
+ *
+ * @param turn Raw turn payload read from the backend.
+ * @returns Serializable turn metadata for the cache tables.
+ */
 function readTurnMetadata(turn: unknown): {
   id: string;
   status: string | null;
@@ -758,6 +967,12 @@ function readTurnMetadata(turn: unknown): {
   };
 }
 
+/**
+ * Parses a serialized turn payload from SQLite.
+ *
+ * @param value Serialized JSON turn payload.
+ * @returns Parsed turn object, or `null` when parsing fails.
+ */
 function parseTurn(value: string): unknown | null {
   try {
     return JSON.parse(value);
@@ -766,6 +981,12 @@ function parseTurn(value: string): unknown | null {
   }
 }
 
+/**
+ * Reads a plain object from an unknown JSON value.
+ *
+ * @param value Unknown value to normalize.
+ * @returns Plain object, or an empty object when the value is not an object.
+ */
 function readObject(value: unknown): Record<string, unknown> {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -774,14 +995,32 @@ function readObject(value: unknown): Record<string, unknown> {
   return {};
 }
 
+/**
+ * Reads a string from an unknown value.
+ *
+ * @param value Unknown value to normalize.
+ * @returns String value, or an empty string when the value is not a string.
+ */
 function readString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+/**
+ * Reads a non-empty string from an unknown value.
+ *
+ * @param value Unknown value to normalize.
+ * @returns Non-empty string value, or `null` when unavailable.
+ */
 function readNullableString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+/**
+ * Reads a finite number from an unknown value.
+ *
+ * @param value Unknown value to normalize.
+ * @returns Finite number value, or `null` when unavailable.
+ */
 function readNullableNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }

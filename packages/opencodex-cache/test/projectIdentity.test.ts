@@ -1,3 +1,6 @@
+/**
+ * Verifies how project identities are derived from POSIX and Windows paths.
+ */
 import { describe, expect, it } from "vitest";
 
 import { createProjectIdentity } from "../src/projectIdentity";

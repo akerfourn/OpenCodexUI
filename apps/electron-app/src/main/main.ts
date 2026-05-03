@@ -1,3 +1,6 @@
+/**
+ * Boots the Electron main process and connects the application window to the backend bridge.
+ */
 import path from "node:path";
 
 import { app, BrowserWindow } from "electron";
@@ -10,6 +13,11 @@ let bridgeServer: ElectronBridgeServer | null = null;
 
 app.setName("OpenCodexUI");
 
+/**
+ * Starts the Electron application once the runtime is ready.
+ *
+ * @returns Promise resolved after the main window and bridge are initialized.
+ */
 async function main(): Promise<void> {
   await app.whenReady();
 
@@ -57,6 +65,11 @@ app.on("before-quit", () => {
 
 void main();
 
+/**
+ * Resolves the project path associated with the current Electron session.
+ *
+ * @returns Project path derived from the environment or the current working directory.
+ */
 function resolveProjectPath(): string {
   return process.env.OPENCODEX_PROJECT_PATH
     ?? process.env.INIT_CWD

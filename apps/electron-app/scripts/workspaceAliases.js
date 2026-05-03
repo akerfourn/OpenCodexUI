@@ -1,3 +1,6 @@
+/**
+ * Resolves workspace package imports to local source files during development builds.
+ */
 import path from "node:path";
 
 const WORKSPACE_PACKAGES = [
@@ -19,6 +22,12 @@ const WORKSPACE_PACKAGES = [
   }
 ];
 
+/**
+ * Creates Vite aliases that point workspace package imports to their source entry points.
+ *
+ * @param repoRoot Repository root used to resolve workspace package locations.
+ * @returns Array of alias entries compatible with Vite resolution.
+ */
 export function createWorkspaceAliases(repoRoot) {
   return WORKSPACE_PACKAGES.flatMap((workspacePackage) => {
     const packageRoot = path.resolve(repoRoot, workspacePackage.packageDir);
@@ -38,6 +47,12 @@ export function createWorkspaceAliases(repoRoot) {
   });
 }
 
+/**
+ * Creates an esbuild resolver for workspace package imports.
+ *
+ * @param repoRoot Repository root used to resolve workspace package locations.
+ * @returns esbuild plugin descriptor that maps workspace imports to source files.
+ */
 export function createWorkspaceResolvePlugin(repoRoot) {
   const packages = WORKSPACE_PACKAGES.map((workspacePackage) => {
     return {
@@ -71,10 +86,22 @@ export function createWorkspaceResolvePlugin(repoRoot) {
   };
 }
 
+/**
+ * Escapes a string so it can be safely embedded in a regular expression.
+ *
+ * @param value Raw string to escape.
+ * @returns Escaped string safe to inject into a `RegExp`.
+ */
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * Normalizes Windows paths into POSIX-style paths for bundler configuration.
+ *
+ * @param value Filesystem path to normalize.
+ * @returns Path string that uses forward slashes.
+ */
 function toPosixPath(value) {
   return value.replace(/\\/g, "/");
 }

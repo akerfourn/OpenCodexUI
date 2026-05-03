@@ -1,3 +1,6 @@
+/**
+ * Maps Codex app-server payloads into the OpenCodex UI data structures.
+ */
 import path from "node:path";
 
 import type { CodexNotification, CodexServerRequest } from "@open-codex-ui/codex-rpc";
@@ -14,6 +17,15 @@ import type {
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
+/**
+ * Maps a raw Codex thread payload into the OpenCodex thread shape.
+ *
+ * @param value Value to normalize.
+ * @param model Selected model identifier.
+ * @param reasoningEffort Selected reasoning effort.
+ *
+ * @returns Computed value.
+ */
 export function mapThread(
   value: unknown,
   model: string | null = null,
@@ -42,6 +54,15 @@ export function mapThread(
   };
 }
 
+/**
+ * Resolves display title.
+ *
+ * @param codexTitle Codex title.
+ * @param customTitle Custom title.
+ * @param preview Preview.
+ *
+ * @returns Computed string value.
+ */
 export function resolveDisplayTitle(
   codexTitle: string,
   customTitle: string | null,
@@ -61,6 +82,13 @@ export function resolveDisplayTitle(
   return preview;
 }
 
+/**
+ * Maps thread messages.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Requested values.
+ */
 export function mapThreadMessages(value: unknown): OpenCodexMessage[] {
   const thread = readObject(value);
   const threadId = readString(thread.id);
@@ -69,6 +97,14 @@ export function mapThreadMessages(value: unknown): OpenCodexMessage[] {
   return mapTurnsToMessages(threadId, turns);
 }
 
+/**
+ * Maps raw turn payloads into flattened UI messages.
+ *
+ * @param threadId Thread identifier.
+ * @param turns Turn collection to process.
+ *
+ * @returns Requested values.
+ */
 export function mapTurnsToMessages(threadId: string, turns: unknown[]): OpenCodexMessage[] {
   const messages: OpenCodexMessage[] = [];
 
@@ -114,6 +150,15 @@ export function mapTurnsToMessages(threadId: string, turns: unknown[]): OpenCode
   return messages;
 }
 
+/**
+ * Maps raw turn payloads into structured UI turns.
+ *
+ * @param threadId Thread identifier.
+ * @param turns Turn collection to process.
+ * @param language Language used for localized labels.
+ *
+ * @returns Requested values.
+ */
 export function mapTurnsToOpenCodexTurns(
   threadId: string,
   turns: unknown[],
@@ -122,6 +167,13 @@ export function mapTurnsToOpenCodexTurns(
   return turns.map((turnValue) => mapTurnToOpenCodexTurn(threadId, turnValue, language));
 }
 
+/**
+ * Creates an activity item from a Codex notification when supported.
+ *
+ * @param notification Notification payload emitted by Codex.
+ *
+ * @returns Computed value.
+ */
 export function createActivityFromNotification(notification: CodexNotification): OpenCodexActivity | null {
   const params = readObject(notification.params);
   const threadId = readString(params.threadId);
@@ -155,6 +207,14 @@ export function createActivityFromNotification(notification: CodexNotification):
   return null;
 }
 
+/**
+ * Creates a UI approval request from a server-side approval payload.
+ *
+ * @param request Request payload.
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed value.
+ */
 export function createApprovalRequest(
   request: CodexServerRequest,
   language: OpenCodexLanguage = "fr"
@@ -172,6 +232,14 @@ export function createApprovalRequest(
   };
 }
 
+/**
+ * Builds the approval response payload expected by the server method.
+ *
+ * @param method Method name or method identifier.
+ * @param decision Approval decision to apply.
+ *
+ * @returns Computed value.
+ */
 export function buildApprovalResponse(method: string, decision: OpenCodexApprovalDecision): unknown {
   if (method === "item/commandExecution/requestApproval") {
     return { decision };
@@ -188,6 +256,13 @@ export function buildApprovalResponse(method: string, decision: OpenCodexApprova
   return { decision };
 }
 
+/**
+ * Reads object.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Computed value.
+ */
 export function readObject(value: unknown): Record<string, unknown> {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -196,14 +271,35 @@ export function readObject(value: unknown): Record<string, unknown> {
   return {};
 }
 
+/**
+ * Reads string.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Computed string value.
+ */
 export function readString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+/**
+ * Reads nullable number.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Numeric value, or `null` when unavailable.
+ */
 export function readNullableNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/**
+ * Reads message phase.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Computed value.
+ */
 export function readMessagePhase(value: unknown): OpenCodexMessagePhase | null {
   const phase = readString(value);
 
@@ -214,6 +310,16 @@ export function readMessagePhase(value: unknown): OpenCodexMessagePhase | null {
   return null;
 }
 
+/**
+ * Maps user message.
+ *
+ * @param threadId Thread identifier.
+ * @param item Item payload.
+ * @param turnId Turn identifier.
+ * @param turnDurationMs Turn duration ms.
+ *
+ * @returns Computed value.
+ */
 function mapUserMessage(
   threadId: string,
   item: Record<string, unknown>,
@@ -240,6 +346,15 @@ function mapUserMessage(
   };
 }
 
+/**
+ * Maps turn to open codex turn.
+ *
+ * @param threadId Thread identifier.
+ * @param turnValue Raw turn payload.
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed value.
+ */
 function mapTurnToOpenCodexTurn(
   threadId: string,
   turnValue: unknown,
@@ -262,6 +377,14 @@ function mapTurnToOpenCodexTurn(
   };
 }
 
+/**
+ * Maps turn item.
+ *
+ * @param itemValue Raw item payload.
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed value.
+ */
 function mapTurnItem(itemValue: unknown, language: OpenCodexLanguage): OpenCodexTurnItem | null {
   const item = readObject(itemValue);
   const type = readString(item.type);
@@ -284,6 +407,13 @@ function mapTurnItem(itemValue: unknown, language: OpenCodexLanguage): OpenCodex
   return mapActivityTurnItem(item, language);
 }
 
+/**
+ * Maps user turn item.
+ *
+ * @param item Item payload.
+ *
+ * @returns Computed value.
+ */
 function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
   const message = mapUserMessage("", item, "", null);
 
@@ -296,6 +426,14 @@ function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
   };
 }
 
+/**
+ * Maps activity turn item.
+ *
+ * @param item Item payload.
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed value.
+ */
 function mapActivityTurnItem(
   item: Record<string, unknown>,
   language: OpenCodexLanguage
@@ -322,6 +460,16 @@ function mapActivityTurnItem(
   };
 }
 
+/**
+ * Maps activity message.
+ *
+ * @param threadId Thread identifier.
+ * @param item Item payload.
+ * @param turnId Turn identifier.
+ * @param turnDurationMs Turn duration ms.
+ *
+ * @returns Computed value.
+ */
 function mapActivityMessage(
   threadId: string,
   item: Record<string, unknown>,
@@ -354,6 +502,14 @@ function mapActivityMessage(
   };
 }
 
+/**
+ * Handles summarize activity item.
+ *
+ * @param item Item payload.
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed string value.
+ */
 function summarizeActivityItem(item: Record<string, unknown>, language: OpenCodexLanguage): string {
   const type = readString(item.type);
   const labels = getCoreLabels(language);
@@ -378,6 +534,15 @@ function summarizeActivityItem(item: Record<string, unknown>, language: OpenCode
   return "";
 }
 
+/**
+ * Handles summarize activity fallback.
+ *
+ * @param type Type.
+ * @param item Item payload.
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed string value.
+ */
 function summarizeActivityFallback(
   type: string,
   item: Record<string, unknown>,
@@ -428,6 +593,13 @@ function summarizeActivityFallback(
   return type;
 }
 
+/**
+ * Handles summarize activity details.
+ *
+ * @param item Item payload.
+ *
+ * @returns Computed string value.
+ */
 function summarizeActivityDetails(item: Record<string, unknown>): string {
   try {
     return JSON.stringify(item, null, 2);
@@ -436,6 +608,15 @@ function summarizeActivityDetails(item: Record<string, unknown>): string {
   }
 }
 
+/**
+ * Creates approval title.
+ *
+ * @param method Method name or method identifier.
+ * @param params Method parameters.
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed string value.
+ */
 function createApprovalTitle(
   method: string,
   params: Record<string, unknown>,
@@ -458,6 +639,13 @@ function createApprovalTitle(
   return method;
 }
 
+/**
+ * Creates approval kind.
+ *
+ * @param method Method name or method identifier.
+ *
+ * @returns Computed value.
+ */
 function createApprovalKind(method: string): OpenCodexApproval["kind"] {
   if (method === "item/commandExecution/requestApproval" || method === "execCommandApproval") {
     return "command";
@@ -470,6 +658,13 @@ function createApprovalKind(method: string): OpenCodexApproval["kind"] {
   return "other";
 }
 
+/**
+ * Reads available decisions.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Requested values.
+ */
 function readAvailableDecisions(value: unknown): OpenCodexApprovalDecision[] {
   if (!Array.isArray(value)) {
     return ["accept", "acceptForSession", "decline", "cancel"];
@@ -479,10 +674,24 @@ function readAvailableDecisions(value: unknown): OpenCodexApprovalDecision[] {
   return decisions.length > 0 ? decisions : ["accept", "decline", "cancel"];
 }
 
+/**
+ * Checks whether approval decision.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Computed value.
+ */
 function isApprovalDecision(value: unknown): value is OpenCodexApprovalDecision {
   return value === "accept" || value === "acceptForSession" || value === "decline" || value === "cancel";
 }
 
+/**
+ * Maps legacy decision.
+ *
+ * @param decision Approval decision to apply.
+ *
+ * @returns Computed string value.
+ */
 function mapLegacyDecision(decision: OpenCodexApprovalDecision): string {
   if (decision === "accept") {
     return "approved";
@@ -499,6 +708,17 @@ function mapLegacyDecision(decision: OpenCodexApprovalDecision): string {
   return "denied";
 }
 
+/**
+ * Creates activity.
+ *
+ * @param id Identifier value.
+ * @param threadId Thread identifier.
+ * @param kind Kind.
+ * @param turnId Turn identifier.
+ * @param content Text content to process.
+ *
+ * @returns Computed value.
+ */
 function createActivity(
   id: string,
   threadId: string,
@@ -516,10 +736,24 @@ function createActivity(
   };
 }
 
+/**
+ * Reads nullable string.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns String value, or `null` when unavailable.
+ */
 function readNullableString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+/**
+ * Reads timestamp.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns String value, or `null` when unavailable.
+ */
 function readTimestamp(value: unknown): string | null {
   if (typeof value !== "number") {
     return null;
@@ -528,10 +762,24 @@ function readTimestamp(value: unknown): string | null {
   return new Date(value * 1000).toISOString();
 }
 
+/**
+ * Creates id.
+ *
+ * @param prefix String prefix used to build an identifier.
+ *
+ * @returns Computed string value.
+ */
 function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+/**
+ * Returns core labels.
+ *
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed value.
+ */
 function getCoreLabels(language: OpenCodexLanguage): CoreLabels {
   if (language === "en") {
     return {

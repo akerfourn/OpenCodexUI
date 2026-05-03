@@ -1,3 +1,6 @@
+/**
+ * Renders the thread button component for the OpenCodex UI.
+ */
 import { observer } from "mobx-react-lite";
 import { Box, CircularProgress, ListItemButton, ListItemIcon, Typography } from "@mui/material";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
@@ -12,6 +15,13 @@ type ThreadButtonProps = {
   thread: OpenCodexThread;
 };
 
+/**
+ * Renders the thread button component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ThreadButton({ store, thread }: ThreadButtonProps) {
   const { t } = useTranslation();
 
@@ -53,6 +63,13 @@ export function ThreadButton({ store, thread }: ThreadButtonProps) {
 
 export const ThreadButtonX = observer(ThreadButton);
 
+/**
+ * Returns thread metadata.
+ *
+ * @param thread Thread payload to process.
+ *
+ * @returns String value, or `null` when unavailable.
+ */
 function getThreadMetadata(thread: OpenCodexThread): string | null {
   const parts = [
     thread.branchName,
@@ -67,6 +84,14 @@ function getThreadMetadata(thread: OpenCodexThread): string | null {
   return parts.join(" - ");
 }
 
+/**
+ * Returns thread title.
+ *
+ * @param thread Thread payload to process.
+ * @param fallbackTitle Fallback title.
+ *
+ * @returns Computed string value.
+ */
 function getThreadTitle(thread: OpenCodexThread, fallbackTitle: string): string {
   if (thread.title.trim().length > 0) {
     return thread.title;
@@ -79,6 +104,13 @@ function getThreadTitle(thread: OpenCodexThread, fallbackTitle: string): string 
   return fallbackTitle;
 }
 
+/**
+ * Checks whether non empty string.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Computed value.
+ */
 function isNonEmptyString(value: string | null | undefined): value is string {
   return value !== null && value !== undefined && value.trim().length > 0;
 }

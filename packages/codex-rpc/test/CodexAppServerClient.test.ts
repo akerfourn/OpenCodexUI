@@ -1,3 +1,6 @@
+/**
+ * Covers the JSON-RPC parsing helpers and the Codex app-server client lifecycle.
+ */
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 
@@ -7,6 +10,9 @@ import { CodexAppServerClient } from "../src/CodexAppServerClient";
 import { parseJsonRpcLine } from "../src/events";
 import type { ProcessLike } from "../src/types";
 
+/**
+ * Simulates a child process compatible with the Codex transport abstraction used in tests.
+ */
 class FakeProcess extends EventEmitter implements ProcessLike {
   readonly stdin = new PassThrough();
   readonly stdout = new PassThrough();
@@ -14,6 +20,11 @@ class FakeProcess extends EventEmitter implements ProcessLike {
   readonly pid = 1234;
   killed = false;
 
+  /**
+   * Simulates terminating the child process and emits a close event.
+   *
+   * @returns `true` to mirror the child-process kill contract.
+   */
   kill(): boolean {
     this.killed = true;
     this.emit("close", 0, null);
@@ -120,6 +131,13 @@ describe("CodexAppServerClient", () => {
   });
 });
 
+/**
+ * Creates a client wired to the provided fake process.
+ *
+ * @param fakeProcess Fake transport process used by the tests.
+ * @param requestTimeoutMs Request timeout configured for the client.
+ * @returns Client instance ready to be started by the test.
+ */
 function createClient(fakeProcess: FakeProcess, requestTimeoutMs = 100): CodexAppServerClient {
   return new CodexAppServerClient({
     processFactory: () => fakeProcess,
@@ -127,6 +145,12 @@ function createClient(fakeProcess: FakeProcess, requestTimeoutMs = 100): CodexAp
   });
 }
 
+/**
+ * Responds only to the initialization request expected during client startup.
+ *
+ * @param fakeProcess Fake process whose stdout is used to answer requests.
+ * @returns Nothing.
+ */
 function respondToInitialize(fakeProcess: FakeProcess): void {
   respondToRequests(fakeProcess, (request) => {
     if (request.method === "initialize") {
@@ -135,6 +159,13 @@ function respondToInitialize(fakeProcess: FakeProcess): void {
   });
 }
 
+/**
+ * Hooks the fake process stdin so each emitted request can be inspected and answered.
+ *
+ * @param fakeProcess Fake process whose stdin carries outgoing requests.
+ * @param callback Callback invoked with each parsed request object.
+ * @returns Nothing.
+ */
 function respondToRequests(
   fakeProcess: FakeProcess,
   callback: (request: Record<string, unknown>) => void

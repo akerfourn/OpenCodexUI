@@ -1,3 +1,6 @@
+/**
+ * Re-exports the cache repository contracts and SQLite implementation.
+ */
 export type {
   CachedProject,
   CachedThreadDelta,

@@ -1,3 +1,6 @@
+/**
+ * Renders the chat composer component for the OpenCodex UI.
+ */
 import { useEffect, useState } from "react";
 import { Button, MenuItem, Stack, TextField } from "@mui/material";
 import { useTranslation } from "react-i18next";
@@ -15,6 +18,13 @@ type ChatComposerProps = {
   isWorking: boolean;
 };
 
+/**
+ * Renders the chat composer component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ChatComposer({
   store,
   currentThreadId,

@@ -1,3 +1,6 @@
+/**
+ * Renders the pre block component for the OpenCodex UI.
+ */
 import { Children, isValidElement, type ReactNode } from "react";
 import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
@@ -7,6 +10,13 @@ type PreBlockProps = {
   children?: ReactNode;
 };
 
+/**
+ * Renders the pre block component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function PreBlock({ children }: PreBlockProps) {
   const { t } = useTranslation();
   const child = Children.toArray(children)[0];

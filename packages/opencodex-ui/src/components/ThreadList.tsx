@@ -1,3 +1,6 @@
+/**
+ * Renders the thread list component for the OpenCodex UI.
+ */
 import {
   Box,
   Button,
@@ -21,6 +24,13 @@ type ThreadListProps = {
   store: RootStore;
 };
 
+/**
+ * Renders the thread list component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ThreadList({ store }: ThreadListProps) {
   const { t } = useTranslation();
   const groups = groupThreadsByProject(store.filteredThreads, t("sidebar.otherChats"));
@@ -127,6 +137,14 @@ type ThreadProjectGroup = {
   threads: OpenCodexThread[];
 };
 
+/**
+ * Groups threads by project for sidebar rendering.
+ *
+ * @param threads Thread collection to process.
+ * @param fallbackProjectName Fallback project name.
+ *
+ * @returns Requested values.
+ */
 function groupThreadsByProject(threads: OpenCodexThread[], fallbackProjectName: string): ThreadProjectGroup[] {
   const projects = new Map<string, OpenCodexThread[]>();
 

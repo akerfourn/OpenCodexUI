@@ -1,3 +1,6 @@
+/**
+ * Implements the MobX store that drives thread, turn, and approval state in the UI.
+ */
 import { makeAutoObservable, runInAction } from "mobx";
 import Fuse from "fuse.js";
 
@@ -18,6 +21,9 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { applyOpenCodexLanguage } from "../i18n/i18n";
 
+/**
+ * Coordinates the observable UI state for threads, turns, approvals, and settings.
+ */
 export class RootStore {
   settings: OpenCodexSettings = {
     codexCommand: "codex",
@@ -59,11 +65,21 @@ export class RootStore {
   currentProjectFilterAvailable = true;
   private threadSelectionStartedAt: number | null = null;
 
+  /**
+   * Creates a new root store instance.
+   *
+   * @param transport Transport implementation used to communicate with the backend.
+   */
   constructor(private readonly transport: OpenCodexClientTransport) {
     makeAutoObservable(this);
     this.transport.onEvent((event) => this.handleEvent(event));
   }
 
+  /**
+   * Returns the threads matching the current search term.
+   *
+   * @returns Filtered thread list for the current search term.
+   */
   get filteredThreads(): OpenCodexThread[] {
     const searchTerm = this.searchTerm.trim();
 
@@ -83,6 +99,11 @@ export class RootStore {
     return this.threads.filter((thread) => matchingThreadIds.has(thread.id));
   }
 
+  /**
+   * Returns the model options exposed by the UI.
+   *
+   * @returns Model list exposed by the UI.
+   */
   get modelOptions(): string[] {
     const options = [...this.models];
 
@@ -93,6 +114,11 @@ export class RootStore {
     return options;
   }
 
+  /**
+   * Bootstraps the store by requesting the initial backend state.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   async bootstrap(): Promise<void> {
     this.isBootstrapping = true;
     this.isLoadingThreads = true;
@@ -105,6 +131,13 @@ export class RootStore {
     }
   }
 
+  /**
+   * Applies a backend event to the observable UI state.
+   *
+   * @param event Event payload to apply or inspect.
+   *
+   * @returns Nothing.
+   */
   handleEvent(event: OpenCodexEvent): void {
     switch (event.type) {
       case "connection.status":
@@ -299,6 +332,11 @@ export class RootStore {
     }
   }
 
+  /**
+   * Refreshes the thread list for the current scope and search term.
+   *
+   * @returns Nothing.
+   */
   refreshThreads(): void {
     this.isLoadingThreads = true;
 
@@ -314,6 +352,13 @@ export class RootStore {
     });
   }
 
+  /**
+   * Opens a thread, preferring cached turns before refreshing from Codex.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Nothing.
+   */
   openThread(threadId: string): void {
     if (this.loadingThreadId === threadId) {
       return;
@@ -342,6 +387,11 @@ export class RootStore {
     void this.transport.request({ type: "threads.open", threadId });
   }
 
+  /**
+   * Refreshes the currently opened thread when allowed.
+   *
+   * @returns Nothing.
+   */
   refreshCurrentThread(): void {
     const currentThread = this.currentThread;
 
@@ -353,6 +403,11 @@ export class RootStore {
     this.openThread(currentThread.id);
   }
 
+  /**
+   * Checks whether the current thread can be refreshed.
+   *
+   * @returns `true` when the condition is met.
+   */
   canRefreshCurrentThread(): boolean {
     return (
       this.currentThread !== null &&
@@ -363,6 +418,11 @@ export class RootStore {
     );
   }
 
+  /**
+   * Requests recovery for the currently opened thread.
+   *
+   * @returns Nothing.
+   */
   recoverCurrentThread(): void {
     if (this.currentThread === null || this.isRecoveringThread) {
       return;
@@ -376,6 +436,11 @@ export class RootStore {
     });
   }
 
+  /**
+   * Creates a new empty thread and persists it in the cache index.
+   *
+   * @returns Nothing.
+   */
   createThread(): void {
     this.isCreatingThread = true;
     this.loadingThreadId = null;
@@ -388,6 +453,11 @@ export class RootStore {
     void this.transport.request({ type: "threads.create" });
   }
 
+  /**
+   * Requests older messages for the current thread.
+   *
+   * @returns Nothing.
+   */
   loadOlderMessages(): void {
     if (
       this.currentThread === null ||
@@ -418,6 +488,15 @@ export class RootStore {
     });
   }
 
+  /**
+   * Sends a user message and creates an optimistic pending turn.
+   *
+   * @param text User message text.
+   * @param model Selected model identifier.
+   * @param reasoningEffort Selected reasoning effort.
+   *
+   * @returns Nothing.
+   */
   sendMessage(
     text: string,
     model: string | null = this.selectedModel,
@@ -441,14 +520,35 @@ export class RootStore {
     });
   }
 
+  /**
+   * Sets the selected model in the UI state.
+   *
+   * @param value Value to normalize.
+   *
+   * @returns Nothing.
+   */
   setSelectedModel(value: string | null): void {
     this.selectedModel = value;
   }
 
+  /**
+   * Sets the selected reasoning effort in the UI state.
+   *
+   * @param value Value to normalize.
+   *
+   * @returns Nothing.
+   */
   setReasoningEffort(value: OpenCodexReasoningEffort): void {
     this.reasoningEffort = value;
   }
 
+  /**
+   * Updates the UI language locally and persists it in settings.
+   *
+   * @param language Language used for localized labels.
+   *
+   * @returns Nothing.
+   */
   setLanguage(language: OpenCodexLanguage): void {
     this.settings = { ...this.settings, language };
     applyOpenCodexLanguage(language);
@@ -458,6 +558,11 @@ export class RootStore {
     });
   }
 
+  /**
+   * Interrupts the active turn on the backend.
+   *
+   * @returns Nothing.
+   */
   interruptTurn(): void {
     if (this.currentThread === null || this.activeTurnId === null) {
       return;
@@ -470,6 +575,13 @@ export class RootStore {
     });
   }
 
+  /**
+   * Renames the currently opened thread.
+   *
+   * @param name Name value to persist.
+   *
+   * @returns Nothing.
+   */
   renameCurrentThread(name: string): void {
     if (this.currentThread === null) {
       return;
@@ -491,6 +603,13 @@ export class RootStore {
     });
   }
 
+  /**
+   * Requests opening of an external link.
+   *
+   * @param href Link target to open.
+   *
+   * @returns Nothing.
+   */
   openExternalLink(href: string): void {
     const trimmedHref = href.trim();
 
@@ -501,28 +620,75 @@ export class RootStore {
     void this.transport.request({ type: "system.openLink", href: trimmedHref });
   }
 
+  /**
+   * Sends the selected approval decision back to Codex.
+   *
+   * @param approvalId Approval identifier.
+   * @param decision Approval decision to apply.
+   *
+   * @returns Nothing.
+   */
   resolveApproval(approvalId: string, decision: OpenCodexApproval["choices"][number]): void {
     void this.transport.request({ type: "approval.respond", approvalId, decision });
   }
 
+  /**
+   * Marks a project as trusted through the Codex configuration API.
+   *
+   * @param projectPath Project path.
+   *
+   * @returns Nothing.
+   */
   trustProject(projectPath: string): void {
     void this.transport.request({ type: "project.trust", projectPath });
   }
 
+  /**
+   * Dismisses the pending project trust request in the UI.
+   *
+   * @param projectPath Project path.
+   *
+   * @returns Nothing.
+   */
   dismissProjectTrustRequest(projectPath: string): void {
     this.pendingProjectTrustRequest = null;
     void this.transport.request({ type: "project.trust.dismiss", projectPath });
   }
 
+  /**
+   * Sets scope.
+   *
+   * @param scope Requested thread scope.
+   *
+   * @returns Nothing.
+   */
   setScope(scope: OpenCodexThreadScope): void {
     this.scope = scope;
     this.refreshThreads();
   }
 
+  /**
+   * Sets search term.
+   *
+   * @param value Value to normalize.
+   *
+   * @returns Nothing.
+   */
   setSearchTerm(value: string): void {
     this.searchTerm = value;
   }
 
+  /**
+   * Appends streamed assistant text to the active turn.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @param itemId Item identifier.
+   * @param delta Incremental thread update.
+   * @param phase Assistant message phase.
+   *
+   * @returns Nothing.
+   */
   private appendAssistantDelta(
     threadId: string,
     turnId: string,
@@ -556,6 +722,14 @@ export class RootStore {
     });
   }
 
+  /**
+   * Applies the completed duration to a stored turn.
+   *
+   * @param turnId Turn identifier.
+   * @param durationMs Duration ms.
+   *
+   * @returns Nothing.
+   */
   private applyTurnDuration(turnId: string, durationMs: number | null): void {
     if (durationMs === null) {
       return;
@@ -568,6 +742,14 @@ export class RootStore {
     }
   }
 
+  /**
+   * Appends an activity item to the active turn.
+   *
+   * @param threadId Thread identifier.
+   * @param activity Activity payload.
+   *
+   * @returns Nothing.
+   */
   private appendActivityItem(threadId: string, activity: OpenCodexActivity): void {
     if (this.currentThread?.id !== threadId || activity.content === undefined) {
       return;
@@ -601,6 +783,14 @@ export class RootStore {
     });
   }
 
+  /**
+   * Applies a thread rename to the store state.
+   *
+   * @param threadId Thread identifier.
+   * @param name Name value to persist.
+   *
+   * @returns Nothing.
+   */
   private applyThreadRename(threadId: string, name: string): void {
     this.threads = this.threads.map((thread) => (
       thread.id === threadId ? { ...thread, customTitle: name, title: name } : thread
@@ -611,6 +801,13 @@ export class RootStore {
     }
   }
 
+  /**
+   * Inserts or updates a thread in the store state.
+   *
+   * @param thread Thread payload to process.
+   *
+   * @returns Nothing.
+   */
   private upsertThread(thread: OpenCodexThread): void {
     const mergedThread = this.mergeThreadMetadata(thread);
     const existingThread = this.findThread(thread.id);
@@ -625,6 +822,13 @@ export class RootStore {
     ));
   }
 
+  /**
+   * Merges incoming thread metadata with the existing store state.
+   *
+   * @param thread Thread payload to process.
+   *
+   * @returns Computed value.
+   */
   private mergeThreadMetadata(thread: OpenCodexThread): OpenCodexThread {
     const existingThread = this.findThread(thread.id) ?? this.currentThread;
 
@@ -643,10 +847,27 @@ export class RootStore {
     };
   }
 
+  /**
+   * Finds a thread by identifier in the store state.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Computed value.
+   */
   private findThread(threadId: string): OpenCodexThread | null {
     return this.threads.find((thread) => thread.id === threadId) ?? null;
   }
 
+  /**
+   * Applies a turn snapshot to the store using the requested merge strategy.
+   *
+   * @param threadId Thread identifier.
+   * @param nextTurns Next turn collection.
+   * @param strategy Strategy.
+   * @param source Source label used for logging.
+   *
+   * @returns Nothing.
+   */
   private applyThreadTurns(
     threadId: string,
     nextTurns: OpenCodexTurn[],
@@ -673,6 +894,17 @@ export class RootStore {
     this.logStorePopulation(threadId, source, nextTurns.length, true, firstChangedIndex);
   }
 
+  /**
+   * Logs store population timings for a thread update.
+   *
+   * @param threadId Thread identifier.
+   * @param source Source label used for logging.
+   * @param turnCount Turn count.
+   * @param changed Changed.
+   * @param firstChangedIndex First changed index.
+   *
+   * @returns Nothing.
+   */
   private logStorePopulation(
     threadId: string,
     source: string,
@@ -693,6 +925,14 @@ export class RootStore {
     });
   }
 
+  /**
+   * Associates the pending optimistic user turn with a backend thread.
+   *
+   * @param threadId Thread identifier.
+   * @param message Human-readable message.
+   *
+   * @returns Nothing.
+   */
   private upsertPendingUserTurn(threadId: string, message: OpenCodexMessage): void {
     const existingTurn = this.findPendingUserTurn(message.content);
 
@@ -706,6 +946,14 @@ export class RootStore {
     this.pendingTurnId = turn.id;
   }
 
+  /**
+   * Moves the optimistic pending turn to the started backend turn.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   *
+   * @returns Nothing.
+   */
   private movePendingTurnToStartedTurn(threadId: string, turnId: string): void {
     const pendingTurn = this.findPendingTurn();
     const existingTurn = this.turns.find((turn) => turn.id === turnId);
@@ -728,6 +976,14 @@ export class RootStore {
     this.pendingTurnId = null;
   }
 
+  /**
+   * Finds an existing turn or creates it in the store.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   *
+   * @returns Computed value.
+   */
   private findOrCreateTurn(threadId: string, turnId: string): OpenCodexTurn {
     const existing = this.turns.find((turn) => turn.id === turnId);
 
@@ -749,6 +1005,13 @@ export class RootStore {
     return created;
   }
 
+  /**
+   * Creates an optimistic pending user turn in the UI.
+   *
+   * @param content Text content to process.
+   *
+   * @returns Nothing.
+   */
   private createOptimisticUserTurn(content: string): void {
     const threadId = this.currentThread?.id ?? "pending-thread";
     const turnId = `pending:${Date.now()}`;
@@ -775,6 +1038,11 @@ export class RootStore {
     this.scrollToBottomVersion += 1;
   }
 
+  /**
+   * Finds the current pending turn.
+   *
+   * @returns Computed value.
+   */
   private findPendingTurn(): OpenCodexTurn | undefined {
     if (this.pendingTurnId !== null) {
       return this.turns.find((turn) => turn.id === this.pendingTurnId);
@@ -783,6 +1051,13 @@ export class RootStore {
     return this.turns.find((turn) => turn.id.startsWith("pending:"));
   }
 
+  /**
+   * Finds the pending user turn matching the provided content.
+   *
+   * @param content Text content to process.
+   *
+   * @returns Computed value.
+   */
   private findPendingUserTurn(content: string): OpenCodexTurn | null {
     const pendingTurn = this.findPendingTurn();
 
@@ -800,6 +1075,15 @@ export class RootStore {
   }
 }
 
+/**
+ * Handles log threads for debug.
+ *
+ * @param threads Thread collection to process.
+ * @param scope Requested thread scope.
+ * @param searchTerm Optional search term.
+ *
+ * @returns Nothing.
+ */
 function logThreadsForDebug(
   threads: OpenCodexThread[],
   scope: OpenCodexThreadScope,
@@ -823,6 +1107,13 @@ function logThreadsForDebug(
   );
 }
 
+/**
+ * Normalizes the load-older response returned by the backend.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Computed value.
+ */
 function readLoadOlderResult(value: unknown): {
   turns: OpenCodexTurn[];
   hasMoreOlderMessages: boolean;
@@ -842,6 +1133,15 @@ function readLoadOlderResult(value: unknown): {
   };
 }
 
+/**
+ * Resolves thread title.
+ *
+ * @param codexTitle Codex title.
+ * @param customTitle Custom title.
+ * @param preview Preview.
+ *
+ * @returns Computed string value.
+ */
 function resolveThreadTitle(
   codexTitle: string,
   customTitle: string | null,
@@ -861,6 +1161,14 @@ function resolveThreadTitle(
   return preview;
 }
 
+/**
+ * Finds the first turn index whose content changed between two snapshots.
+ *
+ * @param currentTurns Current turn collection.
+ * @param nextTurns Next turn collection.
+ *
+ * @returns Numeric value, or `null` when unavailable.
+ */
 function findFirstChangedTurnIndex(
   currentTurns: OpenCodexTurn[],
   nextTurns: OpenCodexTurn[]
@@ -887,10 +1195,25 @@ function findFirstChangedTurnIndex(
   return null;
 }
 
+/**
+ * Returns turn signature.
+ *
+ * @param turn Turn payload to process.
+ *
+ * @returns Computed string value.
+ */
 function getTurnSignature(turn: OpenCodexTurn): string {
   return JSON.stringify(turn);
 }
 
+/**
+ * Checks whether the active turn is still running from the UI perspective.
+ *
+ * @param turns Turn collection to process.
+ * @param activeTurnId Active turn identifier.
+ *
+ * @returns `true` when the condition is met.
+ */
 function hasActiveRunningTurn(turns: OpenCodexTurn[], activeTurnId: string | null): boolean {
   if (activeTurnId === null) {
     return false;
@@ -905,6 +1228,13 @@ function hasActiveRunningTurn(turns: OpenCodexTurn[], activeTurnId: string | nul
   return !turn.items.some((item) => item.role === "assistant" && item.phase === "final_answer");
 }
 
+/**
+ * Maps a UI message into the turn-item representation used by the store.
+ *
+ * @param message Human-readable message.
+ *
+ * @returns Computed value.
+ */
 function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
   const item: OpenCodexTurnItem = {
     id: message.itemId ?? message.id,
@@ -933,6 +1263,13 @@ function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
   return item;
 }
 
+/**
+ * Maps an activity status to the message status used by turn items.
+ *
+ * @param status Status value to normalize.
+ *
+ * @returns Computed value.
+ */
 function toMessageStatus(status: OpenCodexActivity["status"]): OpenCodexTurnItem["status"] {
   if (status === "running") {
     return "streaming";

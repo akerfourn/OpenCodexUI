@@ -1,3 +1,6 @@
+/**
+ * Coordinates UI requests with the local Codex app-server and the optional SQLite cache.
+ */
 import {
   CodexAppServerClient,
   CodexProcessError,
@@ -77,6 +80,9 @@ const THREAD_SOURCE_KINDS: ThreadSourceKind[] = [
   "unknown"
 ];
 
+/**
+ * Coordinates UI requests, Codex app-server calls, and cache persistence.
+ */
 export class OpenCodexBackend {
   private client: CodexAppServerClient | null = null;
   private settings: OpenCodexSettings;
@@ -89,17 +95,34 @@ export class OpenCodexBackend {
   private codexStderrBuffer = "";
   private readonly recoveringThreadIds = new Set<string>();
 
+  /**
+   * Creates a new open codex backend instance.
+   *
+   * @param options Configuration options.
+   */
   constructor(private readonly options: OpenCodexBackendOptions) {
     this.settings = options.settings;
     this.cacheRepository = options.cacheRepository ?? null;
   }
 
+  /**
+   * Handles dispose.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   async dispose(): Promise<void> {
     await this.client?.stop();
     await this.cacheRepository?.close();
     this.client = null;
   }
 
+  /**
+   * Executes a backend request and normalizes failures for the UI.
+   *
+   * @param request Request payload.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   async handleRequest(request: OpenCodexRequest): Promise<unknown> {
     try {
       return await this.handleValidRequest(request);
@@ -124,6 +147,13 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Dispatches a validated backend request to the matching handler.
+   *
+   * @param request Request payload.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async handleValidRequest(request: OpenCodexRequest): Promise<unknown> {
     switch (request.type) {
       case "app.bootstrap":
@@ -171,6 +201,11 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Returns a started Codex app-server client.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async ensureClient(): Promise<CodexAppServerClient> {
     if (this.client !== null) {
       return this.client;
@@ -196,6 +231,14 @@ export class OpenCodexBackend {
     return client;
   }
 
+  /**
+   * Loads threads from the cache and refreshes them from Codex.
+   *
+   * @param scope Requested thread scope.
+   * @param searchTerm Optional search term.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async listThreads(scope: "currentProject" | "all", searchTerm?: string): Promise<OpenCodexThread[]> {
     const cachedThreads = await this.readCachedThreads(scope, searchTerm);
 
@@ -230,6 +273,13 @@ export class OpenCodexBackend {
     return updatedThreads;
   }
 
+  /**
+   * Opens a thread, preferring cached turns before refreshing from Codex.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async openThread(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     const openStartedAt = Date.now();
     const cachedSnapshot = await this.readCachedThreadSnapshot(threadId);
@@ -306,6 +356,14 @@ export class OpenCodexBackend {
     return { thread, turns };
   }
 
+  /**
+   * Loads the latest turns for a thread into the in-memory cache.
+   *
+   * @param client Connected Codex app-server client.
+   * @param cacheEntry In-memory cache entry for a thread.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async loadLatestTurns(
     client: CodexAppServerClient,
     cacheEntry: ThreadTurnCacheEntry
@@ -322,6 +380,13 @@ export class OpenCodexBackend {
     this.threadTurnCache.mergeLatestTurns(cacheEntry, turns, olderCursor);
   }
 
+  /**
+   * Loads older thread turns from the cache or the backend.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async loadOlderThreadMessages(
     threadId: string
   ): Promise<{ turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }> {
@@ -372,6 +437,15 @@ export class OpenCodexBackend {
     return { turns, hasMoreOlderMessages };
   }
 
+  /**
+   * Refreshes the latest turns for a cached thread in the background.
+   *
+   * @param client Connected Codex app-server client.
+   * @param cacheEntry In-memory cache entry for a thread.
+   * @param existingStartedAt Existing started at.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async syncLatestTurns(
     client: CodexAppServerClient,
     cacheEntry: ThreadTurnCacheEntry,
@@ -408,6 +482,13 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Maps cached raw turns to the UI turn shape.
+   *
+   * @param cacheEntry In-memory cache entry for a thread.
+   *
+   * @returns Requested values.
+   */
   private readCachedTurns(cacheEntry: ThreadTurnCacheEntry): OpenCodexTurn[] {
     return mapTurnsToOpenCodexTurns(
       cacheEntry.thread.id,
@@ -416,6 +497,13 @@ export class OpenCodexBackend {
     );
   }
 
+  /**
+   * Resumes a cached thread and refreshes its latest turns.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async resumeAndSyncCachedThread(threadId: string): Promise<void> {
     const syncStartedAt = Date.now();
     this.emit({ type: "thread.sync.started", threadId });
@@ -435,6 +523,13 @@ export class OpenCodexBackend {
     await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
   }
 
+  /**
+   * Recovers a thread after a client interruption or process restart.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async recoverThread(threadId: string): Promise<{ ok: true }> {
     if (this.recoveringThreadIds.has(threadId)) {
       return { ok: true };
@@ -461,6 +556,14 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Handles errors raised while opening a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param error Error to handle or normalize.
+   *
+   * @returns Nothing.
+   */
   private handleThreadOpenError(threadId: string, error: Error): void {
     if (isMissingRolloutError(error)) {
       void this.forgetCachedThread(threadId);
@@ -469,6 +572,14 @@ export class OpenCodexBackend {
     this.handleClientError(error);
   }
 
+  /**
+   * Drops cached state when Codex no longer knows a thread rollout.
+   *
+   * @param threadId Thread identifier.
+   * @param error Error to handle or normalize.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async handleMissingRollout(threadId: string, error: unknown): Promise<void> {
     if (!isMissingRolloutError(error)) {
       return;
@@ -477,6 +588,13 @@ export class OpenCodexBackend {
     await this.forgetCachedThread(threadId);
   }
 
+  /**
+   * Removes a thread from the cache and refreshes the thread list.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async forgetCachedThread(threadId: string): Promise<void> {
     if (this.cacheRepository !== null) {
       try {
@@ -490,6 +608,14 @@ export class OpenCodexBackend {
     this.emitThreadsUpdated(cachedThreads);
   }
 
+  /**
+   * Emits the thread-opened event for the current thread snapshot.
+   *
+   * @param cacheEntry In-memory cache entry for a thread.
+   * @param turns Turn collection to process.
+   *
+   * @returns Nothing.
+   */
   private emitThreadOpened(cacheEntry: ThreadTurnCacheEntry, turns: OpenCodexTurn[]): void {
     this.emit({
       type: "thread.opened",
@@ -499,6 +625,11 @@ export class OpenCodexBackend {
     });
   }
 
+  /**
+   * Creates a new empty thread and persists it in the cache index.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async createThread(): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     const client = await this.ensureClient();
     const response = await client.startThread({
@@ -518,6 +649,16 @@ export class OpenCodexBackend {
     return { thread, turns };
   }
 
+  /**
+   * Starts a turn on the selected thread and emits the optimistic user message.
+   *
+   * @param threadId Thread identifier.
+   * @param text User message text.
+   * @param model Selected model identifier.
+   * @param reasoningEffort Selected reasoning effort.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async startTurn(
     threadId: string | null,
     text: string,
@@ -561,6 +702,13 @@ export class OpenCodexBackend {
     return { threadId: targetThreadId, turnId };
   }
 
+  /**
+   * Creates a thread and returns its identifier.
+   *
+   * @param client Connected Codex app-server client.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async createThreadAndReturnId(client: CodexAppServerClient): Promise<string> {
     const response = await client.startThread({
       cwd: this.options.projectPath,
@@ -577,11 +725,27 @@ export class OpenCodexBackend {
     return thread.id;
   }
 
+  /**
+   * Interrupts the active turn on the backend.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async interruptTurn(threadId: string, turnId: string): Promise<void> {
     const client = await this.ensureClient();
     await client.interruptTurn(threadId, turnId);
   }
 
+  /**
+   * Renames a thread and persists the new title.
+   *
+   * @param threadId Thread identifier.
+   * @param name Name value to persist.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async renameThread(threadId: string, name: string): Promise<void> {
     const trimmedName = name.trim();
 
@@ -596,6 +760,13 @@ export class OpenCodexBackend {
     this.emit({ type: "thread.renamed", threadId, name: trimmedName });
   }
 
+  /**
+   * Opens an external link through the configured platform callback.
+   *
+   * @param href Link target to open.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async openLink(href: string): Promise<{ ok: true }> {
     const target = href.trim();
 
@@ -611,6 +782,11 @@ export class OpenCodexBackend {
     return { ok: true };
   }
 
+  /**
+   * Loads the available models and falls back to a default list when needed.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async listModels(): Promise<string[]> {
     const client = await this.ensureClient();
 
@@ -628,6 +804,13 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Handles backend notifications and maps them to UI events.
+   *
+   * @param notification Notification payload emitted by Codex.
+   *
+   * @returns Nothing.
+   */
   private handleNotification(notification: CodexNotification): void {
     const activity = createActivityFromNotification(notification);
 
@@ -709,12 +892,26 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Converts a backend server request into a UI approval prompt.
+   *
+   * @param request Request payload.
+   *
+   * @returns Nothing.
+   */
   private handleServerRequest(request: CodexServerRequest): void {
     const approval = createApprovalRequest(request, this.settings.language);
     this.pendingApprovals.set(approval.id, request);
     this.emit({ type: "approval.requested", approval });
   }
 
+  /**
+   * Marks a project as trusted through the Codex configuration API.
+   *
+   * @param projectPath Project path.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async trustProject(projectPath: string): Promise<{ ok: true }> {
     const normalizedProjectPath = projectPath.trim();
 
@@ -743,6 +940,13 @@ export class OpenCodexBackend {
     return { ok: true };
   }
 
+  /**
+   * Dismisses the pending project trust request in the UI.
+   *
+   * @param projectPath Project path.
+   *
+   * @returns Nothing.
+   */
   private dismissProjectTrustRequest(projectPath: string): void {
     const normalizedProjectPath = projectPath.trim();
 
@@ -756,6 +960,13 @@ export class OpenCodexBackend {
     });
   }
 
+  /**
+   * Scans Codex stderr output for trust warnings.
+   *
+   * @param message Human-readable message.
+   *
+   * @returns Nothing.
+   */
   private handleCodexStderr(message: string): void {
     this.codexStderrBuffer = `${this.codexStderrBuffer}\n${message}`.slice(-8000);
 
@@ -776,6 +987,14 @@ export class OpenCodexBackend {
     });
   }
 
+  /**
+   * Sends the selected approval decision back to Codex.
+   *
+   * @param approvalId Approval identifier.
+   * @param decision Approval decision to apply.
+   *
+   * @returns Nothing.
+   */
   private resolveApproval(approvalId: string, decision: OpenCodexApprovalDecision): void {
     const request = this.pendingApprovals.get(approvalId);
 
@@ -798,11 +1017,23 @@ export class OpenCodexBackend {
     this.emit({ type: "approval.resolved", approvalId });
   }
 
+  /**
+   * Normalizes and emits a client-side error event.
+   *
+   * @param error Error to handle or normalize.
+   *
+   * @returns Nothing.
+   */
   private handleClientError(error: Error): void {
     const normalized = normalizeError(error, this.settings.language);
     this.emit({ type: "error", message: normalized.message, details: normalized.details });
   }
 
+  /**
+   * Handles an unexpected client shutdown and triggers recovery when possible.
+   *
+   * @returns Nothing.
+   */
   private handleClientClose(): void {
     const threadId = this.activeThreadId;
 
@@ -825,6 +1056,14 @@ export class OpenCodexBackend {
     });
   }
 
+  /**
+   * Determines which thread can be recovered for a failed request.
+   *
+   * @param request Request payload.
+   * @param error Error to handle or normalize.
+   *
+   * @returns String value, or `null` when unavailable.
+   */
   private readRecoverableThreadId(request: OpenCodexRequest, error: unknown): string | null {
     if (!(error instanceof CodexProcessError)) {
       return null;
@@ -841,10 +1080,24 @@ export class OpenCodexBackend {
     return this.activeThreadId;
   }
 
+  /**
+   * Emits a backend event to the UI transport.
+   *
+   * @param event Event payload to apply or inspect.
+   *
+   * @returns Nothing.
+   */
   private emit(event: OpenCodexEvent): void {
     this.options.emit(event);
   }
 
+  /**
+   * Emits the refreshed thread list to the UI.
+   *
+   * @param threads Thread collection to process.
+   *
+   * @returns Nothing.
+   */
   private emitThreadsUpdated(threads: OpenCodexThread[]): void {
     this.emit({
       type: "threads.updated",
@@ -853,6 +1106,14 @@ export class OpenCodexBackend {
     });
   }
 
+  /**
+   * Reads cached threads for the requested scope and search term.
+   *
+   * @param scope Requested thread scope.
+   * @param searchTerm Optional search term.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async readCachedThreads(
     scope: "currentProject" | "all",
     searchTerm?: string
@@ -874,6 +1135,13 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Reads the initial cached thread snapshot.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async readCachedThreadSnapshot(threadId: string): Promise<CachedThreadSnapshot | null> {
     if (this.cacheRepository === null) {
       return null;
@@ -889,6 +1157,14 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Loads older turns directly from the local cache.
+   *
+   * @param cacheEntry In-memory cache entry for a thread.
+   * @param cursor Pagination cursor.
+   *
+   * @returns Promise resolved with the requested result.
+   */
   private async loadOlderCachedTurns(
     cacheEntry: ThreadTurnCacheEntry,
     cursor: string
@@ -943,6 +1219,13 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Writes thread summaries to the cache index.
+   *
+   * @param threads Thread collection to process.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async writeThreadIndex(threads: OpenCodexThread[]): Promise<void> {
     if (this.cacheRepository === null || threads.length === 0) {
       return;
@@ -955,6 +1238,13 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Writes a full thread snapshot to the cache.
+   *
+   * @param cacheEntry In-memory cache entry for a thread.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async writeThreadSnapshot(cacheEntry: ThreadTurnCacheEntry): Promise<void> {
     if (this.cacheRepository === null) {
       return;
@@ -967,6 +1257,14 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Writes incremental turn changes to the cache.
+   *
+   * @param cacheEntry In-memory cache entry for a thread.
+   * @param turns Turn collection to process.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async writeThreadDelta(cacheEntry: ThreadTurnCacheEntry, turns: unknown[]): Promise<void> {
     if (this.cacheRepository === null || turns.length === 0) {
       return;
@@ -979,6 +1277,14 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Writes a custom thread title to the cache.
+   *
+   * @param threadId Thread identifier.
+   * @param title Thread title or display title.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async writeThreadTitle(threadId: string, title: string): Promise<void> {
     if (this.cacheRepository === null) {
       return;
@@ -991,6 +1297,14 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Applies a Codex-provided title to the in-memory thread state.
+   *
+   * @param threadId Thread identifier.
+   * @param title Thread title or display title.
+   *
+   * @returns Nothing.
+   */
   private applyCodexThreadTitle(threadId: string, title: string): void {
     const cacheEntry = this.threadTurnCache.updateCodexThreadTitle(threadId, title);
 
@@ -1001,6 +1315,14 @@ export class OpenCodexBackend {
     void this.writeThreadCodexTitle(threadId, title);
   }
 
+  /**
+   * Writes a Codex-provided title to the cache.
+   *
+   * @param threadId Thread identifier.
+   * @param title Thread title or display title.
+   *
+   * @returns Promise resolved when the operation completes.
+   */
   private async writeThreadCodexTitle(threadId: string, title: string): Promise<void> {
     if (this.cacheRepository === null) {
       return;
@@ -1013,6 +1335,14 @@ export class OpenCodexBackend {
     }
   }
 
+  /**
+   * Logs timing information for thread loading operations.
+   *
+   * @param message Human-readable message.
+   * @param details Structured diagnostic details.
+   *
+   * @returns Nothing.
+   */
   private logThreadTiming(
     message: string,
     details: Record<string, string | number | boolean>
@@ -1025,6 +1355,14 @@ export class OpenCodexBackend {
   }
 }
 
+/**
+ * Reads thread pages until all available pages or the configured limit has been reached.
+ *
+ * @param client Connected Codex app-server client.
+ * @param baseParams Base pagination parameters.
+ *
+ * @returns Promise resolved with the requested result.
+ */
 async function readThreadPages(
   client: CodexAppServerClient,
   baseParams: ThreadListParams
@@ -1046,6 +1384,13 @@ async function readThreadPages(
   return threads;
 }
 
+/**
+ * Reads thread entries from a typed RPC response payload.
+ *
+ * @param response Response.
+ *
+ * @returns Requested values.
+ */
 function readThreads(response: unknown): OpenCodexThread[] {
   const data = readObject(response).data;
 
@@ -1056,6 +1401,13 @@ function readThreads(response: unknown): OpenCodexThread[] {
   return data.map((thread) => mapThread(thread));
 }
 
+/**
+ * Reads model identifiers from a typed RPC response payload.
+ *
+ * @param response Response.
+ *
+ * @returns Requested values.
+ */
 function readModels(response: unknown): string[] {
   const data = readObject(response).data;
 
@@ -1069,6 +1421,13 @@ function readModels(response: unknown): string[] {
     .filter((model) => model.length > 0);
 }
 
+/**
+ * Reads reasoning effort.
+ *
+ * @param value Value to normalize.
+ *
+ * @returns Computed value.
+ */
 function readReasoningEffort(value: unknown): "low" | "medium" | "high" | "xhigh" | null {
   if (value === "low" || value === "medium" || value === "high" || value === "xhigh") {
     return value;
@@ -1077,10 +1436,23 @@ function readReasoningEffort(value: unknown): "low" | "medium" | "high" | "xhigh
   return null;
 }
 
+/**
+ * Returns the fallback model list used when model discovery is unavailable.
+ *
+ * @returns Requested values.
+ */
 function fallbackModels(): string[] {
   return ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex"];
 }
 
+/**
+ * Normalizes backend and transport failures for UI consumption.
+ *
+ * @param error Error to handle or normalize.
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed value.
+ */
 function normalizeError(
   error: unknown,
   language: OpenCodexSettings["language"] = "fr"
@@ -1111,10 +1483,24 @@ function normalizeError(
   return { message: String(error) };
 }
 
+/**
+ * Converts error to the target representation.
+ *
+ * @param error Error to handle or normalize.
+ *
+ * @returns Computed value.
+ */
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+/**
+ * Returns backend labels.
+ *
+ * @param language Language used for localized labels.
+ *
+ * @returns Computed value.
+ */
 function getBackendLabels(language: OpenCodexSettings["language"]): BackendLabels {
   if (language === "en") {
     return {
@@ -1140,6 +1526,14 @@ type BackendLabels = {
   missingLinkHandler: string;
 };
 
+/**
+ * Parses a trust warning emitted by Codex stderr output.
+ *
+ * @param message Human-readable message.
+ * @param fallbackProjectPath Fallback project path.
+ *
+ * @returns Computed value.
+ */
 function parseProjectTrustWarning(
   message: string,
   fallbackProjectPath: string | null
@@ -1160,11 +1554,25 @@ function parseProjectTrustWarning(
   };
 }
 
+/**
+ * Reads trusted project path.
+ *
+ * @param message Human-readable message.
+ *
+ * @returns String value, or `null` when unavailable.
+ */
 function readTrustedProjectPath(message: string): string | null {
   const match = /add\s+(.+?)\s+as a trusted project in\s+.+?config\.toml/s.exec(message);
   return match?.[1]?.trim() ?? null;
 }
 
+/**
+ * Reads disabled project folders.
+ *
+ * @param message Human-readable message.
+ *
+ * @returns Requested values.
+ */
 function readDisabledProjectFolders(message: string): string[] {
   const folders: string[] = [];
   const folderPattern = /^\s*\d+\.\s+(.+)$/gm;
@@ -1181,6 +1589,13 @@ function readDisabledProjectFolders(message: string): string[] {
   return folders;
 }
 
+/**
+ * Creates a compact signature for a cached thread state.
+ *
+ * @param cacheEntry In-memory cache entry for a thread.
+ *
+ * @returns Computed string value.
+ */
 function createCacheSignature(cacheEntry: ThreadTurnCacheEntry): string {
   return cacheEntry.orderedTurnIds
     .map((turnId) => {
@@ -1194,6 +1609,13 @@ function createCacheSignature(cacheEntry: ThreadTurnCacheEntry): string {
     .join("|");
 }
 
+/**
+ * Converts open codex thread to the target representation.
+ *
+ * @param thread Thread payload to process.
+ *
+ * @returns Computed value.
+ */
 function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread {
   const mappedThread: OpenCodexThread = {
     id: thread.id,
@@ -1216,6 +1638,13 @@ function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread {
   return mappedThread;
 }
 
+/**
+ * Converts cached thread summary to the target representation.
+ *
+ * @param thread Thread payload to process.
+ *
+ * @returns Computed value.
+ */
 function toCachedThreadSummary(thread: OpenCodexThread): CachedThreadSummary {
   const cachedThread: CachedThreadSummary = {
     id: thread.id,
@@ -1238,6 +1667,13 @@ function toCachedThreadSummary(thread: OpenCodexThread): CachedThreadSummary {
   return cachedThread;
 }
 
+/**
+ * Converts cached thread snapshot to the target representation.
+ *
+ * @param cacheEntry In-memory cache entry for a thread.
+ *
+ * @returns Computed value.
+ */
 function toCachedThreadSnapshot(cacheEntry: ThreadTurnCacheEntry): CachedThreadSnapshot {
   return {
     thread: toCachedThreadSummary(cacheEntry.thread),
@@ -1246,6 +1682,14 @@ function toCachedThreadSnapshot(cacheEntry: ThreadTurnCacheEntry): CachedThreadS
   };
 }
 
+/**
+ * Converts cached thread delta to the target representation.
+ *
+ * @param cacheEntry In-memory cache entry for a thread.
+ * @param turns Turn collection to process.
+ *
+ * @returns Computed value.
+ */
 function toCachedThreadDelta(cacheEntry: ThreadTurnCacheEntry, turns: unknown[]): CachedThreadDelta {
   return {
     threadId: cacheEntry.thread.id,
@@ -1254,10 +1698,25 @@ function toCachedThreadDelta(cacheEntry: ThreadTurnCacheEntry, turns: unknown[])
   };
 }
 
+/**
+ * Checks whether cache older cursor.
+ *
+ * @param cursor Pagination cursor.
+ *
+ * @returns `true` when the condition is met.
+ */
 function isCacheOlderCursor(cursor: string): boolean {
   return cursor.startsWith("cache:");
 }
 
+/**
+ * Merges fresh thread data with cached metadata when both are available.
+ *
+ * @param freshThreads Fresh threads.
+ * @param cachedThreads Cached threads.
+ *
+ * @returns Requested values.
+ */
 function mergeFreshThreadList(
   freshThreads: OpenCodexThread[],
   cachedThreads: OpenCodexThread[]
@@ -1271,18 +1730,46 @@ function mergeFreshThreadList(
   return freshThreads.map((thread) => cachedThreadsById.get(thread.id) ?? thread);
 }
 
+/**
+ * Checks whether missing rollout error.
+ *
+ * @param error Error to handle or normalize.
+ *
+ * @returns `true` when the condition is met.
+ */
 function isMissingRolloutError(error: unknown): boolean {
   return error instanceof JsonRpcError && error.message.includes("no rollout found for thread id");
 }
 
+/**
+ * Reads cache older cursor.
+ *
+ * @param cursor Pagination cursor.
+ *
+ * @returns Computed string value.
+ */
 function readCacheOlderCursor(cursor: string): string {
   return cursor.startsWith("cache:") ? cursor.slice("cache:".length) : "";
 }
 
+/**
+ * Creates cache older cursor.
+ *
+ * @param turnId Turn identifier.
+ *
+ * @returns String value, or `null` when unavailable.
+ */
 function createCacheOlderCursor(turnId: string): string | null {
   return turnId.length > 0 ? `cache:${turnId}` : null;
 }
 
+/**
+ * Reads oldest turn id.
+ *
+ * @param turns Turn collection to process.
+ *
+ * @returns Computed string value.
+ */
 function readOldestTurnId(turns: unknown[]): string {
   const firstTurn = turns[0];
 
@@ -1293,6 +1780,13 @@ function readOldestTurnId(turns: unknown[]): string {
   return readString(readObject(firstTurn).id);
 }
 
+/**
+ * Converts cached sync state to the target representation.
+ *
+ * @param cacheEntry In-memory cache entry for a thread.
+ *
+ * @returns Computed value.
+ */
 function toCachedSyncState(cacheEntry: ThreadTurnCacheEntry): CachedThreadSyncState {
   return {
     threadId: cacheEntry.thread.id,
@@ -1305,6 +1799,13 @@ function toCachedSyncState(cacheEntry: ThreadTurnCacheEntry): CachedThreadSyncSt
   };
 }
 
+/**
+ * Creates id.
+ *
+ * @param prefix String prefix used to build an identifier.
+ *
+ * @returns Computed string value.
+ */
 function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }

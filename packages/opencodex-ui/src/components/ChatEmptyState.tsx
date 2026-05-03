@@ -1,3 +1,6 @@
+/**
+ * Renders the chat empty state component for the OpenCodex UI.
+ */
 import { Button, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
@@ -7,6 +10,13 @@ type ChatEmptyStateProps = {
   store: RootStore;
 };
 
+/**
+ * Renders the chat empty state component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ChatEmptyState({ store }: ChatEmptyStateProps) {
   const { t } = useTranslation();
 

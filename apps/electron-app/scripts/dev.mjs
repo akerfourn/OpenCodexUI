@@ -1,3 +1,6 @@
+/**
+ * Runs the Electron development workflow with Vite, esbuild, and automatic restarts.
+ */
 import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +26,11 @@ main().catch((error) => {
   process.exitCode = 1;
 });
 
+/**
+ * Starts the renderer dev server, watches the Electron bundles, and launches Electron.
+ *
+ * @returns Promise resolved once the dev workflow has been initialized.
+ */
 async function main() {
   await rebuildNativeDependenciesForElectron();
 
@@ -38,6 +46,11 @@ async function main() {
   installShutdownHandlers();
 }
 
+/**
+ * Rebuilds native dependencies against the Electron runtime when needed.
+ *
+ * @returns Promise resolved once the rebuild step has completed.
+ */
 async function rebuildNativeDependenciesForElectron() {
   if (process.env.OPENCODEX_SKIP_ELECTRON_REBUILD === "1") {
     return;
@@ -56,6 +69,13 @@ async function rebuildNativeDependenciesForElectron() {
   ]);
 }
 
+/**
+ * Spawns a command and waits for it to exit successfully.
+ *
+ * @param command Executable name to run.
+ * @param args Arguments passed to the executable.
+ * @returns Promise resolved when the command exits with code `0`.
+ */
 async function runCommand(command, args) {
   await new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(command, args, {
@@ -76,6 +96,11 @@ async function runCommand(command, args) {
   });
 }
 
+/**
+ * Starts the Vite dev server used by the Electron renderer.
+ *
+ * @returns Promise resolved with the active Vite server instance.
+ */
 async function startViteServer() {
   const configFile = resolve(appRoot, "vite.config.ts");
   const loadedConfig = await loadConfigFromFile(
@@ -102,6 +127,13 @@ async function startViteServer() {
   return server;
 }
 
+/**
+ * Creates and builds an esbuild watch context for an Electron entry point.
+ *
+ * @param entryPoint Source entry point relative to the Electron app root.
+ * @param outfile Output bundle path relative to the Electron app root.
+ * @returns Promise resolved with the configured esbuild context.
+ */
 async function createBuildContext(entryPoint, outfile) {
   const context = await esbuild.context({
     absWorkingDir: appRoot,
@@ -119,6 +151,11 @@ async function createBuildContext(entryPoint, outfile) {
   return context;
 }
 
+/**
+ * Launches Electron and wires its exit lifecycle to the dev server shutdown flow.
+ *
+ * @returns Nothing.
+ */
 function startElectron() {
   electronProcess = spawnElectron();
   electronProcess.on("exit", (code, signal) => {
@@ -146,6 +183,11 @@ function startElectron() {
   });
 }
 
+/**
+ * Spawns the Electron desktop process configured for local development.
+ *
+ * @returns Child process instance for the Electron runtime.
+ */
 function spawnElectron() {
   return spawn("electron", ["dist/main/main.cjs"], {
     cwd: appRoot,
@@ -157,6 +199,13 @@ function spawnElectron() {
   });
 }
 
+/**
+ * Creates a shutdown routine that stops Electron, esbuild watchers, and the Vite server.
+ *
+ * @param viteServer Active Vite development server.
+ * @param contexts esbuild contexts watching the Electron bundles.
+ * @returns Async shutdown callback shared across exit handlers.
+ */
 function createShutdown(viteServer, contexts) {
   let isShuttingDown = false;
 
@@ -182,6 +231,11 @@ function createShutdown(viteServer, contexts) {
   };
 }
 
+/**
+ * Registers process signal handlers that stop the development workflow cleanly.
+ *
+ * @returns Nothing.
+ */
 function installShutdownHandlers() {
   process.once("SIGINT", () => {
     void shutdownDevServer?.();
@@ -191,6 +245,11 @@ function installShutdownHandlers() {
   });
 }
 
+/**
+ * Debounces Electron restarts while builds are still stabilizing.
+ *
+ * @returns Nothing.
+ */
 function requestElectronRestart() {
   if (electronProcess === null) {
     return;
@@ -206,6 +265,11 @@ function requestElectronRestart() {
   }, 150);
 }
 
+/**
+ * Restarts the Electron process after a successful rebuild.
+ *
+ * @returns Nothing.
+ */
 function restartElectron() {
   if (electronProcess === null) {
     return;
@@ -223,6 +287,11 @@ function restartElectron() {
   currentProcess.kill("SIGTERM");
 }
 
+/**
+ * Creates an esbuild plugin that restarts Electron after successful rebuilds.
+ *
+ * @returns esbuild-compatible plugin descriptor.
+ */
 function createRestartPlugin() {
   return {
     name: "restart-electron-on-rebuild",

@@ -1,3 +1,6 @@
+/**
+ * Declares the cache repository contracts and persisted thread/project shapes.
+ */
 export type CachedThreadScope = "currentProject" | "all";
 
 export type CachedThreadSummary = {
@@ -68,6 +71,9 @@ export type ThreadListCacheQuery = {
   searchTerm?: string | null;
 };
 
+/**
+ * Describes the storage contract implemented by cache backends.
+ */
 export interface OpenCodexCacheRepository {
   upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void>;
   updateThreadTitle(threadId: string, title: string): Promise<void>;

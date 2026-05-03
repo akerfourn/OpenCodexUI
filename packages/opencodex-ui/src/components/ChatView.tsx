@@ -1,3 +1,6 @@
+/**
+ * Renders the chat view component for the OpenCodex UI.
+ */
 import { observer } from "mobx-react-lite";
 import { Stack } from "@mui/material";
 import { useTranslation } from "react-i18next";
@@ -14,6 +17,13 @@ type ChatViewProps = {
   store: RootStore;
 };
 
+/**
+ * Renders the chat view component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ChatView({ store }: ChatViewProps) {
   const { t } = useTranslation();
   const currentThread = store.currentThread;

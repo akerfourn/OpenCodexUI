@@ -1,3 +1,6 @@
+/**
+ * Creates and configures the main Electron application window.
+ */
 import path from "node:path";
 
 import { BrowserWindow } from "electron";
@@ -8,6 +11,12 @@ type CreateWindowOptions = {
   devServerUrl?: string | null;
 };
 
+/**
+ * Creates the desktop window and loads either the dev server or the built renderer.
+ *
+ * @param options Preload script path, renderer assets path, and optional dev server URL.
+ * @returns Configured Electron browser window instance.
+ */
 export function createWindow(options: CreateWindowOptions): BrowserWindow {
   const window = new BrowserWindow({
     title: "OpenCodexUI",

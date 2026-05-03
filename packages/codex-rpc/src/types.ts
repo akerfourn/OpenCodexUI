@@ -1,3 +1,6 @@
+/**
+ * Declares the JSON-RPC types, process abstractions, and error classes used by the Codex client.
+ */
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 export type JsonRpcId = string | number;
@@ -67,10 +70,20 @@ export type CodexAppServerClientOptions = {
   stderr?: (message: string) => void;
 };
 
+/**
+ * Represents a JSON-RPC error returned by the Codex app-server.
+ */
 export class JsonRpcError extends Error {
   readonly code: number | undefined;
   readonly data: unknown;
 
+  /**
+   * Creates a JSON-RPC error wrapper.
+   *
+   * @param message Human-readable error message.
+   * @param code Optional JSON-RPC error code.
+   * @param data Optional raw error payload.
+   */
   constructor(message: string, code?: number, data?: unknown) {
     super(message);
     this.name = "JsonRpcError";
@@ -79,7 +92,15 @@ export class JsonRpcError extends Error {
   }
 }
 
+/**
+ * Represents a process-level failure while communicating with the Codex CLI.
+ */
 export class CodexProcessError extends Error {
+  /**
+   * Creates a process error with a normalized message.
+   *
+   * @param message Human-readable process failure description.
+   */
   constructor(message: string) {
     super(message);
     this.name = "CodexProcessError";

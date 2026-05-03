@@ -1,3 +1,6 @@
+/**
+ * Renders the chat message list component for the OpenCodex UI.
+ */
 import { observer } from "mobx-react-lite";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { useCallback, useLayoutEffect, useRef, type UIEvent } from "react";
@@ -13,6 +16,13 @@ type ChatMessageListProps = {
   store: RootStore;
 };
 
+/**
+ * Renders the chat message list component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ChatMessageList({ store }: ChatMessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -160,6 +170,15 @@ type TimelineEntry =
   | { type: "item"; key: string; turn: OpenCodexTurn; item: OpenCodexTurnItem }
   | { type: "turnPrelude"; key: string; turn: OpenCodexTurn; isRunning: boolean };
 
+/**
+ * Builds timeline entries.
+ *
+ * @param turns Turn collection to process.
+ * @param activeTurnId Active turn identifier.
+ * @param isWorking Is working.
+ *
+ * @returns Requested values.
+ */
 function buildTimelineEntries(
   turns: OpenCodexTurn[],
   activeTurnId: string | null,
@@ -204,6 +223,15 @@ function buildTimelineEntries(
   return entries;
 }
 
+/**
+ * Checks whether turn running.
+ *
+ * @param turn Turn payload to process.
+ * @param activeTurnId Active turn identifier.
+ * @param isWorking Is working.
+ *
+ * @returns `true` when the condition is met.
+ */
 function isTurnRunning(turn: OpenCodexTurn, activeTurnId: string | null, isWorking: boolean): boolean {
   if (!isWorking) {
     return false;
@@ -220,10 +248,25 @@ function isTurnRunning(turn: OpenCodexTurn, activeTurnId: string | null, isWorki
   return turn.id === activeTurnId || turn.id.startsWith("pending:");
 }
 
+/**
+ * Checks whether prelude item.
+ *
+ * @param item Item payload.
+ *
+ * @returns `true` when the condition is met.
+ */
 function isPreludeItem(item: OpenCodexTurnItem): boolean {
   return item.role === "activity" || (item.role === "assistant" && item.phase === "commentary");
 }
 
+/**
+ * Builds turn prelude key.
+ *
+ * @param turn Turn payload to process.
+ * @param index Index.
+ *
+ * @returns Computed string value.
+ */
 function buildTurnPreludeKey(turn: OpenCodexTurn, index: number): string {
   return [
     "turnPrelude",
@@ -232,6 +275,15 @@ function buildTurnPreludeKey(turn: OpenCodexTurn, index: number): string {
   ].join(":");
 }
 
+/**
+ * Builds item key.
+ *
+ * @param turn Turn payload to process.
+ * @param item Item payload.
+ * @param index Index.
+ *
+ * @returns Computed string value.
+ */
 function buildItemKey(turn: OpenCodexTurn, item: OpenCodexTurnItem, index: number): string {
   return [
     "turnItem",

@@ -1,3 +1,6 @@
+/**
+ * Declares the requests sent from the UI to the OpenCodex backend.
+ */
 import type {
   OpenCodexApprovalDecision,
   OpenCodexReasoningEffort,

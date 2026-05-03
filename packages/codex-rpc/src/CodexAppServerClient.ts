@@ -1,3 +1,6 @@
+/**
+ * Implements a lightweight JSON-RPC client for the local `codex app-server` process.
+ */
 import { spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { existsSync } from "node:fs";
@@ -45,6 +48,9 @@ type ClientEvents = {
   close: [{ code: number | null; signal: NodeJS.Signals | null }];
 };
 
+/**
+ * Manages the lifecycle of the Codex app-server process and the JSON-RPC messages exchanged with it.
+ */
 export class CodexAppServerClient {
   private readonly command: string;
   private readonly args: string[];
@@ -62,6 +68,11 @@ export class CodexAppServerClient {
   private startPromise: Promise<void> | null = null;
   private isInitialized = false;
 
+  /**
+   * Creates a client with optional command, timeout, and process overrides.
+   *
+   * @param options Runtime options for launching and observing the Codex app-server.
+   */
   constructor(options: CodexAppServerClientOptions = {}) {
     this.command = options.command ?? "codex";
     this.args = options.args ?? ["app-server"];
@@ -72,6 +83,11 @@ export class CodexAppServerClient {
     this.stderr = options.stderr ?? (() => undefined);
   }
 
+  /**
+   * Starts the Codex app-server process and runs the JSON-RPC initialization handshake.
+   *
+   * @returns Promise resolved once the client is ready to send requests.
+   */
   async start(): Promise<void> {
     if (this.isInitialized) {
       return;
@@ -85,6 +101,11 @@ export class CodexAppServerClient {
     return this.startPromise;
   }
 
+  /**
+   * Stops the Codex app-server process and rejects outstanding requests.
+   *
+   * @returns Promise resolved once local process state has been cleared.
+   */
   async stop(): Promise<void> {
     this.rejectPendingRequests(new CodexProcessError("Codex app-server stopped."));
     this.isInitialized = false;
@@ -101,6 +122,13 @@ export class CodexAppServerClient {
     }
   }
 
+  /**
+   * Sends a JSON-RPC request and waits for its correlated response.
+   *
+   * @param method JSON-RPC method name to invoke.
+   * @param params Optional request parameters.
+   * @returns Promise resolved with the typed JSON-RPC result.
+   */
   async request<T>(method: string, params?: unknown): Promise<T> {
     if (!this.isInitialized && method !== "initialize") {
       await this.start();
@@ -133,6 +161,13 @@ export class CodexAppServerClient {
     });
   }
 
+  /**
+   * Sends a fire-and-forget JSON-RPC notification.
+   *
+   * @param method JSON-RPC method name to invoke.
+   * @param params Optional notification parameters.
+   * @returns Nothing.
+   */
   notify(method: string, params?: unknown): void {
     const process = this.requireProcess();
     process.stdin.write(
@@ -144,6 +179,13 @@ export class CodexAppServerClient {
     );
   }
 
+  /**
+   * Sends a successful response to a server-initiated JSON-RPC request.
+   *
+   * @param id JSON-RPC identifier from the incoming server request.
+   * @param result Result payload returned to the server.
+   * @returns Nothing.
+   */
   respond(id: JsonRpcId, result: unknown): void {
     const process = this.requireProcess();
     process.stdin.write(
@@ -155,6 +197,13 @@ export class CodexAppServerClient {
     );
   }
 
+  /**
+   * Rejects a server-initiated JSON-RPC request with an error response.
+   *
+   * @param id JSON-RPC identifier from the incoming server request.
+   * @param message Error message returned to the server.
+   * @returns Nothing.
+   */
   rejectServerRequest(id: JsonRpcId, message: string): void {
     const process = this.requireProcess();
     process.stdin.write(
@@ -169,30 +218,66 @@ export class CodexAppServerClient {
     );
   }
 
+  /**
+   * Subscribes to JSON-RPC notifications emitted by the app-server.
+   *
+   * @param callback Listener invoked for each notification.
+   * @returns Disposable used to remove the listener.
+   */
   onNotification(callback: (notification: CodexNotification) => void): Disposable {
     this.events.on("notification", callback);
     return createDisposable(() => this.events.off("notification", callback));
   }
 
+  /**
+   * Subscribes to server-originated JSON-RPC requests.
+   *
+   * @param callback Listener invoked for each server request.
+   * @returns Disposable used to remove the listener.
+   */
   onServerRequest(callback: (request: CodexServerRequest) => void): Disposable {
     this.events.on("serverRequest", callback);
     return createDisposable(() => this.events.off("serverRequest", callback));
   }
 
+  /**
+   * Subscribes to transport or parsing errors raised by the client.
+   *
+   * @param callback Listener invoked for each emitted error.
+   * @returns Disposable used to remove the listener.
+   */
   onError(callback: (error: Error) => void): Disposable {
     this.events.on("error", callback);
     return createDisposable(() => this.events.off("error", callback));
   }
 
+  /**
+   * Subscribes to the underlying process close event.
+   *
+   * @param callback Listener invoked when the app-server process exits.
+   * @returns Disposable used to remove the listener.
+   */
   onClose(callback: (event: { code: number | null; signal: NodeJS.Signals | null }) => void): Disposable {
     this.events.on("close", callback);
     return createDisposable(() => this.events.off("close", callback));
   }
 
+  /**
+   * Lists Codex threads through the generated typed RPC bindings.
+   *
+   * @param params Optional filters and pagination settings for the thread list.
+   * @returns Promise resolved with the typed thread list response.
+   */
   async listThreads(params: ThreadListParams = {}): Promise<ThreadListResponse> {
     return this.request<ThreadListResponse>("thread/list", params);
   }
 
+  /**
+   * Starts a new Codex thread with default persistence options.
+   *
+   * @param params Optional thread start parameters.
+   * @returns Promise resolved with the thread start response.
+   */
   async startThread(params: Partial<ThreadStartParams> = {}): Promise<ThreadStartResponse> {
     return this.request<ThreadStartResponse>("thread/start", {
       experimentalRawEvents: false,
@@ -201,6 +286,13 @@ export class CodexAppServerClient {
     });
   }
 
+  /**
+   * Resumes an existing Codex thread with default persistence options.
+   *
+   * @param threadId Identifier of the thread to resume.
+   * @param params Optional resume parameters excluding the required thread id.
+   * @returns Promise resolved with the thread resume response.
+   */
   async resumeThread(
     threadId: string,
     params: Partial<Omit<ThreadResumeParams, "threadId" | "persistExtendedHistory">> = {}
@@ -212,26 +304,64 @@ export class CodexAppServerClient {
     });
   }
 
+  /**
+   * Reads a thread snapshot, optionally including its turns.
+   *
+   * @param threadId Identifier of the thread to read.
+   * @param includeTurns Whether the response should include turn data.
+   * @returns Promise resolved with the thread snapshot response.
+   */
   async readThread(threadId: string, includeTurns = true): Promise<ThreadReadResponse> {
     return this.request<ThreadReadResponse>("thread/read", { threadId, includeTurns });
   }
 
+  /**
+   * Lists turns for a thread using the generated typed RPC bindings.
+   *
+   * @param params Thread turns list parameters.
+   * @returns Promise resolved with the turns list response.
+   */
   async listThreadTurns(params: ThreadTurnsListParams): Promise<ThreadTurnsListResponse> {
     return this.request<ThreadTurnsListResponse>("thread/turns/list", params);
   }
 
+  /**
+   * Starts a turn inside an existing thread.
+   *
+   * @param params Turn start parameters.
+   * @returns Promise resolved with the turn start response.
+   */
   async startTurn(params: TurnStartParams): Promise<TurnStartResponse> {
     return this.request<TurnStartResponse>("turn/start", params);
   }
 
+  /**
+   * Interrupts an active turn in a thread.
+   *
+   * @param threadId Identifier of the owning thread.
+   * @param turnId Identifier of the turn to interrupt.
+   * @returns Promise resolved with the turn interrupt response.
+   */
   async interruptTurn(threadId: string, turnId: string): Promise<TurnInterruptResponse> {
     return this.request<TurnInterruptResponse>("turn/interrupt", { threadId, turnId });
   }
 
+  /**
+   * Renames a thread through the Codex app-server API.
+   *
+   * @param threadId Identifier of the thread to rename.
+   * @param name New thread name.
+   * @returns Promise resolved with the rename response.
+   */
   async renameThread(threadId: string, name: string): Promise<ThreadSetNameResponse> {
     return this.request<ThreadSetNameResponse>("thread/name/set", { threadId, name });
   }
 
+  /**
+   * Starts the underlying process and installs all transport listeners.
+   *
+   * @returns Promise resolved once initialization has completed.
+   */
   private async startProcess(): Promise<void> {
     this.logger(`Starting ${this.command} ${this.args.join(" ")}`);
 
@@ -271,6 +401,11 @@ export class CodexAppServerClient {
     this.isInitialized = true;
   }
 
+  /**
+   * Sends the initial JSON-RPC handshake expected by the app-server.
+   *
+   * @returns Promise resolved once the initialization exchange finishes.
+   */
   private async initialize(): Promise<void> {
     await this.request("initialize", {
       clientInfo: {
@@ -285,6 +420,12 @@ export class CodexAppServerClient {
     this.notify("initialized");
   }
 
+  /**
+   * Parses an incoming stdout line and dispatches it to the appropriate event channel.
+   *
+   * @param line Raw JSON-RPC line emitted by the app-server.
+   * @returns Nothing.
+   */
   private handleLine(line: string): void {
     let message: JsonRpcMessage;
 
@@ -318,6 +459,12 @@ export class CodexAppServerClient {
     }
   }
 
+  /**
+   * Resolves or rejects the pending promise associated with a JSON-RPC response.
+   *
+   * @param message Parsed JSON-RPC response message.
+   * @returns Nothing.
+   */
   private handleResponse(message: JsonRpcMessage): void {
     if (!("id" in message)) {
       return;
@@ -349,6 +496,12 @@ export class CodexAppServerClient {
     }
   }
 
+  /**
+   * Rejects every pending request with the provided process-level error.
+   *
+   * @param error Error propagated to all pending request promises.
+   * @returns Nothing.
+   */
   private rejectPendingRequests(error: Error): void {
     for (const pending of this.pendingRequests.values()) {
       clearTimeout(pending.timeout);
@@ -358,6 +511,11 @@ export class CodexAppServerClient {
     this.pendingRequests.clear();
   }
 
+  /**
+   * Returns the active child process or raises a normalized process error.
+   *
+   * @returns Running child process instance.
+   */
   private requireProcess(): ProcessLike {
     if (this.process === null) {
       throw new CodexProcessError("Codex app-server is not running.");
@@ -367,12 +525,25 @@ export class CodexAppServerClient {
   }
 }
 
+/**
+ * Spawns the Codex app-server process with piped standard streams.
+ *
+ * @param command Executable command to launch.
+ * @param args Arguments passed to the executable.
+ * @returns Process-like child process used by the client.
+ */
 function defaultProcessFactory(command: string, args: string[]): ProcessLike {
   return spawn(resolveCodexCommand(command), args, {
     stdio: ["pipe", "pipe", "pipe"]
   });
 }
 
+/**
+ * Resolves the actual Codex executable path, including an optional Volta shim.
+ *
+ * @param command Requested command name.
+ * @returns Executable path used to spawn the app-server process.
+ */
 function resolveCodexCommand(command: string): string {
   if (command !== "codex") {
     return command;
@@ -393,10 +564,23 @@ function resolveCodexCommand(command: string): string {
   return existsSync(voltaShim) ? voltaShim : command;
 }
 
+/**
+ * Wraps a cleanup callback in the project's disposable contract.
+ *
+ * @param dispose Cleanup callback to expose.
+ * @returns Disposable wrapper that calls the provided cleanup callback.
+ */
 function createDisposable(dispose: () => void): Disposable {
   return { dispose };
 }
 
+/**
+ * Normalizes arbitrary spawn failures into a process error exposed by the client.
+ *
+ * @param error Raw error raised while spawning or interacting with the process.
+ * @param command Command that triggered the failure.
+ * @returns Normalized process error instance.
+ */
 function normalizeProcessError(error: unknown, command: string): CodexProcessError {
   if (isRecord(error) && error.code === "ENOENT") {
     return new CodexProcessError(

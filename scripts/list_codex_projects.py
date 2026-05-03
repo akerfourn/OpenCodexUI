@@ -28,12 +28,21 @@ SOURCE_KINDS = [
 
 @dataclass(frozen=True)
 class AppServerResponse:
+    """Represents a JSON-RPC response returned by `codex app-server`."""
+
     result: dict[str, Any] | None
     error: dict[str, Any] | None
 
 
 class CodexAppServer:
+    """Wraps a `codex app-server` subprocess with simple JSON-RPC helpers."""
+
     def __init__(self, command: str) -> None:
+        """Start the Codex app-server subprocess.
+
+        Args:
+            command: CLI command used to launch Codex.
+        """
         self._next_id = 1
         self._process = subprocess.Popen(
             [command, "app-server"],
@@ -45,6 +54,7 @@ class CodexAppServer:
         )
 
     def close(self) -> None:
+        """Terminate the Codex app-server subprocess if it is still running."""
         if self._process.poll() is not None:
             return
 
@@ -55,6 +65,15 @@ class CodexAppServer:
             self._process.kill()
 
     def request(self, method: str, params: dict[str, Any] | None = None) -> AppServerResponse:
+        """Send a JSON-RPC request and wait for the correlated response.
+
+        Args:
+            method: JSON-RPC method name to call.
+            params: Optional JSON-RPC parameters.
+
+        Returns:
+            Normalized app-server response for the requested method.
+        """
         request_id = self._next_id
         self._next_id += 1
         payload: dict[str, Any] = {
@@ -82,6 +101,12 @@ class CodexAppServer:
             )
 
     def notify(self, method: str, params: dict[str, Any] | None = None) -> None:
+        """Send a JSON-RPC notification without waiting for a response.
+
+        Args:
+            method: JSON-RPC method name to call.
+            params: Optional JSON-RPC parameters.
+        """
         payload: dict[str, Any] = {
             "jsonrpc": "2.0",
             "method": method,
@@ -93,6 +118,11 @@ class CodexAppServer:
         self._write(payload)
 
     def _write(self, payload: dict[str, Any]) -> None:
+        """Write a JSON-RPC payload to the app-server stdin.
+
+        Args:
+            payload: JSON-RPC payload to serialize and send.
+        """
         if self._process.stdin is None:
             raise RuntimeError("codex app-server stdin is closed")
 
@@ -100,6 +130,11 @@ class CodexAppServer:
         self._process.stdin.flush()
 
     def _read_message(self) -> dict[str, Any]:
+        """Read the next JSON-RPC message from the app-server stdout.
+
+        Returns:
+            Parsed JSON-RPC message object.
+        """
         if self._process.stdout is None:
             raise RuntimeError("codex app-server stdout is closed")
 
@@ -118,6 +153,11 @@ class CodexAppServer:
 
 
 def main() -> int:
+    """Run the CLI entrypoint.
+
+    Returns:
+        Process exit code.
+    """
     args = parse_args()
     server = CodexAppServer(args.codex_command)
 
@@ -132,6 +172,11 @@ def main() -> int:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for the project-list helper.
+
+    Returns:
+        Parsed command-line arguments.
+    """
     parser = argparse.ArgumentParser(
         description="List Codex projects through codex app-server thread/list."
     )
@@ -145,6 +190,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def initialize(server: CodexAppServer) -> None:
+    """Run the JSON-RPC initialization handshake expected by Codex.
+
+    Args:
+        server: Running Codex app-server wrapper.
+    """
     response = server.request(
         "initialize",
         {
@@ -162,6 +212,15 @@ def initialize(server: CodexAppServer) -> None:
 
 
 def list_threads(server: CodexAppServer, args: argparse.Namespace) -> list[dict[str, Any]]:
+    """List threads by paging through the Codex thread/list endpoint.
+
+    Args:
+        server: Running Codex app-server wrapper.
+        args: Parsed CLI arguments that control pagination and filters.
+
+    Returns:
+        Thread payloads returned by the app-server.
+    """
     cursor: str | None = None
     threads: list[dict[str, Any]] = []
 
@@ -201,6 +260,12 @@ def list_threads(server: CodexAppServer, args: argparse.Namespace) -> list[dict[
 
 
 def print_projects(threads: list[dict[str, Any]], show_threads: bool) -> None:
+    """Print projects grouped from the thread list.
+
+    Args:
+        threads: Raw thread payloads returned by the app-server.
+        show_threads: Whether to print a sample of threads under each project.
+    """
     projects = Counter(read_text(thread.get("cwd")) or "<sans cwd>" for thread in threads)
 
     print(f"{len(threads)} thread(s)")
@@ -223,6 +288,12 @@ def print_projects(threads: list[dict[str, Any]], show_threads: bool) -> None:
 
 
 def raise_if_error(response: AppServerResponse, method: str) -> None:
+    """Raise a runtime error when a JSON-RPC response contains an error.
+
+    Args:
+        response: Normalized app-server response to inspect.
+        method: Method name used to contextualize the error.
+    """
     if response.error is None:
         return
 
@@ -231,6 +302,14 @@ def raise_if_error(response: AppServerResponse, method: str) -> None:
 
 
 def read_text(value: Any) -> str:
+    """Normalize a raw JSON value into a string.
+
+    Args:
+        value: Raw JSON value to normalize.
+
+    Returns:
+        String value, or an empty string when the value is not a string.
+    """
     return value if isinstance(value, str) else ""
 
 

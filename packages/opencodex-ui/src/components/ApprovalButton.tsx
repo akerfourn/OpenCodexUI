@@ -1,3 +1,6 @@
+/**
+ * Renders the approval button component for the OpenCodex UI.
+ */
 import { Button } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
@@ -11,6 +14,13 @@ type ApprovalButtonProps = {
   decision: OpenCodexApprovalDecision;
 };
 
+/**
+ * Renders the approval button component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ApprovalButton({ store, approvalId, decision }: ApprovalButtonProps) {
   const { t } = useTranslation();
 

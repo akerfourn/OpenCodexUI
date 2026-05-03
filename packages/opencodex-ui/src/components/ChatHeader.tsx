@@ -1,3 +1,6 @@
+/**
+ * Renders the chat header component for the OpenCodex UI.
+ */
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import { Box, CircularProgress, IconButton, LinearProgress, Stack, Typography } from "@mui/material";
@@ -12,6 +15,13 @@ type ChatHeaderProps = {
   store: RootStore;
 };
 
+/**
+ * Renders the chat header component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ChatHeader({ store }: ChatHeaderProps) {
   const { t } = useTranslation();
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);

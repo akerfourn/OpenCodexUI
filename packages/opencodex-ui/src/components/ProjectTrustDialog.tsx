@@ -1,3 +1,6 @@
+/**
+ * Renders the project trust dialog component for the OpenCodex UI.
+ */
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -20,6 +23,13 @@ type ProjectTrustDialogProps = {
   store: RootStore;
 };
 
+/**
+ * Renders the project trust dialog component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ProjectTrustDialog({ store }: ProjectTrustDialogProps) {
   const { t } = useTranslation();
   const [isConfirmed, setIsConfirmed] = useState(false);

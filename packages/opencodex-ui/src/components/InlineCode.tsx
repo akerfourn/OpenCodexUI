@@ -1,3 +1,6 @@
+/**
+ * Renders the inline code component for the OpenCodex UI.
+ */
 import { Box } from "@mui/material";
 import type { ReactNode } from "react";
 
@@ -6,6 +9,13 @@ type InlineCodeProps = {
   children?: ReactNode;
 };
 
+/**
+ * Renders the inline code component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function InlineCode({ className, children }: InlineCodeProps) {
   return (
     <Box

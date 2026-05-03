@@ -1,3 +1,6 @@
+/**
+ * Renders the chat activity panel component for the OpenCodex UI.
+ */
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,6 +18,13 @@ type ChatActivityPanelProps = {
   store: RootStore;
 };
 
+/**
+ * Renders the chat activity panel component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ChatActivityPanel({
   store
 }: ChatActivityPanelProps) {

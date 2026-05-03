@@ -1,3 +1,6 @@
+/**
+ * Defines the Material UI theme shared by the OpenCodex UI renderer.
+ */
 import { createTheme } from "@mui/material/styles";
 
 export const opencodexTheme = createTheme({

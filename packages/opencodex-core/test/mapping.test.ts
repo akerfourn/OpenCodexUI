@@ -1,3 +1,6 @@
+/**
+ * Covers mapping helpers that normalize Codex payloads for the UI.
+ */
 import { describe, expect, it } from "vitest";
 
 import { createApprovalRequest, mapThread, mapThreadMessages, mapTurnsToMessages } from "../src/mapping";

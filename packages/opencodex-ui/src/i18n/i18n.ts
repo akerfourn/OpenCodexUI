@@ -1,3 +1,6 @@
+/**
+ * Configures translations and runtime language switching for the OpenCodex UI.
+ */
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
@@ -154,6 +157,13 @@ export const resources = {
   }
 } as const;
 
+/**
+ * Initializes i18n and applies the requested startup language.
+ *
+ * @param language Language used for localized labels.
+ *
+ * @returns Nothing.
+ */
 export function initializeOpenCodexI18n(language: OpenCodexLanguage = "system"): void {
   void i18n
     .use(initReactI18next)
@@ -167,6 +177,13 @@ export function initializeOpenCodexI18n(language: OpenCodexLanguage = "system"):
     });
 }
 
+/**
+ * Applies a runtime language change to the shared i18n instance.
+ *
+ * @param language Language used for localized labels.
+ *
+ * @returns Nothing.
+ */
 export function applyOpenCodexLanguage(language: OpenCodexLanguage): void {
   const nextLanguage = resolveLanguage(language);
 
@@ -175,6 +192,13 @@ export function applyOpenCodexLanguage(language: OpenCodexLanguage): void {
   }
 }
 
+/**
+ * Resolves the effective UI language from a protocol language setting.
+ *
+ * @param language Language used for localized labels.
+ *
+ * @returns Effective UI language.
+ */
 function resolveLanguage(language: OpenCodexLanguage): OpenCodexResolvedLanguage {
   if (language === "fr" || language === "en") {
     return language;

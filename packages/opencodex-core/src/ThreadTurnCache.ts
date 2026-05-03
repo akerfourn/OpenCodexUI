@@ -1,3 +1,6 @@
+/**
+ * Stores thread metadata and merged turn payloads for the active UI session.
+ */
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 import type { CachedThreadSnapshot, CachedThreadSyncState } from "@open-codex-ui/opencodex-cache";
 
@@ -15,13 +18,30 @@ export type ThreadTurnCacheEntry = {
   lastSyncedAt: string | null;
 };
 
+/**
+ * Stores and merges thread turns for the active session.
+ */
 export class ThreadTurnCache {
   private readonly entries = new Map<string, ThreadTurnCacheEntry>();
 
+  /**
+   * Returns.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Computed value.
+   */
   get(threadId: string): ThreadTurnCacheEntry | null {
     return this.entries.get(threadId) ?? null;
   }
 
+  /**
+   * Returns or create.
+   *
+   * @param thread Thread payload to process.
+   *
+   * @returns Computed value.
+   */
   getOrCreate(thread: OpenCodexThread): ThreadTurnCacheEntry {
     const existing = this.entries.get(thread.id);
 
@@ -46,6 +66,14 @@ export class ThreadTurnCache {
     return created;
   }
 
+  /**
+   * Renames a thread and persists the new title.
+   *
+   * @param threadId Thread identifier.
+   * @param title Thread title or display title.
+   *
+   * @returns Nothing.
+   */
   renameThread(threadId: string, title: string): void {
     const entry = this.entries.get(threadId);
 
@@ -60,6 +88,14 @@ export class ThreadTurnCache {
     };
   }
 
+  /**
+   * Updates codex thread title.
+   *
+   * @param threadId Thread identifier.
+   * @param codexTitle Codex title.
+   *
+   * @returns Computed value.
+   */
   updateCodexThreadTitle(threadId: string, codexTitle: string): ThreadTurnCacheEntry | null {
     const entry = this.entries.get(threadId);
 
@@ -79,6 +115,15 @@ export class ThreadTurnCache {
     return entry;
   }
 
+  /**
+   * Merges latest turns.
+   *
+   * @param entry Entry.
+   * @param turns Turn collection to process.
+   * @param olderCursor Pagination cursor for older turns.
+   *
+   * @returns Nothing.
+   */
   mergeLatestTurns(
     entry: ThreadTurnCacheEntry,
     turns: unknown[],
@@ -97,6 +142,15 @@ export class ThreadTurnCache {
     entry.lastSyncedAt = new Date().toISOString();
   }
 
+  /**
+   * Merges older turns.
+   *
+   * @param entry Entry.
+   * @param turns Turn collection to process.
+   * @param olderCursor Pagination cursor for older turns.
+   *
+   * @returns Nothing.
+   */
   mergeOlderTurns(
     entry: ThreadTurnCacheEntry,
     turns: unknown[],
@@ -108,6 +162,13 @@ export class ThreadTurnCache {
     entry.lastSyncedAt = new Date().toISOString();
   }
 
+  /**
+   * Handles replace from snapshot.
+   *
+   * @param snapshot Cached thread snapshot.
+   *
+   * @returns Computed value.
+   */
   replaceFromSnapshot(snapshot: CachedThreadSnapshot): ThreadTurnCacheEntry {
     const entry = this.getOrCreate(snapshot.thread);
     entry.turnsById.clear();
@@ -117,6 +178,13 @@ export class ThreadTurnCache {
     return entry;
   }
 
+  /**
+   * Converts turns to the target representation.
+   *
+   * @param entry Entry.
+   *
+   * @returns Requested values.
+   */
   toTurns(entry: ThreadTurnCacheEntry): unknown[] {
     return entry.orderedTurnIds
       .map((turnId) => entry.turnsById.get(turnId))
@@ -124,6 +192,15 @@ export class ThreadTurnCache {
   }
 }
 
+/**
+ * Resolves thread title.
+ *
+ * @param codexTitle Codex title.
+ * @param customTitle Custom title.
+ * @param preview Preview.
+ *
+ * @returns Computed string value.
+ */
 function resolveThreadTitle(codexTitle: string, customTitle: string, preview: string): string {
   if (customTitle.length > 0) {
     return customTitle;
@@ -136,6 +213,14 @@ function resolveThreadTitle(codexTitle: string, customTitle: string, preview: st
   return preview;
 }
 
+/**
+ * Merges incoming thread metadata with the existing store state.
+ *
+ * @param currentThread Current thread state.
+ * @param nextThread Next thread state.
+ *
+ * @returns Computed value.
+ */
 function mergeThreadMetadata(
   currentThread: OpenCodexThread,
   nextThread: OpenCodexThread
@@ -149,6 +234,14 @@ function mergeThreadMetadata(
   };
 }
 
+/**
+ * Applies sync state.
+ *
+ * @param entry Entry.
+ * @param syncState Thread synchronization state.
+ *
+ * @returns Nothing.
+ */
 function applySyncState(entry: ThreadTurnCacheEntry, syncState: CachedThreadSyncState): void {
   entry.newestTurnId = syncState.newestTurnId;
   entry.oldestTurnId = syncState.oldestTurnId;
@@ -158,6 +251,14 @@ function applySyncState(entry: ThreadTurnCacheEntry, syncState: CachedThreadSync
   entry.lastSyncedAt = syncState.lastSyncedAt;
 }
 
+/**
+ * Merges turns.
+ *
+ * @param entry Entry.
+ * @param turns Turn collection to process.
+ *
+ * @returns Nothing.
+ */
 function mergeTurns(entry: ThreadTurnCacheEntry, turns: unknown[]): void {
   for (const turn of turns) {
     const turnId = readString(readObject(turn).id);
@@ -176,6 +277,16 @@ function mergeTurns(entry: ThreadTurnCacheEntry, turns: unknown[]): void {
   entry.newestTurnId = entry.orderedTurnIds.at(-1) ?? null;
 }
 
+/**
+ * Handles compare turns.
+ *
+ * @param left Left.
+ * @param right Right.
+ * @param leftId Left identifier.
+ * @param rightId Right identifier.
+ *
+ * @returns Computed value.
+ */
 function compareTurns(left: unknown, right: unknown, leftId: string, rightId: string): number {
   const leftTime = readTurnTime(left);
   const rightTime = readTurnTime(right);
@@ -187,6 +298,13 @@ function compareTurns(left: unknown, right: unknown, leftId: string, rightId: st
   return leftId.localeCompare(rightId);
 }
 
+/**
+ * Reads turn time.
+ *
+ * @param turn Turn payload to process.
+ *
+ * @returns Numeric value, or `null` when unavailable.
+ */
 function readTurnTime(turn: unknown): number | null {
   const value = readObject(turn);
   return readNullableNumber(value.startedAt) ?? readNullableNumber(value.completedAt);

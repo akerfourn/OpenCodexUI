@@ -1,3 +1,6 @@
+/**
+ * Renders the markdown message component for the OpenCodex UI.
+ */
 import { Box } from "@mui/material";
 import { memo } from "react";
 import ReactMarkdown from "react-markdown";
@@ -10,9 +13,23 @@ import { PreBlock } from "./PreBlock";
 
 type MarkdownMessageProps = {
   markdown: string;
-  onOpenLink(href: string): void;
+/**
+ * Handles on open link.
+ *
+ * @param href Link target to open.
+ *
+ * @returns Nothing.
+ */
+onOpenLink(href: string): void;
 };
 
+/**
+ * Renders the markdown message component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function MarkdownMessage({ markdown, onOpenLink }: MarkdownMessageProps) {
   return (
     <Box

@@ -1,3 +1,6 @@
+/**
+ * Renders the approval dialog component for the OpenCodex UI.
+ */
 import { observer } from "mobx-react-lite";
 import { Box, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
@@ -9,6 +12,13 @@ type ApprovalDialogProps = {
   store: RootStore;
 };
 
+/**
+ * Renders the approval dialog component.
+ *
+ * @param props Component props.
+ *
+ * @returns Nothing.
+ */
 export function ApprovalDialog({ store }: ApprovalDialogProps) {
   const { t } = useTranslation();
   const approval = store.approvals[0];
