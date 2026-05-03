@@ -111,6 +111,10 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       });
   }
 
+  async deleteThread(threadId: string): Promise<void> {
+    this.database.prepare("DELETE FROM threads WHERE id = ?").run(threadId);
+  }
+
   async listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]> {
     const clauses: string[] = [];
     const params: Record<string, string> = {};

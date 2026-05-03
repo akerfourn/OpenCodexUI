@@ -54,6 +54,7 @@ export class RootStore {
   loadingThreadId: string | null = null;
   activeTurnId: string | null = null;
   pendingTurnId: string | null = null;
+  pendingProjectTrustRequest: { projectPath: string; disabledFolders: string[] } | null = null;
   currentProjectFilterAvailable = true;
   private threadSelectionStartedAt: number | null = null;
 
@@ -229,6 +230,17 @@ export class RootStore {
         return;
       case "approval.resolved":
         this.approvals = this.approvals.filter((approval) => approval.id !== event.approvalId);
+        return;
+      case "project.trust.required":
+        this.pendingProjectTrustRequest = {
+          projectPath: event.projectPath,
+          disabledFolders: event.disabledFolders
+        };
+        return;
+      case "project.trust.completed":
+        if (this.pendingProjectTrustRequest?.projectPath === event.projectPath) {
+          this.pendingProjectTrustRequest = null;
+        }
         return;
       case "models.updated":
         this.models = event.models;
@@ -430,6 +442,15 @@ export class RootStore {
 
   resolveApproval(approvalId: string, decision: OpenCodexApproval["choices"][number]): void {
     void this.transport.request({ type: "approval.respond", approvalId, decision });
+  }
+
+  trustProject(projectPath: string): void {
+    void this.transport.request({ type: "project.trust", projectPath });
+  }
+
+  dismissProjectTrustRequest(projectPath: string): void {
+    this.pendingProjectTrustRequest = null;
+    void this.transport.request({ type: "project.trust.dismiss", projectPath });
   }
 
   setScope(scope: OpenCodexThreadScope): void {

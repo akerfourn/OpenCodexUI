@@ -52,6 +52,7 @@ export class CodexAppServerClient {
   private readonly experimentalApi: boolean;
   private readonly processFactory: ProcessFactory;
   private readonly logger: (message: string) => void;
+  private readonly stderr: (message: string) => void;
   private readonly events = new EventEmitter<ClientEvents>();
   private readonly pendingRequests = new Map<JsonRpcId, PendingRequest>();
 
@@ -68,6 +69,7 @@ export class CodexAppServerClient {
     this.experimentalApi = options.experimentalApi ?? true;
     this.processFactory = options.processFactory ?? defaultProcessFactory;
     this.logger = options.logger ?? (() => undefined);
+    this.stderr = options.stderr ?? (() => undefined);
   }
 
   async start(): Promise<void> {
@@ -240,7 +242,9 @@ export class CodexAppServerClient {
     this.stdoutReader.on("line", (line) => this.handleLine(line));
 
     process.stderr.on("data", (chunk: Buffer | string) => {
-      this.logger(`[codex stderr] ${String(chunk).trim()}`);
+      const message = String(chunk).trim();
+      this.logger(`[codex stderr] ${message}`);
+      this.stderr(message);
     });
 
     process.once("error", (error: Error) => {

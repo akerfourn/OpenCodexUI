@@ -22,6 +22,8 @@ export type OpenCodexRequest =
     }
   | { type: "turn.interrupt"; threadId: string; turnId: string }
   | { type: "approval.respond"; approvalId: string; decision: OpenCodexApprovalDecision }
+  | { type: "project.trust"; projectPath: string }
+  | { type: "project.trust.dismiss"; projectPath: string }
   | { type: "models.list" }
   | { type: "settings.get" }
   | { type: "settings.update"; patch: Partial<OpenCodexSettings> };

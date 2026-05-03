@@ -64,6 +64,7 @@ export type CodexAppServerClientOptions = {
   experimentalApi?: boolean;
   processFactory?: ProcessFactory;
   logger?: (message: string) => void;
+  stderr?: (message: string) => void;
 };
 
 export class JsonRpcError extends Error {

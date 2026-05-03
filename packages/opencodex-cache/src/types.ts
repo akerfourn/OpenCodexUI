@@ -72,6 +72,7 @@ export interface OpenCodexCacheRepository {
   upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void>;
   updateThreadTitle(threadId: string, title: string): Promise<void>;
   updateThreadCodexTitle(threadId: string, title: string): Promise<void>;
+  deleteThread(threadId: string): Promise<void>;
   listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]>;
   getThread(threadId: string, options?: CachedThreadReadOptions): Promise<CachedThreadSnapshot | null>;
   getOlderTurns(query: CachedOlderTurnsQuery): Promise<CachedOlderTurnsResult>;

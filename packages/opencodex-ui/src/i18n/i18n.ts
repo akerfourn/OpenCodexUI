@@ -59,6 +59,15 @@ export const resources = {
         submit: "Renommer",
         title: "Renommer le chat"
       },
+      trustProject: {
+        cancel: "Plus tard",
+        confirmCheckbox: "Je fais confiance au contenu local de ce projet",
+        description: "Codex a désactivé la configuration locale, les hooks et les politiques d'exécution de ce projet tant qu'il n'est pas marqué comme fiable.",
+        foldersLabel: "Dossiers concernés",
+        submit: "Faire confiance au projet",
+        title: "Faire confiance à ce projet ?",
+        warning: "N'acceptez que si vous faites confiance aux fichiers de ce dépôt, en particulier au dossier .codex."
+      },
       sidebar: {
         allChats: "Tous les chats",
         currentProject: "Projet courant",
@@ -120,6 +129,15 @@ export const resources = {
         cancel: "Cancel",
         submit: "Rename",
         title: "Rename chat"
+      },
+      trustProject: {
+        cancel: "Later",
+        confirmCheckbox: "I trust this project's local content",
+        description: "Codex disabled this project's local config, hooks, and exec policies until the project is marked as trusted.",
+        foldersLabel: "Affected folders",
+        submit: "Trust project",
+        title: "Trust this project?",
+        warning: "Only accept if you trust the files in this repository, especially the .codex folder."
       },
       sidebar: {
         allChats: "All chats",

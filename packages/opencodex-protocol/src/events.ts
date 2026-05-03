@@ -27,6 +27,8 @@ export type OpenCodexEvent =
   | { type: "activity.completed"; threadId: string; activityId: string }
   | { type: "approval.requested"; approval: OpenCodexApproval }
   | { type: "approval.resolved"; approvalId: string }
+  | { type: "project.trust.required"; projectPath: string; disabledFolders: string[] }
+  | { type: "project.trust.completed"; projectPath: string }
   | { type: "turn.started"; threadId: string; turnId: string }
   | { type: "turn.completed"; threadId: string; turnId: string; durationMs: number | null }
   | { type: "models.updated"; models: string[] }

@@ -4,6 +4,7 @@ import { Box } from "@mui/material";
 import type { RootStore } from "../stores/RootStore";
 import { ApprovalDialogX } from "./ApprovalDialog";
 import { ChatViewX } from "./ChatView";
+import { ProjectTrustDialogX } from "./ProjectTrustDialog";
 import { ThreadListX } from "./ThreadList";
 
 type AppProps = {
@@ -23,6 +24,7 @@ export function App({ store }: AppProps) {
         <ChatViewX store={store} />
       </section>
       <ApprovalDialogX store={store} />
+      <ProjectTrustDialogX store={store} />
     </Box>
   );
 }

@@ -85,6 +85,7 @@ export class OpenCodexBackend {
   private readonly threadTurnCache = new ThreadTurnCache();
   private readonly cacheRepository: OpenCodexCacheRepository | null;
   private activeTurnId: string | null = null;
+  private codexStderrBuffer = "";
 
   constructor(private readonly options: OpenCodexBackendOptions) {
     this.settings = options.settings;
@@ -136,6 +137,11 @@ export class OpenCodexBackend {
         return this.interruptTurn(request.threadId, request.turnId);
       case "approval.respond":
         return this.resolveApproval(request.approvalId, request.decision);
+      case "project.trust":
+        return this.trustProject(request.projectPath);
+      case "project.trust.dismiss":
+        this.dismissProjectTrustRequest(request.projectPath);
+        return { ok: true };
       case "models.list":
         return this.listModels();
       case "settings.get":
@@ -157,7 +163,8 @@ export class OpenCodexBackend {
     const client = new CodexAppServerClient({
       command: this.settings.codexCommand,
       experimentalApi: this.settings.experimentalApi,
-      logger: (message) => this.options.logger?.(message)
+      logger: (message) => this.options.logger?.(message),
+      stderr: (message) => this.handleCodexStderr(message)
     });
 
     this.client = client;
@@ -198,7 +205,7 @@ export class OpenCodexBackend {
     await this.writeThreadIndex(threads);
 
     const mergedThreads = await this.readCachedThreads(scope, searchTerm);
-    const updatedThreads = mergedThreads.length > 0 ? mergedThreads : threads;
+    const updatedThreads = mergeFreshThreadList(threads, mergedThreads);
     this.emitThreadsUpdated(updatedThreads);
 
     return updatedThreads;
@@ -220,7 +227,7 @@ export class OpenCodexBackend {
 
       this.emitThreadOpened(cacheEntry, turns);
       void this.resumeAndSyncCachedThread(threadId).catch((error: unknown) => {
-        this.handleClientError(toError(error));
+        this.handleThreadOpenError(threadId, toError(error));
       });
 
       return { thread: cacheEntry.thread, turns };
@@ -235,7 +242,14 @@ export class OpenCodexBackend {
     });
 
     const codexStartedAt = Date.now();
-    const response = await client.resumeThread(threadId, { excludeTurns: true });
+    let response: unknown;
+
+    try {
+      response = await client.resumeThread(threadId, { excludeTurns: true });
+    } catch (error) {
+      await this.handleMissingRollout(threadId, error);
+      throw error;
+    }
     const responseObject = readObject(response);
     const threadValue = responseObject.thread;
     const thread = mapThread(
@@ -400,6 +414,35 @@ export class OpenCodexBackend {
     await this.writeThreadIndex([thread]);
     this.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
     await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
+  }
+
+  private handleThreadOpenError(threadId: string, error: Error): void {
+    if (isMissingRolloutError(error)) {
+      void this.forgetCachedThread(threadId);
+    }
+
+    this.handleClientError(error);
+  }
+
+  private async handleMissingRollout(threadId: string, error: unknown): Promise<void> {
+    if (!isMissingRolloutError(error)) {
+      return;
+    }
+
+    await this.forgetCachedThread(threadId);
+  }
+
+  private async forgetCachedThread(threadId: string): Promise<void> {
+    if (this.cacheRepository !== null) {
+      try {
+        await this.cacheRepository.deleteThread(threadId);
+      } catch (error) {
+        this.options.logger?.(`thread cache delete failed: ${String(error)}`);
+      }
+    }
+
+    const cachedThreads = await this.readCachedThreads("currentProject");
+    this.emitThreadsUpdated(cachedThreads);
   }
 
   private emitThreadOpened(cacheEntry: ThreadTurnCacheEntry, turns: OpenCodexTurn[]): void {
@@ -619,6 +662,67 @@ export class OpenCodexBackend {
     const approval = createApprovalRequest(request, this.settings.language);
     this.pendingApprovals.set(approval.id, request);
     this.emit({ type: "approval.requested", approval });
+  }
+
+  private async trustProject(projectPath: string): Promise<{ ok: true }> {
+    const normalizedProjectPath = projectPath.trim();
+
+    if (normalizedProjectPath.length === 0) {
+      return { ok: true };
+    }
+
+    const client = await this.ensureClient();
+
+    await client.request("config/batchWrite", {
+      edits: [
+        {
+          keyPath: `projects.${normalizedProjectPath}.trust_level`,
+          value: "trusted",
+          mergeStrategy: "upsert"
+        }
+      ],
+      reloadUserConfig: true
+    });
+
+    this.emit({
+      type: "project.trust.completed",
+      projectPath: normalizedProjectPath
+    });
+
+    return { ok: true };
+  }
+
+  private dismissProjectTrustRequest(projectPath: string): void {
+    const normalizedProjectPath = projectPath.trim();
+
+    if (normalizedProjectPath.length === 0) {
+      return;
+    }
+
+    this.emit({
+      type: "project.trust.completed",
+      projectPath: normalizedProjectPath
+    });
+  }
+
+  private handleCodexStderr(message: string): void {
+    this.codexStderrBuffer = `${this.codexStderrBuffer}\n${message}`.slice(-8000);
+
+    const trustWarning = parseProjectTrustWarning(
+      this.codexStderrBuffer,
+      this.options.projectPath
+    );
+
+    if (trustWarning === null) {
+      return;
+    }
+
+    this.codexStderrBuffer = "";
+    this.emit({
+      type: "project.trust.required",
+      projectPath: trustWarning.projectPath,
+      disabledFolders: trustWarning.disabledFolders
+    });
   }
 
   private resolveApproval(approvalId: string, decision: OpenCodexApprovalDecision): void {
@@ -947,6 +1051,47 @@ type BackendLabels = {
   missingLinkHandler: string;
 };
 
+function parseProjectTrustWarning(
+  message: string,
+  fallbackProjectPath: string | null
+): { projectPath: string; disabledFolders: string[] } | null {
+  if (!message.includes("Project-local config, hooks, and exec policies are disabled")) {
+    return null;
+  }
+
+  const projectPath = readTrustedProjectPath(message) ?? fallbackProjectPath;
+
+  if (projectPath === null || projectPath.trim().length === 0) {
+    return null;
+  }
+
+  return {
+    projectPath,
+    disabledFolders: readDisabledProjectFolders(message)
+  };
+}
+
+function readTrustedProjectPath(message: string): string | null {
+  const match = /add\s+(.+?)\s+as a trusted project in\s+.+?config\.toml/s.exec(message);
+  return match?.[1]?.trim() ?? null;
+}
+
+function readDisabledProjectFolders(message: string): string[] {
+  const folders: string[] = [];
+  const folderPattern = /^\s*\d+\.\s+(.+)$/gm;
+  let match: RegExpExecArray | null;
+
+  while ((match = folderPattern.exec(message)) !== null) {
+    const folder = match[1]?.trim() ?? "";
+
+    if (folder.length > 0) {
+      folders.push(folder);
+    }
+  }
+
+  return folders;
+}
+
 function createCacheSignature(cacheEntry: ThreadTurnCacheEntry): string {
   return cacheEntry.orderedTurnIds
     .map((turnId) => {
@@ -1022,6 +1167,23 @@ function toCachedThreadDelta(cacheEntry: ThreadTurnCacheEntry, turns: unknown[])
 
 function isCacheOlderCursor(cursor: string): boolean {
   return cursor.startsWith("cache:");
+}
+
+function mergeFreshThreadList(
+  freshThreads: OpenCodexThread[],
+  cachedThreads: OpenCodexThread[]
+): OpenCodexThread[] {
+  if (cachedThreads.length === 0) {
+    return freshThreads;
+  }
+
+  const cachedThreadsById = new Map(cachedThreads.map((thread) => [thread.id, thread]));
+
+  return freshThreads.map((thread) => cachedThreadsById.get(thread.id) ?? thread);
+}
+
+function isMissingRolloutError(error: unknown): boolean {
+  return error instanceof JsonRpcError && error.message.includes("no rollout found for thread id");
 }
 
 function readCacheOlderCursor(cursor: string): string {
