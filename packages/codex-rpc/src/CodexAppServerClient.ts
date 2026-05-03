@@ -395,7 +395,7 @@ function createDisposable(dispose: () => void): Disposable {
 function normalizeProcessError(error: unknown, command: string): CodexProcessError {
   if (isRecord(error) && error.code === "ENOENT") {
     return new CodexProcessError(
-      `Codex CLI n'a pas été trouvé dans le PATH: ${command}.`
+      `Codex CLI was not found in PATH: ${command}.`
     );
   }
 

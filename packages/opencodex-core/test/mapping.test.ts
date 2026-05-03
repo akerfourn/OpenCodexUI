@@ -7,8 +7,8 @@ describe("OpenCodex mapping", () => {
     expect(
       mapThread({
         id: "thread-1",
-        name: "Titre",
-        preview: "Aperçu",
+        name: "Title",
+        preview: "Preview",
         cwd: "/tmp/project",
         updatedAt: 1,
         status: "idle",
@@ -16,10 +16,10 @@ describe("OpenCodex mapping", () => {
       })
     ).toEqual({
       id: "thread-1",
-      codexTitle: "Titre",
+      codexTitle: "Title",
       customTitle: null,
-      title: "Titre",
-      preview: "Aperçu",
+      title: "Title",
+      preview: "Preview",
       model: null,
       reasoningEffort: null,
       projectName: "project",
@@ -40,12 +40,12 @@ describe("OpenCodex mapping", () => {
             {
               type: "userMessage",
               id: "user-1",
-              content: [{ type: "text", text: "Bonjour" }]
+              content: [{ type: "text", text: "Hello" }]
             },
             {
               type: "agentMessage",
               id: "assistant-1",
-              text: "Salut"
+              text: "Hi"
             }
           ]
         }
@@ -53,8 +53,8 @@ describe("OpenCodex mapping", () => {
     });
 
     expect(messages).toMatchObject([
-      { id: "user-1", threadId: "thread-1", role: "user", content: "Bonjour" },
-      { id: "assistant-1", threadId: "thread-1", role: "assistant", content: "Salut" }
+      { id: "user-1", threadId: "thread-1", role: "user", content: "Hello" },
+      { id: "assistant-1", threadId: "thread-1", role: "assistant", content: "Hi" }
     ]);
   });
 
@@ -72,7 +72,7 @@ describe("OpenCodex mapping", () => {
           {
             type: "agentMessage",
             id: "assistant-1",
-            text: "Réponse",
+            text: "Answer",
             phase: "final_answer"
           }
         ]
@@ -92,7 +92,7 @@ describe("OpenCodex mapping", () => {
         id: "assistant-1",
         threadId: "thread-1",
         role: "assistant",
-        content: "Réponse",
+        content: "Answer",
         turnId: "turn-1",
         turnDurationMs: 1500,
         phase: "final_answer"

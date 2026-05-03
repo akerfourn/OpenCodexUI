@@ -1,16 +1,16 @@
 # OpenCodexUI
 
-OpenCodexUI est une application Electron locale pour piloter Codex CLI via
+OpenCodexUI is a local Electron app for driving Codex CLI through
 `codex app-server`.
 
-L'application utilise l'installation Codex existante de la machine. Elle
-n'embarque pas Codex et ne remplace pas son authentification.
+The app uses the machine's existing Codex installation. It does not bundle
+Codex and does not replace Codex authentication.
 
-## Prérequis
+## Requirements
 
-- Node.js 20 ou plus récent.
-- npm 10 ou plus récent.
-- Codex CLI installé localement et accessible via `codex` dans le `PATH`.
+- Node.js 20 or newer.
+- npm 10 or newer.
+- Codex CLI installed locally and available as `codex` in the `PATH`.
 
 ## Installation
 
@@ -18,31 +18,30 @@ n'embarque pas Codex et ne remplace pas son authentification.
 npm install
 ```
 
-## Développement
+## Development
 
 ```bash
 npm run dev
 ```
 
-Ce script démarre le renderer Vite en mode dev, rebuild automatiquement les
-packages du monorepo utilisés par l'app, puis relance Electron quand le backend
-ou le main process changent. Les changements UI sont pris en compte sans
-relancer manuellement l'application.
+This script starts the Vite renderer in dev mode, automatically rebuilds the
+monorepo packages used by the app, and restarts Electron when the backend or
+main process changes. UI changes are picked up without restarting the app
+manually.
 
-Par défaut, l'application utilise le dossier depuis lequel `npm run dev` a été
-lancé comme projet courant. Pour forcer un autre projet :
+By default, the app uses the directory where `npm run dev` was started as the
+current project. To force another project:
 
 ```bash
-OPENCODEX_PROJECT_PATH=/chemin/vers/projet npm run dev
+OPENCODEX_PROJECT_PATH=/path/to/project npm run dev
 ```
 
-## Debug VSCode
+## VSCode Debug
 
-Une configuration `Debug Electron app` est disponible dans VSCode. Elle build
-l'application, puis démarre Electron avec l'inspecteur Node attaché au main
-process.
+A `Debug Electron app` configuration is available in VSCode. It builds the app,
+then starts Electron with the Node inspector attached to the main process.
 
-## Build et validation
+## Build And Validation
 
 ```bash
 npm run typecheck
@@ -50,42 +49,42 @@ npm test
 npm run build
 ```
 
-## Générer les types Codex app-server
+## Generate Codex App-Server Types
 
 ```bash
 npm run generate:codex-types
 ```
 
-Les types générés sont placés dans `packages/codex-rpc/src/generated`.
+Generated types are written to `packages/codex-rpc/src/generated`.
 
 ## Structure
 
 ```txt
 apps/electron-app
-  src/main      intégration Electron, IPC, preload, lifecycle
-  src/renderer  montage React et transport Electron
+  src/main      Electron integration, IPC, preload, lifecycle
+  src/renderer  React mounting and Electron transport
 
 packages/codex-rpc
-  client stdio JSONL pour codex app-server
+  JSONL stdio client for codex app-server
 
 packages/opencodex-protocol
-  contrat interne UI/backend indépendant d'Electron
+  internal UI/backend contract independent from Electron
 
 packages/opencodex-core
-  services backend et mapping Codex vers OpenCodexUI
+  backend services and Codex-to-OpenCodexUI mapping
 
 packages/opencodex-ui
-  React, MobX, markdown, chat, approvals, liste des threads
+  React, MobX, markdown, chat, approvals, thread list
 ```
 
-`packages/codex-rpc` ne dépend pas d'Electron. `opencodex-ui` ne dépend pas
-d'Electron non plus : le renderer lui fournit seulement un transport conforme à
+`packages/codex-rpc` does not depend on Electron. `opencodex-ui` also does not
+depend on Electron: the renderer only provides a transport compatible with
 `OpenCodexClientTransport`.
 
-## Paramètres
+## Settings
 
-Les paramètres Electron sont stockés dans `settings.json` sous le dossier
-`userData` de l'application.
+Electron settings are stored in `settings.json` under the app's `userData`
+directory.
 
 ```json
 {
@@ -93,14 +92,15 @@ Les paramètres Electron sont stockés dans `settings.json` sous le dossier
   "defaultModel": null,
   "defaultReasoningEffort": "medium",
   "showActivityPanel": true,
-  "experimentalApi": true
+  "experimentalApi": true,
+  "language": "system"
 }
 ```
 
-## Limitations connues
+## Known Limitations
 
-- La liste charge actuellement jusqu'à 2000 threads.
-- Les approvals principales sont gérées ; certains prompts Codex plus complexes
-  peuvent nécessiter un mapping dédié.
-- Le bundle renderer est encore unique et Vite signale un chunk supérieur à
-  500 kB.
+- The list currently loads up to 2,000 threads.
+- The main approval flows are handled; some more complex Codex prompts may need
+  dedicated mapping.
+- The renderer bundle is still a single bundle, and Vite reports one chunk
+  larger than 500 kB.
