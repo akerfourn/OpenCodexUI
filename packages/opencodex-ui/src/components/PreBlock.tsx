@@ -1,12 +1,14 @@
 import { Children, isValidElement, type ReactNode } from "react";
 import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import { useTranslation } from "react-i18next";
 
 type PreBlockProps = {
   children?: ReactNode;
 };
 
 export function PreBlock({ children }: PreBlockProps) {
+  const { t } = useTranslation();
   const child = Children.toArray(children)[0];
 
   if (!isValidElement(child)) {
@@ -52,10 +54,10 @@ export function PreBlock({ children }: PreBlockProps) {
         <Typography variant="caption" component="span">
           {language}
         </Typography>
-        <Tooltip title="Copier le bloc de code">
+        <Tooltip title={t("chat.copyCodeBlock")}>
           <IconButton
             size="small"
-            aria-label="Copier le bloc de code"
+            aria-label={t("chat.copyCodeBlock")}
             onClick={handleCopy}
           >
             <ContentCopyOutlinedIcon fontSize="small" />

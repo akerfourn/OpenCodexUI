@@ -101,7 +101,7 @@ export class OpenCodexBackend {
     try {
       return await this.handleValidRequest(request);
     } catch (error) {
-      const normalized = normalizeError(error);
+      const normalized = normalizeError(error, this.settings.language);
       this.emit({ type: "error", message: normalized.message, details: normalized.details });
       throw normalized;
     }
@@ -324,7 +324,7 @@ export class OpenCodexBackend {
     const addedTurns = this.threadTurnCache
       .toTurns(cacheEntry)
       .filter((turn) => !previousTurnIds.has(readString(readObject(turn).id)));
-    const turns = mapTurnsToOpenCodexTurns(threadId, addedTurns);
+    const turns = mapTurnsToOpenCodexTurns(threadId, addedTurns, this.settings.language);
     const hasMoreOlderMessages = !cacheEntry.hasLoadedAllOlderTurns;
 
     if (turns.length > 0) {
@@ -376,7 +376,11 @@ export class OpenCodexBackend {
   }
 
   private readCachedTurns(cacheEntry: ThreadTurnCacheEntry): OpenCodexTurn[] {
-    return mapTurnsToOpenCodexTurns(cacheEntry.thread.id, this.threadTurnCache.toTurns(cacheEntry));
+    return mapTurnsToOpenCodexTurns(
+      cacheEntry.thread.id,
+      this.threadTurnCache.toTurns(cacheEntry),
+      this.settings.language
+    );
   }
 
   private async resumeAndSyncCachedThread(threadId: string): Promise<void> {
@@ -511,7 +515,7 @@ export class OpenCodexBackend {
     }
 
     if (this.options.openExternalLink === undefined) {
-      throw new Error("Aucun gestionnaire d'ouverture de lien externe n'est configuré.");
+      throw new Error(getBackendLabels(this.settings.language).missingLinkHandler);
     }
 
     await this.options.openExternalLink(target);
@@ -612,7 +616,7 @@ export class OpenCodexBackend {
   }
 
   private handleServerRequest(request: CodexServerRequest): void {
-    const approval = createApprovalRequest(request);
+    const approval = createApprovalRequest(request, this.settings.language);
     this.pendingApprovals.set(approval.id, request);
     this.emit({ type: "approval.requested", approval });
   }
@@ -621,7 +625,10 @@ export class OpenCodexBackend {
     const request = this.pendingApprovals.get(approvalId);
 
     if (request === undefined || this.client === null) {
-      this.emit({ type: "error", message: "La demande d'approbation n'est plus disponible." });
+      this.emit({
+        type: "error",
+        message: getBackendLabels(this.settings.language).approvalUnavailable
+      });
       return;
     }
 
@@ -722,7 +729,11 @@ export class OpenCodexBackend {
         result.hasMoreOlderTurns ? createCacheOlderCursor(readOldestTurnId(result.turns)) : null
       );
 
-      const turns = mapTurnsToOpenCodexTurns(cacheEntry.thread.id, result.turns);
+      const turns = mapTurnsToOpenCodexTurns(
+        cacheEntry.thread.id,
+        result.turns,
+        this.settings.language
+      );
       const hasMoreOlderMessages = !cacheEntry.hasLoadedAllOlderTurns;
 
       this.emit({
@@ -877,17 +888,22 @@ function fallbackModels(): string[] {
   return ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex"];
 }
 
-function normalizeError(error: unknown): { message: string; details?: unknown } {
+function normalizeError(
+  error: unknown,
+  language: OpenCodexSettings["language"] = "fr"
+): { message: string; details?: unknown } {
+  const labels = getBackendLabels(language);
+
   if (error instanceof CodexProcessError) {
     return {
       message: error.message,
-      details: "Vérifiez que Codex CLI est installé et que codexCommand pointe vers le bon exécutable."
+      details: labels.codexCommandHelp
     };
   }
 
   if (error instanceof JsonRpcError) {
     return {
-      message: `Codex app-server a refusé la requête: ${error.message}`,
+      message: `${labels.codexRejectedRequest}: ${error.message}`,
       details: error.data
     };
   }
@@ -905,6 +921,31 @@ function normalizeError(error: unknown): { message: string; details?: unknown } 
 function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
+
+function getBackendLabels(language: OpenCodexSettings["language"]): BackendLabels {
+  if (language === "en") {
+    return {
+      approvalUnavailable: "The approval request is no longer available.",
+      codexCommandHelp: "Check that Codex CLI is installed and that codexCommand points to the right executable.",
+      codexRejectedRequest: "Codex app-server rejected the request",
+      missingLinkHandler: "No external link opener is configured."
+    };
+  }
+
+  return {
+    approvalUnavailable: "La demande d'approbation n'est plus disponible.",
+    codexCommandHelp: "Vérifiez que Codex CLI est installé et que codexCommand pointe vers le bon exécutable.",
+    codexRejectedRequest: "Codex app-server a refusé la requête",
+    missingLinkHandler: "Aucun gestionnaire d'ouverture de lien externe n'est configuré."
+  };
+}
+
+type BackendLabels = {
+  approvalUnavailable: string;
+  codexCommandHelp: string;
+  codexRejectedRequest: string;
+  missingLinkHandler: string;
+};
 
 function createCacheSignature(cacheEntry: ThreadTurnCacheEntry): string {
   return cacheEntry.orderedTurnIds

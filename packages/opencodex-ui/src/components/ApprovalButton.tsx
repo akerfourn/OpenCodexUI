@@ -1,4 +1,5 @@
 import { Button } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import type { OpenCodexApprovalDecision } from "@open-codex-ui/opencodex-protocol";
 
@@ -11,6 +12,8 @@ type ApprovalButtonProps = {
 };
 
 export function ApprovalButton({ store, approvalId, decision }: ApprovalButtonProps) {
+  const { t } = useTranslation();
+
   function handleDecision(): void {
     store.resolveApproval(approvalId, decision);
   }
@@ -21,23 +24,7 @@ export function ApprovalButton({ store, approvalId, decision }: ApprovalButtonPr
       variant={decision === "decline" || decision === "cancel" ? "outlined" : "contained"}
       onClick={handleDecision}
     >
-      {labelDecision(decision)}
+      {t(`approval.${decision}`)}
     </Button>
   );
-}
-
-function labelDecision(decision: OpenCodexApprovalDecision): string {
-  if (decision === "accept") {
-    return "Accepter";
-  }
-
-  if (decision === "acceptForSession") {
-    return "Accepter pour la session";
-  }
-
-  if (decision === "decline") {
-    return "Refuser";
-  }
-
-  return "Annuler";
 }

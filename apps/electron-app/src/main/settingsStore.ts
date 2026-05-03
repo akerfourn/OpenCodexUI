@@ -8,7 +8,8 @@ export const defaultSettings: OpenCodexSettings = {
   defaultModel: null,
   defaultReasoningEffort: "medium",
   showActivityPanel: true,
-  experimentalApi: true
+  experimentalApi: true,
+  language: "system"
 };
 
 export class SettingsStore {

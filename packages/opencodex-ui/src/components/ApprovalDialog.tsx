@@ -1,5 +1,6 @@
 import { observer } from "mobx-react-lite";
 import { Box, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../stores/RootStore";
 import { ApprovalButton } from "./ApprovalButton";
@@ -9,6 +10,7 @@ type ApprovalDialogProps = {
 };
 
 export function ApprovalDialog({ store }: ApprovalDialogProps) {
+  const { t } = useTranslation();
   const approval = store.approvals[0];
 
   if (approval === undefined) {
@@ -18,7 +20,7 @@ export function ApprovalDialog({ store }: ApprovalDialogProps) {
   return (
     <Dialog open maxWidth="md" fullWidth>
       <Box component="section">
-        <DialogTitle>Approbation requise</DialogTitle>
+        <DialogTitle>{t("approval.required")}</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {approval.title}

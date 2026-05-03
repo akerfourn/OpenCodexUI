@@ -1,5 +1,6 @@
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Accordion,
   AccordionDetails,
@@ -17,6 +18,7 @@ type ChatActivityPanelProps = {
 export function ChatActivityPanel({
   store
 }: ChatActivityPanelProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(store.isWorking);
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export function ChatActivityPanel({
       <AccordionSummary
         expandIcon={<ExpandMoreIcon fontSize="small" />}
       >
-        <Typography variant="subtitle2">Activité en cours</Typography>
+        <Typography variant="subtitle2">{t("chat.activityInProgress")}</Typography>
       </AccordionSummary>
       <AccordionDetails
         sx={{

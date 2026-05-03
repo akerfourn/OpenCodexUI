@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Accordion,
   AccordionDetails,
@@ -30,6 +31,7 @@ export function AssistantTurnBlock({
   isLast,
   onOpenLink
 }: AssistantTurnBlockProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const blockRef = isLast ? lastMessageRef : undefined;
@@ -38,8 +40,8 @@ export function AssistantTurnBlock({
     ? Math.max(0, now - readStartedAtTime(turn.startedAt))
     : turn.durationMs;
   const label = isRunning
-    ? `Réflexion en cours (${formatDuration(displayedDurationMs) ?? "0 s"})`
-    : formatBlockLabel(getBlockKind(preludeItems), turn.durationMs);
+    ? t("reasoningBlock.active", { duration: formatDuration(displayedDurationMs) ?? "0 s" })
+    : formatBlockLabel(getBlockKind(preludeItems), turn.durationMs, t);
   const isExpanded = isRunning || expanded;
   const detailsContent = isExpanded ? (
     <AccordionDetails sx={{ pt: 0, pb: 1.25, px: 1.25 }}>
@@ -155,13 +157,14 @@ function getBlockKind(items: OpenCodexTurnItem[]): "reasoning" | "activity" | "m
 
 function formatBlockLabel(
   kind: "reasoning" | "activity" | "mixed",
-  durationMs: number | null
+  durationMs: number | null,
+  t: ReturnType<typeof useTranslation>["t"]
 ): string {
   const baseLabel = kind === "reasoning"
-    ? "Réflexion"
+    ? t("reasoningBlock.reasoning")
     : kind === "mixed"
-      ? "Réflexion et activités"
-      : "Activités";
+      ? t("reasoningBlock.mixed")
+      : t("reasoningBlock.activity");
 
   const durationLabel = formatDuration(durationMs);
 

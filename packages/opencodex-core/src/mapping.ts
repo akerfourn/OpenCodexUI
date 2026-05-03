@@ -5,6 +5,7 @@ import type {
   OpenCodexActivity,
   OpenCodexApproval,
   OpenCodexApprovalDecision,
+  OpenCodexLanguage,
   OpenCodexMessage,
   OpenCodexMessagePhase,
   OpenCodexReasoningEffort,
@@ -113,8 +114,12 @@ export function mapTurnsToMessages(threadId: string, turns: unknown[]): OpenCode
   return messages;
 }
 
-export function mapTurnsToOpenCodexTurns(threadId: string, turns: unknown[]): OpenCodexTurn[] {
-  return turns.map((turnValue) => mapTurnToOpenCodexTurn(threadId, turnValue));
+export function mapTurnsToOpenCodexTurns(
+  threadId: string,
+  turns: unknown[],
+  language: OpenCodexLanguage = "fr"
+): OpenCodexTurn[] {
+  return turns.map((turnValue) => mapTurnToOpenCodexTurn(threadId, turnValue, language));
 }
 
 export function createActivityFromNotification(notification: CodexNotification): OpenCodexActivity | null {
@@ -150,14 +155,17 @@ export function createActivityFromNotification(notification: CodexNotification):
   return null;
 }
 
-export function createApprovalRequest(request: CodexServerRequest): OpenCodexApproval {
+export function createApprovalRequest(
+  request: CodexServerRequest,
+  language: OpenCodexLanguage = "fr"
+): OpenCodexApproval {
   const params = readObject(request.params);
   const threadId = readNullableString(params.threadId) ?? undefined;
 
   return {
     id: String(request.id),
     threadId,
-    title: createApprovalTitle(request.method, params),
+    title: createApprovalTitle(request.method, params, language),
     kind: createApprovalKind(request.method),
     body: JSON.stringify(request.params ?? {}, null, 2),
     choices: readAvailableDecisions(params.availableDecisions)
@@ -232,7 +240,11 @@ function mapUserMessage(
   };
 }
 
-function mapTurnToOpenCodexTurn(threadId: string, turnValue: unknown): OpenCodexTurn {
+function mapTurnToOpenCodexTurn(
+  threadId: string,
+  turnValue: unknown,
+  language: OpenCodexLanguage
+): OpenCodexTurn {
   const turn = readObject(turnValue);
   const turnId = readString(turn.id);
   const items = Array.isArray(turn.items) ? turn.items : [];
@@ -245,12 +257,12 @@ function mapTurnToOpenCodexTurn(threadId: string, turnValue: unknown): OpenCodex
     completedAt: readNullableString(turn.completedAt),
     durationMs: readNullableNumber(turn.durationMs),
     items: items
-      .map((itemValue) => mapTurnItem(itemValue))
+      .map((itemValue) => mapTurnItem(itemValue, language))
       .filter((item): item is OpenCodexTurnItem => item !== null)
   };
 }
 
-function mapTurnItem(itemValue: unknown): OpenCodexTurnItem | null {
+function mapTurnItem(itemValue: unknown, language: OpenCodexLanguage): OpenCodexTurnItem | null {
   const item = readObject(itemValue);
   const type = readString(item.type);
 
@@ -269,7 +281,7 @@ function mapTurnItem(itemValue: unknown): OpenCodexTurnItem | null {
     };
   }
 
-  return mapActivityTurnItem(item);
+  return mapActivityTurnItem(item, language);
 }
 
 function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
@@ -284,16 +296,19 @@ function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
   };
 }
 
-function mapActivityTurnItem(item: Record<string, unknown>): OpenCodexTurnItem | null {
+function mapActivityTurnItem(
+  item: Record<string, unknown>,
+  language: OpenCodexLanguage
+): OpenCodexTurnItem | null {
   const type = readString(item.type);
 
   if (type.length === 0) {
     return null;
   }
 
-  const summary = summarizeActivityItem(item);
+  const summary = summarizeActivityItem(item, language);
   const details = summarizeActivityDetails(item);
-  const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item);
+  const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item, language);
 
   return {
     id: readString(item.id) || createId("activity"),
@@ -319,9 +334,9 @@ function mapActivityMessage(
     return null;
   }
 
-  const summary = summarizeActivityItem(item);
+  const summary = summarizeActivityItem(item, "fr");
   const details = summarizeActivityDetails(item);
-  const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item);
+  const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item, "fr");
 
   return {
     id: readString(item.id) || createId("activity"),
@@ -339,8 +354,9 @@ function mapActivityMessage(
   };
 }
 
-function summarizeActivityItem(item: Record<string, unknown>): string {
+function summarizeActivityItem(item: Record<string, unknown>, language: OpenCodexLanguage): string {
   const type = readString(item.type);
+  const labels = getCoreLabels(language);
 
   if (type === "plan") {
     return readString(item.text);
@@ -352,23 +368,29 @@ function summarizeActivityItem(item: Record<string, unknown>): string {
   }
 
   if (type === "commandExecution") {
-    return `Commande: ${readString(item.command)}`;
+    return `${labels.command}: ${readString(item.command)}`;
   }
 
   if (type === "mcpToolCall") {
-    return `Outil MCP: ${readString(item.server)} / ${readString(item.tool)}`;
+    return `${labels.mcpTool}: ${readString(item.server)} / ${readString(item.tool)}`;
   }
 
   return "";
 }
 
-function summarizeActivityFallback(type: string, item: Record<string, unknown>): string {
+function summarizeActivityFallback(
+  type: string,
+  item: Record<string, unknown>,
+  language: OpenCodexLanguage
+): string {
+  const labels = getCoreLabels(language);
+
   if (type === "fileChange") {
-    return `Modification fichier: ${readString(item.status) || "en cours"}`;
+    return `${labels.fileChange}: ${readString(item.status) || labels.inProgress}`;
   }
 
   if (type === "webSearch") {
-    return `Recherche web: ${readString(item.query)}`;
+    return `${labels.webSearch}: ${readString(item.query)}`;
   }
 
   if (type === "imageView") {
@@ -376,27 +398,27 @@ function summarizeActivityFallback(type: string, item: Record<string, unknown>):
   }
 
   if (type === "imageGeneration") {
-    return "Génération image";
+    return labels.imageGeneration;
   }
 
   if (type === "dynamicToolCall") {
-    return `Outil dynamique: ${readString(item.tool)}`;
+    return `${labels.dynamicTool}: ${readString(item.tool)}`;
   }
 
   if (type === "collabAgentToolCall") {
-    return `Agent collaboratif: ${readString(item.tool)}`;
+    return `${labels.collabAgent}: ${readString(item.tool)}`;
   }
 
   if (type === "enteredReviewMode") {
-    return "Entrée en mode revue";
+    return labels.enteredReviewMode;
   }
 
   if (type === "exitedReviewMode") {
-    return "Sortie du mode revue";
+    return labels.exitedReviewMode;
   }
 
   if (type === "contextCompaction") {
-    return "Compactage du contexte";
+    return labels.contextCompaction;
   }
 
   if (type === "hookPrompt") {
@@ -414,17 +436,23 @@ function summarizeActivityDetails(item: Record<string, unknown>): string {
   }
 }
 
-function createApprovalTitle(method: string, params: Record<string, unknown>): string {
+function createApprovalTitle(
+  method: string,
+  params: Record<string, unknown>,
+  language: OpenCodexLanguage
+): string {
+  const labels = getCoreLabels(language);
+
   if (method === "item/commandExecution/requestApproval") {
-    return `Commande: ${readString(params.command) || "approbation requise"}`;
+    return `${labels.command}: ${readString(params.command) || labels.approvalRequired}`;
   }
 
   if (method === "item/fileChange/requestApproval") {
-    return `Modification fichier: ${readString(params.grantRoot) || "approbation requise"}`;
+    return `${labels.fileChange}: ${readString(params.grantRoot) || labels.approvalRequired}`;
   }
 
   if (method === "item/permissions/requestApproval") {
-    return "Permissions supplémentaires demandées";
+    return labels.permissionsRequested;
   }
 
   return method;
@@ -503,3 +531,55 @@ function readTimestamp(value: unknown): string | null {
 function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
+
+function getCoreLabels(language: OpenCodexLanguage): CoreLabels {
+  if (language === "en") {
+    return {
+      approvalRequired: "approval required",
+      collabAgent: "Collaborative agent",
+      command: "Command",
+      contextCompaction: "Context compaction",
+      dynamicTool: "Dynamic tool",
+      enteredReviewMode: "Entered review mode",
+      exitedReviewMode: "Exited review mode",
+      fileChange: "File change",
+      imageGeneration: "Image generation",
+      inProgress: "in progress",
+      mcpTool: "MCP tool",
+      permissionsRequested: "Additional permissions requested",
+      webSearch: "Web search"
+    };
+  }
+
+  return {
+    approvalRequired: "approbation requise",
+    collabAgent: "Agent collaboratif",
+    command: "Commande",
+    contextCompaction: "Compactage du contexte",
+    dynamicTool: "Outil dynamique",
+    enteredReviewMode: "Entrée en mode revue",
+    exitedReviewMode: "Sortie du mode revue",
+    fileChange: "Modification fichier",
+    imageGeneration: "Génération image",
+    inProgress: "en cours",
+    mcpTool: "Outil MCP",
+    permissionsRequested: "Permissions supplémentaires demandées",
+    webSearch: "Recherche web"
+  };
+}
+
+type CoreLabels = {
+  approvalRequired: string;
+  collabAgent: string;
+  command: string;
+  contextCompaction: string;
+  dynamicTool: string;
+  enteredReviewMode: string;
+  exitedReviewMode: string;
+  fileChange: string;
+  imageGeneration: string;
+  inProgress: string;
+  mcpTool: string;
+  permissionsRequested: string;
+  webSearch: string;
+};

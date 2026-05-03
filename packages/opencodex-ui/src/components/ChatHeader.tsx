@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Box, CircularProgress, IconButton, LinearProgress, Stack, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../stores/RootStore";
 import { RenameModal } from "./RenameModal";
@@ -12,6 +13,7 @@ type ChatHeaderProps = {
 };
 
 export function ChatHeader({ store }: ChatHeaderProps) {
+  const { t } = useTranslation();
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const currentThread = store.currentThread;
@@ -20,7 +22,7 @@ export function ChatHeader({ store }: ChatHeaderProps) {
     return null;
   }
 
-  const title = currentThread.title || currentThread.preview || "Nouvelle conversation";
+  const title = currentThread.title || currentThread.preview || t("chat.newConversation");
   const renameModal = isRenameModalOpen ? (
     <RenameModal
       value={renameValue}
@@ -66,23 +68,23 @@ export function ChatHeader({ store }: ChatHeaderProps) {
               {title}
             </Typography>
             <Typography variant="body2" color="text.secondary" noWrap>
-              {currentThread.projectPath ?? "Workspace non renseigné"}
+              {currentThread.projectPath ?? t("chat.noWorkspace")}
             </Typography>
             {currentThread.model !== null ? (
               <Typography variant="body2" color="text.secondary" noWrap>
-                Modèle: {currentThread.model}
+                {t("header.model", { model: currentThread.model })}
               </Typography>
             ) : null}
             {currentThread.reasoningEffort !== null ? (
               <Typography variant="body2" color="text.secondary" noWrap>
-                Raisonnement: {currentThread.reasoningEffort}
+                {t("header.reasoning", { effort: currentThread.reasoningEffort })}
               </Typography>
             ) : null}
           </Box>
           <Stack className="chat-header-actions" direction="row" spacing={1}>
             <IconButton
-              aria-label="Rafraîchir"
-              title="Rafraîchir"
+              aria-label={t("header.refresh")}
+              title={t("header.refresh")}
               disabled={store.isRefreshingThread || store.isSyncingCurrentThread}
               onClick={handleRefreshThread}
             >
@@ -92,7 +94,7 @@ export function ChatHeader({ store }: ChatHeaderProps) {
                 <RefreshOutlinedIcon fontSize="small" />
               )}
             </IconButton>
-            <IconButton aria-label="Renommer" title="Renommer" onClick={handleRenameOpen}>
+            <IconButton aria-label={t("header.rename")} title={t("header.rename")} onClick={handleRenameOpen}>
               <EditOutlinedIcon fontSize="small" />
             </IconButton>
           </Stack>

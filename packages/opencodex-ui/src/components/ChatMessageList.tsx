@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { useCallback, useLayoutEffect, useRef, type UIEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
@@ -13,6 +14,7 @@ type ChatMessageListProps = {
 };
 
 export function ChatMessageList({ store }: ChatMessageListProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageRef = useRef<HTMLElement | null>(null);
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -132,7 +134,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
         >
           <CircularProgress size={16} thickness={5} />
           <Typography variant="caption">
-            Synchronisation avec Codex...
+            {t("chat.syncing")}
           </Typography>
         </Box>
       ) : null}

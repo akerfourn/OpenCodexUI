@@ -1,5 +1,6 @@
 import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
 import type { ChangeEvent, FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 type RenameModalProps = {
   value: string;
@@ -10,6 +11,8 @@ type RenameModalProps = {
 };
 
 export function RenameModal({ value, title, onCancel, onChange, onSubmit }: RenameModalProps) {
+  const { t } = useTranslation();
+
   function handleChange(event: ChangeEvent<HTMLInputElement>): void {
     onChange(event.target.value);
   }
@@ -22,7 +25,7 @@ export function RenameModal({ value, title, onCancel, onChange, onSubmit }: Rena
   return (
     <Dialog open fullWidth maxWidth="sm" onClose={onCancel}>
       <Box component="form" onSubmit={handleSubmit}>
-        <DialogTitle>Renommer le chat</DialogTitle>
+        <DialogTitle>{t("rename.title")}</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             {title}
@@ -31,10 +34,10 @@ export function RenameModal({ value, title, onCancel, onChange, onSubmit }: Rena
         </DialogContent>
         <DialogActions>
           <Button type="button" onClick={onCancel}>
-            Annuler
+            {t("rename.cancel")}
           </Button>
           <Button variant="contained" type="submit">
-            Renommer
+            {t("rename.submit")}
           </Button>
         </DialogActions>
       </Box>

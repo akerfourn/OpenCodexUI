@@ -6,6 +6,7 @@ import type {
   OpenCodexActivity,
   OpenCodexClientTransport,
   OpenCodexEvent,
+  OpenCodexLanguage,
   OpenCodexMessage,
   OpenCodexMessagePhase,
   OpenCodexReasoningEffort,
@@ -15,6 +16,7 @@ import type {
   OpenCodexTurn,
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
+import { applyOpenCodexLanguage } from "../i18n/i18n";
 
 export class RootStore {
   settings: OpenCodexSettings = {
@@ -22,7 +24,8 @@ export class RootStore {
     defaultModel: null,
     defaultReasoningEffort: "medium",
     showActivityPanel: true,
-    experimentalApi: true
+    experimentalApi: true,
+    language: "system"
   };
   projectPath: string | null = null;
   threads: OpenCodexThread[] = [];
@@ -107,6 +110,7 @@ export class RootStore {
         return;
       case "app.bootstrap":
         this.settings = event.settings;
+        applyOpenCodexLanguage(event.settings.language);
         this.projectPath = event.projectPath;
         this.selectedModel = event.settings.defaultModel;
         this.reasoningEffort = event.settings.defaultReasoningEffort ?? "medium";
@@ -370,6 +374,15 @@ export class RootStore {
 
   setReasoningEffort(value: OpenCodexReasoningEffort): void {
     this.reasoningEffort = value;
+  }
+
+  setLanguage(language: OpenCodexLanguage): void {
+    this.settings = { ...this.settings, language };
+    applyOpenCodexLanguage(language);
+    void this.transport.request({
+      type: "settings.update",
+      patch: { language }
+    });
   }
 
   interruptTurn(): void {

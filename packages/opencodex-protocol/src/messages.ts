@@ -4,6 +4,7 @@ export type OpenCodexMessagePhase = "commentary" | "final_answer";
 export type OpenCodexApprovalDecision = "accept" | "acceptForSession" | "decline" | "cancel";
 
 export type OpenCodexThreadScope = "currentProject" | "all";
+export type OpenCodexLanguage = "system" | "fr" | "en";
 
 export type OpenCodexSettings = {
   codexCommand: string;
@@ -11,6 +12,7 @@ export type OpenCodexSettings = {
   defaultReasoningEffort: OpenCodexReasoningEffort | null;
   showActivityPanel: boolean;
   experimentalApi: boolean;
+  language: OpenCodexLanguage;
 };
 
 export type OpenCodexThread = {

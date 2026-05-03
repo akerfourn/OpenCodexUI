@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite";
 import { Box, CircularProgress, ListItemButton, ListItemIcon, Typography } from "@mui/material";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
+import { useTranslation } from "react-i18next";
 
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 
@@ -12,6 +13,8 @@ type ThreadButtonProps = {
 };
 
 export function ThreadButton({ store, thread }: ThreadButtonProps) {
+  const { t } = useTranslation();
+
   function handleOpenThread(): void {
     store.openThread(thread.id);
   }
@@ -36,7 +39,7 @@ export function ThreadButton({ store, thread }: ThreadButtonProps) {
       </ListItemIcon>
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Typography variant="body2" noWrap>
-          {getThreadTitle(thread)}
+          {getThreadTitle(thread, t("chat.untitled"))}
         </Typography>
         {metadata !== null ? (
           <Typography variant="caption" component="div" color="text.secondary" noWrap>
@@ -64,7 +67,7 @@ function getThreadMetadata(thread: OpenCodexThread): string | null {
   return parts.join(" - ");
 }
 
-function getThreadTitle(thread: OpenCodexThread): string {
+function getThreadTitle(thread: OpenCodexThread, fallbackTitle: string): string {
   if (thread.title.trim().length > 0) {
     return thread.title;
   }
@@ -73,7 +76,7 @@ function getThreadTitle(thread: OpenCodexThread): string {
     return thread.preview;
   }
 
-  return "Conversation sans titre";
+  return fallbackTitle;
 }
 
 function isNonEmptyString(value: string | null | undefined): value is string {

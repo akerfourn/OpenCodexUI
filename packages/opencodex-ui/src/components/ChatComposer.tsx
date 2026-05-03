@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, MenuItem, Stack, TextField } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import type { OpenCodexReasoningEffort } from "@open-codex-ui/opencodex-protocol";
 
@@ -22,6 +23,7 @@ export function ChatComposer({
   modelOptions,
   isWorking
 }: ChatComposerProps) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export function ChatComposer({
     <form className="composer" onSubmit={handleSubmit}>
       <TextField
         value={draft}
-        placeholder="Message à Codex"
+        placeholder={t("composer.messagePlaceholder")}
         multiline
         minRows={4}
         fullWidth
@@ -84,7 +86,7 @@ export function ChatComposer({
           select
           size="small"
         value={selectedModel ?? ""}
-          label="Modèle"
+          label={t("composer.model")}
           onChange={handleModelChange}
           sx={{ maxWidth: 220, minWidth: 160 }}
         >
@@ -98,7 +100,7 @@ export function ChatComposer({
           select
           size="small"
           value={reasoningEffort}
-          label="Raisonnement"
+          label={t("composer.reasoning")}
           onChange={handleEffortChange}
           sx={{ maxWidth: 160, minWidth: 130 }}
         >
@@ -110,11 +112,11 @@ export function ChatComposer({
         <div className="spacer" />
         {isWorking ? (
           <Button type="button" variant="outlined" onClick={handleInterrupt}>
-            Interrompre
+            {t("composer.interrupt")}
           </Button>
         ) : null}
         <Button variant="contained" type="submit" disabled={isWorking}>
-          Envoyer
+          {t("composer.send")}
         </Button>
       </Stack>
     </form>

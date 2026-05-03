@@ -1,5 +1,6 @@
 import { observer } from "mobx-react-lite";
 import { Stack } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../stores/RootStore";
 import { ChatActivityPanelX } from "./ChatActivityPanel";
@@ -14,12 +15,13 @@ type ChatViewProps = {
 };
 
 export function ChatView({ store }: ChatViewProps) {
+  const { t } = useTranslation();
   const currentThread = store.currentThread;
 
   if (store.isCreatingThread) {
     return (
       <Stack className="chat-view">
-        <ChatLoadingState label="Création du chat..." fillView />
+        <ChatLoadingState label={t("chat.creating")} fillView />
       </Stack>
     );
   }
@@ -34,7 +36,7 @@ export function ChatView({ store }: ChatViewProps) {
 
   const isLoadingCurrentThread = store.loadingThreadId === currentThread.id && store.turns.length === 0;
   const messageContent = isLoadingCurrentThread ? (
-    <ChatLoadingState label="Chargement du chat..." />
+    <ChatLoadingState label={t("chat.loading")} />
   ) : (
     <ChatMessageListX store={store} />
   );

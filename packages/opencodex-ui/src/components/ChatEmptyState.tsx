@@ -1,4 +1,5 @@
 import { Button, Stack, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../stores/RootStore";
 
@@ -7,6 +8,8 @@ type ChatEmptyStateProps = {
 };
 
 export function ChatEmptyState({ store }: ChatEmptyStateProps) {
+  const { t } = useTranslation();
+
   function handleNewThread(): void {
     store.createThread();
   }
@@ -14,10 +17,10 @@ export function ChatEmptyState({ store }: ChatEmptyStateProps) {
   return (
     <Stack className="empty-state" spacing={2} sx={{ alignItems: "center" }}>
       <Typography variant="h6" component="h2">
-        Aucune conversation ouverte
+        {t("chat.empty")}
       </Typography>
       <Button variant="contained" type="button" onClick={handleNewThread}>
-        Démarrer un chat
+        {t("chat.start")}
       </Button>
     </Stack>
   );
