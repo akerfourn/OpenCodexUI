@@ -184,6 +184,11 @@ export class CodexAppServerClient {
     return createDisposable(() => this.events.off("error", callback));
   }
 
+  onClose(callback: (event: { code: number | null; signal: NodeJS.Signals | null }) => void): Disposable {
+    this.events.on("close", callback);
+    return createDisposable(() => this.events.off("close", callback));
+  }
+
   async listThreads(params: ThreadListParams = {}): Promise<ThreadListResponse> {
     return this.request<ThreadListResponse>("thread/list", params);
   }

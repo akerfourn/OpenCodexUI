@@ -18,6 +18,8 @@ export type OpenCodexEvent =
   | { type: "thread.turns.synced"; threadId: string; turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }
   | { type: "thread.sync.started"; threadId: string }
   | { type: "thread.sync.completed"; threadId: string }
+  | { type: "thread.recovery.started"; threadId: string }
+  | { type: "thread.recovery.completed"; threadId: string }
   | { type: "thread.renamed"; threadId: string; name: string }
   | { type: "message.started"; threadId: string; message: OpenCodexMessage }
   | { type: "message.delta"; threadId: string; messageId: string; turnId: string; delta: string; phase?: OpenCodexMessage["phase"] }
@@ -32,4 +34,4 @@ export type OpenCodexEvent =
   | { type: "turn.started"; threadId: string; turnId: string }
   | { type: "turn.completed"; threadId: string; turnId: string; durationMs: number | null }
   | { type: "models.updated"; models: string[] }
-  | { type: "error"; message: string; details?: unknown };
+  | { type: "error"; message: string; details?: unknown; recoverable?: boolean; threadId?: string };

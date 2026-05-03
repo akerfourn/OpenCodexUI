@@ -25,6 +25,7 @@ export const resources = {
         loading: "Chargement du chat...",
         newConversation: "Nouvelle conversation",
         noWorkspace: "Workspace non renseigné",
+        recovering: "Reconnexion à Codex...",
         start: "Démarrer un chat",
         syncing: "Synchronisation avec Codex...",
         untitled: "Conversation sans titre"
@@ -96,6 +97,7 @@ export const resources = {
         loading: "Loading chat...",
         newConversation: "New conversation",
         noWorkspace: "Workspace not provided",
+        recovering: "Reconnecting to Codex...",
         start: "Start a chat",
         syncing: "Syncing with Codex...",
         untitled: "Untitled conversation"

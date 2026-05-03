@@ -52,7 +52,7 @@ export function ChatView({ store }: ChatViewProps) {
         selectedModel={store.selectedModel}
         reasoningEffort={store.reasoningEffort}
         modelOptions={store.modelOptions}
-        isWorking={store.isWorking || store.isStartingTurn || store.loadingThreadId !== null}
+        isWorking={store.isWorking || store.isStartingTurn || store.isRecoveringThread || store.loadingThreadId !== null}
       />
     </Stack>
   );

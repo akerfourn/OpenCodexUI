@@ -134,7 +134,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
         >
           <CircularProgress size={16} thickness={5} />
           <Typography variant="caption">
-            {t("chat.syncing")}
+            {store.isRecoveringThread ? t("chat.recovering") : t("chat.syncing")}
           </Typography>
         </Box>
       ) : null}

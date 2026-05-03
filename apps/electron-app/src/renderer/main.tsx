@@ -24,7 +24,9 @@ window.addEventListener("focus", () => {
   }
 
   lastFocusRefreshAt = now;
-  store.refreshCurrentThread();
+  if (store.canRefreshCurrentThread()) {
+    store.refreshCurrentThread();
+  }
 });
 
 if (rootElement !== null) {

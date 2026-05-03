@@ -85,7 +85,9 @@ export class OpenCodexBackend {
   private readonly threadTurnCache = new ThreadTurnCache();
   private readonly cacheRepository: OpenCodexCacheRepository | null;
   private activeTurnId: string | null = null;
+  private activeThreadId: string | null = null;
   private codexStderrBuffer = "";
+  private readonly recoveringThreadIds = new Set<string>();
 
   constructor(private readonly options: OpenCodexBackendOptions) {
     this.settings = options.settings;
@@ -103,7 +105,21 @@ export class OpenCodexBackend {
       return await this.handleValidRequest(request);
     } catch (error) {
       const normalized = normalizeError(error, this.settings.language);
-      this.emit({ type: "error", message: normalized.message, details: normalized.details });
+      const recoverableThreadId = this.readRecoverableThreadId(request, error);
+      this.emit({
+        type: "error",
+        message: normalized.message,
+        details: normalized.details,
+        recoverable: recoverableThreadId !== null,
+        threadId: recoverableThreadId ?? undefined
+      });
+
+      if (recoverableThreadId !== null) {
+        void this.recoverThread(recoverableThreadId).catch((recoverError: unknown) => {
+          this.handleClientError(toError(recoverError));
+        });
+      }
+
       throw normalized;
     }
   }
@@ -125,6 +141,8 @@ export class OpenCodexBackend {
         return this.openThread(request.threadId);
       case "threads.loadOlder":
         return this.loadOlderThreadMessages(request.threadId);
+      case "threads.recover":
+        return this.recoverThread(request.threadId);
       case "threads.create":
         return this.createThread();
       case "threads.rename":
@@ -171,6 +189,7 @@ export class OpenCodexBackend {
     client.onNotification((notification) => this.handleNotification(notification));
     client.onServerRequest((request) => this.handleServerRequest(request));
     client.onError((error) => this.handleClientError(error));
+    client.onClose(() => this.handleClientClose());
 
     await client.start();
     this.emit({ type: "connection.status", status: "ready" });
@@ -416,6 +435,32 @@ export class OpenCodexBackend {
     await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
   }
 
+  private async recoverThread(threadId: string): Promise<{ ok: true }> {
+    if (this.recoveringThreadIds.has(threadId)) {
+      return { ok: true };
+    }
+
+    this.recoveringThreadIds.add(threadId);
+    this.emit({ type: "thread.recovery.started", threadId });
+
+    try {
+      const cachedSnapshot = await this.readCachedThreadSnapshot(threadId);
+
+      if (cachedSnapshot !== null && cachedSnapshot.syncState.hasLoadedLatest) {
+        const cacheEntry = this.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+        this.emitThreadOpened(cacheEntry, this.readCachedTurns(cacheEntry));
+        await this.resumeAndSyncCachedThread(threadId);
+      } else {
+        await this.openThread(threadId);
+      }
+
+      this.emit({ type: "thread.recovery.completed", threadId });
+      return { ok: true };
+    } finally {
+      this.recoveringThreadIds.delete(threadId);
+    }
+  }
+
   private handleThreadOpenError(threadId: string, error: Error): void {
     if (isMissingRolloutError(error)) {
       void this.forgetCachedThread(threadId);
@@ -487,6 +532,7 @@ export class OpenCodexBackend {
 
     const client = await this.ensureClient();
     const targetThreadId = threadId ?? (await this.createThreadAndReturnId(client));
+    this.activeThreadId = targetThreadId;
     const message: OpenCodexMessage = {
       id: createId("user"),
       threadId: targetThreadId,
@@ -633,6 +679,7 @@ export class OpenCodexBackend {
       const turnId = readString(readObject(params.turn).id);
 
       if (threadId.length > 0 && turnId.length > 0) {
+        this.activeThreadId = threadId;
         this.activeTurnId = turnId;
         this.emit({ type: "turn.started", threadId, turnId });
       }
@@ -645,6 +692,10 @@ export class OpenCodexBackend {
 
       if (threadId.length > 0 && turnId !== null && turnId.length > 0) {
         this.emit({ type: "turn.completed", threadId, turnId, durationMs });
+        if (this.activeThreadId === threadId && this.activeTurnId === turnId) {
+          this.activeThreadId = null;
+          this.activeTurnId = null;
+        }
       }
     }
 
@@ -748,8 +799,46 @@ export class OpenCodexBackend {
   }
 
   private handleClientError(error: Error): void {
-    const normalized = normalizeError(error);
+    const normalized = normalizeError(error, this.settings.language);
     this.emit({ type: "error", message: normalized.message, details: normalized.details });
+  }
+
+  private handleClientClose(): void {
+    const threadId = this.activeThreadId;
+
+    this.client = null;
+    this.emit({ type: "connection.status", status: "stopped" });
+
+    if (threadId === null) {
+      return;
+    }
+
+    this.emit({
+      type: "error",
+      message: "Codex app-server process exited.",
+      recoverable: true,
+      threadId
+    });
+
+    void this.recoverThread(threadId).catch((error: unknown) => {
+      this.handleClientError(toError(error));
+    });
+  }
+
+  private readRecoverableThreadId(request: OpenCodexRequest, error: unknown): string | null {
+    if (!(error instanceof CodexProcessError)) {
+      return null;
+    }
+
+    if (request.type === "turn.start") {
+      return request.threadId ?? this.activeThreadId;
+    }
+
+    if (request.type === "threads.open" || request.type === "threads.recover") {
+      return request.threadId;
+    }
+
+    return this.activeThreadId;
   }
 
   private emit(event: OpenCodexEvent): void {

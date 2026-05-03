@@ -51,6 +51,7 @@ export class RootStore {
   scrollToBottomVersion = 0;
   isWorking = false;
   isRefreshingThread = false;
+  isRecoveringThread = false;
   loadingThreadId: string | null = null;
   activeTurnId: string | null = null;
   pendingTurnId: string | null = null;
@@ -195,6 +196,27 @@ export class RootStore {
           this.isRefreshingThread = false;
         }
         return;
+      case "thread.recovery.started":
+        if (this.currentThread?.id === event.threadId) {
+          this.isRecoveringThread = true;
+          this.isSyncingCurrentThread = true;
+          this.isRefreshingThread = false;
+          this.loadingThreadId = null;
+        }
+        return;
+      case "thread.recovery.completed":
+        if (this.currentThread?.id === event.threadId) {
+          const hasRecoveredRunningTurn = hasActiveRunningTurn(this.turns, this.activeTurnId);
+          this.isRecoveringThread = false;
+          this.isSyncingCurrentThread = false;
+          this.isRefreshingThread = false;
+          this.isWorking = hasRecoveredRunningTurn;
+          if (!hasRecoveredRunningTurn) {
+            this.activeTurnId = null;
+            this.pendingTurnId = null;
+          }
+        }
+        return;
       case "thread.renamed":
         this.applyThreadRename(event.threadId, event.name);
         return;
@@ -250,12 +272,26 @@ export class RootStore {
         this.errorMessage = event.details === undefined
           ? event.message
           : `${event.message}\n${JSON.stringify(event.details, null, 2)}`;
+        if (event.recoverable && event.threadId !== undefined && this.currentThread?.id === event.threadId) {
+          this.isBootstrapping = false;
+          this.isLoadingThreads = false;
+          this.isCreatingThread = false;
+          this.isStartingTurn = false;
+          this.isLoadingOlderMessages = false;
+          this.isSyncingCurrentThread = true;
+          this.isRecoveringThread = true;
+          this.isRefreshingThread = false;
+          this.loadingThreadId = null;
+          this.isWorking = true;
+          return;
+        }
         this.isBootstrapping = false;
         this.isLoadingThreads = false;
         this.isCreatingThread = false;
         this.isStartingTurn = false;
         this.isLoadingOlderMessages = false;
         this.isSyncingCurrentThread = false;
+        this.isRecoveringThread = false;
         this.isWorking = false;
         this.isRefreshingThread = false;
         this.loadingThreadId = null;
@@ -307,12 +343,37 @@ export class RootStore {
   }
 
   refreshCurrentThread(): void {
-    if (this.currentThread === null || this.isRefreshingThread) {
+    const currentThread = this.currentThread;
+
+    if (currentThread === null || !this.canRefreshCurrentThread()) {
       return;
     }
 
     this.isRefreshingThread = true;
-    this.openThread(this.currentThread.id);
+    this.openThread(currentThread.id);
+  }
+
+  canRefreshCurrentThread(): boolean {
+    return (
+      this.currentThread !== null &&
+      !this.isRefreshingThread &&
+      !this.isWorking &&
+      !this.isStartingTurn &&
+      !this.isRecoveringThread
+    );
+  }
+
+  recoverCurrentThread(): void {
+    if (this.currentThread === null || this.isRecoveringThread) {
+      return;
+    }
+
+    this.isRecoveringThread = true;
+    this.isSyncingCurrentThread = true;
+    void this.transport.request({
+      type: "threads.recover",
+      threadId: this.currentThread.id
+    });
   }
 
   createThread(): void {
@@ -828,6 +889,20 @@ function findFirstChangedTurnIndex(
 
 function getTurnSignature(turn: OpenCodexTurn): string {
   return JSON.stringify(turn);
+}
+
+function hasActiveRunningTurn(turns: OpenCodexTurn[], activeTurnId: string | null): boolean {
+  if (activeTurnId === null) {
+    return false;
+  }
+
+  const turn = turns.find((entry) => entry.id === activeTurnId);
+
+  if (turn === undefined || turn.status === "completed") {
+    return false;
+  }
+
+  return !turn.items.some((item) => item.role === "assistant" && item.phase === "final_answer");
 }
 
 function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
