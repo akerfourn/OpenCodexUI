@@ -1,5 +1,5 @@
 import { observer } from "mobx-react-lite";
-import { Box, CircularProgress } from "@mui/material";
+import { Box, CircularProgress, Typography } from "@mui/material";
 import { useCallback, useLayoutEffect, useRef, type UIEvent } from "react";
 
 import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
@@ -119,6 +119,23 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
           />
         );
       })}
+      {store.isSyncingCurrentThread && store.turns.length > 0 ? (
+        <Box
+          sx={{
+            alignItems: "center",
+            color: "text.secondary",
+            display: "flex",
+            gap: 1,
+            justifyContent: "center",
+            py: 1
+          }}
+        >
+          <CircularProgress size={16} thickness={5} />
+          <Typography variant="caption">
+            Synchronisation avec Codex...
+          </Typography>
+        </Box>
+      ) : null}
       <Box
         ref={scrollAnchorRef}
         aria-hidden="true"

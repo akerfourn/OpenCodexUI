@@ -41,6 +41,24 @@ export function AssistantTurnBlock({
     ? `Réflexion en cours (${formatDuration(displayedDurationMs) ?? "0 s"})`
     : formatBlockLabel(getBlockKind(preludeItems), turn.durationMs);
   const isExpanded = isRunning || expanded;
+  const detailsContent = isExpanded ? (
+    <AccordionDetails sx={{ pt: 0, pb: 1.25, px: 1.25 }}>
+      <Stack spacing={1}>
+        {preludeItems.map((item, index) => (
+          <MessageRowM
+            key={buildMessageKey(item, index)}
+            isLast={false}
+            lastMessageRef={lastMessageRef}
+            onOpenLink={onOpenLink}
+            role={item.role}
+            phase={item.phase}
+            kind={item.kind}
+            content={item.content}
+          />
+        ))}
+      </Stack>
+    </AccordionDetails>
+  ) : null;
 
   useEffect(() => {
     if (!isRunning) {
@@ -112,22 +130,7 @@ export function AssistantTurnBlock({
             </Typography>
           ) : null}
         </AccordionSummary>
-        <AccordionDetails sx={{ pt: 0, pb: 1.25, px: 1.25 }}>
-          <Stack spacing={1}>
-            {preludeItems.map((item, index) => (
-              <MessageRowM
-                key={buildMessageKey(item, index)}
-                isLast={false}
-                lastMessageRef={lastMessageRef}
-                onOpenLink={onOpenLink}
-                role={item.role}
-                phase={item.phase}
-                kind={item.kind}
-                content={item.content}
-              />
-            ))}
-          </Stack>
-        </AccordionDetails>
+        {detailsContent}
       </Accordion>
     </Box>
   );

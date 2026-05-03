@@ -41,6 +41,21 @@ export type CachedThreadSnapshot = {
   syncState: CachedThreadSyncState;
 };
 
+export type CachedThreadReadOptions = {
+  latestTurnLimit?: number | null;
+};
+
+export type CachedOlderTurnsQuery = {
+  threadId: string;
+  beforeTurnId: string;
+  limit: number;
+};
+
+export type CachedOlderTurnsResult = {
+  turns: unknown[];
+  hasMoreOlderTurns: boolean;
+};
+
 export type CachedThreadDelta = {
   threadId: string;
   turns: unknown[];
@@ -58,7 +73,8 @@ export interface OpenCodexCacheRepository {
   updateThreadTitle(threadId: string, title: string): Promise<void>;
   updateThreadCodexTitle(threadId: string, title: string): Promise<void>;
   listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]>;
-  getThread(threadId: string): Promise<CachedThreadSnapshot | null>;
+  getThread(threadId: string, options?: CachedThreadReadOptions): Promise<CachedThreadSnapshot | null>;
+  getOlderTurns(query: CachedOlderTurnsQuery): Promise<CachedOlderTurnsResult>;
   saveThreadSnapshot(snapshot: CachedThreadSnapshot): Promise<void>;
   saveThreadDelta(delta: CachedThreadDelta): Promise<void>;
   getSyncState(threadId: string): Promise<CachedThreadSyncState | null>;

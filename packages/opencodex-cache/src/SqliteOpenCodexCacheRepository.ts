@@ -6,9 +6,12 @@ import Database, { type Database as BetterSqliteDatabase } from "better-sqlite3"
 import { createProjectIdentity, normalizeProjectPath } from "./projectIdentity.js";
 import type {
   CachedThreadDelta,
+  CachedThreadReadOptions,
   CachedThreadSnapshot,
   CachedThreadSummary,
   CachedThreadSyncState,
+  CachedOlderTurnsQuery,
+  CachedOlderTurnsResult,
   OpenCodexCacheRepository,
   ThreadListCacheQuery
 } from "./types.js";
@@ -41,6 +44,7 @@ type ThreadRow = {
 };
 
 type TurnRow = {
+  id: string;
   raw_json: string;
 };
 
@@ -151,31 +155,43 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     return rows.map((row) => mapThreadRow(row));
   }
 
-  async getThread(threadId: string): Promise<CachedThreadSnapshot | null> {
+  async getThread(
+    threadId: string,
+    options: CachedThreadReadOptions = {}
+  ): Promise<CachedThreadSnapshot | null> {
     const thread = this.readThread(threadId);
 
     if (thread === null) {
       return null;
     }
 
-    const turnRows = this.database
-      .prepare(
-        `
-        SELECT raw_json
-        FROM turns
-        WHERE thread_id = @threadId
-        ORDER BY started_at ASC, completed_at ASC, id ASC
-        `
-      )
-      .all({ threadId }) as TurnRow[];
-    const turns = turnRows
-      .map((row) => parseTurn(row.raw_json))
-      .filter((turn): turn is unknown => turn !== null);
+    const turnRows = this.readLatestTurnRows(threadId, options.latestTurnLimit ?? null);
+    const turns = parseTurnRows(turnRows);
+    const syncState = this.readSyncState(threadId);
+    const hasMoreCachedTurns = this.hasMoreCachedTurnsBefore(threadId, turnRows[0]?.id ?? null);
 
     return {
       thread,
       turns,
-      syncState: this.readSyncState(threadId)
+      syncState: {
+        ...syncState,
+        oldestTurnId: turnRows[0]?.id ?? syncState.oldestTurnId,
+        hasLoadedAllOlderTurns: syncState.hasLoadedAllOlderTurns && !hasMoreCachedTurns,
+        olderCursor: hasMoreCachedTurns
+          ? createCacheOlderCursor(turnRows[0]?.id ?? "")
+          : syncState.olderCursor
+      }
+    };
+  }
+
+  async getOlderTurns(query: CachedOlderTurnsQuery): Promise<CachedOlderTurnsResult> {
+    const rows = this.readOlderTurnRows(query.threadId, query.beforeTurnId, query.limit);
+    const turns = parseTurnRows(rows);
+    const hasMoreOlderTurns = this.hasMoreCachedTurnsBefore(query.threadId, rows[0]?.id ?? null);
+
+    return {
+      turns,
+      hasMoreOlderTurns
     };
   }
 
@@ -244,6 +260,90 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     }
 
     return createEmptySyncState(threadId);
+  }
+
+  private readLatestTurnRows(threadId: string, limit: number | null): TurnRow[] {
+    if (limit === null || limit <= 0) {
+      return this.database
+        .prepare(
+          `
+          SELECT id, raw_json
+          FROM turns
+          WHERE thread_id = @threadId
+          ORDER BY started_at ASC, completed_at ASC, id ASC
+          `
+        )
+        .all({ threadId }) as TurnRow[];
+    }
+
+    return this.database
+      .prepare(
+        `
+        SELECT id, raw_json
+        FROM (
+          SELECT id, raw_json, started_at, completed_at
+          FROM turns
+          WHERE thread_id = @threadId
+          ORDER BY started_at DESC, completed_at DESC, id DESC
+          LIMIT @limit
+        )
+        ORDER BY started_at ASC, completed_at ASC, id ASC
+        `
+      )
+      .all({ threadId, limit }) as TurnRow[];
+  }
+
+  private readOlderTurnRows(threadId: string, beforeTurnId: string, limit: number): TurnRow[] {
+    return this.database
+      .prepare(
+        `
+        SELECT id, raw_json
+        FROM (
+          SELECT id, raw_json, started_at, completed_at
+          FROM turns
+          WHERE
+            thread_id = @threadId
+            AND (
+              started_at < (SELECT started_at FROM turns WHERE thread_id = @threadId AND id = @beforeTurnId)
+              OR (
+                started_at = (SELECT started_at FROM turns WHERE thread_id = @threadId AND id = @beforeTurnId)
+                AND id < @beforeTurnId
+              )
+            )
+          ORDER BY started_at DESC, completed_at DESC, id DESC
+          LIMIT @limit
+        )
+        ORDER BY started_at ASC, completed_at ASC, id ASC
+        `
+      )
+      .all({ threadId, beforeTurnId, limit }) as TurnRow[];
+  }
+
+  private hasMoreCachedTurnsBefore(threadId: string, beforeTurnId: string | null): boolean {
+    if (beforeTurnId === null || beforeTurnId.length === 0) {
+      return false;
+    }
+
+    const row = this.database
+      .prepare(
+        `
+        SELECT 1
+        FROM turns
+        WHERE
+          thread_id = @threadId
+          AND (
+            started_at < (SELECT started_at FROM turns WHERE thread_id = @threadId AND id = @beforeTurnId)
+            OR (
+              started_at = (SELECT started_at FROM turns WHERE thread_id = @threadId AND id = @beforeTurnId)
+              AND id < @beforeTurnId
+            )
+          )
+        LIMIT 1
+        `
+      )
+      .get({ threadId, beforeTurnId });
+
+    return row !== undefined;
   }
 
   private writeThreadIndex(threads: CachedThreadSummary[]): void {
@@ -597,6 +697,16 @@ function resolveCachedThreadTitle(
   }
 
   return preview;
+}
+
+function parseTurnRows(rows: TurnRow[]): unknown[] {
+  return rows
+    .map((row) => parseTurn(row.raw_json))
+    .filter((turn): turn is unknown => turn !== null);
+}
+
+function createCacheOlderCursor(turnId: string): string {
+  return `cache:${turnId}`;
 }
 
 function mapSyncState(row: ThreadRow): CachedThreadSyncState {

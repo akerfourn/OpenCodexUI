@@ -52,6 +52,7 @@ export class RootStore {
   activeTurnId: string | null = null;
   pendingTurnId: string | null = null;
   currentProjectFilterAvailable = true;
+  private threadSelectionStartedAt: number | null = null;
 
   constructor(private readonly transport: OpenCodexClientTransport) {
     makeAutoObservable(this);
@@ -120,6 +121,8 @@ export class RootStore {
       case "thread.opened":
       case "thread.created":
         const openedThread = this.mergeThreadMetadata(event.thread);
+        const previousThreadId = this.currentThread?.id ?? null;
+        const shouldMergeTurns = previousThreadId === openedThread.id;
         this.isCreatingThread = false;
         this.isRefreshingThread = false;
         this.isLoadingOlderMessages = false;
@@ -127,7 +130,12 @@ export class RootStore {
         this.loadingThreadId = null;
         this.currentThread = openedThread;
         this.upsertThread(openedThread);
-        this.turns = event.turns;
+        this.applyThreadTurns(
+          openedThread.id,
+          event.turns,
+          shouldMergeTurns ? "merge" : "replace",
+          event.type
+        );
         this.pendingTurnId = null;
         this.activity = [];
         this.errorMessage = null;
@@ -168,7 +176,7 @@ export class RootStore {
         if (this.currentThread?.id !== event.threadId) {
           return;
         }
-        this.turns = event.turns;
+        this.applyThreadTurns(event.threadId, event.turns, "merge", "thread.turns.synced");
         this.hasMoreOlderMessages = event.hasMoreOlderMessages;
         return;
       case "thread.sync.started":
@@ -259,14 +267,20 @@ export class RootStore {
       return;
     }
 
+    console.info("[OpenCodexUI timing] thread selected", {
+      timestamp: new Date().toISOString(),
+      threadId
+    });
+    this.threadSelectionStartedAt = Date.now();
+
     const isChangingThread = this.currentThread?.id !== threadId;
     this.errorMessage = null;
 
     if (isChangingThread) {
-        this.loadingThreadId = threadId;
-        this.currentThread = this.findThread(threadId) ?? this.currentThread;
-        this.turns = [];
-        this.pendingTurnId = null;
+      this.loadingThreadId = threadId;
+      this.currentThread = this.findThread(threadId) ?? this.currentThread;
+      this.turns = [];
+      this.pendingTurnId = null;
       this.activity = [];
       this.hasMoreOlderMessages = false;
     } else {
@@ -538,6 +552,52 @@ export class RootStore {
     return this.threads.find((thread) => thread.id === threadId) ?? null;
   }
 
+  private applyThreadTurns(
+    threadId: string,
+    nextTurns: OpenCodexTurn[],
+    strategy: "replace" | "merge",
+    source: string
+  ): void {
+    if (strategy === "replace" || this.turns.length === 0) {
+      this.turns = nextTurns;
+      this.logStorePopulation(threadId, source, nextTurns.length, true, 0);
+      return;
+    }
+
+    const firstChangedIndex = findFirstChangedTurnIndex(this.turns, nextTurns);
+
+    if (firstChangedIndex === null) {
+      this.logStorePopulation(threadId, source, nextTurns.length, false, null);
+      return;
+    }
+
+    this.turns = [
+      ...this.turns.slice(0, firstChangedIndex),
+      ...nextTurns.slice(firstChangedIndex)
+    ];
+    this.logStorePopulation(threadId, source, nextTurns.length, true, firstChangedIndex);
+  }
+
+  private logStorePopulation(
+    threadId: string,
+    source: string,
+    turnCount: number,
+    changed: boolean,
+    firstChangedIndex: number | null
+  ): void {
+    console.info("[OpenCodexUI timing] store populated", {
+      timestamp: new Date().toISOString(),
+      durationSinceSelectionMs: this.threadSelectionStartedAt === null
+        ? null
+        : Date.now() - this.threadSelectionStartedAt,
+      threadId,
+      source,
+      turnCount,
+      changed,
+      firstChangedIndex
+    });
+  }
+
   private upsertPendingUserTurn(threadId: string, message: OpenCodexMessage): void {
     const existingTurn = this.findPendingUserTurn(message.content);
 
@@ -704,6 +764,36 @@ function resolveThreadTitle(
   }
 
   return preview;
+}
+
+function findFirstChangedTurnIndex(
+  currentTurns: OpenCodexTurn[],
+  nextTurns: OpenCodexTurn[]
+): number | null {
+  const sharedLength = Math.min(currentTurns.length, nextTurns.length);
+
+  for (let index = 0; index < sharedLength; index += 1) {
+    const currentTurn = currentTurns[index];
+    const nextTurn = nextTurns[index];
+
+    if (currentTurn === undefined || nextTurn === undefined) {
+      return index;
+    }
+
+    if (currentTurn.id !== nextTurn.id || getTurnSignature(currentTurn) !== getTurnSignature(nextTurn)) {
+      return index;
+    }
+  }
+
+  if (currentTurns.length !== nextTurns.length) {
+    return sharedLength;
+  }
+
+  return null;
+}
+
+function getTurnSignature(turn: OpenCodexTurn): string {
+  return JSON.stringify(turn);
 }
 
 function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {

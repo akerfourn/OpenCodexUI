@@ -39,6 +39,7 @@ import type { OpenCodexBackendOptions } from "./types.js";
 
 const THREAD_LIST_PAGE_SIZE = 100;
 const THREAD_LIST_MAX_PAGES = 20;
+const THREAD_INITIAL_CACHED_TURNS = 10;
 const THREAD_TURNS_PAGE_SIZE = 20;
 
 type ThreadSourceKind =
@@ -204,11 +205,18 @@ export class OpenCodexBackend {
   }
 
   private async openThread(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+    const openStartedAt = Date.now();
     const cachedSnapshot = await this.readCachedThreadSnapshot(threadId);
 
     if (cachedSnapshot !== null && cachedSnapshot.syncState.hasLoadedLatest) {
       const cacheEntry = this.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
       const turns = this.readCachedTurns(cacheEntry);
+      this.logThreadTiming("sqlite load finished", {
+        threadId,
+        startedAt: openStartedAt,
+        turnCount: turns.length,
+        cacheHit: true
+      });
 
       this.emitThreadOpened(cacheEntry, turns);
       void this.resumeAndSyncCachedThread(threadId).catch((error: unknown) => {
@@ -219,6 +227,14 @@ export class OpenCodexBackend {
     }
 
     const client = await this.ensureClient();
+    this.logThreadTiming("sqlite load finished", {
+      threadId,
+      startedAt: openStartedAt,
+      turnCount: 0,
+      cacheHit: false
+    });
+
+    const codexStartedAt = Date.now();
     const response = await client.resumeThread(threadId, { excludeTurns: true });
     const responseObject = readObject(response);
     const threadValue = responseObject.thread;
@@ -231,6 +247,12 @@ export class OpenCodexBackend {
 
     if (cacheEntry.hasLoadedLatest) {
       const turns = this.readCachedTurns(cacheEntry);
+      this.logThreadTiming("codex load finished", {
+        threadId,
+        startedAt: codexStartedAt,
+        turnCount: turns.length,
+        mode: "resume-only"
+      });
       this.emitThreadOpened(cacheEntry, turns);
       void this.syncLatestTurns(client, cacheEntry).catch((error: unknown) => {
         this.handleClientError(toError(error));
@@ -241,6 +263,12 @@ export class OpenCodexBackend {
     await this.loadLatestTurns(client, cacheEntry);
     await this.writeThreadSnapshot(cacheEntry);
     const turns = this.readCachedTurns(cacheEntry);
+    this.logThreadTiming("codex load finished", {
+      threadId,
+      startedAt: codexStartedAt,
+      turnCount: turns.length,
+      mode: "initial-turns"
+    });
     this.emitThreadOpened(cacheEntry, turns);
     return { thread, turns };
   }
@@ -269,6 +297,14 @@ export class OpenCodexBackend {
 
     if (cacheEntry === null || cacheEntry.hasLoadedAllOlderTurns || cacheEntry.olderCursor === null) {
       return { turns: [], hasMoreOlderMessages: false };
+    }
+
+    if (isCacheOlderCursor(cacheEntry.olderCursor)) {
+      const cachedResult = await this.loadOlderCachedTurns(cacheEntry, cacheEntry.olderCursor);
+
+      if (cachedResult !== null) {
+        return cachedResult;
+      }
     }
 
     const response = await client.listThreadTurns({
@@ -305,9 +341,14 @@ export class OpenCodexBackend {
 
   private async syncLatestTurns(
     client: CodexAppServerClient,
-    cacheEntry: ThreadTurnCacheEntry
+    cacheEntry: ThreadTurnCacheEntry,
+    existingStartedAt: number | null = null
   ): Promise<void> {
-    this.emit({ type: "thread.sync.started", threadId: cacheEntry.thread.id });
+    const syncStartedAt = existingStartedAt ?? Date.now();
+
+    if (existingStartedAt === null) {
+      this.emit({ type: "thread.sync.started", threadId: cacheEntry.thread.id });
+    }
 
     try {
       const previousSignature = createCacheSignature(cacheEntry);
@@ -324,6 +365,12 @@ export class OpenCodexBackend {
         });
       }
     } finally {
+      this.logThreadTiming("codex load finished", {
+        threadId: cacheEntry.thread.id,
+        startedAt: syncStartedAt,
+        turnCount: cacheEntry.orderedTurnIds.length,
+        mode: "background-sync"
+      });
       this.emit({ type: "thread.sync.completed", threadId: cacheEntry.thread.id });
     }
   }
@@ -333,6 +380,9 @@ export class OpenCodexBackend {
   }
 
   private async resumeAndSyncCachedThread(threadId: string): Promise<void> {
+    const syncStartedAt = Date.now();
+    this.emit({ type: "thread.sync.started", threadId });
+
     const client = await this.ensureClient();
     const response = await client.resumeThread(threadId, { excludeTurns: true });
     const responseObject = readObject(response);
@@ -345,7 +395,7 @@ export class OpenCodexBackend {
 
     await this.writeThreadIndex([thread]);
     this.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
-    await this.syncLatestTurns(client, cacheEntry);
+    await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
   }
 
   private emitThreadOpened(cacheEntry: ThreadTurnCacheEntry, turns: OpenCodexTurn[]): void {
@@ -630,9 +680,61 @@ export class OpenCodexBackend {
     }
 
     try {
-      return await this.cacheRepository.getThread(threadId);
+      return await this.cacheRepository.getThread(threadId, {
+        latestTurnLimit: THREAD_INITIAL_CACHED_TURNS
+      });
     } catch (error) {
       this.options.logger?.(`thread cache snapshot read failed: ${String(error)}`);
+      return null;
+    }
+  }
+
+  private async loadOlderCachedTurns(
+    cacheEntry: ThreadTurnCacheEntry,
+    cursor: string
+  ): Promise<{ turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean } | null> {
+    if (this.cacheRepository === null) {
+      return null;
+    }
+
+    const beforeTurnId = readCacheOlderCursor(cursor);
+
+    if (beforeTurnId.length === 0) {
+      return null;
+    }
+
+    try {
+      const result = await this.cacheRepository.getOlderTurns({
+        threadId: cacheEntry.thread.id,
+        beforeTurnId,
+        limit: THREAD_TURNS_PAGE_SIZE
+      });
+
+      if (result.turns.length === 0) {
+        cacheEntry.olderCursor = null;
+        cacheEntry.hasLoadedAllOlderTurns = true;
+        return { turns: [], hasMoreOlderMessages: false };
+      }
+
+      this.threadTurnCache.mergeOlderTurns(
+        cacheEntry,
+        result.turns,
+        result.hasMoreOlderTurns ? createCacheOlderCursor(readOldestTurnId(result.turns)) : null
+      );
+
+      const turns = mapTurnsToOpenCodexTurns(cacheEntry.thread.id, result.turns);
+      const hasMoreOlderMessages = !cacheEntry.hasLoadedAllOlderTurns;
+
+      this.emit({
+        type: "thread.turns.prepended",
+        threadId: cacheEntry.thread.id,
+        turns,
+        hasMoreOlderMessages
+      });
+
+      return { turns, hasMoreOlderMessages };
+    } catch (error) {
+      this.options.logger?.(`thread cache older read failed: ${String(error)}`);
       return null;
     }
   }
@@ -705,6 +807,17 @@ export class OpenCodexBackend {
     } catch (error) {
       this.options.logger?.(`thread cache codex title write failed: ${String(error)}`);
     }
+  }
+
+  private logThreadTiming(
+    message: string,
+    details: Record<string, string | number | boolean>
+  ): void {
+    this.options.logger?.(`${message}: ${JSON.stringify({
+      timestamp: new Date().toISOString(),
+      durationMs: Date.now() - Number(details.startedAt),
+      ...details
+    })}`);
   }
 }
 
@@ -864,6 +977,28 @@ function toCachedThreadDelta(cacheEntry: ThreadTurnCacheEntry, turns: unknown[])
     turns,
     syncState: toCachedSyncState(cacheEntry)
   };
+}
+
+function isCacheOlderCursor(cursor: string): boolean {
+  return cursor.startsWith("cache:");
+}
+
+function readCacheOlderCursor(cursor: string): string {
+  return cursor.startsWith("cache:") ? cursor.slice("cache:".length) : "";
+}
+
+function createCacheOlderCursor(turnId: string): string | null {
+  return turnId.length > 0 ? `cache:${turnId}` : null;
+}
+
+function readOldestTurnId(turns: unknown[]): string {
+  const firstTurn = turns[0];
+
+  if (firstTurn === undefined) {
+    return "";
+  }
+
+  return readString(readObject(firstTurn).id);
 }
 
 function toCachedSyncState(cacheEntry: ThreadTurnCacheEntry): CachedThreadSyncState {

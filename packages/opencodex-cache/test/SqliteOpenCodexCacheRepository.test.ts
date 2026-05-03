@@ -124,6 +124,88 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should read only the latest cached turns when a limit is provided", async () => {
+    await repository.saveThreadSnapshot({
+      thread: {
+        id: "thread-1",
+        codexTitle: "Thread",
+        customTitle: null,
+        title: "Thread",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      },
+      turns: [
+        { id: "turn-1", startedAt: "2026-01-01T00:00:00.000Z", items: [] },
+        { id: "turn-2", startedAt: "2026-01-01T00:00:01.000Z", items: [] },
+        { id: "turn-3", startedAt: "2026-01-01T00:00:02.000Z", items: [] }
+      ],
+      syncState: {
+        threadId: "thread-1",
+        newestTurnId: "turn-3",
+        oldestTurnId: "turn-1",
+        olderCursor: null,
+        hasLoadedLatest: true,
+        hasLoadedAllOlderTurns: true,
+        lastSyncedAt: "2026-01-01T00:00:03.000Z"
+      }
+    });
+
+    const snapshot = await repository.getThread("thread-1", { latestTurnLimit: 2 });
+
+    expect(snapshot?.turns).toMatchObject([
+      { id: "turn-2" },
+      { id: "turn-3" }
+    ]);
+    expect(snapshot?.syncState.hasLoadedAllOlderTurns).toBe(false);
+    expect(snapshot?.syncState.olderCursor).toBe("cache:turn-2");
+  });
+
+  it("should read older cached turns before a known turn", async () => {
+    await repository.saveThreadSnapshot({
+      thread: {
+        id: "thread-1",
+        codexTitle: "Thread",
+        customTitle: null,
+        title: "Thread",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      },
+      turns: [
+        { id: "turn-1", startedAt: "2026-01-01T00:00:00.000Z", items: [] },
+        { id: "turn-2", startedAt: "2026-01-01T00:00:01.000Z", items: [] },
+        { id: "turn-3", startedAt: "2026-01-01T00:00:02.000Z", items: [] }
+      ],
+      syncState: {
+        threadId: "thread-1",
+        newestTurnId: "turn-3",
+        oldestTurnId: "turn-1",
+        olderCursor: null,
+        hasLoadedLatest: true,
+        hasLoadedAllOlderTurns: true,
+        lastSyncedAt: "2026-01-01T00:00:03.000Z"
+      }
+    });
+
+    const result = await repository.getOlderTurns({
+      threadId: "thread-1",
+      beforeTurnId: "turn-3",
+      limit: 1
+    });
+
+    expect(result.turns).toMatchObject([{ id: "turn-2" }]);
+    expect(result.hasMoreOlderTurns).toBe(true);
+  });
+
   it("should update the local thread title when a chat is renamed", async () => {
     await repository.upsertThreadIndex([
       {
