@@ -5,6 +5,7 @@ import type {
   OpenCodexActivity,
   OpenCodexApproval,
   OpenCodexMessage,
+  OpenCodexProject,
   OpenCodexSettings,
   OpenCodexThread,
   OpenCodexTurn
@@ -13,7 +14,14 @@ import type {
 export type OpenCodexEvent =
   | { type: "connection.status"; status: "starting" | "ready" | "stopped" | "error"; message?: string }
   | { type: "app.bootstrap"; settings: OpenCodexSettings; projectPath: string | null }
-  | { type: "threads.updated"; threads: OpenCodexThread[]; currentProjectFilterAvailable: boolean }
+  | { type: "projects.updated"; projects: OpenCodexProject[] }
+  | { type: "project.opened"; project: OpenCodexProject }
+  | {
+      type: "threads.updated";
+      threads: OpenCodexThread[];
+      currentProjectFilterAvailable: boolean;
+      projectPath: string | null;
+    }
   | { type: "thread.opened"; thread: OpenCodexThread; turns: OpenCodexTurn[]; hasMoreOlderMessages?: boolean }
   | { type: "thread.created"; thread: OpenCodexThread; turns: OpenCodexTurn[] }
   | { type: "thread.metadata.updated"; thread: OpenCodexThread }

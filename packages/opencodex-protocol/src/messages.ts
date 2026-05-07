@@ -9,6 +9,16 @@ export type OpenCodexApprovalDecision = "accept" | "acceptForSession" | "decline
 export type OpenCodexThreadScope = "currentProject" | "all";
 export type OpenCodexLanguage = "system" | "fr" | "en";
 
+export type OpenCodexProject = {
+  id: string;
+  path: string;
+  defaultName: string;
+  displayName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lastSeenAt: string;
+};
+
 export type OpenCodexSettings = {
   codexCommand: string;
   defaultModel: string | null;

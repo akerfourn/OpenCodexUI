@@ -30,6 +30,14 @@ window.addEventListener("focus", () => {
   if (store.canRefreshCurrentThread()) {
     store.refreshCurrentThread();
   }
+
+  if (store.activeProjectStore !== null && !store.isLoadingThreads) {
+    store.refreshThreads();
+  }
+
+  if (store.activeProjectStore === null) {
+    store.refreshProjects();
+  }
 });
 
 if (rootElement !== null) {

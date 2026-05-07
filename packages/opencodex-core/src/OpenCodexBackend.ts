@@ -9,17 +9,20 @@ import {
   type CodexServerRequest
 } from "@open-codex-ui/codex-rpc";
 import type {
+  CachedProject,
   CachedThreadDelta,
   CachedThreadSnapshot,
   CachedThreadSummary,
   CachedThreadSyncState,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
+import { createProjectIdentity, normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexApprovalDecision,
   OpenCodexEvent,
   OpenCodexMessage,
   OpenCodexMessagePhase,
+  OpenCodexProject,
   OpenCodexRequest,
   OpenCodexSettings,
   OpenCodexThread,
@@ -162,11 +165,18 @@ export class OpenCodexBackend {
           settings: this.settings,
           projectPath: this.options.projectPath
         });
-        await this.handleValidRequest({ type: "threads.list", scope: "currentProject" });
+        await this.cacheProject(this.options.projectPath);
+        await this.handleValidRequest({ type: "projects.list" });
         await this.handleValidRequest({ type: "models.list" });
         return { ok: true };
+      case "projects.list":
+        return this.listProjects();
+      case "projects.open":
+        return this.openProject(request.projectPath, request.createIfMissing === true);
+      case "projects.pickDirectory":
+        return this.pickProjectDirectory(request.mode);
       case "threads.list":
-        return this.listThreads(request.scope, request.searchTerm);
+        return this.listThreads(request.scope, request.projectPath ?? null, request.searchTerm);
       case "threads.open":
         return this.openThread(request.threadId);
       case "threads.loadOlder":
@@ -174,13 +184,19 @@ export class OpenCodexBackend {
       case "threads.recover":
         return this.recoverThread(request.threadId);
       case "threads.create":
-        return this.createThread();
+        return this.createThread(request.projectPath ?? null);
       case "threads.rename":
         return this.renameThread(request.threadId, request.name);
       case "system.openLink":
-        return this.openLink(request.href);
+        return this.openLink(request.href, request.projectPath ?? null);
       case "turn.start":
-        return this.startTurn(request.threadId, request.text, request.model ?? null, request.reasoningEffort ?? null);
+        return this.startTurn(
+          request.threadId,
+          request.projectPath ?? null,
+          request.text,
+          request.model ?? null,
+          request.reasoningEffort ?? null
+        );
       case "turn.interrupt":
         return this.interruptTurn(request.threadId, request.turnId);
       case "approval.respond":
@@ -232,18 +248,166 @@ export class OpenCodexBackend {
   }
 
   /**
+   * Lists projects known by the local cache.
+   *
+   * @returns Promise resolved with cached projects.
+   */
+  private async listProjects(): Promise<OpenCodexProject[]> {
+    const cachedProjects = await this.readCachedProjects();
+
+    this.emit({ type: "projects.updated", projects: cachedProjects });
+
+    try {
+      const client = await this.ensureClient();
+      const threads = await readThreadPages(client, {
+        limit: THREAD_LIST_PAGE_SIZE,
+        sortKey: "updated_at",
+        sortDirection: "desc",
+        sourceKinds: THREAD_SOURCE_KINDS
+      });
+      await this.writeThreadIndex(threads);
+    } catch (error) {
+      this.options.logger?.(`project sync failed: ${String(error)}`);
+      return cachedProjects;
+    }
+
+    const projects = await this.readCachedProjects();
+    this.emit({ type: "projects.updated", projects });
+    return projects;
+  }
+
+  /**
+   * Opens a project folder and stores it in the local project index.
+   *
+   * @param projectPath Project folder path.
+   * @param createIfMissing Whether missing folders should be created.
+   *
+   * @returns Promise resolved with the opened project.
+   */
+  private async openProject(projectPath: string, createIfMissing: boolean): Promise<OpenCodexProject> {
+    const ensuredProjectPath = await this.ensureProjectPath(projectPath, createIfMissing);
+    const project = await this.cacheProject(ensuredProjectPath);
+
+    if (project === null) {
+      throw new Error("Project path is required.");
+    }
+
+    await this.listProjects();
+    this.emit({ type: "project.opened", project });
+    return project;
+  }
+
+  /**
+   * Opens the host directory picker and then opens the selected project.
+   *
+   * @param mode Picker mode requested by the UI.
+   *
+   * @returns Promise resolved with the opened project, or `null` when cancelled.
+   */
+  private async pickProjectDirectory(mode: "open" | "create"): Promise<OpenCodexProject | null> {
+    const selectedPath = await this.options.pickProjectDirectory?.(mode) ?? null;
+
+    if (selectedPath === null) {
+      return null;
+    }
+
+    return this.openProject(selectedPath, mode === "create");
+  }
+
+  /**
+   * Validates and normalizes a project path before it is opened.
+   *
+   * @param projectPath Project folder path.
+   * @param createIfMissing Whether missing folders should be created.
+   *
+   * @returns Promise resolved with the normalized project path.
+   */
+  private async ensureProjectPath(projectPath: string, createIfMissing: boolean): Promise<string> {
+    const ensuredPath = await this.options.ensureProjectDirectory?.(projectPath, createIfMissing)
+      ?? projectPath;
+    const normalizedPath = normalizeProjectPath(ensuredPath);
+
+    if (normalizedPath === null) {
+      throw new Error("Project path is required.");
+    }
+
+    return normalizedPath;
+  }
+
+  /**
+   * Stores a project path in the cache when a cache repository is available.
+   *
+   * @param projectPath Project path to store.
+   *
+   * @returns Cached project entry, or `null` when no project can be stored.
+   */
+  private async cacheProject(projectPath: string | null): Promise<OpenCodexProject | null> {
+    const normalizedProjectPath = normalizeProjectPath(projectPath);
+
+    if (normalizedProjectPath === null) {
+      return null;
+    }
+
+    const projectIdentity = createProjectIdentity(normalizedProjectPath);
+
+    if (projectIdentity === null) {
+      return null;
+    }
+
+    if (this.cacheRepository === null) {
+      const now = new Date().toISOString();
+
+      return {
+        id: projectIdentity.id,
+        path: projectIdentity.path,
+        defaultName: projectIdentity.defaultName,
+        displayName: null,
+        createdAt: now,
+        updatedAt: now,
+        lastSeenAt: now
+      };
+    }
+
+    try {
+      const project = await this.cacheRepository.upsertProject(normalizedProjectPath);
+      return toOpenCodexProject(project);
+    } catch (error) {
+      this.options.logger?.(`project cache write failed: ${String(error)}`);
+      const now = new Date().toISOString();
+
+      return {
+        id: projectIdentity.id,
+        path: projectIdentity.path,
+        defaultName: projectIdentity.defaultName,
+        displayName: null,
+        createdAt: now,
+        updatedAt: now,
+        lastSeenAt: now
+      };
+    }
+  }
+
+  /**
    * Loads threads from the cache and refreshes them from Codex.
    *
    * @param scope Requested thread scope.
+   * @param projectPath Project path used by the current-project scope.
    * @param searchTerm Optional search term.
    *
    * @returns Promise resolved with the requested result.
    */
-  private async listThreads(scope: "currentProject" | "all", searchTerm?: string): Promise<OpenCodexThread[]> {
-    const cachedThreads = await this.readCachedThreads(scope, searchTerm);
+  private async listThreads(
+    scope: "currentProject" | "all",
+    projectPath: string | null,
+    searchTerm?: string
+  ): Promise<OpenCodexThread[]> {
+    const currentProjectPath = scope === "currentProject"
+      ? this.resolveCurrentProjectPath(projectPath)
+      : null;
+    const cachedThreads = await this.readCachedThreads(scope, currentProjectPath, searchTerm);
 
     if (cachedThreads.length > 0) {
-      this.emitThreadsUpdated(cachedThreads);
+      this.emitThreadsUpdated(cachedThreads, currentProjectPath);
     }
 
     const client = await this.ensureClient();
@@ -259,16 +423,16 @@ export class OpenCodexBackend {
       params.searchTerm = trimmedSearchTerm;
     }
 
-    if (scope === "currentProject" && this.options.projectPath !== null) {
-      params.cwd = this.options.projectPath;
+    if (scope === "currentProject" && currentProjectPath !== null) {
+      params.cwd = currentProjectPath;
     }
 
     const threads = await readThreadPages(client, params);
     await this.writeThreadIndex(threads);
 
-    const mergedThreads = await this.readCachedThreads(scope, searchTerm);
+    const mergedThreads = await this.readCachedThreads(scope, currentProjectPath, searchTerm);
     const updatedThreads = mergeFreshThreadList(threads, mergedThreads);
-    this.emitThreadsUpdated(updatedThreads);
+    this.emitThreadsUpdated(updatedThreads, currentProjectPath);
 
     return updatedThreads;
   }
@@ -596,6 +760,9 @@ export class OpenCodexBackend {
    * @returns Promise resolved when the operation completes.
    */
   private async forgetCachedThread(threadId: string): Promise<void> {
+    const cachedSnapshot = await this.readCachedThreadSnapshot(threadId);
+    const projectPath = this.resolveCurrentProjectPath(cachedSnapshot?.thread.projectPath ?? null);
+
     if (this.cacheRepository !== null) {
       try {
         await this.cacheRepository.deleteThread(threadId);
@@ -604,8 +771,8 @@ export class OpenCodexBackend {
       }
     }
 
-    const cachedThreads = await this.readCachedThreads("currentProject");
-    this.emitThreadsUpdated(cachedThreads);
+    const cachedThreads = await this.readCachedThreads("currentProject", projectPath);
+    this.emitThreadsUpdated(cachedThreads, projectPath);
   }
 
   /**
@@ -628,12 +795,16 @@ export class OpenCodexBackend {
   /**
    * Creates a new empty thread and persists it in the cache index.
    *
+   * @param projectPath Project path used as the thread working directory.
+   *
    * @returns Promise resolved with the requested result.
    */
-  private async createThread(): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+  private async createThread(projectPath: string | null): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     const client = await this.ensureClient();
+    const currentProjectPath = this.resolveCurrentProjectPath(projectPath);
+    await this.cacheProject(currentProjectPath);
     const response = await client.startThread({
-      cwd: this.options.projectPath,
+      cwd: currentProjectPath,
       model: this.settings.defaultModel
     });
     const responseObject = readObject(response);
@@ -653,6 +824,7 @@ export class OpenCodexBackend {
    * Starts a turn on the selected thread and emits the optimistic user message.
    *
    * @param threadId Thread identifier.
+   * @param projectPath Project path used when a new thread must be created.
    * @param text User message text.
    * @param model Selected model identifier.
    * @param reasoningEffort Selected reasoning effort.
@@ -661,6 +833,7 @@ export class OpenCodexBackend {
    */
   private async startTurn(
     threadId: string | null,
+    projectPath: string | null,
     text: string,
     model: string | null,
     reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
@@ -672,7 +845,7 @@ export class OpenCodexBackend {
     }
 
     const client = await this.ensureClient();
-    const targetThreadId = threadId ?? (await this.createThreadAndReturnId(client));
+    const targetThreadId = threadId ?? (await this.createThreadAndReturnId(client, projectPath));
     this.activeThreadId = targetThreadId;
     const message: OpenCodexMessage = {
       id: createId("user"),
@@ -706,12 +879,18 @@ export class OpenCodexBackend {
    * Creates a thread and returns its identifier.
    *
    * @param client Connected Codex app-server client.
+   * @param projectPath Project path used as the thread working directory.
    *
    * @returns Promise resolved with the requested result.
    */
-  private async createThreadAndReturnId(client: CodexAppServerClient): Promise<string> {
+  private async createThreadAndReturnId(
+    client: CodexAppServerClient,
+    projectPath: string | null
+  ): Promise<string> {
+    const currentProjectPath = this.resolveCurrentProjectPath(projectPath);
+    await this.cacheProject(currentProjectPath);
     const response = await client.startThread({
-      cwd: this.options.projectPath,
+      cwd: currentProjectPath,
       model: this.settings.defaultModel
     });
     const responseObject = readObject(response);
@@ -764,10 +943,11 @@ export class OpenCodexBackend {
    * Opens an external link through the configured platform callback.
    *
    * @param href Link target to open.
+   * @param projectPath Project path used to resolve relative links.
    *
    * @returns Promise resolved with the requested result.
    */
-  private async openLink(href: string): Promise<{ ok: true }> {
+  private async openLink(href: string, projectPath: string | null): Promise<{ ok: true }> {
     const target = href.trim();
 
     if (target.length === 0) {
@@ -778,7 +958,7 @@ export class OpenCodexBackend {
       throw new Error(getBackendLabels(this.settings.language).missingLinkHandler);
     }
 
-    await this.options.openExternalLink(target);
+    await this.options.openExternalLink(target, this.resolveCurrentProjectPath(projectPath));
     return { ok: true };
   }
 
@@ -1095,27 +1275,50 @@ export class OpenCodexBackend {
    * Emits the refreshed thread list to the UI.
    *
    * @param threads Thread collection to process.
+   * @param projectPath Project path associated with the update.
    *
    * @returns Nothing.
    */
-  private emitThreadsUpdated(threads: OpenCodexThread[]): void {
+  private emitThreadsUpdated(threads: OpenCodexThread[], projectPath: string | null): void {
     this.emit({
       type: "threads.updated",
       threads,
-      currentProjectFilterAvailable: this.options.projectPath !== null
+      currentProjectFilterAvailable: projectPath !== null,
+      projectPath
     });
+  }
+
+  /**
+   * Reads cached projects from the repository.
+   *
+   * @returns Promise resolved with cached projects.
+   */
+  private async readCachedProjects(): Promise<OpenCodexProject[]> {
+    if (this.cacheRepository === null) {
+      return [];
+    }
+
+    try {
+      const projects = await this.cacheRepository.listProjects();
+      return projects.map((project) => toOpenCodexProject(project));
+    } catch (error) {
+      this.options.logger?.(`project cache read failed: ${String(error)}`);
+      return [];
+    }
   }
 
   /**
    * Reads cached threads for the requested scope and search term.
    *
    * @param scope Requested thread scope.
+   * @param projectPath Project path used by the current-project scope.
    * @param searchTerm Optional search term.
    *
    * @returns Promise resolved with the requested result.
    */
   private async readCachedThreads(
     scope: "currentProject" | "all",
+    projectPath: string | null,
     searchTerm?: string
   ): Promise<OpenCodexThread[]> {
     if (this.cacheRepository === null) {
@@ -1125,7 +1328,7 @@ export class OpenCodexBackend {
     try {
       const threads = await this.cacheRepository.listThreads({
         scope,
-        currentProjectPath: this.options.projectPath,
+        currentProjectPath: projectPath,
         searchTerm
       });
       return threads.map((thread) => toOpenCodexThread(thread));
@@ -1133,6 +1336,17 @@ export class OpenCodexBackend {
       this.options.logger?.(`thread cache read failed: ${String(error)}`);
       return [];
     }
+  }
+
+  /**
+   * Resolves the project path that should be used for a project-scoped operation.
+   *
+   * @param projectPath Request-specific project path.
+   *
+   * @returns Normalized project path, or `null` when no path is available.
+   */
+  private resolveCurrentProjectPath(projectPath: string | null): string | null {
+    return normalizeProjectPath(projectPath) ?? normalizeProjectPath(this.options.projectPath);
   }
 
   /**
@@ -1636,6 +1850,25 @@ function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread {
   }
 
   return mappedThread;
+}
+
+/**
+ * Converts a cached project to the protocol representation.
+ *
+ * @param project Project payload to process.
+ *
+ * @returns Protocol project payload.
+ */
+function toOpenCodexProject(project: CachedProject): OpenCodexProject {
+  return {
+    id: project.id,
+    path: project.path,
+    defaultName: project.defaultName,
+    displayName: project.displayName,
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+    lastSeenAt: project.lastSeenAt
+  };
 }
 
 /**

@@ -4,11 +4,13 @@
 import { observer } from "mobx-react-lite";
 import { Box } from "@mui/material";
 
-import type { RootStore } from "../stores/RootStore";
+import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
+import { AppTabsX } from "./app/AppTabs";
 import { ApprovalDialogX } from "./ApprovalDialog";
-import { ChatViewX } from "./ChatView";
+import { HomeViewX } from "./home/HomeView";
 import { ProjectTrustDialogX } from "./ProjectTrustDialog";
-import { ThreadListX } from "./ThreadList";
+import { CloseProjectDialogX } from "./projects/CloseProjectDialog";
+import { ProjectViewX } from "./projects/ProjectView";
 
 type AppProps = {
   store: RootStore;
@@ -25,16 +27,21 @@ export function App({ store }: AppProps) {
   const errorContent = store.errorMessage === null ? null : (
     <pre className="error-banner">{store.errorMessage}</pre>
   );
+  const activeProjectStore = store.activeProjectStore;
+  const mainContent = store.activeTabId === HOME_TAB_ID || activeProjectStore === null
+    ? <HomeViewX store={store} />
+    : <ProjectViewX store={store} projectStore={activeProjectStore} />;
 
   return (
     <Box component="main" className="app-shell">
-      <ThreadListX store={store} />
-      <section className="main-pane">
+      <AppTabsX store={store} />
+      <section className="app-content">
         {errorContent}
-        <ChatViewX store={store} />
+        {mainContent}
       </section>
       <ApprovalDialogX store={store} />
       <ProjectTrustDialogX store={store} />
+      <CloseProjectDialogX store={store} />
     </Box>
   );
 }

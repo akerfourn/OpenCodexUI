@@ -75,6 +75,8 @@ export type ThreadListCacheQuery = {
  * Describes the storage contract implemented by cache backends.
  */
 export interface OpenCodexCacheRepository {
+  upsertProject(projectPath: string): Promise<CachedProject>;
+  listProjects(): Promise<CachedProject[]>;
   upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void>;
   updateThreadTitle(threadId: string, title: string): Promise<void>;
   updateThreadCodexTitle(threadId: string, title: string): Promise<void>;

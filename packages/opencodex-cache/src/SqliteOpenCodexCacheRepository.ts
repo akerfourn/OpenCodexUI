@@ -8,6 +8,7 @@ import Database, { type Database as BetterSqliteDatabase } from "better-sqlite3"
 
 import { createProjectIdentity, normalizeProjectPath } from "./projectIdentity.js";
 import type {
+  CachedProject,
   CachedThreadDelta,
   CachedThreadReadOptions,
   CachedThreadSnapshot,
@@ -51,6 +52,16 @@ type TurnRow = {
   raw_json: string;
 };
 
+type ProjectRow = {
+  id: string;
+  path: string;
+  default_name: string;
+  display_name: string | null;
+  created_at: string;
+  updated_at: string;
+  last_seen_at: string;
+};
+
 /**
  * Creates the SQLite-backed cache repository used by the desktop application.
  *
@@ -82,6 +93,86 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     this.database.pragma("journal_mode = WAL");
     this.database.pragma("foreign_keys = ON");
     runMigrations(this.database);
+  }
+
+  /**
+   * Persists a project entry independently from its threads.
+   *
+   * @param projectPath Project folder path to persist.
+   * @returns Promise resolved with the cached project entry.
+   */
+  async upsertProject(projectPath: string): Promise<CachedProject> {
+    const project = createProjectIdentity(projectPath);
+
+    if (project === null) {
+      throw new Error("Project path is required.");
+    }
+
+    const now = new Date().toISOString();
+
+    this.database
+      .prepare(
+        `
+        INSERT INTO projects (
+          id,
+          path,
+          default_name,
+          display_name,
+          created_at,
+          updated_at,
+          last_seen_at
+        )
+        VALUES (
+          @id,
+          @path,
+          @defaultName,
+          NULL,
+          @now,
+          @now,
+          @now
+        )
+        ON CONFLICT(path) DO UPDATE SET
+          default_name = excluded.default_name,
+          updated_at = excluded.updated_at,
+          last_seen_at = excluded.last_seen_at
+        `
+      )
+      .run({ ...project, now });
+
+    const row = this.database
+      .prepare(
+        `
+        SELECT *
+        FROM projects
+        WHERE path = @path
+        `
+      )
+      .get({ path: project.path }) as ProjectRow | undefined;
+
+    if (row === undefined) {
+      throw new Error("Project could not be read after being cached.");
+    }
+
+    return mapProjectRow(row);
+  }
+
+  /**
+   * Lists projects known by the local cache, ordered by most recent activity.
+   *
+   * @returns Promise resolved with cached projects.
+   */
+  async listProjects(): Promise<CachedProject[]> {
+    const rows = this.database
+      .prepare(
+        `
+        SELECT *
+        FROM projects
+        ORDER BY last_seen_at DESC, updated_at DESC, path ASC
+        `
+      )
+      .all() as ProjectRow[];
+
+    return rows.map((row) => mapProjectRow(row));
   }
 
   /**
@@ -853,6 +944,24 @@ function mapThreadRow(row: ThreadRow): CachedThreadSummary {
   }
 
   return thread;
+}
+
+/**
+ * Maps a raw SQLite project row into the public cached project shape.
+ *
+ * @param row Project row read from SQLite.
+ * @returns Normalized cached project entry.
+ */
+function mapProjectRow(row: ProjectRow): CachedProject {
+  return {
+    id: row.id,
+    path: row.path,
+    defaultName: row.default_name,
+    displayName: row.display_name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lastSeenAt: row.last_seen_at
+  };
 }
 
 /**

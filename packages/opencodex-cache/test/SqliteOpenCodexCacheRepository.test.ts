@@ -24,6 +24,27 @@ describe("SqliteOpenCodexCacheRepository", () => {
     fs.rmSync(directory, { recursive: true, force: true });
   });
 
+  it("should persist projects independently from threads", async () => {
+    const project = await repository.upsertProject("/home/adrien/Projets/Perso/OpenCodexUI");
+
+    expect(project).toMatchObject({
+      path: "/home/adrien/Projets/Perso/OpenCodexUI",
+      defaultName: "OpenCodexUI",
+      displayName: null
+    });
+
+    await repository.upsertProject("/home/adrien/Projets/Perso/OpenCodexUI");
+    const projects = await repository.listProjects();
+
+    expect(projects).toHaveLength(1);
+    expect(projects[0]).toMatchObject({
+      id: project.id,
+      path: "/home/adrien/Projets/Perso/OpenCodexUI",
+      defaultName: "OpenCodexUI",
+      displayName: null
+    });
+  });
+
   it("should persist and list thread summaries grouped by project path", async () => {
     await repository.upsertThreadIndex([
       {

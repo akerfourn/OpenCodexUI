@@ -46,6 +46,28 @@ export const resources = {
         refresh: "Rafraîchir",
         rename: "Renommer"
       },
+      closeProject: {
+        cancel: "Annuler",
+        confirmCheckbox: "Je confirme que je veux fermer ce projet",
+        description: "Les chats chargés de ce projet seront libérés de la mémoire. Le cache local reste conservé.",
+        runningTurn: "Un turn est encore actif dans ce projet. Interrompez-le avant de fermer l'onglet.",
+        submit: "Fermer le projet",
+        title: "Fermer {{project}} ?"
+      },
+      home: {
+        createPath: "Créer/Ouvrir",
+        noRecentProjects: "Aucun projet récent pour le moment.",
+        openPath: "Ouvrir",
+        openProject: "Ouvrir un projet",
+        openProjectDescription: "Sélectionnez un dossier de travail pour ouvrir ses chats dans un onglet projet.",
+        pickExisting: "Ouvrir un dossier",
+        pickNew: "Nouveau dossier",
+        projectPath: "Chemin du projet",
+        projectPathPlaceholder: "/home/adrien/projet",
+        projects: "Projets",
+        recentProjects: "Projets récents",
+        settings: "Paramètres"
+      },
       language: {
         en: "English",
         fr: "Français",
@@ -79,7 +101,13 @@ export const resources = {
         filterTabs: "Filtre des conversations",
         new: "Nouveau",
         otherChats: "Autres chats",
+        refresh: "Synchroniser les chats",
         search: "Rechercher"
+      },
+      tabs: {
+        closeProject: "Fermer {{project}}",
+        home: "Home",
+        label: "Onglets de l'application"
       }
     }
   },
@@ -118,6 +146,28 @@ export const resources = {
         refresh: "Refresh",
         rename: "Rename"
       },
+      closeProject: {
+        cancel: "Cancel",
+        confirmCheckbox: "I confirm I want to close this project",
+        description: "Loaded chats for this project will be released from memory. The local cache is kept.",
+        runningTurn: "A turn is still active in this project. Interrupt it before closing the tab.",
+        submit: "Close project",
+        title: "Close {{project}}?"
+      },
+      home: {
+        createPath: "Create/Open",
+        noRecentProjects: "No recent projects yet.",
+        openPath: "Open",
+        openProject: "Open a project",
+        openProjectDescription: "Select a working directory to open its chats in a project tab.",
+        pickExisting: "Open folder",
+        pickNew: "New folder",
+        projectPath: "Project path",
+        projectPathPlaceholder: "/home/adrien/project",
+        projects: "Projects",
+        recentProjects: "Recent projects",
+        settings: "Settings"
+      },
       language: {
         en: "English",
         fr: "Français",
@@ -151,7 +201,13 @@ export const resources = {
         filterTabs: "Conversation filter",
         new: "New",
         otherChats: "Other chats",
+        refresh: "Sync chats",
         search: "Search"
+      },
+      tabs: {
+        closeProject: "Close {{project}}",
+        home: "Home",
+        label: "Application tabs"
       }
     }
   }

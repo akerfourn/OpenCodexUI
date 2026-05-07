@@ -1,7 +1,8 @@
 /**
  * Hosts the Electron-side bridge between renderer IPC requests and the backend.
  */
-import { BrowserWindow, ipcMain, shell } from "electron";
+import { BrowserWindow, dialog, ipcMain, shell } from "electron";
+import fs from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -36,8 +37,14 @@ export class ElectronBridgeServer {
       projectPath: options.projectPath,
       cacheRepository,
       saveSettings: options.saveSettings,
-      openExternalLink: async (href) => {
-        await openExternalLink(href, options.projectPath);
+      openExternalLink: async (href, projectPath) => {
+        await openExternalLink(href, projectPath);
+      },
+      pickProjectDirectory: async (mode) => {
+        return this.pickProjectDirectory(mode);
+      },
+      ensureProjectDirectory: async (projectPath, createIfMissing) => {
+        return ensureProjectDirectory(projectPath, createIfMissing);
       },
       logger: (message) => console.log(`[OpenCodexUI] ${message}`),
       emit: (event) => this.emit(event)
@@ -83,6 +90,34 @@ export class ElectronBridgeServer {
   private emit(event: OpenCodexEvent): void {
     this.window?.webContents.send("opencodex:event", event);
   }
+
+  /**
+   * Opens a native directory picker for project selection.
+   *
+   * @param mode Picker mode requested by the renderer.
+   * @returns Selected directory path, or `null` when cancelled.
+   */
+  private async pickProjectDirectory(mode: "open" | "create"): Promise<string | null> {
+    const properties: Array<"openDirectory" | "createDirectory"> = ["openDirectory"];
+
+    if (mode === "create") {
+      properties.push("createDirectory");
+    }
+
+    const options = {
+      properties,
+      title: mode === "create" ? "Create or select project folder" : "Open project folder"
+    };
+    const result = this.window === null
+      ? await dialog.showOpenDialog(options)
+      : await dialog.showOpenDialog(this.window, options);
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return result.filePaths[0] ?? null;
+  }
 }
 
 /**
@@ -100,6 +135,55 @@ function createCacheRepository(userDataPath: string) {
     console.log(`[OpenCodexUI] SQLite cache unavailable: ${String(error)}`);
     return null;
   }
+}
+
+/**
+ * Ensures a project path exists and points to a directory.
+ *
+ * @param projectPath User-provided project path.
+ * @param createIfMissing Whether missing folders should be created.
+ * @returns Absolute project directory path.
+ */
+async function ensureProjectDirectory(projectPath: string, createIfMissing: boolean): Promise<string> {
+  const trimmedPath = projectPath.trim();
+
+  if (trimmedPath.length === 0) {
+    throw new Error("Project path is required.");
+  }
+
+  const resolvedPath = path.resolve(trimmedPath);
+
+  try {
+    const stats = await fs.stat(resolvedPath);
+
+    if (!stats.isDirectory()) {
+      throw new Error(`Project path is not a directory: ${resolvedPath}`);
+    }
+
+    return resolvedPath;
+  } catch (error) {
+    if (isMissingPathError(error) && createIfMissing) {
+      await fs.mkdir(resolvedPath, { recursive: true });
+      return resolvedPath;
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Checks whether a filesystem error reports a missing path.
+ *
+ * @param error Error value to inspect.
+ * @returns `true` when the path is missing.
+ */
+function isMissingPathError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "ENOENT"
+  );
 }
 
 /**
