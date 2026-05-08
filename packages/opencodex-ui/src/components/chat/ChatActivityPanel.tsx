@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-import type { RootStore } from "../stores/RootStore";
+import type { RootStore } from "../../stores/RootStore";
 
 type ChatActivityPanelProps = {
   store: RootStore;

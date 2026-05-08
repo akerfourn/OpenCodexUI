@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexApprovalDecision } from "@open-codex-ui/opencodex-protocol";
 
-import type { RootStore } from "../stores/RootStore";
+import type { RootStore } from "../../stores/RootStore";
 
 type ApprovalButtonProps = {
   store: RootStore;

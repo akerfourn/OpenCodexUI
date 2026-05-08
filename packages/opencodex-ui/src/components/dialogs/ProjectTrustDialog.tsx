@@ -17,7 +17,7 @@ import {
   Typography
 } from "@mui/material";
 
-import type { RootStore } from "../stores/RootStore";
+import type { RootStore } from "../../stores/RootStore";
 
 type ProjectTrustDialogProps = {
   store: RootStore;

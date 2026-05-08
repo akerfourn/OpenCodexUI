@@ -8,8 +8,8 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { useTranslation } from "react-i18next";
 
-import type { RootStore } from "../stores/RootStore";
-import { RenameModal } from "./RenameModal";
+import type { RootStore } from "../../stores/RootStore";
+import { RenameModal } from "../dialogs/RenameModal";
 
 type ChatHeaderProps = {
   store: RootStore;

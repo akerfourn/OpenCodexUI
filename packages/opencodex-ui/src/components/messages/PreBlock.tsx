@@ -2,9 +2,10 @@
  * Renders the pre block component for the OpenCodex UI.
  */
 import { Children, isValidElement, type ReactNode } from "react";
-import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
-import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import { Box, Paper, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
+
+import { CopyIconButton } from "../common/CopyIconButton";
 
 type PreBlockProps = {
   children?: ReactNode;
@@ -29,10 +30,6 @@ export function PreBlock({ children }: PreBlockProps) {
   const code = String(child.props.children ?? "").replace(/\n$/, "");
   const match = /language-(\w+)/.exec(codeClassName);
   const language = match?.[1] ?? "";
-
-  async function handleCopy(): Promise<void> {
-    await navigator.clipboard.writeText(code);
-  }
 
   return (
     <Paper
@@ -64,15 +61,13 @@ export function PreBlock({ children }: PreBlockProps) {
         <Typography variant="caption" component="span">
           {language}
         </Typography>
-        <Tooltip title={t("chat.copyCodeBlock")}>
-          <IconButton
-            size="small"
-            aria-label={t("chat.copyCodeBlock")}
-            onClick={handleCopy}
-          >
-            <ContentCopyOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        <CopyIconButton
+          value={code}
+          label={t("chat.copyCodeBlock")}
+          copiedLabel={t("message.copied")}
+          buttonSize={28}
+          iconSize={17}
+        />
       </Box>
       <Box
         component="pre"

@@ -5,7 +5,7 @@ import { observer } from "mobx-react-lite";
 import { Box, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
-import type { RootStore } from "../stores/RootStore";
+import type { RootStore } from "../../stores/RootStore";
 import { ApprovalButton } from "./ApprovalButton";
 
 type ApprovalDialogProps = {

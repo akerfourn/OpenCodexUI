@@ -5,11 +5,11 @@ import { observer } from "mobx-react-lite";
 import { Stack } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
-import type { RootStore } from "../stores/RootStore";
+import type { RootStore } from "../../stores/RootStore";
 import { ChatActivityPanelX } from "./ChatActivityPanel";
 import { ChatComposer } from "./ChatComposer";
 import { ChatHeaderX } from "./ChatHeader";
-import { ChatMessageListX } from "./ChatMessageList";
+import { ChatMessageListX } from "../messages/ChatMessageList";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { ChatLoadingState } from "./ChatLoadingState";
 

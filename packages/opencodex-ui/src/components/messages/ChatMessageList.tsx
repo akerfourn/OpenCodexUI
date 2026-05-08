@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
-import type { RootStore } from "../stores/RootStore";
+import type { RootStore } from "../../stores/RootStore";
 import { AssistantTurnBlock } from "./AssistantTurnBlock";
 import { MessageRowM } from "./MessageRow";
 

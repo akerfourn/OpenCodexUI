@@ -6,10 +6,10 @@ import { Box } from "@mui/material";
 
 import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
 import { AppTabsX } from "./app/AppTabs";
-import { ApprovalDialogX } from "./ApprovalDialog";
+import { ApprovalDialogX } from "./dialogs/ApprovalDialog";
 import { HomeViewX } from "./home/HomeView";
-import { ProjectTrustDialogX } from "./ProjectTrustDialog";
-import { CloseProjectDialogX } from "./projects/CloseProjectDialog";
+import { ProjectTrustDialogX } from "./dialogs/ProjectTrustDialog";
+import { CloseProjectDialogX } from "./dialogs/CloseProjectDialog";
 import { ProjectViewX } from "./projects/ProjectView";
 
 type AppProps = {

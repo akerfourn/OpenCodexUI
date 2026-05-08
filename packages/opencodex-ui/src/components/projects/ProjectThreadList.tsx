@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
-import { ThreadButtonX } from "../ThreadButton";
+import { ThreadButtonX } from "../threads/ThreadButton";
 
 type ProjectThreadListProps = {
   store: RootStore;

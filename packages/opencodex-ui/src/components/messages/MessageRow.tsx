@@ -1,10 +1,8 @@
 /**
  * Renders the message row component for the OpenCodex UI.
  */
-import { memo, useState, type ReactNode, type RefObject } from "react";
-import { Box, IconButton, Paper, Tooltip } from "@mui/material";
-import CheckOutlinedIcon from "@mui/icons-material/CheckOutlined";
-import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import { memo, type ReactNode, type RefObject } from "react";
+import { Box, Paper } from "@mui/material";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import FormatListBulletedOutlinedIcon from "@mui/icons-material/FormatListBulletedOutlined";
 import TerminalOutlinedIcon from "@mui/icons-material/TerminalOutlined";
@@ -24,6 +22,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
 
+import { CopyIconButton } from "../common/CopyIconButton";
 import { MarkdownMessageM } from "./MarkdownMessage";
 
 type MessageRowProps = {
@@ -60,18 +59,8 @@ export function MessageRow({
   content
 }: MessageRowProps) {
   const { t } = useTranslation();
-  const [hasCopied, setHasCopied] = useState(false);
   const articleRef = isLast ? lastMessageRef : undefined;
   const isCommentary = role === "assistant" && phase === "commentary";
-
-  function handleCopyUserMessage(): void {
-    void navigator.clipboard.writeText(content).then(() => {
-      setHasCopied(true);
-      window.setTimeout(() => {
-        setHasCopied(false);
-      }, 1200);
-    });
-  }
 
   if (role === "user") {
     return (
@@ -108,25 +97,12 @@ export function MessageRow({
           <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
         </Paper>
         <Box sx={{ display: "flex", justifyContent: "flex-end", minHeight: 24, pt: 0.25 }}>
-          <Tooltip title={hasCopied ? t("message.copied") : t("message.copy")}>
-            <IconButton
-              aria-label={hasCopied ? t("message.copied") : t("message.copy")}
-              size="small"
-              onClick={handleCopyUserMessage}
-              sx={{
-                color: "text.secondary",
-                height: 24,
-                width: 24,
-                p: 0.25
-              }}
-            >
-              {hasCopied ? (
-                <CheckOutlinedIcon sx={{ fontSize: 15 }} />
-              ) : (
-                <ContentCopyOutlinedIcon sx={{ fontSize: 15 }} />
-              )}
-            </IconButton>
-          </Tooltip>
+          <CopyIconButton
+            value={content}
+            label={t("message.copy")}
+            copiedLabel={t("message.copied")}
+            sx={{ color: "text.secondary" }}
+          />
         </Box>
       </Box>
     );

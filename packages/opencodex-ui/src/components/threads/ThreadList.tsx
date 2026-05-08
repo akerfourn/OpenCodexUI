@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexLanguage, OpenCodexThread, OpenCodexThreadScope } from "@open-codex-ui/opencodex-protocol";
 
-import type { RootStore } from "../stores/RootStore";
+import type { RootStore } from "../../stores/RootStore";
 import { ThreadButtonX } from "./ThreadButton";
 
 type ThreadListProps = {

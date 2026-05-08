@@ -4,7 +4,7 @@
 import { Button, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
-import type { RootStore } from "../stores/RootStore";
+import type { RootStore } from "../../stores/RootStore";
 
 type ChatEmptyStateProps = {
   store: RootStore;
