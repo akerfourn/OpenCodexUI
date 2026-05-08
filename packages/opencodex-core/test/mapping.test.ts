@@ -111,13 +111,18 @@ describe("OpenCodex mapping", () => {
         params: {
           threadId: "thread-1",
           command: "npm test",
-          availableDecisions: ["accept", "decline"]
+          cwd: "/workspace",
+          reason: "Run the test suite",
+          availableDecisions: ["accept"]
         }
       })
     ).toMatchObject({
       id: "1",
       threadId: "thread-1",
       kind: "command",
+      command: "npm test",
+      cwd: "/workspace",
+      reason: "Run the test suite",
       choices: ["accept", "decline"]
     });
   });

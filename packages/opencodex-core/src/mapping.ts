@@ -228,6 +228,11 @@ export function createApprovalRequest(
     title: createApprovalTitle(request.method, params, language),
     kind: createApprovalKind(request.method),
     body: JSON.stringify(request.params ?? {}, null, 2),
+    reason: readNullableString(params.reason),
+    command: readNullableString(params.command),
+    cwd: readNullableString(params.cwd),
+    grantRoot: readNullableString(params.grantRoot),
+    permissions: params.permissions,
     choices: readAvailableDecisions(params.availableDecisions)
   };
 }
@@ -655,6 +660,10 @@ function createApprovalKind(method: string): OpenCodexApproval["kind"] {
     return "fileChange";
   }
 
+  if (method === "item/permissions/requestApproval") {
+    return "permissions";
+  }
+
   return "other";
 }
 
@@ -671,7 +680,9 @@ function readAvailableDecisions(value: unknown): OpenCodexApprovalDecision[] {
   }
 
   const decisions = value.filter(isApprovalDecision);
-  return decisions.length > 0 ? decisions : ["accept", "decline", "cancel"];
+  const fallbackDecisions: OpenCodexApprovalDecision[] = ["accept", "decline", "cancel"];
+  const availableDecisions = decisions.length > 0 ? decisions : fallbackDecisions;
+  return availableDecisions.includes("decline") ? availableDecisions : [...availableDecisions, "decline"];
 }
 
 /**

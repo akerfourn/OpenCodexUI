@@ -23,6 +23,8 @@ type ApprovalButtonProps = {
  */
 export function ApprovalButton({ store, approvalId, decision }: ApprovalButtonProps) {
   const { t } = useTranslation();
+  const buttonColor = getApprovalButtonColor(decision);
+  const buttonVariant = getApprovalButtonVariant(decision);
 
   function handleDecision(): void {
     store.resolveApproval(approvalId, decision);
@@ -31,10 +33,37 @@ export function ApprovalButton({ store, approvalId, decision }: ApprovalButtonPr
   return (
     <Button
       type="button"
-      variant={decision === "decline" || decision === "cancel" ? "outlined" : "contained"}
+      color={buttonColor}
+      variant={buttonVariant}
       onClick={handleDecision}
     >
       {t(`approval.${decision}`)}
     </Button>
   );
+}
+
+function getApprovalButtonColor(
+  decision: OpenCodexApprovalDecision
+): "primary" | "success" | "error" | "inherit" {
+  if (decision === "accept" || decision === "acceptForSession") {
+    return "success";
+  }
+
+  if (decision === "decline") {
+    return "error";
+  }
+
+  if (decision === "cancel") {
+    return "inherit";
+  }
+
+  return "primary";
+}
+
+function getApprovalButtonVariant(decision: OpenCodexApprovalDecision): "contained" | "outlined" {
+  if (decision === "cancel" || decision === "acceptForSession") {
+    return "outlined";
+  }
+
+  return "contained";
 }

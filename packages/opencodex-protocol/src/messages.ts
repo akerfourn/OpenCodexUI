@@ -101,7 +101,12 @@ export type OpenCodexApproval = {
   id: string;
   threadId?: string;
   title: string;
-  kind: "command" | "fileChange" | "other";
+  kind: "command" | "fileChange" | "permissions" | "other";
   body: string;
+  reason?: string | null;
+  command?: string | null;
+  cwd?: string | null;
+  grantRoot?: string | null;
+  permissions?: unknown;
   choices: OpenCodexApprovalDecision[];
 };
