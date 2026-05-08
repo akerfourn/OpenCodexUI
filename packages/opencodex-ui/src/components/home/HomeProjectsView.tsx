@@ -1,9 +1,9 @@
 /**
  * Renders project opening controls on the Home tab.
  */
-import { Box, Button, Divider, LinearProgress, List, Stack, TextField, Typography } from "@mui/material";
+import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import { Box, Button, Divider, IconButton, LinearProgress, List, Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
@@ -23,18 +23,6 @@ type HomeProjectsViewProps = {
 export function HomeProjectsView({ store }: HomeProjectsViewProps) {
   const { t } = useTranslation();
 
-  function handlePathChange(event: ChangeEvent<HTMLInputElement>): void {
-    store.homeStore.setProjectPathInput(event.target.value);
-  }
-
-  function handleOpenPath(): void {
-    store.openProjectFromInput(false);
-  }
-
-  function handleCreatePath(): void {
-    store.openProjectFromInput(true);
-  }
-
   function handlePickExisting(): void {
     store.openProjectFromPicker("open");
   }
@@ -45,6 +33,10 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
 
   function handleOpenRecent(projectPath: string): void {
     store.openProject(projectPath);
+  }
+
+  function handleRefreshProjects(): void {
+    store.refreshProjects();
   }
 
   const hasProjects = store.projects.length > 0;
@@ -73,29 +65,22 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
         </Button>
       </Stack>
 
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-        <TextField
-          value={store.homeStore.projectPathInput}
-          label={t("home.projectPath")}
-          placeholder={t("home.projectPathPlaceholder")}
-          fullWidth
-          size="small"
-          onChange={handlePathChange}
-        />
-        <Button variant="outlined" type="button" onClick={handleOpenPath}>
-          {t("home.openPath")}
-        </Button>
-        <Button variant="outlined" type="button" onClick={handleCreatePath}>
-          {t("home.createPath")}
-        </Button>
-      </Stack>
-
       <Divider />
 
       <Box>
-        <Typography variant="h6" component="h3">
-          {t("home.recentProjects")}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography variant="h6" component="h3" sx={{ flex: "1 1 auto" }}>
+            {t("home.recentProjects")}
+          </Typography>
+          <IconButton
+            aria-label={t("home.refreshProjects")}
+            title={t("home.refreshProjects")}
+            size="small"
+            onClick={handleRefreshProjects}
+          >
+            <RefreshOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Box>
         {hasProjects ? (
           <List dense sx={{ mt: 1 }}>
             {store.projects.map((project) => (

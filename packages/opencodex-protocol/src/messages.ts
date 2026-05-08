@@ -17,6 +17,7 @@ export type OpenCodexProject = {
   createdAt: string;
   updatedAt: string;
   lastSeenAt: string;
+  editedAt: string;
 };
 
 export type OpenCodexSettings = {

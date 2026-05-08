@@ -41,8 +41,51 @@ describe("SqliteOpenCodexCacheRepository", () => {
       id: project.id,
       path: "/home/adrien/Projets/Perso/OpenCodexUI",
       defaultName: "OpenCodexUI",
-      displayName: null
+      displayName: null,
+      editedAt: project.createdAt
     });
+  });
+
+  it("should order projects by latest thread update", async () => {
+    await repository.upsertProject("/tmp/older");
+    await repository.upsertProject("/tmp/recent");
+    await repository.upsertThreadIndex([
+      {
+        id: "older-thread",
+        codexTitle: "Older",
+        customTitle: null,
+        title: "Older",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "older",
+        projectPath: "/tmp/older",
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      },
+      {
+        id: "recent-thread",
+        codexTitle: "Recent",
+        customTitle: null,
+        title: "Recent",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "recent",
+        projectPath: "/tmp/recent",
+        branchName: null,
+        updatedAt: "2026-02-01T00:00:00.000Z"
+      }
+    ]);
+
+    const projects = await repository.listProjects();
+
+    expect(projects.map((project) => project.path)).toEqual([
+      "/tmp/recent",
+      "/tmp/older"
+    ]);
+    expect(projects[0]?.editedAt).toBe("2026-02-01T00:00:00.000Z");
+    expect(projects[1]?.editedAt).toBe("2026-01-01T00:00:00.000Z");
   });
 
   it("should persist and list thread summaries grouped by project path", async () => {

@@ -66,6 +66,7 @@ export const resources = {
         projectPathPlaceholder: "/home/adrien/projet",
         projects: "Projets",
         recentProjects: "Projets récents",
+        refreshProjects: "Synchroniser les projets récents",
         settings: "Paramètres"
       },
       language: {
@@ -167,6 +168,7 @@ export const resources = {
         projectPathPlaceholder: "/home/adrien/project",
         projects: "Projects",
         recentProjects: "Recent projects",
+        refreshProjects: "Sync recent projects",
         settings: "Settings"
       },
       language: {

@@ -60,6 +60,7 @@ type ProjectRow = {
   created_at: string;
   updated_at: string;
   last_seen_at: string;
+  edited_at: string;
 };
 
 /**
@@ -142,9 +143,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     const row = this.database
       .prepare(
         `
-        SELECT *
+        SELECT
+          projects.*,
+          COALESCE(MAX(threads.updated_at), projects.created_at) AS edited_at
         FROM projects
+        LEFT JOIN threads ON threads.project_id = projects.id
         WHERE path = @path
+        GROUP BY projects.id
         `
       )
       .get({ path: project.path }) as ProjectRow | undefined;
@@ -165,9 +170,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     const rows = this.database
       .prepare(
         `
-        SELECT *
+        SELECT
+          projects.*,
+          COALESCE(MAX(threads.updated_at), projects.created_at) AS edited_at
         FROM projects
-        ORDER BY last_seen_at DESC, updated_at DESC, path ASC
+        LEFT JOIN threads ON threads.project_id = projects.id
+        GROUP BY projects.id
+        ORDER BY edited_at DESC, projects.path ASC
         `
       )
       .all() as ProjectRow[];
@@ -960,7 +969,8 @@ function mapProjectRow(row: ProjectRow): CachedProject {
     displayName: row.display_name,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    lastSeenAt: row.last_seen_at
+    lastSeenAt: row.last_seen_at,
+    editedAt: row.edited_at
   };
 }
 

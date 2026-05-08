@@ -26,6 +26,7 @@ export type CachedProject = {
   createdAt: string;
   updatedAt: string;
   lastSeenAt: string;
+  editedAt: string;
 };
 
 export type CachedThreadSyncState = {

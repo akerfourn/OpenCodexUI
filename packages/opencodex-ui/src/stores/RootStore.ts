@@ -2044,7 +2044,8 @@ function createClientProject(projectPath: string, projectName: string | null): O
     displayName: null,
     createdAt: now,
     updatedAt: now,
-    lastSeenAt: now
+    lastSeenAt: now,
+    editedAt: now
   };
 }
 

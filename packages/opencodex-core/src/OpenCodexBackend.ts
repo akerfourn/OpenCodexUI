@@ -364,7 +364,8 @@ export class OpenCodexBackend {
         displayName: null,
         createdAt: now,
         updatedAt: now,
-        lastSeenAt: now
+        lastSeenAt: now,
+        editedAt: now
       };
     }
 
@@ -382,7 +383,8 @@ export class OpenCodexBackend {
         displayName: null,
         createdAt: now,
         updatedAt: now,
-        lastSeenAt: now
+        lastSeenAt: now,
+        editedAt: now
       };
     }
   }
@@ -1867,7 +1869,8 @@ function toOpenCodexProject(project: CachedProject): OpenCodexProject {
     displayName: project.displayName,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
-    lastSeenAt: project.lastSeenAt
+    lastSeenAt: project.lastSeenAt,
+    editedAt: project.editedAt
   };
 }
 
