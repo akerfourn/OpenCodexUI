@@ -100,6 +100,7 @@ export const resources = {
         filterNotice: "Le filtrage par projet n'est pas disponible avec ce workspace.",
         filterTabs: "Filtre des conversations",
         new: "Nouveau",
+        openNewChat: "Ouvrir un nouveau chat",
         otherChats: "Autres chats",
         refresh: "Synchroniser les chats",
         search: "Rechercher"
@@ -200,6 +201,7 @@ export const resources = {
         filterNotice: "Project filtering is not available with this workspace.",
         filterTabs: "Conversation filter",
         new: "New",
+        openNewChat: "Open a new chat",
         otherChats: "Other chats",
         refresh: "Sync chats",
         search: "Search"

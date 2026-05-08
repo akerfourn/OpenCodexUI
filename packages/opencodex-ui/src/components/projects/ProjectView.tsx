@@ -6,6 +6,7 @@ import { observer } from "mobx-react-lite";
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { ChatViewX } from "../ChatView";
+import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
 import { ProjectThreadListX } from "./ProjectThreadList";
 
 type ProjectViewProps = {
@@ -22,12 +23,15 @@ type ProjectViewProps = {
  */
 export function ProjectView({ store, projectStore }: ProjectViewProps) {
   return (
-    <section className="workspace-shell">
-      <ProjectThreadListX store={store} projectStore={projectStore} />
+    <ResizableSidebarLayout
+      className="workspace-shell"
+      defaultSidebarWidth={320}
+      sidebar={<ProjectThreadListX store={store} projectStore={projectStore} />}
+    >
       <section className="main-pane">
         <ChatViewX store={store} />
       </section>
-    </section>
+    </ResizableSidebarLayout>
   );
 }
 

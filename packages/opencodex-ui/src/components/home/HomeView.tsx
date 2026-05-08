@@ -4,6 +4,7 @@
 import { observer } from "mobx-react-lite";
 
 import type { RootStore } from "../../stores/RootStore";
+import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
 import { HomeProjectsViewX } from "./HomeProjectsView";
 import { HomeSettingsViewX } from "./HomeSettingsView";
 import { HomeSidebarX } from "./HomeSidebar";
@@ -25,12 +26,15 @@ export function HomeView({ store }: HomeViewProps) {
     : <HomeProjectsViewX store={store} />;
 
   return (
-    <section className="home-shell">
-      <HomeSidebarX store={store} />
+    <ResizableSidebarLayout
+      className="home-shell"
+      defaultSidebarWidth={300}
+      sidebar={<HomeSidebarX store={store} />}
+    >
       <main className="home-main">
         {mainContent}
       </main>
-    </section>
+    </ResizableSidebarLayout>
   );
 }
 

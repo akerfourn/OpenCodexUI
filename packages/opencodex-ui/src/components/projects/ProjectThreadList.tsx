@@ -1,8 +1,9 @@
 /**
  * Renders the chat list for one opened project.
  */
+import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
-import { Box, Button, IconButton, LinearProgress, Stack, TextField, Typography } from "@mui/material";
+import { Box, IconButton, LinearProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -49,8 +50,9 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
             {projectStore.projectPath}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1}>
+        <Stack className="project-sidebar-header-actions" direction="row" spacing={0.5}>
           <IconButton
+            className="project-sidebar-refresh"
             aria-label={t("sidebar.refresh")}
             title={t("sidebar.refresh")}
             size="small"
@@ -58,9 +60,16 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
           >
             <RefreshOutlinedIcon fontSize="small" />
           </IconButton>
-          <Button variant="contained" type="button" onClick={handleNewThread}>
-            {t("sidebar.new")}
-          </Button>
+          <Tooltip title={t("sidebar.openNewChat")}>
+            <IconButton
+              aria-label={t("sidebar.openNewChat")}
+              color="primary"
+              size="small"
+              onClick={handleNewThread}
+            >
+              <AddOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Stack>
       </header>
 

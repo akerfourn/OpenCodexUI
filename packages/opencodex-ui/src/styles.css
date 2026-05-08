@@ -113,10 +113,9 @@ textarea {
   overflow: hidden;
 }
 
-.workspace-shell,
-.home-shell {
+.resizable-sidebar-shell {
   display: grid;
-  grid-template-columns: minmax(260px, 32vw) minmax(0, 1fr);
+  grid-template-columns: minmax(240px, var(--sidebar-width, 320px)) 8px minmax(0, 1fr);
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -131,6 +130,37 @@ textarea {
   overflow: hidden;
   border-right: 1px solid var(--vscode-sideBar-border);
   background: var(--vscode-sideBar-background);
+}
+
+.sidebar-resizer {
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  cursor: col-resize;
+  background: linear-gradient(
+    90deg,
+    var(--vscode-sideBar-border) 0,
+    var(--vscode-sideBar-border) 1px,
+    transparent 1px
+  );
+  color: var(--vscode-descriptionForeground);
+  user-select: none;
+}
+
+.sidebar-resizer svg {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.sidebar-resizer:hover svg,
+.sidebar-resizer:focus-visible svg,
+.is-resizing-sidebar .sidebar-resizer svg {
+  opacity: 1;
+}
+
+.is-resizing-sidebar {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .home-sidebar {
@@ -166,6 +196,20 @@ textarea {
 .side-header {
   justify-content: space-between;
   padding: 12px;
+}
+
+.project-sidebar-header-actions {
+  flex: 0 0 auto;
+}
+
+.project-sidebar-refresh {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.side-header:hover .project-sidebar-refresh,
+.side-header:focus-within .project-sidebar-refresh {
+  opacity: 1;
 }
 
 .side-header h1,
@@ -296,10 +340,17 @@ textarea {
 }
 
 @media (max-width: 760px) {
-  .workspace-shell,
-  .home-shell {
+  .resizable-sidebar-shell {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 38dvh) minmax(0, 1fr);
+  }
+
+  .resizable-sidebar-shell {
+    grid-template-rows: minmax(0, 38dvh) 0 minmax(0, 1fr);
+  }
+
+  .sidebar-resizer {
+    display: none;
   }
 
   .thread-list,
