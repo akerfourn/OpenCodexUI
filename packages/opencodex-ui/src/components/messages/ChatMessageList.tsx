@@ -127,7 +127,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
             phase={entry.item.phase}
             kind={entry.item.kind}
             content={entry.item.content}
-            createdAt={entry.item.createdAt ?? entry.turn.startedAt}
+            createdAt={entry.item.createdAt ?? entry.turn.completedAt ?? entry.turn.startedAt}
           />
         );
       })}

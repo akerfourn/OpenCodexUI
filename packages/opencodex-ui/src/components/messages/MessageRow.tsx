@@ -63,7 +63,7 @@ export function MessageRow({
   const { t } = useTranslation();
   const articleRef = isLast ? lastMessageRef : undefined;
   const isCommentary = role === "assistant" && phase === "commentary";
-  const userTimestamp = formatUserMessageTimestamp(createdAt, t);
+  const messageTimestamp = formatMessageTimestamp(createdAt, t);
 
   if (role === "user") {
     return (
@@ -76,7 +76,7 @@ export function MessageRow({
           maxWidth: "100%",
           alignSelf: "flex-end",
           ml: "auto",
-          "&:hover .user-message-timestamp, &:focus-within .user-message-timestamp": {
+          "&:hover .user-message-actions, &:focus-within .user-message-actions": {
             opacity: 1
           },
           "@media (min-width: 1280px)": {
@@ -103,28 +103,28 @@ export function MessageRow({
           <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
         </Paper>
         <Box
+          className="user-message-actions"
           sx={{
             alignItems: "center",
             display: "flex",
             justifyContent: "space-between",
             minHeight: 24,
+            opacity: 0,
             px: 1.25,
-            pt: 0.25
+            pt: 0.25,
+            transition: "opacity 140ms ease"
           }}
         >
           <Box
             component="time"
-            className="user-message-timestamp"
             dateTime={createdAt ?? undefined}
             sx={{
               color: "text.secondary",
               fontSize: 12,
-              lineHeight: "24px",
-              opacity: 0,
-              transition: "opacity 140ms ease"
+              lineHeight: "24px"
             }}
           >
-            {userTimestamp}
+            {messageTimestamp}
           </Box>
           <CopyIconButton
             value={content}
@@ -151,6 +151,9 @@ export function MessageRow({
         color: role === "activity" ? "text.secondary" : "text.primary",
         fontStyle: role === "activity" ? "italic" : "normal",
         overflowWrap: "anywhere",
+        "&:hover .assistant-message-actions, &:focus-within .assistant-message-actions": {
+          opacity: 1
+        },
         "@media (min-width: 1280px)": {
           width: "80%",
           maxWidth: "80%"
@@ -172,7 +175,39 @@ export function MessageRow({
           </Box>
         </Box>
       ) : (
-        <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
+        <>
+          <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
+          <Box
+            className="assistant-message-actions"
+            sx={{
+              alignItems: "center",
+              display: "flex",
+              justifyContent: "space-between",
+              minHeight: 24,
+              opacity: 0,
+              pt: 0.25,
+              transition: "opacity 140ms ease"
+            }}
+          >
+            <Box
+              component="time"
+              dateTime={createdAt ?? undefined}
+              sx={{
+                color: "text.secondary",
+                fontSize: 12,
+                lineHeight: "24px"
+              }}
+            >
+              {messageTimestamp}
+            </Box>
+            <CopyIconButton
+              value={content}
+              label={t("message.copy")}
+              copiedLabel={t("message.copied")}
+              sx={{ color: "text.secondary" }}
+            />
+          </Box>
+        </>
       )}
     </Box>
   );
@@ -247,7 +282,7 @@ function renderActivityKindIcon(kind?: string): ReactNode {
   return <MoreHorizOutlinedIcon fontSize="small" />;
 }
 
-function formatUserMessageTimestamp(
+function formatMessageTimestamp(
   value: string | null,
   translate: (key: string, values?: Record<string, string>) => string
 ): string {
