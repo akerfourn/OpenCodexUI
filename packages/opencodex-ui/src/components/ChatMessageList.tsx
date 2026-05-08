@@ -27,7 +27,6 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageRef = useRef<HTMLElement | null>(null);
-  const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
   const previousScrollStateRef = useRef<{ height: number; top: number } | null>(null);
   const currentThread = store.currentThread;
   const entries = buildTimelineEntries(store.turns, store.activeTurnId, store.isWorking || store.isStartingTurn);
@@ -36,14 +35,14 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
   }, [store]);
 
   useLayoutEffect(() => {
-    const element = scrollAnchorRef.current;
+    const container = containerRef.current;
 
-    if (element === null) {
+    if (container === null) {
       return;
     }
 
     const frame = requestAnimationFrame(() => {
-      element.scrollIntoView({ block: "end", inline: "nearest" });
+      container.scrollTop = container.scrollHeight;
     });
 
     return () => {
@@ -149,11 +148,10 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
         </Box>
       ) : null}
       <Box
-        ref={scrollAnchorRef}
         aria-hidden="true"
         sx={{
           width: 1,
-          height: 1,
+          height: "1px",
           mt: "-1px",
           flex: "0 0 auto",
           overflow: "hidden",

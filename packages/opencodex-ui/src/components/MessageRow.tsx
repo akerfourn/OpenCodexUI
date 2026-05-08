@@ -78,9 +78,6 @@ export function MessageRow({
           boxShadow: "0 1px 2px rgb(15 23 42 / 8%)",
           overflow: "visible",
           p: 1.25,
-          contentVisibility: "auto",
-          containIntrinsicSize: "0 96px",
-          contain: "layout paint style",
           overflowWrap: "anywhere",
           "@media (min-width: 1280px)": {
             width: "80%",
@@ -106,9 +103,6 @@ export function MessageRow({
         px: 0.5,
         color: role === "activity" ? "text.secondary" : "text.primary",
         fontStyle: role === "activity" ? "italic" : "normal",
-        contentVisibility: "auto",
-        containIntrinsicSize: "0 96px",
-        contain: "layout paint style",
         overflowWrap: "anywhere",
         "@media (min-width: 1280px)": {
           width: "80%",

@@ -26,10 +26,28 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
     minHeight: 700,
     webPreferences: {
       contextIsolation: true,
+      devTools: options.devServerUrl !== undefined && options.devServerUrl !== null,
       nodeIntegration: false,
       preload: options.preloadPath
     }
   });
+
+  if (options.devServerUrl !== undefined && options.devServerUrl !== null) {
+    window.webContents.on("before-input-event", (event, input) => {
+      const isDevToolsShortcut = input.key === "F12" || (
+        input.control &&
+        input.shift &&
+        input.key.toLowerCase() === "i"
+      );
+
+      if (!isDevToolsShortcut) {
+        return;
+      }
+
+      event.preventDefault();
+      window.webContents.toggleDevTools();
+    });
+  }
 
   if (options.devServerUrl !== undefined && options.devServerUrl !== null) {
     void window.loadURL(options.devServerUrl);
