@@ -73,6 +73,7 @@ export function AssistantTurnBlock({
             phase={item.phase}
             kind={item.kind}
             content={item.content}
+            createdAt={item.createdAt}
           />
         ))}
       </Stack>

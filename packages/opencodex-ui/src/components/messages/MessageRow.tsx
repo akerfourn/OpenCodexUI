@@ -40,6 +40,7 @@ onOpenLink(href: string): void;
   phase?: OpenCodexMessage["phase"];
   kind?: string;
   content: string;
+  createdAt: string | null;
 };
 
 /**
@@ -56,11 +57,13 @@ export function MessageRow({
   role,
   phase,
   kind,
-  content
+  content,
+  createdAt
 }: MessageRowProps) {
   const { t } = useTranslation();
   const articleRef = isLast ? lastMessageRef : undefined;
   const isCommentary = role === "assistant" && phase === "commentary";
+  const userTimestamp = formatUserMessageTimestamp(createdAt, t);
 
   if (role === "user") {
     return (
@@ -73,6 +76,9 @@ export function MessageRow({
           maxWidth: "100%",
           alignSelf: "flex-end",
           ml: "auto",
+          "&:hover .user-message-timestamp, &:focus-within .user-message-timestamp": {
+            opacity: 1
+          },
           "@media (min-width: 1280px)": {
             width: "80%",
             maxWidth: "80%"
@@ -96,7 +102,30 @@ export function MessageRow({
         >
           <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
         </Paper>
-        <Box sx={{ display: "flex", justifyContent: "flex-end", minHeight: 24, pt: 0.25 }}>
+        <Box
+          sx={{
+            alignItems: "center",
+            display: "flex",
+            justifyContent: "space-between",
+            minHeight: 24,
+            px: 1.25,
+            pt: 0.25
+          }}
+        >
+          <Box
+            component="time"
+            className="user-message-timestamp"
+            dateTime={createdAt ?? undefined}
+            sx={{
+              color: "text.secondary",
+              fontSize: 12,
+              lineHeight: "24px",
+              opacity: 0,
+              transition: "opacity 140ms ease"
+            }}
+          >
+            {userTimestamp}
+          </Box>
           <CopyIconButton
             value={content}
             label={t("message.copy")}
@@ -216,4 +245,51 @@ function renderActivityKindIcon(kind?: string): ReactNode {
   }
 
   return <MoreHorizOutlinedIcon fontSize="small" />;
+}
+
+function formatUserMessageTimestamp(
+  value: string | null,
+  translate: (key: string, values?: Record<string, string>) => string
+): string {
+  if (value === null) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const time = new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+
+  if (isSameDay(date, new Date())) {
+    return translate("message.todayAt", { time });
+  }
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (isSameDay(date, yesterday)) {
+    return translate("message.yesterdayAt", { time });
+  }
+
+  const day = new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).format(date);
+
+  return `${day} - ${time}`;
+}
+
+function isSameDay(firstDate: Date, secondDate: Date): boolean {
+  return (
+    firstDate.getFullYear() === secondDate.getFullYear() &&
+    firstDate.getMonth() === secondDate.getMonth() &&
+    firstDate.getDate() === secondDate.getDate()
+  );
 }

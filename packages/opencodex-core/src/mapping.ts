@@ -373,8 +373,8 @@ function mapTurnToOpenCodexTurn(
     id: turnId,
     threadId,
     status: readNullableString(turn.status),
-    startedAt: readNullableString(turn.startedAt),
-    completedAt: readNullableString(turn.completedAt),
+    startedAt: readTimestamp(turn.startedAt),
+    completedAt: readTimestamp(turn.completedAt),
     durationMs: readNullableNumber(turn.durationMs),
     items: items
       .map((itemValue) => mapTurnItem(itemValue, language))

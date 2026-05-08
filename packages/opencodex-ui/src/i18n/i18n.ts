@@ -94,7 +94,9 @@ export const resources = {
       },
       message: {
         copied: "Copié",
-        copy: "Copier le message"
+        copy: "Copier le message",
+        todayAt: "Aujourd'hui à {{time}}",
+        yesterdayAt: "Hier à {{time}}"
       },
       reasoningBlock: {
         active: "Réflexion en cours ({{duration}})",
@@ -217,7 +219,9 @@ export const resources = {
       },
       message: {
         copied: "Copied",
-        copy: "Copy message"
+        copy: "Copy message",
+        todayAt: "Today at {{time}}",
+        yesterdayAt: "Yesterday at {{time}}"
       },
       reasoningBlock: {
         active: "Thinking ({{duration}})",
