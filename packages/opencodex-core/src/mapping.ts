@@ -693,7 +693,34 @@ function readAvailableDecisions(value: unknown): OpenCodexApprovalDecision[] {
  * @returns Computed value.
  */
 function isApprovalDecision(value: unknown): value is OpenCodexApprovalDecision {
-  return value === "accept" || value === "acceptForSession" || value === "decline" || value === "cancel";
+  if (
+    value === "accept" ||
+    value === "acceptForSession" ||
+    value === "decline" ||
+    value === "cancel"
+  ) {
+    return true;
+  }
+
+  const candidate = readObject(value);
+  const execpolicyDecision = readObject(candidate.acceptWithExecpolicyAmendment);
+  const networkPolicyDecision = readObject(candidate.applyNetworkPolicyAmendment);
+  const execpolicyAmendment = execpolicyDecision.execpolicy_amendment;
+  const networkPolicyAmendment = readObject(networkPolicyDecision.network_policy_amendment);
+  const networkAction = networkPolicyAmendment.action;
+
+  if (Array.isArray(execpolicyAmendment) && execpolicyAmendment.every(isString)) {
+    return true;
+  }
+
+  return (
+    typeof networkPolicyAmendment.host === "string" &&
+    (networkAction === "allow" || networkAction === "deny")
+  );
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
 }
 
 /**

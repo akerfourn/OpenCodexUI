@@ -16,6 +16,10 @@ export const resources = {
       approval: {
         accept: "Accepter",
         acceptForSession: "Accepter pour la session",
+        acceptWithExecpolicyAmendment: "Accepter et autoriser {{command}}",
+        applyNetworkPolicyAllow: "Autoriser {{host}}",
+        applyNetworkPolicyDeny: "Bloquer {{host}}",
+        availableActions: "Choix disponibles",
         cancel: "Annuler",
         command: "Commande",
         commandDescription: "Codex souhaite exécuter cette commande.",
@@ -135,6 +139,10 @@ export const resources = {
       approval: {
         accept: "Accept",
         acceptForSession: "Accept for session",
+        acceptWithExecpolicyAmendment: "Accept and allow {{command}}",
+        applyNetworkPolicyAllow: "Allow {{host}}",
+        applyNetworkPolicyDeny: "Block {{host}}",
+        availableActions: "Available choices",
         cancel: "Cancel",
         command: "Command",
         commandDescription: "Codex wants to run this command.",

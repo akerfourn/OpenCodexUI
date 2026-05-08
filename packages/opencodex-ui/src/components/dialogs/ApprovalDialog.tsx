@@ -12,7 +12,6 @@ import {
   AccordionSummary,
   Box,
   Dialog,
-  DialogActions,
   DialogContent,
   DialogTitle,
   Stack,
@@ -58,92 +57,115 @@ export function ApprovalDialog({ store }: ApprovalDialogProps) {
       <Box component="section">
         <DialogTitle>{t("approval.required")}</DialogTitle>
         <DialogContent dividers>
-          <Stack spacing={2.25}>
-            <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-              <Box
-                aria-hidden
-                sx={{
-                  display: "grid",
-                  placeItems: "center",
-                  width: 36,
-                  height: 36,
-                  borderRadius: 1,
-                  bgcolor: "primary.main",
-                  color: "primary.contrastText",
-                  flex: "0 0 auto"
-                }}
-              >
-                {approvalIcon}
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  {approvalHeading}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {approvalDescription}
-                </Typography>
-              </Box>
-            </Box>
-
-            {approval.reason !== null && approval.reason !== undefined ? (
-              <ApprovalDetailRow label={t("approval.reason")} value={approval.reason} />
-            ) : null}
-
-            <Stack spacing={1.5}>
-              {details.map((detail) => (
-                <ApprovalDetailRow
-                  key={detail.label}
-                  label={detail.label}
-                  value={detail.value}
-                  monospace={detail.monospace}
-                />
-              ))}
-            </Stack>
-
-            <Accordion disableGutters variant="outlined" sx={{ "&:before": { display: "none" } }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography variant="body2">{t("approval.rawDetails")}</Typography>
-                  <CopyIconButton
-                    value={approval.body}
-                    label={t("approval.copyRaw")}
-                    copiedLabel={t("message.copied")}
-                    buttonSize={22}
-                    iconSize={14}
-                  />
-                </Box>
-              </AccordionSummary>
-              <AccordionDetails>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) 280px" },
+              gap: 2.5,
+              alignItems: "start"
+            }}
+          >
+            <Stack spacing={2.25}>
+              <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
                 <Box
-                  component="pre"
+                  aria-hidden
                   sx={{
-                    m: 0,
-                    maxHeight: "30vh",
-                    overflow: "auto",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    fontFamily:
-                      'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace',
-                    fontSize: 12,
-                    lineHeight: 1.5
+                    display: "grid",
+                    placeItems: "center",
+                    width: 36,
+                    height: 36,
+                    borderRadius: 1,
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    flex: "0 0 auto"
                   }}
                 >
-                  {approval.body}
+                  {approvalIcon}
                 </Box>
-              </AccordionDetails>
-            </Accordion>
-          </Stack>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                    {approvalHeading}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {approvalDescription}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {approval.reason !== null && approval.reason !== undefined ? (
+                <ApprovalDetailRow label={t("approval.reason")} value={approval.reason} />
+              ) : null}
+
+              <Stack spacing={1.5}>
+                {details.map((detail) => (
+                  <ApprovalDetailRow
+                    key={detail.label}
+                    label={detail.label}
+                    value={detail.value}
+                    monospace={detail.monospace}
+                  />
+                ))}
+              </Stack>
+
+              <Accordion disableGutters variant="outlined" sx={{ "&:before": { display: "none" } }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="body2">{t("approval.rawDetails")}</Typography>
+                    <CopyIconButton
+                      value={approval.body}
+                      label={t("approval.copyRaw")}
+                      copiedLabel={t("message.copied")}
+                      buttonSize={22}
+                      iconSize={14}
+                    />
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Box
+                    component="pre"
+                    sx={{
+                      m: 0,
+                      maxHeight: "30vh",
+                      overflow: "auto",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      fontFamily:
+                        'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace',
+                      fontSize: 12,
+                      lineHeight: 1.5
+                    }}
+                  >
+                    {approval.body}
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            </Stack>
+            <Box
+              component="aside"
+              sx={{
+                borderLeft: { xs: 0, md: "1px solid" },
+                borderTop: { xs: "1px solid", md: 0 },
+                borderColor: "divider",
+                pl: { xs: 0, md: 2.5 },
+                pt: { xs: 2, md: 0 }
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                {t("approval.availableActions")}
+              </Typography>
+              <Stack spacing={1}>
+                {approval.choices.map((decision) => (
+                  <ApprovalButton
+                    approvalId={approval.id}
+                    decision={decision}
+                    key={getApprovalDecisionKey(decision)}
+                    store={store}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          {approval.choices.map((decision) => (
-            <ApprovalButton
-              approvalId={approval.id}
-              decision={decision}
-              key={decision}
-              store={store}
-            />
-          ))}
-        </DialogActions>
       </Box>
     </Dialog>
   );
@@ -233,4 +255,8 @@ function getApprovalIcon(kind: OpenCodexApproval["kind"]): ReactNode {
   }
 
   return <HelpOutlineOutlinedIcon fontSize="small" />;
+}
+
+function getApprovalDecisionKey(decision: OpenCodexApproval["choices"][number]): string {
+  return typeof decision === "string" ? decision : JSON.stringify(decision);
 }

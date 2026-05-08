@@ -126,4 +126,49 @@ describe("OpenCodex mapping", () => {
       choices: ["accept", "decline"]
     });
   });
+
+  it("should preserve structured approval decisions", () => {
+    expect(
+      createApprovalRequest({
+        id: 2,
+        method: "item/commandExecution/requestApproval",
+        params: {
+          threadId: "thread-1",
+          command: "mkdir -p /tmp/example",
+          availableDecisions: [
+            {
+              acceptWithExecpolicyAmendment: {
+                execpolicy_amendment: ["mkdir", "-p"]
+              }
+            },
+            {
+              applyNetworkPolicyAmendment: {
+                network_policy_amendment: {
+                  host: "registry.npmjs.org",
+                  action: "allow"
+                }
+              }
+            },
+            "cancel"
+          ]
+        }
+      }).choices
+    ).toEqual([
+      {
+        acceptWithExecpolicyAmendment: {
+          execpolicy_amendment: ["mkdir", "-p"]
+        }
+      },
+      {
+        applyNetworkPolicyAmendment: {
+          network_policy_amendment: {
+            host: "registry.npmjs.org",
+            action: "allow"
+          }
+        }
+      },
+      "cancel",
+      "decline"
+    ]);
+  });
 });

@@ -4,7 +4,28 @@
 export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
 export type OpenCodexMessagePhase = "commentary" | "final_answer";
 
-export type OpenCodexApprovalDecision = "accept" | "acceptForSession" | "decline" | "cancel";
+export type OpenCodexExecPolicyAmendment = string[];
+
+export type OpenCodexNetworkPolicyAmendment = {
+  host: string;
+  action: "allow" | "deny";
+};
+
+export type OpenCodexApprovalDecision =
+  | "accept"
+  | "acceptForSession"
+  | "decline"
+  | "cancel"
+  | {
+      acceptWithExecpolicyAmendment: {
+        execpolicy_amendment: OpenCodexExecPolicyAmendment;
+      };
+    }
+  | {
+      applyNetworkPolicyAmendment: {
+        network_policy_amendment: OpenCodexNetworkPolicyAmendment;
+      };
+    };
 
 export type OpenCodexThreadScope = "currentProject" | "all";
 export type OpenCodexLanguage = "system" | "fr" | "en";
