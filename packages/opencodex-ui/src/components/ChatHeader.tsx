@@ -3,7 +3,7 @@
  */
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
-import { Box, CircularProgress, IconButton, LinearProgress, Stack, Typography } from "@mui/material";
+import { Box, CircularProgress, IconButton, LinearProgress, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { useTranslation } from "react-i18next";
@@ -71,30 +71,26 @@ export function ChatHeader({ store }: ChatHeaderProps) {
 
   return (
     <>
-      <Box component="header" className="chat-header" sx={{ display: "block", position: "relative" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
-          <Box className="chat-title" sx={{ minWidth: 0, flex: "1 1 auto" }}>
-            <Typography variant="h6" component="h2" noWrap>
-              {title}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" noWrap>
-              {currentThread.projectPath ?? t("chat.noWorkspace")}
-            </Typography>
-            {currentThread.model !== null ? (
-              <Typography variant="body2" color="text.secondary" noWrap>
-                {t("header.model", { model: currentThread.model })}
-              </Typography>
-            ) : null}
-            {currentThread.reasoningEffort !== null ? (
-              <Typography variant="body2" color="text.secondary" noWrap>
-                {t("header.reasoning", { effort: currentThread.reasoningEffort })}
-              </Typography>
-            ) : null}
-          </Box>
-          <Stack className="chat-header-actions" direction="row" spacing={1}>
+      <Box component="header" className="chat-header" sx={{ position: "relative" }}>
+        <Box className="chat-title" sx={{ minWidth: 0, flex: "1 1 auto" }}>
+          <Typography variant="h6" component="h2" noWrap>
+            {title}
+          </Typography>
+          <IconButton
+            className="chat-title-inline-action"
+            aria-label={t("header.rename")}
+            title={t("header.rename")}
+            size="small"
+            onClick={handleRenameOpen}
+          >
+            <EditOutlinedIcon fontSize="small" />
+          </IconButton>
+          <Box className="chat-title-spacer" />
+          <Box className="chat-header-actions">
             <IconButton
               aria-label={t("header.refresh")}
               title={t("header.refresh")}
+              size="small"
               disabled={store.isRefreshingThread || store.isSyncingCurrentThread}
               onClick={handleRefreshThread}
             >
@@ -104,10 +100,7 @@ export function ChatHeader({ store }: ChatHeaderProps) {
                 <RefreshOutlinedIcon fontSize="small" />
               )}
             </IconButton>
-            <IconButton aria-label={t("header.rename")} title={t("header.rename")} onClick={handleRenameOpen}>
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Stack>
+          </Box>
         </Box>
         {store.isSyncingCurrentThread ? (
           <LinearProgress
