@@ -75,6 +75,10 @@ export const resources = {
         label: "Langue",
         system: "Système"
       },
+      message: {
+        copied: "Copié",
+        copy: "Copier le message"
+      },
       reasoningBlock: {
         active: "Réflexion en cours ({{duration}})",
         activity: "Activités",
@@ -176,6 +180,10 @@ export const resources = {
         fr: "Français",
         label: "Language",
         system: "System"
+      },
+      message: {
+        copied: "Copied",
+        copy: "Copy message"
       },
       reasoningBlock: {
         active: "Thinking ({{duration}})",

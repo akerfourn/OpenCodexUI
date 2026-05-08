@@ -1,8 +1,10 @@
 /**
  * Renders the message row component for the OpenCodex UI.
  */
-import { memo, type ReactNode, type RefObject } from "react";
-import { Box, Paper } from "@mui/material";
+import { memo, useState, type ReactNode, type RefObject } from "react";
+import { Box, IconButton, Paper, Tooltip } from "@mui/material";
+import CheckOutlinedIcon from "@mui/icons-material/CheckOutlined";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import FormatListBulletedOutlinedIcon from "@mui/icons-material/FormatListBulletedOutlined";
 import TerminalOutlinedIcon from "@mui/icons-material/TerminalOutlined";
@@ -18,6 +20,7 @@ import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined
 import CompressOutlinedIcon from "@mui/icons-material/CompressOutlined";
 import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
 import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
+import { useTranslation } from "react-i18next";
 
 import type { OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
 
@@ -56,37 +59,76 @@ export function MessageRow({
   kind,
   content
 }: MessageRowProps) {
+  const { t } = useTranslation();
+  const [hasCopied, setHasCopied] = useState(false);
   const articleRef = isLast ? lastMessageRef : undefined;
   const isCommentary = role === "assistant" && phase === "commentary";
 
+  function handleCopyUserMessage(): void {
+    void navigator.clipboard.writeText(content).then(() => {
+      setHasCopied(true);
+      window.setTimeout(() => {
+        setHasCopied(false);
+      }, 1200);
+    });
+  }
+
   if (role === "user") {
     return (
-      <Paper
+      <Box
         ref={articleRef}
         component="article"
-        elevation={0}
-        variant="outlined"
         sx={{
           minWidth: 0,
           width: "100%",
           maxWidth: "100%",
           alignSelf: "flex-end",
           ml: "auto",
-          borderColor: "#b7cef3",
-          borderRadius: 2,
-          bgcolor: "#eff6ff",
-          boxShadow: "0 1px 2px rgb(15 23 42 / 8%)",
-          overflow: "visible",
-          p: 1.25,
-          overflowWrap: "anywhere",
           "@media (min-width: 1280px)": {
             width: "80%",
             maxWidth: "80%"
           }
         }}
       >
-        <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
-      </Paper>
+        <Paper
+          elevation={0}
+          variant="outlined"
+          sx={{
+            minWidth: 0,
+            width: "100%",
+            borderColor: "#b7cef3",
+            borderRadius: 2,
+            bgcolor: "#eff6ff",
+            boxShadow: "0 1px 2px rgb(15 23 42 / 8%)",
+            overflow: "visible",
+            p: 1.25,
+            overflowWrap: "anywhere"
+          }}
+        >
+          <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
+        </Paper>
+        <Box sx={{ display: "flex", justifyContent: "flex-end", minHeight: 24, pt: 0.25 }}>
+          <Tooltip title={hasCopied ? t("message.copied") : t("message.copy")}>
+            <IconButton
+              aria-label={hasCopied ? t("message.copied") : t("message.copy")}
+              size="small"
+              onClick={handleCopyUserMessage}
+              sx={{
+                color: "text.secondary",
+                height: 24,
+                width: 24,
+                p: 0.25
+              }}
+            >
+              {hasCopied ? (
+                <CheckOutlinedIcon sx={{ fontSize: 15 }} />
+              ) : (
+                <ContentCopyOutlinedIcon sx={{ fontSize: 15 }} />
+              )}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
     );
   }
 
