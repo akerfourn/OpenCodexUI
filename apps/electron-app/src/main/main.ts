@@ -3,7 +3,7 @@
  */
 import path from "node:path";
 
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, Menu } from "electron";
 
 import { createWindow } from "./createWindow.js";
 import { ElectronBridgeServer } from "./electronBridgeServer.js";
@@ -20,6 +20,7 @@ app.setName("OpenCodexUI");
  */
 async function main(): Promise<void> {
   await app.whenReady();
+  Menu.setApplicationMenu(null);
 
   const settingsStore = new SettingsStore(app.getPath("userData"));
   const settings = await settingsStore.load();

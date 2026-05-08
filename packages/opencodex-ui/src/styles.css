@@ -77,12 +77,27 @@ textarea {
   background: var(--vscode-sideBar-background);
 }
 
+.app-tabs .MuiTabs-root,
+.app-tabs .MuiTabs-scroller,
+.app-tabs .MuiTab-root {
+  min-height: 36px;
+}
+
+.app-tabs .MuiTab-root {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
 .project-tab-label {
   display: inline-flex;
   max-width: 220px;
   min-width: 0;
   align-items: center;
   gap: 6px;
+}
+
+.project-tab-label .MuiIconButton-root {
+  padding: 2px;
 }
 
 .project-tab-label .MuiTypography-root {

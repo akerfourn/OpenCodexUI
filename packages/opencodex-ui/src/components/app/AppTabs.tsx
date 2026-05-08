@@ -38,6 +38,7 @@ export function AppTabs({ store }: AppTabsProps) {
         aria-label={t("tabs.label")}
         variant="scrollable"
         scrollButtons="auto"
+        sx={{ minHeight: 36 }}
         onChange={handleTabChange}
       >
         <Tab
@@ -45,12 +46,14 @@ export function AppTabs({ store }: AppTabsProps) {
           label={t("tabs.home")}
           icon={<HomeOutlinedIcon fontSize="small" />}
           iconPosition="start"
+          sx={{ minHeight: 36, py: 0.5 }}
         />
         {store.projectTabStores.map((projectStore) => (
           <Tab
             key={projectStore.project.id}
             value={projectStore.project.id}
             label={<ProjectTabLabel projectStore={projectStore} onClose={handleProjectClose} />}
+            sx={{ minHeight: 36, py: 0.5 }}
           />
         ))}
       </Tabs>
