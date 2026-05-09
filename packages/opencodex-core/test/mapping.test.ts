@@ -27,6 +27,7 @@ describe("OpenCodex mapping", () => {
       reasoningEffort: null,
       projectName: "project",
       projectPath: "/tmp/project",
+      sourceId: null,
       branchName: "main",
       updatedAt: "1970-01-01T00:00:01.000Z",
       status: "idle"

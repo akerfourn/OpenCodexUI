@@ -2,7 +2,7 @@
  * Renders the chat view component for the OpenCodex UI.
  */
 import { observer } from "mobx-react-lite";
-import { Stack } from "@mui/material";
+import { Alert, Button, Stack } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
@@ -27,6 +27,11 @@ type ChatViewProps = {
 export function ChatView({ store }: ChatViewProps) {
   const { t } = useTranslation();
   const currentThread = store.currentThread;
+  const isOrphanProject = store.activeProjectStore?.isOrphan === true;
+
+  function handleOpenSources(): void {
+    store.openSourcesHome();
+  }
 
   if (store.isCreatingThread) {
     return (
@@ -54,16 +59,30 @@ export function ChatView({ store }: ChatViewProps) {
   return (
     <Stack className="chat-view">
       <ChatHeaderX store={store} />
+      {isOrphanProject ? (
+        <Alert
+          severity="warning"
+          action={(
+            <Button color="inherit" size="small" onClick={handleOpenSources}>
+              {t("sources.title")}
+            </Button>
+          )}
+        >
+          {t("project.orphanSource")}
+        </Alert>
+      ) : null}
       {messageContent}
       <ChatActivityPanelX store={store} />
-      <ChatComposer
-        store={store}
-        currentThreadId={currentThread.id}
-        selectedModel={store.selectedModel}
-        reasoningEffort={store.reasoningEffort}
-        modelOptions={store.modelOptions}
-        isWorking={store.isWorking || store.isStartingTurn || store.isRecoveringThread || store.loadingThreadId !== null}
-      />
+      {isOrphanProject ? null : (
+        <ChatComposer
+          store={store}
+          currentThreadId={currentThread.id}
+          selectedModel={store.selectedModel}
+          reasoningEffort={store.reasoningEffort}
+          modelOptions={store.modelOptions}
+          isWorking={store.isWorking || store.isStartingTurn || store.isRecoveringThread || store.loadingThreadId !== null}
+        />
+      )}
     </Stack>
   );
 }

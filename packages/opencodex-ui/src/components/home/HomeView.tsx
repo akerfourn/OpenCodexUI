@@ -8,6 +8,7 @@ import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
 import { HomeProjectsViewX } from "./HomeProjectsView";
 import { HomeSettingsViewX } from "./HomeSettingsView";
 import { HomeSidebarX } from "./HomeSidebar";
+import { HomeSourcesViewX } from "./HomeSourcesView";
 
 type HomeViewProps = {
   store: RootStore;
@@ -21,9 +22,15 @@ type HomeViewProps = {
  * @returns Rendered Home view.
  */
 export function HomeView({ store }: HomeViewProps) {
-  const mainContent = store.homeStore.selectedSection === "settings"
-    ? <HomeSettingsViewX store={store} />
-    : <HomeProjectsViewX store={store} />;
+  let mainContent = <HomeProjectsViewX store={store} />;
+
+  if (store.homeStore.selectedSection === "sources") {
+    mainContent = <HomeSourcesViewX store={store} />;
+  }
+
+  if (store.homeStore.selectedSection === "settings") {
+    mainContent = <HomeSettingsViewX store={store} />;
+  }
 
   return (
     <ResizableSidebarLayout

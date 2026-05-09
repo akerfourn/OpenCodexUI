@@ -5,6 +5,7 @@ import type {
   OpenCodexApprovalDecision,
   OpenCodexImageAttachment,
   OpenCodexReasoningEffort,
+  OpenCodexSourceLocalSettings,
   OpenCodexSettings,
   OpenCodexThreadScope
 } from "./messages";
@@ -12,20 +13,40 @@ import type {
 export type OpenCodexRequest =
   | { type: "app.bootstrap" }
   | { type: "projects.list" }
-  | { type: "projects.open"; projectPath: string; createIfMissing?: boolean }
-  | { type: "projects.pickDirectory"; mode: "open" | "create" }
+  | { type: "projects.open"; projectPath: string; sourceId?: string | null; createIfMissing?: boolean }
+  | { type: "projects.pickDirectory"; mode: "open" | "create"; sourceId?: string | null }
   | { type: "attachments.pickImages" }
-  | { type: "threads.list"; scope: OpenCodexThreadScope; projectPath?: string | null; searchTerm?: string }
+  | { type: "sources.list" }
+  | { type: "sources.create"; name?: string }
+  | { type: "sources.sync"; sourceId?: string | null }
+  | { type: "sources.delete"; sourceId: string }
+  | {
+      type: "sources.update";
+      sourceId: string;
+      patch: {
+        name?: string;
+        settings?: Partial<OpenCodexSourceLocalSettings>;
+      };
+    }
+  | { type: "sources.pickExecutable" }
+  | {
+      type: "threads.list";
+      scope: OpenCodexThreadScope;
+      projectPath?: string | null;
+      sourceId?: string | null;
+      searchTerm?: string;
+    }
   | { type: "threads.open"; threadId: string }
   | { type: "threads.loadOlder"; threadId: string }
   | { type: "threads.recover"; threadId: string }
-  | { type: "threads.create"; projectPath?: string | null }
+  | { type: "threads.create"; projectPath?: string | null; sourceId?: string | null }
   | { type: "threads.rename"; threadId: string; name: string }
   | { type: "system.openLink"; href: string; projectPath?: string | null }
   | {
       type: "turn.start";
       threadId: string | null;
       projectPath?: string | null;
+      sourceId?: string | null;
       text: string;
       attachments?: OpenCodexImageAttachment[];
       model?: string | null;

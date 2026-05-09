@@ -15,6 +15,8 @@ import type {
   OpenCodexProject,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
+  OpenCodexSource,
+  OpenCodexSourceLocalSettings,
   OpenCodexThread,
   OpenCodexTurn,
   OpenCodexTurnItem
@@ -26,6 +28,8 @@ import { HomeStore } from "./HomeStore";
 import { ProjectStore } from "./ProjectStore";
 
 export const HOME_TAB_ID = "home";
+const SOURCE_SYNC_MINIMUM_MS = 750;
+const SOURCE_SYNC_MAXIMUM_MS = 10_000;
 
 export type OpenCodexAppTab =
   | { id: typeof HOME_TAB_ID; type: "home" }
@@ -37,6 +41,7 @@ export type OpenCodexAppTab =
 export class RootStore {
   settings: OpenCodexSettings = {
     codexCommand: "codex",
+    defaultSourceId: null,
     defaultModel: null,
     defaultReasoningEffort: "medium",
     showActivityPanel: true,
@@ -46,6 +51,9 @@ export class RootStore {
   readonly homeStore = new HomeStore();
   readonly projectStoresById = new Map<string, ProjectStore>();
   projects: OpenCodexProject[] = [];
+  sources: OpenCodexSource[] = [];
+  syncingSourceIds: string[] = [];
+  isSyncingAllSources = false;
   tabs: OpenCodexAppTab[] = [{ id: HOME_TAB_ID, type: "home" }];
   activeTabId = HOME_TAB_ID;
   launchProjectPath: string | null = null;
@@ -58,6 +66,9 @@ export class RootStore {
   connectionStatus = "stopped";
   isBootstrapping = false;
   pendingProjectTrustRequest: { projectPath: string; disabledFolders: string[] } | null = null;
+  private pendingProjectOpenSourceId: string | null = null;
+  private allSourcesSyncStartedAt: number | null = null;
+  private readonly sourceSyncStartedAtById = new Map<string, number>();
   private threadSelectionStartedAt: number | null = null;
 
   /**
@@ -347,6 +358,8 @@ export class RootStore {
         return;
       case "app.bootstrap":
         this.settings = event.settings;
+        this.sources = event.sources;
+        this.homeStore.setSelectedSourceId(event.settings.defaultSourceId ?? event.sources[0]?.id ?? null);
         applyOpenCodexLanguage(event.settings.language);
         this.launchProjectPath = event.projectPath;
         this.selectedModel = event.settings.defaultModel;
@@ -356,11 +369,33 @@ export class RootStore {
         this.isBootstrapping = false;
         this.projects = event.projects;
         this.applyProjectMetadata(event.projects);
+        this.finishVisibleSourceSync();
+        return;
+      case "sources.updated":
+        this.sources = event.sources;
+        this.settings = {
+          ...this.settings,
+          defaultSourceId: event.defaultSourceId
+        };
+        if (
+          event.sources.length > 0 &&
+          (
+            this.homeStore.selectedSourceId === null ||
+            !event.sources.some((source) => source.id === this.homeStore.selectedSourceId)
+          )
+        ) {
+          this.homeStore.setSelectedSourceId(event.defaultSourceId ?? event.sources[0]?.id ?? null);
+        }
+        this.finishVisibleSourceSync();
         return;
       case "project.opened":
         this.homeStore.isOpeningProject = false;
         this.openProjectTab(event.project, true);
-        this.refreshProjectThreads(this.projectStoresById.get(event.project.id) ?? null);
+        this.refreshProjectThreads(
+          this.projectStoresById.get(event.project.id) ?? null,
+          this.pendingProjectOpenSourceId
+        );
+        this.pendingProjectOpenSourceId = null;
         return;
       case "threads.updated":
         this.applyThreadsUpdated(event.projectPath, event.threads);
@@ -458,6 +493,16 @@ export class RootStore {
   }
 
   /**
+   * Opens the source management section on Home.
+   *
+   * @returns Nothing.
+   */
+  openSourcesHome(): void {
+    this.homeStore.selectSection("sources");
+    this.activeTabId = HOME_TAB_ID;
+  }
+
+  /**
    * Opens a project from a path.
    *
    * @param projectPath Project folder path.
@@ -465,14 +510,21 @@ export class RootStore {
    *
    * @returns Nothing.
    */
-  openProject(projectPath: string, createIfMissing = false): void {
+  openProject(
+    projectPath: string,
+    createIfMissing = false,
+    sourceId?: string | null
+  ): void {
     const trimmedPath = projectPath.trim();
 
     if (trimmedPath.length === 0) {
       return;
     }
 
-    const existingProject = this.findProjectStoreByPath(trimmedPath);
+    const resolvedSourceId = sourceId === undefined
+      ? this.homeStore.selectedSourceId ?? this.settings.defaultSourceId
+      : sourceId;
+    const existingProject = this.findProjectStoreByPath(trimmedPath, resolvedSourceId);
 
     if (existingProject !== null) {
       this.openProjectTab(existingProject.project, true);
@@ -482,9 +534,11 @@ export class RootStore {
 
     this.homeStore.isOpeningProject = true;
     this.errorMessage = null;
+    this.pendingProjectOpenSourceId = resolvedSourceId;
     void this.transport.request({
       type: "projects.open",
       projectPath: trimmedPath,
+      sourceId: resolvedSourceId,
       createIfMissing
     }).catch(() => {
       runInAction(() => {
@@ -501,11 +555,15 @@ export class RootStore {
    * @returns Nothing.
    */
   openProjectFromPicker(mode: "open" | "create"): void {
+    const sourceId = this.homeStore.selectedSourceId ?? this.settings.defaultSourceId;
+
     this.homeStore.isOpeningProject = true;
     this.errorMessage = null;
+    this.pendingProjectOpenSourceId = sourceId;
     void this.transport.request({
       type: "projects.pickDirectory",
-      mode
+      mode,
+      sourceId
     }).then((project) => {
       if (project === null) {
         runInAction(() => {
@@ -531,7 +589,224 @@ export class RootStore {
   }
 
   /**
-   * Refreshes the cached project list and discovers external Codex threads.
+   * Selects the source used by Home project actions.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Nothing.
+   */
+  setHomeSelectedSource(sourceId: string): void {
+    this.homeStore.setSelectedSourceId(sourceId);
+  }
+
+  /**
+   * Updates one Codex source.
+   *
+   * @param sourceId Source identifier.
+   * @param patch Editable fields.
+   *
+   * @returns Nothing.
+   */
+  updateSource(
+    sourceId: string,
+    patch: {
+      name?: string;
+      settings?: Partial<OpenCodexSourceLocalSettings>;
+    }
+  ): void {
+    void this.transport.request({
+      type: "sources.update",
+      sourceId,
+      patch
+    });
+  }
+
+  /**
+   * Creates a new Codex source.
+   *
+   * @returns Nothing.
+   */
+  async createSource(): Promise<OpenCodexSource | null> {
+    try {
+      return await this.transport.request<OpenCodexSource>({
+        type: "sources.create",
+        name: "Codex"
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Deletes one Codex source.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Promise resolved when the request completes.
+   */
+  async deleteSource(sourceId: string): Promise<void> {
+    await this.transport.request({
+      type: "sources.delete",
+      sourceId
+    });
+  }
+
+  /**
+   * Synchronizes one configured Codex source.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Nothing.
+   */
+  syncSource(sourceId: string): void {
+    if (this.isSourceSyncing(sourceId)) {
+      return;
+    }
+
+    this.syncingSourceIds = [...this.syncingSourceIds, sourceId];
+    this.sourceSyncStartedAtById.set(sourceId, Date.now());
+    const syncRequest = this.transport.request({
+      type: "sources.sync",
+      sourceId
+    });
+    void syncRequest.then(
+      () => this.finishVisibleSourceSync(sourceId),
+      () => this.finishVisibleSourceSync(sourceId)
+    );
+    schedule(() => this.clearVisibleSourceSync(sourceId), SOURCE_SYNC_MAXIMUM_MS);
+  }
+
+  /**
+   * Synchronizes every configured Codex source.
+   *
+   * @returns Nothing.
+   */
+  syncAllSources(): void {
+    if (this.isSyncingAllSources) {
+      return;
+    }
+
+    this.isSyncingAllSources = true;
+    this.syncingSourceIds = this.sources.map((source) => source.id);
+    this.allSourcesSyncStartedAt = Date.now();
+    for (const source of this.sources) {
+      this.sourceSyncStartedAtById.set(source.id, this.allSourcesSyncStartedAt);
+    }
+    const syncRequest = this.transport.request({
+      type: "sources.sync",
+      sourceId: null
+    });
+    void syncRequest.then(
+      () => this.finishVisibleSourceSync(),
+      () => this.finishVisibleSourceSync()
+    );
+    schedule(() => this.clearVisibleSourceSync(), SOURCE_SYNC_MAXIMUM_MS);
+  }
+
+  /**
+   * Checks whether a source is currently synchronizing.
+   *
+   * @param sourceId Source identifier.
+   * @returns `true` while a sync request is pending.
+   */
+  isSourceSyncing(sourceId: string): boolean {
+    return this.isSyncingAllSources || this.syncingSourceIds.includes(sourceId);
+  }
+
+  /**
+   * Clears source sync loading state after the minimum visible duration.
+   *
+   * @param sourceId Optional source identifier. Omitted means all sources.
+   * @returns Nothing.
+   */
+  private finishVisibleSourceSync(sourceId?: string): void {
+    if (sourceId === undefined && this.allSourcesSyncStartedAt === null && this.sourceSyncStartedAtById.size > 0) {
+      for (const syncingSourceId of Array.from(this.sourceSyncStartedAtById.keys())) {
+        this.finishVisibleSourceSync(syncingSourceId);
+      }
+      return;
+    }
+
+    const startedAt = sourceId === undefined
+      ? this.allSourcesSyncStartedAt
+      : this.sourceSyncStartedAtById.get(sourceId) ?? null;
+
+    if (startedAt === null) {
+      return;
+    }
+
+    const elapsedMs = Date.now() - startedAt;
+    const remainingMs = Math.max(0, SOURCE_SYNC_MINIMUM_MS - elapsedMs);
+
+    schedule(() => {
+      runInAction(() => {
+        if (sourceId === undefined) {
+          this.clearVisibleSourceSync();
+          return;
+        }
+
+        this.clearVisibleSourceSync(sourceId);
+      });
+    }, remainingMs);
+  }
+
+  /**
+   * Clears source sync loading state without applying the minimum visual duration.
+   *
+   * @param sourceId Optional source identifier. Omitted means all sources.
+   * @returns Nothing.
+   */
+  private clearVisibleSourceSync(sourceId?: string): void {
+    if (sourceId === undefined) {
+      this.isSyncingAllSources = false;
+      this.syncingSourceIds = [];
+      this.allSourcesSyncStartedAt = null;
+      this.sourceSyncStartedAtById.clear();
+      return;
+    }
+
+    this.syncingSourceIds = this.syncingSourceIds.filter((entry) => entry !== sourceId);
+    this.sourceSyncStartedAtById.delete(sourceId);
+
+    if (this.syncingSourceIds.length === 0) {
+      this.isSyncingAllSources = false;
+      this.allSourcesSyncStartedAt = null;
+    }
+  }
+
+  /**
+   * Opens a native executable picker and stores the result on a source.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Nothing.
+   */
+  pickSourceExecutable(sourceId: string): void {
+    void this.pickSourceExecutablePath().then((path) => {
+      if (path === null) {
+        return;
+      }
+
+      this.updateSource(sourceId, {
+        settings: {
+          commandMode: "custom",
+          command: path
+        }
+      });
+    });
+  }
+
+  /**
+   * Opens a native executable picker.
+   *
+   * @returns Selected executable path, or `null`.
+   */
+  async pickSourceExecutablePath(): Promise<string | null> {
+    return await this.transport.request<string | null>({ type: "sources.pickExecutable" });
+  }
+
+  /**
+   * Refreshes the cached project list.
    *
    * @returns Nothing.
    */
@@ -594,7 +869,13 @@ export class RootStore {
    * @returns Nothing.
    */
   refreshThreads(): void {
-    this.refreshProjectThreads(this.activeProjectStore);
+    const projectStore = this.activeProjectStore;
+
+    if (projectStore === null || projectStore.isOrphan) {
+      return;
+    }
+
+    this.refreshProjectThreads(projectStore);
   }
 
   /**
@@ -666,6 +947,7 @@ export class RootStore {
 
     return (
       chatStore !== null &&
+      this.activeProjectStore?.isOrphan !== true &&
       !chatStore.isRefreshing &&
       !chatStore.isWorking &&
       !chatStore.isStartingTurn &&
@@ -681,7 +963,7 @@ export class RootStore {
   recoverCurrentThread(): void {
     const chatStore = this.activeChatStore;
 
-    if (chatStore === null || chatStore.isRecovering) {
+    if (chatStore === null || chatStore.isRecovering || this.activeProjectStore?.isOrphan === true) {
       return;
     }
 
@@ -710,7 +992,8 @@ export class RootStore {
     projectStore.selectedChatId = null;
     void this.transport.request({
       type: "threads.create",
-      projectPath: projectStore.projectPath
+      projectPath: projectStore.projectPath,
+      sourceId: projectStore.project.sourceId
     });
   }
 
@@ -773,6 +1056,7 @@ export class RootStore {
     if (
       (trimmedText.length === 0 && attachments.length === 0) ||
       projectStore === null ||
+      projectStore.isOrphan ||
       chatStore === null ||
       this.runningChatStore !== null
     ) {
@@ -786,6 +1070,7 @@ export class RootStore {
       type: "turn.start",
       threadId: chatStore.thread.id,
       projectPath: projectStore.projectPath,
+      sourceId: projectStore.project.sourceId,
       text: trimmedText,
       attachments,
       model,
@@ -865,7 +1150,7 @@ export class RootStore {
     const chatStore = this.activeChatStore;
     const trimmedName = name.trim();
 
-    if (chatStore === null || trimmedName.length === 0) {
+    if (chatStore === null || trimmedName.length === 0 || this.activeProjectStore?.isOrphan === true) {
       return;
     }
 
@@ -961,8 +1246,14 @@ export class RootStore {
    *
    * @returns Nothing.
    */
-  private refreshProjectThreads(projectStore: ProjectStore | null): void {
+  private refreshProjectThreads(projectStore: ProjectStore | null, sourceIdOverride?: string | null): void {
     if (projectStore === null) {
+      return;
+    }
+
+    const sourceId = sourceIdOverride ?? projectStore.project.sourceId;
+
+    if (sourceId === null) {
       return;
     }
 
@@ -971,6 +1262,7 @@ export class RootStore {
       type: "threads.list",
       scope: "currentProject",
       projectPath: projectStore.projectPath,
+      sourceId,
       searchTerm: projectStore.searchTerm
     });
   }
@@ -984,7 +1276,8 @@ export class RootStore {
    */
   private applyProjectMetadata(projects: OpenCodexProject[]): void {
     for (const project of projects) {
-      const projectStore = this.projectStoresById.get(project.id) ?? this.findProjectStoreByPath(project.path);
+      const projectStore = this.projectStoresById.get(project.id)
+        ?? this.findProjectStoreByPath(project.path, project.sourceId);
 
       if (projectStore === null) {
         continue;
@@ -1011,7 +1304,8 @@ export class RootStore {
    * @returns Project store for the tab.
    */
   private openProjectTab(project: OpenCodexProject, activate: boolean): ProjectStore {
-    const existingStore = this.projectStoresById.get(project.id) ?? this.findProjectStoreByPath(project.path);
+    const existingStore = this.projectStoresById.get(project.id)
+      ?? this.findProjectStoreByPath(project.path, project.sourceId);
     const projectStore = existingStore ?? new ProjectStore(project);
 
     if (this.projects.some((entry) => entry.id === project.id)) {
@@ -1043,7 +1337,9 @@ export class RootStore {
    * @returns Nothing.
    */
   private applyThreadsUpdated(projectPath: string | null, threads: OpenCodexThread[]): void {
-    const projectStore = projectPath === null ? this.activeProjectStore : this.findProjectStoreByPath(projectPath);
+    const projectStore = projectPath === null
+      ? this.activeProjectStore
+      : this.findProjectStoreByPath(projectPath, threads[0]?.sourceId ?? null);
 
     if (projectStore === null) {
       return;
@@ -1538,11 +1834,13 @@ export class RootStore {
    *
    * @returns Matching project store, or `null`.
    */
-  private findProjectStoreByPath(projectPath: string): ProjectStore | null {
+  private findProjectStoreByPath(projectPath: string, sourceId?: string | null): ProjectStore | null {
     const normalizedPath = projectPath.trim();
 
     for (const projectStore of this.projectStoresById.values()) {
-      if (projectStore.projectPath === normalizedPath) {
+      const sourceMatches = sourceId === undefined || projectStore.project.sourceId === sourceId;
+
+      if (projectStore.projectPath === normalizedPath && sourceMatches) {
         return projectStore;
       }
     }
@@ -1587,13 +1885,14 @@ export class RootStore {
    */
   private ensureProjectStoreForThread(thread: OpenCodexThread): ProjectStore {
     const projectPath = thread.projectPath ?? this.activeProjectStore?.projectPath ?? this.launchProjectPath ?? "";
-    const existingStore = this.findProjectStoreByPath(projectPath);
+    const sourceId = thread.sourceId ?? this.activeProjectStore?.project.sourceId ?? null;
+    const existingStore = this.findProjectStoreByPath(projectPath, sourceId);
 
     if (existingStore !== null) {
       return existingStore;
     }
 
-    const project = createClientProject(projectPath, thread.projectName);
+    const project = createClientProject(projectPath, thread.projectName, sourceId);
     this.projects = [project, ...this.projects];
     return this.openProjectTab(project, false);
   }
@@ -2049,13 +2348,18 @@ function toMessageStatus(status: OpenCodexActivity["status"]): OpenCodexTurnItem
  *
  * @returns Project payload.
  */
-function createClientProject(projectPath: string, projectName: string | null): OpenCodexProject {
+function createClientProject(
+  projectPath: string,
+  projectName: string | null,
+  sourceId: string | null
+): OpenCodexProject {
   const now = new Date().toISOString();
   const safePath = projectPath.trim().length > 0 ? projectPath.trim() : "unknown";
   const defaultName = projectName ?? readProjectName(safePath);
 
   return {
-    id: `client:${safePath}`,
+    id: `client:${sourceId ?? "orphan"}:${safePath}`,
+    sourceId,
     path: safePath,
     defaultName,
     displayName: null,
@@ -2076,4 +2380,15 @@ function createClientProject(projectPath: string, projectName: string | null): O
 function readProjectName(projectPath: string): string {
   const segments = projectPath.split(/[\\/]/).filter((segment) => segment.length > 0);
   return segments.at(-1) ?? projectPath;
+}
+
+/**
+ * Schedules work after a fixed delay.
+ *
+ * @param callback Work to execute.
+ * @param durationMs Delay duration in milliseconds.
+ * @returns Nothing.
+ */
+function schedule(callback: () => void, durationMs: number): void {
+  setTimeout(callback, durationMs);
 }

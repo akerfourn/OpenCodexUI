@@ -49,6 +49,7 @@ export function mapThread(
     reasoningEffort,
     projectName: projectPath === null ? null : path.basename(projectPath),
     projectPath,
+    sourceId: null,
     branchName: readNullableString(gitInfo.branch),
     updatedAt: readTimestamp(thread.updatedAt),
     status: readNullableString(thread.status) ?? undefined

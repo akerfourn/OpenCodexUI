@@ -43,6 +43,10 @@ export function normalizeProjectPath(value: string | null | undefined): string |
     return null;
   }
 
+  if (trimmedValue.startsWith("/")) {
+    return normalizeUnixPath(trimmedValue);
+  }
+
   if (isWindowsPath(trimmedValue)) {
     return path.win32.normalize(trimmedValue);
   }
@@ -86,7 +90,7 @@ function createProjectKey(projectPath: string): string {
 function readDefaultProjectName(projectPath: string): string {
   const baseName = isWindowsPath(projectPath)
     ? path.win32.basename(projectPath)
-    : path.basename(projectPath);
+    : path.posix.basename(projectPath);
 
   return baseName.length > 0 ? baseName : projectPath;
 }
@@ -99,4 +103,14 @@ function readDefaultProjectName(projectPath: string): string {
  */
 function isWindowsPath(value: string): boolean {
   return /^[a-zA-Z]:[\\/]/.test(value) || value.startsWith("\\\\");
+}
+
+/**
+ * Normalizes Unix paths while accepting both slash styles.
+ *
+ * @param value Unix path value.
+ * @returns Normalized POSIX path.
+ */
+function normalizeUnixPath(value: string): string {
+  return path.posix.normalize(value.replaceAll("\\", "/"));
 }

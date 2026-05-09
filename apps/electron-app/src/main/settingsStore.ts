@@ -11,6 +11,7 @@ import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
  */
 export const defaultSettings: OpenCodexSettings = {
   codexCommand: "codex",
+  defaultSourceId: null,
   defaultModel: null,
   defaultReasoningEffort: "medium",
   showActivityPanel: true,

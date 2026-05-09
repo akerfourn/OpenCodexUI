@@ -2,7 +2,18 @@
  * Renders project opening controls on the Home tab.
  */
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
-import { Box, Button, Divider, IconButton, LinearProgress, List, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Divider,
+  IconButton,
+  LinearProgress,
+  List,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
@@ -31,15 +42,20 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
     store.openProjectFromPicker("create");
   }
 
-  function handleOpenRecent(projectPath: string): void {
-    store.openProject(projectPath);
+  function handleOpenRecent(projectPath: string, sourceId: string | null): void {
+    store.openProject(projectPath, false, sourceId);
   }
 
   function handleRefreshProjects(): void {
     store.refreshProjects();
   }
 
+  function handleSourceChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
+    store.setHomeSelectedSource(event.target.value);
+  }
+
   const hasProjects = store.projects.length > 0;
+  const sourceNamesById = new Map(store.sources.map((source) => [source.id, source.name]));
 
   return (
     <Stack className="home-content-panel" spacing={2}>
@@ -57,6 +73,20 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
       ) : null}
 
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+        <TextField
+          select
+          size="small"
+          value={store.homeStore.selectedSourceId ?? ""}
+          label={t("sources.source")}
+          onChange={handleSourceChange}
+          sx={{ minWidth: 180 }}
+        >
+          {store.sources.map((source) => (
+            <MenuItem value={source.id} key={source.id}>
+              {source.name}
+            </MenuItem>
+          ))}
+        </TextField>
         <Button variant="contained" type="button" onClick={handlePickExisting}>
           {t("home.pickExisting")}
         </Button>
@@ -87,6 +117,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
               <HomeProjectListItem
                 key={project.id}
                 project={project}
+                sourceName={project.sourceId === null ? null : sourceNamesById.get(project.sourceId) ?? project.sourceId}
                 onOpen={handleOpenRecent}
               />
             ))}

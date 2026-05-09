@@ -52,6 +52,12 @@ export type OpenCodexBackendOptions = {
    */
   pickImageFiles?(): Promise<OpenCodexImageAttachment[]> | OpenCodexImageAttachment[];
   /**
+   * Lets the host application pick a local executable.
+   *
+   * @returns Selected executable path, or `null` when cancelled.
+   */
+  pickExecutableFile?(): Promise<string | null> | string | null;
+  /**
    * Validates or creates a project directory before opening it.
    *
    * @param projectPath User-provided project path.

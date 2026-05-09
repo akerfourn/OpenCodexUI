@@ -2,6 +2,7 @@
  * Renders the Home vertical navigation.
  */
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import WorkspacesOutlinedIcon from "@mui/icons-material/WorkspacesOutlined";
 import { List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
@@ -33,6 +34,10 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
     selectSection("settings");
   }
 
+  function selectSources(): void {
+    selectSection("sources");
+  }
+
   function selectSection(section: HomeSection): void {
     store.homeStore.selectSection(section);
   }
@@ -50,6 +55,12 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
             <WorkspacesOutlinedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary={t("home.projects")} />
+        </ListItemButton>
+        <ListItemButton selected={selectedSection === "sources"} onClick={selectSources}>
+          <ListItemIcon>
+            <StorageOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("home.sources")} />
         </ListItemButton>
         <ListItemButton selected={selectedSection === "settings"} onClick={selectSettings}>
           <ListItemIcon>

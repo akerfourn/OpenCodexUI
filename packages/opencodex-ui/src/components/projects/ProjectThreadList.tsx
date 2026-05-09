@@ -3,7 +3,7 @@
  */
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
-import { Box, IconButton, LinearProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Button, IconButton, LinearProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -39,6 +39,10 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
     store.refreshThreads();
   }
 
+  function handleOpenSources(): void {
+    store.openSourcesHome();
+  }
+
   return (
     <aside className="thread-list">
       <header className="side-header">
@@ -56,6 +60,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
             aria-label={t("sidebar.refresh")}
             title={t("sidebar.refresh")}
             size="small"
+            disabled={projectStore.isOrphan}
             onClick={handleRefreshThreads}
           >
             <RefreshOutlinedIcon fontSize="small" />
@@ -65,6 +70,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
               aria-label={t("sidebar.openNewChat")}
               color="primary"
               size="small"
+              disabled={projectStore.isOrphan}
               onClick={handleNewThread}
             >
               <AddOutlinedIcon fontSize="small" />
@@ -72,6 +78,20 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
           </Tooltip>
         </Stack>
       </header>
+
+      {projectStore.isOrphan ? (
+        <Alert
+          severity="warning"
+          sx={{ mx: 1.5, mb: 1 }}
+          action={(
+            <Button color="inherit" size="small" onClick={handleOpenSources}>
+              {t("sources.title")}
+            </Button>
+          )}
+        >
+          {t("project.orphanSource")}
+        </Alert>
+      ) : null}
 
       <Box sx={{ px: 1.5, pb: 1.25 }}>
         <TextField

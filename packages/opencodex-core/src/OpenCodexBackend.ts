@@ -5,12 +5,14 @@ import {
   CodexAppServerClient,
   CodexProcessError,
   JsonRpcError,
+  resolveCodexCommandPath,
   type CodexNotification,
   type CodexServerRequest,
   type v2
 } from "@open-codex-ui/codex-rpc";
 import type {
   CachedProject,
+  CachedSource,
   CachedThreadDelta,
   CachedThreadSnapshot,
   CachedThreadSummary,
@@ -27,6 +29,8 @@ import type {
   OpenCodexProject,
   OpenCodexRequest,
   OpenCodexSettings,
+  OpenCodexSource,
+  OpenCodexSourceLocalSettings,
   OpenCodexThread,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
@@ -49,6 +53,7 @@ const THREAD_LIST_PAGE_SIZE = 100;
 const THREAD_LIST_MAX_PAGES = 20;
 const THREAD_INITIAL_CACHED_TURNS = 10;
 const THREAD_TURNS_PAGE_SIZE = 20;
+const LEGACY_DEFAULT_SOURCE_ID = "default";
 
 type ThreadSourceKind =
   | "cli"
@@ -89,14 +94,15 @@ const THREAD_SOURCE_KINDS: ThreadSourceKind[] = [
  * Coordinates UI requests, Codex app-server calls, and cache persistence.
  */
 export class OpenCodexBackend {
-  private client: CodexAppServerClient | null = null;
+  private readonly clientsBySourceId = new Map<string, CodexAppServerClient>();
   private settings: OpenCodexSettings;
-  private readonly pendingApprovals = new Map<string, CodexServerRequest>();
+  private readonly pendingApprovals = new Map<string, { request: CodexServerRequest; sourceId: string }>();
   private readonly assistantMessagePhases = new Map<string, OpenCodexMessagePhase | null>();
   private readonly threadTurnCache = new ThreadTurnCache();
   private readonly cacheRepository: OpenCodexCacheRepository | null;
   private activeTurnId: string | null = null;
   private activeThreadId: string | null = null;
+  private activeSourceId: string | null = null;
   private codexStderrBuffer = "";
   private readonly recoveringThreadIds = new Set<string>();
 
@@ -116,9 +122,9 @@ export class OpenCodexBackend {
    * @returns Promise resolved when the operation completes.
    */
   async dispose(): Promise<void> {
-    await this.client?.stop();
+    await Promise.all(Array.from(this.clientsBySourceId.values()).map((client) => client.stop()));
     await this.cacheRepository?.close();
-    this.client = null;
+    this.clientsBySourceId.clear();
   }
 
   /**
@@ -162,25 +168,51 @@ export class OpenCodexBackend {
   private async handleValidRequest(request: OpenCodexRequest): Promise<unknown> {
     switch (request.type) {
       case "app.bootstrap":
+        await this.ensureSourcesInitialized();
         this.emit({
           type: "app.bootstrap",
           settings: this.settings,
+          sources: await this.listOpenCodexSources(),
           projectPath: this.options.projectPath
         });
-        await this.cacheProject(this.options.projectPath);
+        await this.cacheProject(this.options.projectPath, null);
         await this.handleValidRequest({ type: "projects.list" });
         await this.handleValidRequest({ type: "models.list" });
         return { ok: true };
       case "projects.list":
         return this.listProjects();
       case "projects.open":
-        return this.openProject(request.projectPath, request.createIfMissing === true);
+        return this.openProject(
+          request.projectPath,
+          request.sourceId === undefined ? this.settings.defaultSourceId : request.sourceId,
+          request.createIfMissing === true
+        );
       case "projects.pickDirectory":
-        return this.pickProjectDirectory(request.mode);
+        return this.pickProjectDirectory(
+          request.mode,
+          request.sourceId === undefined ? this.settings.defaultSourceId : request.sourceId
+        );
       case "attachments.pickImages":
         return this.pickImageFiles();
+      case "sources.list":
+        return this.listSources();
+      case "sources.create":
+        return this.createSource(request.name);
+      case "sources.sync":
+        return this.syncSources(request.sourceId ?? null);
+      case "sources.delete":
+        return this.deleteSource(request.sourceId);
+      case "sources.update":
+        return this.updateSource(request.sourceId, request.patch);
+      case "sources.pickExecutable":
+        return this.options.pickExecutableFile?.() ?? null;
       case "threads.list":
-        return this.listThreads(request.scope, request.projectPath ?? null, request.searchTerm);
+        return this.listThreads(
+          request.scope,
+          request.projectPath ?? null,
+          request.sourceId ?? null,
+          request.searchTerm
+        );
       case "threads.open":
         return this.openThread(request.threadId);
       case "threads.loadOlder":
@@ -188,7 +220,7 @@ export class OpenCodexBackend {
       case "threads.recover":
         return this.recoverThread(request.threadId);
       case "threads.create":
-        return this.createThread(request.projectPath ?? null);
+        return this.createThread(request.projectPath ?? null, request.sourceId ?? null);
       case "threads.rename":
         return this.renameThread(request.threadId, request.name);
       case "system.openLink":
@@ -197,6 +229,7 @@ export class OpenCodexBackend {
         return this.startTurn(
           request.threadId,
           request.projectPath ?? null,
+          request.sourceId ?? null,
           request.text,
           request.attachments ?? [],
           request.model ?? null,
@@ -227,25 +260,28 @@ export class OpenCodexBackend {
    *
    * @returns Promise resolved with the requested result.
    */
-  private async ensureClient(): Promise<CodexAppServerClient> {
-    if (this.client !== null) {
-      return this.client;
+  private async ensureClient(sourceId: string | null = this.settings.defaultSourceId): Promise<CodexAppServerClient> {
+    const source = await this.resolveSource(sourceId);
+    const existingClient = this.clientsBySourceId.get(source.id);
+
+    if (existingClient !== undefined) {
+      return existingClient;
     }
 
     this.emit({ type: "connection.status", status: "starting" });
 
     const client = new CodexAppServerClient({
-      command: this.settings.codexCommand,
+      command: resolveSourceCommand(source, this.settings.codexCommand),
       experimentalApi: this.settings.experimentalApi,
       logger: (message) => this.options.logger?.(message),
       stderr: (message) => this.handleCodexStderr(message)
     });
 
-    this.client = client;
-    client.onNotification((notification) => this.handleNotification(notification));
-    client.onServerRequest((request) => this.handleServerRequest(request));
+    this.clientsBySourceId.set(source.id, client);
+    client.onNotification((notification) => this.handleNotification(notification, source.id));
+    client.onServerRequest((request) => this.handleServerRequest(request, source.id));
     client.onError((error) => this.handleClientError(error));
-    client.onClose(() => this.handleClientClose());
+    client.onClose(() => this.handleClientClose(source.id));
 
     await client.start();
     this.emit({ type: "connection.status", status: "ready" });
@@ -261,24 +297,165 @@ export class OpenCodexBackend {
     const cachedProjects = await this.readCachedProjects();
 
     this.emit({ type: "projects.updated", projects: cachedProjects });
+    return cachedProjects;
+  }
 
-    try {
-      const client = await this.ensureClient();
-      const threads = await readThreadPages(client, {
-        limit: THREAD_LIST_PAGE_SIZE,
-        sortKey: "updated_at",
-        sortDirection: "desc",
-        sourceKinds: THREAD_SOURCE_KINDS
-      });
-      await this.writeThreadIndex(threads);
-    } catch (error) {
-      this.options.logger?.(`project sync failed: ${String(error)}`);
-      return cachedProjects;
+  /**
+   * Lists configured Codex sources and emits them to the UI.
+   *
+   * @returns Promise resolved with configured sources.
+   */
+  private async listSources(): Promise<OpenCodexSource[]> {
+    await this.ensureSourcesInitialized();
+    const sources = await this.listOpenCodexSources();
+    this.emit({
+      type: "sources.updated",
+      sources,
+      defaultSourceId: this.settings.defaultSourceId
+    });
+    return sources;
+  }
+
+  /**
+   * Creates a new local Codex source.
+   *
+   * @param name Optional source name.
+   * @returns Created source.
+   */
+  private async createSource(name?: string): Promise<OpenCodexSource> {
+    if (this.cacheRepository === null) {
+      throw new Error("Source storage is unavailable.");
+    }
+
+    const createdSource = await this.cacheRepository.createSource(name);
+    const source = toOpenCodexSource(createdSource, this.settings.codexCommand, 0);
+    this.emit({
+      type: "sources.updated",
+      sources: await this.listOpenCodexSources(),
+      defaultSourceId: this.settings.defaultSourceId
+    });
+    return source;
+  }
+
+  /**
+   * Synchronizes one source or all sources with Codex.
+   *
+   * @param sourceId Optional source identifier.
+   * @returns Synchronized projects.
+   */
+  private async syncSources(sourceId: string | null): Promise<OpenCodexProject[]> {
+    await this.ensureSourcesInitialized();
+
+    if (this.cacheRepository === null) {
+      return [];
+    }
+
+    const sources = sourceId === null
+      ? await this.cacheRepository.listSources()
+      : [await this.resolveSource(sourceId)];
+
+    for (const source of sources) {
+      await this.syncSource(source);
     }
 
     const projects = await this.readCachedProjects();
     this.emit({ type: "projects.updated", projects });
+    this.emit({
+      type: "sources.updated",
+      sources: await this.listOpenCodexSources(),
+      defaultSourceId: this.settings.defaultSourceId
+    });
     return projects;
+  }
+
+  /**
+   * Synchronizes threads and project associations for one source.
+   *
+   * @param source Source to synchronize.
+   * @returns Promise resolved when sync completes.
+   */
+  private async syncSource(source: CachedSource): Promise<void> {
+    const client = await this.ensureClient(source.id);
+    const threads = (await readThreadPages(client, {
+      limit: THREAD_LIST_PAGE_SIZE,
+      sortKey: "updated_at",
+      sortDirection: "desc",
+      sourceKinds: THREAD_SOURCE_KINDS
+    })).map((thread) => withSourceId(thread, source.id));
+
+    await this.writeThreadIndex(threads);
+  }
+
+  /**
+   * Deletes one source and orphans its associated projects and threads.
+   *
+   * @param sourceId Source identifier.
+   * @returns Deletion result.
+   */
+  private async deleteSource(sourceId: string): Promise<{ ok: true }> {
+    if (sourceId === this.settings.defaultSourceId) {
+      throw new Error("Cannot delete the default Codex source.");
+    }
+
+    if (this.cacheRepository === null) {
+      throw new Error("Source storage is unavailable.");
+    }
+
+    await this.cacheRepository.clearSourceAssociations(sourceId);
+    await this.cacheRepository.deleteSource(sourceId);
+    await this.restartSourceClient(sourceId);
+
+    const sources = await this.listOpenCodexSources();
+    this.emit({
+      type: "sources.updated",
+      sources,
+      defaultSourceId: this.settings.defaultSourceId
+    });
+    this.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
+    return { ok: true };
+  }
+
+  /**
+   * Updates a Codex source and refreshes the UI source list.
+   *
+   * @param sourceId Source identifier.
+   * @param patch Editable source fields.
+   * @returns Updated source.
+   */
+  private async updateSource(
+    sourceId: string,
+    patch: Partial<Pick<OpenCodexSource, "name">> & {
+      settings?: Partial<OpenCodexSourceLocalSettings>;
+    }
+  ): Promise<OpenCodexSource> {
+    if (this.cacheRepository === null) {
+      throw new Error("Source storage is unavailable.");
+    }
+
+    const previousSource = await this.cacheRepository.getSource(sourceId);
+    const updatedSource = await this.cacheRepository.updateSource(sourceId, patch);
+    const shouldClearAssociations = previousSource !== null && (
+      previousSource.settings.commandMode !== updatedSource.settings.commandMode ||
+      previousSource.settings.command !== updatedSource.settings.command
+    );
+
+    if (shouldClearAssociations) {
+      await this.cacheRepository.clearSourceAssociations(sourceId);
+    }
+
+    const source = toOpenCodexSource(
+      updatedSource,
+      this.settings.codexCommand,
+      await this.cacheRepository.getSourceProjectCount(sourceId)
+    );
+    this.emit({
+      type: "sources.updated",
+      sources: await this.listOpenCodexSources(),
+      defaultSourceId: this.settings.defaultSourceId
+    });
+    await this.restartSourceClient(sourceId);
+    this.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
+    return source;
   }
 
   /**
@@ -289,9 +466,13 @@ export class OpenCodexBackend {
    *
    * @returns Promise resolved with the opened project.
    */
-  private async openProject(projectPath: string, createIfMissing: boolean): Promise<OpenCodexProject> {
+  private async openProject(
+    projectPath: string,
+    sourceId: string | null,
+    createIfMissing: boolean
+  ): Promise<OpenCodexProject> {
     const ensuredProjectPath = await this.ensureProjectPath(projectPath, createIfMissing);
-    const project = await this.cacheProject(ensuredProjectPath);
+    const project = await this.cacheProject(ensuredProjectPath, null);
 
     if (project === null) {
       throw new Error("Project path is required.");
@@ -309,14 +490,17 @@ export class OpenCodexBackend {
    *
    * @returns Promise resolved with the opened project, or `null` when cancelled.
    */
-  private async pickProjectDirectory(mode: "open" | "create"): Promise<OpenCodexProject | null> {
+  private async pickProjectDirectory(
+    mode: "open" | "create",
+    sourceId: string | null
+  ): Promise<OpenCodexProject | null> {
     const selectedPath = await this.options.pickProjectDirectory?.(mode) ?? null;
 
     if (selectedPath === null) {
       return null;
     }
 
-    return this.openProject(selectedPath, mode === "create");
+    return this.openProject(selectedPath, sourceId, mode === "create");
   }
 
   /**
@@ -355,7 +539,10 @@ export class OpenCodexBackend {
    *
    * @returns Cached project entry, or `null` when no project can be stored.
    */
-  private async cacheProject(projectPath: string | null): Promise<OpenCodexProject | null> {
+  private async cacheProject(
+    projectPath: string | null,
+    sourceId: string | null
+  ): Promise<OpenCodexProject | null> {
     const normalizedProjectPath = normalizeProjectPath(projectPath);
 
     if (normalizedProjectPath === null) {
@@ -373,6 +560,7 @@ export class OpenCodexBackend {
 
       return {
         id: projectIdentity.id,
+        sourceId,
         path: projectIdentity.path,
         defaultName: projectIdentity.defaultName,
         displayName: null,
@@ -384,7 +572,7 @@ export class OpenCodexBackend {
     }
 
     try {
-      const project = await this.cacheRepository.upsertProject(normalizedProjectPath);
+      const project = await this.cacheRepository.upsertProject(normalizedProjectPath, sourceId);
       return toOpenCodexProject(project);
     } catch (error) {
       this.options.logger?.(`project cache write failed: ${String(error)}`);
@@ -392,6 +580,7 @@ export class OpenCodexBackend {
 
       return {
         id: projectIdentity.id,
+        sourceId,
         path: projectIdentity.path,
         defaultName: projectIdentity.defaultName,
         displayName: null,
@@ -415,18 +604,29 @@ export class OpenCodexBackend {
   private async listThreads(
     scope: "currentProject" | "all",
     projectPath: string | null,
+    sourceId: string | null,
     searchTerm?: string
   ): Promise<OpenCodexThread[]> {
     const currentProjectPath = scope === "currentProject"
       ? this.resolveCurrentProjectPath(projectPath)
       : null;
-    const cachedThreads = await this.readCachedThreads(scope, currentProjectPath, searchTerm);
+    const cachedThreads = await this.readCachedThreads(
+      scope,
+      currentProjectPath,
+      sourceId,
+      searchTerm
+    );
 
     if (cachedThreads.length > 0) {
       this.emitThreadsUpdated(cachedThreads, currentProjectPath);
     }
 
-    const client = await this.ensureClient();
+    if (sourceId === null) {
+      return cachedThreads;
+    }
+
+    const resolvedSource = await this.resolveSource(sourceId);
+    const client = await this.ensureClient(resolvedSource.id);
     const params: ThreadListParams = {
       limit: THREAD_LIST_PAGE_SIZE,
       sortKey: "updated_at",
@@ -443,12 +643,21 @@ export class OpenCodexBackend {
       params.cwd = currentProjectPath;
     }
 
-    const threads = await readThreadPages(client, params);
+    const threads = (await readThreadPages(client, params)).map((thread) => ({
+      ...thread,
+      sourceId: resolvedSource.id
+    }));
     await this.writeThreadIndex(threads);
 
-    const mergedThreads = await this.readCachedThreads(scope, currentProjectPath, searchTerm);
+    const mergedThreads = await this.readCachedThreads(
+      scope,
+      currentProjectPath,
+      resolvedSource.id,
+      searchTerm
+    );
     const updatedThreads = mergeFreshThreadList(threads, mergedThreads);
     this.emitThreadsUpdated(updatedThreads, currentProjectPath);
+    this.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
 
     return updatedThreads;
   }
@@ -475,14 +684,24 @@ export class OpenCodexBackend {
       });
 
       this.emitThreadOpened(cacheEntry, turns);
-      void this.resumeAndSyncCachedThread(threadId).catch((error: unknown) => {
-        this.handleThreadOpenError(threadId, toError(error));
-      });
+
+      if (cachedSnapshot.thread.sourceId !== null) {
+        void this.resumeAndSyncCachedThread(threadId).catch((error: unknown) => {
+          this.handleThreadOpenError(threadId, toError(error));
+        });
+      }
 
       return { thread: cacheEntry.thread, turns };
     }
 
-    const client = await this.ensureClient();
+    if (cachedSnapshot !== null && cachedSnapshot.thread.sourceId === null) {
+      const cacheEntry = this.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+      const turns = this.readCachedTurns(cacheEntry);
+      this.emitThreadOpened(cacheEntry, turns);
+      return { thread: cacheEntry.thread, turns };
+    }
+
+    const client = await this.ensureClient(cachedSnapshot?.thread.sourceId ?? null);
     this.logThreadTiming("sqlite load finished", {
       threadId,
       startedAt: openStartedAt,
@@ -570,7 +789,6 @@ export class OpenCodexBackend {
   private async loadOlderThreadMessages(
     threadId: string
   ): Promise<{ turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }> {
-    const client = await this.ensureClient();
     const cacheEntry = this.threadTurnCache.get(threadId);
 
     if (cacheEntry === null || cacheEntry.hasLoadedAllOlderTurns || cacheEntry.olderCursor === null) {
@@ -585,6 +803,11 @@ export class OpenCodexBackend {
       }
     }
 
+    if (cacheEntry.thread.sourceId === null) {
+      return { turns: [], hasMoreOlderMessages: false };
+    }
+
+    const client = await this.ensureClient(cacheEntry.thread.sourceId);
     const response = await client.listThreadTurns({
       threadId,
       cursor: cacheEntry.olderCursor,
@@ -688,14 +911,20 @@ export class OpenCodexBackend {
     const syncStartedAt = Date.now();
     this.emit({ type: "thread.sync.started", threadId });
 
-    const client = await this.ensureClient();
+    const cachedSnapshot = await this.readCachedThreadSnapshot(threadId);
+    const sourceId = cachedSnapshot?.thread.sourceId ?? null;
+    if (sourceId === null) {
+      throw new Error("Cannot synchronize a thread without a Codex source.");
+    }
+
+    const client = await this.ensureClient(sourceId);
     const response = await client.resumeThread(threadId, { excludeTurns: true });
     const responseObject = readObject(response);
-    const thread = mapThread(
+    const thread = withSourceId(mapThread(
       responseObject.thread,
       readString(responseObject.model),
       readReasoningEffort(responseObject.reasoningEffort)
-    );
+    ), sourceId);
     const cacheEntry = this.threadTurnCache.getOrCreate(thread);
 
     await this.writeThreadIndex([thread]);
@@ -787,7 +1016,11 @@ export class OpenCodexBackend {
       }
     }
 
-    const cachedThreads = await this.readCachedThreads("currentProject", projectPath);
+    const cachedThreads = await this.readCachedThreads(
+      "currentProject",
+      projectPath,
+      cachedSnapshot?.thread.sourceId ?? null
+    );
     this.emitThreadsUpdated(cachedThreads, projectPath);
   }
 
@@ -815,20 +1048,28 @@ export class OpenCodexBackend {
    *
    * @returns Promise resolved with the requested result.
    */
-  private async createThread(projectPath: string | null): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    const client = await this.ensureClient();
+  private async createThread(
+    projectPath: string | null,
+    sourceId: string | null
+  ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+    if (sourceId === null) {
+      throw new Error("Cannot create a thread for a project without a Codex source.");
+    }
+
+    const resolvedSource = await this.resolveSource(sourceId);
+    const client = await this.ensureClient(resolvedSource.id);
     const currentProjectPath = this.resolveCurrentProjectPath(projectPath);
-    await this.cacheProject(currentProjectPath);
+    await this.cacheProject(currentProjectPath, resolvedSource.id);
     const response = await client.startThread({
       cwd: currentProjectPath,
       model: this.settings.defaultModel
     });
     const responseObject = readObject(response);
-    const thread = mapThread(
+    const thread = withSourceId(mapThread(
       responseObject.thread,
       readString(responseObject.model),
       readReasoningEffort(responseObject.reasoningEffort)
-    );
+    ), resolvedSource.id);
     const turns: OpenCodexTurn[] = [];
 
     this.emit({ type: "thread.created", thread, turns });
@@ -850,6 +1091,7 @@ export class OpenCodexBackend {
   private async startTurn(
     threadId: string | null,
     projectPath: string | null,
+    sourceId: string | null,
     text: string,
     attachments: OpenCodexImageAttachment[],
     model: string | null,
@@ -862,9 +1104,17 @@ export class OpenCodexBackend {
       return { threadId: threadId ?? "", turnId: "" };
     }
 
-    const client = await this.ensureClient();
-    const targetThreadId = threadId ?? (await this.createThreadAndReturnId(client, projectPath));
+    if (sourceId === null) {
+      throw new Error("Cannot start a turn for a project without a Codex source.");
+    }
+
+    const resolvedSource = await this.resolveSource(sourceId);
+    const client = await this.ensureClient(resolvedSource.id);
+    const targetThreadId = threadId ?? (
+      await this.createThreadAndReturnId(client, projectPath, resolvedSource.id)
+    );
     this.activeThreadId = targetThreadId;
+    this.activeSourceId = resolvedSource.id;
     const message: OpenCodexMessage = {
       id: createId("user"),
       threadId: targetThreadId,
@@ -904,20 +1154,21 @@ export class OpenCodexBackend {
    */
   private async createThreadAndReturnId(
     client: CodexAppServerClient,
-    projectPath: string | null
+    projectPath: string | null,
+    sourceId: string
   ): Promise<string> {
     const currentProjectPath = this.resolveCurrentProjectPath(projectPath);
-    await this.cacheProject(currentProjectPath);
+    await this.cacheProject(currentProjectPath, sourceId);
     const response = await client.startThread({
       cwd: currentProjectPath,
       model: this.settings.defaultModel
     });
     const responseObject = readObject(response);
-    const thread = mapThread(
+    const thread = withSourceId(mapThread(
       responseObject.thread,
       readString(responseObject.model),
       readReasoningEffort(responseObject.reasoningEffort)
-    );
+    ), sourceId);
     await this.writeThreadIndex([thread]);
     this.emit({ type: "thread.created", thread, turns: [] });
     return thread.id;
@@ -932,7 +1183,7 @@ export class OpenCodexBackend {
    * @returns Promise resolved when the operation completes.
    */
   private async interruptTurn(threadId: string, turnId: string): Promise<void> {
-    const client = await this.ensureClient();
+    const client = await this.ensureClient(this.activeSourceId);
     await client.interruptTurn(threadId, turnId);
   }
 
@@ -951,7 +1202,12 @@ export class OpenCodexBackend {
       return;
     }
 
-    const client = await this.ensureClient();
+    const cachedSnapshot = await this.readCachedThreadSnapshot(threadId);
+    if (cachedSnapshot === null || cachedSnapshot.thread.sourceId === null) {
+      throw new Error("Cannot rename a thread without a Codex source.");
+    }
+
+    const client = await this.ensureClient(cachedSnapshot.thread.sourceId);
     await client.renameThread(threadId, trimmedName);
     await this.writeThreadTitle(threadId, trimmedName);
     this.threadTurnCache.renameThread(threadId, trimmedName);
@@ -1010,7 +1266,7 @@ export class OpenCodexBackend {
    *
    * @returns Nothing.
    */
-  private handleNotification(notification: CodexNotification): void {
+  private handleNotification(notification: CodexNotification, sourceId: string): void {
     const activity = createActivityFromNotification(notification);
 
     if (activity !== null && this.settings.showActivityPanel) {
@@ -1063,6 +1319,7 @@ export class OpenCodexBackend {
       if (threadId.length > 0 && turnId.length > 0) {
         this.activeThreadId = threadId;
         this.activeTurnId = turnId;
+        this.activeSourceId = sourceId;
         this.emit({ type: "turn.started", threadId, turnId });
       }
     }
@@ -1077,6 +1334,7 @@ export class OpenCodexBackend {
         if (this.activeThreadId === threadId && this.activeTurnId === turnId) {
           this.activeThreadId = null;
           this.activeTurnId = null;
+          this.activeSourceId = null;
         }
       }
     }
@@ -1086,7 +1344,7 @@ export class OpenCodexBackend {
       const name = readString(params.name);
 
       if (threadId.length > 0) {
-        this.applyCodexThreadTitle(threadId, name);
+          this.applyCodexThreadTitle(threadId, name);
       }
     }
   }
@@ -1098,9 +1356,9 @@ export class OpenCodexBackend {
    *
    * @returns Nothing.
    */
-  private handleServerRequest(request: CodexServerRequest): void {
+  private handleServerRequest(request: CodexServerRequest, sourceId: string): void {
     const approval = createApprovalRequest(request, this.settings.language);
-    this.pendingApprovals.set(approval.id, request);
+    this.pendingApprovals.set(approval.id, { request, sourceId });
     this.emit({ type: "approval.requested", approval });
   }
 
@@ -1118,7 +1376,7 @@ export class OpenCodexBackend {
       return { ok: true };
     }
 
-    const client = await this.ensureClient();
+    const client = await this.ensureClient(this.settings.defaultSourceId);
 
     await client.request("config/batchWrite", {
       edits: [
@@ -1195,9 +1453,12 @@ export class OpenCodexBackend {
    * @returns Nothing.
    */
   private resolveApproval(approvalId: string, decision: OpenCodexApprovalDecision): void {
-    const request = this.pendingApprovals.get(approvalId);
+    const pendingApproval = this.pendingApprovals.get(approvalId);
+    const client = pendingApproval === undefined
+      ? undefined
+      : this.clientsBySourceId.get(pendingApproval.sourceId);
 
-    if (request === undefined || this.client === null) {
+    if (pendingApproval === undefined || client === undefined) {
       this.emit({
         type: "error",
         message: getBackendLabels(this.settings.language).approvalUnavailable
@@ -1205,12 +1466,13 @@ export class OpenCodexBackend {
       return;
     }
 
+    const { request } = pendingApproval;
     this.pendingApprovals.delete(approvalId);
 
     if (request.method === "item/permissions/requestApproval" && decision !== "accept") {
-      this.client.rejectServerRequest(request.id, "Permission request declined by the user.");
+      client.rejectServerRequest(request.id, "Permission request declined by the user.");
     } else {
-      this.client.respond(request.id, buildApprovalResponse(request.method, decision));
+      client.respond(request.id, buildApprovalResponse(request.method, decision));
     }
 
     this.emit({ type: "approval.resolved", approvalId });
@@ -1233,10 +1495,10 @@ export class OpenCodexBackend {
    *
    * @returns Nothing.
    */
-  private handleClientClose(): void {
+  private handleClientClose(sourceId: string): void {
     const threadId = this.activeThreadId;
 
-    this.client = null;
+    this.clientsBySourceId.delete(sourceId);
     this.emit({ type: "connection.status", status: "stopped" });
 
     if (threadId === null) {
@@ -1338,6 +1600,7 @@ export class OpenCodexBackend {
   private async readCachedThreads(
     scope: "currentProject" | "all",
     projectPath: string | null,
+    sourceId?: string | null,
     searchTerm?: string
   ): Promise<OpenCodexThread[]> {
     if (this.cacheRepository === null) {
@@ -1348,6 +1611,7 @@ export class OpenCodexBackend {
       const threads = await this.cacheRepository.listThreads({
         scope,
         currentProjectPath: projectPath,
+        sourceId,
         searchTerm
       });
       return threads.map((thread) => toOpenCodexThread(thread));
@@ -1366,6 +1630,104 @@ export class OpenCodexBackend {
    */
   private resolveCurrentProjectPath(projectPath: string | null): string | null {
     return normalizeProjectPath(projectPath) ?? normalizeProjectPath(this.options.projectPath);
+  }
+
+  /**
+   * Ensures at least one source exists and a default source is selected.
+   *
+   * @returns Promise resolved after settings and storage are consistent.
+   */
+  private async ensureSourcesInitialized(): Promise<void> {
+    if (this.cacheRepository === null) {
+      return;
+    }
+
+    const fallbackSource = await this.cacheRepository.ensureDefaultSource();
+    const sources = await this.cacheRepository.listSources();
+
+    if (sources.length === 0) {
+      return;
+    }
+
+    const configuredSource = this.settings.defaultSourceId === null
+      ? null
+      : await this.cacheRepository.getSource(this.settings.defaultSourceId);
+
+    if (configuredSource !== null) {
+      return;
+    }
+
+    const defaultSource = this.settings.defaultSourceId === LEGACY_DEFAULT_SOURCE_ID
+      ? fallbackSource
+      : sources[0] ?? fallbackSource;
+
+    this.settings = {
+      ...this.settings,
+      defaultSourceId: defaultSource.id
+    };
+    await this.options.saveSettings?.(this.settings);
+  }
+
+  /**
+   * Resolves a source id to a cached source, falling back to the default.
+   *
+   * @param sourceId Requested source id.
+   * @returns Cached source.
+   */
+  private async resolveSource(sourceId: string | null): Promise<CachedSource> {
+    if (this.cacheRepository === null) {
+      return createDefaultCachedSource();
+    }
+
+    await this.ensureSourcesInitialized();
+
+    const requestedSource = sourceId === null ? null : await this.cacheRepository.getSource(sourceId);
+
+    if (requestedSource !== null) {
+      return requestedSource;
+    }
+
+    const sources = await this.cacheRepository.listSources();
+    return sources[0] ?? createDefaultCachedSource();
+  }
+
+  /**
+   * Reads sources and enriches them with the executable currently resolved.
+   *
+   * @returns Sources ready for the UI.
+   */
+  private async listOpenCodexSources(): Promise<OpenCodexSource[]> {
+    if (this.cacheRepository === null) {
+      return [toOpenCodexSource(createDefaultCachedSource(), this.settings.codexCommand, 0)];
+    }
+
+    await this.ensureSourcesInitialized();
+    const cacheRepository = this.cacheRepository;
+    const sources = await cacheRepository.listSources();
+    return await Promise.all(sources.map(async (source) => (
+      toOpenCodexSource(
+        source,
+        this.settings.codexCommand,
+        await cacheRepository.getSourceProjectCount(source.id)
+      )
+    )));
+  }
+
+  /**
+   * Stops the client associated with a source after its command changes.
+   *
+   * @param sourceId Source identifier.
+   * @returns Promise resolved when the client is stopped.
+   */
+  private async restartSourceClient(sourceId: string): Promise<void> {
+    const client = this.clientsBySourceId.get(sourceId);
+
+    if (client === undefined) {
+      return;
+    }
+
+    this.clientsBySourceId.delete(sourceId);
+    await client.stop();
   }
 
   /**
@@ -1586,6 +1948,7 @@ export class OpenCodexBackend {
       ...details
     })}`);
   }
+
 }
 
 /**
@@ -1593,6 +1956,7 @@ export class OpenCodexBackend {
  *
  * @param client Connected Codex app-server client.
  * @param baseParams Base pagination parameters.
+ * @param options Optional read hooks.
  *
  * @returns Promise resolved with the requested result.
  */
@@ -1860,6 +2224,7 @@ function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread {
     reasoningEffort: thread.reasoningEffort,
     projectName: thread.projectName,
     projectPath: thread.projectPath,
+    sourceId: thread.sourceId,
     branchName: thread.branchName,
     updatedAt: thread.updatedAt
   };
@@ -1881,6 +2246,7 @@ function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread {
 function toOpenCodexProject(project: CachedProject): OpenCodexProject {
   return {
     id: project.id,
+    sourceId: project.sourceId,
     path: project.path,
     defaultName: project.defaultName,
     displayName: project.displayName,
@@ -1888,6 +2254,86 @@ function toOpenCodexProject(project: CachedProject): OpenCodexProject {
     updatedAt: project.updatedAt,
     lastSeenAt: project.lastSeenAt,
     editedAt: project.editedAt
+  };
+}
+
+/**
+ * Maps a cached source into the UI protocol shape.
+ *
+ * @param source Cached source.
+ * @param fallbackCommand Legacy command setting used by the automatic source.
+ * @returns UI source.
+ */
+function toOpenCodexSource(
+  source: CachedSource,
+  fallbackCommand: string,
+  associatedProjectCount: number
+): OpenCodexSource {
+  const command = resolveSourceCommand(source, fallbackCommand);
+
+  return {
+    id: source.id,
+    kind: source.kind,
+    name: source.name,
+    associatedProjectCount,
+    settings: source.settings,
+    resolvedCommand: resolveCodexCommandPath(command),
+    createdAt: source.createdAt,
+    updatedAt: source.updatedAt
+  };
+}
+
+/**
+ * Resolves the command configured for a source.
+ *
+ * @param source Source configuration.
+ * @param fallbackCommand Legacy command setting.
+ * @returns Command to execute.
+ */
+function resolveSourceCommand(source: CachedSource, fallbackCommand: string): string {
+  if (
+    source.settings.commandMode === "custom" &&
+    source.settings.command !== null &&
+    source.settings.command.length > 0
+  ) {
+    return source.settings.command;
+  }
+
+  return fallbackCommand;
+}
+
+/**
+ * Returns an in-memory default source when SQLite is unavailable.
+ *
+ * @returns Default source.
+ */
+function createDefaultCachedSource(): CachedSource {
+  const now = new Date().toISOString();
+
+  return {
+    id: LEGACY_DEFAULT_SOURCE_ID,
+    kind: "local",
+    name: "Default",
+    settings: {
+      commandMode: "auto",
+      command: null
+    },
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+/**
+ * Adds source metadata to a thread mapped from Codex.
+ *
+ * @param thread Thread metadata.
+ * @param sourceId Source identifier.
+ * @returns Thread metadata with source id.
+ */
+function withSourceId(thread: OpenCodexThread, sourceId: string): OpenCodexThread {
+  return {
+    ...thread,
+    sourceId
   };
 }
 
@@ -1901,6 +2347,7 @@ function toOpenCodexProject(project: CachedProject): OpenCodexProject {
 function toCachedThreadSummary(thread: OpenCodexThread): CachedThreadSummary {
   const cachedThread: CachedThreadSummary = {
     id: thread.id,
+    sourceId: thread.sourceId,
     codexTitle: thread.codexTitle,
     customTitle: thread.customTitle,
     title: thread.title,

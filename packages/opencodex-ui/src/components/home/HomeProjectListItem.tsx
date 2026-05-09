@@ -9,7 +9,8 @@ import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
 
 type HomeProjectListItemProps = {
   project: OpenCodexProject;
-  onOpen(projectPath: string): void;
+  sourceName: string | null;
+  onOpen(projectPath: string, sourceId: string | null): void;
 };
 
 /**
@@ -19,13 +20,14 @@ type HomeProjectListItemProps = {
  *
  * @returns Rendered project item.
  */
-export function HomeProjectListItem({ project, onOpen }: HomeProjectListItemProps) {
-  const { i18n } = useTranslation();
+export function HomeProjectListItem({ project, sourceName, onOpen }: HomeProjectListItemProps) {
+  const { i18n, t } = useTranslation();
   const projectName = project.displayName ?? project.defaultName;
+  const sourceLabel = sourceName ?? t("sources.orphan");
   const relativeEditedAt = formatRelativeTime(project.editedAt, i18n.language);
 
   function handleOpen(): void {
-    onOpen(project.path);
+    onOpen(project.path, project.sourceId);
   }
 
   return (
@@ -34,9 +36,28 @@ export function HomeProjectListItem({ project, onOpen }: HomeProjectListItemProp
         <FolderOutlinedIcon fontSize="small" />
       </ListItemIcon>
       <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-        <Typography variant="body2" noWrap>
-          {projectName}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+          <Typography
+            variant="caption"
+            component="span"
+            noWrap
+            sx={{
+              bgcolor: project.sourceId === null ? "warning.light" : "primary.light",
+              borderRadius: 999,
+              color: project.sourceId === null ? "warning.contrastText" : "primary.contrastText",
+              flex: "0 0 auto",
+              lineHeight: 1.4,
+              maxWidth: 160,
+              px: 0.75,
+              py: 0.125
+            }}
+          >
+            {sourceLabel}
+          </Typography>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
+            {projectName}
+          </Typography>
+        </Box>
         <Typography variant="caption" component="div" color="text.secondary" noWrap>
           {project.path}
         </Typography>

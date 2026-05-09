@@ -27,6 +27,7 @@ export function ChatHeader({ store }: ChatHeaderProps) {
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const currentThread = store.currentThread;
+  const isOrphanProject = store.activeProjectStore?.isOrphan === true;
 
   if (currentThread === null) {
     return null;
@@ -44,6 +45,10 @@ export function ChatHeader({ store }: ChatHeaderProps) {
   ) : null;
 
   function handleRenameOpen(): void {
+    if (isOrphanProject) {
+      return;
+    }
+
     setRenameValue(title);
     setIsRenameModalOpen(true);
   }
@@ -81,6 +86,7 @@ export function ChatHeader({ store }: ChatHeaderProps) {
             aria-label={t("header.rename")}
             title={t("header.rename")}
             size="small"
+            disabled={isOrphanProject}
             onClick={handleRenameOpen}
           >
             <EditOutlinedIcon fontSize="small" />
@@ -91,7 +97,7 @@ export function ChatHeader({ store }: ChatHeaderProps) {
               aria-label={t("header.refresh")}
               title={t("header.refresh")}
               size="small"
-              disabled={store.isRefreshingThread || store.isSyncingCurrentThread}
+              disabled={isOrphanProject || store.isRefreshingThread || store.isSyncingCurrentThread}
               onClick={handleRefreshThread}
             >
               {store.isRefreshingThread || store.isSyncingCurrentThread ? (

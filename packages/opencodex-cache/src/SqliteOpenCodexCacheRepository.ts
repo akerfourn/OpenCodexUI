@@ -2,6 +2,7 @@
  * Persists thread metadata, turns, and sync state inside a local SQLite cache.
  */
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 
 import Database, { type Database as BetterSqliteDatabase } from "better-sqlite3";
@@ -9,6 +10,8 @@ import Database, { type Database as BetterSqliteDatabase } from "better-sqlite3"
 import { createProjectIdentity, normalizeProjectPath } from "./projectIdentity.js";
 import type {
   CachedProject,
+  CachedSource,
+  CachedSourceLocalSettings,
   CachedThreadDelta,
   CachedThreadReadOptions,
   CachedThreadSnapshot,
@@ -27,6 +30,7 @@ export type SqliteOpenCodexCacheRepositoryOptions = {
 
 type ThreadRow = {
   id: string;
+  source_id: string | null;
   cwd: string | null;
   project_default_name: string | null;
   project_display_name: string | null;
@@ -54,6 +58,7 @@ type TurnRow = {
 
 type ProjectRow = {
   id: string;
+  source_id: string | null;
   path: string;
   default_name: string;
   display_name: string | null;
@@ -62,6 +67,18 @@ type ProjectRow = {
   last_seen_at: string;
   edited_at: string;
 };
+
+type SourceRow = {
+  id: string;
+  kind: "local";
+  name: string;
+  settings: string;
+  created_at: string;
+  updated_at: string;
+};
+
+const LEGACY_DEFAULT_SOURCE_ID = "default";
+const DEFAULT_SOURCE_NAME = "Default";
 
 /**
  * Creates the SQLite-backed cache repository used by the desktop application.
@@ -97,12 +114,236 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
   }
 
   /**
+   * Ensures the built-in local Codex source exists.
+   *
+   * @returns Promise resolved with the default source.
+   */
+  async ensureDefaultSource(): Promise<CachedSource> {
+    const sources = await this.listSources();
+
+    if (sources.length > 0) {
+      const existingSource = sources[0];
+
+      if (existingSource !== undefined) {
+        return existingSource;
+      }
+    }
+
+    const now = new Date().toISOString();
+    const source: CachedSource = {
+      id: crypto.randomUUID(),
+      kind: "local",
+      name: DEFAULT_SOURCE_NAME,
+      settings: createDefaultLocalSourceSettings(),
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.database
+      .prepare(
+        `
+        INSERT INTO sources (
+          id,
+          kind,
+          name,
+          settings,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          @id,
+          @kind,
+          @name,
+          @settingsJson,
+          @createdAt,
+          @updatedAt
+        )
+        `
+      )
+      .run({
+        ...source,
+        settingsJson: serializeSourceSettings(source.settings)
+      });
+
+    return source;
+  }
+
+  /**
+   * Creates a new local Codex source.
+   *
+   * @param name Optional source display name.
+   * @returns Created source.
+   */
+  async createSource(name = "Codex"): Promise<CachedSource> {
+    const now = new Date().toISOString();
+    const source: CachedSource = {
+      id: crypto.randomUUID(),
+      kind: "local",
+      name,
+      settings: createDefaultLocalSourceSettings(),
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.database
+      .prepare(
+        `
+        INSERT INTO sources (
+          id,
+          kind,
+          name,
+          settings,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          @id,
+          @kind,
+          @name,
+          @settingsJson,
+          @createdAt,
+          @updatedAt
+        )
+        `
+      )
+      .run({ ...source, settingsJson: serializeSourceSettings(source.settings) });
+
+    return source;
+  }
+
+  /**
+   * Lists known Codex sources ordered by creation date.
+   *
+   * @returns Promise resolved with cached sources.
+   */
+  async listSources(): Promise<CachedSource[]> {
+    const rows = this.database
+      .prepare(
+        `
+        SELECT *
+        FROM sources
+        ORDER BY created_at ASC, name ASC
+        `
+      )
+      .all() as SourceRow[];
+
+    return rows.map(mapSourceRow);
+  }
+
+  /**
+   * Reads one Codex source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Source row, or `null` when missing.
+   */
+  async getSource(sourceId: string): Promise<CachedSource | null> {
+    const row = this.database
+      .prepare("SELECT * FROM sources WHERE id = @sourceId")
+      .get({ sourceId }) as SourceRow | undefined;
+
+    return row === undefined ? null : mapSourceRow(row);
+  }
+
+  /**
+   * Counts projects currently associated with one source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Associated project count.
+   */
+  async getSourceProjectCount(sourceId: string): Promise<number> {
+    const row = this.database
+      .prepare("SELECT COUNT(*) AS count FROM projects WHERE source_id = @sourceId")
+      .get({ sourceId }) as { count: number } | undefined;
+
+    return row?.count ?? 0;
+  }
+
+  /**
+   * Updates editable fields on a Codex source.
+   *
+   * @param sourceId Source identifier.
+   * @param patch Fields to update.
+   * @returns Updated source.
+   */
+  async updateSource(
+    sourceId: string,
+    patch: Partial<Pick<CachedSource, "name">> & {
+      settings?: Partial<CachedSourceLocalSettings>;
+    }
+  ): Promise<CachedSource> {
+    const source = await this.getSource(sourceId);
+
+    if (source === null) {
+      throw new Error(`Source not found: ${sourceId}`);
+    }
+
+    const nextSource: CachedSource = {
+      ...source,
+      name: patch.name?.trim() || source.name,
+      settings: {
+        ...source.settings,
+        ...patch.settings,
+        command: patch.settings?.command !== undefined
+          ? normalizeNullableText(patch.settings.command)
+          : source.settings.command
+      },
+      updatedAt: new Date().toISOString()
+    };
+
+    this.database
+      .prepare(
+        `
+        UPDATE sources SET
+          name = @name,
+          settings = @settingsJson,
+          updated_at = @updatedAt
+        WHERE id = @id
+        `
+      )
+      .run({ ...nextSource, settingsJson: serializeSourceSettings(nextSource.settings) });
+
+    return nextSource;
+  }
+
+  /**
+   * Deletes a Codex source entry.
+   *
+   * @param sourceId Source identifier.
+   * @returns Promise resolved when the source has been deleted.
+   */
+  async deleteSource(sourceId: string): Promise<void> {
+    this.database
+      .prepare("DELETE FROM sources WHERE id = @sourceId")
+      .run({ sourceId });
+  }
+
+  /**
+   * Removes project and thread associations for a source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Promise resolved when associations are cleared.
+   */
+  async clearSourceAssociations(sourceId: string): Promise<void> {
+    const clearAssociations = this.database.transaction(() => {
+      this.database
+        .prepare("UPDATE projects SET source_id = NULL WHERE source_id = @sourceId")
+        .run({ sourceId });
+      this.database
+        .prepare("UPDATE threads SET source_id = NULL WHERE source_id = @sourceId")
+        .run({ sourceId });
+    });
+
+    clearAssociations();
+  }
+
+  /**
    * Persists a project entry independently from its threads.
    *
    * @param projectPath Project folder path to persist.
+   * @param sourceId Source associated with the project.
    * @returns Promise resolved with the cached project entry.
    */
-  async upsertProject(projectPath: string): Promise<CachedProject> {
+  async upsertProject(projectPath: string, sourceId: string | null = null): Promise<CachedProject> {
     const project = createProjectIdentity(projectPath);
 
     if (project === null) {
@@ -110,12 +351,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     }
 
     const now = new Date().toISOString();
-
     this.database
       .prepare(
         `
         INSERT INTO projects (
           id,
+          source_id,
           path,
           default_name,
           display_name,
@@ -125,6 +366,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         )
         VALUES (
           @id,
+          @sourceId,
           @path,
           @defaultName,
           NULL,
@@ -133,12 +375,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
           @now
         )
         ON CONFLICT(path) DO UPDATE SET
+          source_id = COALESCE(excluded.source_id, projects.source_id),
           default_name = excluded.default_name,
           updated_at = excluded.updated_at,
           last_seen_at = excluded.last_seen_at
         `
       )
-      .run({ ...project, now });
+      .run({ ...project, sourceId, now });
 
     const row = this.database
       .prepare(
@@ -273,6 +516,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     if (query.scope === "currentProject" && currentProjectPath !== null) {
       clauses.push("threads.cwd = @currentProjectPath");
       params.currentProjectPath = currentProjectPath;
+    }
+
+    if (query.sourceId === null) {
+      clauses.push("threads.source_id IS NULL");
+    } else if (query.sourceId !== undefined) {
+      clauses.push("threads.source_id = @sourceId");
+      params.sourceId = query.sourceId;
     }
 
     if (searchTerm.length > 0) {
@@ -415,6 +665,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    * @returns Promise resolved once the database has been closed.
    */
   async close(): Promise<void> {
+    this.database.pragma("wal_checkpoint(TRUNCATE)");
     this.database.close();
   }
 
@@ -587,6 +838,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       `
       INSERT INTO projects (
         id,
+        source_id,
         path,
         default_name,
         display_name,
@@ -596,6 +848,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       )
       VALUES (
         @id,
+        @sourceId,
         @path,
         @defaultName,
         NULL,
@@ -604,6 +857,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         @now
       )
       ON CONFLICT(path) DO UPDATE SET
+        source_id = COALESCE(excluded.source_id, projects.source_id),
         default_name = excluded.default_name,
         updated_at = excluded.updated_at,
         last_seen_at = excluded.last_seen_at
@@ -613,6 +867,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       `
       INSERT INTO threads (
         id,
+        source_id,
         project_id,
         cwd,
         branch_name,
@@ -627,6 +882,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       )
       VALUES (
         @id,
+        @sourceId,
         @projectId,
         @cwd,
         @branchName,
@@ -640,6 +896,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         @updatedAt
       )
       ON CONFLICT(id) DO UPDATE SET
+        source_id = COALESCE(excluded.source_id, threads.source_id),
         project_id = excluded.project_id,
         cwd = excluded.cwd,
         branch_name = excluded.branch_name,
@@ -662,13 +919,15 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     const writeIndex = this.database.transaction(() => {
       for (const thread of threads) {
         const project = createProjectIdentity(thread.projectPath ?? "");
+        const sourceId = thread.sourceId;
 
         if (project !== null) {
-          upsertProject.run({ ...project, now });
+          upsertProject.run({ ...project, sourceId, now });
         }
 
         upsertThread.run({
           id: thread.id,
+          sourceId,
           projectId: project?.id ?? null,
           cwd: project?.path ?? null,
           branchName: thread.branchName ?? null,
@@ -802,6 +1061,7 @@ function runMigrations(database: BetterSqliteDatabase): void {
       database.exec(`
         CREATE TABLE IF NOT EXISTS projects (
           id TEXT PRIMARY KEY,
+          source_id TEXT,
           path TEXT NOT NULL UNIQUE,
           default_name TEXT NOT NULL,
           display_name TEXT,
@@ -812,6 +1072,7 @@ function runMigrations(database: BetterSqliteDatabase): void {
 
         CREATE TABLE IF NOT EXISTS threads (
           id TEXT PRIMARY KEY,
+          source_id TEXT,
           project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
           cwd TEXT,
           branch_name TEXT,
@@ -859,6 +1120,10 @@ function runMigrations(database: BetterSqliteDatabase): void {
   }
 
   applySchemaMigrationV2(database);
+  applySchemaMigrationV3(database);
+  applySchemaMigrationV4(database);
+  applySchemaMigrationV5(database);
+  applySchemaMigrationV6(database);
 }
 
 /**
@@ -893,6 +1158,304 @@ function applySchemaMigrationV2(database: BetterSqliteDatabase): void {
     database
       .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
       .run(2, new Date().toISOString());
+  });
+
+  applyMigration();
+}
+
+/**
+ * Applies source storage migration when it has not been installed yet.
+ *
+ * @param database Open SQLite database connection.
+ * @returns Nothing.
+ */
+function applySchemaMigrationV3(database: BetterSqliteDatabase): void {
+  const migration = database
+    .prepare("SELECT version FROM schema_migrations WHERE version = ?")
+    .get(3);
+
+  if (migration !== undefined) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const applyMigration = database.transaction(() => {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS sources (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        name TEXT NOT NULL,
+        settings TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+    database
+      .prepare(
+        `
+        INSERT INTO sources (
+          id,
+          kind,
+          name,
+          settings,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          @id,
+          'local',
+          @name,
+          @settings,
+          @now,
+          @now
+        )
+        ON CONFLICT(id) DO NOTHING
+        `
+      )
+      .run({
+        id: LEGACY_DEFAULT_SOURCE_ID,
+        name: DEFAULT_SOURCE_NAME,
+        settings: serializeSourceSettings(createDefaultLocalSourceSettings()),
+        now
+      });
+    addColumnIfMissing(database, "projects", "source_id", "TEXT");
+    addColumnIfMissing(database, "threads", "source_id", "TEXT");
+    database
+      .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
+      .run(3, now);
+  });
+
+  applyMigration();
+}
+
+/**
+ * Removes eager default source assignments introduced before source sync was explicit.
+ *
+ * @param database Open SQLite database connection.
+ * @returns Nothing.
+ */
+function applySchemaMigrationV4(database: BetterSqliteDatabase): void {
+  const migration = database
+    .prepare("SELECT version FROM schema_migrations WHERE version = ?")
+    .get(4);
+
+  if (migration !== undefined) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  database.pragma("foreign_keys = OFF");
+  const applyMigration = database.transaction(() => {
+    database.exec(`
+      DROP TABLE IF EXISTS projects_next;
+
+      CREATE TABLE IF NOT EXISTS projects_next (
+        id TEXT PRIMARY KEY,
+        source_id TEXT,
+        path TEXT NOT NULL UNIQUE,
+        default_name TEXT NOT NULL,
+        display_name TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_seen_at TEXT NOT NULL
+      );
+
+      INSERT INTO projects_next (
+        id,
+        source_id,
+        path,
+        default_name,
+        display_name,
+        created_at,
+        updated_at,
+        last_seen_at
+      )
+      SELECT
+        id,
+        CASE WHEN source_id = 'default' THEN NULL ELSE source_id END,
+        path,
+        default_name,
+        display_name,
+        created_at,
+        updated_at,
+        last_seen_at
+      FROM projects;
+
+      DROP TABLE projects;
+      ALTER TABLE projects_next RENAME TO projects;
+      UPDATE projects SET source_id = NULL WHERE source_id = 'default';
+      UPDATE threads SET source_id = NULL WHERE source_id = 'default';
+    `);
+    database
+      .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
+      .run(4, now);
+  });
+
+  applyMigration();
+  database.pragma("foreign_keys = ON");
+}
+
+/**
+ * Moves source-specific fields into a settings document.
+ *
+ * @param database Open SQLite database connection.
+ * @returns Nothing.
+ */
+function applySchemaMigrationV5(database: BetterSqliteDatabase): void {
+  const migration = database
+    .prepare("SELECT version FROM schema_migrations WHERE version = ?")
+    .get(5);
+
+  if (migration !== undefined) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const tableInfo = database
+    .prepare("PRAGMA table_info(sources)")
+    .all() as Array<{ name: string }>;
+  const hasLegacyCommandMode = tableInfo.some((column) => column.name === "command_mode");
+
+  database.pragma("foreign_keys = OFF");
+  const applyMigration = database.transaction(() => {
+    database.exec(`
+      DROP TABLE IF EXISTS sources_next;
+
+      CREATE TABLE sources_next (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        name TEXT NOT NULL,
+        settings TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    if (hasLegacyCommandMode) {
+      const rows = database
+        .prepare("SELECT id, kind, name, command_mode, command, created_at, updated_at FROM sources")
+        .all() as Array<{
+          id: string;
+          kind: "local";
+          name: string;
+          command_mode: string;
+          command: string | null;
+          created_at: string;
+          updated_at: string;
+        }>;
+
+      const insertSource = database.prepare(`
+        INSERT INTO sources_next (
+          id,
+          kind,
+          name,
+          settings,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          @id,
+          @kind,
+          @name,
+          @settings,
+          @createdAt,
+          @updatedAt
+        )
+      `);
+
+      for (const row of rows) {
+        insertSource.run({
+          id: row.id,
+          kind: row.kind,
+          name: row.name,
+          settings: serializeSourceSettings({
+            commandMode: row.command_mode === "custom" ? "custom" : "auto",
+            command: normalizeNullableText(row.command)
+          }),
+          createdAt: row.created_at,
+          updatedAt: row.updated_at
+        });
+      }
+    } else {
+      database.exec(`
+        INSERT INTO sources_next (
+          id,
+          kind,
+          name,
+          settings,
+          created_at,
+          updated_at
+        )
+        SELECT
+          id,
+          kind,
+          name,
+          settings,
+          created_at,
+          updated_at
+        FROM sources;
+      `);
+    }
+
+    database.exec(`
+      DROP TABLE sources;
+      ALTER TABLE sources_next RENAME TO sources;
+    `);
+    database
+      .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
+      .run(5, now);
+  });
+
+  applyMigration();
+  database.pragma("foreign_keys = ON");
+}
+
+/**
+ * Replaces the legacy fixed default source id with a generated source id.
+ *
+ * @param database Open SQLite database connection.
+ * @returns Nothing.
+ */
+function applySchemaMigrationV6(database: BetterSqliteDatabase): void {
+  const migration = database
+    .prepare("SELECT version FROM schema_migrations WHERE version = ?")
+    .get(6);
+
+  if (migration !== undefined) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const legacySource = database
+    .prepare("SELECT id FROM sources WHERE id = @sourceId")
+    .get({ sourceId: LEGACY_DEFAULT_SOURCE_ID }) as { id: string } | undefined;
+
+  const applyMigration = database.transaction(() => {
+    if (legacySource !== undefined) {
+      const nextSourceId = crypto.randomUUID();
+      database
+        .prepare("UPDATE sources SET id = @nextSourceId WHERE id = @legacySourceId")
+        .run({
+          nextSourceId,
+          legacySourceId: LEGACY_DEFAULT_SOURCE_ID
+        });
+      database
+        .prepare("UPDATE projects SET source_id = @nextSourceId WHERE source_id = @legacySourceId")
+        .run({
+          nextSourceId,
+          legacySourceId: LEGACY_DEFAULT_SOURCE_ID
+        });
+      database
+        .prepare("UPDATE threads SET source_id = @nextSourceId WHERE source_id = @legacySourceId")
+        .run({
+          nextSourceId,
+          legacySourceId: LEGACY_DEFAULT_SOURCE_ID
+        });
+    }
+
+    database
+      .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
+      .run(6, now);
   });
 
   applyMigration();
@@ -936,6 +1499,7 @@ function mapThreadRow(row: ThreadRow): CachedThreadSummary {
   const title = resolveCachedThreadTitle(row.codex_title, row.custom_title, row.preview ?? "");
   const thread: CachedThreadSummary = {
     id: row.id,
+    sourceId: row.source_id,
     codexTitle: row.codex_title,
     customTitle: row.custom_title,
     title,
@@ -964,6 +1528,7 @@ function mapThreadRow(row: ThreadRow): CachedThreadSummary {
 function mapProjectRow(row: ProjectRow): CachedProject {
   return {
     id: row.id,
+    sourceId: row.source_id,
     path: row.path,
     defaultName: row.default_name,
     displayName: row.display_name,
@@ -972,6 +1537,79 @@ function mapProjectRow(row: ProjectRow): CachedProject {
     lastSeenAt: row.last_seen_at,
     editedAt: row.edited_at
   };
+}
+
+/**
+ * Maps a raw SQLite source row into the public cached source shape.
+ *
+ * @param row Source row read from SQLite.
+ * @returns Normalized cached source entry.
+ */
+function mapSourceRow(row: SourceRow): CachedSource {
+  return {
+    id: row.id,
+    kind: row.kind,
+    name: row.name,
+    settings: parseLocalSourceSettings(row.settings),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/**
+ * Creates default settings for a local Codex source.
+ *
+ * @returns Local source settings.
+ */
+function createDefaultLocalSourceSettings(): CachedSourceLocalSettings {
+  return {
+    commandMode: "auto",
+    command: null
+  };
+}
+
+/**
+ * Serializes source settings for SQLite storage.
+ *
+ * @param settings Source-specific settings.
+ * @returns JSON document.
+ */
+function serializeSourceSettings(settings: CachedSourceLocalSettings): string {
+  return JSON.stringify({
+    commandMode: settings.commandMode,
+    command: normalizeNullableText(settings.command)
+  });
+}
+
+/**
+ * Parses and normalizes a local source settings document.
+ *
+ * @param value Raw JSON value read from SQLite.
+ * @returns Local source settings.
+ */
+function parseLocalSourceSettings(value: string): CachedSourceLocalSettings {
+  try {
+    const parsed = JSON.parse(value) as Partial<CachedSourceLocalSettings>;
+    const commandMode = parsed.commandMode === "custom" ? "custom" : "auto";
+
+    return {
+      commandMode,
+      command: normalizeNullableText(parsed.command ?? null)
+    };
+  } catch {
+    return createDefaultLocalSourceSettings();
+  }
+}
+
+/**
+ * Normalizes user-editable text where blank means no value.
+ *
+ * @param value Text value to normalize.
+ * @returns Trimmed value, or `null` when blank.
+ */
+function normalizeNullableText(value: string | null): string | null {
+  const trimmedValue = value?.trim() ?? "";
+  return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
 /**

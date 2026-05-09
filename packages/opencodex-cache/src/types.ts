@@ -5,6 +5,7 @@ export type CachedThreadScope = "currentProject" | "all";
 
 export type CachedThreadSummary = {
   id: string;
+  sourceId: string | null;
   codexTitle: string;
   customTitle: string | null;
   title: string;
@@ -20,6 +21,7 @@ export type CachedThreadSummary = {
 
 export type CachedProject = {
   id: string;
+  sourceId: string | null;
   path: string;
   defaultName: string;
   displayName: string | null;
@@ -28,6 +30,27 @@ export type CachedProject = {
   lastSeenAt: string;
   editedAt: string;
 };
+
+export type CachedSourceCommandMode = "auto" | "custom";
+
+export type CachedSourceLocalSettings = {
+  commandMode: CachedSourceCommandMode;
+  command: string | null;
+};
+
+export type CachedSourceBase = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CachedLocalSource = CachedSourceBase & {
+  kind: "local";
+  settings: CachedSourceLocalSettings;
+};
+
+export type CachedSource = CachedLocalSource;
 
 export type CachedThreadSyncState = {
   threadId: string;
@@ -69,6 +92,7 @@ export type CachedThreadDelta = {
 export type ThreadListCacheQuery = {
   scope: CachedThreadScope;
   currentProjectPath: string | null;
+  sourceId?: string | null;
   searchTerm?: string | null;
 };
 
@@ -76,7 +100,20 @@ export type ThreadListCacheQuery = {
  * Describes the storage contract implemented by cache backends.
  */
 export interface OpenCodexCacheRepository {
-  upsertProject(projectPath: string): Promise<CachedProject>;
+  ensureDefaultSource(): Promise<CachedSource>;
+  createSource(name?: string): Promise<CachedSource>;
+  listSources(): Promise<CachedSource[]>;
+  getSource(sourceId: string): Promise<CachedSource | null>;
+  getSourceProjectCount(sourceId: string): Promise<number>;
+  updateSource(
+    sourceId: string,
+    patch: Partial<Pick<CachedSource, "name">> & {
+      settings?: Partial<CachedSourceLocalSettings>;
+    }
+  ): Promise<CachedSource>;
+  deleteSource(sourceId: string): Promise<void>;
+  clearSourceAssociations(sourceId: string): Promise<void>;
+  upsertProject(projectPath: string, sourceId?: string | null): Promise<CachedProject>;
   listProjects(): Promise<CachedProject[]>;
   upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void>;
   updateThreadTitle(threadId: string, title: string): Promise<void>;

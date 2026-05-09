@@ -44,6 +44,15 @@ export class ProjectStore {
   }
 
   /**
+   * Returns whether the project is no longer associated with a Codex source.
+   *
+   * @returns `true` when the project is read-only.
+   */
+  get isOrphan(): boolean {
+    return this.project.sourceId === null;
+  }
+
+  /**
    * Returns the display name shown in tabs and lists.
    *
    * @returns Project display name.

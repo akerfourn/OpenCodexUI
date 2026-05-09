@@ -3,6 +3,10 @@
  */
 export type {
   CachedProject,
+  CachedSource,
+  CachedSourceBase,
+  CachedSourceCommandMode,
+  CachedSourceLocalSettings,
   CachedThreadDelta,
   CachedThreadScope,
   CachedThreadSnapshot,

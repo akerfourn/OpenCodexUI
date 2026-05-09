@@ -88,6 +88,7 @@ export const resources = {
         projects: "Projets",
         recentProjects: "Projets récents",
         refreshProjects: "Synchroniser les projets récents",
+        sources: "Sources",
         settings: "Paramètres"
       },
       language: {
@@ -113,6 +114,9 @@ export const resources = {
         submit: "Renommer",
         title: "Renommer le chat"
       },
+      project: {
+        orphanSource: "Ce projet n'est plus associe a une source Codex. Il est disponible en lecture seule jusqu'a une resynchronisation."
+      },
       trustProject: {
         cancel: "Plus tard",
         confirmCheckbox: "Je fais confiance au contenu local de ce projet",
@@ -132,6 +136,30 @@ export const resources = {
         otherChats: "Autres chats",
         refresh: "Synchroniser les chats",
         search: "Rechercher"
+      },
+      sources: {
+        add: "Ajouter",
+        auto: "Auto",
+        cancel: "Annuler",
+        command: "Chemin ou commande",
+        defaultSource: "Source par defaut",
+        delete: "Supprimer",
+        deleteConfirmCheckbox: "Je confirme la suppression de cette source",
+        deleteDescription: "Cette source est associee a {{count}} projet(s). La supprimer rendra ces projets orphelins.",
+        deleteTitle: "Supprimer la source ?",
+        custom: "Chemin ou commande personnalisée",
+        description: "Configurez les installations Codex utilisables par les projets locaux.",
+        edit: "Editer",
+        editTitle: "Editer la source",
+        name: "Nom",
+        orphan: "Orphelin",
+        pickExecutable: "Sélectionner",
+        resolvedCommand: "Commande utilisée",
+        source: "Source",
+        save: "Enregistrer",
+        sync: "Resynchroniser",
+        syncAll: "Tout resynchroniser",
+        title: "Sources Codex"
       },
       tabs: {
         closeProject: "Fermer {{project}}",
@@ -217,6 +245,7 @@ export const resources = {
         projects: "Projects",
         recentProjects: "Recent projects",
         refreshProjects: "Sync recent projects",
+        sources: "Sources",
         settings: "Settings"
       },
       language: {
@@ -242,6 +271,9 @@ export const resources = {
         submit: "Rename",
         title: "Rename chat"
       },
+      project: {
+        orphanSource: "This project is no longer associated with a Codex source. It is read-only until it is resynchronized."
+      },
       trustProject: {
         cancel: "Later",
         confirmCheckbox: "I trust this project's local content",
@@ -261,6 +293,30 @@ export const resources = {
         otherChats: "Other chats",
         refresh: "Sync chats",
         search: "Search"
+      },
+      sources: {
+        add: "Add",
+        auto: "Auto",
+        cancel: "Cancel",
+        command: "Path or command",
+        defaultSource: "Default source",
+        delete: "Delete",
+        deleteConfirmCheckbox: "I confirm I want to delete this source",
+        deleteDescription: "This source is associated with {{count}} project(s). Deleting it will orphan those projects.",
+        deleteTitle: "Delete source?",
+        custom: "Custom path or command",
+        description: "Configure the Codex installations available to local projects.",
+        edit: "Edit",
+        editTitle: "Edit source",
+        name: "Name",
+        orphan: "Orphan",
+        pickExecutable: "Select",
+        resolvedCommand: "Command in use",
+        source: "Source",
+        save: "Save",
+        sync: "Resync",
+        syncAll: "Resync all",
+        title: "Codex sources"
       },
       tabs: {
         closeProject: "Close {{project}}",

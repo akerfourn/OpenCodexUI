@@ -533,9 +533,57 @@ export class CodexAppServerClient {
  * @returns Process-like child process used by the client.
  */
 function defaultProcessFactory(command: string, args: string[]): ProcessLike {
-  return spawn(resolveCodexCommand(command), args, {
+  const resolvedCommand = resolveCodexCommand(command, args);
+
+  return spawn(resolvedCommand.command, resolvedCommand.args, {
     stdio: ["pipe", "pipe", "pipe"]
   });
+}
+
+type ResolvedCodexCommand = {
+  command: string;
+  args: string[];
+};
+
+/**
+ * Resolves a command and preserves explicit command-line arguments.
+ *
+ * @param command Configured command or executable path.
+ * @param args Default arguments passed to Codex.
+ * @returns Executable path and complete argument list.
+ */
+function resolveCodexCommand(command: string, args: string[]): ResolvedCodexCommand {
+  const trimmedCommand = command.trim();
+
+  if (trimmedCommand.length === 0) {
+    return {
+      command: resolveCodexCommandPath("codex"),
+      args
+    };
+  }
+
+  if (existsSync(trimmedCommand)) {
+    return {
+      command: trimmedCommand,
+      args
+    };
+  }
+
+  const parts = splitCommandLine(trimmedCommand);
+
+  if (parts.length <= 1) {
+    return {
+      command: resolveCodexCommandPath(trimmedCommand),
+      args
+    };
+  }
+
+  const [executable, ...commandArgs] = parts;
+
+  return {
+    command: resolveCodexCommandPath(executable ?? trimmedCommand),
+    args: [...commandArgs, ...args]
+  };
 }
 
 /**
@@ -544,7 +592,7 @@ function defaultProcessFactory(command: string, args: string[]): ProcessLike {
  * @param command Requested command name.
  * @returns Executable path used to spawn the app-server process.
  */
-function resolveCodexCommand(command: string): string {
+export function resolveCodexCommandPath(command: string): string {
   if (command !== "codex") {
     return command;
   }
@@ -560,6 +608,48 @@ function resolveCodexCommand(command: string): string {
   }
 
   return command;
+}
+
+/**
+ * Splits a simple command line into executable and arguments.
+ *
+ * @param value Command line to split.
+ * @returns Command-line parts with quoted segments preserved.
+ */
+function splitCommandLine(value: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let quote: "\"" | "'" | null = null;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+
+    if ((character === "\"" || character === "'") && quote === null) {
+      quote = character;
+      continue;
+    }
+
+    if (character === quote) {
+      quote = null;
+      continue;
+    }
+
+    if (character === " " && quote === null) {
+      if (current.length > 0) {
+        parts.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current.length > 0) {
+    parts.push(current);
+  }
+
+  return parts;
 }
 
 /**

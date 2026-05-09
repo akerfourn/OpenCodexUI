@@ -10,6 +10,8 @@ import { ElectronBridgeServer } from "./electronBridgeServer.js";
 import { SettingsStore } from "./settingsStore.js";
 
 let bridgeServer: ElectronBridgeServer | null = null;
+let isDisposing = false;
+let isDisposed = false;
 
 app.setName("OpenCodexUI");
 
@@ -56,15 +58,54 @@ async function main(): Promise<void> {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    app.quit();
+    void disposeAndExit(0);
   }
 });
 
-app.on("before-quit", () => {
-  void bridgeServer?.dispose();
+app.on("before-quit", (event) => {
+  if (isDisposed) {
+    return;
+  }
+
+  event.preventDefault();
+  void disposeAndExit(0);
+});
+
+process.once("SIGTERM", () => {
+  void disposeAndExit(0);
+});
+
+process.once("SIGINT", () => {
+  void disposeAndExit(0);
 });
 
 void main();
+
+/**
+ * Disposes backend resources before the Electron process exits.
+ *
+ * @param code Process exit code.
+ * @returns Promise resolved once resources have been closed.
+ */
+async function disposeAndExit(code: number): Promise<void> {
+  if (isDisposed) {
+    app.exit(code);
+    return;
+  }
+
+  if (isDisposing) {
+    return;
+  }
+
+  isDisposing = true;
+
+  try {
+    await bridgeServer?.dispose();
+  } finally {
+    isDisposed = true;
+    app.exit(code);
+  }
+}
 
 /**
  * Resolves the project path associated with the current Electron session.

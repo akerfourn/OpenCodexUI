@@ -7,15 +7,22 @@ import type {
   OpenCodexMessage,
   OpenCodexProject,
   OpenCodexSettings,
+  OpenCodexSource,
   OpenCodexThread,
   OpenCodexTurn
 } from "./messages";
 
 export type OpenCodexEvent =
   | { type: "connection.status"; status: "starting" | "ready" | "stopped" | "error"; message?: string }
-  | { type: "app.bootstrap"; settings: OpenCodexSettings; projectPath: string | null }
+  | {
+      type: "app.bootstrap";
+      settings: OpenCodexSettings;
+      sources: OpenCodexSource[];
+      projectPath: string | null;
+    }
   | { type: "projects.updated"; projects: OpenCodexProject[] }
   | { type: "project.opened"; project: OpenCodexProject }
+  | { type: "sources.updated"; sources: OpenCodexSource[]; defaultSourceId: string | null }
   | {
       type: "threads.updated";
       threads: OpenCodexThread[];

@@ -29,9 +29,34 @@ export type OpenCodexApprovalDecision =
 
 export type OpenCodexThreadScope = "currentProject" | "all";
 export type OpenCodexLanguage = "system" | "fr" | "en";
+export type OpenCodexSourceKind = "local";
+export type OpenCodexSourceCommandMode = "auto" | "custom";
+
+export type OpenCodexSourceLocalSettings = {
+  commandMode: OpenCodexSourceCommandMode;
+  command: string | null;
+};
+
+export type OpenCodexSourceBase = {
+  id: string;
+  kind: OpenCodexSourceKind;
+  name: string;
+  associatedProjectCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OpenCodexLocalSource = OpenCodexSourceBase & {
+  kind: "local";
+  settings: OpenCodexSourceLocalSettings;
+  resolvedCommand: string;
+};
+
+export type OpenCodexSource = OpenCodexLocalSource;
 
 export type OpenCodexProject = {
   id: string;
+  sourceId: string | null;
   path: string;
   defaultName: string;
   displayName: string | null;
@@ -43,6 +68,7 @@ export type OpenCodexProject = {
 
 export type OpenCodexSettings = {
   codexCommand: string;
+  defaultSourceId: string | null;
   defaultModel: string | null;
   defaultReasoningEffort: OpenCodexReasoningEffort | null;
   showActivityPanel: boolean;
@@ -60,6 +86,7 @@ export type OpenCodexThread = {
   reasoningEffort: OpenCodexReasoningEffort | null;
   projectName: string | null;
   projectPath: string | null;
+  sourceId: string | null;
   branchName: string | null;
   updatedAt: string | null;
   status?: string;

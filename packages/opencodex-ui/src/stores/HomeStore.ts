@@ -3,7 +3,7 @@
  */
 import { makeAutoObservable } from "mobx";
 
-export type HomeSection = "projects" | "settings";
+export type HomeSection = "projects" | "sources" | "settings";
 
 /**
  * Stores Home navigation and project path form state.
@@ -11,6 +11,7 @@ export type HomeSection = "projects" | "settings";
 export class HomeStore {
   selectedSection: HomeSection = "projects";
   projectPathInput = "";
+  selectedSourceId: string | null = null;
   isOpeningProject = false;
 
   /**
@@ -40,5 +41,16 @@ export class HomeStore {
    */
   setProjectPathInput(value: string): void {
     this.projectPathInput = value;
+  }
+
+  /**
+   * Updates the source used by Home project actions.
+   *
+   * @param sourceId Selected source identifier.
+   *
+   * @returns Nothing.
+   */
+  setSelectedSourceId(sourceId: string | null): void {
+    this.selectedSourceId = sourceId;
   }
 }

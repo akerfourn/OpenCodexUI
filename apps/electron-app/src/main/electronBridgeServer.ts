@@ -3,6 +3,7 @@
  */
 import { BrowserWindow, dialog, ipcMain, shell } from "electron";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -50,6 +51,9 @@ export class ElectronBridgeServer {
       },
       pickImageFiles: async () => {
         return this.pickImageFiles();
+      },
+      pickExecutableFile: async () => {
+        return this.pickExecutableFile();
       },
       ensureProjectDirectory: async (projectPath, createIfMissing) => {
         return ensureProjectDirectory(projectPath, createIfMissing);
@@ -153,6 +157,27 @@ export class ElectronBridgeServer {
 
     return Promise.all(result.filePaths.map(createImageAttachmentFromPath));
   }
+
+  /**
+   * Opens a native executable picker.
+   *
+   * @returns Selected executable path.
+   */
+  private async pickExecutableFile(): Promise<string | null> {
+    const options = {
+      properties: ["openFile"] as Array<"openFile">,
+      title: "Select Codex executable"
+    };
+    const result = this.window === null
+      ? await dialog.showOpenDialog(options)
+      : await dialog.showOpenDialog(this.window, options);
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+
+    return result.filePaths[0] ?? null;
+  }
 }
 
 async function createImageAttachmentFromPath(
@@ -205,13 +230,54 @@ function readImageMimeType(filePath: string): string {
  */
 function createCacheRepository(userDataPath: string) {
   try {
+    const cacheDirectory = path.join(userDataPath, "opencodex-cache");
+    migrateLegacyCacheDirectory(userDataPath, cacheDirectory);
+
     return createOpenCodexSqliteCacheRepository({
-      directory: path.join(userDataPath, "cache")
+      directory: cacheDirectory
     });
   } catch (error) {
     console.log(`[OpenCodexUI] SQLite cache unavailable: ${String(error)}`);
     return null;
   }
+}
+
+/**
+ * Moves the SQLite cache out of the legacy Chromium cache directory when needed.
+ *
+ * @param userDataPath Electron user data directory.
+ * @param cacheDirectory New application cache directory.
+ * @returns Nothing.
+ */
+function migrateLegacyCacheDirectory(userDataPath: string, cacheDirectory: string): void {
+  const databaseFileName = "opencodex-cache.sqlite";
+  const legacyDirectory = path.join(userDataPath, "cache");
+  const legacyDatabasePath = path.join(legacyDirectory, databaseFileName);
+  const targetDatabasePath = path.join(cacheDirectory, databaseFileName);
+
+  if (!fsSync.existsSync(legacyDatabasePath) || fsSync.existsSync(targetDatabasePath)) {
+    return;
+  }
+
+  fsSync.mkdirSync(cacheDirectory, { recursive: true });
+  moveLegacyCacheFile(legacyDatabasePath, targetDatabasePath);
+  moveLegacyCacheFile(`${legacyDatabasePath}-wal`, `${targetDatabasePath}-wal`);
+  moveLegacyCacheFile(`${legacyDatabasePath}-shm`, `${targetDatabasePath}-shm`);
+}
+
+/**
+ * Moves one legacy cache file when it exists.
+ *
+ * @param sourcePath Source file path.
+ * @param targetPath Target file path.
+ * @returns Nothing.
+ */
+function moveLegacyCacheFile(sourcePath: string, targetPath: string): void {
+  if (!fsSync.existsSync(sourcePath) || fsSync.existsSync(targetPath)) {
+    return;
+  }
+
+  fsSync.renameSync(sourcePath, targetPath);
 }
 
 /**

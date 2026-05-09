@@ -46,6 +46,36 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should store source-specific configuration in settings", async () => {
+    const source = await repository.ensureDefaultSource();
+
+    await repository.updateSource(source.id, {
+      settings: {
+        commandMode: "custom",
+        command: "wsl.exe codex"
+      }
+    });
+
+    const updatedSource = await repository.getSource(source.id);
+
+    expect(updatedSource).toMatchObject({
+      id: source.id,
+      kind: "local",
+      settings: {
+        commandMode: "custom",
+        command: "wsl.exe codex"
+      }
+    });
+  });
+
+  it("should create the automatic default source with a generated id", async () => {
+    const source = await repository.ensureDefaultSource();
+    const sameSource = await repository.ensureDefaultSource();
+
+    expect(source.id).not.toBe("default");
+    expect(sameSource.id).toBe(source.id);
+  });
+
   it("should order projects by latest thread update", async () => {
     await repository.upsertProject("/tmp/older");
     await repository.upsertProject("/tmp/recent");
@@ -88,6 +118,104 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(projects[1]?.editedAt).toBe("2026-01-01T00:00:00.000Z");
   });
 
+  it("should preserve source associations when caching an orphan project", async () => {
+    const source = await repository.ensureDefaultSource();
+
+    await repository.upsertThreadIndex([
+      {
+        id: "source-thread",
+        codexTitle: "Source thread",
+        customTitle: null,
+        title: "Source thread",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "source-project",
+        projectPath: "/tmp/source-project",
+        sourceId: source.id,
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.upsertProject("/tmp/source-project", null);
+
+    const projects = await repository.listProjects();
+    const project = projects.find((entry) => entry.path === "/tmp/source-project");
+
+    expect(project?.sourceId).toBe(source.id);
+  });
+
+  it("should clear source associations explicitly", async () => {
+    const source = await repository.ensureDefaultSource();
+
+    await repository.upsertThreadIndex([
+      {
+        id: "source-thread",
+        codexTitle: "Source thread",
+        customTitle: null,
+        title: "Source thread",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "source-project",
+        projectPath: "/tmp/source-project",
+        sourceId: source.id,
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.clearSourceAssociations(source.id);
+
+    const projects = await repository.listProjects();
+    const project = projects.find((entry) => entry.path === "/tmp/source-project");
+    const sourceThreads = await repository.listThreads({
+      scope: "currentProject",
+      currentProjectPath: "/tmp/source-project",
+      sourceId: source.id
+    });
+    const orphanThreads = await repository.listThreads({
+      scope: "currentProject",
+      currentProjectPath: "/tmp/source-project",
+      sourceId: null
+    });
+
+    expect(project?.sourceId).toBeNull();
+    expect(sourceThreads).toHaveLength(0);
+    expect(orphanThreads).toHaveLength(1);
+    expect(orphanThreads[0]?.sourceId).toBeNull();
+  });
+
+  it("should count and delete sources", async () => {
+    const source = await repository.createSource("WSL");
+
+    await repository.upsertThreadIndex([
+      {
+        id: "source-thread",
+        codexTitle: "Source thread",
+        customTitle: null,
+        title: "Source thread",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "source-project",
+        projectPath: "/tmp/source-project",
+        sourceId: source.id,
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    expect(await repository.getSourceProjectCount(source.id)).toBe(1);
+
+    await repository.clearSourceAssociations(source.id);
+    await repository.deleteSource(source.id);
+
+    expect(await repository.getSource(source.id)).toBeNull();
+    expect(await repository.getSourceProjectCount(source.id)).toBe(0);
+  });
+
   it("should persist and list thread summaries grouped by project path", async () => {
     await repository.upsertThreadIndex([
       {
@@ -100,6 +228,7 @@ describe("SqliteOpenCodexCacheRepository", () => {
         reasoningEffort: "high",
         projectName: "OpenCodexUI",
         projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        sourceId: null,
         branchName: "main",
         updatedAt: "2026-01-01T00:00:00.000Z"
       }
@@ -121,6 +250,7 @@ describe("SqliteOpenCodexCacheRepository", () => {
         reasoningEffort: "high",
         projectName: "OpenCodexUI",
         projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        sourceId: null,
         branchName: "main",
         updatedAt: "2026-01-01T00:00:00.000Z"
       }
