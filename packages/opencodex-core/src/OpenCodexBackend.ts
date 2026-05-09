@@ -390,7 +390,7 @@ export class OpenCodexBackend {
     })).map((thread) => withSourceId(
       {
         ...thread,
-        projectHidden: shouldHideProjectPath(thread.projectPath)
+        projectHidden: shouldHideProjectPath(thread.projectPath, source)
       },
       source.id
     ));
@@ -2603,7 +2603,11 @@ function createAssistantMessagePhaseKey(sourceId: string, threadId: string, mess
  * @param projectPath Project path reported by Codex.
  * @returns `true` when the path is not locally accessible.
  */
-function shouldHideProjectPath(projectPath: string | null): boolean {
+function shouldHideProjectPath(projectPath: string | null, source: CachedSource): boolean {
+  if (!shouldValidateProjectPathOnHost(source)) {
+    return false;
+  }
+
   const normalizedProjectPath = normalizeProjectPath(projectPath);
 
   if (normalizedProjectPath === null) {
@@ -2615,4 +2619,17 @@ function shouldHideProjectPath(projectPath: string | null): boolean {
   } catch {
     return true;
   }
+}
+
+/**
+ * Checks whether project paths from a source can be validated by the app host.
+ *
+ * Custom commands may target WSL or remote filesystems, so host-side `stat`
+ * would hide valid projects that only exist from the source perspective.
+ *
+ * @param source Source configuration.
+ * @returns `true` when the app host should validate project folders directly.
+ */
+function shouldValidateProjectPathOnHost(source: CachedSource): boolean {
+  return source.settings.commandMode === "auto";
 }
