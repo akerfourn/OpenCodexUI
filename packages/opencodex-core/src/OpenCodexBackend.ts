@@ -100,10 +100,8 @@ export class OpenCodexBackend {
   private readonly assistantMessagePhases = new Map<string, OpenCodexMessagePhase | null>();
   private readonly threadTurnCache = new ThreadTurnCache();
   private readonly cacheRepository: OpenCodexCacheRepository | null;
-  private activeTurnId: string | null = null;
-  private activeThreadId: string | null = null;
-  private activeSourceId: string | null = null;
-  private codexStderrBuffer = "";
+  private readonly codexStderrBufferBySourceId = new Map<string, string>();
+  private readonly trustSourceIdByProjectPath = new Map<string, string>();
   private readonly recoveringThreadIds = new Set<string>();
 
   /**
@@ -274,7 +272,7 @@ export class OpenCodexBackend {
       command: resolveSourceCommand(source, this.settings.codexCommand),
       experimentalApi: this.settings.experimentalApi,
       logger: (message) => this.options.logger?.(message),
-      stderr: (message) => this.handleCodexStderr(message)
+      stderr: (message) => this.handleCodexStderr(message, source.id)
     });
 
     this.clientsBySourceId.set(source.id, client);
@@ -1113,8 +1111,6 @@ export class OpenCodexBackend {
     const targetThreadId = threadId ?? (
       await this.createThreadAndReturnId(client, projectPath, resolvedSource.id)
     );
-    this.activeThreadId = targetThreadId;
-    this.activeSourceId = resolvedSource.id;
     const message: OpenCodexMessage = {
       id: createId("user"),
       threadId: targetThreadId,
@@ -1135,7 +1131,6 @@ export class OpenCodexBackend {
     });
     const turn = readObject(readObject(turnResponse).turn);
     const turnId = readString(turn.id);
-    this.activeTurnId = turnId;
 
     if (turnId.length > 0) {
       this.emit({ type: "turn.started", threadId: targetThreadId, turnId });
@@ -1183,8 +1178,31 @@ export class OpenCodexBackend {
    * @returns Promise resolved when the operation completes.
    */
   private async interruptTurn(threadId: string, turnId: string): Promise<void> {
-    const client = await this.ensureClient(this.activeSourceId);
+    const sourceId = await this.resolveThreadSourceId(threadId);
+
+    if (sourceId === null) {
+      throw new Error("Cannot interrupt a thread without a Codex source.");
+    }
+
+    const client = await this.ensureClient(sourceId);
     await client.interruptTurn(threadId, turnId);
+  }
+
+  /**
+   * Resolves the Codex source owning a thread.
+   *
+   * @param threadId Thread identifier.
+   * @returns Source id, or `null` when the thread is orphaned or unknown.
+   */
+  private async resolveThreadSourceId(threadId: string): Promise<string | null> {
+    const cacheEntry = this.threadTurnCache.get(threadId);
+
+    if (cacheEntry?.thread.sourceId !== null && cacheEntry?.thread.sourceId !== undefined) {
+      return cacheEntry.thread.sourceId;
+    }
+
+    const cachedSnapshot = await this.readCachedThreadSnapshot(threadId);
+    return cachedSnapshot?.thread.sourceId ?? null;
   }
 
   /**
@@ -1280,7 +1298,8 @@ export class OpenCodexBackend {
       const turnId = readString(params.turnId);
       const messageId = readString(params.itemId);
       const delta = readString(params.delta);
-      const phase = this.assistantMessagePhases.get(messageId) ?? null;
+      const phaseKey = createAssistantMessagePhaseKey(sourceId, threadId, messageId);
+      const phase = this.assistantMessagePhases.get(phaseKey) ?? null;
 
       if (threadId.length > 0 && turnId.length > 0 && messageId.length > 0 && delta.length > 0) {
         this.emit({ type: "message.delta", threadId, turnId, messageId, delta, phase });
@@ -1288,26 +1307,31 @@ export class OpenCodexBackend {
     }
 
     if (notification.method === "item/started") {
+      const threadId = readString(params.threadId);
       const item = readObject(params.item);
 
       if (readString(item.type) === "agentMessage") {
         const messageId = readString(item.id);
         const phase = readMessagePhase(item.phase);
 
-        if (messageId.length > 0) {
-          this.assistantMessagePhases.set(messageId, phase);
+        if (threadId.length > 0 && messageId.length > 0) {
+          this.assistantMessagePhases.set(
+            createAssistantMessagePhaseKey(sourceId, threadId, messageId),
+            phase
+          );
         }
       }
     }
 
     if (notification.method === "item/completed") {
+      const threadId = readString(params.threadId);
       const item = readObject(params.item);
 
       if (readString(item.type) === "agentMessage") {
         const messageId = readString(item.id);
 
-        if (messageId.length > 0) {
-          this.assistantMessagePhases.delete(messageId);
+        if (threadId.length > 0 && messageId.length > 0) {
+          this.assistantMessagePhases.delete(createAssistantMessagePhaseKey(sourceId, threadId, messageId));
         }
       }
     }
@@ -1317,25 +1341,17 @@ export class OpenCodexBackend {
       const turnId = readString(readObject(params.turn).id);
 
       if (threadId.length > 0 && turnId.length > 0) {
-        this.activeThreadId = threadId;
-        this.activeTurnId = turnId;
-        this.activeSourceId = sourceId;
         this.emit({ type: "turn.started", threadId, turnId });
       }
     }
 
     if (notification.method === "turn/completed") {
       const threadId = readString(params.threadId);
-      const turnId = readString(readObject(params.turn).id) || this.activeTurnId;
+      const turnId = readString(readObject(params.turn).id);
       const durationMs = readNullableNumber(readObject(params.turn).durationMs);
 
-      if (threadId.length > 0 && turnId !== null && turnId.length > 0) {
+      if (threadId.length > 0 && turnId.length > 0) {
         this.emit({ type: "turn.completed", threadId, turnId, durationMs });
-        if (this.activeThreadId === threadId && this.activeTurnId === turnId) {
-          this.activeThreadId = null;
-          this.activeTurnId = null;
-          this.activeSourceId = null;
-        }
       }
     }
 
@@ -1376,7 +1392,9 @@ export class OpenCodexBackend {
       return { ok: true };
     }
 
-    const client = await this.ensureClient(this.settings.defaultSourceId);
+    const sourceId = this.trustSourceIdByProjectPath.get(normalizedProjectPath)
+      ?? this.settings.defaultSourceId;
+    const client = await this.ensureClient(sourceId);
 
     await client.request("config/batchWrite", {
       edits: [
@@ -1393,6 +1411,7 @@ export class OpenCodexBackend {
       type: "project.trust.completed",
       projectPath: normalizedProjectPath
     });
+    this.trustSourceIdByProjectPath.delete(normalizedProjectPath);
 
     return { ok: true };
   }
@@ -1415,6 +1434,7 @@ export class OpenCodexBackend {
       type: "project.trust.completed",
       projectPath: normalizedProjectPath
     });
+    this.trustSourceIdByProjectPath.delete(normalizedProjectPath);
   }
 
   /**
@@ -1424,11 +1444,13 @@ export class OpenCodexBackend {
    *
    * @returns Nothing.
    */
-  private handleCodexStderr(message: string): void {
-    this.codexStderrBuffer = `${this.codexStderrBuffer}\n${message}`.slice(-8000);
+  private handleCodexStderr(message: string, sourceId: string): void {
+    const previousBuffer = this.codexStderrBufferBySourceId.get(sourceId) ?? "";
+    const nextBuffer = `${previousBuffer}\n${message}`.slice(-8000);
+    this.codexStderrBufferBySourceId.set(sourceId, nextBuffer);
 
     const trustWarning = parseProjectTrustWarning(
-      this.codexStderrBuffer,
+      nextBuffer,
       this.options.projectPath
     );
 
@@ -1436,7 +1458,8 @@ export class OpenCodexBackend {
       return;
     }
 
-    this.codexStderrBuffer = "";
+    this.codexStderrBufferBySourceId.set(sourceId, "");
+    this.trustSourceIdByProjectPath.set(trustWarning.projectPath, sourceId);
     this.emit({
       type: "project.trust.required",
       projectPath: trustWarning.projectPath,
@@ -1496,25 +1519,11 @@ export class OpenCodexBackend {
    * @returns Nothing.
    */
   private handleClientClose(sourceId: string): void {
-    const threadId = this.activeThreadId;
-
     this.clientsBySourceId.delete(sourceId);
-    this.emit({ type: "connection.status", status: "stopped" });
 
-    if (threadId === null) {
-      return;
+    if (this.clientsBySourceId.size === 0) {
+      this.emit({ type: "connection.status", status: "stopped" });
     }
-
-    this.emit({
-      type: "error",
-      message: "Codex app-server process exited.",
-      recoverable: true,
-      threadId
-    });
-
-    void this.recoverThread(threadId).catch((error: unknown) => {
-      this.handleClientError(toError(error));
-    });
   }
 
   /**
@@ -1531,14 +1540,14 @@ export class OpenCodexBackend {
     }
 
     if (request.type === "turn.start") {
-      return request.threadId ?? this.activeThreadId;
+      return request.threadId;
     }
 
     if (request.type === "threads.open" || request.type === "threads.recover") {
       return request.threadId;
     }
 
-    return this.activeThreadId;
+    return null;
   }
 
   /**
@@ -2539,4 +2548,16 @@ function buildTurnInput(text: string, attachments: OpenCodexImageAttachment[]): 
  */
 function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+/**
+ * Creates a source/thread-scoped key for assistant message phase tracking.
+ *
+ * @param sourceId Source identifier.
+ * @param threadId Thread identifier.
+ * @param messageId Message item identifier.
+ * @returns Stable map key.
+ */
+function createAssistantMessagePhaseKey(sourceId: string, threadId: string, messageId: string): string {
+  return `${sourceId}:${threadId}:${messageId}`;
 }
