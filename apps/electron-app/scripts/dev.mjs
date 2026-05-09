@@ -2,6 +2,7 @@
  * Runs the Electron development workflow with Vite, esbuild, and automatic restarts.
  */
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,6 +11,8 @@ import { createServer, loadConfigFromFile } from "vite";
 
 import { createWorkspaceResolvePlugin } from "./workspaceAliases.js";
 
+const require = createRequire(import.meta.url);
+const electronPath = require("electron");
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(scriptDir, "..");
 const repoRoot = resolve(appRoot, "..", "..");
@@ -158,6 +161,13 @@ async function createBuildContext(entryPoint, outfile) {
  */
 function startElectron() {
   electronProcess = spawnElectron();
+  electronProcess.on("error", (error) => {
+    console.error("[OpenCodexUI dev] failed to start electron");
+    console.error(error);
+    void shutdownDevServer?.().then(() => {
+      process.exitCode = 1;
+    });
+  });
   electronProcess.on("exit", (code, signal) => {
     electronProcess = null;
 
@@ -189,7 +199,7 @@ function startElectron() {
  * @returns Child process instance for the Electron runtime.
  */
 function spawnElectron() {
-  return spawn("electron", ["dist/main/main.cjs"], {
+  return spawn(electronPath, ["dist/main/main.cjs"], {
     cwd: appRoot,
     env: {
       ...process.env,

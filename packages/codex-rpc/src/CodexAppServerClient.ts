@@ -553,15 +553,48 @@ function resolveCodexCommand(command: string): string {
     return process.env.OPENCODEX_CODEX_COMMAND;
   }
 
-  const home = process.env.HOME;
-
-  if (home === undefined || home.length === 0) {
-    return command;
+  for (const candidate of readCodexCommandCandidates()) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
   }
 
-  const voltaShim = path.join(home, ".volta", "bin", "codex");
+  return command;
+}
 
-  return existsSync(voltaShim) ? voltaShim : command;
+/**
+ * Returns common Codex executable locations that may be absent from PATH.
+ *
+ * @returns Candidate executable paths ordered from most specific to generic.
+ */
+function readCodexCommandCandidates(): string[] {
+  const candidates: string[] = [];
+
+  if (process.platform === "win32") {
+    const localAppData = process.env.LOCALAPPDATA;
+    const userProfile = process.env.USERPROFILE;
+
+    if (localAppData !== undefined && localAppData.length > 0) {
+      candidates.push(path.join(localAppData, "OpenAI", "Codex", "bin", "codex.exe"));
+      candidates.push(path.join(localAppData, "Volta", "bin", "codex.exe"));
+      candidates.push(path.join(localAppData, "Volta", "bin", "codex.cmd"));
+    }
+
+    if (userProfile !== undefined && userProfile.length > 0) {
+      candidates.push(path.join(userProfile, ".volta", "bin", "codex.exe"));
+      candidates.push(path.join(userProfile, ".volta", "bin", "codex.cmd"));
+    }
+
+    return candidates;
+  }
+
+  const home = process.env.HOME;
+
+  if (home !== undefined && home.length > 0) {
+    candidates.push(path.join(home, ".volta", "bin", "codex"));
+  }
+
+  return candidates;
 }
 
 /**
