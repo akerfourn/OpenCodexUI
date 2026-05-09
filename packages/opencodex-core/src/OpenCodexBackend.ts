@@ -2359,7 +2359,8 @@ function createDefaultCachedSource(): CachedSource {
     name: "Default",
     settings: {
       commandMode: "auto",
-      command: null
+      command: null,
+      color: "blue"
     },
     createdAt: now,
     updatedAt: now

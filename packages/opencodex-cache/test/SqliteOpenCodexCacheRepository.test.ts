@@ -127,6 +127,27 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should persist source colors in settings", async () => {
+    const source = await repository.ensureDefaultSource();
+
+    expect(source.settings.color).toBe("blue");
+
+    await repository.updateSource(source.id, {
+      settings: {
+        color: "teal"
+      }
+    });
+
+    const updatedSource = await repository.getSource(source.id);
+
+    expect(updatedSource).toMatchObject({
+      id: source.id,
+      settings: {
+        color: "teal"
+      }
+    });
+  });
+
   it("should create the automatic default source with a generated id", async () => {
     const source = await repository.ensureDefaultSource();
     const sameSource = await repository.ensureDefaultSource();

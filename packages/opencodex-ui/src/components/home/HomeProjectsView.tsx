@@ -69,7 +69,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
     ? store.projects
     : store.projects.filter((project) => !project.isHidden);
   const hasProjects = visibleProjects.length > 0;
-  const sourceNamesById = new Map(store.sources.map((source) => [source.id, source.name]));
+  const sourceById = new Map(store.sources.map((source) => [source.id, source]));
   const hiddenProjectsButtonLabel = store.homeStore.showHiddenProjects
     ? t("home.hideHiddenProjects")
     : t("home.showHiddenProjects");
@@ -143,15 +143,20 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
         </Box>
         {hasProjects ? (
           <List dense sx={{ mt: 1 }}>
-            {visibleProjects.map((project) => (
-              <HomeProjectListItem
-                key={project.id}
-                project={project}
-                sourceName={project.sourceId === null ? null : sourceNamesById.get(project.sourceId) ?? project.sourceId}
-                onOpen={handleOpenRecent}
-                onSetHidden={handleSetProjectHidden}
-              />
-            ))}
+            {visibleProjects.map((project) => {
+              const source = project.sourceId === null ? null : sourceById.get(project.sourceId) ?? null;
+
+              return (
+                <HomeProjectListItem
+                  key={project.id}
+                  project={project}
+                  sourceName={source === null ? null : source.name}
+                  sourceColor={source === null ? null : source.settings.color}
+                  onOpen={handleOpenRecent}
+                  onSetHidden={handleSetProjectHidden}
+                />
+              );
+            })}
           </List>
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

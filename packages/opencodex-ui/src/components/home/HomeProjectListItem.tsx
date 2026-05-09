@@ -8,11 +8,14 @@ import { Box, IconButton, ListItemButton, ListItemIcon, Tooltip, Typography } fr
 import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProject, OpenCodexSourceColor } from "@open-codex-ui/opencodex-protocol";
+
+import { getSourceBadgeSx } from "./sourceColor";
 
 type HomeProjectListItemProps = {
   project: OpenCodexProject;
   sourceName: string | null;
+  sourceColor: OpenCodexSourceColor | null;
   onOpen(projectPath: string, sourceId: string | null): void;
   onSetHidden(projectId: string, isHidden: boolean): void;
 };
@@ -24,7 +27,13 @@ type HomeProjectListItemProps = {
  *
  * @returns Rendered project item.
  */
-export function HomeProjectListItem({ project, sourceName, onOpen, onSetHidden }: HomeProjectListItemProps) {
+export function HomeProjectListItem({
+  project,
+  sourceName,
+  sourceColor,
+  onOpen,
+  onSetHidden
+}: HomeProjectListItemProps) {
   const { i18n, t } = useTranslation();
   const projectName = project.displayName ?? project.defaultName;
   const sourceLabel = sourceName ?? t("sources.orphan");
@@ -51,16 +60,17 @@ export function HomeProjectListItem({ project, sourceName, onOpen, onSetHidden }
             variant="caption"
             component="span"
             noWrap
-            sx={{
-              bgcolor: project.sourceId === null ? "warning.light" : "primary.light",
-              borderRadius: 999,
-              color: project.sourceId === null ? "warning.contrastText" : "primary.contrastText",
-              flex: "0 0 auto",
-              lineHeight: 1.4,
-              maxWidth: 160,
-              px: 0.75,
-              py: 0.125
-            }}
+            sx={[
+              getSourceBadgeSx(sourceColor),
+              {
+                borderRadius: 999,
+                flex: "0 0 auto",
+                lineHeight: 1.4,
+                maxWidth: 160,
+                px: 0.75,
+                py: 0.125
+              }
+            ]}
           >
             {sourceLabel}
           </Typography>

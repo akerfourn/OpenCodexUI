@@ -11,6 +11,7 @@ import { createProjectIdentity, normalizeProjectPath } from "./projectIdentity.j
 import type {
   CachedProject,
   CachedSource,
+  CachedSourceColor,
   CachedSourceLocalSettings,
   CachedThreadDelta,
   CachedThreadReadOptions,
@@ -282,11 +283,13 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       ...source,
       name: patch.name?.trim() || source.name,
       settings: {
-        ...source.settings,
-        ...patch.settings,
+        commandMode: patch.settings?.commandMode ?? source.settings.commandMode,
         command: patch.settings?.command !== undefined
           ? normalizeNullableText(patch.settings.command)
-          : source.settings.command
+          : source.settings.command,
+        color: patch.settings?.color !== undefined
+          ? normalizeSourceColor(patch.settings.color)
+          : source.settings.color
       },
       updatedAt: new Date().toISOString()
     };
@@ -1413,7 +1416,8 @@ function applySchemaMigrationV5(database: BetterSqliteDatabase): void {
           name: row.name,
           settings: serializeSourceSettings({
             commandMode: row.command_mode === "custom" ? "custom" : "auto",
-            command: normalizeNullableText(row.command)
+            command: normalizeNullableText(row.command),
+            color: "blue"
           }),
           createdAt: row.created_at,
           updatedAt: row.updated_at
@@ -1634,7 +1638,8 @@ function mapSourceRow(row: SourceRow): CachedSource {
 function createDefaultLocalSourceSettings(): CachedSourceLocalSettings {
   return {
     commandMode: "auto",
-    command: null
+    command: null,
+    color: "blue"
   };
 }
 
@@ -1647,7 +1652,8 @@ function createDefaultLocalSourceSettings(): CachedSourceLocalSettings {
 function serializeSourceSettings(settings: CachedSourceLocalSettings): string {
   return JSON.stringify({
     commandMode: settings.commandMode,
-    command: normalizeNullableText(settings.command)
+    command: normalizeNullableText(settings.command),
+    color: settings.color
   });
 }
 
@@ -1664,11 +1670,35 @@ function parseLocalSourceSettings(value: string): CachedSourceLocalSettings {
 
     return {
       commandMode,
-      command: normalizeNullableText(parsed.command ?? null)
+      command: normalizeNullableText(parsed.command ?? null),
+      color: normalizeSourceColor(parsed.color)
     };
   } catch {
     return createDefaultLocalSourceSettings();
   }
+}
+
+/**
+ * Normalizes a source color and falls back to the default value.
+ *
+ * @param value Raw color value.
+ * @returns Valid source color.
+ */
+function normalizeSourceColor(value: unknown): CachedSourceColor {
+  if (
+    value === "blue" ||
+    value === "indigo" ||
+    value === "purple" ||
+    value === "pink" ||
+    value === "red" ||
+    value === "orange" ||
+    value === "amber" ||
+    value === "teal"
+  ) {
+    return value;
+  }
+
+  return "blue";
 }
 
 /**

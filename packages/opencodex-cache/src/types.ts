@@ -2,6 +2,7 @@
  * Declares the cache repository contracts and persisted thread/project shapes.
  */
 export type CachedThreadScope = "currentProject" | "all";
+export type CachedSourceColor = "blue" | "indigo" | "purple" | "pink" | "red" | "orange" | "amber" | "teal";
 
 export type CachedThreadSummary = {
   id: string;
@@ -38,6 +39,7 @@ export type CachedSourceCommandMode = "auto" | "custom";
 export type CachedSourceLocalSettings = {
   commandMode: CachedSourceCommandMode;
   command: string | null;
+  color: CachedSourceColor;
 };
 
 export type CachedSourceBase = {

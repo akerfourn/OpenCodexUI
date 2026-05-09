@@ -31,10 +31,12 @@ export type OpenCodexThreadScope = "currentProject" | "all";
 export type OpenCodexLanguage = "system" | "fr" | "en";
 export type OpenCodexSourceKind = "local";
 export type OpenCodexSourceCommandMode = "auto" | "custom";
+export type OpenCodexSourceColor = "blue" | "indigo" | "purple" | "pink" | "red" | "orange" | "amber" | "teal";
 
 export type OpenCodexSourceLocalSettings = {
   commandMode: OpenCodexSourceCommandMode;
   command: string | null;
+  color: OpenCodexSourceColor;
 };
 
 export type OpenCodexSourceBase = {

@@ -16,6 +16,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  MenuItem,
   Radio,
   RadioGroup,
   Stack,
@@ -26,13 +27,16 @@ import {
 import { observer } from "mobx-react-lite";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import type { SelectProps } from "@mui/material/Select";
 
 import type {
   OpenCodexSource,
+  OpenCodexSourceColor,
   OpenCodexSourceCommandMode
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
+import { SOURCE_COLOR_OPTIONS, getSourceBadgeSx, getSourceColorOption } from "./sourceColor";
 
 type HomeSourceBoxProps = {
   source: OpenCodexSource;
@@ -59,6 +63,7 @@ export function HomeSourceBox({
 }: HomeSourceBoxProps) {
   const { t } = useTranslation();
   const [nameDraft, setNameDraft] = useState(source.name);
+  const [colorDraft, setColorDraft] = useState(source.settings.color);
   const [commandModeDraft, setCommandModeDraft] = useState(source.settings.commandMode);
   const [commandDraft, setCommandDraft] = useState(source.settings.command ?? "");
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
@@ -68,9 +73,10 @@ export function HomeSourceBox({
 
   useEffect(() => {
     setNameDraft(source.name);
+    setColorDraft(source.settings.color);
     setCommandModeDraft(source.settings.commandMode);
     setCommandDraft(source.settings.command ?? "");
-  }, [source.settings.command, source.settings.commandMode, source.name]);
+  }, [source.settings.color, source.settings.command, source.settings.commandMode, source.name]);
 
   function handleEdit(): void {
     onEdit(source.id);
@@ -82,6 +88,10 @@ export function HomeSourceBox({
 
   function handleNameChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     setNameDraft(event.target.value);
+  }
+
+  function handleColorChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
+    setColorDraft(event.target.value as OpenCodexSourceColor);
   }
 
   function handleModeChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -111,6 +121,7 @@ export function HomeSourceBox({
     store.updateSource(source.id, {
       name: nameDraft,
       settings: {
+        color: colorDraft,
         commandMode: commandModeDraft,
         command: commandDraft
       }
@@ -164,6 +175,33 @@ export function HomeSourceBox({
     setIsDeleteConfirmed(false);
   }
 
+  const renderColorValue: NonNullable<SelectProps["renderValue"]> = (selected) => {
+    const selectedColor = getSourceColorOption(
+      typeof selected === "string" ? (selected as OpenCodexSourceColor) : colorDraft
+    );
+
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+        <Box
+          component="span"
+          aria-hidden="true"
+          sx={[
+            getSourceBadgeSx(selectedColor.value),
+            {
+              borderRadius: 999,
+              flex: "0 0 auto",
+              height: 12,
+              width: 12
+            }
+          ]}
+        />
+        <Typography variant="body2" noWrap>
+          {t(selectedColor.labelKey)}
+        </Typography>
+      </Box>
+    );
+  };
+
   return (
     <Box
       sx={{
@@ -185,13 +223,28 @@ export function HomeSourceBox({
             <StarRoundedIcon color="warning" fontSize="small" sx={{ mt: 0.25 }} />
           </Tooltip>
         ) : null}
-        <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-          <Typography variant="subtitle1" component="h3" noWrap>
-            {source.name}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" noWrap>
-            {source.resolvedCommand}
-          </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flex: "1 1 auto" }}>
+          <Box
+            component="span"
+            aria-hidden="true"
+            sx={[
+              getSourceBadgeSx(source.settings.color),
+              {
+                borderRadius: 999,
+                flex: "0 0 auto",
+                height: 12,
+                width: 12
+              }
+            ]}
+          />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="subtitle1" component="h3" noWrap>
+              {source.name}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {source.resolvedCommand}
+            </Typography>
+          </Box>
         </Box>
         <Tooltip title={t("sources.edit")}>
           <IconButton
@@ -234,11 +287,42 @@ export function HomeSourceBox({
             <Stack spacing={2}>
               <TextField
                 autoFocus
+                fullWidth
                 size="small"
                 value={nameDraft}
                 label={t("sources.name")}
                 onChange={handleNameChange}
               />
+              <TextField
+                select
+                fullWidth
+                size="small"
+                value={colorDraft}
+                label={t("sources.color")}
+                onChange={handleColorChange}
+                slotProps={{ select: { renderValue: renderColorValue } }}
+              >
+                {SOURCE_COLOR_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+                      <Box
+                        component="span"
+                        aria-hidden="true"
+                        sx={[
+                          getSourceBadgeSx(option.value),
+                          {
+                            borderRadius: 999,
+                            flex: "0 0 auto",
+                            height: 12,
+                            width: 12
+                          }
+                        ]}
+                      />
+                      <Typography variant="body2">{t(option.labelKey)}</Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </TextField>
               <RadioGroup row value={commandModeDraft} onChange={handleModeChange}>
                 <FormControlLabel value="auto" control={<Radio />} label={t("sources.auto")} />
                 <FormControlLabel value="custom" control={<Radio />} label={t("sources.custom")} />
