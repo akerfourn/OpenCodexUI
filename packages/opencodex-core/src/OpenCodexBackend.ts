@@ -1,6 +1,8 @@
 /**
  * Coordinates UI requests with the local Codex app-server and the optional SQLite cache.
  */
+import { statSync } from "node:fs";
+
 import {
   CodexAppServerClient,
   CodexProcessError,
@@ -66,6 +68,10 @@ type ThreadSourceKind =
   | "subAgentThreadSpawn"
   | "subAgentOther"
   | "unknown";
+
+type OpenCodexThreadWithProjectState = OpenCodexThread & {
+  projectHidden?: boolean;
+};
 
 type ThreadListParams = {
   cursor?: string | null;
@@ -190,6 +196,8 @@ export class OpenCodexBackend {
           request.mode,
           request.sourceId === undefined ? this.settings.defaultSourceId : request.sourceId
         );
+      case "projects.setHidden":
+        return this.setProjectHidden(request.projectId, request.isHidden);
       case "attachments.pickImages":
         return this.pickImageFiles();
       case "sources.list":
@@ -379,9 +387,32 @@ export class OpenCodexBackend {
       sortKey: "updated_at",
       sortDirection: "desc",
       sourceKinds: THREAD_SOURCE_KINDS
-    })).map((thread) => withSourceId(thread, source.id));
+    })).map((thread) => withSourceId(
+      {
+        ...thread,
+        projectHidden: shouldHideProjectPath(thread.projectPath)
+      },
+      source.id
+    ));
 
     await this.writeThreadIndex(threads);
+  }
+
+  /**
+   * Updates whether one project is hidden from the default project list.
+   *
+   * @param projectId Project identifier.
+   * @param isHidden Whether the project should be hidden.
+   * @returns Success response.
+   */
+  private async setProjectHidden(projectId: string, isHidden: boolean): Promise<{ ok: true }> {
+    if (this.cacheRepository === null) {
+      return { ok: true };
+    }
+
+    await this.cacheRepository.setProjectHidden(projectId, isHidden);
+    this.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
+    return { ok: true };
   }
 
   /**
@@ -470,7 +501,7 @@ export class OpenCodexBackend {
     createIfMissing: boolean
   ): Promise<OpenCodexProject> {
     const ensuredProjectPath = await this.ensureProjectPath(projectPath, createIfMissing);
-    const project = await this.cacheProject(ensuredProjectPath, null);
+    const project = await this.cacheProject(ensuredProjectPath, sourceId);
 
     if (project === null) {
       throw new Error("Project path is required.");
@@ -562,6 +593,7 @@ export class OpenCodexBackend {
         path: projectIdentity.path,
         defaultName: projectIdentity.defaultName,
         displayName: null,
+        isHidden: false,
         createdAt: now,
         updatedAt: now,
         lastSeenAt: now,
@@ -582,6 +614,7 @@ export class OpenCodexBackend {
         path: projectIdentity.path,
         defaultName: projectIdentity.defaultName,
         displayName: null,
+        isHidden: false,
         createdAt: now,
         updatedAt: now,
         lastSeenAt: now,
@@ -1830,7 +1863,7 @@ export class OpenCodexBackend {
    *
    * @returns Promise resolved when the operation completes.
    */
-  private async writeThreadIndex(threads: OpenCodexThread[]): Promise<void> {
+  private async writeThreadIndex(threads: OpenCodexThreadWithProjectState[]): Promise<void> {
     if (this.cacheRepository === null || threads.length === 0) {
       return;
     }
@@ -2259,6 +2292,7 @@ function toOpenCodexProject(project: CachedProject): OpenCodexProject {
     path: project.path,
     defaultName: project.defaultName,
     displayName: project.displayName,
+    isHidden: project.isHidden,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     lastSeenAt: project.lastSeenAt,
@@ -2339,7 +2373,7 @@ function createDefaultCachedSource(): CachedSource {
  * @param sourceId Source identifier.
  * @returns Thread metadata with source id.
  */
-function withSourceId(thread: OpenCodexThread, sourceId: string): OpenCodexThread {
+function withSourceId<T extends OpenCodexThread>(thread: T, sourceId: string): T & { sourceId: string } {
   return {
     ...thread,
     sourceId
@@ -2353,7 +2387,7 @@ function withSourceId(thread: OpenCodexThread, sourceId: string): OpenCodexThrea
  *
  * @returns Computed value.
  */
-function toCachedThreadSummary(thread: OpenCodexThread): CachedThreadSummary {
+function toCachedThreadSummary(thread: OpenCodexThreadWithProjectState): CachedThreadSummary {
   const cachedThread: CachedThreadSummary = {
     id: thread.id,
     sourceId: thread.sourceId,
@@ -2365,6 +2399,7 @@ function toCachedThreadSummary(thread: OpenCodexThread): CachedThreadSummary {
     reasoningEffort: thread.reasoningEffort,
     projectName: thread.projectName,
     projectPath: thread.projectPath,
+    projectHidden: thread.projectHidden,
     branchName: thread.branchName,
     updatedAt: thread.updatedAt
   };
@@ -2560,4 +2595,24 @@ function createId(prefix: string): string {
  */
 function createAssistantMessagePhaseKey(sourceId: string, threadId: string, messageId: string): string {
   return `${sourceId}:${threadId}:${messageId}`;
+}
+
+/**
+ * Checks whether a synchronized project should be hidden by default.
+ *
+ * @param projectPath Project path reported by Codex.
+ * @returns `true` when the path is not locally accessible.
+ */
+function shouldHideProjectPath(projectPath: string | null): boolean {
+  const normalizedProjectPath = normalizeProjectPath(projectPath);
+
+  if (normalizedProjectPath === null) {
+    return false;
+  }
+
+  try {
+    return !statSync(normalizedProjectPath).isDirectory();
+  } catch {
+    return true;
+  }
 }

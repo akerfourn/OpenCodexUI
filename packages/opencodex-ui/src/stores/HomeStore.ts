@@ -13,6 +13,7 @@ export class HomeStore {
   projectPathInput = "";
   selectedSourceId: string | null = null;
   isOpeningProject = false;
+  showHiddenProjects = false;
 
   /**
    * Creates the Home store.
@@ -52,5 +53,16 @@ export class HomeStore {
    */
   setSelectedSourceId(sourceId: string | null): void {
     this.selectedSourceId = sourceId;
+  }
+
+  /**
+   * Updates whether hidden projects should be displayed.
+   *
+   * @param value Whether hidden projects are visible.
+   *
+   * @returns Nothing.
+   */
+  setShowHiddenProjects(value: boolean): void {
+    this.showHiddenProjects = value;
   }
 }

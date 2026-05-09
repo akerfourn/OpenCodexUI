@@ -2,7 +2,10 @@
  * Renders one project entry in the Home project list.
  */
 import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
-import { Box, ListItemButton, ListItemIcon, Typography } from "@mui/material";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import { Box, IconButton, ListItemButton, ListItemIcon, Tooltip, Typography } from "@mui/material";
+import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
@@ -11,6 +14,7 @@ type HomeProjectListItemProps = {
   project: OpenCodexProject;
   sourceName: string | null;
   onOpen(projectPath: string, sourceId: string | null): void;
+  onSetHidden(projectId: string, isHidden: boolean): void;
 };
 
 /**
@@ -20,14 +24,20 @@ type HomeProjectListItemProps = {
  *
  * @returns Rendered project item.
  */
-export function HomeProjectListItem({ project, sourceName, onOpen }: HomeProjectListItemProps) {
+export function HomeProjectListItem({ project, sourceName, onOpen, onSetHidden }: HomeProjectListItemProps) {
   const { i18n, t } = useTranslation();
   const projectName = project.displayName ?? project.defaultName;
   const sourceLabel = sourceName ?? t("sources.orphan");
   const relativeEditedAt = formatRelativeTime(project.editedAt, i18n.language);
+  const hiddenButtonLabel = project.isHidden ? t("home.showProject") : t("home.hideProject");
 
   function handleOpen(): void {
     onOpen(project.path, project.sourceId);
+  }
+
+  function handleSetHidden(event: MouseEvent<HTMLButtonElement>): void {
+    event.stopPropagation();
+    onSetHidden(project.id, !project.isHidden);
   }
 
   return (
@@ -65,6 +75,20 @@ export function HomeProjectListItem({ project, sourceName, onOpen }: HomeProject
       <Typography variant="caption" color="text.secondary" sx={{ flex: "0 0 auto", ml: 2 }}>
         {relativeEditedAt}
       </Typography>
+      <Tooltip title={hiddenButtonLabel}>
+        <IconButton
+          aria-label={hiddenButtonLabel}
+          size="small"
+          onClick={handleSetHidden}
+          sx={{ flex: "0 0 auto", ml: 1 }}
+        >
+          {project.isHidden ? (
+            <VisibilityOutlinedIcon fontSize="small" />
+          ) : (
+            <VisibilityOffOutlinedIcon fontSize="small" />
+          )}
+        </IconButton>
+      </Tooltip>
     </ListItemButton>
   );
 }

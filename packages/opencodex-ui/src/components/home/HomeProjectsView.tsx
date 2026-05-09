@@ -2,6 +2,8 @@
  * Renders project opening controls on the Home tab.
  */
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
   Box,
   Button,
@@ -50,12 +52,27 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
     store.refreshProjects();
   }
 
+  function handleToggleHiddenProjects(): void {
+    store.setShowHiddenProjects(!store.homeStore.showHiddenProjects);
+  }
+
+  function handleSetProjectHidden(projectId: string, isHidden: boolean): void {
+    store.setProjectHidden(projectId, isHidden);
+  }
+
   function handleSourceChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     store.setHomeSelectedSource(event.target.value);
   }
 
-  const hasProjects = store.projects.length > 0;
+  const hiddenProjectCount = store.projects.filter((project) => project.isHidden).length;
+  const visibleProjects = store.homeStore.showHiddenProjects
+    ? store.projects
+    : store.projects.filter((project) => !project.isHidden);
+  const hasProjects = visibleProjects.length > 0;
   const sourceNamesById = new Map(store.sources.map((source) => [source.id, source.name]));
+  const hiddenProjectsButtonLabel = store.homeStore.showHiddenProjects
+    ? t("home.hideHiddenProjects")
+    : t("home.showHiddenProjects");
 
   return (
     <Stack className="home-content-panel" spacing={2}>
@@ -103,6 +120,19 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
             {t("home.recentProjects")}
           </Typography>
           <IconButton
+            aria-label={hiddenProjectsButtonLabel}
+            title={hiddenProjectsButtonLabel}
+            size="small"
+            onClick={handleToggleHiddenProjects}
+            disabled={hiddenProjectCount === 0}
+          >
+            {store.homeStore.showHiddenProjects ? (
+              <VisibilityOffOutlinedIcon fontSize="small" />
+            ) : (
+              <VisibilityOutlinedIcon fontSize="small" />
+            )}
+          </IconButton>
+          <IconButton
             aria-label={t("home.refreshProjects")}
             title={t("home.refreshProjects")}
             size="small"
@@ -113,12 +143,13 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
         </Box>
         {hasProjects ? (
           <List dense sx={{ mt: 1 }}>
-            {store.projects.map((project) => (
+            {visibleProjects.map((project) => (
               <HomeProjectListItem
                 key={project.id}
                 project={project}
                 sourceName={project.sourceId === null ? null : sourceNamesById.get(project.sourceId) ?? project.sourceId}
                 onOpen={handleOpenRecent}
+                onSetHidden={handleSetProjectHidden}
               />
             ))}
           </List>

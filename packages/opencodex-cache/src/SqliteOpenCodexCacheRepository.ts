@@ -62,6 +62,7 @@ type ProjectRow = {
   path: string;
   default_name: string;
   display_name: string | null;
+  is_hidden: number;
   created_at: string;
   updated_at: string;
   last_seen_at: string;
@@ -360,6 +361,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
           path,
           default_name,
           display_name,
+          is_hidden,
           created_at,
           updated_at,
           last_seen_at
@@ -370,6 +372,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
           @path,
           @defaultName,
           NULL,
+          0,
           @now,
           @now,
           @now
@@ -670,6 +673,30 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
   }
 
   /**
+   * Updates whether a project should be hidden from the default project list.
+   *
+   * @param projectId Project identifier.
+   * @param isHidden Whether the project should be hidden.
+   * @returns Promise resolved once the update has been persisted.
+   */
+  async setProjectHidden(projectId: string, isHidden: boolean): Promise<void> {
+    this.database
+      .prepare(
+        `
+        UPDATE projects SET
+          is_hidden = @isHidden,
+          updated_at = @updatedAt
+        WHERE id = @projectId
+        `
+      )
+      .run({
+        projectId,
+        isHidden: isHidden ? 1 : 0,
+        updatedAt: new Date().toISOString()
+      });
+  }
+
+  /**
    * Reads a cached thread summary by identifier.
    *
    * @param threadId Identifier of the thread to read.
@@ -842,6 +869,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         path,
         default_name,
         display_name,
+        is_hidden,
         created_at,
         updated_at,
         last_seen_at
@@ -852,6 +880,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         @path,
         @defaultName,
         NULL,
+        @isHidden,
         @now,
         @now,
         @now
@@ -859,6 +888,10 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
       ON CONFLICT(path) DO UPDATE SET
         source_id = COALESCE(excluded.source_id, projects.source_id),
         default_name = excluded.default_name,
+        is_hidden = CASE
+          WHEN excluded.is_hidden = 1 THEN 1
+          ELSE projects.is_hidden
+        END,
         updated_at = excluded.updated_at,
         last_seen_at = excluded.last_seen_at
       `
@@ -922,7 +955,12 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
         const sourceId = thread.sourceId;
 
         if (project !== null) {
-          upsertProject.run({ ...project, sourceId, now });
+          upsertProject.run({
+            ...project,
+            sourceId,
+            isHidden: thread.projectHidden === true ? 1 : 0,
+            now
+          });
         }
 
         upsertThread.run({
@@ -1065,6 +1103,7 @@ function runMigrations(database: BetterSqliteDatabase): void {
           path TEXT NOT NULL UNIQUE,
           default_name TEXT NOT NULL,
           display_name TEXT,
+          is_hidden INTEGER NOT NULL DEFAULT 0,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           last_seen_at TEXT NOT NULL
@@ -1124,6 +1163,7 @@ function runMigrations(database: BetterSqliteDatabase): void {
   applySchemaMigrationV4(database);
   applySchemaMigrationV5(database);
   applySchemaMigrationV6(database);
+  applySchemaMigrationV7(database);
 }
 
 /**
@@ -1255,6 +1295,7 @@ function applySchemaMigrationV4(database: BetterSqliteDatabase): void {
         path TEXT NOT NULL UNIQUE,
         default_name TEXT NOT NULL,
         display_name TEXT,
+        is_hidden INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         last_seen_at TEXT NOT NULL
@@ -1266,6 +1307,7 @@ function applySchemaMigrationV4(database: BetterSqliteDatabase): void {
         path,
         default_name,
         display_name,
+        is_hidden,
         created_at,
         updated_at,
         last_seen_at
@@ -1276,6 +1318,7 @@ function applySchemaMigrationV4(database: BetterSqliteDatabase): void {
         path,
         default_name,
         display_name,
+        0,
         created_at,
         updated_at,
         last_seen_at
@@ -1462,6 +1505,32 @@ function applySchemaMigrationV6(database: BetterSqliteDatabase): void {
 }
 
 /**
+ * Adds project visibility preferences.
+ *
+ * @param database Open SQLite database connection.
+ * @returns Nothing.
+ */
+function applySchemaMigrationV7(database: BetterSqliteDatabase): void {
+  const migration = database
+    .prepare("SELECT version FROM schema_migrations WHERE version = ?")
+    .get(7);
+
+  if (migration !== undefined) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const applyMigration = database.transaction(() => {
+    addColumnIfMissing(database, "projects", "is_hidden", "INTEGER NOT NULL DEFAULT 0");
+    database
+      .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
+      .run(7, now);
+  });
+
+  applyMigration();
+}
+
+/**
  * Adds a column to a table when the column is missing from the current schema.
  *
  * @param database Open SQLite database connection.
@@ -1532,6 +1601,7 @@ function mapProjectRow(row: ProjectRow): CachedProject {
     path: row.path,
     defaultName: row.default_name,
     displayName: row.display_name,
+    isHidden: row.is_hidden === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastSeenAt: row.last_seen_at,

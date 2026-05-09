@@ -78,6 +78,8 @@ export const resources = {
       home: {
         createPath: "Créer/Ouvrir",
         noRecentProjects: "Aucun projet récent pour le moment.",
+        hideHiddenProjects: "Masquer les projets masques",
+        hideProject: "Masquer le projet",
         openPath: "Ouvrir",
         openProject: "Ouvrir un projet",
         openProjectDescription: "Sélectionnez un dossier de travail pour ouvrir ses chats dans un onglet projet.",
@@ -88,6 +90,8 @@ export const resources = {
         projects: "Projets",
         recentProjects: "Projets récents",
         refreshProjects: "Synchroniser les projets récents",
+        showHiddenProjects: "Afficher les projets masques",
+        showProject: "Afficher le projet",
         sources: "Sources",
         settings: "Paramètres"
       },
@@ -235,6 +239,8 @@ export const resources = {
       home: {
         createPath: "Create/Open",
         noRecentProjects: "No recent projects yet.",
+        hideHiddenProjects: "Hide hidden projects",
+        hideProject: "Hide project",
         openPath: "Open",
         openProject: "Open a project",
         openProjectDescription: "Select a working directory to open its chats in a project tab.",
@@ -245,6 +251,8 @@ export const resources = {
         projects: "Projects",
         recentProjects: "Recent projects",
         refreshProjects: "Sync recent projects",
+        showHiddenProjects: "Show hidden projects",
+        showProject: "Show project",
         sources: "Sources",
         settings: "Settings"
       },

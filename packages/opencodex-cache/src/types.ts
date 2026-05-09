@@ -14,6 +14,7 @@ export type CachedThreadSummary = {
   reasoningEffort: "low" | "medium" | "high" | "xhigh" | null;
   projectName: string | null;
   projectPath: string | null;
+  projectHidden?: boolean;
   branchName: string | null;
   updatedAt: string | null;
   status?: string;
@@ -25,6 +26,7 @@ export type CachedProject = {
   path: string;
   defaultName: string;
   displayName: string | null;
+  isHidden: boolean;
   createdAt: string;
   updatedAt: string;
   lastSeenAt: string;
@@ -114,6 +116,7 @@ export interface OpenCodexCacheRepository {
   deleteSource(sourceId: string): Promise<void>;
   clearSourceAssociations(sourceId: string): Promise<void>;
   upsertProject(projectPath: string, sourceId?: string | null): Promise<CachedProject>;
+  setProjectHidden(projectId: string, isHidden: boolean): Promise<void>;
   listProjects(): Promise<CachedProject[]>;
   upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void>;
   updateThreadTitle(threadId: string, title: string): Promise<void>;

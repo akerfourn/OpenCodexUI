@@ -46,6 +46,65 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should update project visibility", async () => {
+    const project = await repository.upsertProject("/tmp/hidden-project");
+
+    await repository.setProjectHidden(project.id, true);
+
+    const hiddenProjects = await repository.listProjects();
+    const hiddenProject = hiddenProjects.find((entry) => entry.id === project.id);
+
+    expect(hiddenProject?.isHidden).toBe(true);
+
+    await repository.setProjectHidden(project.id, false);
+
+    const visibleProjects = await repository.listProjects();
+    const visibleProject = visibleProjects.find((entry) => entry.id === project.id);
+
+    expect(visibleProject?.isHidden).toBe(false);
+  });
+
+  it("should keep projects hidden when the synced path is unavailable", async () => {
+    await repository.upsertThreadIndex([
+      {
+        id: "thread-1",
+        codexTitle: "Hidden",
+        customTitle: null,
+        title: "Hidden",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "hidden-project",
+        projectPath: "/tmp/hidden-project",
+        projectHidden: true,
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.upsertThreadIndex([
+      {
+        id: "thread-2",
+        codexTitle: "Visible",
+        customTitle: null,
+        title: "Visible",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "hidden-project",
+        projectPath: "/tmp/hidden-project",
+        projectHidden: false,
+        branchName: null,
+        updatedAt: "2026-01-02T00:00:00.000Z"
+      }
+    ]);
+
+    const projects = await repository.listProjects();
+    const project = projects.find((entry) => entry.path === "/tmp/hidden-project");
+
+    expect(project?.isHidden).toBe(true);
+  });
+
   it("should store source-specific configuration in settings", async () => {
     const source = await repository.ensureDefaultSource();
 

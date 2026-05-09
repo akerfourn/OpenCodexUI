@@ -815,6 +815,33 @@ export class RootStore {
   }
 
   /**
+   * Updates whether hidden projects are visible in Home.
+   *
+   * @param value Whether hidden projects should be displayed.
+   *
+   * @returns Nothing.
+   */
+  setShowHiddenProjects(value: boolean): void {
+    this.homeStore.setShowHiddenProjects(value);
+  }
+
+  /**
+   * Updates one project's visibility preference.
+   *
+   * @param projectId Project identifier.
+   * @param isHidden Whether the project should be hidden.
+   *
+   * @returns Nothing.
+   */
+  setProjectHidden(projectId: string, isHidden: boolean): void {
+    void this.transport.request({
+      type: "projects.setHidden",
+      projectId,
+      isHidden
+    });
+  }
+
+  /**
    * Requests confirmation before closing a project tab.
    *
    * @param projectId Project identifier.
@@ -2363,6 +2390,7 @@ function createClientProject(
     path: safePath,
     defaultName,
     displayName: null,
+    isHidden: false,
     createdAt: now,
     updatedAt: now,
     lastSeenAt: now,

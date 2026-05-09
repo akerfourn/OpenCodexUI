@@ -60,6 +60,7 @@ export type OpenCodexProject = {
   path: string;
   defaultName: string;
   displayName: string | null;
+  isHidden: boolean;
   createdAt: string;
   updatedAt: string;
   lastSeenAt: string;
