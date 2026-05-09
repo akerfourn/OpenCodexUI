@@ -8,6 +8,7 @@ import type {
   OpenCodexActivity,
   OpenCodexApproval,
   OpenCodexApprovalDecision,
+  OpenCodexImageAttachment,
   OpenCodexLanguage,
   OpenCodexMessage,
   OpenCodexMessagePhase,
@@ -332,6 +333,9 @@ function mapUserMessage(
   turnDurationMs: number | null
 ): OpenCodexMessage {
   const content = Array.isArray(item.content) ? item.content : [];
+  const attachments = content
+    .map((entry) => mapUserInputAttachment(readObject(entry), readString(item.id)))
+    .filter((attachment): attachment is OpenCodexImageAttachment => attachment !== null);
   const text = content
     .map((entry) => readObject(entry))
     .filter((entry) => readString(entry.type) === "text")
@@ -345,6 +349,7 @@ function mapUserMessage(
     content: text,
     status: "completed",
     createdAt: null,
+    attachments,
     turnId,
     turnDurationMs,
     itemId: readString(item.id)
@@ -427,8 +432,66 @@ function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
     role: "user",
     content: message.content,
     status: "completed",
-    createdAt: null
+    createdAt: null,
+    attachments: message.attachments
   };
+}
+
+function mapUserInputAttachment(
+  input: Record<string, unknown>,
+  itemId: string
+): OpenCodexImageAttachment | null {
+  const type = readString(input.type);
+
+  if (type === "image") {
+    const url = readString(input.url);
+
+    if (url.length === 0) {
+      return null;
+    }
+
+    return {
+      id: createAttachmentId(itemId, url),
+      kind: "image",
+      source: "dataUrl",
+      value: url
+    };
+  }
+
+  if (type === "localImage") {
+    const imagePath = readString(input.path);
+
+    if (imagePath.length === 0) {
+      return null;
+    }
+
+    return {
+      id: createAttachmentId(itemId, imagePath),
+      kind: "image",
+      source: "localPath",
+      value: imagePath,
+      name: path.basename(imagePath)
+    };
+  }
+
+  return null;
+}
+
+function createAttachmentId(itemId: string, value: string): string {
+  return [
+    itemId.length > 0 ? itemId : "attachment",
+    Math.abs(hashString(value))
+  ].join(":");
+}
+
+function hashString(value: string): number {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(index);
+  }
+
+  return hash;
 }
 
 /**

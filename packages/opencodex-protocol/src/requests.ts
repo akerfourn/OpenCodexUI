@@ -3,6 +3,7 @@
  */
 import type {
   OpenCodexApprovalDecision,
+  OpenCodexImageAttachment,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
   OpenCodexThreadScope
@@ -13,6 +14,7 @@ export type OpenCodexRequest =
   | { type: "projects.list" }
   | { type: "projects.open"; projectPath: string; createIfMissing?: boolean }
   | { type: "projects.pickDirectory"; mode: "open" | "create" }
+  | { type: "attachments.pickImages" }
   | { type: "threads.list"; scope: OpenCodexThreadScope; projectPath?: string | null; searchTerm?: string }
   | { type: "threads.open"; threadId: string }
   | { type: "threads.loadOlder"; threadId: string }
@@ -25,6 +27,7 @@ export type OpenCodexRequest =
       threadId: string | null;
       projectPath?: string | null;
       text: string;
+      attachments?: OpenCodexImageAttachment[];
       model?: string | null;
       reasoningEffort?: OpenCodexReasoningEffort | null;
     }

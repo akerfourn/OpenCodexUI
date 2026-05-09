@@ -69,6 +69,15 @@ export type OpenCodexMessageRole = "user" | "assistant" | "system" | "activity";
 
 export type OpenCodexMessageStatus = "streaming" | "completed" | "error";
 
+export type OpenCodexImageAttachment = {
+  id: string;
+  kind: "image";
+  source: "dataUrl" | "localPath";
+  value: string;
+  name?: string | null;
+  previewUrl?: string | null;
+};
+
 export type OpenCodexMessage = {
   id: string;
   threadId: string;
@@ -83,6 +92,7 @@ export type OpenCodexMessage = {
   kind?: string;
   summary?: string | null;
   details?: string | null;
+  attachments?: OpenCodexImageAttachment[];
 };
 
 export type OpenCodexTurnItem = {
@@ -95,6 +105,7 @@ export type OpenCodexTurnItem = {
   kind?: string;
   summary?: string | null;
   details?: string | null;
+  attachments?: OpenCodexImageAttachment[];
 };
 
 export type OpenCodexTurn = {

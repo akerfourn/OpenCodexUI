@@ -6,7 +6,8 @@ import {
   CodexProcessError,
   JsonRpcError,
   type CodexNotification,
-  type CodexServerRequest
+  type CodexServerRequest,
+  type v2
 } from "@open-codex-ui/codex-rpc";
 import type {
   CachedProject,
@@ -20,6 +21,7 @@ import { createProjectIdentity, normalizeProjectPath } from "@open-codex-ui/open
 import type {
   OpenCodexApprovalDecision,
   OpenCodexEvent,
+  OpenCodexImageAttachment,
   OpenCodexMessage,
   OpenCodexMessagePhase,
   OpenCodexProject,
@@ -175,6 +177,8 @@ export class OpenCodexBackend {
         return this.openProject(request.projectPath, request.createIfMissing === true);
       case "projects.pickDirectory":
         return this.pickProjectDirectory(request.mode);
+      case "attachments.pickImages":
+        return this.pickImageFiles();
       case "threads.list":
         return this.listThreads(request.scope, request.projectPath ?? null, request.searchTerm);
       case "threads.open":
@@ -194,6 +198,7 @@ export class OpenCodexBackend {
           request.threadId,
           request.projectPath ?? null,
           request.text,
+          request.attachments ?? [],
           request.model ?? null,
           request.reasoningEffort ?? null
         );
@@ -312,6 +317,15 @@ export class OpenCodexBackend {
     }
 
     return this.openProject(selectedPath, mode === "create");
+  }
+
+  /**
+   * Opens the host image picker.
+   *
+   * @returns Promise resolved with selected image paths.
+   */
+  private async pickImageFiles(): Promise<OpenCodexImageAttachment[]> {
+    return await this.options.pickImageFiles?.() ?? [];
   }
 
   /**
@@ -837,12 +851,14 @@ export class OpenCodexBackend {
     threadId: string | null,
     projectPath: string | null,
     text: string,
+    attachments: OpenCodexImageAttachment[],
     model: string | null,
     reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
+    const input = buildTurnInput(trimmedText, attachments);
 
-    if (trimmedText.length === 0) {
+    if (input.length === 0) {
       return { threadId: threadId ?? "", turnId: "" };
     }
 
@@ -855,14 +871,15 @@ export class OpenCodexBackend {
       role: "user",
       content: trimmedText,
       status: "completed",
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      attachments
     };
 
     this.emit({ type: "message.started", threadId: targetThreadId, message });
 
     const turnResponse = await client.startTurn({
       threadId: targetThreadId,
-      input: [{ type: "text", text: trimmedText, text_elements: [] }],
+      input,
       model,
       effort: reasoningEffort ?? this.settings.defaultReasoningEffort
     });
@@ -2033,6 +2050,37 @@ function toCachedSyncState(cacheEntry: ThreadTurnCacheEntry): CachedThreadSyncSt
     hasLoadedAllOlderTurns: cacheEntry.hasLoadedAllOlderTurns,
     lastSyncedAt: cacheEntry.lastSyncedAt
   };
+}
+
+/**
+ * Builds Codex turn input payloads from composer text and image attachments.
+ *
+ * @param text User text.
+ * @param attachments Image attachments.
+ *
+ * @returns Codex user input values.
+ */
+function buildTurnInput(text: string, attachments: OpenCodexImageAttachment[]): v2.UserInput[] {
+  const input: v2.UserInput[] = [];
+
+  if (text.length > 0) {
+    input.push({ type: "text", text, text_elements: [] });
+  }
+
+  for (const attachment of attachments) {
+    if (attachment.kind !== "image") {
+      continue;
+    }
+
+    if (attachment.source === "dataUrl") {
+      input.push({ type: "image", url: attachment.value });
+      continue;
+    }
+
+    input.push({ type: "localImage", path: attachment.value });
+  }
+
+  return input;
 }
 
 /**

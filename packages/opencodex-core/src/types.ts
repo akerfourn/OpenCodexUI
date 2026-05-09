@@ -1,7 +1,11 @@
 /**
  * Declares the dependencies required to build the OpenCodex backend service.
  */
-import type { OpenCodexEvent, OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexEvent,
+  OpenCodexImageAttachment,
+  OpenCodexSettings
+} from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 
 export type OpenCodexBackendOptions = {
@@ -41,6 +45,12 @@ export type OpenCodexBackendOptions = {
    * @returns Selected project path, or `null` when cancelled.
    */
   pickProjectDirectory?(mode: "open" | "create"): Promise<string | null> | string | null;
+  /**
+   * Lets the host application pick image files.
+   *
+   * @returns Selected image paths, or an empty array when cancelled.
+   */
+  pickImageFiles?(): Promise<OpenCodexImageAttachment[]> | OpenCodexImageAttachment[];
   /**
    * Validates or creates a project directory before opening it.
    *

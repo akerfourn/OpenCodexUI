@@ -8,6 +8,7 @@ import type {
   OpenCodexApproval,
   OpenCodexClientTransport,
   OpenCodexEvent,
+  OpenCodexImageAttachment,
   OpenCodexLanguage,
   OpenCodexMessage,
   OpenCodexMessagePhase,
@@ -761,6 +762,7 @@ export class RootStore {
    */
   sendMessage(
     text: string,
+    attachments: OpenCodexImageAttachment[] = [],
     model: string | null = this.selectedModel,
     reasoningEffort: OpenCodexReasoningEffort = this.reasoningEffort
   ): void {
@@ -769,7 +771,7 @@ export class RootStore {
     const chatStore = this.activeChatStore;
 
     if (
-      trimmedText.length === 0 ||
+      (trimmedText.length === 0 && attachments.length === 0) ||
       projectStore === null ||
       chatStore === null ||
       this.runningChatStore !== null
@@ -778,16 +780,21 @@ export class RootStore {
     }
 
     chatStore.isStartingTurn = true;
-    this.createOptimisticUserTurn(chatStore, trimmedText);
+    this.createOptimisticUserTurn(chatStore, trimmedText, attachments);
 
     void this.transport.request({
       type: "turn.start",
       threadId: chatStore.thread.id,
       projectPath: projectStore.projectPath,
       text: trimmedText,
+      attachments,
       model,
       reasoningEffort
     });
+  }
+
+  async pickImageAttachments(): Promise<OpenCodexImageAttachment[]> {
+    return this.transport.request<OpenCodexImageAttachment[]>({ type: "attachments.pickImages" });
   }
 
   /**
@@ -1784,7 +1791,11 @@ export class RootStore {
    *
    * @returns Nothing.
    */
-  private createOptimisticUserTurn(chatStore: ChatStore, content: string): void {
+  private createOptimisticUserTurn(
+    chatStore: ChatStore,
+    content: string,
+    attachments: OpenCodexImageAttachment[]
+  ): void {
     const threadId = chatStore.thread.id;
     const turnId = `pending:${Date.now()}`;
     const created: OpenCodexTurn = {
@@ -1800,7 +1811,8 @@ export class RootStore {
           role: "user",
           content,
           status: "completed",
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          attachments
         }
       ]
     };
@@ -2006,6 +2018,10 @@ function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
     item.details = message.details;
   }
 
+  if (message.attachments !== undefined) {
+    item.attachments = message.attachments;
+  }
+
   return item;
 }
 
@@ -2023,6 +2039,7 @@ function toMessageStatus(status: OpenCodexActivity["status"]): OpenCodexTurnItem
 
   return status;
 }
+
 
 /**
  * Creates a client-side project entry when the cache has not emitted one yet.

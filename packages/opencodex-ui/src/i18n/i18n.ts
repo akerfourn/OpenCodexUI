@@ -51,9 +51,13 @@ export const resources = {
         untitled: "Conversation sans titre"
       },
       composer: {
+        attachedImage: "Image jointe",
+        attachImage: "Ajouter une image",
+        imageIndex: "Image {{index}}",
         interrupt: "Interrompre",
         messagePlaceholder: "Message à Codex",
         model: "Modèle",
+        removeAttachment: "Retirer l'image",
         reasoning: "Raisonnement",
         send: "Envoyer"
       },
@@ -176,9 +180,13 @@ export const resources = {
         untitled: "Untitled conversation"
       },
       composer: {
+        attachedImage: "Attached image",
+        attachImage: "Attach image",
+        imageIndex: "Image {{index}}",
         interrupt: "Interrupt",
         messagePlaceholder: "Message Codex",
         model: "Model",
+        removeAttachment: "Remove image",
         reasoning: "Reasoning",
         send: "Send"
       },

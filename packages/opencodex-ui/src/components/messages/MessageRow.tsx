@@ -20,9 +20,10 @@ import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
 import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexImageAttachment, OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
 
 import { CopyIconButton } from "../common/CopyIconButton";
+import { ImageAttachmentPreviewGrid } from "./ImageAttachmentPreviewGrid";
 import { MarkdownMessageM } from "./MarkdownMessage";
 
 type MessageRowProps = {
@@ -41,6 +42,7 @@ onOpenLink(href: string): void;
   kind?: string;
   content: string;
   createdAt: string | null;
+  attachments: OpenCodexImageAttachment[];
 };
 
 /**
@@ -58,7 +60,8 @@ export function MessageRow({
   phase,
   kind,
   content,
-  createdAt
+  createdAt,
+  attachments
 }: MessageRowProps) {
   const { t } = useTranslation();
   const articleRef = isLast ? lastMessageRef : undefined;
@@ -101,6 +104,7 @@ export function MessageRow({
           }}
         >
           <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
+          {attachments.length > 0 ? <ImageAttachmentPreviewGrid attachments={attachments} /> : null}
         </Paper>
         <Box
           className="user-message-actions"
@@ -177,6 +181,7 @@ export function MessageRow({
       ) : (
         <>
           <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
+          {attachments.length > 0 ? <ImageAttachmentPreviewGrid attachments={attachments} /> : null}
           <Box
             className="assistant-message-actions"
             sx={{

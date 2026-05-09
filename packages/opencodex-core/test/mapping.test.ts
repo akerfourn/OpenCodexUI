@@ -43,7 +43,11 @@ describe("OpenCodex mapping", () => {
             {
               type: "userMessage",
               id: "user-1",
-              content: [{ type: "text", text: "Hello" }]
+              content: [
+                { type: "text", text: "Hello" },
+                { type: "image", url: "data:image/png;base64,abc" },
+                { type: "localImage", path: "/tmp/screenshot.png" }
+              ]
             },
             {
               type: "agentMessage",
@@ -56,7 +60,16 @@ describe("OpenCodex mapping", () => {
     });
 
     expect(messages).toMatchObject([
-      { id: "user-1", threadId: "thread-1", role: "user", content: "Hello" },
+      {
+        id: "user-1",
+        threadId: "thread-1",
+        role: "user",
+        content: "Hello",
+        attachments: [
+          { kind: "image", source: "dataUrl", value: "data:image/png;base64,abc" },
+          { kind: "image", source: "localPath", value: "/tmp/screenshot.png", name: "screenshot.png" }
+        ]
+      },
       { id: "assistant-1", threadId: "thread-1", role: "assistant", content: "Hi" }
     ]);
   });

@@ -8,7 +8,12 @@ import path from "node:path";
 
 import { createOpenCodexSqliteCacheRepository } from "@open-codex-ui/opencodex-cache";
 import { OpenCodexBackend } from "@open-codex-ui/opencodex-core";
-import type { OpenCodexEvent, OpenCodexRequest, OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexEvent,
+  OpenCodexImageAttachment,
+  OpenCodexRequest,
+  OpenCodexSettings
+} from "@open-codex-ui/opencodex-protocol";
 
 type ElectronBridgeServerOptions = {
   settings: OpenCodexSettings;
@@ -42,6 +47,9 @@ export class ElectronBridgeServer {
       },
       pickProjectDirectory: async (mode) => {
         return this.pickProjectDirectory(mode);
+      },
+      pickImageFiles: async () => {
+        return this.pickImageFiles();
       },
       ensureProjectDirectory: async (projectPath, createIfMissing) => {
         return ensureProjectDirectory(projectPath, createIfMissing);
@@ -118,6 +126,75 @@ export class ElectronBridgeServer {
 
     return result.filePaths[0] ?? null;
   }
+
+  /**
+   * Opens a native image picker.
+   *
+   * @returns Selected image file paths.
+   */
+  private async pickImageFiles(): Promise<OpenCodexImageAttachment[]> {
+    const options = {
+      properties: ["openFile", "multiSelections"] as Array<"openFile" | "multiSelections">,
+      title: "Attach images",
+      filters: [
+        {
+          name: "Images",
+          extensions: ["png", "jpg", "jpeg", "webp", "gif"]
+        }
+      ]
+    };
+    const result = this.window === null
+      ? await dialog.showOpenDialog(options)
+      : await dialog.showOpenDialog(this.window, options);
+
+    if (result.canceled) {
+      return [];
+    }
+
+    return Promise.all(result.filePaths.map(createImageAttachmentFromPath));
+  }
+}
+
+async function createImageAttachmentFromPath(
+  filePath: string,
+  index: number
+): Promise<OpenCodexImageAttachment> {
+  return {
+    id: `attachment-${Date.now()}-${index}`,
+    kind: "image",
+    source: "localPath",
+    value: filePath,
+    name: path.basename(filePath),
+    previewUrl: await readImagePreviewDataUrl(filePath)
+  };
+}
+
+async function readImagePreviewDataUrl(filePath: string): Promise<string | null> {
+  try {
+    const buffer = await fs.readFile(filePath);
+    const mimeType = readImageMimeType(filePath);
+    return `data:${mimeType};base64,${buffer.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+function readImageMimeType(filePath: string): string {
+  const extension = path.extname(filePath).toLowerCase();
+
+  if (extension === ".jpg" || extension === ".jpeg") {
+    return "image/jpeg";
+  }
+
+  if (extension === ".webp") {
+    return "image/webp";
+  }
+
+  if (extension === ".gif") {
+    return "image/gif";
+  }
+
+  return "image/png";
 }
 
 /**

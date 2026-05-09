@@ -128,6 +128,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
             kind={entry.item.kind}
             content={entry.item.content}
             createdAt={entry.item.createdAt ?? entry.turn.completedAt ?? entry.turn.startedAt}
+            attachments={entry.item.attachments ?? []}
           />
         );
       })}
