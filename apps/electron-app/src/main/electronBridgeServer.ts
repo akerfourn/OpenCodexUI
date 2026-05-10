@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import { createOpenCodexSqliteCacheRepository } from "@open-codex-ui/opencodex-cache";
-import { OpenCodexBackend } from "@open-codex-ui/opencodex-core";
+import { OpenCodexBackendRuntime, OpenCodexRequestRouter } from "@open-codex-ui/opencodex-core";
 import type {
   OpenCodexEvent,
   OpenCodexImageAttachment,
@@ -27,7 +27,8 @@ type ElectronBridgeServerOptions = {
  * Wires Electron IPC to the backend and forwards backend events to the renderer window.
  */
 export class ElectronBridgeServer {
-  private readonly backend: OpenCodexBackend;
+  private readonly runtime: OpenCodexBackendRuntime;
+  private readonly requestRouter: OpenCodexRequestRouter;
   private window: BrowserWindow | null = null;
 
   /**
@@ -38,7 +39,7 @@ export class ElectronBridgeServer {
   constructor(options: ElectronBridgeServerOptions) {
     const cacheRepository = createCacheRepository(options.userDataPath);
 
-    this.backend = new OpenCodexBackend({
+    this.runtime = new OpenCodexBackendRuntime({
       settings: options.settings,
       projectPath: options.projectPath,
       cacheRepository,
@@ -61,6 +62,7 @@ export class ElectronBridgeServer {
       logger: (message) => console.log(`[OpenCodexUI] ${message}`),
       emit: (event) => this.emit(event)
     });
+    this.requestRouter = new OpenCodexRequestRouter(this.runtime);
   }
 
   /**
@@ -79,7 +81,7 @@ export class ElectronBridgeServer {
    */
   register(): void {
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
-      return this.backend.handleRequest(request);
+      return this.requestRouter.handleRequest(request);
     });
   }
 
@@ -90,7 +92,7 @@ export class ElectronBridgeServer {
    */
   async dispose(): Promise<void> {
     ipcMain.removeHandler("opencodex:request");
-    await this.backend.dispose();
+    await this.runtime.dispose();
   }
 
   /**
