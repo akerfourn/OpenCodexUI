@@ -102,6 +102,13 @@ export function runMigrations(database: BetterSqliteDatabase): void {
   applySchemaMigrationV7(database);
 }
 
+/**
+ * Adds custom and Codex title columns to cached threads.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Nothing.
+ */
 function applySchemaMigrationV2(database: BetterSqliteDatabase): void {
   const migration = database
     .prepare("SELECT version FROM schema_migrations WHERE version = ?")
@@ -133,6 +140,13 @@ function applySchemaMigrationV2(database: BetterSqliteDatabase): void {
   applyMigration();
 }
 
+/**
+ * Creates the sources table and legacy default source.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Nothing.
+ */
 function applySchemaMigrationV3(database: BetterSqliteDatabase): void {
   const migration = database
     .prepare("SELECT version FROM schema_migrations WHERE version = ?")
@@ -192,6 +206,13 @@ function applySchemaMigrationV3(database: BetterSqliteDatabase): void {
   applyMigration();
 }
 
+/**
+ * Rebuilds projects to remove implicit legacy default associations.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Nothing.
+ */
 function applySchemaMigrationV4(database: BetterSqliteDatabase): void {
   const migration = database
     .prepare("SELECT version FROM schema_migrations WHERE version = ?")
@@ -256,6 +277,13 @@ function applySchemaMigrationV4(database: BetterSqliteDatabase): void {
   database.pragma("foreign_keys = ON");
 }
 
+/**
+ * Migrates source command columns into the JSON settings document.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Nothing.
+ */
 function applySchemaMigrationV5(database: BetterSqliteDatabase): void {
   const migration = database
     .prepare("SELECT version FROM schema_migrations WHERE version = ?")
@@ -322,6 +350,13 @@ function applySchemaMigrationV5(database: BetterSqliteDatabase): void {
   database.pragma("foreign_keys = ON");
 }
 
+/**
+ * Replaces the legacy default source identifier with a generated UUID.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Nothing.
+ */
 function applySchemaMigrationV6(database: BetterSqliteDatabase): void {
   const migration = database
     .prepare("SELECT version FROM schema_migrations WHERE version = ?")
@@ -367,6 +402,13 @@ function applySchemaMigrationV6(database: BetterSqliteDatabase): void {
   applyMigration();
 }
 
+/**
+ * Adds hidden-project support.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Nothing.
+ */
 function applySchemaMigrationV7(database: BetterSqliteDatabase): void {
   const migration = database
     .prepare("SELECT version FROM schema_migrations WHERE version = ?")
@@ -387,6 +429,13 @@ function applySchemaMigrationV7(database: BetterSqliteDatabase): void {
   applyMigration();
 }
 
+/**
+ * Copies legacy source rows into the document-settings schema.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Nothing.
+ */
 function migrateLegacySources(database: BetterSqliteDatabase): void {
   const rows = database
     .prepare("SELECT id, kind, name, command_mode, command, created_at, updated_at FROM sources")
@@ -435,6 +484,16 @@ function migrateLegacySources(database: BetterSqliteDatabase): void {
   }
 }
 
+/**
+ * Adds a column when the table does not already contain it.
+ *
+ * @param database SQLite database connection.
+ * @param tableName Table name.
+ * @param columnName Column name.
+ * @param definition SQLite column definition.
+ *
+ * @returns Nothing.
+ */
 function addColumnIfMissing(
   database: BetterSqliteDatabase,
   tableName: string,
@@ -452,4 +511,3 @@ function addColumnIfMissing(
 
   database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
 }
-

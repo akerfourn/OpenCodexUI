@@ -87,26 +87,65 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     runMigrations(this.database);
   }
 
+  /**
+   * Ensures a default source exists.
+   *
+   * @returns Default source.
+   */
   async ensureDefaultSource(): Promise<CachedSource> {
     return await ensureDefaultSource(this.database);
   }
 
+  /**
+   * Creates a source.
+   *
+   * @param name Source display name.
+   *
+   * @returns Created source.
+   */
   async createSource(name = "Codex"): Promise<CachedSource> {
     return await createSource(this.database, name);
   }
 
+  /**
+   * Lists configured sources.
+   *
+   * @returns Cached sources.
+   */
   async listSources(): Promise<CachedSource[]> {
     return await listSources(this.database);
   }
 
+  /**
+   * Reads a source by identifier.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Cached source, or `null`.
+   */
   async getSource(sourceId: string): Promise<CachedSource | null> {
     return await getSource(this.database, sourceId);
   }
 
+  /**
+   * Counts projects associated with a source.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Associated project count.
+   */
   async getSourceProjectCount(sourceId: string): Promise<number> {
     return await getSourceProjectCount(this.database, sourceId);
   }
 
+  /**
+   * Updates a source.
+   *
+   * @param sourceId Source identifier.
+   * @param patch Source patch.
+   *
+   * @returns Updated source.
+   */
   async updateSource(
     sourceId: string,
     patch: Partial<Pick<CachedSource, "name">> & {
@@ -116,46 +155,126 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     return await updateSource(this.database, sourceId, patch);
   }
 
+  /**
+   * Deletes a source.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Promise resolved when deletion completes.
+   */
   async deleteSource(sourceId: string): Promise<void> {
     await deleteSource(this.database, sourceId);
   }
 
+  /**
+   * Clears project and thread references to a source.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Promise resolved when associations are cleared.
+   */
   async clearSourceAssociations(sourceId: string): Promise<void> {
     await clearSourceAssociations(this.database, sourceId);
   }
 
+  /**
+   * Inserts or updates a cached project.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Optional source identifier.
+   *
+   * @returns Cached project.
+   */
   async upsertProject(projectPath: string, sourceId: string | null = null): Promise<CachedProject> {
     return await upsertProject(this.database, projectPath, sourceId);
   }
 
+  /**
+   * Lists cached projects.
+   *
+   * @returns Cached projects.
+   */
   async listProjects(): Promise<CachedProject[]> {
     return await listProjects(this.database);
   }
 
+  /**
+   * Updates project hidden state.
+   *
+   * @param projectId Project identifier.
+   * @param isHidden Hidden flag.
+   *
+   * @returns Promise resolved when the update completes.
+   */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<void> {
     await setProjectHidden(this.database, projectId, isHidden);
   }
 
+  /**
+   * Inserts or updates cached thread metadata.
+   *
+   * @param threads Thread summaries.
+   *
+   * @returns Promise resolved when the write completes.
+   */
   async upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void> {
     await upsertThreadIndex(this.database, threads);
   }
 
+  /**
+   * Updates a user-defined thread title.
+   *
+   * @param threadId Thread identifier.
+   * @param title Custom title.
+   *
+   * @returns Promise resolved when the update completes.
+   */
   async updateThreadTitle(threadId: string, title: string): Promise<void> {
     await updateThreadTitle(this.database, threadId, title);
   }
 
+  /**
+   * Updates a Codex-generated thread title.
+   *
+   * @param threadId Thread identifier.
+   * @param title Codex title.
+   *
+   * @returns Promise resolved when the update completes.
+   */
   async updateThreadCodexTitle(threadId: string, title: string): Promise<void> {
     await updateThreadCodexTitle(this.database, threadId, title);
   }
 
+  /**
+   * Deletes a cached thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when deletion completes.
+   */
   async deleteThread(threadId: string): Promise<void> {
     await deleteThread(this.database, threadId);
   }
 
+  /**
+   * Lists cached threads.
+   *
+   * @param query Thread list query.
+   *
+   * @returns Cached thread summaries.
+   */
   async listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]> {
     return await listThreads(this.database, query);
   }
 
+  /**
+   * Reads a cached thread snapshot.
+   *
+   * @param threadId Thread identifier.
+   * @param options Read options.
+   *
+   * @returns Cached snapshot, or `null`.
+   */
   async getThread(
     threadId: string,
     options: CachedThreadReadOptions = {}
@@ -163,25 +282,57 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     return await getThread(this.database, threadId, options);
   }
 
+  /**
+   * Reads older cached turns.
+   *
+   * @param query Older-turn query.
+   *
+   * @returns Older turns and pagination state.
+   */
   async getOlderTurns(query: CachedOlderTurnsQuery): Promise<CachedOlderTurnsResult> {
     return await getOlderTurns(this.database, query);
   }
 
+  /**
+   * Saves a full thread snapshot.
+   *
+   * @param snapshot Thread snapshot.
+   *
+   * @returns Promise resolved when save completes.
+   */
   async saveThreadSnapshot(snapshot: CachedThreadSnapshot): Promise<void> {
     await saveThreadSnapshot(this.database, snapshot);
   }
 
+  /**
+   * Saves an incremental thread delta.
+   *
+   * @param delta Thread delta.
+   *
+   * @returns Promise resolved when save completes.
+   */
   async saveThreadDelta(delta: CachedThreadDelta): Promise<void> {
     await saveThreadDelta(this.database, delta);
   }
 
+  /**
+   * Reads cached thread synchronization state.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Sync state, or `null`.
+   */
   async getSyncState(threadId: string): Promise<CachedThreadSyncState | null> {
     return await getSyncState(this.database, threadId);
   }
 
+  /**
+   * Flushes WAL state and closes the database.
+   *
+   * @returns Promise resolved when the database is closed.
+   */
   async close(): Promise<void> {
     this.database.pragma("wal_checkpoint(TRUNCATE)");
     this.database.close();
   }
 }
-

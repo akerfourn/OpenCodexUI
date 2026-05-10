@@ -104,31 +104,186 @@ export type ThreadListCacheQuery = {
  * Describes the storage contract implemented by cache backends.
  */
 export interface OpenCodexCacheRepository {
+  /**
+   * Ensures that a default local source exists.
+   *
+   * @returns Existing or newly created default source.
+   */
   ensureDefaultSource(): Promise<CachedSource>;
+
+  /**
+   * Creates a new local source with default settings.
+   *
+   * @param name Optional display name for the source.
+   * @returns Created source.
+   */
   createSource(name?: string): Promise<CachedSource>;
+
+  /**
+   * Lists all configured sources.
+   *
+   * @returns Sources ordered for display.
+   */
   listSources(): Promise<CachedSource[]>;
+
+  /**
+   * Reads a source by identifier.
+   *
+   * @param sourceId Source identifier.
+   * @returns Source when found, otherwise `null`.
+   */
   getSource(sourceId: string): Promise<CachedSource | null>;
+
+  /**
+   * Counts projects currently associated with a source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Number of linked projects.
+   */
   getSourceProjectCount(sourceId: string): Promise<number>;
+
+  /**
+   * Updates editable source metadata and settings.
+   *
+   * @param sourceId Source identifier.
+   * @param patch Partial source update.
+   * @returns Updated source.
+   */
   updateSource(
     sourceId: string,
     patch: Partial<Pick<CachedSource, "name">> & {
       settings?: Partial<CachedSourceLocalSettings>;
     }
   ): Promise<CachedSource>;
+
+  /**
+   * Deletes a source after clearing dependent associations.
+   *
+   * @param sourceId Source identifier.
+   * @returns Promise resolved when deletion completes.
+   */
   deleteSource(sourceId: string): Promise<void>;
+
+  /**
+   * Removes project and thread associations for one source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Promise resolved when associations are cleared.
+   */
   clearSourceAssociations(sourceId: string): Promise<void>;
+
+  /**
+   * Inserts or refreshes a cached project.
+   *
+   * @param projectPath Project path reported by a source.
+   * @param sourceId Source identifier, or `null` for an orphan project.
+   * @returns Cached project entry.
+   */
   upsertProject(projectPath: string, sourceId?: string | null): Promise<CachedProject>;
+
+  /**
+   * Updates the hidden flag for a cached project.
+   *
+   * @param projectId Project identifier.
+   * @param isHidden Whether the project should be hidden by default.
+   * @returns Promise resolved when the update completes.
+   */
   setProjectHidden(projectId: string, isHidden: boolean): Promise<void>;
+
+  /**
+   * Lists cached projects.
+   *
+   * @returns Cached projects ordered for display.
+   */
   listProjects(): Promise<CachedProject[]>;
+
+  /**
+   * Inserts or updates thread index summaries.
+   *
+   * @param threads Thread summaries reported by a source.
+   * @returns Promise resolved when the write completes.
+   */
   upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void>;
+
+  /**
+   * Updates the user-defined title for a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param title Custom title.
+   * @returns Promise resolved when the update completes.
+   */
   updateThreadTitle(threadId: string, title: string): Promise<void>;
+
+  /**
+   * Updates the Codex-generated title for a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param title Codex title.
+   * @returns Promise resolved when the update completes.
+   */
   updateThreadCodexTitle(threadId: string, title: string): Promise<void>;
+
+  /**
+   * Deletes a cached thread and its cached turns.
+   *
+   * @param threadId Thread identifier.
+   * @returns Promise resolved when deletion completes.
+   */
   deleteThread(threadId: string): Promise<void>;
+
+  /**
+   * Lists cached thread summaries for a scope and optional filters.
+   *
+   * @param query Thread list query.
+   * @returns Matching cached thread summaries.
+   */
   listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]>;
+
+  /**
+   * Reads a cached thread snapshot.
+   *
+   * @param threadId Thread identifier.
+   * @param options Optional read limits.
+   * @returns Cached snapshot, or `null` when the thread is unknown.
+   */
   getThread(threadId: string, options?: CachedThreadReadOptions): Promise<CachedThreadSnapshot | null>;
+
+  /**
+   * Reads a page of older cached turns for a thread.
+   *
+   * @param query Older-turn query.
+   * @returns Older turns and pagination state.
+   */
   getOlderTurns(query: CachedOlderTurnsQuery): Promise<CachedOlderTurnsResult>;
+
+  /**
+   * Saves a complete thread snapshot transactionally.
+   *
+   * @param snapshot Thread snapshot.
+   * @returns Promise resolved when the snapshot is saved.
+   */
   saveThreadSnapshot(snapshot: CachedThreadSnapshot): Promise<void>;
+
+  /**
+   * Saves incremental thread turns and sync metadata.
+   *
+   * @param delta Thread delta.
+   * @returns Promise resolved when the delta is saved.
+   */
   saveThreadDelta(delta: CachedThreadDelta): Promise<void>;
+
+  /**
+   * Reads synchronization metadata for a cached thread.
+   *
+   * @param threadId Thread identifier.
+   * @returns Sync state, or `null` when the thread is unknown.
+   */
   getSyncState(threadId: string): Promise<CachedThreadSyncState | null>;
+
+  /**
+   * Closes resources owned by the repository.
+   *
+   * @returns Promise resolved when resources are closed.
+   */
   close(): Promise<void>;
 }

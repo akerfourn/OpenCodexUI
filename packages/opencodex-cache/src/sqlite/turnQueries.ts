@@ -7,6 +7,15 @@ import type { CachedThreadSyncState } from "../types.js";
 import type { TurnRow } from "./rowTypes.js";
 import { readTurnMetadata } from "./turnSerialization.js";
 
+/**
+ * Reads the latest cached turn rows for a thread.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ * @param limit Maximum number of latest turns, or `null` for all.
+ *
+ * @returns Turn rows sorted oldest to newest.
+ */
 export function readLatestTurnRows(
   database: BetterSqliteDatabase,
   threadId: string,
@@ -42,6 +51,16 @@ export function readLatestTurnRows(
     .all({ threadId, limit }) as TurnRow[];
 }
 
+/**
+ * Reads cached turn rows older than a given turn.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ * @param beforeTurnId Cursor turn identifier.
+ * @param limit Maximum number of rows to read.
+ *
+ * @returns Turn rows sorted oldest to newest.
+ */
 export function readOlderTurnRows(
   database: BetterSqliteDatabase,
   threadId: string,
@@ -73,6 +92,15 @@ export function readOlderTurnRows(
     .all({ threadId, beforeTurnId, limit }) as TurnRow[];
 }
 
+/**
+ * Checks whether older cached turns exist before a turn.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ * @param beforeTurnId Cursor turn identifier.
+ *
+ * @returns `true` when more cached turns exist.
+ */
 export function hasMoreCachedTurnsBefore(
   database: BetterSqliteDatabase,
   threadId: string,
@@ -104,6 +132,15 @@ export function hasMoreCachedTurnsBefore(
   return row !== undefined;
 }
 
+/**
+ * Inserts or updates raw turn payloads for a thread.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ * @param turns Raw turn payloads.
+ *
+ * @returns Nothing.
+ */
 export function writeTurns(
   database: BetterSqliteDatabase,
   threadId: string,
@@ -161,6 +198,14 @@ export function writeTurns(
   }
 }
 
+/**
+ * Persists thread synchronization state.
+ *
+ * @param database SQLite database connection.
+ * @param syncState Sync state to write.
+ *
+ * @returns Nothing.
+ */
 export function writeSyncState(
   database: BetterSqliteDatabase,
   syncState: CachedThreadSyncState
@@ -189,7 +234,13 @@ export function writeSyncState(
     });
 }
 
+/**
+ * Creates a cache cursor for older-turn pagination.
+ *
+ * @param turnId Turn identifier.
+ *
+ * @returns Cache cursor.
+ */
 export function createCacheOlderCursor(turnId: string): string {
   return `cache:${turnId}`;
 }
-

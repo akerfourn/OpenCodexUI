@@ -19,6 +19,13 @@ import {
   serializeSourceSettings
 } from "./sourceSettings.js";
 
+/**
+ * Ensures that at least one default local source exists.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Existing or created default source.
+ */
 export async function ensureDefaultSource(database: BetterSqliteDatabase): Promise<CachedSource> {
   const sources = await listSources(database);
   const existingSource = sources[0];
@@ -66,6 +73,14 @@ export async function ensureDefaultSource(database: BetterSqliteDatabase): Promi
   return source;
 }
 
+/**
+ * Creates a local source with default settings.
+ *
+ * @param database SQLite database connection.
+ * @param name Source display name.
+ *
+ * @returns Created source.
+ */
 export async function createSource(
   database: BetterSqliteDatabase,
   name = "Codex"
@@ -106,6 +121,13 @@ export async function createSource(
   return source;
 }
 
+/**
+ * Lists configured sources in creation order.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Cached source rows.
+ */
 export async function listSources(database: BetterSqliteDatabase): Promise<CachedSource[]> {
   const rows = database
     .prepare(
@@ -120,6 +142,14 @@ export async function listSources(database: BetterSqliteDatabase): Promise<Cache
   return rows.map(mapSourceRow);
 }
 
+/**
+ * Reads one source by identifier.
+ *
+ * @param database SQLite database connection.
+ * @param sourceId Source identifier.
+ *
+ * @returns Cached source, or `null`.
+ */
 export async function getSource(
   database: BetterSqliteDatabase,
   sourceId: string
@@ -131,6 +161,14 @@ export async function getSource(
   return row === undefined ? null : mapSourceRow(row);
 }
 
+/**
+ * Counts projects currently associated with a source.
+ *
+ * @param database SQLite database connection.
+ * @param sourceId Source identifier.
+ *
+ * @returns Associated project count.
+ */
 export async function getSourceProjectCount(
   database: BetterSqliteDatabase,
   sourceId: string
@@ -142,6 +180,15 @@ export async function getSourceProjectCount(
   return row?.count ?? 0;
 }
 
+/**
+ * Updates source metadata and local settings.
+ *
+ * @param database SQLite database connection.
+ * @param sourceId Source identifier.
+ * @param patch Source patch.
+ *
+ * @returns Updated source.
+ */
 export async function updateSource(
   database: BetterSqliteDatabase,
   sourceId: string,
@@ -185,6 +232,14 @@ export async function updateSource(
   return nextSource;
 }
 
+/**
+ * Deletes a source row.
+ *
+ * @param database SQLite database connection.
+ * @param sourceId Source identifier.
+ *
+ * @returns Promise resolved when deletion completes.
+ */
 export async function deleteSource(
   database: BetterSqliteDatabase,
   sourceId: string
@@ -194,6 +249,14 @@ export async function deleteSource(
     .run({ sourceId });
 }
 
+/**
+ * Clears project and thread references to a source.
+ *
+ * @param database SQLite database connection.
+ * @param sourceId Source identifier.
+ *
+ * @returns Promise resolved when associations are cleared.
+ */
 export async function clearSourceAssociations(
   database: BetterSqliteDatabase,
   sourceId: string
@@ -209,4 +272,3 @@ export async function clearSourceAssociations(
 
   clearAssociations();
 }
-

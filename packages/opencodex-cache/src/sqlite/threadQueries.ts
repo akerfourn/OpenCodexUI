@@ -30,6 +30,14 @@ import {
   writeTurns
 } from "./turnQueries.js";
 
+/**
+ * Inserts or updates thread metadata rows.
+ *
+ * @param database SQLite database connection.
+ * @param threads Thread summaries to persist.
+ *
+ * @returns Promise resolved when the write completes.
+ */
 export async function upsertThreadIndex(
   database: BetterSqliteDatabase,
   threads: CachedThreadSummary[]
@@ -37,6 +45,15 @@ export async function upsertThreadIndex(
   writeThreadIndex(database, threads);
 }
 
+/**
+ * Updates the user-defined title for a thread.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ * @param title Custom title.
+ *
+ * @returns Promise resolved when the update completes.
+ */
 export async function updateThreadTitle(
   database: BetterSqliteDatabase,
   threadId: string,
@@ -59,6 +76,15 @@ export async function updateThreadTitle(
     });
 }
 
+/**
+ * Updates the Codex-generated title for a thread.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ * @param title Codex title.
+ *
+ * @returns Promise resolved when the update completes.
+ */
 export async function updateThreadCodexTitle(
   database: BetterSqliteDatabase,
   threadId: string,
@@ -85,6 +111,14 @@ export async function updateThreadCodexTitle(
     });
 }
 
+/**
+ * Deletes a cached thread and its dependent rows.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ *
+ * @returns Promise resolved when deletion completes.
+ */
 export async function deleteThread(
   database: BetterSqliteDatabase,
   threadId: string
@@ -92,6 +126,14 @@ export async function deleteThread(
   database.prepare("DELETE FROM threads WHERE id = ?").run(threadId);
 }
 
+/**
+ * Lists cached threads using scope, source, and search filters.
+ *
+ * @param database SQLite database connection.
+ * @param query Thread list query.
+ *
+ * @returns Cached thread summaries.
+ */
 export async function listThreads(
   database: BetterSqliteDatabase,
   query: ThreadListCacheQuery
@@ -146,6 +188,15 @@ export async function listThreads(
   return rows.map((row) => mapThreadRow(row));
 }
 
+/**
+ * Reads a cached thread snapshot with optional latest-turn limit.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ * @param options Read options.
+ *
+ * @returns Cached snapshot, or `null`.
+ */
 export async function getThread(
   database: BetterSqliteDatabase,
   threadId: string,
@@ -176,6 +227,14 @@ export async function getThread(
   };
 }
 
+/**
+ * Reads older cached turns for a thread.
+ *
+ * @param database SQLite database connection.
+ * @param query Older-turn query.
+ *
+ * @returns Older turns and pagination state.
+ */
 export async function getOlderTurns(
   database: BetterSqliteDatabase,
   query: CachedOlderTurnsQuery
@@ -190,6 +249,14 @@ export async function getOlderTurns(
   };
 }
 
+/**
+ * Saves a full thread snapshot transactionally.
+ *
+ * @param database SQLite database connection.
+ * @param snapshot Thread snapshot.
+ *
+ * @returns Promise resolved when save completes.
+ */
 export async function saveThreadSnapshot(
   database: BetterSqliteDatabase,
   snapshot: CachedThreadSnapshot
@@ -204,6 +271,14 @@ export async function saveThreadSnapshot(
   writeSnapshot();
 }
 
+/**
+ * Saves an incremental thread turn delta.
+ *
+ * @param database SQLite database connection.
+ * @param delta Thread delta.
+ *
+ * @returns Promise resolved when save completes.
+ */
 export async function saveThreadDelta(
   database: BetterSqliteDatabase,
   delta: CachedThreadDelta
@@ -216,6 +291,14 @@ export async function saveThreadDelta(
   writeDelta();
 }
 
+/**
+ * Reads cached synchronization state for a thread.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ *
+ * @returns Sync state, or `null`.
+ */
 export async function getSyncState(
   database: BetterSqliteDatabase,
   threadId: string
@@ -229,11 +312,27 @@ export async function getSyncState(
   return mapSyncState(thread);
 }
 
+/**
+ * Reads one cached thread summary.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ *
+ * @returns Cached thread summary, or `null`.
+ */
 function readThread(database: BetterSqliteDatabase, threadId: string): CachedThreadSummary | null {
   const row = readThreadRow(database, threadId);
   return row === null ? null : mapThreadRow(row);
 }
 
+/**
+ * Reads one raw thread row with joined project metadata.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ *
+ * @returns Thread row, or `null`.
+ */
 function readThreadRow(database: BetterSqliteDatabase, threadId: string): ThreadRow | null {
   const row = database
     .prepare(
@@ -252,6 +351,14 @@ function readThreadRow(database: BetterSqliteDatabase, threadId: string): Thread
   return row ?? null;
 }
 
+/**
+ * Reads sync state for a thread, falling back to an empty state.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ *
+ * @returns Sync state.
+ */
 function readSyncState(database: BetterSqliteDatabase, threadId: string): CachedThreadSyncState {
   const row = readThreadRow(database, threadId);
 
@@ -262,6 +369,14 @@ function readSyncState(database: BetterSqliteDatabase, threadId: string): Cached
   return createEmptySyncState(threadId);
 }
 
+/**
+ * Writes thread index data and associated project rows.
+ *
+ * @param database SQLite database connection.
+ * @param threads Thread summaries to write.
+ *
+ * @returns Nothing.
+ */
 function writeThreadIndex(
   database: BetterSqliteDatabase,
   threads: CachedThreadSummary[]

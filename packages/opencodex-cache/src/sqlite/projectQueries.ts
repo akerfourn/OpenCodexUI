@@ -8,6 +8,15 @@ import type { CachedProject } from "../types.js";
 import { mapProjectRow } from "./mappers.js";
 import type { ProjectRow } from "./rowTypes.js";
 
+/**
+ * Inserts or updates a project row by normalized path.
+ *
+ * @param database SQLite database connection.
+ * @param projectPath Project path to cache.
+ * @param sourceId Optional owning source identifier.
+ *
+ * @returns Cached project row.
+ */
 export async function upsertProject(
   database: BetterSqliteDatabase,
   projectPath: string,
@@ -75,6 +84,13 @@ export async function upsertProject(
   return mapProjectRow(row);
 }
 
+/**
+ * Lists cached projects sorted by recent activity.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Cached project rows.
+ */
 export async function listProjects(database: BetterSqliteDatabase): Promise<CachedProject[]> {
   const rows = database
     .prepare(
@@ -93,6 +109,15 @@ export async function listProjects(database: BetterSqliteDatabase): Promise<Cach
   return rows.map((row) => mapProjectRow(row));
 }
 
+/**
+ * Updates the hidden flag for a cached project.
+ *
+ * @param database SQLite database connection.
+ * @param projectId Project identifier.
+ * @param isHidden Whether the project should be hidden.
+ *
+ * @returns Promise resolved when the update completes.
+ */
 export async function setProjectHidden(
   database: BetterSqliteDatabase,
   projectId: string,
@@ -113,4 +138,3 @@ export async function setProjectHidden(
       updatedAt: new Date().toISOString()
     });
 }
-
