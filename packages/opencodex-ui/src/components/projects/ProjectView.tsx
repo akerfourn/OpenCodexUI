@@ -29,7 +29,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
       sidebar={<ProjectThreadListX store={store} projectStore={projectStore} />}
     >
       <section className="main-pane">
-        <ChatViewX store={store} />
+        <ChatViewX store={store} projectStore={projectStore} />
       </section>
     </ResizableSidebarLayout>
   );

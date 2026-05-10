@@ -24,11 +24,11 @@ type AppProps = {
  * @returns Nothing.
  */
 export function App({ store }: AppProps) {
-  const errorContent = store.errorMessage === null ? null : (
-    <pre className="error-banner">{store.errorMessage}</pre>
+  const errorContent = store.appStore.errorMessage === null ? null : (
+    <pre className="error-banner">{store.appStore.errorMessage}</pre>
   );
-  const activeProjectStore = store.activeProjectStore;
-  const mainContent = store.activeTabId === HOME_TAB_ID || activeProjectStore === null
+  const activeProjectStore = store.navigationStore.activeProjectStore;
+  const mainContent = store.navigationStore.activeTabId === HOME_TAB_ID || activeProjectStore === null
     ? <HomeViewX store={store} />
     : <ProjectViewX store={store} projectStore={activeProjectStore} />;
 
@@ -39,8 +39,8 @@ export function App({ store }: AppProps) {
         {errorContent}
         {mainContent}
       </section>
-      <ApprovalDialogX store={store} />
-      <ProjectTrustDialogX store={store} />
+      <ApprovalDialogX store={store.approvalsStore} />
+      <ProjectTrustDialogX store={store.projectsStore.trustStore} />
       <CloseProjectDialogX store={store} />
     </Box>
   );

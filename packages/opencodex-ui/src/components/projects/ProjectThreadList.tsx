@@ -26,17 +26,18 @@ type ProjectThreadListProps = {
  */
 export function ProjectThreadList({ store, projectStore }: ProjectThreadListProps) {
   const { t } = useTranslation();
+  const threadListStore = projectStore.threadListStore;
 
   function handleSearch(event: ChangeEvent<HTMLInputElement>): void {
-    projectStore.setSearchTerm(event.target.value);
+    threadListStore.setSearchTerm(event.target.value);
   }
 
   function handleNewThread(): void {
-    store.createThread();
+    projectStore.createThread();
   }
 
   function handleRefreshThreads(): void {
-    store.refreshThreads();
+    projectStore.refreshThreads();
   }
 
   function handleOpenSources(): void {
@@ -97,20 +98,20 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
         <TextField
           type="search"
           placeholder={t("sidebar.search")}
-          value={projectStore.searchTerm}
+          value={threadListStore.searchTerm}
           fullWidth
           size="small"
           onChange={handleSearch}
         />
       </Box>
 
-      {projectStore.isLoadingThreads ? (
+      {threadListStore.isLoadingThreads ? (
         <LinearProgress sx={{ mx: 1.5, mb: 1 }} />
       ) : null}
 
       <div className="thread-groups">
-        {projectStore.filteredThreads.map((thread) => (
-          <ThreadButtonX key={thread.id} store={store} thread={thread} />
+        {threadListStore.filteredThreads.map((thread) => (
+          <ThreadButtonX key={thread.id} projectStore={projectStore} thread={thread} />
         ))}
       </div>
     </aside>

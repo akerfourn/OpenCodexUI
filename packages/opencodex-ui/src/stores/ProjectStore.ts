@@ -1,7 +1,6 @@
 /**
  * Holds the observable UI state for one opened project tab.
  */
-import Fuse from "fuse.js";
 import { makeAutoObservable } from "mobx";
 
 import type {
@@ -10,18 +9,18 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ChatStore } from "./ChatStore";
+import type { ProjectTrustRequest } from "./ProjectTrustStore";
+import type { RootStore } from "./RootStore";
+import { ThreadListStore } from "./ThreadListStore";
 
 /**
  * Stores project-specific chat metadata and loaded chat stores.
  */
 export class ProjectStore {
   project: OpenCodexProject;
-  threads: OpenCodexThread[] = [];
-  searchTerm = "";
   selectedChatId: string | null = null;
-  isLoadingThreads = false;
-  isCreatingThread = false;
-  loadingThreadId: string | null = null;
+  trustRequest: ProjectTrustRequest | null = null;
+  readonly threadListStore: ThreadListStore;
   readonly chatsById = new Map<string, ChatStore>();
 
   /**
@@ -29,9 +28,13 @@ export class ProjectStore {
    *
    * @param project Project metadata.
    */
-  constructor(project: OpenCodexProject) {
+  constructor(
+    project: OpenCodexProject,
+    private readonly root: RootStore
+  ) {
     this.project = project;
-    makeAutoObservable(this);
+    this.threadListStore = new ThreadListStore(this, root);
+    makeAutoObservable<ProjectStore, "root">(this, { root: false });
   }
 
   /**
@@ -74,28 +77,53 @@ export class ProjectStore {
     return this.chatsById.get(this.selectedChatId) ?? null;
   }
 
+  get threads(): OpenCodexThread[] {
+    return this.threadListStore.threads;
+  }
+
+  set threads(threads: OpenCodexThread[]) {
+    this.threadListStore.threads = threads;
+  }
+
+  get searchTerm(): string {
+    return this.threadListStore.searchTerm;
+  }
+
+  set searchTerm(value: string) {
+    this.threadListStore.searchTerm = value;
+  }
+
+  get isLoadingThreads(): boolean {
+    return this.threadListStore.isLoadingThreads;
+  }
+
+  set isLoadingThreads(value: boolean) {
+    this.threadListStore.isLoadingThreads = value;
+  }
+
+  get isCreatingThread(): boolean {
+    return this.threadListStore.isCreatingThread;
+  }
+
+  set isCreatingThread(value: boolean) {
+    this.threadListStore.isCreatingThread = value;
+  }
+
+  get loadingThreadId(): string | null {
+    return this.threadListStore.loadingThreadId;
+  }
+
+  set loadingThreadId(value: string | null) {
+    this.threadListStore.loadingThreadId = value;
+  }
+
   /**
    * Returns the threads matching the current project search term.
    *
    * @returns Filtered thread list.
    */
   get filteredThreads(): OpenCodexThread[] {
-    const searchTerm = this.searchTerm.trim();
-
-    if (searchTerm.length === 0) {
-      return this.threads;
-    }
-
-    const fuse = new Fuse(this.threads, {
-      ignoreLocation: true,
-      keys: ["title", "preview", "projectName", "projectPath"],
-      threshold: 0.35
-    });
-    const matchingThreadIds = new Set(
-      fuse.search(searchTerm).map((result) => result.item.id)
-    );
-
-    return this.threads.filter((thread) => matchingThreadIds.has(thread.id));
+    return this.threadListStore.filteredThreads;
   }
 
   /**
@@ -109,6 +137,16 @@ export class ProjectStore {
     this.project = project;
   }
 
+  setTrustRequest(request: ProjectTrustRequest): void {
+    this.trustRequest = request;
+  }
+
+  clearTrustRequest(projectPath: string): void {
+    if (this.trustRequest?.projectPath === projectPath) {
+      this.trustRequest = null;
+    }
+  }
+
   /**
    * Replaces the visible thread list with fresh metadata.
    *
@@ -117,15 +155,7 @@ export class ProjectStore {
    * @returns Nothing.
    */
   setThreads(threads: OpenCodexThread[]): void {
-    this.threads = threads.map((thread) => this.mergeThreadMetadata(thread));
-
-    for (const thread of this.threads) {
-      const chat = this.chatsById.get(thread.id);
-
-      if (chat !== undefined) {
-        chat.setThread(thread);
-      }
-    }
+    this.threadListStore.setThreads(threads);
   }
 
   /**
@@ -136,24 +166,7 @@ export class ProjectStore {
    * @returns Merged thread metadata.
    */
   upsertThread(thread: OpenCodexThread): OpenCodexThread {
-    const mergedThread = this.mergeThreadMetadata(thread);
-    const existingThread = this.findThread(thread.id);
-
-    if (existingThread === null) {
-      this.threads = [mergedThread, ...this.threads];
-    } else {
-      this.threads = this.threads.map((entry) => (
-        entry.id === mergedThread.id ? mergedThread : entry
-      ));
-    }
-
-    const chat = this.chatsById.get(mergedThread.id);
-
-    if (chat !== undefined) {
-      chat.setThread(mergedThread);
-    }
-
-    return mergedThread;
+    return this.threadListStore.upsertThread(thread);
   }
 
   /**
@@ -164,7 +177,7 @@ export class ProjectStore {
    * @returns Matching thread, or `null`.
    */
   findThread(threadId: string): OpenCodexThread | null {
-    return this.threads.find((thread) => thread.id === threadId) ?? null;
+    return this.threadListStore.findThread(threadId);
   }
 
   /**
@@ -182,7 +195,7 @@ export class ProjectStore {
       return existingChat;
     }
 
-    const createdChat = new ChatStore(thread);
+    const createdChat = new ChatStore(thread, this, this.root);
     this.chatsById.set(thread.id, createdChat);
     return createdChat;
   }
@@ -206,7 +219,50 @@ export class ProjectStore {
    * @returns Nothing.
    */
   setSearchTerm(value: string): void {
-    this.searchTerm = value;
+    this.threadListStore.setSearchTerm(value);
+  }
+
+  /**
+   * Refreshes this project's thread list.
+   *
+   * @param sourceIdOverride Optional source override used after project opening.
+   *
+   * @returns Nothing.
+   */
+  refreshThreads(sourceIdOverride?: string | null): void {
+    this.threadListStore.refresh(sourceIdOverride);
+  }
+
+  /**
+   * Creates a new thread in this project.
+   *
+   * @returns Nothing.
+   */
+  createThread(): void {
+    this.threadListStore.createThread();
+  }
+
+  /**
+   * Opens a thread in this project.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Nothing.
+   */
+  openThread(threadId: string): void {
+    this.threadListStore.openThread(threadId);
+  }
+
+  /**
+   * Applies a local thread rename.
+   *
+   * @param threadId Thread identifier.
+   * @param name New title.
+   *
+   * @returns Nothing.
+   */
+  renameThread(threadId: string, name: string): void {
+    this.threadListStore.renameThread(threadId, name);
   }
 
   /**
@@ -216,60 +272,7 @@ export class ProjectStore {
    */
   clearMemory(): void {
     this.chatsById.clear();
-    this.threads = [];
+    this.threadListStore.clear();
     this.selectedChatId = null;
   }
-
-  /**
-   * Merges incoming metadata with the local custom title when needed.
-   *
-   * @param thread Thread payload to process.
-   *
-   * @returns Merged metadata.
-   */
-  private mergeThreadMetadata(thread: OpenCodexThread): OpenCodexThread {
-    const existingThread = this.findThread(thread.id) ?? this.chatsById.get(thread.id)?.thread ?? null;
-
-    if (existingThread === null) {
-      return thread;
-    }
-
-    if (thread.customTitle !== null && thread.customTitle.trim().length > 0) {
-      return thread;
-    }
-
-    return {
-      ...thread,
-      customTitle: existingThread.customTitle,
-      title: resolveThreadTitle(thread.codexTitle, existingThread.customTitle, thread.preview)
-    };
-  }
-}
-
-/**
- * Resolves thread title.
- *
- * @param codexTitle Codex title.
- * @param customTitle Custom title.
- * @param preview Preview.
- *
- * @returns Computed string value.
- */
-function resolveThreadTitle(
-  codexTitle: string,
-  customTitle: string | null,
-  preview: string
-): string {
-  const trimmedCustomTitle = customTitle?.trim() ?? "";
-  const trimmedCodexTitle = codexTitle.trim();
-
-  if (trimmedCustomTitle.length > 0) {
-    return trimmedCustomTitle;
-  }
-
-  if (trimmedCodexTitle.length > 0) {
-    return trimmedCodexTitle;
-  }
-
-  return preview;
 }

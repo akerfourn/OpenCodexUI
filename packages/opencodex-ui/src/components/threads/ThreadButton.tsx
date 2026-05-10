@@ -8,10 +8,10 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 
-import type { RootStore } from "../../stores/RootStore";
+import type { ProjectStore } from "../../stores/ProjectStore";
 
 type ThreadButtonProps = {
-  store: RootStore;
+  projectStore: ProjectStore;
   thread: OpenCodexThread;
 };
 
@@ -22,15 +22,15 @@ type ThreadButtonProps = {
  *
  * @returns Nothing.
  */
-export function ThreadButton({ store, thread }: ThreadButtonProps) {
+export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
   const { t } = useTranslation();
 
   function handleOpenThread(): void {
-    store.openThread(thread.id);
+    projectStore.openThread(thread.id);
   }
 
-  const isActive = store.currentThread?.id === thread.id;
-  const isLoading = store.loadingThreadId === thread.id;
+  const isActive = projectStore.selectedChatId === thread.id;
+  const isLoading = projectStore.loadingThreadId === thread.id;
   const metadata = getThreadMetadata(thread);
 
   return (

@@ -12,10 +12,12 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
+import type { ChatStore } from "../../stores/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
 
 type ChatActivityPanelProps = {
   store: RootStore;
+  chatStore: ChatStore;
 };
 
 /**
@@ -26,20 +28,21 @@ type ChatActivityPanelProps = {
  * @returns Nothing.
  */
 export function ChatActivityPanel({
-  store
+  store,
+  chatStore
 }: ChatActivityPanelProps) {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = useState(store.isWorking);
+  const [isExpanded, setIsExpanded] = useState(chatStore.isWorking);
 
   useEffect(() => {
-    setIsExpanded(store.isWorking);
-  }, [store.isWorking]);
+    setIsExpanded(chatStore.isWorking);
+  }, [chatStore.isWorking]);
 
-  if (!store.settings.showActivityPanel) {
+  if (!store.appStore.settings.showActivityPanel) {
     return null;
   }
 
-  if (store.activity.length === 0) {
+  if (chatStore.activity.length === 0) {
     return null;
   }
 
@@ -81,7 +84,7 @@ export function ChatActivityPanel({
         }}
       >
         <ul>
-          {store.activity.slice(-20).map((activity, index) => (
+          {chatStore.activity.slice(-20).map((activity, index) => (
             <li key={`${index}-${activity}`}>{activity}</li>
           ))}
         </ul>

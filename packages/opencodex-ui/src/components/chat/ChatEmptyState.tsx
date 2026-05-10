@@ -4,10 +4,10 @@
 import { Button, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
-import type { RootStore } from "../../stores/RootStore";
+import type { ProjectStore } from "../../stores/ProjectStore";
 
 type ChatEmptyStateProps = {
-  store: RootStore;
+  projectStore: ProjectStore | null;
 };
 
 /**
@@ -17,11 +17,11 @@ type ChatEmptyStateProps = {
  *
  * @returns Nothing.
  */
-export function ChatEmptyState({ store }: ChatEmptyStateProps) {
+export function ChatEmptyState({ projectStore }: ChatEmptyStateProps) {
   const { t } = useTranslation();
 
   function handleNewThread(): void {
-    store.createThread();
+    projectStore?.createThread();
   }
 
   return (
@@ -29,7 +29,12 @@ export function ChatEmptyState({ store }: ChatEmptyStateProps) {
       <Typography variant="h6" component="h2">
         {t("chat.empty")}
       </Typography>
-      <Button variant="contained" type="button" onClick={handleNewThread}>
+      <Button
+        variant="contained"
+        type="button"
+        disabled={projectStore === null || projectStore.isOrphan}
+        onClick={handleNewThread}
+      >
         {t("chat.start")}
       </Button>
     </Stack>

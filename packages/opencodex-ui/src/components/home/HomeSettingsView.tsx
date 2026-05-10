@@ -23,9 +23,10 @@ type HomeSettingsViewProps = {
  */
 export function HomeSettingsView({ store }: HomeSettingsViewProps) {
   const { t } = useTranslation();
+  const appStore = store.appStore;
 
   function handleLanguageChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    store.setLanguage(event.target.value as OpenCodexLanguage);
+    appStore.setLanguage(event.target.value as OpenCodexLanguage);
   }
 
   return (
@@ -35,7 +36,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
       </Typography>
       <TextField
         select
-        value={store.settings.language}
+        value={appStore.settings.language}
         label={t("language.label")}
         fullWidth
         size="small"

@@ -8,12 +8,14 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
+import type { ChatStore } from "../../stores/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
 import { AssistantTurnBlock } from "./AssistantTurnBlock";
 import { MessageRowM } from "./MessageRow";
 
 type ChatMessageListProps = {
   store: RootStore;
+  chatStore: ChatStore;
 };
 
 /**
@@ -23,13 +25,17 @@ type ChatMessageListProps = {
  *
  * @returns Nothing.
  */
-export function ChatMessageList({ store }: ChatMessageListProps) {
+export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageRef = useRef<HTMLElement | null>(null);
   const previousScrollStateRef = useRef<{ height: number; top: number } | null>(null);
-  const currentThread = store.currentThread;
-  const entries = buildTimelineEntries(store.turns, store.activeTurnId, store.isWorking || store.isStartingTurn);
+  const currentThread = chatStore.thread;
+  const entries = buildTimelineEntries(
+    chatStore.turns,
+    chatStore.activeTurnId,
+    chatStore.isWorking || chatStore.isStartingTurn
+  );
   const handleOpenLink = useCallback((href: string) => {
     store.openExternalLink(href);
   }, [store]);
@@ -48,7 +54,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [currentThread?.id, store.scrollToBottomVersion]);
+  }, [currentThread.id, chatStore.scrollToBottomVersion]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -60,15 +66,15 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
 
     container.scrollTop = container.scrollHeight - previousState.height + previousState.top;
     previousScrollStateRef.current = null;
-  }, [store.olderMessagesPrependVersion]);
+  }, [chatStore.olderMessagesPrependVersion]);
 
   function handleScroll(event: UIEvent<HTMLDivElement>): void {
     const container = event.currentTarget;
 
     if (
       container.scrollTop > 80 ||
-      store.isLoadingOlderMessages ||
-      !store.hasMoreOlderMessages
+      chatStore.isLoadingOlderMessages ||
+      !chatStore.hasMoreOlderMessages
     ) {
       return;
     }
@@ -77,7 +83,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
       height: container.scrollHeight,
       top: container.scrollTop
     };
-    store.loadOlderMessages();
+    chatStore.loadOlderMessages();
   }
 
   return (
@@ -96,7 +102,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
         py: 2.25
       }}
     >
-      {store.isLoadingOlderMessages ? (
+      {chatStore.isLoadingOlderMessages ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
           <CircularProgress size={18} thickness={5} />
         </Box>
@@ -132,7 +138,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
           />
         );
       })}
-      {store.isSyncingCurrentThread && store.turns.length > 0 ? (
+      {chatStore.isSyncing && chatStore.turns.length > 0 ? (
         <Box
           sx={{
             alignItems: "center",
@@ -145,7 +151,7 @@ export function ChatMessageList({ store }: ChatMessageListProps) {
         >
           <CircularProgress size={16} thickness={5} />
           <Typography variant="caption">
-            {store.isRecoveringThread ? t("chat.recovering") : t("chat.syncing")}
+            {chatStore.isRecovering ? t("chat.recovering") : t("chat.syncing")}
           </Typography>
         </Box>
       ) : null}

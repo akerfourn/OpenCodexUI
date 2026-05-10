@@ -23,13 +23,13 @@ import type { ReactNode } from "react";
 
 import type { OpenCodexApproval } from "@open-codex-ui/opencodex-protocol";
 
-import type { RootStore } from "../../stores/RootStore";
+import type { ApprovalsStore } from "../../stores/ApprovalsStore";
 import { CopyIconButton } from "../common/CopyIconButton";
 import { ApprovalDetailRow } from "./ApprovalDetailRow";
 import { ApprovalButton } from "./ApprovalButton";
 
 type ApprovalDialogProps = {
-  store: RootStore;
+  store: ApprovalsStore;
 };
 
 /**
@@ -41,9 +41,9 @@ type ApprovalDialogProps = {
  */
 export function ApprovalDialog({ store }: ApprovalDialogProps) {
   const { t } = useTranslation();
-  const approval = store.approvals[0];
+  const approval = store.currentApproval;
 
-  if (approval === undefined) {
+  if (approval === null) {
     return null;
   }
 

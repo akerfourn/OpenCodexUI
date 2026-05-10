@@ -24,9 +24,11 @@ type HomeSourcesViewProps = {
 export function HomeSourcesView({ store }: HomeSourcesViewProps) {
   const { t } = useTranslation();
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const appStore = store.appStore;
+  const sourcesStore = store.sourcesStore;
 
   function handleCreateSource(): void {
-    void store.createSource().then((source) => {
+    void sourcesStore.createSource().then((source) => {
       if (source !== null) {
         setEditingSourceId(source.id);
       }
@@ -34,7 +36,7 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
   }
 
   function handleSyncAllSources(): void {
-    store.syncAllSources();
+    sourcesStore.syncAllSources();
   }
 
   function handleCloseEditor(): void {
@@ -45,12 +47,12 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
     setEditingSourceId(sourceId);
   }
 
-  const sortedSources = [...store.sources].sort((firstSource, secondSource) => {
-    if (isDefaultSource(firstSource.id, store.settings.defaultSourceId)) {
+  const sortedSources = [...sourcesStore.sources].sort((firstSource, secondSource) => {
+    if (isDefaultSource(firstSource.id, appStore.settings.defaultSourceId)) {
       return -1;
     }
 
-    if (isDefaultSource(secondSource.id, store.settings.defaultSourceId)) {
+    if (isDefaultSource(secondSource.id, appStore.settings.defaultSourceId)) {
       return 1;
     }
 
@@ -73,12 +75,12 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
             <IconButton
               type="button"
               aria-label={t("sources.syncAll")}
-              disabled={store.isSyncingAllSources || store.sources.length === 0}
+              disabled={sourcesStore.isSyncingAllSources || sourcesStore.sources.length === 0}
               onClick={handleSyncAllSources}
             >
               <SyncOutlinedIcon
                 sx={{
-                  animation: store.isSyncingAllSources ? "source-sync-spin 1s linear infinite" : "none",
+                  animation: sourcesStore.isSyncingAllSources ? "source-sync-spin 1s linear infinite" : "none",
                   "@keyframes source-sync-spin": {
                     from: { transform: "rotate(0deg)" },
                     to: { transform: "rotate(-360deg)" }
@@ -104,7 +106,7 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
           key={source.id}
           source={source}
           store={store}
-          isDefault={isDefaultSource(source.id, store.settings.defaultSourceId)}
+          isDefault={isDefaultSource(source.id, appStore.settings.defaultSourceId)}
           isEditing={source.id === editingSourceId}
           onEdit={handleEditSource}
           onCloseEdit={handleCloseEditor}

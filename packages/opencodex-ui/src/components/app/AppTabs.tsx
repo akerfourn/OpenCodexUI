@@ -22,19 +22,20 @@ type AppTabsProps = {
  */
 export function AppTabs({ store }: AppTabsProps) {
   const { t } = useTranslation();
+  const navigationStore = store.navigationStore;
 
   function handleTabChange(_event: unknown, value: string): void {
-    store.activateTab(value);
+    navigationStore.activateTab(value);
   }
 
   function handleProjectClose(projectId: string): void {
-    store.requestCloseProject(projectId);
+    navigationStore.requestCloseProject(projectId);
   }
 
   return (
     <Box className="app-tabs">
       <Tabs
-        value={store.activeTabId}
+        value={navigationStore.activeTabId}
         aria-label={t("tabs.label")}
         variant="scrollable"
         scrollButtons="auto"
@@ -48,7 +49,7 @@ export function AppTabs({ store }: AppTabsProps) {
           iconPosition="start"
           sx={{ minHeight: 36, py: 0.5 }}
         />
-        {store.projectTabStores.map((projectStore) => (
+        {navigationStore.projectTabStores.map((projectStore) => (
           <Tab
             key={projectStore.project.id}
             value={projectStore.project.id}

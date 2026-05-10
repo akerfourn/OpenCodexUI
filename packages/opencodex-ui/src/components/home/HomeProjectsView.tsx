@@ -35,41 +35,43 @@ type HomeProjectsViewProps = {
  */
 export function HomeProjectsView({ store }: HomeProjectsViewProps) {
   const { t } = useTranslation();
+  const projectsStore = store.projectsStore;
+  const sourcesStore = store.sourcesStore;
 
   function handlePickExisting(): void {
-    store.openProjectFromPicker("open");
+    projectsStore.openProjectFromPicker("open");
   }
 
   function handlePickNew(): void {
-    store.openProjectFromPicker("create");
+    projectsStore.openProjectFromPicker("create");
   }
 
   function handleOpenRecent(projectPath: string, sourceId: string | null): void {
-    store.openProject(projectPath, false, sourceId);
+    projectsStore.openProject(projectPath, false, sourceId);
   }
 
   function handleRefreshProjects(): void {
-    store.refreshProjects();
+    projectsStore.refreshProjects();
   }
 
   function handleToggleHiddenProjects(): void {
-    store.setShowHiddenProjects(!store.homeStore.showHiddenProjects);
+    projectsStore.setShowHiddenProjects(!store.homeStore.showHiddenProjects);
   }
 
   function handleSetProjectHidden(projectId: string, isHidden: boolean): void {
-    store.setProjectHidden(projectId, isHidden);
+    projectsStore.setProjectHidden(projectId, isHidden);
   }
 
   function handleSourceChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    store.setHomeSelectedSource(event.target.value);
+    sourcesStore.setHomeSelectedSource(event.target.value);
   }
 
-  const hiddenProjectCount = store.projects.filter((project) => project.isHidden).length;
+  const hiddenProjectCount = projectsStore.projects.filter((project) => project.isHidden).length;
   const visibleProjects = store.homeStore.showHiddenProjects
-    ? store.projects
-    : store.projects.filter((project) => !project.isHidden);
+    ? projectsStore.projects
+    : projectsStore.projects.filter((project) => !project.isHidden);
   const hasProjects = visibleProjects.length > 0;
-  const sourceById = new Map(store.sources.map((source) => [source.id, source]));
+  const sourceById = new Map(sourcesStore.sources.map((source) => [source.id, source]));
   const hiddenProjectsButtonLabel = store.homeStore.showHiddenProjects
     ? t("home.hideHiddenProjects")
     : t("home.showHiddenProjects");
@@ -98,7 +100,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
           onChange={handleSourceChange}
           sx={{ minWidth: 180 }}
         >
-          {store.sources.map((source) => (
+          {sourcesStore.sources.map((source) => (
             <MenuItem value={source.id} key={source.id}>
               {source.name}
             </MenuItem>

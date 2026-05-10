@@ -32,14 +32,15 @@ type CloseProjectDialogProps = {
 export function CloseProjectDialog({ store }: CloseProjectDialogProps) {
   const { t } = useTranslation();
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const projectStore = store.projectCloseRequest;
+  const navigationStore = store.navigationStore;
+  const projectStore = navigationStore.projectCloseRequest;
   const isOpen = projectStore !== null;
   const hasRunningTurn = projectStore === null ? false : hasRunningChat(projectStore);
   const projectName = projectStore?.displayName ?? "";
 
   function handleCancel(): void {
     setIsConfirmed(false);
-    store.cancelCloseProject();
+    navigationStore.cancelCloseProject();
   }
 
   function handleConfirmToggle(): void {
@@ -47,7 +48,7 @@ export function CloseProjectDialog({ store }: CloseProjectDialogProps) {
   }
 
   function handleSubmit(): void {
-    store.confirmCloseProject();
+    navigationStore.confirmCloseProject();
     setIsConfirmed(false);
   }
 

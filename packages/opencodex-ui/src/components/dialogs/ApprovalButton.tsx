@@ -12,10 +12,10 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexApprovalDecision } from "@open-codex-ui/opencodex-protocol";
 
-import type { RootStore } from "../../stores/RootStore";
+import type { ApprovalsStore } from "../../stores/ApprovalsStore";
 
 type ApprovalButtonProps = {
-  store: RootStore;
+  store: ApprovalsStore;
   approvalId: string;
   decision: OpenCodexApprovalDecision;
 };

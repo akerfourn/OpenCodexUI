@@ -6,6 +6,7 @@ import { Alert, Button, Stack } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
+import type { ProjectStore } from "../../stores/ProjectStore";
 import { ChatActivityPanelX } from "./ChatActivityPanel";
 import { ChatComposer } from "./ChatComposer";
 import { ChatHeaderX } from "./ChatHeader";
@@ -15,6 +16,7 @@ import { ChatLoadingState } from "./ChatLoadingState";
 
 type ChatViewProps = {
   store: RootStore;
+  projectStore: ProjectStore;
 };
 
 /**
@@ -24,16 +26,17 @@ type ChatViewProps = {
  *
  * @returns Nothing.
  */
-export function ChatView({ store }: ChatViewProps) {
+export function ChatView({ store, projectStore }: ChatViewProps) {
   const { t } = useTranslation();
-  const currentThread = store.currentThread;
-  const isOrphanProject = store.activeProjectStore?.isOrphan === true;
+  const appStore = store.appStore;
+  const chatStore = projectStore.selectedChat;
+  const isOrphanProject = projectStore.isOrphan;
 
   function handleOpenSources(): void {
     store.openSourcesHome();
   }
 
-  if (store.isCreatingThread) {
+  if (projectStore.isCreatingThread) {
     return (
       <Stack className="chat-view">
         <ChatLoadingState label={t("chat.creating")} fillView />
@@ -41,24 +44,25 @@ export function ChatView({ store }: ChatViewProps) {
     );
   }
 
-  if (currentThread === null) {
+  if (chatStore === null) {
     return (
       <Stack className="chat-view">
-        <ChatEmptyState store={store} />
+        <ChatEmptyState projectStore={projectStore} />
       </Stack>
     );
   }
 
-  const isLoadingCurrentThread = store.loadingThreadId === currentThread.id && store.turns.length === 0;
+  const currentThread = chatStore.thread;
+  const isLoadingCurrentThread = projectStore.loadingThreadId === currentThread.id && chatStore.turns.length === 0;
   const messageContent = isLoadingCurrentThread ? (
     <ChatLoadingState label={t("chat.loading")} />
   ) : (
-    <ChatMessageListX store={store} />
+    <ChatMessageListX store={store} chatStore={chatStore} />
   );
 
   return (
     <Stack className="chat-view">
-      <ChatHeaderX store={store} />
+      <ChatHeaderX projectStore={projectStore} chatStore={chatStore} />
       {isOrphanProject ? (
         <Alert
           severity="warning"
@@ -72,15 +76,20 @@ export function ChatView({ store }: ChatViewProps) {
         </Alert>
       ) : null}
       {messageContent}
-      <ChatActivityPanelX store={store} />
+      <ChatActivityPanelX store={store} chatStore={chatStore} />
       {isOrphanProject ? null : (
         <ChatComposer
           store={store}
-          currentThreadId={currentThread.id}
-          selectedModel={store.selectedModel}
-          reasoningEffort={store.reasoningEffort}
-          modelOptions={store.modelOptions}
-          isWorking={store.isWorking || store.isStartingTurn || store.isRecoveringThread || store.loadingThreadId !== null}
+          chatStore={chatStore}
+          selectedModel={appStore.selectedModel}
+          reasoningEffort={appStore.reasoningEffort}
+          modelOptions={appStore.modelOptions}
+          isWorking={
+            chatStore.isWorking ||
+            chatStore.isStartingTurn ||
+            chatStore.isRecovering ||
+            projectStore.loadingThreadId !== null
+          }
         />
       )}
     </Stack>

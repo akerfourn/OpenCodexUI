@@ -17,10 +17,10 @@ import {
   Typography
 } from "@mui/material";
 
-import type { RootStore } from "../../stores/RootStore";
+import type { ProjectTrustStore } from "../../stores/ProjectTrustStore";
 
 type ProjectTrustDialogProps = {
-  store: RootStore;
+  store: ProjectTrustStore;
 };
 
 /**
@@ -33,7 +33,7 @@ type ProjectTrustDialogProps = {
 export function ProjectTrustDialog({ store }: ProjectTrustDialogProps) {
   const { t } = useTranslation();
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const trustRequest = store.pendingProjectTrustRequest;
+  const trustRequest = store.currentTrustRequest;
 
   useEffect(() => {
     setIsConfirmed(false);

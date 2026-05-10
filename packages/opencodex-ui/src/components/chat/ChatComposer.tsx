@@ -11,12 +11,13 @@ import type {
   OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
+import type { ChatStore } from "../../stores/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ComposerAttachmentList } from "./ComposerAttachmentList";
 
 type ChatComposerProps = {
   store: RootStore;
-  currentThreadId: string | null;
+  chatStore: ChatStore;
   selectedModel: string | null;
   reasoningEffort: OpenCodexReasoningEffort;
   modelOptions: string[];
@@ -32,7 +33,7 @@ type ChatComposerProps = {
  */
 export function ChatComposer({
   store,
-  currentThreadId,
+  chatStore,
   selectedModel,
   reasoningEffort,
   modelOptions,
@@ -45,7 +46,7 @@ export function ChatComposer({
   useEffect(() => {
     setDraft("");
     setAttachments([]);
-  }, [currentThreadId]);
+  }, [chatStore.thread.id]);
 
   function handleInput(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     setDraft(event.target.value);
@@ -56,7 +57,7 @@ export function ChatComposer({
       return;
     }
 
-    store.sendMessage(draft, attachments);
+    chatStore.sendMessage(draft, attachments);
     setDraft("");
     setAttachments([]);
   }
@@ -76,15 +77,15 @@ export function ChatComposer({
   }
 
   function handleModelChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    store.setSelectedModel(event.target.value.length > 0 ? event.target.value : null);
+    store.appStore.setSelectedModel(event.target.value.length > 0 ? event.target.value : null);
   }
 
   function handleEffortChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    store.setReasoningEffort(event.target.value as OpenCodexReasoningEffort);
+    store.appStore.setReasoningEffort(event.target.value as OpenCodexReasoningEffort);
   }
 
   function handleInterrupt(): void {
-    store.interruptTurn();
+    chatStore.interruptTurn();
   }
 
   async function handleAttachImages(): Promise<void> {

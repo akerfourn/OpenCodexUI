@@ -8,11 +8,13 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { useTranslation } from "react-i18next";
 
-import type { RootStore } from "../../stores/RootStore";
+import type { ChatStore } from "../../stores/ChatStore";
+import type { ProjectStore } from "../../stores/ProjectStore";
 import { RenameModal } from "../dialogs/RenameModal";
 
 type ChatHeaderProps = {
-  store: RootStore;
+  projectStore: ProjectStore;
+  chatStore: ChatStore;
 };
 
 /**
@@ -22,16 +24,12 @@ type ChatHeaderProps = {
  *
  * @returns Nothing.
  */
-export function ChatHeader({ store }: ChatHeaderProps) {
+export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
   const { t } = useTranslation();
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
-  const currentThread = store.currentThread;
-  const isOrphanProject = store.activeProjectStore?.isOrphan === true;
-
-  if (currentThread === null) {
-    return null;
-  }
+  const currentThread = chatStore.thread;
+  const isOrphanProject = projectStore.isOrphan;
 
   const title = currentThread.title || currentThread.preview || t("chat.newConversation");
   const renameModal = isRenameModalOpen ? (
@@ -64,14 +62,14 @@ export function ChatHeader({ store }: ChatHeaderProps) {
 
   function handleRenameSubmit(): void {
     if (renameValue.trim().length > 0) {
-      store.renameCurrentThread(renameValue);
+      chatStore.rename(renameValue);
       setIsRenameModalOpen(false);
       setRenameValue("");
     }
   }
 
   function handleRefreshThread(): void {
-    store.refreshCurrentThread();
+    chatStore.refresh();
   }
 
   return (
@@ -97,10 +95,10 @@ export function ChatHeader({ store }: ChatHeaderProps) {
               aria-label={t("header.refresh")}
               title={t("header.refresh")}
               size="small"
-              disabled={isOrphanProject || store.isRefreshingThread || store.isSyncingCurrentThread}
+              disabled={isOrphanProject || chatStore.isRefreshing || chatStore.isSyncing}
               onClick={handleRefreshThread}
             >
-              {store.isRefreshingThread || store.isSyncingCurrentThread ? (
+              {chatStore.isRefreshing || chatStore.isSyncing ? (
                 <CircularProgress size={18} thickness={5} />
               ) : (
                 <RefreshOutlinedIcon fontSize="small" />
@@ -108,7 +106,7 @@ export function ChatHeader({ store }: ChatHeaderProps) {
             </IconButton>
           </Box>
         </Box>
-        {store.isSyncingCurrentThread ? (
+        {chatStore.isSyncing ? (
           <LinearProgress
             sx={{
               position: "absolute",

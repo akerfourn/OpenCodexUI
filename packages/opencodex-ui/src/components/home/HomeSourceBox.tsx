@@ -69,7 +69,8 @@ export function HomeSourceBox({
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
   const [isDeleteConfirmed, setIsDeleteConfirmed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const isSyncing = store.isSourceSyncing(source.id);
+  const sourcesStore = store.sourcesStore;
+  const isSyncing = sourcesStore.isSourceSyncing(source.id);
 
   useEffect(() => {
     setNameDraft(source.name);
@@ -83,7 +84,7 @@ export function HomeSourceBox({
   }
 
   function handleSyncSource(): void {
-    store.syncSource(source.id);
+    sourcesStore.syncSource(source.id);
   }
 
   function handleNameChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
@@ -103,7 +104,7 @@ export function HomeSourceBox({
   }
 
   function handlePickExecutable(): void {
-    void store.pickSourceExecutablePath().then((path) => {
+    void sourcesStore.pickSourceExecutablePath().then((path) => {
       if (path !== null) {
         setCommandDraft(path);
         setCommandModeDraft("custom");
@@ -118,7 +119,7 @@ export function HomeSourceBox({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    store.updateSource(source.id, {
+    sourcesStore.updateSource(source.id, {
       name: nameDraft,
       settings: {
         color: colorDraft,
@@ -162,7 +163,7 @@ export function HomeSourceBox({
     setIsDeleting(true);
 
     try {
-      await store.deleteSource(source.id);
+      await sourcesStore.deleteSource(source.id);
       resetDeleteState();
       onCloseEdit();
     } finally {

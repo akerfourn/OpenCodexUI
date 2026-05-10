@@ -27,16 +27,19 @@ window.addEventListener("focus", () => {
   }
 
   lastFocusRefreshAt = now;
-  if (store.canRefreshCurrentThread()) {
-    store.refreshCurrentThread();
+  const activeChatStore = store.activeChatStore;
+  const activeProjectStore = store.activeProjectStore;
+
+  if (activeChatStore?.canRefresh === true) {
+    activeChatStore.refresh();
   }
 
-  if (store.activeProjectStore !== null && !store.isLoadingThreads) {
-    store.refreshThreads();
+  if (activeProjectStore !== null && !activeProjectStore.isLoadingThreads) {
+    activeProjectStore.refreshThreads();
   }
 
-  if (store.activeProjectStore === null) {
-    store.refreshProjects();
+  if (activeProjectStore === null) {
+    store.projectsStore.refreshProjects();
   }
 });
 
