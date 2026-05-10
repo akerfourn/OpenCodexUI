@@ -10,6 +10,9 @@ import type { ChatStore } from "./ChatStore";
 import type { RootStore } from "./RootStore";
 import type { RootChildStore } from "./RootChildStore";
 
+/**
+ * Stores approval requests that are global or not yet attached to a chat.
+ */
 export class ApprovalsStore implements RootChildStore {
   unassignedApprovals: OpenCodexApproval[] = [];
 
@@ -17,6 +20,11 @@ export class ApprovalsStore implements RootChildStore {
     makeAutoObservable<ApprovalsStore, "root">(this, { root: false });
   }
 
+  /**
+   * Returns the approval currently shown by the global approval dialog.
+   *
+   * @returns Active approval, or `null` when none is pending.
+   */
   get currentApproval(): OpenCodexApproval | null {
     const activeChatApproval = this.root.activeChatStore?.currentApproval ?? null;
 
@@ -33,6 +41,13 @@ export class ApprovalsStore implements RootChildStore {
     return this.unassignedApprovals[0] ?? null;
   }
 
+  /**
+   * Applies approval lifecycle events from the backend.
+   *
+   * @param event Event payload to process.
+   *
+   * @returns Nothing.
+   */
   handleEvent(event: OpenCodexEvent): void {
     switch (event.type) {
       case "approval.requested":
@@ -46,10 +61,25 @@ export class ApprovalsStore implements RootChildStore {
     }
   }
 
+  /**
+   * Sends a user decision for an approval request.
+   *
+   * @param approvalId Approval identifier.
+   * @param decision Decision selected by the user.
+   *
+   * @returns Nothing.
+   */
   resolveApproval(approvalId: string, decision: OpenCodexApprovalDecision): void {
     void this.root.request({ type: "approval.respond", approvalId, decision });
   }
 
+  /**
+   * Moves pending approvals into a chat once its thread is known.
+   *
+   * @param chatStore Chat store that may own pending approvals.
+   *
+   * @returns Nothing.
+   */
   attachPendingApprovalsToChat(chatStore: ChatStore): void {
     const chatApprovals = this.unassignedApprovals.filter(
       (approval) => approval.threadId === chatStore.thread.id

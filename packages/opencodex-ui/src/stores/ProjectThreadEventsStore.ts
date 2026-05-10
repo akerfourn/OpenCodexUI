@@ -15,6 +15,9 @@ import type { ProjectsStore } from "./ProjectsStore";
 import type { RootStore } from "./RootStore";
 import type { RootChildStore } from "./RootChildStore";
 
+/**
+ * Applies thread and chat runtime events to their owning project stores.
+ */
 export class ProjectThreadEventsStore implements RootChildStore {
   constructor(
     private readonly projectsStore: ProjectsStore,
@@ -26,6 +29,13 @@ export class ProjectThreadEventsStore implements RootChildStore {
     });
   }
 
+  /**
+   * Routes backend thread events to project and chat stores.
+   *
+   * @param event Event payload to process.
+   *
+   * @returns Nothing.
+   */
   handleEvent(event: OpenCodexEvent): void {
     switch (event.type) {
       case "threads.updated":
@@ -84,6 +94,11 @@ export class ProjectThreadEventsStore implements RootChildStore {
     }
   }
 
+  /**
+   * Clears loading and running flags after an unrecoverable error.
+   *
+   * @returns Nothing.
+   */
   resetPendingProjectStates(): void {
     for (const projectStore of this.projectsStore.projectStoresById.values()) {
       projectStore.isLoadingThreads = false;
@@ -101,6 +116,13 @@ export class ProjectThreadEventsStore implements RootChildStore {
     }
   }
 
+  /**
+   * Marks a chat as recovering after a recoverable thread error.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns `true` when the chat was found.
+   */
   applyRecoverableThreadError(threadId: string): boolean {
     const chatStore = this.findChatStore(threadId);
 

@@ -75,6 +75,11 @@ export class ChatStore {
     );
   }
 
+  /**
+   * Returns the approval currently pending for this chat.
+   *
+   * @returns Active approval, or `null` when none is pending.
+   */
   get currentApproval(): OpenCodexApproval | null {
     return this.approvals[0] ?? null;
   }
@@ -349,6 +354,13 @@ export class ChatStore {
     applyTurnDuration(this, turnId, durationMs);
   }
 
+  /**
+   * Adds or replaces an approval attached to this chat.
+   *
+   * @param approval Approval request to store.
+   *
+   * @returns Nothing.
+   */
   addApproval(approval: OpenCodexApproval): void {
     const existingIndex = this.approvals.findIndex((entry) => entry.id === approval.id);
 
@@ -360,6 +372,13 @@ export class ChatStore {
     this.approvals.splice(existingIndex, 1, approval);
   }
 
+  /**
+   * Removes an approval from this chat.
+   *
+   * @param approvalId Approval identifier.
+   *
+   * @returns Nothing.
+   */
   removeApproval(approvalId: string): void {
     this.approvals = this.approvals.filter((approval) => approval.id !== approvalId);
   }

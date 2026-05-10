@@ -13,6 +13,9 @@ import { ProjectTrustStore } from "./ProjectTrustStore";
 import type { RootStore } from "./RootStore";
 import type { RootChildStore } from "./RootChildStore";
 
+/**
+ * Stores recent projects and opened project workspaces.
+ */
 export class ProjectsStore implements RootChildStore {
   projects: OpenCodexProject[] = [];
   readonly projectStoresById = new Map<string, ProjectStore>();
@@ -27,6 +30,13 @@ export class ProjectsStore implements RootChildStore {
     makeAutoObservable<ProjectsStore, "root">(this, { root: false });
   }
 
+  /**
+   * Applies project and thread-related backend events.
+   *
+   * @param event Event payload to process.
+   *
+   * @returns Nothing.
+   */
   handleEvent(event: OpenCodexEvent): void {
     this.trustStore.handleEvent(event);
 
@@ -44,6 +54,15 @@ export class ProjectsStore implements RootChildStore {
     }
   }
 
+  /**
+   * Opens a project path, creating it when requested.
+   *
+   * @param projectPath Project path to open.
+   * @param createIfMissing Whether the backend may create the directory.
+   * @param sourceId Optional source override.
+   *
+   * @returns Nothing.
+   */
   openProject(
     projectPath: string,
     createIfMissing = false,
@@ -81,6 +100,13 @@ export class ProjectsStore implements RootChildStore {
     });
   }
 
+  /**
+   * Opens the native directory picker for a project.
+   *
+   * @param mode Picker mode.
+   *
+   * @returns Nothing.
+   */
   openProjectFromPicker(mode: "open" | "create"): void {
     const sourceId = this.root.homeStore.selectedSourceId ?? this.root.settings.defaultSourceId;
 
@@ -104,18 +130,45 @@ export class ProjectsStore implements RootChildStore {
     });
   }
 
+  /**
+   * Opens the path currently typed in the Home project input.
+   *
+   * @param createIfMissing Whether the backend may create the directory.
+   *
+   * @returns Nothing.
+   */
   openProjectFromInput(createIfMissing: boolean): void {
     this.openProject(this.root.homeStore.projectPathInput, createIfMissing);
   }
 
+  /**
+   * Requests the refreshed project list from the backend.
+   *
+   * @returns Nothing.
+   */
   refreshProjects(): void {
     void this.root.request({ type: "projects.list" });
   }
 
+  /**
+   * Updates whether hidden projects are visible on Home.
+   *
+   * @param value Visibility flag.
+   *
+   * @returns Nothing.
+   */
   setShowHiddenProjects(value: boolean): void {
     this.root.homeStore.setShowHiddenProjects(value);
   }
 
+  /**
+   * Persists the hidden state for a project.
+   *
+   * @param projectId Project identifier.
+   * @param isHidden Whether the project should be hidden.
+   *
+   * @returns Nothing.
+   */
   setProjectHidden(projectId: string, isHidden: boolean): void {
     void this.root.request({
       type: "projects.setHidden",
@@ -124,6 +177,14 @@ export class ProjectsStore implements RootChildStore {
     });
   }
 
+  /**
+   * Opens or updates a project tab.
+   *
+   * @param project Project metadata.
+   * @param activate Whether the tab should become active.
+   *
+   * @returns Project store backing the tab.
+   */
   openProjectTab(project: OpenCodexProject, activate: boolean): ProjectStore {
     const existingStore = this.projectStoresById.get(project.id)
       ?? this.findProjectStoreByPath(project.path, project.sourceId);
@@ -143,6 +204,14 @@ export class ProjectsStore implements RootChildStore {
     return projectStore;
   }
 
+  /**
+   * Finds an opened project store by path and optional source.
+   *
+   * @param projectPath Project path to match.
+   * @param sourceId Optional source identifier to match.
+   *
+   * @returns Matching project store, or `null`.
+   */
   findProjectStoreByPath(projectPath: string, sourceId?: string | null): ProjectStore | null {
     const normalizedPath = projectPath.trim();
 
@@ -157,6 +226,13 @@ export class ProjectsStore implements RootChildStore {
     return null;
   }
 
+  /**
+   * Finds the opened project that owns a thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Matching project store, or `null`.
+   */
   findProjectStoreForThread(threadId: string): ProjectStore | null {
     for (const projectStore of this.projectStoresById.values()) {
       if (projectStore.findThread(threadId) !== null || projectStore.chatsById.has(threadId)) {
@@ -167,14 +243,36 @@ export class ProjectsStore implements RootChildStore {
     return null;
   }
 
+  /**
+   * Finds a loaded chat store by thread identifier.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Matching chat store, or `null`.
+   */
   findChatStoreByThreadId(threadId: string): ChatStore | null {
     return this.findProjectStoreForThread(threadId)?.chatsById.get(threadId) ?? null;
   }
 
+  /**
+   * Remembers which project initiated a thread request.
+   *
+   * @param threadId Thread identifier.
+   * @param projectId Project identifier.
+   *
+   * @returns Nothing.
+   */
   rememberPendingThreadProject(threadId: string, projectId: string): void {
     this.pendingThreadProjectIds.set(threadId, projectId);
   }
 
+  /**
+   * Consumes the remembered project for a pending thread request.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Matching project store, or `null`.
+   */
   takePendingThreadProject(threadId: string): ProjectStore | null {
     const projectId = this.pendingThreadProjectIds.get(threadId);
 
@@ -186,6 +284,13 @@ export class ProjectsStore implements RootChildStore {
     return this.projectStoresById.get(projectId) ?? null;
   }
 
+  /**
+   * Ensures a project store exists for a thread event.
+   *
+   * @param thread Thread metadata.
+   *
+   * @returns Project store that should own the thread.
+   */
   ensureProjectStoreForThread(thread: OpenCodexThread): ProjectStore {
     const pendingProjectStore = this.takePendingThreadProject(thread.id);
     const projectPath = thread.projectPath
@@ -204,10 +309,22 @@ export class ProjectsStore implements RootChildStore {
     return this.openProjectTab(project, false);
   }
 
+  /**
+   * Clears pending loading states across opened projects and chats.
+   *
+   * @returns Nothing.
+   */
   resetPendingProjectStates(): void {
     this.threadEventsStore.resetPendingProjectStates();
   }
 
+  /**
+   * Applies a recoverable thread error to the owning chat.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns `true` when a chat handled the error.
+   */
   applyRecoverableThreadError(threadId: string): boolean {
     return this.threadEventsStore.applyRecoverableThreadError(threadId);
   }

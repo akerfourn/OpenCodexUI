@@ -11,6 +11,9 @@ import { applyOpenCodexLanguage } from "../i18n/i18n";
 import type { RootStore } from "./RootStore";
 import type { RootChildStore } from "./RootChildStore";
 
+/**
+ * Stores application-wide settings, startup state, and model selection.
+ */
 export class AppStore implements RootChildStore {
   settings: OpenCodexSettings = {
     codexCommand: "codex",
@@ -33,6 +36,11 @@ export class AppStore implements RootChildStore {
     makeAutoObservable<AppStore, "root">(this, { root: false });
   }
 
+  /**
+   * Returns available model choices while preserving the current selection.
+   *
+   * @returns Model option list.
+   */
   get modelOptions(): string[] {
     const options = [...this.models];
 
@@ -43,6 +51,11 @@ export class AppStore implements RootChildStore {
     return options;
   }
 
+  /**
+   * Requests initial application state from the backend.
+   *
+   * @returns Promise resolved when the request completes.
+   */
   async bootstrap(): Promise<void> {
     this.isBootstrapping = true;
 
@@ -53,6 +66,13 @@ export class AppStore implements RootChildStore {
     }
   }
 
+  /**
+   * Applies backend events owned by the application store.
+   *
+   * @param event Event payload to process.
+   *
+   * @returns Nothing.
+   */
   handleEvent(event: OpenCodexEvent): void {
     switch (event.type) {
       case "connection.status":
@@ -73,20 +93,48 @@ export class AppStore implements RootChildStore {
     }
   }
 
+  /**
+   * Stores an error event as user-visible text.
+   *
+   * @param event Error event payload.
+   *
+   * @returns Nothing.
+   */
   applyError(event: Extract<OpenCodexEvent, { type: "error" }>): void {
     this.errorMessage = event.details === undefined
       ? event.message
       : `${event.message}\n${JSON.stringify(event.details, null, 2)}`;
   }
 
+  /**
+   * Updates the selected model in UI state.
+   *
+   * @param value Model identifier, or `null` for backend default.
+   *
+   * @returns Nothing.
+   */
   setSelectedModel(value: string | null): void {
     this.selectedModel = value;
   }
 
+  /**
+   * Updates the selected reasoning effort in UI state.
+   *
+   * @param value Reasoning effort to use for future turns.
+   *
+   * @returns Nothing.
+   */
   setReasoningEffort(value: OpenCodexReasoningEffort): void {
     this.reasoningEffort = value;
   }
 
+  /**
+   * Updates the UI language and persists it through the backend.
+   *
+   * @param language Language setting to apply.
+   *
+   * @returns Nothing.
+   */
   setLanguage(language: OpenCodexLanguage): void {
     this.settings = { ...this.settings, language };
     applyOpenCodexLanguage(language);

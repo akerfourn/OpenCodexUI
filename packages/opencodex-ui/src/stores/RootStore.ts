@@ -96,65 +96,8 @@ export class RootStore {
     this.projectsStore.handleEvent(event);
     this.sourcesStore.handleEvent(event);
 
-    switch (event.type) {
-      case "connection.status":
-        return;
-      case "app.bootstrap":
-        return;
-      case "projects.updated":
-        return;
-      case "sources.updated":
-        return;
-      case "project.opened":
-        return;
-      case "threads.updated":
-        return;
-      case "thread.opened":
-      case "thread.created":
-        return;
-      case "thread.metadata.updated":
-        return;
-      case "thread.turns.prepended":
-        return;
-      case "thread.turns.synced":
-        return;
-      case "thread.sync.started":
-        return;
-      case "thread.sync.completed":
-        return;
-      case "thread.recovery.started":
-        return;
-      case "thread.recovery.completed":
-        return;
-      case "thread.renamed":
-        return;
-      case "message.started":
-        return;
-      case "message.delta":
-        return;
-      case "activity.updated":
-        return;
-      case "turn.started":
-        return;
-      case "turn.completed":
-        return;
-      case "approval.requested":
-        return;
-      case "approval.resolved":
-        return;
-      case "project.trust.required":
-        return;
-      case "project.trust.completed":
-        return;
-      case "models.updated":
-        return;
-      case "error":
-        this.applyErrorEvent(event);
-        return;
-      case "message.completed":
-      case "activity.started":
-      case "activity.completed":
-        return;
+    if (event.type === "error") {
+      this.applyErrorEvent(event);
     }
   }
 

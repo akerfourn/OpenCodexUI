@@ -12,6 +12,9 @@ export type ProjectTrustRequest = {
   disabledFolders: string[];
 };
 
+/**
+ * Stores project trust requests until they can be shown or attached to a project.
+ */
 export class ProjectTrustStore implements RootChildStore {
   pendingTrustRequest: ProjectTrustRequest | null = null;
 
@@ -25,6 +28,11 @@ export class ProjectTrustStore implements RootChildStore {
     });
   }
 
+  /**
+   * Returns the trust request currently shown by the trust dialog.
+   *
+   * @returns Active trust request, or `null` when none is pending.
+   */
   get currentTrustRequest(): ProjectTrustRequest | null {
     const activeProjectRequest = this.root.activeProjectStore?.trustRequest ?? null;
 
@@ -41,6 +49,13 @@ export class ProjectTrustStore implements RootChildStore {
     return this.pendingTrustRequest;
   }
 
+  /**
+   * Applies project trust lifecycle events from the backend.
+   *
+   * @param event Event payload to process.
+   *
+   * @returns Nothing.
+   */
   handleEvent(event: OpenCodexEvent): void {
     switch (event.type) {
       case "project.trust.required":
@@ -57,15 +72,36 @@ export class ProjectTrustStore implements RootChildStore {
     }
   }
 
+  /**
+   * Confirms a project trust request through the backend.
+   *
+   * @param projectPath Project path to trust.
+   *
+   * @returns Nothing.
+   */
   trustProject(projectPath: string): void {
     void this.root.request({ type: "project.trust", projectPath });
   }
 
+  /**
+   * Dismisses a project trust request locally and in the backend.
+   *
+   * @param projectPath Project path to dismiss.
+   *
+   * @returns Nothing.
+   */
   dismissProjectTrustRequest(projectPath: string): void {
     this.clearTrustRequest(projectPath);
     void this.root.request({ type: "project.trust.dismiss", projectPath });
   }
 
+  /**
+   * Moves a pending trust request to a project once it is available.
+   *
+   * @param projectStore Project store that may own the pending request.
+   *
+   * @returns Nothing.
+   */
   attachPendingTrustRequest(projectStore: ProjectStore): void {
     if (this.pendingTrustRequest?.projectPath !== projectStore.projectPath) {
       return;

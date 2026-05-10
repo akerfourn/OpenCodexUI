@@ -77,42 +77,92 @@ export class ProjectStore {
     return this.chatsById.get(this.selectedChatId) ?? null;
   }
 
+  /**
+   * Returns the thread metadata shown in the project sidebar.
+   *
+   * @returns Thread collection.
+   */
   get threads(): OpenCodexThread[] {
     return this.threadListStore.threads;
   }
 
+  /**
+   * Replaces the thread metadata shown in the project sidebar.
+   *
+   * @param threads Thread collection.
+   */
   set threads(threads: OpenCodexThread[]) {
     this.threadListStore.threads = threads;
   }
 
+  /**
+   * Returns the project thread search term.
+   *
+   * @returns Search text.
+   */
   get searchTerm(): string {
     return this.threadListStore.searchTerm;
   }
 
+  /**
+   * Updates the project thread search term.
+   *
+   * @param value Search text.
+   */
   set searchTerm(value: string) {
     this.threadListStore.searchTerm = value;
   }
 
+  /**
+   * Returns whether this project's thread list is loading.
+   *
+   * @returns Loading flag.
+   */
   get isLoadingThreads(): boolean {
     return this.threadListStore.isLoadingThreads;
   }
 
+  /**
+   * Updates whether this project's thread list is loading.
+   *
+   * @param value Loading flag.
+   */
   set isLoadingThreads(value: boolean) {
     this.threadListStore.isLoadingThreads = value;
   }
 
+  /**
+   * Returns whether a new thread is being created for this project.
+   *
+   * @returns Creation flag.
+   */
   get isCreatingThread(): boolean {
     return this.threadListStore.isCreatingThread;
   }
 
+  /**
+   * Updates whether a new thread is being created for this project.
+   *
+   * @param value Creation flag.
+   */
   set isCreatingThread(value: boolean) {
     this.threadListStore.isCreatingThread = value;
   }
 
+  /**
+   * Returns the thread currently loading for this project.
+   *
+   * @returns Loading thread identifier, or `null`.
+   */
   get loadingThreadId(): string | null {
     return this.threadListStore.loadingThreadId;
   }
 
+  /**
+   * Updates the thread currently loading for this project.
+   *
+   * @param value Loading thread identifier, or `null`.
+   */
   set loadingThreadId(value: string | null) {
     this.threadListStore.loadingThreadId = value;
   }
@@ -137,10 +187,24 @@ export class ProjectStore {
     this.project = project;
   }
 
+  /**
+   * Stores a trust request owned by this project.
+   *
+   * @param request Trust request to show.
+   *
+   * @returns Nothing.
+   */
   setTrustRequest(request: ProjectTrustRequest): void {
     this.trustRequest = request;
   }
 
+  /**
+   * Clears the trust request when it matches the provided path.
+   *
+   * @param projectPath Project path that completed trust handling.
+   *
+   * @returns Nothing.
+   */
   clearTrustRequest(projectPath: string): void {
     if (this.trustRequest?.projectPath === projectPath) {
       this.trustRequest = null;

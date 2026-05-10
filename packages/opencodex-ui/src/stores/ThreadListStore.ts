@@ -6,6 +6,9 @@ import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "./ProjectStore";
 import type { RootStore } from "./RootStore";
 
+/**
+ * Stores the thread list state for a single opened project.
+ */
 export class ThreadListStore {
   threads: OpenCodexThread[] = [];
   searchTerm = "";
@@ -23,6 +26,11 @@ export class ThreadListStore {
     });
   }
 
+  /**
+   * Returns threads matching the current search term.
+   *
+   * @returns Filtered thread collection.
+   */
   get filteredThreads(): OpenCodexThread[] {
     const searchTerm = this.searchTerm.trim();
 
@@ -42,10 +50,24 @@ export class ThreadListStore {
     return this.threads.filter((thread) => matchingThreadIds.has(thread.id));
   }
 
+  /**
+   * Updates the current thread search term.
+   *
+   * @param value Search text.
+   *
+   * @returns Nothing.
+   */
   setSearchTerm(value: string): void {
     this.searchTerm = value;
   }
 
+  /**
+   * Requests a refreshed thread list for this project.
+   *
+   * @param sourceIdOverride Optional source override used during project opening.
+   *
+   * @returns Nothing.
+   */
   refresh(sourceIdOverride?: string | null): void {
     const sourceId = sourceIdOverride ?? this.projectStore.project.sourceId;
 
@@ -63,6 +85,11 @@ export class ThreadListStore {
     });
   }
 
+  /**
+   * Creates a new thread in this project.
+   *
+   * @returns Nothing.
+   */
   createThread(): void {
     if (this.projectStore.isOrphan) {
       return;
@@ -78,6 +105,13 @@ export class ThreadListStore {
     });
   }
 
+  /**
+   * Opens a thread and prepares its chat store for loading.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Nothing.
+   */
   openThread(threadId: string): void {
     if (this.loadingThreadId === threadId) {
       return;
@@ -105,6 +139,13 @@ export class ThreadListStore {
     void this.root.request({ type: "threads.open", threadId });
   }
 
+  /**
+   * Replaces thread metadata while preserving local titles when needed.
+   *
+   * @param threads Thread metadata collection.
+   *
+   * @returns Nothing.
+   */
   setThreads(threads: OpenCodexThread[]): void {
     this.threads = threads.map((thread) => this.mergeThreadMetadata(thread));
 
@@ -117,6 +158,13 @@ export class ThreadListStore {
     }
   }
 
+  /**
+   * Inserts or updates a single thread.
+   *
+   * @param thread Thread metadata.
+   *
+   * @returns Merged thread metadata.
+   */
   upsertThread(thread: OpenCodexThread): OpenCodexThread {
     const mergedThread = this.mergeThreadMetadata(thread);
     const existingThread = this.findThread(thread.id);
@@ -138,16 +186,36 @@ export class ThreadListStore {
     return mergedThread;
   }
 
+  /**
+   * Finds a thread in this list.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Matching thread, or `null`.
+   */
   findThread(threadId: string): OpenCodexThread | null {
     return this.threads.find((thread) => thread.id === threadId) ?? null;
   }
 
+  /**
+   * Applies a local thread title change.
+   *
+   * @param threadId Thread identifier.
+   * @param name New title.
+   *
+   * @returns Nothing.
+   */
   renameThread(threadId: string, name: string): void {
     this.threads = this.threads.map((thread) => (
       thread.id === threadId ? { ...thread, customTitle: name, title: name } : thread
     ));
   }
 
+  /**
+   * Clears thread list state when the project tab closes.
+   *
+   * @returns Nothing.
+   */
   clear(): void {
     this.threads = [];
     this.searchTerm = "";
