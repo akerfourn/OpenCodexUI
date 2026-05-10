@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache } from "../src/ThreadTurnCache";
+import { createCacheSignature } from "../src/backend/threadCacheMapping";
 
 describe("ThreadTurnCache", () => {
   it("should merge turns without duplicating existing entries", () => {
@@ -74,5 +75,49 @@ describe("ThreadTurnCache", () => {
     expect(entry.orderedTurnIds).toEqual(["turn-2", "turn-3", "turn-4"]);
     expect(entry.oldestTurnId).toBe("turn-2");
     expect(entry.newestTurnId).toBe("turn-4");
+  });
+
+  it("should include turn item content in cache signatures", () => {
+    const cache = new ThreadTurnCache();
+    const entry = cache.getOrCreate({
+      id: "thread-1",
+      codexTitle: "Thread",
+      customTitle: null,
+      title: "Thread",
+      preview: "",
+      model: null,
+      reasoningEffort: null,
+      projectName: null,
+      projectPath: null,
+      branchName: null,
+      updatedAt: null
+    });
+
+    cache.mergeLatestTurns(
+      entry,
+      [
+        {
+          id: "turn-1",
+          startedAt: 1,
+          items: [{ id: "reasoning-1", type: "reasoning", summary: [] }]
+        }
+      ],
+      null
+    );
+    const emptyReasoningSignature = createCacheSignature(entry);
+
+    cache.mergeLatestTurns(
+      entry,
+      [
+        {
+          id: "turn-1",
+          startedAt: 1,
+          items: [{ id: "reasoning-1", type: "reasoning", summary: ["Analyse"] }]
+        }
+      ],
+      null
+    );
+
+    expect(createCacheSignature(entry)).not.toBe(emptyReasoningSignature);
   });
 });

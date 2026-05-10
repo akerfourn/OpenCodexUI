@@ -143,6 +143,25 @@ export class ThreadTurnCache {
   }
 
   /**
+   * Merges a complete turn history for a resumed thread.
+   *
+   * @param entry Entry.
+   * @param turns Complete turn collection to process.
+   *
+   * @returns Nothing.
+   */
+  mergeCompleteHistory(
+    entry: ThreadTurnCacheEntry,
+    turns: unknown[]
+  ): void {
+    mergeTurns(entry, turns);
+    entry.olderCursor = null;
+    entry.hasLoadedLatest = true;
+    entry.hasLoadedAllOlderTurns = true;
+    entry.lastSyncedAt = new Date().toISOString();
+  }
+
+  /**
    * Merges older turns.
    *
    * @param entry Entry.

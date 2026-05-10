@@ -145,8 +145,13 @@ function summarizeActivityItem(item: Record<string, unknown>, language: OpenCode
   }
 
   if (type === "reasoning") {
-    const summary = Array.isArray(item.summary) ? item.summary : [];
-    return summary.map((entry) => String(entry)).join("\n");
+    const summary = readReasoningSegments(item.summary);
+
+    if (summary.length > 0) {
+      return summary.join("\n");
+    }
+
+    return readReasoningSegments(item.content).join("\n");
   }
 
   if (type === "commandExecution") {
@@ -158,6 +163,38 @@ function summarizeActivityItem(item: Record<string, unknown>, language: OpenCode
   }
 
   return "";
+}
+
+/**
+ * Reads reasoning text segments from Codex summary or content payloads.
+ *
+ * @param value Raw reasoning segment collection.
+ *
+ * @returns Text segments that can be displayed in the activity block.
+ */
+function readReasoningSegments(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => readReasoningSegment(entry))
+    .filter((entry) => entry.length > 0);
+}
+
+/**
+ * Reads one reasoning text segment from supported Codex payload variants.
+ *
+ * @param value Raw reasoning segment.
+ *
+ * @returns Segment text, or an empty string.
+ */
+function readReasoningSegment(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return readString(readObject(value).text);
 }
 
 /**

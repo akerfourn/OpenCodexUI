@@ -82,7 +82,8 @@ export class OpenCodexBackendRuntime {
     this.notificationService = new NotificationService({
       getSettings: () => this.settings,
       emit: (event) => this.emit(event),
-      applyCodexThreadTitle: (threadId, title) => this.applyCodexThreadTitle(threadId, title)
+      applyCodexThreadTitle: (threadId, title) => this.applyCodexThreadTitle(threadId, title),
+      syncCompletedTurn: (threadId) => this.syncCompletedTurn(threadId)
     });
     this.projectSourceService = new ProjectSourceService({
       backendOptions: options,
@@ -736,6 +737,19 @@ export class OpenCodexBackendRuntime {
     }
 
     void this.threadCacheService.writeCodexTitle(threadId, title);
+  }
+
+  /**
+   * Refreshes a completed turn after Codex has had time to persist its items.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Nothing.
+   */
+  private syncCompletedTurn(threadId: string): void {
+    void this.threadConversationService.syncCompletedTurn(threadId).catch((error: unknown) => {
+      this.handleClientError(toError(error));
+    });
   }
 
 }

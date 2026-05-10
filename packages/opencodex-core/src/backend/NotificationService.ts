@@ -18,6 +18,7 @@ export type NotificationServiceOptions = {
   getSettings(): OpenCodexSettings;
   emit(event: OpenCodexEvent): void;
   applyCodexThreadTitle(threadId: string, title: string): void;
+  syncCompletedTurn(threadId: string): void;
 };
 
 /**
@@ -176,6 +177,7 @@ export class NotificationService {
 
     if (threadId.length > 0 && turnId.length > 0) {
       this.options.emit({ type: "turn.completed", threadId, turnId, durationMs });
+      this.options.syncCompletedTurn(threadId);
     }
   }
 }

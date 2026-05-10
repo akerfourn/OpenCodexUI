@@ -3,7 +3,13 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { createApprovalRequest, mapThread, mapThreadMessages, mapTurnsToMessages } from "../src/mapping";
+import {
+  createApprovalRequest,
+  mapThread,
+  mapThreadMessages,
+  mapTurnsToMessages,
+  mapTurnsToOpenCodexTurns
+} from "../src/mapping";
 
 describe("OpenCodex mapping", () => {
   it("should map a Codex thread to an OpenCodex thread", () => {
@@ -115,6 +121,79 @@ describe("OpenCodex mapping", () => {
         phase: "final_answer"
       }
     ]);
+  });
+
+  it("should map reasoning summary strings to turn activities", () => {
+    const turns = mapTurnsToOpenCodexTurns("thread-1", [
+      {
+        id: "turn-1",
+        items: [
+          {
+            type: "reasoning",
+            id: "reasoning-1",
+            summary: ["Analyse du problème", "Choix de la solution"]
+          }
+        ]
+      }
+    ]);
+
+    expect(turns[0]?.items[0]).toMatchObject({
+      id: "reasoning-1",
+      role: "activity",
+      kind: "reasoning",
+      content: "Analyse du problème\nChoix de la solution"
+    });
+  });
+
+  it("should map reasoning object segments to turn activities", () => {
+    const turns = mapTurnsToOpenCodexTurns("thread-1", [
+      {
+        id: "turn-1",
+        items: [
+          {
+            type: "reasoning",
+            id: "reasoning-1",
+            summary: [
+              { type: "summary_text", text: "Analyse du problème" },
+              { type: "summary_text", text: "Choix de la solution" }
+            ]
+          }
+        ]
+      }
+    ]);
+
+    expect(turns[0]?.items[0]).toMatchObject({
+      id: "reasoning-1",
+      role: "activity",
+      kind: "reasoning",
+      content: "Analyse du problème\nChoix de la solution"
+    });
+  });
+
+  it("should fall back to reasoning content when summary is empty", () => {
+    const turns = mapTurnsToOpenCodexTurns("thread-1", [
+      {
+        id: "turn-1",
+        items: [
+          {
+            type: "reasoning",
+            id: "reasoning-1",
+            summary: [],
+            content: [
+              { type: "reasoning_text", text: "Réflexion détaillée" },
+              "Conclusion intermédiaire"
+            ]
+          }
+        ]
+      }
+    ]);
+
+    expect(turns[0]?.items[0]).toMatchObject({
+      id: "reasoning-1",
+      role: "activity",
+      kind: "reasoning",
+      content: "Réflexion détaillée\nConclusion intermédiaire"
+    });
   });
 
   it("should map approval server requests", () => {
