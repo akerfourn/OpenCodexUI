@@ -40,7 +40,7 @@ export class NotificationService {
   handleNotification(notification: CodexNotification, sourceId: string): void {
     const activity = createActivityFromNotification(notification);
 
-    if (activity !== null && this.options.getSettings().showActivityPanel) {
+    if (activity !== null) {
       this.options.emit({ type: "activity.updated", threadId: activity.threadId, activity });
     }
 

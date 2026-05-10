@@ -29,6 +29,8 @@ import type { ThreadResumeResponse } from "./generated/v2/ThreadResumeResponse";
 import type { ThreadSetNameResponse } from "./generated/v2/ThreadSetNameResponse";
 import type { ThreadStartParams } from "./generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "./generated/v2/ThreadStartResponse";
+import type { ThreadTurnsItemsListParams } from "./generated/v2/ThreadTurnsItemsListParams";
+import type { ThreadTurnsItemsListResponse } from "./generated/v2/ThreadTurnsItemsListResponse";
 import type { ThreadTurnsListParams } from "./generated/v2/ThreadTurnsListParams";
 import type { ThreadTurnsListResponse } from "./generated/v2/ThreadTurnsListResponse";
 import type { TurnInterruptResponse } from "./generated/v2/TurnInterruptResponse";
@@ -323,6 +325,18 @@ export class CodexAppServerClient {
    */
   async listThreadTurns(params: ThreadTurnsListParams): Promise<ThreadTurnsListResponse> {
     return this.request<ThreadTurnsListResponse>("thread/turns/list", params);
+  }
+
+  /**
+   * Lists full items for a specific turn using the generated typed RPC bindings.
+   *
+   * @param params Thread turn items list parameters.
+   * @returns Promise resolved with the turn items list response.
+   */
+  async listThreadTurnItems(
+    params: ThreadTurnsItemsListParams
+  ): Promise<ThreadTurnsItemsListResponse> {
+    return this.request<ThreadTurnsItemsListResponse>("thread/turns/items/list", params);
   }
 
   /**

@@ -9,7 +9,16 @@ import type {
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
-import { getCoreLabels } from "./labels.js";
+import {
+  readActivityItemId,
+  readCommandArray,
+  readFunctionCallCommand,
+  readReasoningSegments,
+  summarizeActivityDetails,
+  summarizeActivityFallback,
+  summarizeActivityItem,
+  summarizeRawResponseItem
+} from "./activitySummary.js";
 import { createId, readObject, readString } from "./primitives.js";
 
 /**
@@ -41,12 +50,53 @@ export function createActivityFromNotification(notification: CodexNotification):
     return createActivity(itemId, threadId, "mcpToolCall", turnId, readString(params.message));
   }
 
-  if (notification.method === "command/exec/outputDelta") {
+  if (
+    notification.method === "command/exec/outputDelta" ||
+    notification.method === "item/commandExecution/outputDelta"
+  ) {
     return createActivity(itemId, threadId, "commandExecution", turnId, readString(params.delta));
   }
 
   if (notification.method === "item/fileChange/outputDelta") {
     return createActivity(itemId, threadId, "fileChange", turnId, readString(params.delta));
+  }
+
+  if (notification.method === "item/fileChange/patchUpdated") {
+    return createActivity(itemId, threadId, "fileChange", turnId, "patch updated");
+  }
+
+  if (notification.method === "item/commandExecution/terminalInteraction") {
+    return createActivity(itemId, threadId, "commandExecution", turnId, readString(params.message));
+  }
+
+  if (notification.method === "turn/plan/updated") {
+    return createActivity(
+      createId("plan"),
+      threadId,
+      "plan",
+      turnId,
+      summarizePlanNotification(params)
+    );
+  }
+
+  if (notification.method === "turn/diff/updated") {
+    return createActivity(createId("diff"), threadId, "fileChange", turnId, readString(params.diff));
+  }
+
+  if (notification.method === "hook/started" || notification.method === "hook/completed") {
+    return createHookActivity(notification.method, params, threadId, turnId);
+  }
+
+  if (notification.method === "item/started") {
+    return createThreadItemActivity(readObject(params.item), threadId, turnId, "running");
+  }
+
+  if (notification.method === "item/completed") {
+    return createThreadItemActivity(readObject(params.item), threadId, turnId, "completed");
+  }
+
+  if (notification.method === "rawResponseItem/completed") {
+    return createRawResponseItemActivity(readObject(params.item), threadId, turnId);
   }
 
   return null;
@@ -73,14 +123,15 @@ export function mapActivityTurnItem(
   const summary = summarizeActivityItem(item, language);
   const details = summarizeActivityDetails(item);
   const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item, language);
+  const itemId = readActivityItemId(item);
 
   return {
-    id: readString(item.id) || createId("activity"),
+    id: itemId,
     role: "activity",
     content,
     status: "completed",
     createdAt: null,
-    kind: type,
+    kind: resolveActivityKind(type),
     summary: summary.length > 0 ? summary : null,
     details: details.length > 0 ? details : null
   };
@@ -111,9 +162,10 @@ export function mapActivityMessage(
   const summary = summarizeActivityItem(item, "fr");
   const details = summarizeActivityDetails(item);
   const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item, "fr");
+  const itemId = readActivityItemId(item);
 
   return {
-    id: readString(item.id) || createId("activity"),
+    id: itemId,
     threadId,
     role: "activity",
     content,
@@ -121,154 +173,187 @@ export function mapActivityMessage(
     createdAt: null,
     turnId,
     turnDurationMs,
-    itemId: readString(item.id),
-    kind: type,
+    itemId,
+    kind: resolveActivityKind(type),
     summary: summary.length > 0 ? summary : null,
     details: details.length > 0 ? details : null
   };
 }
 
 /**
- * Summarizes a known activity item.
+ * Creates an activity from a streamed structured thread item.
  *
- * @param item Raw activity item.
- * @param language Language used for labels.
+ * @param item Raw thread item.
+ * @param threadId Thread identifier.
+ * @param turnId Turn identifier.
+ * @param status Activity status.
  *
- * @returns Summary text, or an empty string.
+ * @returns Activity record, or `null` when the item is a chat message.
  */
-function summarizeActivityItem(item: Record<string, unknown>, language: OpenCodexLanguage): string {
+function createThreadItemActivity(
+  item: Record<string, unknown>,
+  threadId: string,
+  turnId: string,
+  status: OpenCodexActivity["status"]
+): OpenCodexActivity | null {
   const type = readString(item.type);
-  const labels = getCoreLabels(language);
 
-  if (type === "plan") {
-    return readString(item.text);
+  if (type === "userMessage" || type === "agentMessage") {
+    return null;
+  }
+
+  const mappedItem = mapActivityTurnItem(item, "fr");
+
+  if (mappedItem === null) {
+    return createActivity(
+      readString(item.id) || createId("activity"),
+      threadId,
+      type.length > 0 ? type : "unknown",
+      turnId,
+      summarizeActivityDetails(item),
+      status
+    );
+  }
+
+  return createActivity(
+    mappedItem.id,
+    threadId,
+    mappedItem.kind ?? type,
+    turnId,
+    mappedItem.content,
+    status,
+    mappedItem.summary,
+    mappedItem.details
+  );
+}
+
+/**
+ * Creates an activity from raw Responses API item notifications.
+ *
+ * @param item Raw response item.
+ * @param threadId Thread identifier.
+ * @param turnId Turn identifier.
+ *
+ * @returns Activity record, or `null` for normal assistant messages.
+ */
+function createRawResponseItemActivity(
+  item: Record<string, unknown>,
+  threadId: string,
+  turnId: string
+): OpenCodexActivity | null {
+  const type = readString(item.type);
+
+  if (type === "message") {
+    return null;
+  }
+
+  if (type === "local_shell_call" || type === "function_call") {
+    const action = readObject(item.action);
+    const command = type === "local_shell_call"
+      ? readCommandArray(action.command)
+      : readFunctionCallCommand(item);
+
+    return createActivity(
+      readString(item.call_id) || createId("command"),
+      threadId,
+      readString(item.name) === "shell_command" || type === "local_shell_call"
+        ? "commandExecution"
+        : "dynamicToolCall",
+      turnId,
+      command.length > 0 ? command : summarizeRawResponseItem(item),
+      readString(item.status) === "completed" ? "completed" : "running",
+      command.length > 0 ? command : null,
+      summarizeActivityDetails(item)
+    );
   }
 
   if (type === "reasoning") {
-    const summary = readReasoningSegments(item.summary);
+    const content = readReasoningSegments(item.summary).join("\n")
+      || readReasoningSegments(item.content).join("\n");
 
-    if (summary.length > 0) {
-      return summary.join("\n");
-    }
-
-    return readReasoningSegments(item.content).join("\n");
+    return createActivity(
+      createId("reasoning"),
+      threadId,
+      "reasoning",
+      turnId,
+      content,
+      "completed",
+      content.length > 0 ? content : null,
+      summarizeActivityDetails(item)
+    );
   }
 
-  if (type === "commandExecution") {
-    return `${labels.command}: ${readString(item.command)}`;
-  }
-
-  if (type === "mcpToolCall") {
-    return `${labels.mcpTool}: ${readString(item.server)} / ${readString(item.tool)}`;
-  }
-
-  return "";
+  return createActivity(
+    readString(item.call_id) || createId("raw"),
+    threadId,
+    type.length > 0 ? type : "rawResponseItem",
+    turnId,
+    summarizeRawResponseItem(item),
+    "completed",
+    null,
+    summarizeActivityDetails(item)
+  );
 }
 
 /**
- * Reads reasoning text segments from Codex summary or content payloads.
+ * Summarizes a plan update notification.
  *
- * @param value Raw reasoning segment collection.
+ * @param params Notification parameters.
  *
- * @returns Text segments that can be displayed in the activity block.
+ * @returns Plan summary.
  */
-function readReasoningSegments(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((entry) => readReasoningSegment(entry))
+function summarizePlanNotification(params: Record<string, unknown>): string {
+  const explanation = readString(params.explanation);
+  const plan = Array.isArray(params.plan) ? params.plan : [];
+  const steps = plan
+    .map((entry) => readObject(entry))
+    .map((entry) => {
+      const status = readString(entry.status);
+      const step = readString(entry.step);
+      return status.length > 0 ? `${status}: ${step}` : step;
+    })
     .filter((entry) => entry.length > 0);
+
+  return [explanation, ...steps].filter((entry) => entry.length > 0).join("\n");
 }
 
 /**
- * Reads one reasoning text segment from supported Codex payload variants.
+ * Creates an activity from hook lifecycle notifications.
  *
- * @param value Raw reasoning segment.
+ * @param method Notification method.
+ * @param params Notification parameters.
+ * @param threadId Thread identifier.
+ * @param fallbackTurnId Turn identifier read from the common params.
  *
- * @returns Segment text, or an empty string.
+ * @returns Hook activity.
  */
-function readReasoningSegment(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
+function createHookActivity(
+  method: string,
+  params: Record<string, unknown>,
+  threadId: string,
+  fallbackTurnId: string
+): OpenCodexActivity {
+  const run = readObject(params.run);
+  const turnId = readString(params.turnId) || fallbackTurnId;
+  const eventName = readString(run.eventName);
+  const sourcePath = readString(run.sourcePath);
+  const status = method === "hook/completed" ? "completed" : "running";
+  const content = [
+    "Hook",
+    eventName,
+    sourcePath
+  ].filter((entry) => entry.length > 0).join(": ");
 
-  return readString(readObject(value).text);
-}
-
-/**
- * Creates a fallback summary for activity types without a primary summary.
- *
- * @param type Activity type.
- * @param item Raw activity item.
- * @param language Language used for labels.
- *
- * @returns Fallback summary.
- */
-function summarizeActivityFallback(
-  type: string,
-  item: Record<string, unknown>,
-  language: OpenCodexLanguage
-): string {
-  const labels = getCoreLabels(language);
-
-  if (type === "fileChange") {
-    return `${labels.fileChange}: ${readString(item.status) || labels.inProgress}`;
-  }
-
-  if (type === "webSearch") {
-    return `${labels.webSearch}: ${readString(item.query)}`;
-  }
-
-  if (type === "imageView") {
-    return `Image: ${readString(item.path)}`;
-  }
-
-  if (type === "imageGeneration") {
-    return labels.imageGeneration;
-  }
-
-  if (type === "dynamicToolCall") {
-    return `${labels.dynamicTool}: ${readString(item.tool)}`;
-  }
-
-  if (type === "collabAgentToolCall") {
-    return `${labels.collabAgent}: ${readString(item.tool)}`;
-  }
-
-  if (type === "enteredReviewMode") {
-    return labels.enteredReviewMode;
-  }
-
-  if (type === "exitedReviewMode") {
-    return labels.exitedReviewMode;
-  }
-
-  if (type === "contextCompaction") {
-    return labels.contextCompaction;
-  }
-
-  if (type === "hookPrompt") {
-    return "Hook";
-  }
-
-  return type;
-}
-
-/**
- * Serializes raw activity details.
- *
- * @param item Raw activity item.
- *
- * @returns JSON details, or an empty string when serialization fails.
- */
-function summarizeActivityDetails(item: Record<string, unknown>): string {
-  try {
-    return JSON.stringify(item, null, 2);
-  } catch {
-    return "";
-  }
+  return createActivity(
+    readString(run.id) || createId("hook"),
+    threadId,
+    "hookPrompt",
+    turnId,
+    content,
+    status,
+    content,
+    summarizeActivityDetails(run)
+  );
 }
 
 /**
@@ -287,7 +372,10 @@ function createActivity(
   threadId: string,
   kind: string,
   turnId: string,
-  content: string
+  content: string,
+  status: OpenCodexActivity["status"] = "running",
+  summary?: string | null,
+  details?: string | null
 ): OpenCodexActivity {
   return {
     id,
@@ -295,6 +383,12 @@ function createActivity(
     kind,
     title: turnId.length > 0 ? turnId : undefined,
     content,
-    status: "running"
+    summary,
+    details,
+    status
   };
+}
+
+function resolveActivityKind(type: string): string {
+  return type;
 }

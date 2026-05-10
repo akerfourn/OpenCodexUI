@@ -19,24 +19,26 @@ export function applyThreadTurns(
   strategy: "replace" | "merge",
   source: string
 ): void {
+  const mergedTurns = preserveLiveActivityItems(chatStore.turns, nextTurns);
+
   if (strategy === "replace" || chatStore.turns.length === 0) {
-    chatStore.turns = nextTurns;
-    root.logStorePopulation(chatStore.thread.id, source, nextTurns.length, true, 0);
+    chatStore.turns = mergedTurns;
+    root.logStorePopulation(chatStore.thread.id, source, mergedTurns.length, true, 0);
     return;
   }
 
-  const firstChangedIndex = findFirstChangedTurnIndex(chatStore.turns, nextTurns);
+  const firstChangedIndex = findFirstChangedTurnIndex(chatStore.turns, mergedTurns);
 
   if (firstChangedIndex === null) {
-    root.logStorePopulation(chatStore.thread.id, source, nextTurns.length, false, null);
+    root.logStorePopulation(chatStore.thread.id, source, mergedTurns.length, false, null);
     return;
   }
 
   chatStore.turns = [
     ...chatStore.turns.slice(0, firstChangedIndex),
-    ...nextTurns.slice(firstChangedIndex)
+    ...mergedTurns.slice(firstChangedIndex)
   ];
-  root.logStorePopulation(chatStore.thread.id, source, nextTurns.length, true, firstChangedIndex);
+  root.logStorePopulation(chatStore.thread.id, source, mergedTurns.length, true, firstChangedIndex);
 }
 
 export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActivity): void {
@@ -166,4 +168,41 @@ function findPendingUserTurn(chatStore: ChatStore, content: string): OpenCodexTu
   }
 
   return pendingTurn;
+}
+
+function preserveLiveActivityItems(
+  currentTurns: OpenCodexTurn[],
+  nextTurns: OpenCodexTurn[]
+): OpenCodexTurn[] {
+  if (currentTurns.length === 0 || nextTurns.length === 0) {
+    return nextTurns;
+  }
+
+  const currentTurnsById = new Map(currentTurns.map((turn) => [turn.id, turn]));
+
+  return nextTurns.map((nextTurn) => {
+    const currentTurn = currentTurnsById.get(nextTurn.id);
+
+    if (currentTurn === undefined) {
+      return nextTurn;
+    }
+
+    const nextItemIds = new Set(nextTurn.items.map((item) => item.id));
+    const missingLiveActivities = currentTurn.items.filter((item) => (
+      item.role === "activity" &&
+      !nextItemIds.has(item.id)
+    ));
+
+    if (missingLiveActivities.length === 0) {
+      return nextTurn;
+    }
+
+    return {
+      ...nextTurn,
+      items: [
+        ...nextTurn.items,
+        ...missingLiveActivities
+      ]
+    };
+  });
 }

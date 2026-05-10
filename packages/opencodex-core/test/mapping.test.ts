@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createActivityFromNotification,
   createApprovalRequest,
   mapThread,
   mapThreadMessages,
@@ -193,6 +194,91 @@ describe("OpenCodex mapping", () => {
       role: "activity",
       kind: "reasoning",
       content: "Réflexion détaillée\nConclusion intermédiaire"
+    });
+  });
+
+  it("should map command execution output notifications to activities", () => {
+    expect(
+      createActivityFromNotification({
+        method: "item/commandExecution/outputDelta",
+        params: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          itemId: "command-1",
+          delta: "npm run typecheck"
+        }
+      })
+    ).toMatchObject({
+      id: "command-1",
+      threadId: "thread-1",
+      kind: "commandExecution",
+      title: "turn-1",
+      content: "npm run typecheck",
+      status: "running"
+    });
+  });
+
+  it("should map structured command execution items to activities", () => {
+    expect(
+      createActivityFromNotification({
+        method: "item/started",
+        params: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          item: {
+            type: "commandExecution",
+            id: "command-1",
+            command: "npm run typecheck",
+            cwd: "/workspace",
+            processId: null,
+            source: "model",
+            status: "running",
+            commandActions: [],
+            aggregatedOutput: null,
+            exitCode: null,
+            durationMs: null
+          }
+        }
+      })
+    ).toMatchObject({
+      id: "command-1",
+      threadId: "thread-1",
+      kind: "commandExecution",
+      title: "turn-1",
+      content: "Commande: npm run typecheck",
+      status: "running"
+    });
+  });
+
+  it("should map raw local shell items to command activities", () => {
+    expect(
+      createActivityFromNotification({
+        method: "rawResponseItem/completed",
+        params: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          item: {
+            type: "local_shell_call",
+            call_id: "call-1",
+            status: "completed",
+            action: {
+              type: "exec",
+              command: ["npm", "run", "typecheck"],
+              timeout_ms: null,
+              working_directory: "/workspace",
+              env: null,
+              user: null
+            }
+          }
+        }
+      })
+    ).toMatchObject({
+      id: "call-1",
+      threadId: "thread-1",
+      kind: "commandExecution",
+      title: "turn-1",
+      content: "npm run typecheck",
+      status: "completed"
     });
   });
 

@@ -1,4 +1,5 @@
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
+
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
@@ -193,7 +194,9 @@ export class ThreadConversationService {
     );
     const cacheEntry = this.options.threadTurnCache.getOrCreate(thread);
     const hadLoadedLatest = cacheEntry.hasLoadedLatest;
-    this.mergeResumeTurns(cacheEntry, responseObject.thread);
+    const rawHistoryThread = await this.readHistoryThread(client, threadId, responseObject.thread);
+
+    this.mergeHistoryTurns(cacheEntry, rawHistoryThread);
 
     await this.options.threadCacheService.writeSnapshot(cacheEntry);
     const turns = this.options.threadCacheService.readTurns(cacheEntry);
@@ -243,15 +246,17 @@ export class ThreadConversationService {
       threadId,
       cursor: cacheEntry.olderCursor,
       limit: THREAD_TURNS_PAGE_SIZE,
-      sortDirection: "desc"
+      sortDirection: "desc",
+      itemsView: "full"
     });
     const responseObject = readObject(response);
     const rawTurns = Array.isArray(responseObject.data) ? responseObject.data : [];
     const olderCursor = readString(responseObject.nextCursor) || null;
     const previousTurnIds = new Set(cacheEntry.orderedTurnIds);
+    const olderTurns = await this.resolveFullTurnItems(client, threadId, rawTurns);
 
-    this.options.threadTurnCache.mergeOlderTurns(cacheEntry, rawTurns, olderCursor);
-    await this.options.threadCacheService.writeDelta(cacheEntry, rawTurns);
+    this.options.threadTurnCache.mergeOlderTurns(cacheEntry, olderTurns, olderCursor);
+    await this.options.threadCacheService.writeDelta(cacheEntry, olderTurns);
 
     const addedTurns = this.options.threadTurnCache
       .toTurns(cacheEntry)
@@ -495,19 +500,21 @@ export class ThreadConversationService {
     client: CodexAppServerClient,
     cacheEntry: ThreadTurnCacheEntry
   ): Promise<void> {
-    const response = await client.resumeThread(cacheEntry.thread.id);
+    const response = await client.readThread(cacheEntry.thread.id, true);
     const responseObject = readObject(response);
+    const historyThread = await this.readHistoryThread(client, cacheEntry.thread.id, responseObject.thread);
+
     const thread = {
       ...mapThread(
         responseObject.thread,
-        readString(responseObject.model),
-        readReasoningEffort(responseObject.reasoningEffort)
+        cacheEntry.thread.model,
+        cacheEntry.thread.reasoningEffort
       ),
       sourceId: cacheEntry.thread.sourceId
     };
     const nextEntry = this.options.threadTurnCache.getOrCreate(thread);
 
-    this.mergeResumeTurns(nextEntry, responseObject.thread);
+    this.mergeHistoryTurns(nextEntry, historyThread);
   }
 
   /**
@@ -588,14 +595,146 @@ export class ThreadConversationService {
   }
 
   /**
-   * Merges complete turns returned by `thread/resume`.
+   * Reads the complete rollout history for a thread.
+   *
+   * @param client Codex app-server client.
+   * @param threadId Thread identifier.
+   * @param fallbackThread Raw thread payload used if read is unavailable.
+   *
+   * @returns Raw thread payload with turns when available.
+   */
+  private async readHistoryThread(
+    client: CodexAppServerClient,
+    threadId: string,
+    fallbackThread: unknown
+  ): Promise<unknown> {
+    try {
+      const turns = await this.readFullTurnPages(client, threadId);
+      return {
+        ...readObject(fallbackThread),
+        turns
+      };
+    } catch {
+      return fallbackThread;
+    }
+  }
+
+  /**
+   * Reads all known turns with complete item payloads through the official RPC pagination API.
+   *
+   * @param client Codex app-server client.
+   * @param threadId Thread identifier.
+   *
+   * @returns Full turn payloads ordered from oldest to newest.
+   */
+  private async readFullTurnPages(
+    client: CodexAppServerClient,
+    threadId: string
+  ): Promise<unknown[]> {
+    const turns: unknown[] = [];
+    let cursor: string | null = null;
+
+    do {
+      const response = await client.listThreadTurns({
+        threadId,
+        cursor,
+        limit: THREAD_TURNS_PAGE_SIZE,
+        sortDirection: "asc",
+        itemsView: "full"
+      });
+      const responseObject = readObject(response);
+      const pageTurns = Array.isArray(responseObject.data) ? responseObject.data : [];
+      const fullTurns = await this.resolveFullTurnItems(client, threadId, pageTurns);
+
+      turns.push(...fullTurns);
+      cursor = readString(responseObject.nextCursor) || null;
+    } while (cursor !== null);
+
+    return turns;
+  }
+
+  /**
+   * Ensures each returned turn carries its full item list.
+   *
+   * @param client Codex app-server client.
+   * @param threadId Thread identifier.
+   * @param turns Raw turn payloads to complete.
+   *
+   * @returns Turn payloads with full items when Codex exposes them.
+   */
+  private async resolveFullTurnItems(
+    client: CodexAppServerClient,
+    threadId: string,
+    turns: unknown[]
+  ): Promise<unknown[]> {
+    const resolvedTurns: unknown[] = [];
+
+    for (const turnValue of turns) {
+      try {
+        resolvedTurns.push(await this.resolveFullTurnItemList(client, threadId, turnValue));
+      } catch {
+        resolvedTurns.push(turnValue);
+      }
+    }
+
+    return resolvedTurns;
+  }
+
+  /**
+   * Loads a turn item page sequence when the turn payload is not already complete.
+   *
+   * @param client Codex app-server client.
+   * @param threadId Thread identifier.
+   * @param turnValue Raw turn payload.
+   *
+   * @returns Original or completed turn payload.
+   */
+  private async resolveFullTurnItemList(
+    client: CodexAppServerClient,
+    threadId: string,
+    turnValue: unknown
+  ): Promise<unknown> {
+    const turn = readObject(turnValue);
+    const turnId = readString(turn.id);
+
+    if (turnId.length === 0 || readString(turn.itemsView) === "full") {
+      return turnValue;
+    }
+
+    const items: unknown[] = [];
+    let cursor: string | null = null;
+
+    do {
+      const response = await client.listThreadTurnItems({
+        threadId,
+        turnId,
+        cursor,
+        limit: 200,
+        sortDirection: "asc"
+      });
+      const responseObject = readObject(response);
+      const pageItems = Array.isArray(responseObject.data) ? responseObject.data : [];
+
+      items.push(...pageItems);
+      cursor = readString(responseObject.nextCursor) || null;
+    } while (cursor !== null);
+
+    return {
+      ...turn,
+      items,
+      itemsView: "full"
+    };
+  }
+
+  /**
+   * Merges complete turns returned by a history read.
    *
    * @param cacheEntry In-memory thread cache entry.
    * @param threadValue Raw Codex thread payload.
    *
    * @returns Nothing.
    */
-  private mergeResumeTurns(cacheEntry: ThreadTurnCacheEntry, threadValue: unknown): void {
+  private mergeHistoryTurns(cacheEntry: ThreadTurnCacheEntry, threadValue: unknown): void {
     const thread = readObject(threadValue);
     const turns = Array.isArray(thread.turns) ? thread.turns : [];
 

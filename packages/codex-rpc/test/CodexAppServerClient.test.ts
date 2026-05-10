@@ -129,6 +129,37 @@ describe("CodexAppServerClient", () => {
       "Timed out waiting for response to never/responds."
     );
   });
+
+  it("should request full turn items through the generated endpoint", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+
+    respondToRequests(fakeProcess, (request) => {
+      fakeProcess.stdout.write(
+        `${JSON.stringify({
+          id: request.id,
+          result: request.method === "initialize"
+            ? {}
+            : { method: request.method, params: request.params }
+        })}\n`
+      );
+    });
+
+    await client.start();
+
+    await expect(client.listThreadTurnItems({
+      threadId: "thread-1",
+      turnId: "turn-1",
+      sortDirection: "asc"
+    })).resolves.toEqual({
+      method: "thread/turns/items/list",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        sortDirection: "asc"
+      }
+    });
+  });
 });
 
 /**

@@ -30,6 +30,9 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastMessageRef = useRef<HTMLElement | null>(null);
   const previousScrollStateRef = useRef<{ height: number; top: number } | null>(null);
+  const shouldStickToBottomRef = useRef(true);
+  const previousOlderMessagesPrependVersionRef = useRef(chatStore.olderMessagesPrependVersion);
+  const previousThreadIdRef = useRef(chatStore.thread.id);
   const currentThread = chatStore.thread;
   const entries = buildTimelineEntries(
     chatStore.turns,
@@ -48,7 +51,8 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
     }
 
     const frame = requestAnimationFrame(() => {
-      container.scrollTop = container.scrollHeight;
+      scrollToBottom(container);
+      shouldStickToBottomRef.current = true;
     });
 
     return () => {
@@ -65,11 +69,35 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
     }
 
     container.scrollTop = container.scrollHeight - previousState.height + previousState.top;
+    shouldStickToBottomRef.current = isNearBottom(container);
     previousScrollStateRef.current = null;
   }, [chatStore.olderMessagesPrependVersion]);
 
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+
+    if (container === null) {
+      return;
+    }
+
+    const didChangeThread = previousThreadIdRef.current !== currentThread.id;
+    const didPrependOlderMessages = (
+      previousOlderMessagesPrependVersionRef.current !== chatStore.olderMessagesPrependVersion
+    );
+
+    previousThreadIdRef.current = currentThread.id;
+    previousOlderMessagesPrependVersionRef.current = chatStore.olderMessagesPrependVersion;
+
+    if (didChangeThread || didPrependOlderMessages || !shouldStickToBottomRef.current) {
+      return;
+    }
+
+    scrollToBottom(container);
+  });
+
   function handleScroll(event: UIEvent<HTMLDivElement>): void {
     const container = event.currentTarget;
+    shouldStickToBottomRef.current = isNearBottom(container);
 
     if (
       container.scrollTop > 80 ||
@@ -175,6 +203,31 @@ export const ChatMessageListX = observer(ChatMessageList);
 type TimelineEntry =
   | { type: "item"; key: string; turn: OpenCodexTurn; item: OpenCodexTurnItem }
   | { type: "turnPrelude"; key: string; turn: OpenCodexTurn; isRunning: boolean };
+
+const BOTTOM_SCROLL_THRESHOLD_PX = 96;
+
+/**
+ * Scrolls a message container to its bottom edge.
+ *
+ * @param container Message scroll container.
+ *
+ * @returns Nothing.
+ */
+function scrollToBottom(container: HTMLDivElement): void {
+  container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Checks whether the user is close enough to the bottom to keep auto-scrolling.
+ *
+ * @param container Message scroll container.
+ *
+ * @returns `true` when the latest message is effectively visible.
+ */
+function isNearBottom(container: HTMLDivElement): boolean {
+  const remainingScroll = container.scrollHeight - container.scrollTop - container.clientHeight;
+  return remainingScroll <= BOTTOM_SCROLL_THRESHOLD_PX;
+}
 
 /**
  * Builds timeline entries.
