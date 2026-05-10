@@ -49,11 +49,24 @@ export type ThreadConversationServiceOptions = {
   handleClientError(error: Error): void;
 };
 
+/**
+ * Coordinates Codex thread listing, loading, turns, and cache synchronization.
+ */
 export class ThreadConversationService {
   private readonly recoveringThreadIds = new Set<string>();
 
   constructor(private readonly options: ThreadConversationServiceOptions) {}
 
+  /**
+   * Lists threads from cache first, then refreshes from Codex when possible.
+   *
+   * @param scope Thread list scope.
+   * @param projectPath Current project path.
+   * @param sourceId Source identifier, or `null` for cache-only orphan reads.
+   * @param searchTerm Optional search text.
+   *
+   * @returns Thread metadata collection.
+   */
   async listThreads(
     scope: "currentProject" | "all",
     projectPath: string | null,
@@ -115,6 +128,13 @@ export class ThreadConversationService {
     return updatedThreads;
   }
 
+  /**
+   * Opens a thread using cache and background synchronization when possible.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Opened thread and UI turns.
+   */
   async openThread(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     const openStartedAt = Date.now();
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
@@ -201,6 +221,13 @@ export class ThreadConversationService {
     return { thread, turns };
   }
 
+  /**
+   * Loads older thread messages from cache or Codex.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Older turn collection and pagination state.
+   */
   async loadOlderThreadMessages(
     threadId: string
   ): Promise<{ turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }> {
@@ -262,6 +289,13 @@ export class ThreadConversationService {
     return { turns, hasMoreOlderMessages };
   }
 
+  /**
+   * Recovers a thread after a recoverable Codex process failure.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Success result.
+   */
   async recoverThread(threadId: string): Promise<{ ok: true }> {
     if (this.recoveringThreadIds.has(threadId)) {
       return { ok: true };
@@ -288,6 +322,14 @@ export class ThreadConversationService {
     }
   }
 
+  /**
+   * Creates a new thread in a project.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier, or `null`.
+   *
+   * @returns Created thread and initial turns.
+   */
   async createThread(
     projectPath: string | null,
     sourceId: string | null
@@ -317,6 +359,19 @@ export class ThreadConversationService {
     return { thread, turns };
   }
 
+  /**
+   * Starts a user turn, creating a thread first when needed.
+   *
+   * @param threadId Thread identifier, or `null` to create a thread.
+   * @param projectPath Project path.
+   * @param sourceId Source identifier, or `null`.
+   * @param text User text.
+   * @param attachments Image attachments.
+   * @param model Optional model override.
+   * @param reasoningEffort Optional reasoning effort override.
+   *
+   * @returns Thread and turn identifiers.
+   */
   async startTurn(
     threadId: string | null,
     projectPath: string | null,
@@ -370,6 +425,14 @@ export class ThreadConversationService {
     return { threadId: targetThreadId, turnId };
   }
 
+  /**
+   * Interrupts a running turn.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   *
+   * @returns Promise resolved when Codex accepts the interrupt.
+   */
   async interruptTurn(threadId: string, turnId: string): Promise<void> {
     const sourceId = await this.resolveThreadSourceId(threadId);
 
@@ -381,6 +444,14 @@ export class ThreadConversationService {
     await client.interruptTurn(threadId, turnId);
   }
 
+  /**
+   * Renames a thread in Codex and cache.
+   *
+   * @param threadId Thread identifier.
+   * @param name New title.
+   *
+   * @returns Promise resolved when rename completes.
+   */
   async renameThread(threadId: string, name: string): Promise<void> {
     const trimmedName = name.trim();
 
@@ -400,6 +471,14 @@ export class ThreadConversationService {
     this.options.emit({ type: "thread.renamed", threadId, name: trimmedName });
   }
 
+  /**
+   * Loads latest raw turns from Codex into memory.
+   *
+   * @param client Codex client.
+   * @param cacheEntry In-memory thread cache entry.
+   *
+   * @returns Promise resolved when latest turns are merged.
+   */
   private async loadLatestTurns(
     client: CodexAppServerClient,
     cacheEntry: ThreadTurnCacheEntry
@@ -416,6 +495,15 @@ export class ThreadConversationService {
     this.options.threadTurnCache.mergeLatestTurns(cacheEntry, turns, olderCursor);
   }
 
+  /**
+   * Synchronizes latest turns and emits deltas when content changed.
+   *
+   * @param client Codex client.
+   * @param cacheEntry In-memory thread cache entry.
+   * @param existingStartedAt Optional timing start timestamp.
+   *
+   * @returns Promise resolved when synchronization completes.
+   */
   private async syncLatestTurns(
     client: CodexAppServerClient,
     cacheEntry: ThreadTurnCacheEntry,
@@ -452,6 +540,13 @@ export class ThreadConversationService {
     }
   }
 
+  /**
+   * Resumes a cached thread in Codex and synchronizes its latest turns.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when synchronization completes.
+   */
   private async resumeAndSyncCachedThread(threadId: string): Promise<void> {
     const syncStartedAt = Date.now();
     this.options.emit({ type: "thread.sync.started", threadId });
@@ -477,6 +572,14 @@ export class ThreadConversationService {
     await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
   }
 
+  /**
+   * Handles asynchronous open-thread failures.
+   *
+   * @param threadId Thread identifier.
+   * @param error Error thrown during open or sync.
+   *
+   * @returns Nothing.
+   */
   private handleThreadOpenError(threadId: string, error: Error): void {
     if (isMissingRolloutError(error)) {
       void this.forgetCachedThread(threadId);
@@ -485,6 +588,14 @@ export class ThreadConversationService {
     this.options.handleClientError(error);
   }
 
+  /**
+   * Deletes missing rollout cache entries when Codex reports them.
+   *
+   * @param threadId Thread identifier.
+   * @param error Unknown thrown value.
+   *
+   * @returns Promise resolved when cleanup completes.
+   */
   private async handleMissingRollout(threadId: string, error: unknown): Promise<void> {
     if (!isMissingRolloutError(error)) {
       return;
@@ -493,6 +604,13 @@ export class ThreadConversationService {
     await this.forgetCachedThread(threadId);
   }
 
+  /**
+   * Deletes a cached thread and refreshes the owning project list.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when cache cleanup completes.
+   */
   private async forgetCachedThread(threadId: string): Promise<void> {
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
     const projectPath = this.resolveCurrentProjectPath(cachedSnapshot?.thread.projectPath ?? null);
@@ -507,6 +625,14 @@ export class ThreadConversationService {
     this.emitThreadsUpdated(cachedThreads, projectPath);
   }
 
+  /**
+   * Emits a thread-opened event.
+   *
+   * @param cacheEntry In-memory thread cache entry.
+   * @param turns UI turns to emit.
+   *
+   * @returns Nothing.
+   */
   private emitThreadOpened(cacheEntry: ThreadTurnCacheEntry, turns: OpenCodexTurn[]): void {
     this.options.emit({
       type: "thread.opened",
@@ -516,6 +642,15 @@ export class ThreadConversationService {
     });
   }
 
+  /**
+   * Creates a thread and returns its identifier.
+   *
+   * @param client Codex client.
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Created thread identifier.
+   */
   private async createThreadAndReturnId(
     client: CodexAppServerClient,
     projectPath: string | null,
@@ -538,6 +673,13 @@ export class ThreadConversationService {
     return thread.id;
   }
 
+  /**
+   * Resolves the source that owns a thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Source identifier, or `null`.
+   */
   private async resolveThreadSourceId(threadId: string): Promise<string | null> {
     const cacheEntry = this.options.threadTurnCache.get(threadId);
 
@@ -549,10 +691,25 @@ export class ThreadConversationService {
     return cachedSnapshot?.thread.sourceId ?? null;
   }
 
+  /**
+   * Resolves a project path with backend fallback.
+   *
+   * @param projectPath Project path candidate.
+   *
+   * @returns Normalized project path, or `null`.
+   */
   private resolveCurrentProjectPath(projectPath: string | null): string | null {
     return normalizeProjectPath(projectPath) ?? normalizeProjectPath(this.options.backendOptions.projectPath);
   }
 
+  /**
+   * Emits refreshed thread metadata.
+   *
+   * @param threads Thread metadata collection.
+   * @param projectPath Project filter path, or `null`.
+   *
+   * @returns Nothing.
+   */
   private emitThreadsUpdated(threads: OpenCodexThread[], projectPath: string | null): void {
     this.options.emit({
       type: "threads.updated",
@@ -562,6 +719,14 @@ export class ThreadConversationService {
     });
   }
 
+  /**
+   * Writes thread timing diagnostics through the backend logger.
+   *
+   * @param message Timing label.
+   * @param details Timing details including `startedAt`.
+   *
+   * @returns Nothing.
+   */
   private logThreadTiming(
     message: string,
     details: Record<string, string | number | boolean>

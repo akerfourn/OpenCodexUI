@@ -40,6 +40,9 @@ import {
 import { ThreadConversationService } from "./backend/ThreadConversationService.js";
 import { ThreadCacheService } from "./backend/ThreadCacheService.js";
 
+/**
+ * Coordinates backend services exposed to the UI transport.
+ */
 export class OpenCodexBackendRuntime {
   private settings: OpenCodexSettings;
   private readonly threadTurnCache = new ThreadTurnCache();
@@ -52,6 +55,11 @@ export class OpenCodexBackendRuntime {
   private readonly threadCacheService: ThreadCacheService;
   private readonly threadConversationService: ThreadConversationService;
 
+  /**
+   * Creates a backend runtime and wires its internal services.
+   *
+   * @param options Host integration and persistence options.
+   */
   constructor(private readonly options: OpenCodexBackendOptions) {
     this.settings = options.settings;
     this.cacheRepository = options.cacheRepository ?? null;
@@ -114,11 +122,21 @@ export class OpenCodexBackendRuntime {
     });
   }
 
+  /**
+   * Releases runtime resources.
+   *
+   * @returns Promise resolved when resources are disposed.
+   */
   async dispose(): Promise<void> {
     await this.clientPool.dispose();
     await this.cacheRepository?.close();
   }
 
+  /**
+   * Sends initial settings, sources, projects, and models to the UI.
+   *
+   * @returns Success result.
+   */
   async bootstrap(): Promise<{ ok: true }> {
     await this.projectSourceService.ensureSourcesInitialized();
     this.emit({
@@ -133,20 +151,45 @@ export class OpenCodexBackendRuntime {
     return { ok: true };
   }
 
+  /**
+   * Returns current backend settings.
+   *
+   * @returns Settings snapshot.
+   */
   getSettings(): OpenCodexSettings {
     return this.settings;
   }
 
+  /**
+   * Updates and persists backend settings.
+   *
+   * @param patch Settings patch.
+   *
+   * @returns Updated settings.
+   */
   async updateSettings(patch: Partial<OpenCodexSettings>): Promise<OpenCodexSettings> {
     this.settings = { ...this.settings, ...patch };
     await this.options.saveSettings?.(this.settings);
     return this.settings;
   }
 
+  /**
+   * Opens the host executable picker for source commands.
+   *
+   * @returns Selected executable path, or `null`.
+   */
   async pickSourceExecutable(): Promise<string | null> {
     return await this.options.pickExecutableFile?.() ?? null;
   }
 
+  /**
+   * Converts request failures to protocol errors and starts recovery when possible.
+   *
+   * @param request Request that failed.
+   * @param error Unknown thrown value.
+   *
+   * @returns Never returns because it rethrows the normalized error.
+   */
   handleRequestError(request: OpenCodexRequest, error: unknown): never {
     const normalized = normalizeError(error, this.settings.language);
     const recoverableThreadId = this.readRecoverableThreadId(request, error);
@@ -167,34 +210,88 @@ export class OpenCodexBackendRuntime {
     throw normalized;
   }
 
+  /**
+   * Ensures a Codex client for a source.
+   *
+   * @param sourceId Source identifier, or `null` for the default source.
+   *
+   * @returns Started Codex client.
+   */
   private async ensureClient(sourceId: string | null = this.settings.defaultSourceId) {
     return await this.clientPool.ensureClient(sourceId);
   }
 
+  /**
+   * Lists cached projects.
+   *
+   * @returns Project collection.
+   */
   async listProjects(): Promise<OpenCodexProject[]> {
     return await this.projectSourceService.listProjects();
   }
 
+  /**
+   * Lists configured sources.
+   *
+   * @returns Source collection.
+   */
   async listSources(): Promise<OpenCodexSource[]> {
     return await this.projectSourceService.listSources();
   }
 
+  /**
+   * Creates a source.
+   *
+   * @param name Optional source name.
+   *
+   * @returns Created source.
+   */
   async createSource(name?: string): Promise<OpenCodexSource> {
     return await this.projectSourceService.createSource(name);
   }
 
+  /**
+   * Synchronizes projects from sources.
+   *
+   * @param sourceId Source identifier, or `null` for all sources.
+   *
+   * @returns Refreshed projects.
+   */
   async syncSources(sourceId: string | null): Promise<OpenCodexProject[]> {
     return await this.projectSourceService.syncSources(sourceId);
   }
 
+  /**
+   * Updates project hidden state.
+   *
+   * @param projectId Project identifier.
+   * @param isHidden Hidden flag.
+   *
+   * @returns Success result.
+   */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<{ ok: true }> {
     return await this.projectSourceService.setProjectHidden(projectId, isHidden);
   }
 
+  /**
+   * Deletes a source.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Success result.
+   */
   async deleteSource(sourceId: string): Promise<{ ok: true }> {
     return await this.projectSourceService.deleteSource(sourceId);
   }
 
+  /**
+   * Updates source metadata and settings.
+   *
+   * @param sourceId Source identifier.
+   * @param patch Source patch.
+   *
+   * @returns Updated source.
+   */
   async updateSource(
     sourceId: string,
     patch: Partial<Pick<OpenCodexSource, "name">> & {
@@ -204,6 +301,15 @@ export class OpenCodexBackendRuntime {
     return await this.projectSourceService.updateSource(sourceId, patch);
   }
 
+  /**
+   * Opens and caches a project.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier, or `null`.
+   * @param createIfMissing Whether the directory may be created.
+   *
+   * @returns Opened project.
+   */
   async openProject(
     projectPath: string,
     sourceId: string | null,
@@ -212,6 +318,14 @@ export class OpenCodexBackendRuntime {
     return await this.projectSourceService.openProject(projectPath, sourceId, createIfMissing);
   }
 
+  /**
+   * Opens the host project directory picker.
+   *
+   * @param mode Picker mode.
+   * @param sourceId Source identifier, or `null`.
+   *
+   * @returns Opened project, or `null` when cancelled.
+   */
   async pickProjectDirectory(
     mode: "open" | "create",
     sourceId: string | null
@@ -219,10 +333,23 @@ export class OpenCodexBackendRuntime {
     return await this.projectSourceService.pickProjectDirectory(mode, sourceId);
   }
 
+  /**
+   * Opens the host image picker.
+   *
+   * @returns Selected image attachments.
+   */
   async pickImageFiles(): Promise<OpenCodexImageAttachment[]> {
     return await this.options.pickImageFiles?.() ?? [];
   }
 
+  /**
+   * Caches project metadata.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier, or `null`.
+   *
+   * @returns Cached project, or `null`.
+   */
   private async cacheProject(
     projectPath: string | null,
     sourceId: string | null
@@ -230,6 +357,16 @@ export class OpenCodexBackendRuntime {
     return await this.projectSourceService.cacheProject(projectPath, sourceId);
   }
 
+  /**
+   * Lists thread metadata.
+   *
+   * @param scope Thread list scope.
+   * @param projectPath Current project path.
+   * @param sourceId Source identifier, or `null`.
+   * @param searchTerm Optional search text.
+   *
+   * @returns Thread collection.
+   */
   async listThreads(
     scope: "currentProject" | "all",
     projectPath: string | null,
@@ -239,20 +376,49 @@ export class OpenCodexBackendRuntime {
     return await this.threadConversationService.listThreads(scope, projectPath, sourceId, searchTerm);
   }
 
+  /**
+   * Opens a thread and loads its current turns.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Opened thread and turns.
+   */
   async openThread(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     return await this.threadConversationService.openThread(threadId);
   }
 
+  /**
+   * Loads older messages for a thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Older turn result.
+   */
   async loadOlderThreadMessages(
     threadId: string
   ): Promise<{ turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }> {
     return await this.threadConversationService.loadOlderThreadMessages(threadId);
   }
 
+  /**
+   * Recovers a thread after a recoverable process error.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Success result.
+   */
   async recoverThread(threadId: string): Promise<{ ok: true }> {
     return await this.threadConversationService.recoverThread(threadId);
   }
 
+  /**
+   * Creates a thread in a project.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier, or `null`.
+   *
+   * @returns Created thread and initial turns.
+   */
   async createThread(
     projectPath: string | null,
     sourceId: string | null
@@ -260,6 +426,19 @@ export class OpenCodexBackendRuntime {
     return await this.threadConversationService.createThread(projectPath, sourceId);
   }
 
+  /**
+   * Starts a user turn.
+   *
+   * @param threadId Thread identifier, or `null` to create one.
+   * @param projectPath Project path.
+   * @param sourceId Source identifier, or `null`.
+   * @param text User text.
+   * @param attachments Image attachments.
+   * @param model Optional model override.
+   * @param reasoningEffort Optional reasoning effort override.
+   *
+   * @returns Thread and turn identifiers.
+   */
   async startTurn(
     threadId: string | null,
     projectPath: string | null,
@@ -280,14 +459,38 @@ export class OpenCodexBackendRuntime {
     );
   }
 
+  /**
+   * Interrupts a running turn.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   *
+   * @returns Promise resolved when Codex accepts the interrupt.
+   */
   async interruptTurn(threadId: string, turnId: string): Promise<void> {
     await this.threadConversationService.interruptTurn(threadId, turnId);
   }
 
+  /**
+   * Renames a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param name New title.
+   *
+   * @returns Promise resolved when rename completes.
+   */
   async renameThread(threadId: string, name: string): Promise<void> {
     await this.threadConversationService.renameThread(threadId, name);
   }
 
+  /**
+   * Opens an external link through the host.
+   *
+   * @param href Link target.
+   * @param projectPath Project path used as context.
+   *
+   * @returns Success result.
+   */
   async openLink(href: string, projectPath: string | null): Promise<{ ok: true }> {
     const target = href.trim();
 
@@ -303,6 +506,11 @@ export class OpenCodexBackendRuntime {
     return { ok: true };
   }
 
+  /**
+   * Lists available Codex models.
+   *
+   * @returns Model identifiers.
+   */
   async listModels(): Promise<string[]> {
     const client = await this.ensureClient();
 
@@ -320,35 +528,95 @@ export class OpenCodexBackendRuntime {
     }
   }
 
+  /**
+   * Routes Codex notifications into the notification service.
+   *
+   * @param notification Codex notification.
+   * @param sourceId Source that produced the notification.
+   *
+   * @returns Nothing.
+   */
   private handleNotification(notification: CodexNotification, sourceId: string): void {
     this.notificationService.handleNotification(notification, sourceId);
   }
 
+  /**
+   * Routes Codex server requests into the approval service.
+   *
+   * @param request Codex server request.
+   * @param sourceId Source that owns the request.
+   *
+   * @returns Nothing.
+   */
   private handleServerRequest(request: CodexServerRequest, sourceId: string): void {
     this.approvalService.handleServerRequest(request, sourceId);
   }
 
+  /**
+   * Trusts a project in Codex configuration.
+   *
+   * @param projectPath Project path.
+   *
+   * @returns Success result.
+   */
   async trustProject(projectPath: string): Promise<{ ok: true }> {
     return await this.projectTrustService.trustProject(projectPath);
   }
 
+  /**
+   * Dismisses a project trust request.
+   *
+   * @param projectPath Project path.
+   *
+   * @returns Nothing.
+   */
   dismissProjectTrustRequest(projectPath: string): void {
     this.projectTrustService.dismissProjectTrustRequest(projectPath);
   }
 
+  /**
+   * Handles Codex stderr output.
+   *
+   * @param message stderr message.
+   * @param sourceId Source that produced the message.
+   *
+   * @returns Nothing.
+   */
   private handleCodexStderr(message: string, sourceId: string): void {
     this.projectTrustService.handleCodexStderr(message, sourceId);
   }
 
+  /**
+   * Resolves a pending approval request.
+   *
+   * @param approvalId Approval identifier.
+   * @param decision User decision.
+   *
+   * @returns Nothing.
+   */
   resolveApproval(approvalId: string, decision: OpenCodexApprovalDecision): void {
     this.approvalService.resolveApproval(approvalId, decision);
   }
 
+  /**
+   * Emits a normalized client error.
+   *
+   * @param error Client error.
+   *
+   * @returns Nothing.
+   */
   private handleClientError(error: Error): void {
     const normalized = normalizeError(error, this.settings.language);
     this.emit({ type: "error", message: normalized.message, details: normalized.details });
   }
 
+  /**
+   * Updates connection state after a source client closes.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Nothing.
+   */
   private handleClientClose(sourceId: string): void {
     this.clientPool.deleteClient(sourceId);
 
@@ -357,6 +625,14 @@ export class OpenCodexBackendRuntime {
     }
   }
 
+  /**
+   * Reads the recoverable thread identifier for a failed request.
+   *
+   * @param request Request that failed.
+   * @param error Unknown thrown value.
+   *
+   * @returns Thread identifier, or `null`.
+   */
   private readRecoverableThreadId(request: OpenCodexRequest, error: unknown): string | null {
     if (!(error instanceof CodexProcessError)) {
       return null;
@@ -373,34 +649,85 @@ export class OpenCodexBackendRuntime {
     return null;
   }
 
+  /**
+   * Emits an event to the host transport.
+   *
+   * @param event Event payload.
+   *
+   * @returns Nothing.
+   */
   private emit(event: OpenCodexEvent): void {
     this.options.emit(event);
   }
 
+  /**
+   * Reads cached projects through the project service.
+   *
+   * @returns Cached projects.
+   */
   private async readCachedProjects(): Promise<OpenCodexProject[]> {
     return await this.projectSourceService.readCachedProjects();
   }
 
+  /**
+   * Resolves a current project path with runtime fallback.
+   *
+   * @param projectPath Project path candidate.
+   *
+   * @returns Normalized project path, or `null`.
+   */
   private resolveCurrentProjectPath(projectPath: string | null): string | null {
     return normalizeProjectPath(projectPath) ?? normalizeProjectPath(this.options.projectPath);
   }
 
+  /**
+   * Ensures sources are initialized.
+   *
+   * @returns Promise resolved when initialization completes.
+   */
   private async ensureSourcesInitialized(): Promise<void> {
     await this.projectSourceService.ensureSourcesInitialized();
   }
 
+  /**
+   * Resolves a source.
+   *
+   * @param sourceId Source identifier, or `null`.
+   *
+   * @returns Resolved source.
+   */
   private async resolveSource(sourceId: string | null): Promise<CachedSource> {
     return await this.projectSourceService.resolveSource(sourceId);
   }
 
+  /**
+   * Lists sources as UI protocol objects.
+   *
+   * @returns Source collection.
+   */
   private async listOpenCodexSources(): Promise<OpenCodexSource[]> {
     return await this.projectSourceService.listOpenCodexSources();
   }
 
+  /**
+   * Restarts a source client after command changes.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Promise resolved when restarted.
+   */
   private async restartSourceClient(sourceId: string): Promise<void> {
     await this.clientPool.restartClient(sourceId);
   }
 
+  /**
+   * Applies a Codex-generated thread title to memory and cache.
+   *
+   * @param threadId Thread identifier.
+   * @param title Codex-generated title.
+   *
+   * @returns Nothing.
+   */
   private applyCodexThreadTitle(threadId: string, title: string): void {
     const cacheEntry = this.threadTurnCache.updateCodexThreadTitle(threadId, title);
 

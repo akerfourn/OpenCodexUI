@@ -20,11 +20,22 @@ export type NotificationServiceOptions = {
   applyCodexThreadTitle(threadId: string, title: string): void;
 };
 
+/**
+ * Converts Codex app-server notifications into UI events.
+ */
 export class NotificationService {
   private readonly assistantMessagePhases = new Map<string, OpenCodexMessagePhase | null>();
 
   constructor(private readonly options: NotificationServiceOptions) {}
 
+  /**
+   * Handles one Codex notification.
+   *
+   * @param notification Notification payload.
+   * @param sourceId Source that produced the notification.
+   *
+   * @returns Nothing.
+   */
   handleNotification(notification: CodexNotification, sourceId: string): void {
     const activity = createActivityFromNotification(notification);
 
@@ -64,6 +75,14 @@ export class NotificationService {
     }
   }
 
+  /**
+   * Emits assistant text deltas for streaming agent messages.
+   *
+   * @param params Notification parameters.
+   * @param sourceId Source that produced the notification.
+   *
+   * @returns Nothing.
+   */
   private handleAgentMessageDelta(params: Record<string, unknown>, sourceId: string): void {
     const threadId = readString(params.threadId);
     const turnId = readString(params.turnId);
@@ -77,6 +96,14 @@ export class NotificationService {
     }
   }
 
+  /**
+   * Tracks assistant message phase metadata when an item starts.
+   *
+   * @param params Notification parameters.
+   * @param sourceId Source that produced the notification.
+   *
+   * @returns Nothing.
+   */
   private handleItemStarted(params: Record<string, unknown>, sourceId: string): void {
     const threadId = readString(params.threadId);
     const item = readObject(params.item);
@@ -96,6 +123,14 @@ export class NotificationService {
     }
   }
 
+  /**
+   * Clears tracked assistant message phase metadata when an item completes.
+   *
+   * @param params Notification parameters.
+   * @param sourceId Source that produced the notification.
+   *
+   * @returns Nothing.
+   */
   private handleItemCompleted(params: Record<string, unknown>, sourceId: string): void {
     const threadId = readString(params.threadId);
     const item = readObject(params.item);
@@ -111,6 +146,13 @@ export class NotificationService {
     }
   }
 
+  /**
+   * Emits a turn-started event.
+   *
+   * @param params Notification parameters.
+   *
+   * @returns Nothing.
+   */
   private handleTurnStarted(params: Record<string, unknown>): void {
     const threadId = readString(params.threadId);
     const turnId = readString(readObject(params.turn).id);
@@ -120,6 +162,13 @@ export class NotificationService {
     }
   }
 
+  /**
+   * Emits a turn-completed event.
+   *
+   * @param params Notification parameters.
+   *
+   * @returns Nothing.
+   */
   private handleTurnCompleted(params: Record<string, unknown>): void {
     const threadId = readString(params.threadId);
     const turnId = readString(readObject(params.turn).id);

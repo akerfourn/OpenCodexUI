@@ -14,12 +14,22 @@ export type ProjectTrustServiceOptions = {
   ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
 };
 
+/**
+ * Detects and resolves Codex project trust prompts.
+ */
 export class ProjectTrustService {
   private readonly stderrBufferBySourceId = new Map<string, string>();
   private readonly sourceIdByProjectPath = new Map<string, string>();
 
   constructor(private readonly options: ProjectTrustServiceOptions) {}
 
+  /**
+   * Marks a project as trusted in the owning Codex configuration.
+   *
+   * @param projectPath Project path to trust.
+   *
+   * @returns Success result.
+   */
   async trustProject(projectPath: string): Promise<{ ok: true }> {
     const normalizedProjectPath = projectPath.trim();
 
@@ -51,6 +61,13 @@ export class ProjectTrustService {
     return { ok: true };
   }
 
+  /**
+   * Dismisses a pending trust request.
+   *
+   * @param projectPath Project path to dismiss.
+   *
+   * @returns Nothing.
+   */
   dismissProjectTrustRequest(projectPath: string): void {
     const normalizedProjectPath = projectPath.trim();
 
@@ -65,6 +82,14 @@ export class ProjectTrustService {
     this.sourceIdByProjectPath.delete(normalizedProjectPath);
   }
 
+  /**
+   * Reads Codex stderr and emits trust requests when warnings are detected.
+   *
+   * @param message stderr message fragment.
+   * @param sourceId Source that produced the message.
+   *
+   * @returns Nothing.
+   */
   handleCodexStderr(message: string, sourceId: string): void {
     const previousBuffer = this.stderrBufferBySourceId.get(sourceId) ?? "";
     const nextBuffer = `${previousBuffer}\n${message}`.slice(-8000);

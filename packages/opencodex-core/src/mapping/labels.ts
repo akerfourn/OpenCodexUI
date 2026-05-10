@@ -19,6 +19,13 @@ export type CoreLabels = {
   webSearch: string;
 };
 
+/**
+ * Returns localized labels for core mapping output.
+ *
+ * @param language Language used for labels.
+ *
+ * @returns Label collection.
+ */
 export function getCoreLabels(language: OpenCodexLanguage): CoreLabels {
   if (language === "en") {
     return {
@@ -54,4 +61,3 @@ export function getCoreLabels(language: OpenCodexLanguage): CoreLabels {
     webSearch: "Recherche web"
   };
 }
-

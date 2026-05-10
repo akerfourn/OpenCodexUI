@@ -20,17 +20,36 @@ export type ApprovalServiceOptions = {
   getClient(sourceId: string): CodexAppServerClient | undefined;
 };
 
+/**
+ * Manages Codex approval requests until the UI resolves them.
+ */
 export class ApprovalService {
   private readonly pendingApprovals = new Map<string, { request: CodexServerRequest; sourceId: string }>();
 
   constructor(private readonly options: ApprovalServiceOptions) {}
 
+  /**
+   * Stores a server-side approval request and emits it to the UI.
+   *
+   * @param request Codex server request requiring approval.
+   * @param sourceId Source that owns the request.
+   *
+   * @returns Nothing.
+   */
   handleServerRequest(request: CodexServerRequest, sourceId: string): void {
     const approval = createApprovalRequest(request, this.options.getSettings().language);
     this.pendingApprovals.set(approval.id, { request, sourceId });
     this.options.emit({ type: "approval.requested", approval });
   }
 
+  /**
+   * Resolves an approval by responding to the owning Codex client.
+   *
+   * @param approvalId Approval identifier.
+   * @param decision User decision to send back to Codex.
+   *
+   * @returns Nothing.
+   */
   resolveApproval(approvalId: string, decision: OpenCodexApprovalDecision): void {
     const pendingApproval = this.pendingApprovals.get(approvalId);
     const client = pendingApproval === undefined

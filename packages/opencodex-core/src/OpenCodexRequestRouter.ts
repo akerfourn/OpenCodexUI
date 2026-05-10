@@ -30,6 +30,13 @@ export class OpenCodexRequestRouter {
     }
   }
 
+  /**
+   * Routes a validated request to the matching runtime method.
+   *
+   * @param request Request payload.
+   *
+   * @returns Promise resolved with the runtime result.
+   */
   private async handleValidRequest(request: OpenCodexRequest): Promise<unknown> {
     switch (request.type) {
       case "app.bootstrap":

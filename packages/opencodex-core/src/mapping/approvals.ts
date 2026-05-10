@@ -15,6 +15,14 @@ import {
   readString
 } from "./primitives.js";
 
+/**
+ * Creates a UI approval request from a Codex server request.
+ *
+ * @param request Codex server request.
+ * @param language Language used for labels.
+ *
+ * @returns UI approval request.
+ */
 export function createApprovalRequest(
   request: CodexServerRequest,
   language: OpenCodexLanguage = "fr"
@@ -37,6 +45,14 @@ export function createApprovalRequest(
   };
 }
 
+/**
+ * Builds the response payload expected by the Codex approval method.
+ *
+ * @param method Codex approval method.
+ * @param decision User decision.
+ *
+ * @returns Codex response payload.
+ */
 export function buildApprovalResponse(method: string, decision: OpenCodexApprovalDecision): unknown {
   if (method === "item/commandExecution/requestApproval") {
     return { decision };
@@ -53,6 +69,15 @@ export function buildApprovalResponse(method: string, decision: OpenCodexApprova
   return { decision };
 }
 
+/**
+ * Creates a human-readable approval title.
+ *
+ * @param method Codex approval method.
+ * @param params Request parameters.
+ * @param language Language used for labels.
+ *
+ * @returns Approval title.
+ */
 function createApprovalTitle(
   method: string,
   params: Record<string, unknown>,
@@ -75,6 +100,13 @@ function createApprovalTitle(
   return method;
 }
 
+/**
+ * Maps a Codex approval method to a UI approval kind.
+ *
+ * @param method Codex approval method.
+ *
+ * @returns Approval kind.
+ */
 function createApprovalKind(method: string): OpenCodexApproval["kind"] {
   if (method === "item/commandExecution/requestApproval" || method === "execCommandApproval") {
     return "command";
@@ -91,6 +123,13 @@ function createApprovalKind(method: string): OpenCodexApproval["kind"] {
   return "other";
 }
 
+/**
+ * Reads supported approval decisions from raw params.
+ *
+ * @param value Raw available decisions.
+ *
+ * @returns Decision collection.
+ */
 function readAvailableDecisions(value: unknown): OpenCodexApprovalDecision[] {
   if (!Array.isArray(value)) {
     return ["accept", "acceptForSession", "decline", "cancel"];
@@ -102,6 +141,13 @@ function readAvailableDecisions(value: unknown): OpenCodexApprovalDecision[] {
   return availableDecisions.includes("decline") ? availableDecisions : [...availableDecisions, "decline"];
 }
 
+/**
+ * Checks whether a raw value is a supported approval decision.
+ *
+ * @param value Raw decision candidate.
+ *
+ * @returns `true` when supported.
+ */
 function isApprovalDecision(value: unknown): value is OpenCodexApprovalDecision {
   if (
     value === "accept" ||
@@ -129,10 +175,24 @@ function isApprovalDecision(value: unknown): value is OpenCodexApprovalDecision 
   );
 }
 
+/**
+ * Checks whether a value is a string.
+ *
+ * @param value Value to check.
+ *
+ * @returns `true` for strings.
+ */
 function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
+/**
+ * Maps modern approval decisions to legacy Codex decisions.
+ *
+ * @param decision UI approval decision.
+ *
+ * @returns Legacy decision string.
+ */
 function mapLegacyDecision(decision: OpenCodexApprovalDecision): string {
   if (decision === "accept") {
     return "approved";
@@ -148,4 +208,3 @@ function mapLegacyDecision(decision: OpenCodexApprovalDecision): string {
 
   return "denied";
 }
-

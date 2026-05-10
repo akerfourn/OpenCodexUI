@@ -12,6 +12,13 @@ import type {
 import { getCoreLabels } from "./labels.js";
 import { createId, readObject, readString } from "./primitives.js";
 
+/**
+ * Creates a streaming activity record from a Codex notification.
+ *
+ * @param notification Codex notification.
+ *
+ * @returns Activity record, or `null` when unsupported.
+ */
 export function createActivityFromNotification(notification: CodexNotification): OpenCodexActivity | null {
   const params = readObject(notification.params);
   const threadId = readString(params.threadId);
@@ -45,6 +52,14 @@ export function createActivityFromNotification(notification: CodexNotification):
   return null;
 }
 
+/**
+ * Maps a raw activity item to a structured turn item.
+ *
+ * @param item Raw activity item.
+ * @param language Language used for labels.
+ *
+ * @returns UI turn item, or `null` when unsupported.
+ */
 export function mapActivityTurnItem(
   item: Record<string, unknown>,
   language: OpenCodexLanguage
@@ -71,6 +86,16 @@ export function mapActivityTurnItem(
   };
 }
 
+/**
+ * Maps a raw activity item to a flattened UI message.
+ *
+ * @param threadId Thread identifier.
+ * @param item Raw activity item.
+ * @param turnId Turn identifier.
+ * @param turnDurationMs Turn duration in milliseconds.
+ *
+ * @returns UI message, or `null` when unsupported.
+ */
 export function mapActivityMessage(
   threadId: string,
   item: Record<string, unknown>,
@@ -103,6 +128,14 @@ export function mapActivityMessage(
   };
 }
 
+/**
+ * Summarizes a known activity item.
+ *
+ * @param item Raw activity item.
+ * @param language Language used for labels.
+ *
+ * @returns Summary text, or an empty string.
+ */
 function summarizeActivityItem(item: Record<string, unknown>, language: OpenCodexLanguage): string {
   const type = readString(item.type);
   const labels = getCoreLabels(language);
@@ -127,6 +160,15 @@ function summarizeActivityItem(item: Record<string, unknown>, language: OpenCode
   return "";
 }
 
+/**
+ * Creates a fallback summary for activity types without a primary summary.
+ *
+ * @param type Activity type.
+ * @param item Raw activity item.
+ * @param language Language used for labels.
+ *
+ * @returns Fallback summary.
+ */
 function summarizeActivityFallback(
   type: string,
   item: Record<string, unknown>,
@@ -177,6 +219,13 @@ function summarizeActivityFallback(
   return type;
 }
 
+/**
+ * Serializes raw activity details.
+ *
+ * @param item Raw activity item.
+ *
+ * @returns JSON details, or an empty string when serialization fails.
+ */
 function summarizeActivityDetails(item: Record<string, unknown>): string {
   try {
     return JSON.stringify(item, null, 2);
@@ -185,6 +234,17 @@ function summarizeActivityDetails(item: Record<string, unknown>): string {
   }
 }
 
+/**
+ * Creates a running activity record.
+ *
+ * @param id Activity identifier.
+ * @param threadId Thread identifier.
+ * @param kind Activity kind.
+ * @param turnId Turn identifier.
+ * @param content Activity content.
+ *
+ * @returns Activity record.
+ */
 function createActivity(
   id: string,
   threadId: string,
@@ -201,4 +261,3 @@ function createActivity(
     status: "running"
   };
 }
-

@@ -182,6 +182,16 @@ export function mapTurnsToOpenCodexTurns(
   return turns.map((turnValue) => mapTurnToOpenCodexTurn(threadId, turnValue, language));
 }
 
+/**
+ * Maps one Codex user-message item to a flattened UI message.
+ *
+ * @param threadId Thread identifier.
+ * @param item Raw user-message item.
+ * @param turnId Turn identifier.
+ * @param turnDurationMs Turn duration in milliseconds.
+ *
+ * @returns UI message.
+ */
 function mapUserMessage(
   threadId: string,
   item: Record<string, unknown>,
@@ -212,6 +222,15 @@ function mapUserMessage(
   };
 }
 
+/**
+ * Maps one raw Codex turn to a structured UI turn.
+ *
+ * @param threadId Thread identifier.
+ * @param turnValue Raw turn payload.
+ * @param language Language used for activity labels.
+ *
+ * @returns UI turn.
+ */
 function mapTurnToOpenCodexTurn(
   threadId: string,
   turnValue: unknown,
@@ -234,6 +253,14 @@ function mapTurnToOpenCodexTurn(
   };
 }
 
+/**
+ * Maps one raw turn item to a structured UI turn item.
+ *
+ * @param itemValue Raw turn item payload.
+ * @param language Language used for activity labels.
+ *
+ * @returns UI turn item, or `null` when unsupported.
+ */
 function mapTurnItem(itemValue: unknown, language: OpenCodexLanguage): OpenCodexTurnItem | null {
   const item = readObject(itemValue);
   const type = readString(item.type);
@@ -256,6 +283,13 @@ function mapTurnItem(itemValue: unknown, language: OpenCodexLanguage): OpenCodex
   return mapActivityTurnItem(item, language);
 }
 
+/**
+ * Maps a user-message item for use inside a structured turn.
+ *
+ * @param item Raw user-message item.
+ *
+ * @returns UI turn item.
+ */
 function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
   const message = mapUserMessage("", item, "", null);
 
@@ -269,6 +303,14 @@ function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
   };
 }
 
+/**
+ * Maps one Codex user input attachment.
+ *
+ * @param input Raw attachment payload.
+ * @param itemId Owning item identifier.
+ *
+ * @returns UI image attachment, or `null`.
+ */
 function mapUserInputAttachment(
   input: Record<string, unknown>,
   itemId: string
@@ -309,6 +351,14 @@ function mapUserInputAttachment(
   return null;
 }
 
+/**
+ * Creates a stable-ish attachment identifier from item and value.
+ *
+ * @param itemId Owning item identifier.
+ * @param value Attachment value.
+ *
+ * @returns Attachment identifier.
+ */
 function createAttachmentId(itemId: string, value: string): string {
   return [
     itemId.length > 0 ? itemId : "attachment",
@@ -316,6 +366,13 @@ function createAttachmentId(itemId: string, value: string): string {
   ].join(":");
 }
 
+/**
+ * Computes a small numeric hash for identifier generation.
+ *
+ * @param value Value to hash.
+ *
+ * @returns Numeric hash.
+ */
 function hashString(value: string): number {
   let hash = 0;
 
@@ -325,4 +382,3 @@ function hashString(value: string): number {
 
   return hash;
 }
-

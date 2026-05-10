@@ -35,9 +35,22 @@ export type ThreadCacheServiceOptions = {
   emit(event: OpenCodexEvent): void;
 };
 
+/**
+ * Reads and writes cached thread metadata and turn snapshots.
+ */
 export class ThreadCacheService {
   constructor(private readonly options: ThreadCacheServiceOptions) {}
 
+  /**
+   * Reads thread metadata from SQLite.
+   *
+   * @param scope Thread list scope.
+   * @param projectPath Project path used for current-project lists.
+   * @param sourceId Optional source filter.
+   * @param searchTerm Optional search text.
+   *
+   * @returns Cached thread metadata.
+   */
   async readThreads(
     scope: "currentProject" | "all",
     projectPath: string | null,
@@ -64,6 +77,13 @@ export class ThreadCacheService {
     }
   }
 
+  /**
+   * Reads a cached thread snapshot.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Cached snapshot, or `null` when unavailable.
+   */
   async readSnapshot(threadId: string): Promise<CachedThreadSnapshot | null> {
     const repository = this.options.cacheRepository;
 
@@ -81,6 +101,13 @@ export class ThreadCacheService {
     }
   }
 
+  /**
+   * Converts cached raw turns to UI turns.
+   *
+   * @param cacheEntry In-memory cache entry.
+   *
+   * @returns UI turn collection.
+   */
   readTurns(cacheEntry: ThreadTurnCacheEntry): OpenCodexTurn[] {
     return mapTurnsToOpenCodexTurns(
       cacheEntry.thread.id,
@@ -89,6 +116,14 @@ export class ThreadCacheService {
     );
   }
 
+  /**
+   * Loads older cached turns before the provided cursor.
+   *
+   * @param cacheEntry In-memory cache entry.
+   * @param cursor Cache older-turn cursor.
+   *
+   * @returns Older turn result, or `null` when cache cannot serve it.
+   */
   async loadOlderTurns(
     cacheEntry: ThreadTurnCacheEntry,
     cursor: string
@@ -145,6 +180,13 @@ export class ThreadCacheService {
     }
   }
 
+  /**
+   * Writes thread list metadata to SQLite.
+   *
+   * @param threads Thread metadata to index.
+   *
+   * @returns Promise resolved when the write attempt completes.
+   */
   async writeIndex(threads: OpenCodexThreadWithProjectState[]): Promise<void> {
     const repository = this.options.cacheRepository;
 
@@ -159,6 +201,13 @@ export class ThreadCacheService {
     }
   }
 
+  /**
+   * Writes a full thread snapshot to SQLite.
+   *
+   * @param cacheEntry In-memory cache entry to persist.
+   *
+   * @returns Promise resolved when the write attempt completes.
+   */
   async writeSnapshot(cacheEntry: ThreadTurnCacheEntry): Promise<void> {
     const repository = this.options.cacheRepository;
 
@@ -173,6 +222,14 @@ export class ThreadCacheService {
     }
   }
 
+  /**
+   * Writes an incremental turn delta to SQLite.
+   *
+   * @param cacheEntry In-memory cache entry.
+   * @param turns Raw turns to persist.
+   *
+   * @returns Promise resolved when the write attempt completes.
+   */
   async writeDelta(cacheEntry: ThreadTurnCacheEntry, turns: unknown[]): Promise<void> {
     const repository = this.options.cacheRepository;
 
@@ -187,6 +244,14 @@ export class ThreadCacheService {
     }
   }
 
+  /**
+   * Writes a user-defined thread title.
+   *
+   * @param threadId Thread identifier.
+   * @param title Custom title.
+   *
+   * @returns Promise resolved when the write attempt completes.
+   */
   async writeTitle(threadId: string, title: string): Promise<void> {
     const repository = this.options.cacheRepository;
 
@@ -201,6 +266,14 @@ export class ThreadCacheService {
     }
   }
 
+  /**
+   * Writes the latest Codex-generated thread title.
+   *
+   * @param threadId Thread identifier.
+   * @param title Codex title.
+   *
+   * @returns Promise resolved when the write attempt completes.
+   */
   async writeCodexTitle(threadId: string, title: string): Promise<void> {
     const repository = this.options.cacheRepository;
 
@@ -215,6 +288,13 @@ export class ThreadCacheService {
     }
   }
 
+  /**
+   * Deletes a cached thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when the delete attempt completes.
+   */
   async deleteThread(threadId: string): Promise<void> {
     const repository = this.options.cacheRepository;
 
@@ -229,6 +309,13 @@ export class ThreadCacheService {
     }
   }
 
+  /**
+   * Writes a cache diagnostic message through the backend logger.
+   *
+   * @param message Message to log.
+   *
+   * @returns Nothing.
+   */
   private log(message: string): void {
     this.options.backendOptions.logger?.(message);
   }

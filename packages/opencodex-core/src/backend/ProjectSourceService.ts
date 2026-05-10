@@ -42,15 +42,28 @@ export type ProjectSourceServiceOptions = {
   restartSourceClient(sourceId: string): Promise<void>;
 };
 
+/**
+ * Coordinates project and source persistence with Codex source synchronization.
+ */
 export class ProjectSourceService {
   constructor(private readonly options: ProjectSourceServiceOptions) {}
 
+  /**
+   * Lists cached projects and emits them to the UI.
+   *
+   * @returns Cached project collection.
+   */
   async listProjects(): Promise<OpenCodexProject[]> {
     const cachedProjects = await this.readCachedProjects();
     this.options.emit({ type: "projects.updated", projects: cachedProjects });
     return cachedProjects;
   }
 
+  /**
+   * Lists configured sources and emits them to the UI.
+   *
+   * @returns Source collection.
+   */
   async listSources(): Promise<OpenCodexSource[]> {
     await this.ensureSourcesInitialized();
     const sources = await this.listOpenCodexSources();
@@ -62,6 +75,13 @@ export class ProjectSourceService {
     return sources;
   }
 
+  /**
+   * Creates a new Codex source.
+   *
+   * @param name Optional source name.
+   *
+   * @returns Created source.
+   */
   async createSource(name?: string): Promise<OpenCodexSource> {
     const repository = this.requireCacheRepository("Source storage is unavailable.");
     const createdSource = await repository.createSource(name);
@@ -75,6 +95,13 @@ export class ProjectSourceService {
     return source;
   }
 
+  /**
+   * Synchronizes projects from one source or all sources.
+   *
+   * @param sourceId Source identifier, or `null` for every source.
+   *
+   * @returns Refreshed project collection.
+   */
   async syncSources(sourceId: string | null): Promise<OpenCodexProject[]> {
     await this.ensureSourcesInitialized();
     const repository = this.options.cacheRepository;
@@ -101,6 +128,14 @@ export class ProjectSourceService {
     return projects;
   }
 
+  /**
+   * Updates whether a project is hidden.
+   *
+   * @param projectId Project identifier.
+   * @param isHidden Hidden flag.
+   *
+   * @returns Success result.
+   */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<{ ok: true }> {
     const repository = this.options.cacheRepository;
 
@@ -113,6 +148,13 @@ export class ProjectSourceService {
     return { ok: true };
   }
 
+  /**
+   * Deletes a non-default source and clears its project associations.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Success result.
+   */
   async deleteSource(sourceId: string): Promise<{ ok: true }> {
     const settings = this.options.getSettings();
 
@@ -132,6 +174,14 @@ export class ProjectSourceService {
     return { ok: true };
   }
 
+  /**
+   * Updates source metadata and command settings.
+   *
+   * @param sourceId Source identifier.
+   * @param patch Source patch.
+   *
+   * @returns Updated source.
+   */
   async updateSource(
     sourceId: string,
     patch: Partial<Pick<OpenCodexSource, "name">> & {
@@ -166,6 +216,15 @@ export class ProjectSourceService {
     return source;
   }
 
+  /**
+   * Opens and caches a project path.
+   *
+   * @param projectPath Project path to open.
+   * @param sourceId Source identifier, or `null` for orphan/default handling.
+   * @param createIfMissing Whether the directory may be created.
+   *
+   * @returns Opened project metadata.
+   */
   async openProject(
     projectPath: string,
     sourceId: string | null,
@@ -183,6 +242,14 @@ export class ProjectSourceService {
     return project;
   }
 
+  /**
+   * Lets the host select a project directory and opens it.
+   *
+   * @param mode Picker mode.
+   * @param sourceId Source identifier, or `null`.
+   *
+   * @returns Opened project metadata, or `null` when cancelled.
+   */
   async pickProjectDirectory(
     mode: "open" | "create",
     sourceId: string | null
@@ -196,6 +263,14 @@ export class ProjectSourceService {
     return this.openProject(selectedPath, sourceId, mode === "create");
   }
 
+  /**
+   * Writes or creates cached project metadata.
+   *
+   * @param projectPath Project path to cache.
+   * @param sourceId Source identifier, or `null`.
+   *
+   * @returns Cached project metadata, or `null` for invalid paths.
+   */
   async cacheProject(projectPath: string | null, sourceId: string | null): Promise<OpenCodexProject | null> {
     const normalizedProjectPath = normalizeProjectPath(projectPath);
 
@@ -222,6 +297,11 @@ export class ProjectSourceService {
     }
   }
 
+  /**
+   * Reads cached projects from SQLite.
+   *
+   * @returns Cached project collection.
+   */
   async readCachedProjects(): Promise<OpenCodexProject[]> {
     if (this.options.cacheRepository === null) {
       return [];
@@ -236,6 +316,11 @@ export class ProjectSourceService {
     }
   }
 
+  /**
+   * Ensures the default source exists and settings point to it.
+   *
+   * @returns Promise resolved when initialization completes.
+   */
   async ensureSourcesInitialized(): Promise<void> {
     const repository = this.options.cacheRepository;
 
@@ -258,6 +343,13 @@ export class ProjectSourceService {
     await this.options.backendOptions.saveSettings?.(nextSettings);
   }
 
+  /**
+   * Resolves a source identifier to a cached source.
+   *
+   * @param sourceId Source identifier, or `null` for the default source.
+   *
+   * @returns Resolved source.
+   */
   async resolveSource(sourceId: string | null): Promise<CachedSource> {
     const repository = this.options.cacheRepository;
 
@@ -280,6 +372,11 @@ export class ProjectSourceService {
     return sources[0] ?? createDefaultCachedSource();
   }
 
+  /**
+   * Reads sources and converts them to UI protocol objects.
+   *
+   * @returns Source collection.
+   */
   async listOpenCodexSources(): Promise<OpenCodexSource[]> {
     const repository = this.options.cacheRepository;
     const settings = this.options.getSettings();
@@ -298,6 +395,13 @@ export class ProjectSourceService {
     )));
   }
 
+  /**
+   * Synchronizes thread/project metadata for one source.
+   *
+   * @param source Source to synchronize.
+   *
+   * @returns Promise resolved when synchronization completes.
+   */
   private async syncSource(source: CachedSource): Promise<void> {
     const client = await this.options.ensureClient(source.id);
     const threads = (await readThreadPages(client, {
@@ -316,6 +420,13 @@ export class ProjectSourceService {
     await this.writeThreadIndex(threads);
   }
 
+  /**
+   * Writes synchronized thread metadata to the cache.
+   *
+   * @param threads Threads to persist.
+   *
+   * @returns Promise resolved when the write attempt completes.
+   */
   private async writeThreadIndex(threads: OpenCodexThreadWithProjectState[]): Promise<void> {
     const repository = this.options.cacheRepository;
 
@@ -330,6 +441,14 @@ export class ProjectSourceService {
     }
   }
 
+  /**
+   * Ensures and normalizes a project path.
+   *
+   * @param projectPath Project path.
+   * @param createIfMissing Whether the directory may be created.
+   *
+   * @returns Normalized project path.
+   */
   private async ensureProjectPath(projectPath: string, createIfMissing: boolean): Promise<string> {
     const ensuredPath = await this.options.backendOptions.ensureProjectDirectory?.(projectPath, createIfMissing)
       ?? projectPath;
@@ -342,6 +461,13 @@ export class ProjectSourceService {
     return normalizedPath;
   }
 
+  /**
+   * Returns the cache repository or throws a contextual error.
+   *
+   * @param message Error message when storage is unavailable.
+   *
+   * @returns Cache repository.
+   */
   private requireCacheRepository(message: string): OpenCodexCacheRepository {
     if (this.options.cacheRepository === null) {
       throw new Error(message);
@@ -369,4 +495,3 @@ function createUncachedProject(projectIdentity: ProjectIdentity, sourceId: strin
     editedAt: now
   };
 }
-
