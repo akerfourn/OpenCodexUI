@@ -74,6 +74,20 @@ export class ChatStore {
     );
   }
 
+  get canSteerActiveTurn(): boolean {
+    const sourceId = this.thread.sourceId ?? this.projectStore.project.sourceId;
+
+    return (
+      this.root.appStore.settings.allowTurnSteering &&
+      this.isWorking &&
+      this.activeTurnId !== null &&
+      sourceId !== null &&
+      !this.projectStore.isOrphan &&
+      !this.isStartingTurn &&
+      !this.isRecovering
+    );
+  }
+
   /**
    * Returns the approval currently pending for this chat.
    *
@@ -165,7 +179,7 @@ export class ChatStore {
     attachments: OpenCodexImageAttachment[] = [],
     model: string | null = this.root.appStore.selectedModel,
     reasoningEffort: OpenCodexReasoningEffort = this.root.appStore.reasoningEffort
-  ): void {
+  ): Promise<boolean> {
     const trimmedText = text.trim();
     const sourceId = this.thread.sourceId ?? this.projectStore.project.sourceId;
 
@@ -173,11 +187,18 @@ export class ChatStore {
       (trimmedText.length === 0 && attachments.length === 0) ||
       this.projectStore.isOrphan ||
       sourceId === null ||
-      this.isWorking ||
       this.isStartingTurn ||
       this.isRecovering
     ) {
-      return;
+      return Promise.resolve(false);
+    }
+
+    if (this.isWorking) {
+      if (!this.canSteerActiveTurn) {
+        return Promise.resolve(false);
+      }
+
+      return this.steerActiveTurn(trimmedText, attachments);
     }
 
     this.isStartingTurn = true;
@@ -193,6 +214,8 @@ export class ChatStore {
       model,
       reasoningEffort
     });
+
+    return Promise.resolve(true);
   }
 
   interruptTurn(): void {
@@ -404,6 +427,64 @@ export class ChatStore {
     this.pendingTurnId = turnId;
     this.turns.push(created);
     this.scrollToBottomVersion += 1;
+  }
+
+  private steerActiveTurn(
+    content: string,
+    attachments: OpenCodexImageAttachment[]
+  ): Promise<boolean> {
+    const turnId = this.activeTurnId;
+
+    if (turnId === null) {
+      return Promise.resolve(false);
+    }
+
+    const optimisticItemId = this.createOptimisticSteerItem(turnId, content, attachments);
+
+    return this.root.request({
+      type: "turn.steer",
+      threadId: this.thread.id,
+      turnId,
+      text: content,
+      attachments
+    }).then(() => true).catch(() => {
+      runInAction(() => {
+        this.removeTurnItem(turnId, optimisticItemId);
+      });
+      return false;
+    });
+  }
+
+  private createOptimisticSteerItem(
+    turnId: string,
+    content: string,
+    attachments: OpenCodexImageAttachment[]
+  ): string {
+    const turn = findOrCreateTurn(this, turnId);
+    const itemId = `${turnId}:steer:${Date.now()}:${Math.random().toString(16).slice(2)}`;
+
+    turn.items.push({
+      id: itemId,
+      role: "user",
+      kind: "steer",
+      content,
+      status: "completed",
+      createdAt: new Date().toISOString(),
+      attachments
+    });
+    this.scrollToBottomVersion += 1;
+
+    return itemId;
+  }
+
+  private removeTurnItem(turnId: string, itemId: string): void {
+    const turn = this.turns.find((entry) => entry.id === turnId);
+
+    if (turn === undefined) {
+      return;
+    }
+
+    turn.items = turn.items.filter((item) => item.id !== itemId);
   }
 
 }

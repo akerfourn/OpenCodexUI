@@ -400,7 +400,7 @@ export class ThreadConversationService {
       await this.createThreadAndReturnId(client, projectPath, resolvedSource.id)
     );
 
-    if (threadId !== null) {
+    if (threadId !== null && this.shouldResumeThreadBeforeTurn(targetThreadId)) {
       await this.resumeThreadForTurn(client, targetThreadId, projectPath, model);
     }
 
@@ -430,6 +430,79 @@ export class ThreadConversationService {
     }
 
     return { threadId: targetThreadId, turnId };
+  }
+
+  /**
+   * Sends steering input to an active Codex turn.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Active turn identifier expected by Codex.
+   * @param text User text.
+   * @param attachments Image attachments.
+   *
+   * @returns Thread and turn identifiers.
+   */
+  async steerTurn(
+    threadId: string,
+    turnId: string,
+    text: string,
+    attachments: OpenCodexImageAttachment[]
+  ): Promise<{ threadId: string; turnId: string }> {
+    const trimmedText = text.trim();
+    const input = buildTurnInput(trimmedText, attachments);
+
+    if (input.length === 0) {
+      return { threadId, turnId };
+    }
+
+    const sourceId = await this.resolveThreadSourceId(threadId);
+
+    if (sourceId === null) {
+      throw new Error("Cannot steer a turn for a project without a Codex source.");
+    }
+
+    const client = await this.options.ensureClient(sourceId);
+    const response = await client.steerTurn({
+      threadId,
+      input,
+      expectedTurnId: turnId
+    });
+    const responseTurnId = readString(readObject(response).turnId);
+    const effectiveTurnId = responseTurnId.length > 0 ? responseTurnId : turnId;
+    await this.persistSteerUserInput(threadId, effectiveTurnId, input);
+
+    return {
+      threadId,
+      turnId: effectiveTurnId
+    };
+  }
+
+  private async persistSteerUserInput(
+    threadId: string,
+    turnId: string,
+    input: unknown[]
+  ): Promise<void> {
+    const result = this.options.threadTurnCache.recordLiveItem(threadId, turnId, {
+      type: "userMessage",
+      id: createId("steer"),
+      content: input
+    });
+
+    if (result === null) {
+      return;
+    }
+
+    await this.options.threadCacheService.writeDelta(result.entry, [result.turn]);
+  }
+
+  private shouldResumeThreadBeforeTurn(threadId: string): boolean {
+    const cacheEntry = this.options.threadTurnCache.get(threadId);
+
+    if (cacheEntry === null) {
+      return true;
+    }
+
+    return cacheEntry.turnsById.size > 0;
   }
 
   /**

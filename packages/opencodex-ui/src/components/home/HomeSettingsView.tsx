@@ -1,7 +1,7 @@
 /**
  * Renders application settings on the Home tab.
  */
-import { MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,10 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
     appStore.setLanguage(event.target.value as OpenCodexLanguage);
   }
 
+  function handleAllowTurnSteeringChange(event: ChangeEvent<HTMLInputElement>): void {
+    appStore.setAllowTurnSteering(event.target.checked);
+  }
+
   return (
     <Stack className="home-content-panel" spacing={2}>
       <Typography variant="h5" component="h2">
@@ -46,6 +50,18 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
         <MenuItem value="fr">{t("language.fr")}</MenuItem>
         <MenuItem value="en">{t("language.en")}</MenuItem>
       </TextField>
+      <FormControlLabel
+        control={(
+          <Switch
+            checked={appStore.settings.allowTurnSteering}
+            onChange={handleAllowTurnSteeringChange}
+          />
+        )}
+        label={t("settings.allowTurnSteering")}
+      />
+      <Typography variant="body2" color="text.secondary">
+        {t("settings.allowTurnSteeringDescription")}
+      </Typography>
     </Stack>
   );
 }

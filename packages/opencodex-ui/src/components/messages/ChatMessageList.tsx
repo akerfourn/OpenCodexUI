@@ -12,7 +12,7 @@ import type { ChatStore } from "../../stores/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
 import { AssistantTurnBlock } from "./AssistantTurnBlock";
 import { MessageRowM } from "./MessageRow";
-import { getPreludeItems, isPreludeItem } from "./turnItemFilters";
+import { isPreludeItem } from "./turnItemFilters";
 
 type ChatMessageListProps = {
   store: RootStore;
@@ -144,6 +144,7 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
             <AssistantTurnBlock
               key={entry.key}
               turn={entry.turn}
+              preludeItems={entry.items}
               isRunning={entry.isRunning}
               lastMessageRef={lastMessageRef}
               isLast={isLast}
@@ -203,7 +204,13 @@ export const ChatMessageListX = observer(ChatMessageList);
 
 type TimelineEntry =
   | { type: "item"; key: string; turn: OpenCodexTurn; item: OpenCodexTurnItem }
-  | { type: "turnPrelude"; key: string; turn: OpenCodexTurn; isRunning: boolean };
+  | {
+      type: "turnPrelude";
+      key: string;
+      turn: OpenCodexTurn;
+      items: OpenCodexTurnItem[];
+      isRunning: boolean;
+    };
 
 const BOTTOM_SCROLL_THRESHOLD_PX = 96;
 
@@ -247,12 +254,25 @@ function buildTimelineEntries(
   const entries: TimelineEntry[] = [];
 
   for (const turn of turns) {
-    const preludeItems = getPreludeItems(turn.items);
-    const userItems = turn.items.filter((item) => item.role === "user");
-    const finalItems = turn.items.filter((item) => item.role !== "user" && !isPreludeItem(item));
     const isRunning = isTurnRunning(turn, activeTurnId, isWorking);
+    const finalAssistantContents = buildFinalAssistantContentSet(turn.items);
+    const pendingPreludeItems: OpenCodexTurnItem[] = [];
+    let preludeGroupIndex = 0;
 
-    for (const item of userItems) {
+    for (const item of turn.items) {
+      if (isVisiblePreludeItem(item, finalAssistantContents)) {
+        pendingPreludeItems.push(item);
+        continue;
+      }
+
+      preludeGroupIndex = flushPreludeItems(
+        entries,
+        turn,
+        pendingPreludeItems,
+        preludeGroupIndex,
+        false
+      );
+
       entries.push({
         type: "item",
         key: buildItemKey(turn, item, entries.length),
@@ -261,26 +281,68 @@ function buildTimelineEntries(
       });
     }
 
-    if (preludeItems.length > 0 || isRunning) {
-      entries.push({
-        type: "turnPrelude",
-        key: buildTurnPreludeKey(turn, entries.length),
-        turn,
-        isRunning
-      });
-    }
-
-    for (const item of finalItems) {
-      entries.push({
-        type: "item",
-        key: buildItemKey(turn, item, entries.length),
-        turn,
-        item
-      });
-    }
+    flushPreludeItems(
+      entries,
+      turn,
+      pendingPreludeItems,
+      preludeGroupIndex,
+      isRunning
+    );
   }
 
   return entries;
+}
+
+function buildFinalAssistantContentSet(items: OpenCodexTurnItem[]): Set<string> {
+  return new Set(
+    items
+      .filter((item) => item.role === "assistant" && item.phase === "final_answer")
+      .map((item) => normalizeContent(item.content))
+      .filter((content) => content.length > 0)
+  );
+}
+
+function isVisiblePreludeItem(
+  item: OpenCodexTurnItem,
+  finalAssistantContents: Set<string>
+): boolean {
+  if (!isPreludeItem(item)) {
+    return false;
+  }
+
+  if (item.role !== "assistant" || item.phase !== "commentary") {
+    return true;
+  }
+
+  const content = normalizeContent(item.content);
+  return content.length === 0 || !finalAssistantContents.has(content);
+}
+
+function normalizeContent(content: string): string {
+  return content.trim().replace(/\s+/g, " ");
+}
+
+function flushPreludeItems(
+  entries: TimelineEntry[],
+  turn: OpenCodexTurn,
+  pendingPreludeItems: OpenCodexTurnItem[],
+  preludeGroupIndex: number,
+  isRunning: boolean
+): number {
+  if (pendingPreludeItems.length === 0 && !isRunning) {
+    return preludeGroupIndex;
+  }
+
+  entries.push({
+    type: "turnPrelude",
+    key: buildTurnPreludeKey(turn, preludeGroupIndex, entries.length),
+    turn,
+    items: [...pendingPreludeItems],
+    isRunning
+  });
+  pendingPreludeItems.length = 0;
+
+  return preludeGroupIndex + 1;
 }
 
 /**
@@ -323,10 +385,11 @@ function isTurnRunning(turn: OpenCodexTurn, activeTurnId: string | null, isWorki
  *
  * @returns Computed string value.
  */
-function buildTurnPreludeKey(turn: OpenCodexTurn, index: number): string {
+function buildTurnPreludeKey(turn: OpenCodexTurn, groupIndex: number, index: number): string {
   return [
     "turnPrelude",
     turn.id.length > 0 ? turn.id : "no-turn",
+    groupIndex,
     index
   ].join(":");
 }

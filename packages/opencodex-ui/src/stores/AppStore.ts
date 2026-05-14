@@ -22,6 +22,7 @@ export class AppStore implements RootChildStore {
     defaultReasoningEffort: "medium",
     showActivityPanel: true,
     experimentalApi: true,
+    allowTurnSteering: false,
     language: "system"
   };
   launchProjectPath: string | null = null;
@@ -141,6 +142,21 @@ export class AppStore implements RootChildStore {
     void this.root.request({
       type: "settings.update",
       patch: { language }
+    });
+  }
+
+  /**
+   * Updates whether active turns can receive steering messages.
+   *
+   * @param allowTurnSteering Whether steering is enabled.
+   *
+   * @returns Nothing.
+   */
+  setAllowTurnSteering(allowTurnSteering: boolean): void {
+    this.settings = { ...this.settings, allowTurnSteering };
+    void this.root.request({
+      type: "settings.update",
+      patch: { allowTurnSteering }
     });
   }
 

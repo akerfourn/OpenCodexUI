@@ -35,6 +35,8 @@ import type { ThreadTurnsListResponse } from "./generated/v2/ThreadTurnsListResp
 import type { TurnInterruptResponse } from "./generated/v2/TurnInterruptResponse";
 import type { TurnStartParams } from "./generated/v2/TurnStartParams";
 import type { TurnStartResponse } from "./generated/v2/TurnStartResponse";
+import type { TurnSteerParams } from "./generated/v2/TurnSteerParams";
+import type { TurnSteerResponse } from "./generated/v2/TurnSteerResponse";
 
 type PendingRequest = {
   resolve: (result: unknown) => void;
@@ -346,6 +348,16 @@ export class CodexAppServerClient {
    */
   async startTurn(params: TurnStartParams): Promise<TurnStartResponse> {
     return this.request<TurnStartResponse>("turn/start", params);
+  }
+
+  /**
+   * Steers an active turn inside an existing thread.
+   *
+   * @param params Turn steer parameters.
+   * @returns Promise resolved with the turn steer response.
+   */
+  async steerTurn(params: TurnSteerParams): Promise<TurnSteerResponse> {
+    return this.request<TurnSteerResponse>("turn/steer", params);
   }
 
   /**

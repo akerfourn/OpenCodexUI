@@ -59,7 +59,8 @@ export const resources = {
         model: "Modèle",
         removeAttachment: "Retirer l'image",
         reasoning: "Raisonnement",
-        send: "Envoyer"
+        send: "Envoyer",
+        steer: "Orienter"
       },
       header: {
         model: "Modèle: {{model}}",
@@ -115,6 +116,10 @@ export const resources = {
         activity: "Activités",
         mixed: "Réflexion et activités",
         reasoning: "Réflexion"
+      },
+      settings: {
+        allowTurnSteering: "Autoriser l'orientation pendant la réflexion",
+        allowTurnSteeringDescription: "Permet d'envoyer un message dans le turn actif pendant que Codex réfléchit."
       },
       rename: {
         cancel: "Annuler",
@@ -234,7 +239,8 @@ export const resources = {
         model: "Model",
         removeAttachment: "Remove image",
         reasoning: "Reasoning",
-        send: "Send"
+        send: "Send",
+        steer: "Steer"
       },
       header: {
         model: "Model: {{model}}",
@@ -290,6 +296,10 @@ export const resources = {
         activity: "Activities",
         mixed: "Thinking and activities",
         reasoning: "Thinking"
+      },
+      settings: {
+        allowTurnSteering: "Allow steering while thinking",
+        allowTurnSteeringDescription: "Allows sending a message into the active turn while Codex is thinking."
       },
       rename: {
         cancel: "Cancel",

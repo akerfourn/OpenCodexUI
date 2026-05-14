@@ -461,6 +461,30 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Steers a running turn.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Active turn identifier.
+   * @param text User text.
+   * @param attachments Image attachments.
+   *
+   * @returns Thread and turn identifiers.
+   */
+  async steerTurn(
+    threadId: string,
+    turnId: string,
+    text: string,
+    attachments: OpenCodexImageAttachment[]
+  ): Promise<{ threadId: string; turnId: string }> {
+    return await this.threadConversationService.steerTurn(
+      threadId,
+      turnId,
+      text,
+      attachments
+    );
+  }
+
+  /**
    * Interrupts a running turn.
    *
    * @param threadId Thread identifier.

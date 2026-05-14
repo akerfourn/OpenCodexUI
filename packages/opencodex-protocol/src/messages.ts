@@ -76,6 +76,7 @@ export type OpenCodexSettings = {
   defaultReasoningEffort: OpenCodexReasoningEffort | null;
   showActivityPanel: boolean;
   experimentalApi: boolean;
+  allowTurnSteering: boolean;
   language: OpenCodexLanguage;
 };
 

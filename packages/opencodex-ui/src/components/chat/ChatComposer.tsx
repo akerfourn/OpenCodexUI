@@ -42,6 +42,10 @@ export function ChatComposer({
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<OpenCodexImageAttachment[]>([]);
+  const canSteer = chatStore.canSteerActiveTurn;
+  const isSteering = isWorking && canSteer;
+  const canSubmit = (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
+  const canAttachImages = !isWorking || canSteer;
 
   useEffect(() => {
     setDraft("");
@@ -52,19 +56,24 @@ export function ChatComposer({
     setDraft(event.target.value);
   }
 
-  function submitDraft(): void {
-    if ((draft.trim().length === 0 && attachments.length === 0) || isWorking) {
+  async function submitDraft(): Promise<void> {
+    if (!canSubmit) {
       return;
     }
 
-    chatStore.sendMessage(draft, attachments);
+    const wasAccepted = await chatStore.sendMessage(draft, attachments);
+
+    if (!wasAccepted) {
+      return;
+    }
+
     setDraft("");
     setAttachments([]);
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    submitDraft();
+    void submitDraft();
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
@@ -73,7 +82,7 @@ export function ChatComposer({
     }
 
     event.preventDefault();
-    submitDraft();
+    void submitDraft();
   }
 
   function handleModelChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
@@ -181,15 +190,15 @@ export function ChatComposer({
             <IconButton
               type="button"
               aria-label={t("composer.attachImage")}
-              disabled={isWorking}
+              disabled={!canAttachImages}
               onClick={handleAttachImages}
             >
               <AddPhotoAlternateOutlinedIcon />
             </IconButton>
           </span>
         </Tooltip>
-        <Button variant="contained" type="submit" disabled={isWorking}>
-          {t("composer.send")}
+        <Button variant="contained" type="submit" disabled={!canSubmit}>
+          {isSteering ? t("composer.steer") : t("composer.send")}
         </Button>
       </Stack>
     </form>

@@ -53,6 +53,13 @@ export type OpenCodexRequest =
       model?: string | null;
       reasoningEffort?: OpenCodexReasoningEffort | null;
     }
+  | {
+      type: "turn.steer";
+      threadId: string;
+      turnId: string;
+      text: string;
+      attachments?: OpenCodexImageAttachment[];
+    }
   | { type: "turn.interrupt"; threadId: string; turnId: string }
   | { type: "approval.respond"; approvalId: string; decision: OpenCodexApprovalDecision }
   | { type: "project.trust"; projectPath: string }

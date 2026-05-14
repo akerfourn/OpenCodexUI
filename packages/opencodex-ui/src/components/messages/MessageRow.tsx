@@ -66,6 +66,7 @@ export function MessageRow({
   const { t } = useTranslation();
   const articleRef = isLast ? lastMessageRef : undefined;
   const isCommentary = role === "assistant" && phase === "commentary";
+  const isSteerMessage = role === "user" && kind === "steer";
   const messageTimestamp = formatMessageTimestamp(createdAt, t);
 
   if (role === "user") {
@@ -95,8 +96,9 @@ export function MessageRow({
             minWidth: 0,
             width: "100%",
             borderColor: "#b7cef3",
+            borderStyle: isSteerMessage ? "dashed" : "solid",
             borderRadius: 2,
-            bgcolor: "#eff6ff",
+            bgcolor: isSteerMessage ? "#f8fbff" : "#eff6ff",
             boxShadow: "0 1px 2px rgb(15 23 42 / 8%)",
             overflow: "visible",
             p: 1.25,
