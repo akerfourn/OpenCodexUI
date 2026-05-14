@@ -116,7 +116,7 @@ export function AssistantTurnBlock({
           border: "1px solid",
           borderColor: "divider",
           borderRadius: 1.5,
-          bgcolor: "grey.50",
+          bgcolor: "background.paper",
           overflow: "hidden",
           "&:before": {
             display: "none"
@@ -131,7 +131,7 @@ export function AssistantTurnBlock({
             position: isRunning ? "sticky" : "static",
             top: 0,
             zIndex: isRunning ? 2 : "auto",
-            bgcolor: "grey.50",
+            bgcolor: "background.paper",
             "& .MuiAccordionSummary-content": {
               alignItems: "center",
               gap: 1,

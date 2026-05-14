@@ -1,6 +1,7 @@
 import { makeAutoObservable } from "mobx";
 
 import type {
+  OpenCodexColorScheme,
   OpenCodexEvent,
   OpenCodexLanguage,
   OpenCodexReasoningEffort,
@@ -23,7 +24,8 @@ export class AppStore implements RootChildStore {
     showActivityPanel: true,
     experimentalApi: true,
     allowTurnSteering: false,
-    language: "system"
+    language: "system",
+    colorScheme: "system"
   };
   launchProjectPath: string | null = null;
   models: string[] = [];
@@ -160,8 +162,26 @@ export class AppStore implements RootChildStore {
     });
   }
 
+  /**
+   * Updates the UI color scheme and persists it through the backend.
+   *
+   * @param colorScheme Color scheme setting to apply.
+   *
+   * @returns Nothing.
+   */
+  setColorScheme(colorScheme: OpenCodexColorScheme): void {
+    this.settings = { ...this.settings, colorScheme };
+    void this.root.request({
+      type: "settings.update",
+      patch: { colorScheme }
+    });
+  }
+
   private applyBootstrap(settings: OpenCodexSettings, launchProjectPath: string | null): void {
-    this.settings = settings;
+    this.settings = {
+      ...this.settings,
+      ...settings
+    };
     this.launchProjectPath = launchProjectPath;
     this.selectedModel = settings.defaultModel;
     this.reasoningEffort = settings.defaultReasoningEffort ?? "medium";

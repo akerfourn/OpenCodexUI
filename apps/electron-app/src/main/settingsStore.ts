@@ -17,7 +17,8 @@ export const defaultSettings: OpenCodexSettings = {
   showActivityPanel: true,
   experimentalApi: true,
   allowTurnSteering: false,
-  language: "system"
+  language: "system",
+  colorScheme: "system"
 };
 
 /**

@@ -26,7 +26,7 @@ export function InlineCode({ className, children }: InlineCodeProps) {
         py: 0,
         border: 0,
         borderRadius: 0,
-        color: "#0f172a",
+        color: "text.primary",
         bgcolor: "transparent",
         fontFamily:
           'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace',

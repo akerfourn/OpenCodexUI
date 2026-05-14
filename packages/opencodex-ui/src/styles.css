@@ -30,6 +30,34 @@
   background: var(--vscode-editor-background);
 }
 
+:root[data-opencodex-color-scheme="dark"] {
+  --vscode-foreground: #e6edf3;
+  --vscode-descriptionForeground: #8b949e;
+  --vscode-editor-background: #0d1117;
+  --vscode-editorWidget-background: #161b22;
+  --vscode-sideBar-background: #0d1117;
+  --vscode-sideBar-border: #30363d;
+  --vscode-panel-border: #30363d;
+  --vscode-focusBorder: #58a6ff;
+  --vscode-button-foreground: #08111f;
+  --vscode-button-background: #58a6ff;
+  --vscode-button-hoverBackground: #79c0ff;
+  --vscode-button-secondaryForeground: #e6edf3;
+  --vscode-button-secondaryBackground: #21262d;
+  --vscode-button-secondaryHoverBackground: #30363d;
+  --vscode-button-border: #30363d;
+  --vscode-input-foreground: #e6edf3;
+  --vscode-input-background: #0d1117;
+  --vscode-input-border: #30363d;
+  --vscode-list-activeSelectionForeground: #e6edf3;
+  --vscode-list-activeSelectionBackground: #1f6feb;
+  --vscode-textCodeBlock-background: #161b22;
+  --vscode-inputValidation-errorForeground: #ffd8d3;
+  --vscode-inputValidation-errorBackground: #3d1117;
+  --vscode-inputValidation-errorBorder: #f85149;
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
 }

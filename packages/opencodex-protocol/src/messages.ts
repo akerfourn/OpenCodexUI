@@ -3,6 +3,7 @@
  */
 export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
 export type OpenCodexMessagePhase = "commentary" | "final_answer";
+export type OpenCodexColorScheme = "light" | "dark" | "system";
 
 export type OpenCodexExecPolicyAmendment = string[];
 
@@ -78,6 +79,7 @@ export type OpenCodexSettings = {
   experimentalApi: boolean;
   allowTurnSteering: boolean;
   language: OpenCodexLanguage;
+  colorScheme: OpenCodexColorScheme;
 };
 
 export type OpenCodexThread = {

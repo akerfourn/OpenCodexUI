@@ -6,7 +6,7 @@ import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexLanguage } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexColorScheme, OpenCodexLanguage } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
 
@@ -29,6 +29,10 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
     appStore.setLanguage(event.target.value as OpenCodexLanguage);
   }
 
+  function handleColorSchemeChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
+    appStore.setColorScheme(event.target.value as OpenCodexColorScheme);
+  }
+
   function handleAllowTurnSteeringChange(event: ChangeEvent<HTMLInputElement>): void {
     appStore.setAllowTurnSteering(event.target.checked);
   }
@@ -49,6 +53,18 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
         <MenuItem value="system">{t("language.system")}</MenuItem>
         <MenuItem value="fr">{t("language.fr")}</MenuItem>
         <MenuItem value="en">{t("language.en")}</MenuItem>
+      </TextField>
+      <TextField
+        select
+        value={appStore.settings.colorScheme}
+        label={t("theme.label")}
+        fullWidth
+        size="small"
+        onChange={handleColorSchemeChange}
+      >
+        <MenuItem value="system">{t("theme.system")}</MenuItem>
+        <MenuItem value="light">{t("theme.light")}</MenuItem>
+        <MenuItem value="dark">{t("theme.dark")}</MenuItem>
       </TextField>
       <FormControlLabel
         control={(

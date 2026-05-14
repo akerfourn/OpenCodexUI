@@ -39,7 +39,7 @@ export function ImageAttachmentPreviewTile({
           aria-label={t("message.imageUnavailable")}
           sx={{
             alignItems: "center",
-            bgcolor: "grey.100",
+            bgcolor: "action.hover",
             border: "1px dashed",
             borderColor: "divider",
             borderRadius: 1,

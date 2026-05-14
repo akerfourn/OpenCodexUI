@@ -108,11 +108,23 @@ export function MessageRow({
           sx={{
             minWidth: 0,
             width: "100%",
-            borderColor: "#b7cef3",
+            borderColor: (theme) => theme.palette.mode === "dark"
+              ? "rgba(88, 166, 255, 0.45)"
+              : "#b7cef3",
             borderStyle: isSteerMessage ? "dashed" : "solid",
             borderRadius: 2,
-            bgcolor: isSteerMessage ? "#f8fbff" : "#eff6ff",
-            boxShadow: "0 1px 2px rgb(15 23 42 / 8%)",
+            bgcolor: (theme) => {
+              if (theme.palette.mode === "dark") {
+                return isSteerMessage
+                  ? "rgba(88, 166, 255, 0.08)"
+                  : "rgba(88, 166, 255, 0.14)";
+              }
+
+              return isSteerMessage ? "#f8fbff" : "#eff6ff";
+            },
+            boxShadow: (theme) => theme.palette.mode === "dark"
+              ? "0 1px 2px rgb(0 0 0 / 24%)"
+              : "0 1px 2px rgb(15 23 42 / 8%)",
             overflow: "visible",
             p: 1.25,
             overflowWrap: "anywhere"

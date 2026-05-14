@@ -137,6 +137,12 @@ export const resources = {
         allowTurnSteering: "Autoriser l'orientation pendant la réflexion",
         allowTurnSteeringDescription: "Permet d'envoyer un message dans le turn actif pendant que Codex réfléchit."
       },
+      theme: {
+        dark: "Sombre",
+        label: "Thème",
+        light: "Clair",
+        system: "Système"
+      },
       rename: {
         cancel: "Annuler",
         submit: "Renommer",
@@ -332,6 +338,12 @@ export const resources = {
       settings: {
         allowTurnSteering: "Allow steering while thinking",
         allowTurnSteeringDescription: "Allows sending a message into the active turn while Codex is thinking."
+      },
+      theme: {
+        dark: "Dark",
+        label: "Theme",
+        light: "Light",
+        system: "System"
       },
       rename: {
         cancel: "Cancel",
