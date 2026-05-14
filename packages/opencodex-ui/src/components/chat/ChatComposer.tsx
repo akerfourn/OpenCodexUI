@@ -2,7 +2,7 @@
  * Renders the chat composer component for the OpenCodex UI.
  */
 import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, IconButton, Stack, TextField, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
@@ -41,6 +41,7 @@ export function ChatComposer({
   isWorking
 }: ChatComposerProps) {
   const { t } = useTranslation();
+  const composerFieldRef = useRef<HTMLDivElement | null>(null);
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<OpenCodexImageAttachment[]>([]);
   const canSteer = chatStore.canSteerActiveTurn;
@@ -55,6 +56,7 @@ export function ChatComposer({
 
   function handleInput(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     setDraft(event.target.value);
+    requestAnimationFrame(scrollComposerFieldToBottom);
   }
 
   async function submitDraft(): Promise<void> {
@@ -136,15 +138,34 @@ export function ChatComposer({
     }
   }
 
+  function scrollComposerFieldToBottom(): void {
+    const composerField = composerFieldRef.current;
+
+    if (composerField === null || composerField.scrollHeight <= composerField.clientHeight) {
+      return;
+    }
+
+    composerField.scrollTop = composerField.scrollHeight;
+  }
+
   return (
     <form className="composer" onSubmit={handleSubmit} onPaste={handlePaste}>
       <TextField
+        ref={composerFieldRef}
         value={draft}
         placeholder={t("composer.messagePlaceholder")}
         multiline
         minRows={4}
         fullWidth
-        sx={{ maxWidth: 820, justifySelf: "center" }}
+        sx={{
+          maxWidth: 820,
+          maxHeight: "50vh",
+          overflowY: "auto",
+          justifySelf: "center",
+          "& .MuiInputBase-root": {
+            alignItems: "flex-start"
+          }
+        }}
         onChange={handleInput}
         onKeyDown={handleKeyDown}
       />
