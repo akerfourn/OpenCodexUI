@@ -4,7 +4,15 @@
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 import type { CachedThreadSnapshot, CachedThreadSyncState } from "@open-codex-ui/opencodex-cache";
 
-import { readNullableNumber, readObject, readString } from "./mapping.js";
+import { readObject, readString } from "./mapping.js";
+import {
+  appendActivityDeltaToTurn,
+  appendAgentMessageDeltaToTurn,
+  appendReasoningDeltaToTurn,
+  mergeTurns,
+  recordLiveItemInTurn,
+  type RecordedTurnMutation
+} from "./threadTurnMerge.js";
 
 export type ThreadTurnCacheEntry = {
   thread: OpenCodexThread;
@@ -143,22 +151,135 @@ export class ThreadTurnCache {
   }
 
   /**
-   * Merges a complete turn history for a resumed thread.
+   * Records or refreshes a live turn shell from Codex notifications.
    *
-   * @param entry Entry.
-   * @param turns Complete turn collection to process.
+   * @param threadId Thread identifier.
+   * @param turnValue Raw turn payload from Codex, when available.
    *
-   * @returns Nothing.
+   * @returns Updated cache entry and turn, or `null` when the thread is not loaded.
    */
-  mergeCompleteHistory(
-    entry: ThreadTurnCacheEntry,
-    turns: unknown[]
-  ): void {
-    mergeTurns(entry, turns);
-    entry.olderCursor = null;
-    entry.hasLoadedLatest = true;
-    entry.hasLoadedAllOlderTurns = true;
-    entry.lastSyncedAt = new Date().toISOString();
+  recordLiveTurn(threadId: string, turnValue: unknown): RecordedTurnMutation | null {
+    const entry = this.entries.get(threadId);
+
+    if (entry === undefined) {
+      return null;
+    }
+
+    const turn = readObject(turnValue);
+    const turnId = readString(turn.id);
+
+    if (turnId.length === 0) {
+      return null;
+    }
+
+    mergeTurns(entry, [turn]);
+    return { entry, turn: entry.turnsById.get(turnId) ?? turn };
+  }
+
+  /**
+   * Records a live item update inside an existing turn.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @param itemValue Raw item payload from Codex.
+   *
+   * @returns Updated cache entry and turn, or `null` when it cannot be recorded.
+   */
+  recordLiveItem(
+    threadId: string,
+    turnId: string,
+    itemValue: unknown
+  ): RecordedTurnMutation | null {
+    const entry = this.entries.get(threadId);
+
+    if (entry === undefined || turnId.length === 0) {
+      return null;
+    }
+
+    return recordLiveItemInTurn(entry, turnId, itemValue);
+  }
+
+  /**
+   * Appends streamed text to a live assistant message.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @param itemId Assistant item identifier.
+   * @param delta Text delta to append.
+   * @param phase Message phase, when known.
+   *
+   * @returns Updated cache entry and turn, or `null` when it cannot be recorded.
+   */
+  appendAgentMessageDelta(
+    threadId: string,
+    turnId: string,
+    itemId: string,
+    delta: string,
+    phase: unknown
+  ): RecordedTurnMutation | null {
+    const entry = this.entries.get(threadId);
+
+    if (entry === undefined) {
+      return null;
+    }
+
+    return appendAgentMessageDeltaToTurn(entry, turnId, itemId, delta, phase);
+  }
+
+  /**
+   * Appends streamed text to a live reasoning item.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @param itemId Reasoning item identifier.
+   * @param field Reasoning field to update.
+   * @param delta Text delta to append.
+   *
+   * @returns Updated cache entry and turn, or `null` when it cannot be recorded.
+   */
+  appendReasoningDelta(
+    threadId: string,
+    turnId: string,
+    itemId: string,
+    field: "summary" | "content",
+    delta: string
+  ): RecordedTurnMutation | null {
+    const entry = this.entries.get(threadId);
+
+    if (entry === undefined) {
+      return null;
+    }
+
+    return appendReasoningDeltaToTurn(entry, turnId, itemId, field, delta);
+  }
+
+  /**
+   * Appends streamed output to a live activity item.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @param itemId Activity item identifier.
+   * @param itemType Fallback item type.
+   * @param field Output field to update.
+   * @param delta Text delta to append.
+   *
+   * @returns Updated cache entry and turn, or `null` when it cannot be recorded.
+   */
+  appendActivityDelta(
+    threadId: string,
+    turnId: string,
+    itemId: string,
+    itemType: string,
+    field: string,
+    delta: string
+  ): RecordedTurnMutation | null {
+    const entry = this.entries.get(threadId);
+
+    if (entry === undefined) {
+      return null;
+    }
+
+    return appendActivityDeltaToTurn(entry, turnId, itemId, itemType, field, delta);
   }
 
   /**
@@ -249,7 +370,9 @@ function mergeThreadMetadata(
   return {
     ...nextThread,
     customTitle,
-    title: resolveThreadTitle(nextThread.codexTitle, customTitle?.trim() ?? "", nextThread.preview)
+    title: resolveThreadTitle(nextThread.codexTitle, customTitle?.trim() ?? "", nextThread.preview),
+    model: nextThread.model ?? currentThread.model,
+    reasoningEffort: nextThread.reasoningEffort ?? currentThread.reasoningEffort
   };
 }
 
@@ -268,63 +391,4 @@ function applySyncState(entry: ThreadTurnCacheEntry, syncState: CachedThreadSync
   entry.hasLoadedLatest = syncState.hasLoadedLatest;
   entry.hasLoadedAllOlderTurns = syncState.hasLoadedAllOlderTurns;
   entry.lastSyncedAt = syncState.lastSyncedAt;
-}
-
-/**
- * Merges turns.
- *
- * @param entry Entry.
- * @param turns Turn collection to process.
- *
- * @returns Nothing.
- */
-function mergeTurns(entry: ThreadTurnCacheEntry, turns: unknown[]): void {
-  for (const turn of turns) {
-    const turnId = readString(readObject(turn).id);
-
-    if (turnId.length === 0) {
-      continue;
-    }
-
-    entry.turnsById.set(turnId, turn);
-  }
-
-  entry.orderedTurnIds = Array.from(entry.turnsById.entries())
-    .sort((left, right) => compareTurns(left[1], right[1], left[0], right[0]))
-    .map(([turnId]) => turnId);
-  entry.oldestTurnId = entry.orderedTurnIds[0] ?? null;
-  entry.newestTurnId = entry.orderedTurnIds.at(-1) ?? null;
-}
-
-/**
- * Handles compare turns.
- *
- * @param left Left.
- * @param right Right.
- * @param leftId Left identifier.
- * @param rightId Right identifier.
- *
- * @returns Computed value.
- */
-function compareTurns(left: unknown, right: unknown, leftId: string, rightId: string): number {
-  const leftTime = readTurnTime(left);
-  const rightTime = readTurnTime(right);
-
-  if (leftTime !== null && rightTime !== null && leftTime !== rightTime) {
-    return leftTime - rightTime;
-  }
-
-  return leftId.localeCompare(rightId);
-}
-
-/**
- * Reads turn time.
- *
- * @param turn Turn payload to process.
- *
- * @returns Numeric value, or `null` when unavailable.
- */
-function readTurnTime(turn: unknown): number | null {
-  const value = readObject(turn);
-  return readNullableNumber(value.startedAt) ?? readNullableNumber(value.completedAt);
 }

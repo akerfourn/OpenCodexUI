@@ -538,6 +538,7 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   private handleNotification(notification: CodexNotification, sourceId: string): void {
+    this.threadConversationService.recordNotification(notification);
     this.notificationService.handleNotification(notification, sourceId);
   }
 
@@ -753,4 +754,3 @@ export class OpenCodexBackendRuntime {
   }
 
 }
-

@@ -60,13 +60,12 @@ export function getBackendLabels(language: OpenCodexSettings["language"]): Backe
 
   return {
     approvalUnavailable: "La demande d'approbation n'est plus disponible.",
-    codexCommandHelp: "VÃ©rifiez que Codex CLI est installÃ© et que codexCommand pointe vers le bon exÃ©cutable.",
-    codexRejectedRequest: "Codex app-server a refusÃ© la requÃªte",
-    missingLinkHandler: "Aucun gestionnaire d'ouverture de lien externe n'est configurÃ©."
+    codexCommandHelp: "Vérifiez que Codex CLI est installé et que codexCommand pointe vers le bon exécutable.",
+    codexRejectedRequest: "Codex app-server a refusé la requête",
+    missingLinkHandler: "Aucun gestionnaire d'ouverture de lien externe n'est configuré."
   };
 }
 
 export function isMissingRolloutError(error: unknown): boolean {
   return error instanceof JsonRpcError && error.message.includes("no rollout found for thread id");
 }
-

@@ -35,8 +35,8 @@ export function readTurnMetadata(turn: unknown): {
   return {
     id: readString(value.id),
     status: readNullableString(value.status),
-    startedAt: readNullableString(value.startedAt),
-    completedAt: readNullableString(value.completedAt),
+    startedAt: readTimestamp(value.startedAt),
+    completedAt: readTimestamp(value.completedAt),
     durationMs: readNullableNumber(value.durationMs),
     itemCount: items.length
   };
@@ -100,3 +100,24 @@ function readNullableNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+/**
+ * Reads a string or Unix timestamp as an ISO timestamp.
+ *
+ * @param value Raw timestamp value.
+ * @returns ISO timestamp, or `null`.
+ */
+function readTimestamp(value: unknown): string | null {
+  const stringValue = readNullableString(value);
+
+  if (stringValue !== null) {
+    return stringValue;
+  }
+
+  const numberValue = readNullableNumber(value);
+
+  if (numberValue === null) {
+    return null;
+  }
+
+  return new Date(numberValue * 1000).toISOString();
+}

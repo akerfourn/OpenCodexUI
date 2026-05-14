@@ -442,6 +442,45 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(snapshot?.syncState.olderCursor).toBe("cache:turn-2");
   });
 
+  it("should sort numeric Codex turn timestamps when reading latest turns", async () => {
+    await repository.saveThreadSnapshot({
+      thread: {
+        id: "thread-1",
+        codexTitle: "Thread",
+        customTitle: null,
+        title: "Thread",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      },
+      turns: [
+        { id: "turn-1", startedAt: 1, items: [] },
+        { id: "turn-2", startedAt: 2, items: [] },
+        { id: "turn-3", startedAt: 3, items: [] }
+      ],
+      syncState: {
+        threadId: "thread-1",
+        newestTurnId: "turn-3",
+        oldestTurnId: "turn-1",
+        olderCursor: null,
+        hasLoadedLatest: true,
+        hasLoadedAllOlderTurns: true,
+        lastSyncedAt: "2026-01-01T00:00:03.000Z"
+      }
+    });
+
+    const snapshot = await repository.getThread("thread-1", { latestTurnLimit: 2 });
+
+    expect(snapshot?.turns).toMatchObject([
+      { id: "turn-2" },
+      { id: "turn-3" }
+    ]);
+  });
+
   it("should read older cached turns before a known turn", async () => {
     await repository.saveThreadSnapshot({
       thread: {

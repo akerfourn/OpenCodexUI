@@ -169,7 +169,7 @@ export class ChatStore {
     reasoningEffort: OpenCodexReasoningEffort = this.root.appStore.reasoningEffort
   ): void {
     const trimmedText = text.trim();
-    const sourceId = this.projectStore.project.sourceId;
+    const sourceId = this.thread.sourceId ?? this.projectStore.project.sourceId;
 
     if (
       (trimmedText.length === 0 && attachments.length === 0) ||

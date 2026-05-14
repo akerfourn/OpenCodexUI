@@ -1,4 +1,4 @@
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
+import type { CodexAppServerClient, CodexNotification } from "@open-codex-ui/codex-rpc";
 
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
@@ -28,6 +28,10 @@ import {
 } from "./constants.js";
 import { readReasoningEffort, readThreadPages } from "./codexReaders.js";
 import { isMissingRolloutError, toError } from "./errors.js";
+import {
+  recordLiveNotification,
+  shouldPersistLiveNotification
+} from "./liveTurnNotifications.js";
 import {
   createCacheSignature,
   isCacheOlderCursor,
@@ -153,7 +157,7 @@ export class ThreadConversationService {
       this.emitThreadOpened(cacheEntry, turns);
 
       if (cachedSnapshot.thread.sourceId !== null) {
-        void this.resumeAndSyncCachedThread(threadId).catch((error: unknown) => {
+        void this.syncCachedThread(threadId).catch((error: unknown) => {
           this.handleThreadOpenError(threadId, toError(error));
         });
       }
@@ -177,28 +181,27 @@ export class ThreadConversationService {
     });
 
     const codexStartedAt = Date.now();
-    let response: unknown;
+    let thread: OpenCodexThread;
 
     try {
-      response = await client.resumeThread(threadId);
+      thread = await this.readThreadMetadata(
+        client,
+        threadId,
+        cachedSnapshot?.thread.sourceId ?? null,
+        cachedSnapshot?.thread.model ?? null,
+        cachedSnapshot?.thread.reasoningEffort ?? null
+      );
     } catch (error) {
       await this.handleMissingRollout(threadId, error);
       throw error;
     }
 
-    const responseObject = readObject(response);
-    const thread = mapThread(
-      responseObject.thread,
-      readString(responseObject.model),
-      readReasoningEffort(responseObject.reasoningEffort)
-    );
     const cacheEntry = this.options.threadTurnCache.getOrCreate(thread);
     const hadLoadedLatest = cacheEntry.hasLoadedLatest;
-    const rawHistoryThread = await this.readHistoryThread(client, threadId, responseObject.thread);
+    const latestTurns = await this.loadLatestTurns(client, cacheEntry);
 
-    this.mergeHistoryTurns(cacheEntry, rawHistoryThread);
-
-    await this.options.threadCacheService.writeSnapshot(cacheEntry);
+    await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+    await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
     const turns = this.options.threadCacheService.readTurns(cacheEntry);
     this.logThreadTiming("codex load finished", {
       threadId,
@@ -256,7 +259,10 @@ export class ThreadConversationService {
     const olderTurns = await this.resolveFullTurnItems(client, threadId, rawTurns);
 
     this.options.threadTurnCache.mergeOlderTurns(cacheEntry, olderTurns, olderCursor);
-    await this.options.threadCacheService.writeDelta(cacheEntry, olderTurns);
+    await this.options.threadCacheService.writeDelta(
+      cacheEntry,
+      this.readMergedTurns(cacheEntry, olderTurns)
+    );
 
     const addedTurns = this.options.threadTurnCache
       .toTurns(cacheEntry)
@@ -301,7 +307,7 @@ export class ThreadConversationService {
       if (cachedSnapshot !== null && cachedSnapshot.syncState.hasLoadedLatest) {
         const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
         this.emitThreadOpened(cacheEntry, this.options.threadCacheService.readTurns(cacheEntry));
-        await this.resumeAndSyncCachedThread(threadId);
+        await this.syncCachedThread(threadId);
       } else {
         await this.openThread(threadId);
       }
@@ -345,6 +351,7 @@ export class ThreadConversationService {
     ), resolvedSource.id);
     const turns: OpenCodexTurn[] = [];
 
+    this.options.threadTurnCache.getOrCreate(thread);
     this.options.emit({ type: "thread.created", thread, turns });
     await this.options.threadCacheService.writeIndex([thread]);
     return { thread, turns };
@@ -379,15 +386,24 @@ export class ThreadConversationService {
       return { threadId: threadId ?? "", turnId: "" };
     }
 
-    if (sourceId === null) {
+    const targetSourceId = threadId === null
+      ? sourceId
+      : await this.resolveThreadSourceId(threadId);
+
+    if (targetSourceId === null) {
       throw new Error("Cannot start a turn for a project without a Codex source.");
     }
 
-    const resolvedSource = await this.options.resolveSource(sourceId);
+    const resolvedSource = await this.options.resolveSource(targetSourceId);
     const client = await this.options.ensureClient(resolvedSource.id);
     const targetThreadId = threadId ?? (
       await this.createThreadAndReturnId(client, projectPath, resolvedSource.id)
     );
+
+    if (threadId !== null) {
+      await this.resumeThreadForTurn(client, targetThreadId, projectPath, model);
+    }
+
     const message: OpenCodexMessage = {
       id: createId("user"),
       threadId: targetThreadId,
@@ -414,6 +430,29 @@ export class ThreadConversationService {
     }
 
     return { threadId: targetThreadId, turnId };
+  }
+
+  /**
+   * Ensures a historical thread is active in the app-server before starting a turn.
+   *
+   * @param client Codex app-server client.
+   * @param threadId Existing thread identifier.
+   * @param projectPath Project path candidate.
+   * @param model Optional model override.
+   *
+   * @returns Promise resolved once Codex has resumed the thread.
+   */
+  private async resumeThreadForTurn(
+    client: CodexAppServerClient,
+    threadId: string,
+    projectPath: string | null,
+    model: string | null
+  ): Promise<void> {
+    await client.resumeThread(threadId, {
+      cwd: this.resolveCurrentProjectPath(projectPath),
+      excludeTurns: true,
+      model
+    });
   }
 
   /**
@@ -458,7 +497,23 @@ export class ThreadConversationService {
       return;
     }
 
-    await this.resumeAndSyncCachedThread(threadId);
+    await this.syncCachedThread(threadId);
+  }
+
+  /**
+   * Records rich live turn details exposed by Codex notifications.
+   *
+   * @param notification Codex notification.
+   * @returns Nothing.
+   */
+  recordNotification(notification: CodexNotification): void {
+    const result = recordLiveNotification(this.options.threadTurnCache, notification);
+
+    if (result === null || !shouldPersistLiveNotification(notification.method)) {
+      return;
+    }
+
+    void this.options.threadCacheService.writeDelta(result.entry, [result.turn]);
   }
 
   /**
@@ -499,10 +554,9 @@ export class ThreadConversationService {
   private async loadLatestTurns(
     client: CodexAppServerClient,
     cacheEntry: ThreadTurnCacheEntry
-  ): Promise<void> {
-    const response = await client.readThread(cacheEntry.thread.id, true);
+  ): Promise<unknown[]> {
+    const response = await client.readThread(cacheEntry.thread.id, false);
     const responseObject = readObject(response);
-    const historyThread = await this.readHistoryThread(client, cacheEntry.thread.id, responseObject.thread);
 
     const thread = {
       ...mapThread(
@@ -513,8 +567,10 @@ export class ThreadConversationService {
       sourceId: cacheEntry.thread.sourceId
     };
     const nextEntry = this.options.threadTurnCache.getOrCreate(thread);
+    const latestTurns = await this.readLatestTurnPage(client, cacheEntry.thread.id);
 
-    this.mergeHistoryTurns(nextEntry, historyThread);
+    this.options.threadTurnCache.mergeLatestTurns(nextEntry, latestTurns.turns, latestTurns.olderCursor);
+    return this.readMergedTurns(nextEntry, latestTurns.turns);
   }
 
   /**
@@ -539,8 +595,9 @@ export class ThreadConversationService {
 
     try {
       const previousSignature = createCacheSignature(cacheEntry);
-      await this.loadLatestTurns(client, cacheEntry);
-      await this.options.threadCacheService.writeSnapshot(cacheEntry);
+      const latestTurns = await this.loadLatestTurns(client, cacheEntry);
+      await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
       const nextSignature = createCacheSignature(cacheEntry);
 
       if (previousSignature !== nextSignature) {
@@ -563,30 +620,31 @@ export class ThreadConversationService {
   }
 
   /**
-   * Resumes a cached thread in Codex and synchronizes its latest turns.
+   * Synchronizes a cached thread from Codex without loading its full history.
    *
    * @param threadId Thread identifier.
    *
    * @returns Promise resolved when synchronization completes.
    */
-  private async resumeAndSyncCachedThread(threadId: string): Promise<void> {
+  private async syncCachedThread(threadId: string): Promise<void> {
     const syncStartedAt = Date.now();
     this.options.emit({ type: "thread.sync.started", threadId });
 
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
-    const sourceId = cachedSnapshot?.thread.sourceId ?? null;
-    if (sourceId === null) {
+    if (cachedSnapshot === null || cachedSnapshot.thread.sourceId === null) {
       throw new Error("Cannot synchronize a thread without a Codex source.");
     }
 
+    const sourceId = cachedSnapshot.thread.sourceId;
+    const cachedThread = cachedSnapshot.thread;
     const client = await this.options.ensureClient(sourceId);
-    const response = await client.resumeThread(threadId);
-    const responseObject = readObject(response);
-    const thread = withSourceId(mapThread(
-      responseObject.thread,
-      readString(responseObject.model),
-      readReasoningEffort(responseObject.reasoningEffort)
-    ), sourceId);
+    const thread = await this.readThreadMetadata(
+      client,
+      threadId,
+      sourceId,
+      cachedThread.model,
+      cachedThread.reasoningEffort
+    );
     const cacheEntry = this.options.threadTurnCache.getOrCreate(thread);
 
     await this.options.threadCacheService.writeIndex([thread]);
@@ -595,62 +653,58 @@ export class ThreadConversationService {
   }
 
   /**
-   * Reads the complete rollout history for a thread.
+   * Reads thread metadata without forcing Codex to return full turn history.
    *
    * @param client Codex app-server client.
    * @param threadId Thread identifier.
-   * @param fallbackThread Raw thread payload used if read is unavailable.
+   * @param sourceId Source identifier.
+   * @param model Fallback model from the cached thread index.
+   * @param reasoningEffort Fallback reasoning effort from the cached thread index.
    *
-   * @returns Raw thread payload with turns when available.
+   * @returns OpenCodex thread metadata.
    */
-  private async readHistoryThread(
+  private async readThreadMetadata(
     client: CodexAppServerClient,
     threadId: string,
-    fallbackThread: unknown
-  ): Promise<unknown> {
-    try {
-      const turns = await this.readFullTurnPages(client, threadId);
-      return {
-        ...readObject(fallbackThread),
-        turns
-      };
-    } catch {
-      return fallbackThread;
-    }
+    sourceId: string | null,
+    model: OpenCodexThread["model"] = null,
+    reasoningEffort: OpenCodexThread["reasoningEffort"] = null
+  ): Promise<OpenCodexThread> {
+    const response = await client.readThread(threadId, false);
+    const responseObject = readObject(response);
+
+    return {
+      ...mapThread(responseObject.thread, model, reasoningEffort),
+      sourceId
+    };
   }
 
   /**
-   * Reads all known turns with complete item payloads through the official RPC pagination API.
+   * Reads the latest page of turns through the official RPC pagination API.
    *
    * @param client Codex app-server client.
    * @param threadId Thread identifier.
    *
-   * @returns Full turn payloads ordered from oldest to newest.
+   * @returns Latest full turn payloads and the older-turn cursor.
    */
-  private async readFullTurnPages(
+  private async readLatestTurnPage(
     client: CodexAppServerClient,
     threadId: string
-  ): Promise<unknown[]> {
-    const turns: unknown[] = [];
-    let cursor: string | null = null;
+  ): Promise<{ turns: unknown[]; olderCursor: string | null }> {
+    const response = await client.listThreadTurns({
+      threadId,
+      limit: THREAD_TURNS_PAGE_SIZE,
+      sortDirection: "desc",
+      itemsView: "full"
+    });
+    const responseObject = readObject(response);
+    const pageTurns = Array.isArray(responseObject.data) ? responseObject.data : [];
+    const fullTurns = await this.resolveFullTurnItems(client, threadId, pageTurns);
 
-    do {
-      const response = await client.listThreadTurns({
-        threadId,
-        cursor,
-        limit: THREAD_TURNS_PAGE_SIZE,
-        sortDirection: "asc",
-        itemsView: "full"
-      });
-      const responseObject = readObject(response);
-      const pageTurns = Array.isArray(responseObject.data) ? responseObject.data : [];
-      const fullTurns = await this.resolveFullTurnItems(client, threadId, pageTurns);
-
-      turns.push(...fullTurns);
-      cursor = readString(responseObject.nextCursor) || null;
-    } while (cursor !== null);
-
-    return turns;
+    return {
+      turns: fullTurns,
+      olderCursor: readString(responseObject.nextCursor) || null
+    };
   }
 
   /**
@@ -727,18 +781,19 @@ export class ThreadConversationService {
   }
 
   /**
-   * Merges complete turns returned by a history read.
+   * Reads the cache-merged version of recently loaded raw turns.
    *
-   * @param cacheEntry In-memory thread cache entry.
-   * @param threadValue Raw Codex thread payload.
+   * @param cacheEntry In-memory cache entry.
+   * @param rawTurns Recently loaded raw turns.
    *
-   * @returns Nothing.
+   * @returns Merged turn payloads ready to persist.
    */
-  private mergeHistoryTurns(cacheEntry: ThreadTurnCacheEntry, threadValue: unknown): void {
-    const thread = readObject(threadValue);
-    const turns = Array.isArray(thread.turns) ? thread.turns : [];
-
-    this.options.threadTurnCache.mergeCompleteHistory(cacheEntry, turns);
+  private readMergedTurns(cacheEntry: ThreadTurnCacheEntry, rawTurns: unknown[]): unknown[] {
+    return rawTurns
+      .map((turn) => readString(readObject(turn).id))
+      .filter((turnId) => turnId.length > 0)
+      .map((turnId) => cacheEntry.turnsById.get(turnId))
+      .filter((turn): turn is unknown => turn !== undefined);
   }
 
   /**
@@ -837,6 +892,8 @@ export class ThreadConversationService {
       readString(responseObject.model),
       readReasoningEffort(responseObject.reasoningEffort)
     ), sourceId);
+
+    this.options.threadTurnCache.getOrCreate(thread);
     await this.options.threadCacheService.writeIndex([thread]);
     this.options.emit({ type: "thread.created", thread, turns: [] });
     return thread.id;

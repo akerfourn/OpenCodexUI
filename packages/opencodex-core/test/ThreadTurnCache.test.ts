@@ -120,4 +120,134 @@ describe("ThreadTurnCache", () => {
 
     expect(createCacheSignature(entry)).not.toBe(emptyReasoningSignature);
   });
+
+  it("should preserve live command items missing from RPC history", () => {
+    const cache = new ThreadTurnCache();
+    const entry = cache.getOrCreate({
+      id: "thread-1",
+      codexTitle: "Thread",
+      customTitle: null,
+      title: "Thread",
+      preview: "",
+      model: null,
+      reasoningEffort: null,
+      projectName: null,
+      projectPath: null,
+      branchName: null,
+      updatedAt: null
+    });
+
+    cache.mergeLatestTurns(
+      entry,
+      [
+        {
+          id: "turn-1",
+          startedAt: 1,
+          items: [
+            { id: "user-1", type: "userMessage", content: [{ type: "text", text: "Run tests" }] },
+            {
+              id: "command-1",
+              type: "commandExecution",
+              command: "npm test",
+              aggregatedOutput: "ok"
+            },
+            { id: "assistant-1", type: "agentMessage", text: "Done", phase: "final_answer" }
+          ]
+        }
+      ],
+      null
+    );
+
+    cache.mergeLatestTurns(
+      entry,
+      [
+        {
+          id: "turn-1",
+          startedAt: 1,
+          items: [
+            { id: "user-1", type: "userMessage", content: [{ type: "text", text: "Run tests" }] },
+            { id: "assistant-1", type: "agentMessage", text: "Done", phase: "final_answer" }
+          ]
+        }
+      ],
+      null
+    );
+
+    expect(cache.toTurns(entry)).toMatchObject([
+      {
+        id: "turn-1",
+        items: [
+          { id: "user-1" },
+          { id: "command-1", command: "npm test", aggregatedOutput: "ok" },
+          { id: "assistant-1" }
+        ]
+      }
+    ]);
+  });
+
+  it("should preserve live item fields when RPC sends empty values", () => {
+    const cache = new ThreadTurnCache();
+    const entry = cache.getOrCreate({
+      id: "thread-1",
+      codexTitle: "Thread",
+      customTitle: null,
+      title: "Thread",
+      preview: "",
+      model: null,
+      reasoningEffort: null,
+      projectName: null,
+      projectPath: null,
+      branchName: null,
+      updatedAt: null
+    });
+
+    cache.mergeLatestTurns(
+      entry,
+      [
+        {
+          id: "turn-1",
+          startedAt: 1,
+          items: [
+            {
+              id: "command-1",
+              type: "commandExecution",
+              command: "npm test",
+              aggregatedOutput: "ok"
+            }
+          ]
+        }
+      ],
+      null
+    );
+    cache.mergeLatestTurns(
+      entry,
+      [
+        {
+          id: "turn-1",
+          startedAt: 1,
+          items: [
+            {
+              id: "command-1",
+              type: "commandExecution",
+              command: "npm test",
+              aggregatedOutput: null
+            }
+          ]
+        }
+      ],
+      null
+    );
+
+    expect(cache.toTurns(entry)).toMatchObject([
+      {
+        id: "turn-1",
+        items: [
+          {
+            id: "command-1",
+            aggregatedOutput: "ok"
+          }
+        ]
+      }
+    ]);
+  });
 });
