@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import type { OpenCodexImageAttachment, OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
 
 import { CopyIconButton } from "../common/CopyIconButton";
+import { CommandActivityRow } from "./CommandActivityRow";
 import { ImageAttachmentPreviewGrid } from "./ImageAttachmentPreviewGrid";
 import { MarkdownMessageM } from "./MarkdownMessage";
 
@@ -43,6 +44,7 @@ type MessageRowProps = {
   kind?: string;
   content: string;
   createdAt: string | null;
+  details?: string | null;
   attachments: OpenCodexImageAttachment[];
   canEdit?: boolean;
   /**
@@ -69,6 +71,7 @@ export function MessageRow({
   kind,
   content,
   createdAt,
+  details,
   attachments,
   canEdit = false,
   onEdit
@@ -195,7 +198,13 @@ export function MessageRow({
         }
       }}
     >
-      {role === "activity" || isCommentary ? (
+      {role === "activity" && isCommandActivityKind(kind) ? (
+        <CommandActivityRow
+          content={content}
+          details={details}
+          icon={renderActivityKindIcon(kind)}
+        />
+      ) : role === "activity" || isCommentary ? (
         <Box
           sx={{
             display: "flex",
@@ -316,6 +325,10 @@ function renderActivityKindIcon(kind?: string): ReactNode {
   }
 
   return <MoreHorizOutlinedIcon fontSize="small" />;
+}
+
+function isCommandActivityKind(kind?: string): boolean {
+  return kind === "commandExecution" || kind === "command";
 }
 
 function formatMessageTimestamp(

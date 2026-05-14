@@ -246,6 +246,7 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
             kind={entry.item.kind}
             content={entry.item.content}
             createdAt={entry.item.createdAt ?? entry.turn.completedAt ?? entry.turn.startedAt}
+            details={entry.item.details}
             attachments={entry.item.attachments ?? []}
             canEdit={isEditableTimelineItem(entry, editableItem)}
             onEdit={() => handleStartEdit(entry.item.content)}

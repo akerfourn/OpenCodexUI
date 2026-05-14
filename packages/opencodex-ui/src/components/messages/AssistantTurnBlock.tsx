@@ -75,6 +75,7 @@ export function AssistantTurnBlock({
             kind={item.kind}
             content={item.content}
             createdAt={item.createdAt}
+            details={item.details}
             attachments={item.attachments ?? []}
           />
         ))}
