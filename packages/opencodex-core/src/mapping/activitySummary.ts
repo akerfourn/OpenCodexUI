@@ -213,10 +213,44 @@ export function readReasoningSegments(value: unknown): string[] {
     .filter((entry) => entry.length > 0);
 }
 
+/**
+ * Reads a reasoning delta, ignoring serialized empty reasoning payloads.
+ *
+ * @param value Raw delta value.
+ *
+ * @returns Text to append, or an empty string.
+ */
+export function readReasoningDeltaText(value: unknown): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue.startsWith("{")) {
+    return value;
+  }
+
+  try {
+    return readReasoningSegment(JSON.parse(trimmedValue) as unknown);
+  } catch {
+    return value;
+  }
+}
+
 function readReasoningSegment(value: unknown): string {
   if (typeof value === "string") {
     return value;
   }
 
-  return readString(readObject(value).text);
+  const objectValue = readObject(value);
+
+  if (readString(objectValue.type) === "reasoning") {
+    return [
+      ...readReasoningSegments(objectValue.summary),
+      ...readReasoningSegments(objectValue.content)
+    ].join("\n");
+  }
+
+  return readString(objectValue.text);
 }

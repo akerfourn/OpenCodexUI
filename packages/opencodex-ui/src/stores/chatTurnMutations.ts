@@ -42,7 +42,11 @@ export function applyThreadTurns(
 }
 
 export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActivity): void {
-  if (activity.content === undefined) {
+  if (
+    activity.content === undefined ||
+    activity.content.trim().length === 0 ||
+    isEmptyReasoningActivity(activity.kind, activity.content)
+  ) {
     return;
   }
 
@@ -57,6 +61,11 @@ export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActi
   turn.status = "running";
 
   if (existing !== undefined) {
+    if (normalizeActivityContent(existing.content) === normalizeActivityContent(activity.content)) {
+      existing.status = toMessageStatus(activity.status);
+      return;
+    }
+
     existing.content += activity.content;
     existing.status = toMessageStatus(activity.status);
     return;
@@ -72,6 +81,87 @@ export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActi
     summary: activity.summary,
     details: activity.details
   });
+}
+
+function isEmptyReasoningActivity(kind: string, content: string): boolean {
+  if (kind !== "reasoning") {
+    return false;
+  }
+
+  const trimmedContent = content.trim();
+
+  if (trimmedContent.length === 0) {
+    return true;
+  }
+
+  if (!trimmedContent.startsWith("{")) {
+    return false;
+  }
+
+  try {
+    const payload = JSON.parse(trimmedContent) as unknown;
+    return isEmptyReasoningPayload(payload);
+  } catch {
+    return false;
+  }
+}
+
+function isEmptyReasoningPayload(value: unknown): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const payload = value as {
+    type?: unknown;
+    summary?: unknown;
+    content?: unknown;
+  };
+
+  if (payload.type !== "reasoning") {
+    return false;
+  }
+
+  return readReasoningText(payload.summary).length === 0 &&
+    readReasoningText(payload.content).length === 0;
+}
+
+function readReasoningText(value: unknown): string {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value.map((entry) => readReasoningSegmentText(entry)).join("").trim();
+}
+
+function readReasoningSegmentText(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return "";
+  }
+
+  const segment = value as {
+    text?: unknown;
+    type?: unknown;
+    summary?: unknown;
+    content?: unknown;
+  };
+
+  if (typeof segment.text === "string") {
+    return segment.text;
+  }
+
+  if (segment.type === "reasoning") {
+    return `${readReasoningText(segment.summary)}${readReasoningText(segment.content)}`;
+  }
+
+  return "";
+}
+
+function normalizeActivityContent(content: string): string {
+  return content.trim().replace(/\s+/g, " ");
 }
 
 export function applyTurnDuration(

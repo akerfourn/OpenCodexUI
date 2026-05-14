@@ -13,6 +13,7 @@ import {
   readActivityItemId,
   readCommandArray,
   readFunctionCallCommand,
+  readReasoningDeltaText,
   readReasoningSegments,
   summarizeActivityDetails,
   summarizeActivityFallback,
@@ -39,11 +40,23 @@ export function createActivityFromNotification(notification: CodexNotification):
   }
 
   if (notification.method === "item/reasoning/summaryTextDelta") {
-    return createActivity(itemId, threadId, "reasoning", turnId, readString(params.delta));
+    return createActivity(
+      itemId,
+      threadId,
+      "reasoning",
+      turnId,
+      readReasoningDeltaText(params.delta)
+    );
   }
 
   if (notification.method === "item/reasoning/textDelta") {
-    return createActivity(itemId, threadId, "reasoning", turnId, readString(params.delta));
+    return createActivity(
+      itemId,
+      threadId,
+      "reasoning",
+      turnId,
+      readReasoningDeltaText(params.delta)
+    );
   }
 
   if (notification.method === "item/mcpToolCall/progress") {
@@ -121,6 +134,11 @@ export function mapActivityTurnItem(
   }
 
   const summary = summarizeActivityItem(item, language);
+
+  if (type === "reasoning" && summary.length === 0) {
+    return null;
+  }
+
   const details = summarizeActivityDetails(item);
   const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item, language);
   const itemId = readActivityItemId(item);
@@ -160,6 +178,11 @@ export function mapActivityMessage(
   }
 
   const summary = summarizeActivityItem(item, "fr");
+
+  if (type === "reasoning" && summary.length === 0) {
+    return null;
+  }
+
   const details = summarizeActivityDetails(item);
   const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item, "fr");
   const itemId = readActivityItemId(item);

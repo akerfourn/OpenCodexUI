@@ -8,6 +8,7 @@ import { readObject, readString } from "../mapping.js";
 import {
   readCommandArray,
   readFunctionCallCommand,
+  readReasoningDeltaText,
   readReasoningSegments
 } from "../mapping/activitySummary.js";
 import { createId } from "./turnInput.js";
@@ -65,7 +66,7 @@ export function recordLiveNotification(
       turnId,
       readString(params.itemId),
       "summary",
-      readString(params.delta)
+      readReasoningDeltaText(params.delta)
     );
   }
 
@@ -75,7 +76,7 @@ export function recordLiveNotification(
       turnId,
       readString(params.itemId),
       "content",
-      readString(params.delta)
+      readReasoningDeltaText(params.delta)
     );
   }
 

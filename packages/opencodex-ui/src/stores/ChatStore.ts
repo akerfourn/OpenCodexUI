@@ -34,7 +34,6 @@ import {
 export class ChatStore {
   thread: OpenCodexThread;
   turns: OpenCodexTurn[] = [];
-  activity: string[] = [];
   approvals: OpenCodexApproval[] = [];
   hasMoreOlderMessages = false;
   isLoadingOlderMessages = false;
@@ -102,7 +101,6 @@ export class ChatStore {
    */
   clearLoadedState(): void {
     this.turns = [];
-    this.activity = [];
     this.pendingTurnId = null;
     this.hasMoreOlderMessages = false;
     this.isLoadingOlderMessages = false;
@@ -236,7 +234,6 @@ export class ChatStore {
     this.isLoadingOlderMessages = false;
     this.isSyncing = false;
     this.pendingTurnId = null;
-    this.activity = [];
     this.hasMoreOlderMessages = source === "thread.opened" ? hasMoreOlderMessages : false;
     applyThreadTurns(this, this.root, turns, shouldMergeTurns ? "merge" : "replace", source);
     this.scrollToBottomVersion += 1;
@@ -333,10 +330,6 @@ export class ChatStore {
   }
 
   applyActivityUpdated(activity: OpenCodexActivity): void {
-    if (this.root.settings.showActivityPanel && activity.content?.trim()) {
-      this.activity.push(activity.content);
-    }
-
     appendActivityItem(this, activity);
   }
 

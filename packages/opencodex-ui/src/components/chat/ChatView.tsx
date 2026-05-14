@@ -7,7 +7,6 @@ import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
-import { ChatActivityPanelX } from "./ChatActivityPanel";
 import { ChatComposer } from "./ChatComposer";
 import { ChatHeaderX } from "./ChatHeader";
 import { ChatMessageListX } from "../messages/ChatMessageList";
@@ -76,7 +75,6 @@ export function ChatView({ store, projectStore }: ChatViewProps) {
         </Alert>
       ) : null}
       {messageContent}
-      <ChatActivityPanelX store={store} chatStore={chatStore} />
       {isOrphanProject ? null : (
         <ChatComposer
           store={store}

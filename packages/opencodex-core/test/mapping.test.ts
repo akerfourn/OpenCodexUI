@@ -11,6 +11,7 @@ import {
   mapTurnsToMessages,
   mapTurnsToOpenCodexTurns
 } from "../src/mapping";
+import { readReasoningDeltaText, readReasoningSegments } from "../src/mapping/activitySummary";
 
 describe("OpenCodex mapping", () => {
   it("should map a Codex thread to an OpenCodex thread", () => {
@@ -349,5 +350,31 @@ describe("OpenCodex mapping", () => {
       "cancel",
       "decline"
     ]);
+  });
+});
+
+describe("reasoning mapping", () => {
+  it("should ignore serialized empty reasoning deltas", () => {
+    const delta = JSON.stringify({
+      type: "reasoning",
+      id: "reasoning-1",
+      summary: [],
+      content: []
+    });
+
+    expect(readReasoningDeltaText(delta)).toBe("");
+  });
+
+  it("should read nested reasoning segments", () => {
+    const segments = readReasoningSegments([
+      {
+        type: "reasoning",
+        id: "reasoning-1",
+        summary: [{ text: "Analyse" }],
+        content: []
+      }
+    ]);
+
+    expect(segments).toEqual(["Analyse"]);
   });
 });
