@@ -106,11 +106,14 @@ export const resources = {
         system: "Système"
       },
       message: {
+        attachedImage: "Image jointe",
         cancelEdit: "Annuler",
         copied: "Copié",
         copy: "Copier le message",
         edit: "Éditer le message",
         editLast: "Éditer le dernier message",
+        imageUnavailable: "Image manquante ou non disponible",
+        openImage: "Ouvrir l'image",
         submitEdit: "Relancer",
         todayAt: "Aujourd'hui à {{time}}",
         yesterdayAt: "Hier à {{time}}"
@@ -290,11 +293,14 @@ export const resources = {
         system: "System"
       },
       message: {
+        attachedImage: "Attached image",
         cancelEdit: "Cancel",
         copied: "Copied",
         copy: "Copy message",
         edit: "Edit message",
         editLast: "Edit last message",
+        imageUnavailable: "Image missing or unavailable",
+        openImage: "Open image",
         submitEdit: "Regenerate",
         todayAt: "Today at {{time}}",
         yesterdayAt: "Yesterday at {{time}}"

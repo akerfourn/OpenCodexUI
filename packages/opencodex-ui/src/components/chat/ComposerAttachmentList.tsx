@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexImageAttachment } from "@open-codex-ui/opencodex-protocol";
 
-import { readImageAttachmentSrc } from "../messages/ImageAttachmentPreviewGrid";
+import { readImageAttachmentSrc } from "../messages/imageAttachmentSource";
 
 type ComposerAttachmentListProps = {
   attachments: OpenCodexImageAttachment[];
