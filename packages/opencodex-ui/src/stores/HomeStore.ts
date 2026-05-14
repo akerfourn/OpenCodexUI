@@ -11,6 +11,7 @@ export type HomeSection = "projects" | "sources" | "settings";
 export class HomeStore {
   selectedSection: HomeSection = "projects";
   projectPathInput = "";
+  projectSearchTerm = "";
   selectedSourceId: string | null = null;
   isOpeningProject = false;
   showHiddenProjects = false;
@@ -42,6 +43,17 @@ export class HomeStore {
    */
   setProjectPathInput(value: string): void {
     this.projectPathInput = value;
+  }
+
+  /**
+   * Updates the project search term.
+   *
+   * @param value Search text.
+   *
+   * @returns Nothing.
+   */
+  setProjectSearchTerm(value: string): void {
+    this.projectSearchTerm = value;
   }
 
   /**

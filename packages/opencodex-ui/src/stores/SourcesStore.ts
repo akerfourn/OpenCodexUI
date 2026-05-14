@@ -41,7 +41,7 @@ export class SourcesStore implements RootChildStore {
   }
 
   setHomeSelectedSource(sourceId: string): void {
-    this.root.homeStore.setSelectedSourceId(sourceId);
+    this.root.homeStore.setSelectedSourceId(sourceId.length === 0 ? null : sourceId);
   }
 
   updateSource(
@@ -143,7 +143,7 @@ export class SourcesStore implements RootChildStore {
 
   private applyBootstrap(defaultSourceId: string | null, sources: OpenCodexSource[]): void {
     this.sources = sources;
-    this.selectFallbackHomeSource(defaultSourceId);
+    this.root.homeStore.setSelectedSourceId(null);
   }
 
   private applySourcesUpdated(defaultSourceId: string | null, sources: OpenCodexSource[]): void {
@@ -165,8 +165,8 @@ export class SourcesStore implements RootChildStore {
     const selectedSourceExists = selectedSourceId !== null &&
       this.sources.some((source) => source.id === selectedSourceId);
 
-    if (!selectedSourceExists) {
-      this.root.homeStore.setSelectedSourceId(defaultSourceId ?? this.sources[0]?.id ?? null);
+    if (selectedSourceId !== null && !selectedSourceExists) {
+      this.root.homeStore.setSelectedSourceId(null);
     }
   }
 

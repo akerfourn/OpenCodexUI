@@ -76,7 +76,9 @@ export const resources = {
         title: "Fermer {{project}} ?"
       },
       home: {
+        allSources: "Toutes les sources",
         createPath: "Créer/Ouvrir",
+        noProjectSearchResults: "Aucun projet ne correspond à cette recherche.",
         noRecentProjects: "Aucun projet récent pour le moment.",
         hideHiddenProjects: "Masquer les projets masques",
         hideProject: "Masquer le projet",
@@ -90,6 +92,7 @@ export const resources = {
         projects: "Projets",
         recentProjects: "Projets récents",
         refreshProjects: "Synchroniser les projets récents",
+        searchProjects: "Rechercher un projet",
         showHiddenProjects: "Afficher les projets masques",
         showProject: "Afficher le projet",
         sources: "Sources",
@@ -248,7 +251,9 @@ export const resources = {
         title: "Close {{project}}?"
       },
       home: {
+        allSources: "All sources",
         createPath: "Create/Open",
+        noProjectSearchResults: "No project matches this search.",
         noRecentProjects: "No recent projects yet.",
         hideHiddenProjects: "Hide hidden projects",
         hideProject: "Hide project",
@@ -262,6 +267,7 @@ export const resources = {
         projects: "Projects",
         recentProjects: "Recent projects",
         refreshProjects: "Sync recent projects",
+        searchProjects: "Search projects",
         showHiddenProjects: "Show hidden projects",
         showProject: "Show project",
         sources: "Sources",

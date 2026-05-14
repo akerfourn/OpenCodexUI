@@ -1,23 +1,30 @@
 /**
  * Renders project opening controls on the Home tab.
  */
+import CreateNewFolderOutlinedIcon from "@mui/icons-material/CreateNewFolderOutlined";
+import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import {
   Box,
-  Button,
-  Divider,
   IconButton,
+  InputAdornment,
   LinearProgress,
   List,
   MenuItem,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
+import Fuse from "fuse.js";
 import { observer } from "mobx-react-lite";
+import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
+
+import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
 import { HomeProjectListItem } from "./HomeProjectListItem";
@@ -62,14 +69,21 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
     projectsStore.setProjectHidden(projectId, isHidden);
   }
 
-  function handleSourceChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
+  function handleSourceChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     sourcesStore.setHomeSelectedSource(event.target.value);
   }
 
+  function handleSearchChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
+    store.homeStore.setProjectSearchTerm(event.target.value);
+  }
+
   const hiddenProjectCount = projectsStore.projects.filter((project) => project.isHidden).length;
-  const visibleProjects = store.homeStore.showHiddenProjects
-    ? projectsStore.projects
-    : projectsStore.projects.filter((project) => !project.isHidden);
+  const visibleProjects = getVisibleProjects(
+    projectsStore.projects,
+    store.homeStore.showHiddenProjects,
+    store.homeStore.selectedSourceId,
+    store.homeStore.projectSearchTerm
+  );
   const hasProjects = visibleProjects.length > 0;
   const sourceById = new Map(sourcesStore.sources.map((source) => [source.id, source]));
   const hiddenProjectsButtonLabel = store.homeStore.showHiddenProjects
@@ -78,20 +92,10 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
 
   return (
     <Stack className="home-content-panel" spacing={2}>
-      <Box>
-        <Typography variant="h5" component="h2">
-          {t("home.openProject")}
+      <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
+        <Typography variant="h5" component="h2" sx={{ flex: "1 1 auto" }}>
+          {t("home.projects")}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {t("home.openProjectDescription")}
-        </Typography>
-      </Box>
-
-      {store.homeStore.isOpeningProject ? (
-        <LinearProgress />
-      ) : null}
-
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
         <TextField
           select
           size="small"
@@ -100,27 +104,59 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
           onChange={handleSourceChange}
           sx={{ minWidth: 180 }}
         >
+          <MenuItem value="">
+            <Typography component="span" sx={{ fontStyle: "italic" }}>
+              {t("home.allSources")}
+            </Typography>
+          </MenuItem>
           {sourcesStore.sources.map((source) => (
             <MenuItem value={source.id} key={source.id}>
               {source.name}
             </MenuItem>
           ))}
         </TextField>
-        <Button variant="contained" type="button" onClick={handlePickExisting}>
-          {t("home.pickExisting")}
-        </Button>
-        <Button variant="outlined" type="button" onClick={handlePickNew}>
-          {t("home.pickNew")}
-        </Button>
-      </Stack>
+        <Tooltip title={t("home.pickExisting")}>
+          <IconButton
+            aria-label={t("home.pickExisting")}
+            onClick={handlePickExisting}
+            color="primary"
+          >
+            <FolderOpenOutlinedIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title={t("home.pickNew")}>
+          <IconButton
+            aria-label={t("home.pickNew")}
+            onClick={handlePickNew}
+            color="primary"
+          >
+            <CreateNewFolderOutlinedIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
 
-      <Divider />
+      {store.homeStore.isOpeningProject ? (
+        <LinearProgress />
+      ) : null}
 
       <Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography variant="h6" component="h3" sx={{ flex: "1 1 auto" }}>
-            {t("home.recentProjects")}
-          </Typography>
+          <TextField
+            fullWidth
+            size="small"
+            value={store.homeStore.projectSearchTerm}
+            placeholder={t("home.searchProjects")}
+            onChange={handleSearchChange}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchOutlinedIcon fontSize="small" />
+                  </InputAdornment>
+                )
+              }
+            }}
+          />
           <IconButton
             aria-label={hiddenProjectsButtonLabel}
             title={hiddenProjectsButtonLabel}
@@ -162,7 +198,9 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
           </List>
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            {t("home.noRecentProjects")}
+            {store.homeStore.projectSearchTerm.trim().length > 0
+              ? t("home.noProjectSearchResults")
+              : t("home.noRecentProjects")}
           </Typography>
         )}
       </Box>
@@ -171,3 +209,43 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
 }
 
 export const HomeProjectsViewX = observer(HomeProjectsView);
+
+function getVisibleProjects(
+  projects: OpenCodexProject[],
+  showHiddenProjects: boolean,
+  sourceId: string | null,
+  searchTerm: string
+): OpenCodexProject[] {
+  const visibleProjects = showHiddenProjects
+    ? projects
+    : projects.filter((project) => !project.isHidden);
+  const availableProjects = sourceId === null
+    ? visibleProjects
+    : visibleProjects.filter((project) => project.sourceId === sourceId);
+  const normalizedSearchTerm = searchTerm.trim();
+
+  if (normalizedSearchTerm.length === 0) {
+    return [...availableProjects].sort(compareProjectsByEditedAt);
+  }
+
+  const fuse = new Fuse(availableProjects, {
+    includeScore: true,
+    keys: [
+      { name: "displayName", weight: 0.45 },
+      { name: "defaultName", weight: 0.45 },
+      { name: "path", weight: 0.2 }
+    ],
+    threshold: 0.38
+  });
+
+  return fuse.search(normalizedSearchTerm).map((result) => result.item);
+}
+
+function compareProjectsByEditedAt(left: OpenCodexProject, right: OpenCodexProject): number {
+  return readTimestamp(right.editedAt) - readTimestamp(left.editedAt);
+}
+
+function readTimestamp(value: string): number {
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
