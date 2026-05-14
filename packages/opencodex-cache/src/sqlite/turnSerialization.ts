@@ -12,6 +12,7 @@ import type { TurnRow } from "./rowTypes.js";
 export function parseTurnRows(rows: TurnRow[]): unknown[] {
   return rows
     .map((row) => parseTurn(row.raw_json))
+    .map((turn) => normalizeTurn(turn))
     .filter((turn): turn is unknown => turn !== null);
 }
 
@@ -43,6 +44,16 @@ export function readTurnMetadata(turn: unknown): {
 }
 
 /**
+ * Serializes a raw turn after removing duplicate chat items.
+ *
+ * @param turn Raw turn payload.
+ * @returns JSON payload.
+ */
+export function stringifyTurn(turn: unknown): string {
+  return JSON.stringify(normalizeTurn(turn) ?? turn);
+}
+
+/**
  * Parses a serialized turn payload from SQLite.
  *
  * @param value Serialized JSON turn payload.
@@ -54,6 +65,79 @@ function parseTurn(value: string): unknown | null {
   } catch {
     return null;
   }
+}
+
+export function normalizeTurn(turn: unknown | null): unknown | null {
+  if (turn === null) {
+    return null;
+  }
+
+  const value = readObject(turn);
+  const items = Array.isArray(value.items) ? value.items : null;
+
+  if (items === null || items.length === 0) {
+    return turn;
+  }
+
+  return {
+    ...value,
+    items: dedupeTurnItems(items)
+  };
+}
+
+function dedupeTurnItems(items: unknown[]): unknown[] {
+  const seenSemanticKeys = new Set<string>();
+  const dedupedItems: unknown[] = [];
+
+  for (const itemValue of items) {
+    const item = readObject(itemValue);
+    const semanticKey = readTurnItemSemanticKey(item);
+
+    if (semanticKey.length > 0 && seenSemanticKeys.has(semanticKey)) {
+      continue;
+    }
+
+    if (semanticKey.length > 0) {
+      seenSemanticKeys.add(semanticKey);
+    }
+
+    dedupedItems.push(itemValue);
+  }
+
+  return dedupedItems;
+}
+
+function readTurnItemSemanticKey(item: Record<string, unknown>): string {
+  const type = readString(item.type);
+
+  if (type === "userMessage") {
+    return ["userMessage", readUserMessageText(item)].join(":");
+  }
+
+  if (type === "agentMessage") {
+    return [
+      "agentMessage",
+      readNullableString(item.phase) ?? "none",
+      normalizeText(readString(item.text))
+    ].join(":");
+  }
+
+  return "";
+}
+
+function readUserMessageText(item: Record<string, unknown>): string {
+  const content = Array.isArray(item.content) ? item.content : [];
+  return normalizeText(
+    content
+      .map((entry) => readObject(entry))
+      .filter((entry) => readString(entry.type) === "text")
+      .map((entry) => readString(entry.text))
+      .join("\n\n")
+  );
+}
+
+function normalizeText(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 /**

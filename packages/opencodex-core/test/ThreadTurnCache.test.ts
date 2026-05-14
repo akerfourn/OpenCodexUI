@@ -250,4 +250,60 @@ describe("ThreadTurnCache", () => {
       }
     ]);
   });
+
+  it("should merge duplicate chat items with different live and history ids", () => {
+    const cache = new ThreadTurnCache();
+    const entry = cache.getOrCreate({
+      id: "thread-1",
+      codexTitle: "Thread",
+      customTitle: null,
+      title: "Thread",
+      preview: "",
+      model: null,
+      reasoningEffort: null,
+      projectName: null,
+      projectPath: null,
+      branchName: null,
+      updatedAt: null
+    });
+
+    cache.mergeLatestTurns(
+      entry,
+      [
+        {
+          id: "turn-1",
+          startedAt: 1,
+          items: [
+            { id: "uuid-user", type: "userMessage", content: [{ type: "text", text: "Hello" }] },
+            { id: "msg-final", type: "agentMessage", text: "Done", phase: "final_answer" }
+          ]
+        }
+      ],
+      null
+    );
+    cache.mergeLatestTurns(
+      entry,
+      [
+        {
+          id: "turn-1",
+          startedAt: 1,
+          items: [
+            { id: "item-1", type: "userMessage", content: [{ type: "text", text: "Hello" }] },
+            { id: "item-2", type: "agentMessage", text: "Done", phase: "final_answer" }
+          ]
+        }
+      ],
+      null
+    );
+
+    expect(cache.toTurns(entry)).toMatchObject([
+      {
+        id: "turn-1",
+        items: [
+          { id: "uuid-user", type: "userMessage" },
+          { id: "msg-final", type: "agentMessage" }
+        ]
+      }
+    ]);
+  });
 });

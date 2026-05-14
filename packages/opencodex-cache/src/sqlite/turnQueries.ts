@@ -5,7 +5,7 @@ import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import type { CachedThreadSyncState } from "../types.js";
 import type { TurnRow } from "./rowTypes.js";
-import { readTurnMetadata } from "./turnSerialization.js";
+import { normalizeTurn, readTurnMetadata, stringifyTurn } from "./turnSerialization.js";
 
 /**
  * Reads the latest cached turn rows for a thread.
@@ -183,7 +183,8 @@ export function writeTurns(
   const updatedAt = new Date().toISOString();
 
   for (const turn of turns) {
-    const metadata = readTurnMetadata(turn);
+    const normalizedTurn = normalizeTurn(turn) ?? turn;
+    const metadata = readTurnMetadata(normalizedTurn);
 
     if (metadata.id.length === 0) {
       continue;
@@ -192,7 +193,7 @@ export function writeTurns(
     upsertTurn.run({
       threadId,
       ...metadata,
-      rawJson: JSON.stringify(turn),
+      rawJson: stringifyTurn(normalizedTurn),
       updatedAt
     });
   }

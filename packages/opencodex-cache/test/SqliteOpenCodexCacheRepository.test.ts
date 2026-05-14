@@ -8,6 +8,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createOpenCodexSqliteCacheRepository } from "../src/SqliteOpenCodexCacheRepository";
+import { parseTurnRows } from "../src/sqlite/turnSerialization";
 import type { OpenCodexCacheRepository } from "../src/types";
 
 describe("SqliteOpenCodexCacheRepository", () => {
@@ -679,5 +680,34 @@ describe("SqliteOpenCodexCacheRepository", () => {
       customTitle: "OpenCodex title",
       title: "OpenCodex title"
     });
+  });
+});
+
+describe("turn serialization", () => {
+  it("should drop duplicate chat items with different live and history ids", () => {
+    const turns = parseTurnRows([
+      {
+        id: "turn-1",
+        raw_json: JSON.stringify({
+          id: "turn-1",
+          items: [
+            { id: "uuid-user", type: "userMessage", content: [{ type: "text", text: "Hello" }] },
+            { id: "item-1", type: "userMessage", content: [{ type: "text", text: "Hello" }] },
+            { id: "msg-final", type: "agentMessage", text: "Done", phase: "final_answer" },
+            { id: "item-2", type: "agentMessage", text: "Done", phase: "final_answer" }
+          ]
+        })
+      }
+    ]);
+
+    expect(turns).toMatchObject([
+      {
+        id: "turn-1",
+        items: [
+          { id: "uuid-user" },
+          { id: "msg-final" }
+        ]
+      }
+    ]);
   });
 });

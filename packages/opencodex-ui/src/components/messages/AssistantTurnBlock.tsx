@@ -18,6 +18,7 @@ import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
 import { MessageRowM } from "./MessageRow";
+import { getPreludeItems } from "./turnItemFilters";
 
 type AssistantTurnBlockProps = {
   turn: OpenCodexTurn;
@@ -52,7 +53,7 @@ export function AssistantTurnBlock({
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const blockRef = isLast ? lastMessageRef : undefined;
-  const preludeItems = turn.items.filter(isPreludeItem);
+  const preludeItems = getPreludeItems(turn.items);
   const displayedDurationMs = isRunning
     ? Math.max(0, now - readStartedAtTime(turn.startedAt))
     : turn.durationMs;
@@ -259,10 +260,6 @@ function readStartedAtTime(value: string | null): number {
  *
  * @returns `true` when the condition is met.
  */
-function isPreludeItem(item: OpenCodexTurnItem): boolean {
-  return item.role === "activity" || (item.role === "assistant" && item.phase === "commentary");
-}
-
 /**
  * Builds message key.
  *

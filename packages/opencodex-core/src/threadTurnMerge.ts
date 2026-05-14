@@ -232,35 +232,68 @@ function mergeTurnItemsPreservingExistingDetails(
   incomingItems: unknown[]
 ): unknown[] {
   const incomingByKey = new Map<string, Record<string, unknown>>();
+  const incomingBySemanticKey = new Map<string, Record<string, unknown>>();
   const consumedIncomingKeys = new Set<string>();
+  const consumedIncomingSemanticKeys = new Set<string>();
 
   for (const incomingItemValue of incomingItems) {
     const incomingItem = readObject(incomingItemValue);
     const key = readTurnItemKey(incomingItem);
+    const semanticKey = readTurnItemSemanticKey(incomingItem);
 
     if (key.length > 0) {
       incomingByKey.set(key, incomingItem);
+    }
+
+    if (semanticKey.length > 0) {
+      incomingBySemanticKey.set(semanticKey, incomingItem);
     }
   }
 
   const mergedItems = existingItems.map((existingItemValue) => {
     const existingItem = readObject(existingItemValue);
     const key = readTurnItemKey(existingItem);
-    const incomingItem = incomingByKey.get(key);
+    const semanticKey = readTurnItemSemanticKey(existingItem);
+    const incomingItem = key.length > 0
+      ? incomingByKey.get(key)
+      : undefined;
+    const semanticIncomingItem = incomingItem ?? (
+      semanticKey.length > 0 ? incomingBySemanticKey.get(semanticKey) : undefined
+    );
+    const isSemanticOnlyMatch = incomingItem === undefined && semanticIncomingItem !== undefined;
 
-    if (key.length === 0 || incomingItem === undefined) {
+    if (semanticIncomingItem === undefined) {
       return existingItemValue;
     }
 
-    consumedIncomingKeys.add(key);
-    return mergeRecordPreservingExistingDetails(existingItem, incomingItem);
+    if (key.length > 0) {
+      consumedIncomingKeys.add(key);
+    }
+
+    if (semanticKey.length > 0) {
+      consumedIncomingSemanticKeys.add(semanticKey);
+    }
+
+    const mergedItem = mergeRecordPreservingExistingDetails(existingItem, semanticIncomingItem);
+
+    if (isSemanticOnlyMatch) {
+      return preserveExistingItemIdentity(mergedItem, existingItem);
+    }
+
+    return mergedItem;
   });
 
   for (const incomingItemValue of incomingItems) {
     const incomingItem = readObject(incomingItemValue);
     const key = readTurnItemKey(incomingItem);
+    const semanticKey = readTurnItemSemanticKey(incomingItem);
+    const wasConsumedByKey = key.length > 0 && consumedIncomingKeys.has(key);
+    const wasConsumedBySemanticKey = (
+      semanticKey.length > 0 &&
+      consumedIncomingSemanticKeys.has(semanticKey)
+    );
 
-    if (key.length === 0 || !consumedIncomingKeys.has(key)) {
+    if (!wasConsumedByKey && !wasConsumedBySemanticKey) {
       mergedItems.push(incomingItemValue);
     }
   }
@@ -283,6 +316,25 @@ function mergeRecordPreservingExistingDetails(
   }
 
   return merged;
+}
+
+function preserveExistingItemIdentity(
+  item: Record<string, unknown>,
+  existingItem: Record<string, unknown>
+): Record<string, unknown> {
+  const existingId = readString(existingItem.id);
+  const existingCallId = readString(existingItem.call_id);
+  const nextItem = { ...item };
+
+  if (existingId.length > 0) {
+    nextItem.id = existingId;
+  }
+
+  if (existingCallId.length > 0) {
+    nextItem.call_id = existingCallId;
+  }
+
+  return nextItem;
 }
 
 function appendItemTextDelta(
@@ -325,6 +377,39 @@ function appendArrayText(item: Record<string, unknown>, field: string, delta: st
 
 function readTurnItemKey(item: Record<string, unknown>): string {
   return readString(item.id) || readString(item.call_id);
+}
+
+function readTurnItemSemanticKey(item: Record<string, unknown>): string {
+  const type = readString(item.type);
+
+  if (type === "userMessage") {
+    return ["userMessage", readUserMessageText(item)].join(":");
+  }
+
+  if (type === "agentMessage") {
+    return [
+      "agentMessage",
+      readMessagePhase(item.phase) ?? "none",
+      normalizeText(readString(item.text))
+    ].join(":");
+  }
+
+  return "";
+}
+
+function readUserMessageText(item: Record<string, unknown>): string {
+  const content = Array.isArray(item.content) ? item.content : [];
+  return normalizeText(
+    content
+      .map((entry) => readObject(entry))
+      .filter((entry) => readString(entry.type) === "text")
+      .map((entry) => readString(entry.text))
+      .join("\n\n")
+  );
+}
+
+function normalizeText(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 function readTurnItems(turn: Record<string, unknown>): unknown[] {

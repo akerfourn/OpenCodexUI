@@ -12,6 +12,7 @@ import type { ChatStore } from "../../stores/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
 import { AssistantTurnBlock } from "./AssistantTurnBlock";
 import { MessageRowM } from "./MessageRow";
+import { getPreludeItems, isPreludeItem } from "./turnItemFilters";
 
 type ChatMessageListProps = {
   store: RootStore;
@@ -246,7 +247,7 @@ function buildTimelineEntries(
   const entries: TimelineEntry[] = [];
 
   for (const turn of turns) {
-    const preludeItems = turn.items.filter(isPreludeItem);
+    const preludeItems = getPreludeItems(turn.items);
     const userItems = turn.items.filter((item) => item.role === "user");
     const finalItems = turn.items.filter((item) => item.role !== "user" && !isPreludeItem(item));
     const isRunning = isTurnRunning(turn, activeTurnId, isWorking);
@@ -314,10 +315,6 @@ function isTurnRunning(turn: OpenCodexTurn, activeTurnId: string | null, isWorki
  *
  * @returns `true` when the condition is met.
  */
-function isPreludeItem(item: OpenCodexTurnItem): boolean {
-  return item.role === "activity" || (item.role === "assistant" && item.phase === "commentary");
-}
-
 /**
  * Builds turn prelude key.
  *
