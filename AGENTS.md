@@ -25,6 +25,19 @@ This file applies to the whole repository.
 - Avoid imports that bypass those boundaries. Shared contracts should go
   through `opencodex-protocol`.
 
+## MobX and transport boundaries
+
+- Keep MobX observable objects inside UI state and rendering code.
+- Before sending data through `RootStore.request`, Electron IPC, or any backend
+  transport, convert it to plain structured-clone-compatible data.
+- Do not pass observable arrays, observable objects, class instances, reactions,
+  functions, DOM objects, or other non-JSON values across the UI/backend
+  boundary.
+- Clone nested payloads explicitly when they come from stores or observable
+  turn/message data, especially attachments, thread items, and settings patches.
+- Prefer protocol DTOs from `opencodex-protocol` as the shape that crosses
+  process boundaries.
+
 ## Sources and projects
 
 - Preserve `sourceId` in project, thread, and chat flows.

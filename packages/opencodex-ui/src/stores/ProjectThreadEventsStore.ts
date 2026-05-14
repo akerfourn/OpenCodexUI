@@ -111,6 +111,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
         chatStore.isRecovering = false;
         chatStore.isWorking = false;
         chatStore.isStartingTurn = false;
+        chatStore.isEditingLastTurn = false;
         chatStore.isRefreshing = false;
       }
     }

@@ -2,14 +2,30 @@
  * Renders the chat message list component for the OpenCodex UI.
  */
 import { observer } from "mobx-react-lite";
-import { Box, CircularProgress, Typography } from "@mui/material";
-import { useCallback, useLayoutEffect, useRef, type UIEvent } from "react";
+import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+  type UIEvent
+} from "react";
+import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexReasoningEffort,
+  OpenCodexTurn,
+  OpenCodexTurnItem
+} from "@open-codex-ui/opencodex-protocol";
 
 import type { ChatStore } from "../../stores/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
+import { ModelSettingsFields } from "../chat/ModelSettingsFields";
 import { AssistantTurnBlock } from "./AssistantTurnBlock";
 import { MessageRowM } from "./MessageRow";
 import { isPreludeItem } from "./turnItemFilters";
@@ -35,6 +51,8 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const previousOlderMessagesPrependVersionRef = useRef(chatStore.olderMessagesPrependVersion);
   const previousThreadIdRef = useRef(chatStore.thread.id);
   const currentThread = chatStore.thread;
+  const editableItem = chatStore.editableLastUserItem;
+  const [editedMessage, setEditedMessage] = useState<string | null>(null);
   const entries = buildTimelineEntries(
     chatStore.turns,
     chatStore.activeTurnId,
@@ -43,6 +61,70 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const handleOpenLink = useCallback((href: string) => {
     store.openExternalLink(href);
   }, [store]);
+
+  useEffect(() => {
+    setEditedMessage(null);
+  }, [chatStore.thread.id]);
+
+  function handleStartEdit(content: string): void {
+    setEditedMessage(content);
+  }
+
+  function handleCancelEdit(): void {
+    setEditedMessage(null);
+  }
+
+  function handleEditChange(event: ChangeEvent<HTMLInputElement>): void {
+    setEditedMessage(event.target.value);
+  }
+
+  function handleModelChange(value: string | null): void {
+    store.appStore.setSelectedModel(value);
+  }
+
+  function handleEffortChange(value: OpenCodexReasoningEffort): void {
+    store.appStore.setReasoningEffort(value);
+  }
+
+  function handleSubmitEdit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    submitEditMessage();
+  }
+
+  function handleEditKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (!event.ctrlKey || event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    submitEditMessage();
+  }
+
+  function submitEditMessage(): void {
+    if (editedMessage === null) {
+      return;
+    }
+
+    const submittedMessage = editedMessage;
+    const submittedAttachments = editableItem?.attachments ?? [];
+    const submittedModel = store.appStore.selectedModel;
+    const submittedReasoningEffort = store.appStore.reasoningEffort;
+
+    flushSync(() => {
+      setEditedMessage(null);
+    });
+
+    const wasAccepted = chatStore.editLastTurn(
+      submittedMessage,
+      submittedAttachments,
+      submittedModel,
+      submittedReasoningEffort
+    );
+
+    if (!wasAccepted) {
+      setEditedMessage(submittedMessage);
+    }
+  }
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -165,6 +247,8 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
             content={entry.item.content}
             createdAt={entry.item.createdAt ?? entry.turn.completedAt ?? entry.turn.startedAt}
             attachments={entry.item.attachments ?? []}
+            canEdit={isEditableTimelineItem(entry, editableItem)}
+            onEdit={() => handleStartEdit(entry.item.content)}
           />
         );
       })}
@@ -196,6 +280,46 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
           pointerEvents: "none"
         }}
       />
+      <Dialog open={editedMessage !== null} fullWidth maxWidth="md" onClose={handleCancelEdit}>
+        <Box component="form" onSubmit={handleSubmitEdit}>
+          <DialogTitle>{t("message.editLast")}</DialogTitle>
+          <DialogContent dividers>
+            <TextField
+              value={editedMessage ?? ""}
+              autoFocus
+              multiline
+              minRows={6}
+              fullWidth
+              onChange={handleEditChange}
+              onKeyDown={handleEditKeyDown}
+            />
+          </DialogContent>
+          <DialogActions
+            sx={{
+              alignItems: "center",
+              gap: 1,
+              justifyContent: "space-between",
+              px: 3
+            }}
+          >
+            <ModelSettingsFields
+              selectedModel={store.appStore.selectedModel}
+              reasoningEffort={store.appStore.reasoningEffort}
+              modelOptions={store.appStore.modelOptions}
+              onModelChange={handleModelChange}
+              onReasoningEffortChange={handleEffortChange}
+            />
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button type="button" onClick={handleCancelEdit}>
+                {t("message.cancelEdit")}
+              </Button>
+              <Button variant="contained" type="submit">
+                {t("message.submitEdit")}
+              </Button>
+            </Box>
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Box>
   );
 }
@@ -213,6 +337,17 @@ type TimelineEntry =
     };
 
 const BOTTOM_SCROLL_THRESHOLD_PX = 96;
+
+function isEditableTimelineItem(
+  entry: TimelineEntry,
+  editableItem: { turnId: string; itemId: string; content: string } | null
+): boolean {
+  if (entry.type !== "item" || editableItem === null) {
+    return false;
+  }
+
+  return entry.turn.id === editableItem.turnId && entry.item.id === editableItem.itemId;
+}
 
 /**
  * Scrolls a message container to its bottom edge.

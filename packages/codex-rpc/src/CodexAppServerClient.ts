@@ -25,6 +25,8 @@ import type { ThreadListResponse } from "./generated/v2/ThreadListResponse";
 import type { ThreadReadResponse } from "./generated/v2/ThreadReadResponse";
 import type { ThreadResumeParams } from "./generated/v2/ThreadResumeParams";
 import type { ThreadResumeResponse } from "./generated/v2/ThreadResumeResponse";
+import type { ThreadRollbackParams } from "./generated/v2/ThreadRollbackParams";
+import type { ThreadRollbackResponse } from "./generated/v2/ThreadRollbackResponse";
 import type { ThreadSetNameResponse } from "./generated/v2/ThreadSetNameResponse";
 import type { ThreadStartParams } from "./generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "./generated/v2/ThreadStartResponse";
@@ -316,6 +318,16 @@ export class CodexAppServerClient {
    */
   async readThread(threadId: string, includeTurns = true): Promise<ThreadReadResponse> {
     return this.request<ThreadReadResponse>("thread/read", { threadId, includeTurns });
+  }
+
+  /**
+   * Drops turns from the end of a thread.
+   *
+   * @param params Rollback parameters.
+   * @returns Promise resolved with the updated thread.
+   */
+  async rollbackThread(params: ThreadRollbackParams): Promise<ThreadRollbackResponse> {
+    return this.request<ThreadRollbackResponse>("thread/rollback", params);
   }
 
   /**

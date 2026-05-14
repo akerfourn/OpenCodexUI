@@ -42,6 +42,7 @@ export class ChatStore {
   isRecovering = false;
   isWorking = false;
   isStartingTurn = false;
+  isEditingLastTurn = false;
   activeTurnId: string | null = null;
   pendingTurnId: string | null = null;
   olderMessagesPrependVersion = 0;
@@ -70,6 +71,7 @@ export class ChatStore {
       !this.isRefreshing &&
       !this.isWorking &&
       !this.isStartingTurn &&
+      !this.isEditingLastTurn &&
       !this.isRecovering
     );
   }
@@ -84,8 +86,52 @@ export class ChatStore {
       sourceId !== null &&
       !this.projectStore.isOrphan &&
       !this.isStartingTurn &&
+      !this.isEditingLastTurn &&
       !this.isRecovering
     );
+  }
+
+  get editableLastUserItem(): {
+    turnId: string;
+    itemId: string;
+    content: string;
+    attachments: OpenCodexImageAttachment[];
+  } | null {
+    if (
+      this.projectStore.isOrphan ||
+      this.isWorking ||
+      this.isStartingTurn ||
+      this.isEditingLastTurn ||
+      this.isRecovering ||
+      this.turns.length === 0
+    ) {
+      return null;
+    }
+
+    const lastTurn = this.turns.at(-1);
+
+    if (lastTurn === undefined || lastTurn.id.startsWith("pending:")) {
+      return null;
+    }
+
+    const userItems = lastTurn.items.filter((item) => item.role === "user");
+
+    if (userItems.length !== 1) {
+      return null;
+    }
+
+    const userItem = userItems[0];
+
+    if (userItem === undefined || userItem.kind === "steer") {
+      return null;
+    }
+
+    return {
+      turnId: lastTurn.id,
+      itemId: userItem.id,
+      content: userItem.content,
+      attachments: userItem.attachments ?? []
+    };
   }
 
   /**
@@ -188,6 +234,7 @@ export class ChatStore {
       this.projectStore.isOrphan ||
       sourceId === null ||
       this.isStartingTurn ||
+      this.isEditingLastTurn ||
       this.isRecovering
     ) {
       return Promise.resolve(false);
@@ -230,6 +277,73 @@ export class ChatStore {
     });
   }
 
+  editLastTurn(
+    text: string,
+    attachments: OpenCodexImageAttachment[] = [],
+    model: string | null = this.root.appStore.selectedModel,
+    reasoningEffort: OpenCodexReasoningEffort = this.root.appStore.reasoningEffort
+  ): boolean {
+    const trimmedText = text.trim();
+    const sourceId = this.thread.sourceId ?? this.projectStore.project.sourceId;
+    const editableItem = this.editableLastUserItem;
+    const previousTurns = this.turns;
+    const plainAttachments = cloneImageAttachments(attachments);
+
+    if (
+      editableItem === null ||
+      (trimmedText.length === 0 && plainAttachments.length === 0) ||
+      sourceId === null
+    ) {
+      return false;
+    }
+
+    this.isEditingLastTurn = true;
+    this.isStartingTurn = true;
+    this.turns = this.turns.slice(0, -1);
+    this.pendingTurnId = null;
+    this.createOptimisticUserTurn(trimmedText, plainAttachments);
+
+    void this.root.request<{ threadId?: string }>({
+      type: "turn.editLast",
+      threadId: this.thread.id,
+      projectPath: this.projectStore.projectPath,
+      sourceId,
+      text: trimmedText,
+      attachments: plainAttachments,
+      model,
+      reasoningEffort
+    }).then((result) => {
+      const targetThreadId = result.threadId ?? this.thread.id;
+
+      void this.root.request({
+        type: "turn.start",
+        threadId: targetThreadId,
+        projectPath: this.projectStore.projectPath,
+        sourceId,
+        text: trimmedText,
+        attachments: plainAttachments,
+        model,
+        reasoningEffort
+      }).catch((error: unknown) => {
+        runInAction(() => {
+          this.isStartingTurn = false;
+          this.isEditingLastTurn = false;
+          this.root.appStore.errorMessage = readErrorMessage(error);
+        });
+      });
+    }).catch((error: unknown) => {
+      runInAction(() => {
+        this.turns = previousTurns;
+        this.pendingTurnId = null;
+        this.isEditingLastTurn = false;
+        this.isStartingTurn = false;
+        this.root.appStore.errorMessage = readErrorMessage(error);
+      });
+    });
+
+    return true;
+  }
+
   rename(name: string): void {
     const trimmedName = name.trim();
 
@@ -256,6 +370,7 @@ export class ChatStore {
     this.isRefreshing = false;
     this.isLoadingOlderMessages = false;
     this.isSyncing = false;
+    this.isEditingLastTurn = false;
     this.pendingTurnId = null;
     this.hasMoreOlderMessages = source === "thread.opened" ? hasMoreOlderMessages : false;
     applyThreadTurns(this, this.root, turns, shouldMergeTurns ? "merge" : "replace", source);
@@ -358,6 +473,7 @@ export class ChatStore {
 
   applyTurnStarted(turnId: string): void {
     this.isStartingTurn = false;
+    this.isEditingLastTurn = false;
     this.isWorking = true;
     this.activeTurnId = turnId;
     movePendingTurnToStartedTurn(this, turnId);
@@ -367,6 +483,7 @@ export class ChatStore {
     this.isWorking = false;
     this.activeTurnId = null;
     this.pendingTurnId = null;
+    this.isEditingLastTurn = false;
     applyTurnDuration(this, turnId, durationMs);
   }
 
@@ -487,6 +604,25 @@ export class ChatStore {
     turn.items = turn.items.filter((item) => item.id !== itemId);
   }
 
+}
+
+function cloneImageAttachments(attachments: OpenCodexImageAttachment[]): OpenCodexImageAttachment[] {
+  return attachments.map((attachment) => ({
+    id: attachment.id,
+    kind: attachment.kind,
+    source: attachment.source,
+    value: attachment.value,
+    name: attachment.name ?? null,
+    previewUrl: attachment.previewUrl ?? null
+  }));
+}
+
+function readErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 }
 
 function readLoadOlderResult(value: unknown): {

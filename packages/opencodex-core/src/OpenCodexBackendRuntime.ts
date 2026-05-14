@@ -485,6 +485,39 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Rolls back the last turn before restarting it with edited user input.
+   *
+   * @param threadId Thread identifier.
+   * @param projectPath Project path.
+   * @param sourceId Source identifier, or `null`.
+   * @param text Edited user text.
+   * @param attachments Image attachments.
+   * @param model Optional model override.
+   * @param reasoningEffort Optional reasoning effort override.
+   *
+   * @returns Thread identifier after rollback.
+   */
+  async editLastTurn(
+    threadId: string,
+    projectPath: string | null,
+    sourceId: string | null,
+    text: string,
+    attachments: OpenCodexImageAttachment[],
+    model: string | null,
+    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
+  ): Promise<{ threadId: string }> {
+    return await this.threadConversationService.editLastTurn(
+      threadId,
+      projectPath,
+      sourceId,
+      text,
+      attachments,
+      model,
+      reasoningEffort
+    );
+  }
+
+  /**
    * Interrupts a running turn.
    *
    * @param threadId Thread identifier.

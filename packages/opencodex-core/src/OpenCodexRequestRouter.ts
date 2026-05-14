@@ -106,6 +106,16 @@ export class OpenCodexRequestRouter {
           request.text,
           request.attachments ?? []
         );
+      case "turn.editLast":
+        return this.runtime.editLastTurn(
+          request.threadId,
+          request.projectPath ?? null,
+          request.sourceId ?? null,
+          request.text,
+          request.attachments ?? [],
+          request.model ?? null,
+          request.reasoningEffort ?? null
+        );
       case "turn.interrupt":
         return this.runtime.interruptTurn(request.threadId, request.turnId);
       case "approval.respond":

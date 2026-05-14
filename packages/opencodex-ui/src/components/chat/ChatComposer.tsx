@@ -3,7 +3,7 @@
  */
 import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import { useEffect, useState } from "react";
-import { Button, IconButton, MenuItem, Stack, TextField, Tooltip } from "@mui/material";
+import { Button, IconButton, Stack, TextField, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -14,6 +14,7 @@ import type {
 import type { ChatStore } from "../../stores/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ComposerAttachmentList } from "./ComposerAttachmentList";
+import { ModelSettingsFields } from "./ModelSettingsFields";
 
 type ChatComposerProps = {
   store: RootStore;
@@ -85,12 +86,12 @@ export function ChatComposer({
     void submitDraft();
   }
 
-  function handleModelChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    store.appStore.setSelectedModel(event.target.value.length > 0 ? event.target.value : null);
+  function handleModelChange(value: string | null): void {
+    store.appStore.setSelectedModel(value);
   }
 
-  function handleEffortChange(event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    store.appStore.setReasoningEffort(event.target.value as OpenCodexReasoningEffort);
+  function handleEffortChange(value: OpenCodexReasoningEffort): void {
+    store.appStore.setReasoningEffort(value);
   }
 
   function handleInterrupt(): void {
@@ -152,33 +153,13 @@ export function ChatComposer({
         onRemoveAttachment={handleRemoveAttachment}
       />
       <Stack className="composer-controls" direction="row" spacing={1}>
-        <TextField
-          select
-          size="small"
-          value={selectedModel ?? ""}
-          label={t("composer.model")}
-          onChange={handleModelChange}
-          sx={{ maxWidth: 220, minWidth: 160 }}
-        >
-          {modelOptions.map((model) => (
-            <MenuItem value={model} key={model}>
-              {model}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          size="small"
-          value={reasoningEffort}
-          label={t("composer.reasoning")}
-          onChange={handleEffortChange}
-          sx={{ maxWidth: 160, minWidth: 130 }}
-        >
-          <MenuItem value="low">low</MenuItem>
-          <MenuItem value="medium">medium</MenuItem>
-          <MenuItem value="high">high</MenuItem>
-          <MenuItem value="xhigh">xhigh</MenuItem>
-        </TextField>
+        <ModelSettingsFields
+          selectedModel={selectedModel}
+          reasoningEffort={reasoningEffort}
+          modelOptions={modelOptions}
+          onModelChange={handleModelChange}
+          onReasoningEffortChange={handleEffortChange}
+        />
         <div className="spacer" />
         {isWorking ? (
           <Button type="button" variant="outlined" onClick={handleInterrupt}>

@@ -377,7 +377,8 @@ export class ThreadConversationService {
     text: string,
     attachments: OpenCodexImageAttachment[],
     model: string | null,
-    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
+    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
+    shouldResumeExistingThread = true
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
     const input = buildTurnInput(trimmedText, attachments);
@@ -400,7 +401,11 @@ export class ThreadConversationService {
       await this.createThreadAndReturnId(client, projectPath, resolvedSource.id)
     );
 
-    if (threadId !== null && this.shouldResumeThreadBeforeTurn(targetThreadId)) {
+    if (
+      threadId !== null &&
+      shouldResumeExistingThread &&
+      this.shouldResumeThreadBeforeTurn(targetThreadId)
+    ) {
       await this.resumeThreadForTurn(client, targetThreadId, projectPath, model);
     }
 
@@ -493,6 +498,63 @@ export class ThreadConversationService {
     }
 
     await this.options.threadCacheService.writeDelta(result.entry, [result.turn]);
+  }
+
+  /**
+   * Edits the last user turn by rolling it back.
+   *
+   * @param threadId Thread identifier.
+   * @param projectPath Project path.
+   * @param sourceId Source identifier, or `null`.
+   * @param _text Edited user text.
+   * @param _attachments Image attachments.
+   * @param model Optional model override.
+   * @param reasoningEffort Optional reasoning effort override.
+   *
+   * @returns Thread and turn identifiers.
+   */
+  async editLastTurn(
+    threadId: string,
+    projectPath: string | null,
+    sourceId: string | null,
+    _text: string,
+    _attachments: OpenCodexImageAttachment[],
+    model: string | null,
+    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
+  ): Promise<{ threadId: string }> {
+    const targetSourceId = await this.resolveThreadSourceId(threadId) ?? sourceId;
+
+    if (targetSourceId === null) {
+      throw new Error("Cannot edit a turn for a project without a Codex source.");
+    }
+
+    const client = await this.options.ensureClient(targetSourceId);
+
+    if (this.shouldResumeThreadBeforeTurn(threadId)) {
+      await this.resumeThreadForTurn(client, threadId, projectPath, model);
+    }
+
+    const rollbackResponse = await client.rollbackThread({
+      threadId,
+      numTurns: 1
+    });
+    const rollbackThread = readObject(readObject(rollbackResponse).thread);
+    const rollbackThreadId = readString(rollbackThread.id) || threadId;
+    const thread = withSourceId(mapThread(
+      rollbackThread,
+      model,
+      reasoningEffort
+    ), targetSourceId);
+    const rawTurns = Array.isArray(rollbackThread.turns) ? rollbackThread.turns : [];
+    const cacheEntry = this.options.threadTurnCache.replaceThreadTurns(thread, rawTurns);
+
+    this.emitThreadOpened(
+      cacheEntry,
+      this.options.threadCacheService.readTurns(cacheEntry)
+    );
+    await this.options.threadCacheService.writeSnapshot(cacheEntry);
+
+    return { threadId: rollbackThreadId };
   }
 
   private shouldResumeThreadBeforeTurn(threadId: string): boolean {

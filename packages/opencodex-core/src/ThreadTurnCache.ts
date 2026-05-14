@@ -319,6 +319,24 @@ export class ThreadTurnCache {
   }
 
   /**
+   * Replaces an entry with freshly returned raw turns.
+   *
+   * @param thread Thread metadata.
+   * @param turns Raw turn collection.
+   *
+   * @returns Replaced cache entry.
+   */
+  replaceThreadTurns(thread: OpenCodexThread, turns: unknown[]): ThreadTurnCacheEntry {
+    const entry = this.getOrCreate(thread);
+    entry.turnsById.clear();
+    entry.orderedTurnIds = [];
+    mergeTurns(entry, turns);
+    entry.hasLoadedLatest = true;
+    entry.lastSyncedAt = new Date().toISOString();
+    return entry;
+  }
+
+  /**
    * Converts turns to the target representation.
    *
    * @param entry Entry.

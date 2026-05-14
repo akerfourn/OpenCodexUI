@@ -60,6 +60,16 @@ export type OpenCodexRequest =
       text: string;
       attachments?: OpenCodexImageAttachment[];
     }
+  | {
+      type: "turn.editLast";
+      threadId: string;
+      projectPath?: string | null;
+      sourceId?: string | null;
+      text: string;
+      attachments?: OpenCodexImageAttachment[];
+      model?: string | null;
+      reasoningEffort?: OpenCodexReasoningEffort | null;
+    }
   | { type: "turn.interrupt"; threadId: string; turnId: string }
   | { type: "approval.respond"; approvalId: string; decision: OpenCodexApprovalDecision }
   | { type: "project.trust"; projectPath: string }

@@ -2,7 +2,8 @@
  * Renders the message row component for the OpenCodex UI.
  */
 import { memo, type ReactNode, type RefObject } from "react";
-import { Box, Paper } from "@mui/material";
+import { Box, IconButton, Paper, Tooltip } from "@mui/material";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import FormatListBulletedOutlinedIcon from "@mui/icons-material/FormatListBulletedOutlined";
 import TerminalOutlinedIcon from "@mui/icons-material/TerminalOutlined";
@@ -29,20 +30,27 @@ import { MarkdownMessageM } from "./MarkdownMessage";
 type MessageRowProps = {
   isLast: boolean;
   lastMessageRef: RefObject<HTMLElement>;
-/**
- * Handles on open link.
- *
- * @param href Link target to open.
- *
- * @returns Nothing.
- */
-onOpenLink(href: string): void;
+  /**
+   * Handles on open link.
+   *
+   * @param href Link target to open.
+   *
+   * @returns Nothing.
+   */
+  onOpenLink(href: string): void;
   role: OpenCodexMessage["role"];
   phase?: OpenCodexMessage["phase"];
   kind?: string;
   content: string;
   createdAt: string | null;
   attachments: OpenCodexImageAttachment[];
+  canEdit?: boolean;
+  /**
+   * Handles edit.
+   *
+   * @returns Nothing.
+   */
+  onEdit?(): void;
 };
 
 /**
@@ -61,7 +69,9 @@ export function MessageRow({
   kind,
   content,
   createdAt,
-  attachments
+  attachments,
+  canEdit = false,
+  onEdit
 }: MessageRowProps) {
   const { t } = useTranslation();
   const articleRef = isLast ? lastMessageRef : undefined;
@@ -132,12 +142,31 @@ export function MessageRow({
           >
             {messageTimestamp}
           </Box>
-          <CopyIconButton
-            value={content}
-            label={t("message.copy")}
-            copiedLabel={t("message.copied")}
-            sx={{ color: "text.secondary" }}
-          />
+          <Box sx={{ display: "flex", gap: 0.5 }}>
+            {canEdit && onEdit !== undefined ? (
+              <Tooltip title={t("message.edit")}>
+                <IconButton
+                  aria-label={t("message.edit")}
+                  size="small"
+                  onClick={onEdit}
+                  sx={{
+                    color: "text.secondary",
+                    height: 24,
+                    width: 24,
+                    p: 0.25
+                  }}
+                >
+                  <EditOutlinedIcon sx={{ fontSize: 15 }} />
+                </IconButton>
+              </Tooltip>
+            ) : null}
+            <CopyIconButton
+              value={content}
+              label={t("message.copy")}
+              copiedLabel={t("message.copied")}
+              sx={{ color: "text.secondary" }}
+            />
+          </Box>
         </Box>
       </Box>
     );

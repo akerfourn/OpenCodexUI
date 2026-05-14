@@ -106,8 +106,12 @@ export const resources = {
         system: "Système"
       },
       message: {
+        cancelEdit: "Annuler",
         copied: "Copié",
         copy: "Copier le message",
+        edit: "Éditer le message",
+        editLast: "Éditer le dernier message",
+        submitEdit: "Relancer",
         todayAt: "Aujourd'hui à {{time}}",
         yesterdayAt: "Hier à {{time}}"
       },
@@ -286,8 +290,12 @@ export const resources = {
         system: "System"
       },
       message: {
+        cancelEdit: "Cancel",
         copied: "Copied",
         copy: "Copy message",
+        edit: "Edit message",
+        editLast: "Edit last message",
+        submitEdit: "Regenerate",
         todayAt: "Today at {{time}}",
         yesterdayAt: "Yesterday at {{time}}"
       },

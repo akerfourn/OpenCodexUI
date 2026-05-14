@@ -264,13 +264,13 @@ function preserveLiveActivityItems(
   currentTurns: OpenCodexTurn[],
   nextTurns: OpenCodexTurn[]
 ): OpenCodexTurn[] {
-  if (currentTurns.length === 0 || nextTurns.length === 0) {
+  if (currentTurns.length === 0) {
     return nextTurns;
   }
 
   const currentTurnsById = new Map(currentTurns.map((turn) => [turn.id, turn]));
-
-  return nextTurns.map((nextTurn) => {
+  const nextTurnIds = new Set(nextTurns.map((turn) => turn.id));
+  const mergedTurns = nextTurns.map((nextTurn) => {
     const currentTurn = currentTurnsById.get(nextTurn.id);
 
     if (currentTurn === undefined) {
@@ -295,4 +295,14 @@ function preserveLiveActivityItems(
       ]
     };
   });
+
+  const missingPendingTurns = currentTurns.filter((turn) => (
+    turn.id.startsWith("pending:") &&
+    !nextTurnIds.has(turn.id)
+  ));
+
+  return [
+    ...mergedTurns,
+    ...missingPendingTurns
+  ];
 }
