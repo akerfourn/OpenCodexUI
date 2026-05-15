@@ -21,11 +21,24 @@ export type NotificationServiceOptions = {
   syncCompletedTurn(threadId: string): void;
 };
 
+const ASSISTANT_DELTA_BATCH_MS = 20;
+
+type PendingAssistantDelta = {
+  sourceId: string;
+  threadId: string;
+  turnId: string;
+  messageId: string;
+  phase: OpenCodexMessagePhase | null;
+  delta: string;
+  timeout: ReturnType<typeof setTimeout>;
+};
+
 /**
  * Converts Codex app-server notifications into UI events.
  */
 export class NotificationService {
   private readonly assistantMessagePhases = new Map<string, OpenCodexMessagePhase | null>();
+  private readonly pendingAssistantDeltas = new Map<string, PendingAssistantDelta>();
 
   constructor(private readonly options: NotificationServiceOptions) {}
 
@@ -93,8 +106,39 @@ export class NotificationService {
     const phase = this.assistantMessagePhases.get(phaseKey) ?? null;
 
     if (threadId.length > 0 && turnId.length > 0 && messageId.length > 0 && delta.length > 0) {
-      this.options.emit({ type: "message.delta", threadId, turnId, messageId, delta, phase });
+      this.enqueueAssistantDelta(sourceId, threadId, turnId, messageId, delta, phase);
     }
+  }
+
+  private enqueueAssistantDelta(
+    sourceId: string,
+    threadId: string,
+    turnId: string,
+    messageId: string,
+    delta: string,
+    phase: OpenCodexMessagePhase | null
+  ): void {
+    const key = createPendingAssistantDeltaKey(sourceId, threadId, turnId, messageId, phase);
+    const existing = this.pendingAssistantDeltas.get(key);
+
+    if (existing !== undefined) {
+      existing.delta += delta;
+      return;
+    }
+
+    const pendingDelta: PendingAssistantDelta = {
+      sourceId,
+      threadId,
+      turnId,
+      messageId,
+      delta,
+      phase,
+      timeout: setTimeout(() => {
+        this.flushPendingAssistantDelta(key);
+      }, ASSISTANT_DELTA_BATCH_MS)
+    };
+
+    this.pendingAssistantDeltas.set(key, pendingDelta);
   }
 
   /**
@@ -141,8 +185,10 @@ export class NotificationService {
     }
 
     const messageId = readString(item.id);
+    const turnId = readString(params.turnId);
 
     if (threadId.length > 0 && messageId.length > 0) {
+      this.flushPendingAssistantDeltas(sourceId, threadId, turnId, messageId);
       this.assistantMessagePhases.delete(createAssistantMessagePhaseKey(sourceId, threadId, messageId));
     }
   }
@@ -176,8 +222,58 @@ export class NotificationService {
     const durationMs = readNullableNumber(readObject(params.turn).durationMs);
 
     if (threadId.length > 0 && turnId.length > 0) {
+      this.flushPendingAssistantDeltas(null, threadId, turnId, null);
       this.options.emit({ type: "turn.completed", threadId, turnId, durationMs });
       this.options.syncCompletedTurn(threadId);
     }
   }
+
+  private flushPendingAssistantDeltas(
+    sourceId: string | null,
+    threadId: string,
+    turnId: string,
+    messageId: string | null
+  ): void {
+    const pendingKeys = Array.from(this.pendingAssistantDeltas.entries())
+      .filter(([, pendingDelta]) => (
+        (sourceId === null || pendingDelta.sourceId === sourceId) &&
+        pendingDelta.threadId === threadId &&
+        pendingDelta.turnId === turnId &&
+        (messageId === null || pendingDelta.messageId === messageId)
+      ))
+      .map(([key]) => key);
+
+    for (const key of pendingKeys) {
+      this.flushPendingAssistantDelta(key);
+    }
+  }
+
+  private flushPendingAssistantDelta(key: string): void {
+    const pendingDelta = this.pendingAssistantDeltas.get(key);
+
+    if (pendingDelta === undefined) {
+      return;
+    }
+
+    clearTimeout(pendingDelta.timeout);
+    this.pendingAssistantDeltas.delete(key);
+    this.options.emit({
+      type: "message.delta",
+      threadId: pendingDelta.threadId,
+      turnId: pendingDelta.turnId,
+      messageId: pendingDelta.messageId,
+      delta: pendingDelta.delta,
+      phase: pendingDelta.phase
+    });
+  }
+}
+
+function createPendingAssistantDeltaKey(
+  sourceId: string,
+  threadId: string,
+  turnId: string,
+  messageId: string,
+  phase: OpenCodexMessagePhase | null
+): string {
+  return [sourceId, threadId, turnId, messageId, phase ?? ""].join("\u0000");
 }
