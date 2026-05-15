@@ -9,6 +9,7 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Divider,
   IconButton,
   LinearProgress,
@@ -146,6 +147,11 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
                     variant="outlined"
                     size="small"
                     disabled={!gitStore.canPull}
+                    startIcon={
+                      gitStore.isPulling
+                        ? <CircularProgress color="inherit" size={14} />
+                        : undefined
+                    }
                     onClick={handlePull}
                   >
                     {t("git.pullChanges", { count: gitStore.status.behindCount })}
@@ -156,6 +162,11 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
                     variant="outlined"
                     size="small"
                     disabled={!gitStore.canPush}
+                    startIcon={
+                      gitStore.isPushing
+                        ? <CircularProgress color="inherit" size={14} />
+                        : undefined
+                    }
                     onClick={handlePush}
                   >
                     {t("git.pushChanges", { count: gitStore.status.aheadCount })}
