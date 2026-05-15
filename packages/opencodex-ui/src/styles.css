@@ -403,6 +403,10 @@ textarea {
   overflow: hidden;
 }
 
+.chat-view-empty {
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .chat-header {
   display: flex;
   align-items: center;

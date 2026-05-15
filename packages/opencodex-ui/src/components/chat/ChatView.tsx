@@ -45,7 +45,7 @@ export function ChatView({ store, projectStore }: ChatViewProps) {
 
   if (chatStore === null) {
     return (
-      <Stack className="chat-view">
+      <Stack className="chat-view chat-view-empty">
         <ChatEmptyState projectStore={projectStore} />
       </Stack>
     );
