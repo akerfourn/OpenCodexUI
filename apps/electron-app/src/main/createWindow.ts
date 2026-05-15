@@ -9,6 +9,7 @@ type CreateWindowOptions = {
   preloadPath: string;
   rendererPath: string;
   devServerUrl?: string | null;
+  iconPath?: string | null;
 };
 
 /**
@@ -24,6 +25,7 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
     height: 960,
     minWidth: 960,
     minHeight: 700,
+    icon: options.iconPath ?? undefined,
     webPreferences: {
       contextIsolation: true,
       devTools: options.devServerUrl !== undefined && options.devServerUrl !== null,

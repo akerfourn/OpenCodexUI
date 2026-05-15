@@ -2,6 +2,7 @@
  * Boots the Electron main process and connects the application window to the backend bridge.
  */
 import path from "node:path";
+import { existsSync } from "node:fs";
 
 import { app, BrowserWindow, Menu } from "electron";
 
@@ -14,6 +15,7 @@ let isDisposing = false;
 let isDisposed = false;
 
 app.setName("OpenCodexUI");
+app.setAppUserModelId("io.opencodexui.app");
 
 /**
  * Starts the Electron application once the runtime is ready.
@@ -29,10 +31,12 @@ async function main(): Promise<void> {
   const projectPath = resolveProjectPath();
   const userDataPath = app.getPath("userData");
   const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? null;
+  const iconPath = resolveWindowIconPath();
   const window = createWindow({
     preloadPath: path.join(__dirname, "preload.cjs"),
     rendererPath: path.join(__dirname, "..", "renderer"),
-    devServerUrl
+    devServerUrl,
+    iconPath
   });
 
   bridgeServer = new ElectronBridgeServer({
@@ -49,7 +53,8 @@ async function main(): Promise<void> {
       const nextWindow = createWindow({
         preloadPath: path.join(__dirname, "preload.cjs"),
         rendererPath: path.join(__dirname, "..", "renderer"),
-        devServerUrl
+        devServerUrl,
+        iconPath
       });
       bridgeServer?.attachWindow(nextWindow);
     }
@@ -116,4 +121,14 @@ function resolveProjectPath(): string {
   return process.env.OPENCODEX_PROJECT_PATH
     ?? process.env.INIT_CWD
     ?? process.cwd();
+}
+
+/**
+ * Resolves the generated PNG icon used for the runtime window when available.
+ *
+ * @returns Absolute icon path when the generated icon exists, otherwise null.
+ */
+function resolveWindowIconPath(): string | null {
+  const iconPath = path.join(__dirname, "..", "..", "build", "icon.png");
+  return existsSync(iconPath) ? iconPath : null;
 }

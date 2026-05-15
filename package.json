@@ -14,6 +14,7 @@
     "build:packages": "npm run build -w @open-codex-ui/codex-rpc && npm run build -w @open-codex-ui/opencodex-protocol && npm run build -w @open-codex-ui/opencodex-cache && npm run build -w @open-codex-ui/opencodex-core && npm run build -w @open-codex-ui/opencodex-ui",
     "dist": "npm run build:packages && npm run dist -w open-codex-ui-electron-app",
     "dist:dir": "npm run build:packages && npm run dist:dir -w open-codex-ui-electron-app",
+    "icons": "npm run icons -w open-codex-ui-electron-app",
     "rebuild:sqlite:electron": "npm run rebuild:sqlite:electron -w open-codex-ui-electron-app",
     "rebuild:sqlite:node": "npm rebuild better-sqlite3",
     "typecheck": "npm run build:packages && npm run typecheck -w open-codex-ui-electron-app",
