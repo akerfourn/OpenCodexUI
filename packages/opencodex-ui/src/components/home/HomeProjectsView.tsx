@@ -17,7 +17,8 @@ import {
   Stack,
   TextField,
   Tooltip,
-  Typography
+  Typography,
+  type SelectProps
 } from "@mui/material";
 import Fuse from "fuse.js";
 import { observer } from "mobx-react-lite";
@@ -77,6 +78,17 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
     store.homeStore.setProjectSearchTerm(event.target.value);
   }
 
+  const renderSourceValue: NonNullable<SelectProps["renderValue"]> = (selected) => {
+    if (typeof selected !== "string" || selected.length === 0) {
+      return (
+        <Typography component="span" sx={{ fontStyle: "italic" }}>
+          {t("home.allSources")}
+        </Typography>
+      );
+    }
+
+    return sourcesStore.sources.find((source) => source.id === selected)?.name ?? selected;
+  };
   const hiddenProjectCount = projectsStore.projects.filter((project) => project.isHidden).length;
   const visibleProjects = getVisibleProjects(
     projectsStore.projects,
@@ -102,6 +114,13 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
           value={store.homeStore.selectedSourceId ?? ""}
           label={t("sources.source")}
           onChange={handleSourceChange}
+          slotProps={{
+            inputLabel: { shrink: true },
+            select: {
+              displayEmpty: true,
+              renderValue: renderSourceValue
+            }
+          }}
           sx={{ minWidth: 180 }}
         >
           <MenuItem value="">
