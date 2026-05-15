@@ -329,24 +329,70 @@ textarea {
 .git-file-row {
   min-width: 0;
   border-radius: 6px;
-  padding: 2px 0;
+  padding: 1px 0;
 }
 
 .git-file-row:hover {
   background: color-mix(in srgb, var(--vscode-focusBorder) 8%, transparent);
 }
 
-.git-file-path {
+.git-file-copy {
+  display: grid;
   flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.git-file-name,
+.git-file-directory {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.git-file-name {
+  font-size: 13px;
+}
+
+.git-file-directory {
+  font-size: 11px;
+}
+
 .git-file-state {
-  flex: 0 0 auto;
-  text-transform: lowercase;
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  flex: 1 1 auto;
+  flex-grow: 0;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.git-file-state-added,
+.git-file-state-untracked {
+  color: #3fb950;
+}
+
+.git-file-state-modified {
+  color: #d29922;
+}
+
+.git-file-state-deleted {
+  color: #f85149;
+}
+
+.git-file-state-renamed,
+.git-file-state-copied {
+  color: #58a6ff;
+}
+
+.git-file-state-conflicted {
+  color: #ff7b72;
 }
 
 .chat-view {

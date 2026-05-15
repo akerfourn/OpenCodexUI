@@ -39,11 +39,14 @@ export function ProjectGitFileRow({
     onAction(file.path);
   }
 
+  const fileDisplay = splitGitPath(file.path);
+  const statusDisplay = getStatusDisplay(file.status);
+
   return (
     <Stack
       className="git-file-row"
       direction="row"
-      spacing={0.75}
+      spacing={0.5}
       sx={{ alignItems: "center" }}
     >
       <Checkbox
@@ -52,12 +55,19 @@ export function ProjectGitFileRow({
         slotProps={{ input: { "aria-label": file.path } }}
         onChange={handleToggle}
       />
-      <Typography className="git-file-path" variant="body2" title={file.path}>
-        {file.path}
-      </Typography>
-      <Typography className="git-file-state" variant="caption" color="text.secondary">
-        {file.status}
-      </Typography>
+      <span className="git-file-copy" title={file.path}>
+        <Typography className="git-file-name" variant="body2">
+          {fileDisplay.name}
+        </Typography>
+        {fileDisplay.directory.length > 0 ? (
+          <Typography className="git-file-directory" variant="caption" color="text.secondary">
+            {fileDisplay.directory}
+          </Typography>
+        ) : null}
+      </span>
+      <span className={`git-file-state git-file-state-${file.status}`} title={file.status}>
+        {statusDisplay}
+      </span>
       <Tooltip title={actionLabel}>
         <IconButton aria-label={actionLabel} size="small" onClick={handleAction}>
           {actionIcon}
@@ -65,4 +75,48 @@ export function ProjectGitFileRow({
       </Tooltip>
     </Stack>
   );
+}
+
+function splitGitPath(path: string): { directory: string; name: string } {
+  const separatorIndex = path.lastIndexOf("/");
+
+  if (separatorIndex < 0) {
+    return {
+      directory: "",
+      name: path
+    };
+  }
+
+  return {
+    directory: path.slice(0, separatorIndex),
+    name: path.slice(separatorIndex + 1)
+  };
+}
+
+function getStatusDisplay(status: OpenCodexGitFile["status"]): string {
+  if (status === "added" || status === "untracked") {
+    return "A";
+  }
+
+  if (status === "modified") {
+    return "M";
+  }
+
+  if (status === "deleted") {
+    return "D";
+  }
+
+  if (status === "renamed") {
+    return "R";
+  }
+
+  if (status === "copied") {
+    return "C";
+  }
+
+  if (status === "conflicted") {
+    return "!";
+  }
+
+  return "?";
 }
