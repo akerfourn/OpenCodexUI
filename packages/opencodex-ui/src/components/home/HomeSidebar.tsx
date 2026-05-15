@@ -62,6 +62,8 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
           </ListItemIcon>
           <ListItemText primary={t("home.sources")} />
         </ListItemButton>
+      </List>
+      <List dense sx={{ mt: "auto" }}>
         <ListItemButton selected={selectedSection === "settings"} onClick={selectSettings}>
           <ListItemIcon>
             <SettingsOutlinedIcon fontSize="small" />
