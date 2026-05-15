@@ -156,9 +156,11 @@ export const resources = {
         viewLogs: "Voir les logs"
       },
       commitPrompt: {
+        cancel: "Annuler",
         defaultModel: "Modèle par défaut",
         defaultReasoning: "Raisonnement par défaut",
         description: "Configurez le prompt utilisé pour générer les messages depuis les changements staged.",
+        edit: "Éditer",
         languages: {
           en: "Anglais",
           fr: "Français"
@@ -444,9 +446,11 @@ export const resources = {
         viewLogs: "View logs"
       },
       commitPrompt: {
+        cancel: "Cancel",
         defaultModel: "Default model",
         defaultReasoning: "Default reasoning",
         description: "Configure the prompt used to generate messages from staged changes.",
+        edit: "Edit",
         languages: {
           en: "English",
           fr: "French"

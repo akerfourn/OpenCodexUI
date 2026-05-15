@@ -16,6 +16,7 @@ import type { RootStore } from "./RootStore";
  */
 export class CommitPromptStore implements RootChildStore {
   prompt = "";
+  savedPrompt = "";
   defaultPrompt = "";
   isDefault = true;
   isLoading = false;
@@ -36,6 +37,10 @@ export class CommitPromptStore implements RootChildStore {
 
   setPrompt(prompt: string): void {
     this.prompt = prompt;
+  }
+
+  restoreSavedPrompt(): void {
+    this.prompt = this.savedPrompt;
   }
 
   /**
@@ -113,6 +118,7 @@ export class CommitPromptStore implements RootChildStore {
 
   private applyPrompt(prompt: OpenCodexCommitPrompt): void {
     this.prompt = prompt.prompt;
+    this.savedPrompt = prompt.prompt;
     this.defaultPrompt = prompt.defaultPrompt;
     this.isDefault = prompt.isDefault;
   }

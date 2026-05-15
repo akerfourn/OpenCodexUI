@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -21,6 +21,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
+import { MarkdownMessageM } from "../messages/MarkdownMessage";
 
 type HomeCommitViewProps = {
   store: RootStore;
@@ -42,6 +43,7 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
   const appStore = store.appStore;
   const modelValue = appStore.settings.commitMessageModel ?? defaultModelValue;
   const reasoningValue = appStore.settings.commitMessageReasoningEffort ?? defaultReasoningValue;
+  const [isEditingPrompt, setEditingPrompt] = useState(false);
 
   useEffect(() => {
     void promptStore.load();
@@ -51,12 +53,33 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
     promptStore.setPrompt(event.target.value);
   }
 
-  function handleSave(): void {
-    void promptStore.save();
+  async function handleSave(): Promise<void> {
+    await promptStore.save();
+
+    if (promptStore.errorMessage === null) {
+      setEditingPrompt(false);
+    }
   }
 
-  function handleReset(): void {
-    void promptStore.reset();
+  async function handleReset(): Promise<void> {
+    await promptStore.reset();
+
+    if (promptStore.errorMessage === null) {
+      setEditingPrompt(false);
+    }
+  }
+
+  function handleEdit(): void {
+    setEditingPrompt(true);
+  }
+
+  function handleCancel(): void {
+    promptStore.restoreSavedPrompt();
+    setEditingPrompt(false);
+  }
+
+  function handleOpenLink(href: string): void {
+    store.openExternalLink(href);
   }
 
   function handleModelChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -78,9 +101,73 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
   const errorContent = promptStore.errorMessage === null ? null : (
     <Alert severity="error">{promptStore.errorMessage}</Alert>
   );
-  const statusText = promptStore.isDefault
-    ? t("commitPrompt.usingDefault")
-    : t("commitPrompt.usingCustom");
+  const actionContent = isEditingPrompt ? (
+    <>
+      <Button
+        variant="outlined"
+        size="small"
+        disabled={promptStore.isLoading || promptStore.isSaving}
+        onClick={handleReset}
+      >
+        {t("commitPrompt.reset")}
+      </Button>
+      <Button
+        variant="text"
+        size="small"
+        disabled={promptStore.isSaving}
+        onClick={handleCancel}
+      >
+        {t("commitPrompt.cancel")}
+      </Button>
+      <Button
+        variant="contained"
+        size="small"
+        disabled={
+          promptStore.isLoading ||
+          promptStore.isSaving ||
+          promptStore.prompt.trim().length === 0
+        }
+        onClick={handleSave}
+      >
+        {promptStore.isSaving ? t("commitPrompt.saving") : t("commitPrompt.save")}
+      </Button>
+    </>
+  ) : (
+    <Button
+      variant="contained"
+      size="small"
+      disabled={promptStore.isLoading}
+      onClick={handleEdit}
+    >
+      {t("commitPrompt.edit")}
+    </Button>
+  );
+  const promptContent = isEditingPrompt ? (
+    <TextField
+      label={t("commitPrompt.prompt")}
+      value={promptStore.prompt}
+      minRows={18}
+      multiline
+      fullWidth
+      disabled={promptStore.isLoading}
+      onChange={handlePromptChange}
+    />
+  ) : (
+    <Box>
+      <Box
+        sx={{
+          minHeight: 420,
+          p: 2,
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 1,
+          bgcolor: "background.paper"
+        }}
+      >
+        <MarkdownMessageM markdown={promptStore.prompt} onOpenLink={handleOpenLink} />
+      </Box>
+    </Box>
+  );
 
   return (
     <section className="home-section">
@@ -88,10 +175,14 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
         <Box
           sx={{
             position: "sticky",
-            top: 0,
+            top: "-24px",
             zIndex: 2,
             bgcolor: "background.default",
-            pb: 1
+            mt: "-24px",
+            mx: "-24px",
+            px: "24px",
+            pt: "24px",
+            pb: 1.5
           }}
         >
           <Stack spacing={1.5}>
@@ -156,41 +247,12 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
               </TextField>
 
               <Box sx={{ flex: "1 1 auto" }} />
-
-              <Button
-                variant="outlined"
-                size="small"
-                disabled={promptStore.isLoading || promptStore.isSaving}
-                onClick={handleReset}
-              >
-                {t("commitPrompt.reset")}
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                disabled={
-                  promptStore.isLoading ||
-                  promptStore.isSaving ||
-                  promptStore.prompt.trim().length === 0
-                }
-                onClick={handleSave}
-              >
-                {promptStore.isSaving ? t("commitPrompt.saving") : t("commitPrompt.save")}
-              </Button>
+              {actionContent}
             </Stack>
           </Stack>
         </Box>
 
-        <TextField
-          label={t("commitPrompt.prompt")}
-          value={promptStore.prompt}
-          minRows={18}
-          multiline
-          fullWidth
-          disabled={promptStore.isLoading}
-          helperText={statusText}
-          onChange={handlePromptChange}
-        />
+        {promptContent}
       </Stack>
     </section>
   );
