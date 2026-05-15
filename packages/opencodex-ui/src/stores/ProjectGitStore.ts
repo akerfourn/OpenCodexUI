@@ -4,6 +4,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
+  OpenCodexCommitMessageGenerationResult,
   OpenCodexGitCommitResult,
   OpenCodexGitStatus
 } from "@open-codex-ui/opencodex-protocol";
@@ -31,6 +32,7 @@ export class ProjectGitStore {
   hasLoaded = false;
   isLoading = false;
   isCommitting = false;
+  isGeneratingCommitMessage = false;
   isPulling = false;
   isPushing = false;
   selectedChangedPaths: string[] = [];
@@ -70,6 +72,15 @@ export class ProjectGitStore {
       this.commitMessage.trim().length > 0 &&
       !this.isCommitting &&
       !this.isLoading
+    );
+  }
+
+  get canGenerateCommitMessage(): boolean {
+    return (
+      this.stagedFilesCount > 0 &&
+      !this.isLoading &&
+      !this.isGeneratingCommitMessage &&
+      this.isAvailable
     );
   }
 
@@ -188,6 +199,39 @@ export class ProjectGitStore {
     } finally {
       runInAction(() => {
         this.isCommitting = false;
+      });
+    }
+  }
+
+  async generateCommitMessage(instruction: string): Promise<void> {
+    if (!this.canGenerateCommitMessage) {
+      return;
+    }
+
+    this.isGeneratingCommitMessage = true;
+    this.errorMessage = null;
+
+    try {
+      const result = await this.root.request<OpenCodexCommitMessageGenerationResult>({
+        type: "git.commitMessage.generate",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId,
+        instruction,
+        model: this.root.appStore.settings.commitMessageModel,
+        reasoningEffort: this.root.appStore.settings.commitMessageReasoningEffort,
+        language: this.root.appStore.settings.commitMessageLanguage
+      });
+
+      runInAction(() => {
+        this.commitMessage = result.message;
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.errorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isGeneratingCommitMessage = false;
       });
     }
   }

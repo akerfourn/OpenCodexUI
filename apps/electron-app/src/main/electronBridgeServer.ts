@@ -43,6 +43,8 @@ export class ElectronBridgeServer {
       settings: options.settings,
       projectPath: options.projectPath,
       cacheRepository,
+      userDataPath: options.userDataPath,
+      defaultCommitPromptPath: resolveDefaultCommitPromptPath(),
       saveSettings: options.saveSettings,
       openExternalLink: async (href, projectPath) => {
         await openExternalLink(href, projectPath);
@@ -180,6 +182,21 @@ export class ElectronBridgeServer {
 
     return result.filePaths[0] ?? null;
   }
+}
+
+function resolveDefaultCommitPromptPath(): string {
+  const packagedResourcesPath = process.resourcesPath === undefined
+    ? null
+    : path.join(process.resourcesPath, "prompt-commit.default.md");
+
+  const candidates = [
+    packagedResourcesPath,
+    path.resolve(process.cwd(), "..", "..", "prompt-commit.default.md"),
+    path.resolve(process.cwd(), "prompt-commit.default.md")
+  ].filter((candidate): candidate is string => candidate !== null);
+
+  return candidates.find((candidate) => fsSync.existsSync(candidate))
+    ?? path.resolve(process.cwd(), "..", "..", "prompt-commit.default.md");
 }
 
 async function createImageAttachmentFromPath(

@@ -5,6 +5,7 @@ export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
 export type OpenCodexMessagePhase = "commentary" | "final_answer";
 export type OpenCodexColorScheme = "light" | "dark" | "system";
 export type OpenCodexEnterKeyBehavior = "newline" | "send" | "smart";
+export type OpenCodexCommitMessageLanguage = "en" | "fr";
 export type OpenCodexLogType = "error" | "warning" | "info";
 export type OpenCodexLogRetentionUnit = "hours" | "days" | "weeks" | "months";
 
@@ -119,11 +120,24 @@ export type OpenCodexGitCommitResult = {
   output: string;
 };
 
+export type OpenCodexCommitPrompt = {
+  prompt: string;
+  defaultPrompt: string;
+  isDefault: boolean;
+};
+
+export type OpenCodexCommitMessageGenerationResult = {
+  message: string;
+};
+
 export type OpenCodexSettings = {
   codexCommand: string;
   defaultSourceId: string | null;
   defaultModel: string | null;
   defaultReasoningEffort: OpenCodexReasoningEffort | null;
+  commitMessageModel: string | null;
+  commitMessageReasoningEffort: OpenCodexReasoningEffort | null;
+  commitMessageLanguage: OpenCodexCommitMessageLanguage;
   showActivityPanel: boolean;
   experimentalApi: boolean;
   allowTurnSteering: boolean;

@@ -3,6 +3,7 @@
  */
 import type {
   OpenCodexApprovalDecision,
+  OpenCodexCommitMessageLanguage,
   OpenCodexImageAttachment,
   OpenCodexLogRetentionUnit,
   OpenCodexReasoningEffort,
@@ -82,6 +83,18 @@ export type OpenCodexRequest =
   | { type: "git.commit"; projectPath: string; sourceId: string | null; message: string }
   | { type: "git.pull"; projectPath: string; sourceId: string | null }
   | { type: "git.push"; projectPath: string; sourceId: string | null }
+  | { type: "commitPrompt.get" }
+  | { type: "commitPrompt.update"; prompt: string }
+  | { type: "commitPrompt.reset" }
+  | {
+      type: "git.commitMessage.generate";
+      projectPath: string;
+      sourceId: string | null;
+      instruction: string;
+      model: string | null;
+      reasoningEffort: OpenCodexReasoningEffort | null;
+      language: OpenCodexCommitMessageLanguage;
+    }
   | { type: "logs.list"; beforeCreatedAt?: string | null; limit?: number }
   | { type: "logs.delete"; logId: string }
   | {

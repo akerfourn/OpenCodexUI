@@ -1,6 +1,7 @@
 /**
  * Renders the Home vertical navigation.
  */
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import WorkspacesOutlinedIcon from "@mui/icons-material/WorkspacesOutlined";
@@ -44,6 +45,11 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
     selectSection("sources");
   }
 
+  function selectCommit(): void {
+    selectSection("commit");
+    void store.commitPromptStore.load();
+  }
+
   function selectSection(section: HomeSection): void {
     store.homeStore.selectSection(section);
   }
@@ -67,6 +73,12 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
             <StorageOutlinedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary={t("home.sources")} />
+        </ListItemButton>
+        <ListItemButton selected={selectedSection === "commit"} onClick={selectCommit}>
+          <ListItemIcon>
+            <AutoAwesomeOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("home.commit")} />
         </ListItemButton>
       </List>
       <List dense sx={{ mt: "auto" }}>

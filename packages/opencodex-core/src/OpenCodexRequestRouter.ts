@@ -139,6 +139,21 @@ export class OpenCodexRequestRouter {
         return this.runtime.pullGitChanges(request.projectPath, request.sourceId);
       case "git.push":
         return this.runtime.pushGitChanges(request.projectPath, request.sourceId);
+      case "commitPrompt.get":
+        return this.runtime.readCommitPrompt();
+      case "commitPrompt.update":
+        return this.runtime.updateCommitPrompt(request.prompt);
+      case "commitPrompt.reset":
+        return this.runtime.resetCommitPrompt();
+      case "git.commitMessage.generate":
+        return this.runtime.generateGitCommitMessage(
+          request.projectPath,
+          request.sourceId,
+          request.instruction,
+          request.model,
+          request.reasoningEffort,
+          request.language
+        );
       case "logs.list":
         return this.runtime.listLogs(request.beforeCreatedAt ?? null, request.limit ?? 30);
       case "logs.delete":

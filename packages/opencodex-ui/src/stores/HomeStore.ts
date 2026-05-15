@@ -3,7 +3,7 @@
  */
 import { makeAutoObservable } from "mobx";
 
-export type HomeSection = "projects" | "sources" | "logs" | "settings";
+export type HomeSection = "projects" | "sources" | "commit" | "logs" | "settings";
 
 /**
  * Stores Home navigation and project path form state.

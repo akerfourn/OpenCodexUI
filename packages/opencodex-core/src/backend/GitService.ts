@@ -9,11 +9,23 @@ import type {
 
 import { parseGitStatus } from "./gitStatusParser.js";
 
-type GitProcessResult = Pick<v2.ProcessExitedNotification, "exitCode" | "stdout" | "stderr">;
+type GitProcessResult = Pick<
+  v2.ProcessExitedNotification,
+  "exitCode" | "stdout" | "stdoutCapReached" | "stderr" | "stderrCapReached"
+>;
+
+export type OpenCodexStagedCommitContext = {
+  stat: string;
+  nameStatus: string;
+  diff: string;
+  isDiffTruncated: boolean;
+};
 
 export type GitServiceOptions = {
   ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
 };
+
+const commitDiffBytesCap = 220_000;
 
 /**
  * Coordinates Git operations through Codex app-server command execution.
@@ -140,11 +152,36 @@ export class GitService {
     return await this.status(projectPath, sourceId);
   }
 
+  /**
+   * Reads the staged Git context used by one-shot commit message generation.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Staged files summary and a bounded diff.
+   */
+  async readStagedCommitContext(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexStagedCommitContext> {
+    const [stat, nameStatus, diff] = await Promise.all([
+      this.runGit(projectPath, sourceId, ["diff", "--cached", "--stat"]),
+      this.runGit(projectPath, sourceId, ["diff", "--cached", "--name-status"]),
+      this.runGit(projectPath, sourceId, ["diff", "--cached"], { outputBytesCap: commitDiffBytesCap })
+    ]);
+
+    return {
+      stat: stat.stdout,
+      nameStatus: nameStatus.stdout,
+      diff: diff.stdout,
+      isDiffTruncated: diff.stdoutCapReached === true
+    };
+  }
+
   private async runGit(
     projectPath: string,
     sourceId: string | null,
     args: string[],
-    options: { allowFailure?: boolean; timeoutMs?: number } = {}
+    options: { allowFailure?: boolean; timeoutMs?: number; outputBytesCap?: number } = {}
   ): Promise<GitProcessResult> {
     if (sourceId === null) {
       throw new Error("Git operations require a Codex source.");
@@ -155,7 +192,7 @@ export class GitService {
       command: ["git", ...args],
       cwd: projectPath,
       timeoutMs: options.timeoutMs ?? 30_000,
-      outputBytesCap: 2_000_000
+      outputBytesCap: options.outputBytesCap ?? 2_000_000
     });
 
     if (response.exitCode !== 0 && options.allowFailure !== true) {

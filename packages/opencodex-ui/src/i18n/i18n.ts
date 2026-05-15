@@ -72,8 +72,13 @@ export const resources = {
         changed: "Modifiés",
         commit: "Commit",
         commitMessage: "Message de commit",
+        generateCancel: "Annuler",
+        generateDialogTitle: "Générer un message de commit",
+        generateInstruction: "Précision facultative",
+        generateInstructionHelp: "Ajoutez une contrainte ponctuelle pour cette génération.",
         generateMessage: "Générer le message",
-        generateMessageUnavailable: "La génération automatique sera ajoutée plus tard.",
+        generateMessageUnavailable: "Stagez au moins un fichier pour générer un message.",
+        generatingMessage: "Génération...",
         noChangedFiles: "Aucun fichier modifié.",
         noRepository: "Ce projet n'est pas un dépôt Git.",
         noStagedFiles: "Aucun fichier staged.",
@@ -113,6 +118,7 @@ export const resources = {
         projectPath: "Chemin du projet",
         projectPathPlaceholder: "/home/adrien/projet",
         projects: "Projets",
+        commit: "Commit",
         recentProjects: "Projets récents",
         refreshProjects: "Synchroniser les projets récents",
         searchProjects: "Rechercher un projet",
@@ -148,6 +154,25 @@ export const resources = {
           weeks: "semaines"
         },
         viewLogs: "Voir les logs"
+      },
+      commitPrompt: {
+        defaultModel: "Modèle par défaut",
+        defaultReasoning: "Raisonnement par défaut",
+        description: "Configurez le prompt utilisé pour générer les messages depuis les changements staged.",
+        languages: {
+          en: "Anglais",
+          fr: "Français"
+        },
+        model: "Modèle",
+        outputLanguage: "Langue de sortie",
+        prompt: "Prompt",
+        reasoning: "Raisonnement",
+        reset: "Réinitialiser",
+        save: "Enregistrer",
+        saving: "Enregistrement...",
+        title: "Génération de commit",
+        usingCustom: "Prompt personnalisé stocké dans le dossier de configuration.",
+        usingDefault: "Prompt par défaut embarqué."
       },
       language: {
         en: "English",
@@ -335,8 +360,13 @@ export const resources = {
         changed: "Changed",
         commit: "Commit",
         commitMessage: "Commit message",
+        generateCancel: "Cancel",
+        generateDialogTitle: "Generate commit message",
+        generateInstruction: "Optional instruction",
+        generateInstructionHelp: "Add a one-off constraint for this generation.",
         generateMessage: "Generate message",
-        generateMessageUnavailable: "Automatic generation will be added later.",
+        generateMessageUnavailable: "Stage at least one file to generate a message.",
+        generatingMessage: "Generating...",
         noChangedFiles: "No changed files.",
         noRepository: "This project is not a Git repository.",
         noStagedFiles: "No staged files.",
@@ -376,6 +406,7 @@ export const resources = {
         projectPath: "Project path",
         projectPathPlaceholder: "/home/adrien/project",
         projects: "Projects",
+        commit: "Commit",
         recentProjects: "Recent projects",
         refreshProjects: "Sync recent projects",
         searchProjects: "Search projects",
@@ -411,6 +442,25 @@ export const resources = {
           weeks: "weeks"
         },
         viewLogs: "View logs"
+      },
+      commitPrompt: {
+        defaultModel: "Default model",
+        defaultReasoning: "Default reasoning",
+        description: "Configure the prompt used to generate messages from staged changes.",
+        languages: {
+          en: "English",
+          fr: "French"
+        },
+        model: "Model",
+        outputLanguage: "Output language",
+        prompt: "Prompt",
+        reasoning: "Reasoning",
+        reset: "Reset",
+        save: "Save",
+        saving: "Saving...",
+        title: "Commit generation",
+        usingCustom: "Custom prompt stored in the settings directory.",
+        usingDefault: "Embedded default prompt."
       },
       language: {
         en: "English",

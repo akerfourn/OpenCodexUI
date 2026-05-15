@@ -14,6 +14,7 @@ import type {
 import { AppStore } from "./AppStore";
 import { ApprovalsStore } from "./ApprovalsStore";
 import type { ChatStore } from "./ChatStore";
+import { CommitPromptStore } from "./CommitPromptStore";
 import { HomeStore } from "./HomeStore";
 import { LogsStore } from "./LogsStore";
 import { NavigationStore } from "./NavigationStore";
@@ -29,6 +30,7 @@ export { HOME_TAB_ID, type OpenCodexAppTab } from "./NavigationStore";
 export class RootStore {
   readonly appStore = new AppStore(this);
   readonly approvalsStore = new ApprovalsStore(this);
+  readonly commitPromptStore = new CommitPromptStore(this);
   readonly homeStore = new HomeStore();
   readonly logsStore = new LogsStore(this);
   readonly navigationStore = new NavigationStore(this);

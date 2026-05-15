@@ -10,6 +10,9 @@ import type {
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexApprovalDecision,
+  OpenCodexCommitMessageGenerationResult,
+  OpenCodexCommitMessageLanguage,
+  OpenCodexCommitPrompt,
   OpenCodexEvent,
   OpenCodexImageAttachment,
   OpenCodexGitCommitResult,
@@ -19,6 +22,7 @@ import type {
   OpenCodexLogRetentionUnit,
   OpenCodexProject,
   OpenCodexRequest,
+  OpenCodexReasoningEffort,
   OpenCodexSettings,
   OpenCodexSource,
   OpenCodexSourceLocalSettings,
@@ -45,6 +49,8 @@ import {
 import { ThreadConversationService } from "./backend/ThreadConversationService.js";
 import { ThreadCacheService } from "./backend/ThreadCacheService.js";
 import { GitService } from "./backend/GitService.js";
+import { CommitMessageService } from "./backend/CommitMessageService.js";
+import { readObject, readString } from "./mapping.js";
 
 /**
  * Coordinates backend services exposed to the UI transport.
@@ -61,6 +67,8 @@ export class OpenCodexBackendRuntime {
   private readonly threadCacheService: ThreadCacheService;
   private readonly threadConversationService: ThreadConversationService;
   private readonly gitService: GitService;
+  private readonly commitMessageService: CommitMessageService;
+  private readonly ignoredNotificationThreadIds = new Set<string>();
 
   /**
    * Creates a backend runtime and wires its internal services.
@@ -130,6 +138,20 @@ export class OpenCodexBackendRuntime {
     });
     this.gitService = new GitService({
       ensureClient: (sourceId) => this.ensureClient(sourceId)
+    });
+    this.commitMessageService = new CommitMessageService({
+      userDataPath: options.userDataPath,
+      defaultPromptPath: options.defaultCommitPromptPath,
+      gitService: this.gitService,
+      getSettings: () => this.settings,
+      ensureClient: (sourceId) => this.ensureClient(sourceId),
+      ignoreThreadNotifications: (threadId) => {
+        this.ignoredNotificationThreadIds.add(threadId);
+      },
+      releaseThreadNotifications: (threadId) => {
+        this.ignoredNotificationThreadIds.delete(threadId);
+      },
+      logger: options.logger
     });
   }
 
@@ -726,6 +748,62 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Reads the editable commit generation prompt.
+   *
+   * @returns Prompt state.
+   */
+  async readCommitPrompt(): Promise<OpenCodexCommitPrompt> {
+    return await this.commitMessageService.readPrompt();
+  }
+
+  /**
+   * Persists the editable commit generation prompt.
+   *
+   * @param prompt Prompt content.
+   * @returns Prompt state.
+   */
+  async updateCommitPrompt(prompt: string): Promise<OpenCodexCommitPrompt> {
+    return await this.commitMessageService.updatePrompt(prompt);
+  }
+
+  /**
+   * Restores the default commit generation prompt.
+   *
+   * @returns Prompt state.
+   */
+  async resetCommitPrompt(): Promise<OpenCodexCommitPrompt> {
+    return await this.commitMessageService.resetPrompt();
+  }
+
+  /**
+   * Generates a commit message from currently staged changes.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param instruction Optional generation instruction.
+   * @param model Optional model override.
+   * @param language Output language.
+   * @returns Generated commit message.
+   */
+  async generateGitCommitMessage(
+    projectPath: string,
+    sourceId: string | null,
+    instruction: string,
+    model: string | null,
+    reasoningEffort: OpenCodexReasoningEffort | null,
+    language: OpenCodexCommitMessageLanguage
+  ): Promise<OpenCodexCommitMessageGenerationResult> {
+    return await this.commitMessageService.generateCommitMessage(
+      projectPath,
+      sourceId,
+      instruction,
+      model,
+      reasoningEffort,
+      language
+    );
+  }
+
+  /**
    * Pulls remote commits from the configured upstream.
    *
    * @param projectPath Project path.
@@ -746,6 +824,12 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   private handleNotification(notification: CodexNotification, sourceId: string): void {
+    const threadId = readString(readObject(notification.params).threadId);
+
+    if (threadId.length > 0 && this.ignoredNotificationThreadIds.has(threadId)) {
+      return;
+    }
+
     this.threadConversationService.recordNotification(notification);
     this.notificationService.handleNotification(notification, sourceId);
   }

@@ -19,10 +19,11 @@ import {
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectStore } from "../../stores/ProjectStore";
+import { CommitMessageGenerationDialogX } from "./CommitMessageGenerationDialog";
 import { ProjectGitFileRow } from "./ProjectGitFileRow";
 import { GitSectionHeader } from "./GitSectionHeader";
 
@@ -42,6 +43,7 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
   const gitStore = projectStore.gitStore;
   const projectPath = projectStore.projectPath;
   const sourceId = projectStore.project.sourceId;
+  const [isGenerateDialogOpen, setGenerateDialogOpen] = useState(false);
 
   useEffect(() => {
     void gitStore.refresh();
@@ -75,6 +77,14 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
     void gitStore.commit();
   }
 
+  function handleOpenGenerateDialog(): void {
+    setGenerateDialogOpen(true);
+  }
+
+  function handleCloseGenerateDialog(): void {
+    setGenerateDialogOpen(false);
+  }
+
   function handlePush(): void {
     void gitStore.push();
   }
@@ -82,6 +92,10 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
   function handlePull(): void {
     void gitStore.pull();
   }
+
+  const generateTooltip = gitStore.canGenerateCommitMessage
+    ? t("git.generateMessage")
+    : t("git.generateMessageUnavailable");
 
   return (
     <aside className="git-panel">
@@ -221,6 +235,7 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
                 <Divider />
 
                 <Stack spacing={1}>
+                  {gitStore.isGeneratingCommitMessage ? <LinearProgress /> : null}
                   <TextField
                     label={t("git.commitMessage")}
                     value={gitStore.commitMessage}
@@ -231,12 +246,13 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
                     onChange={handleCommitMessageChange}
                   />
                   <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
-                    <Tooltip title={t("git.generateMessageUnavailable")}>
+                    <Tooltip title={generateTooltip}>
                       <span>
                         <IconButton
                           aria-label={t("git.generateMessage")}
                           size="small"
-                          disabled
+                          disabled={!gitStore.canGenerateCommitMessage}
+                          onClick={handleOpenGenerateDialog}
                         >
                           <AutoAwesomeOutlinedIcon fontSize="small" />
                         </IconButton>
@@ -256,6 +272,11 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
           </>
         ) : null}
       </Stack>
+      <CommitMessageGenerationDialogX
+        gitStore={gitStore}
+        open={isGenerateDialogOpen}
+        onClose={handleCloseGenerateDialog}
+      />
     </aside>
   );
 }

@@ -9,6 +9,10 @@ files:
   - dist/**/*
   - package.json
 
+extraResources:
+  - from: ../../prompt-commit.default.md
+    to: prompt-commit.default.md
+
 asarUnpack:
   - "**/node_modules/better-sqlite3/**/*"
 

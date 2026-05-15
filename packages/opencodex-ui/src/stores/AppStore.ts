@@ -2,6 +2,7 @@ import { makeAutoObservable } from "mobx";
 
 import type {
   OpenCodexColorScheme,
+  OpenCodexCommitMessageLanguage,
   OpenCodexEnterKeyBehavior,
   OpenCodexEvent,
   OpenCodexLanguage,
@@ -22,6 +23,9 @@ export class AppStore implements RootChildStore {
     defaultSourceId: null,
     defaultModel: null,
     defaultReasoningEffort: "medium",
+    commitMessageModel: null,
+    commitMessageReasoningEffort: "medium",
+    commitMessageLanguage: "en",
     showActivityPanel: true,
     experimentalApi: true,
     allowTurnSteering: false,
@@ -51,6 +55,22 @@ export class AppStore implements RootChildStore {
 
     if (this.selectedModel !== null && !options.includes(this.selectedModel)) {
       options.unshift(this.selectedModel);
+    }
+
+    return options;
+  }
+
+  /**
+   * Returns model choices available for commit message generation.
+   *
+   * @returns Model option list.
+   */
+  get commitMessageModelOptions(): string[] {
+    const options = [...this.models];
+    const selectedModel = this.settings.commitMessageModel;
+
+    if (selectedModel !== null && !options.includes(selectedModel)) {
+      options.unshift(selectedModel);
     }
 
     return options;
@@ -200,6 +220,53 @@ export class AppStore implements RootChildStore {
     void this.root.request({
       type: "settings.update",
       patch: { enterKeyBehavior }
+    });
+  }
+
+  /**
+   * Updates the model used for one-shot commit message generation.
+   *
+   * @param commitMessageModel Model identifier, or `null` for backend default.
+   *
+   * @returns Nothing.
+   */
+  setCommitMessageModel(commitMessageModel: string | null): void {
+    this.settings = { ...this.settings, commitMessageModel };
+    void this.root.request({
+      type: "settings.update",
+      patch: { commitMessageModel }
+    });
+  }
+
+  /**
+   * Updates the reasoning effort used for one-shot commit message generation.
+   *
+   * @param commitMessageReasoningEffort Reasoning effort, or `null` for backend default.
+   *
+   * @returns Nothing.
+   */
+  setCommitMessageReasoningEffort(
+    commitMessageReasoningEffort: OpenCodexReasoningEffort | null
+  ): void {
+    this.settings = { ...this.settings, commitMessageReasoningEffort };
+    void this.root.request({
+      type: "settings.update",
+      patch: { commitMessageReasoningEffort }
+    });
+  }
+
+  /**
+   * Updates the output language used for generated commit messages.
+   *
+   * @param commitMessageLanguage Output language.
+   *
+   * @returns Nothing.
+   */
+  setCommitMessageLanguage(commitMessageLanguage: OpenCodexCommitMessageLanguage): void {
+    this.settings = { ...this.settings, commitMessageLanguage };
+    void this.root.request({
+      type: "settings.update",
+      patch: { commitMessageLanguage }
     });
   }
 
