@@ -112,6 +112,15 @@ export class AppStore implements RootChildStore {
   }
 
   /**
+   * Clears the current user-visible error notification.
+   *
+   * @returns Nothing.
+   */
+  clearErrorMessage(): void {
+    this.errorMessage = null;
+  }
+
+  /**
    * Updates the selected model in UI state.
    *
    * @param value Model identifier, or `null` for backend default.

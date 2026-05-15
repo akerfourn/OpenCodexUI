@@ -4,11 +4,12 @@
 import type {
   CachedProject,
   CachedSource,
+  CachedLogEntry,
   CachedThreadSummary,
   CachedThreadSyncState
 } from "../types.js";
 import { parseLocalSourceSettings } from "./sourceSettings.js";
-import type { ProjectRow, SourceRow, ThreadRow } from "./rowTypes.js";
+import type { LogRow, ProjectRow, SourceRow, ThreadRow } from "./rowTypes.js";
 
 /**
  * Maps a raw SQLite thread row into the public cached thread summary shape.
@@ -80,6 +81,22 @@ export function mapSourceRow(row: SourceRow): CachedSource {
 }
 
 /**
+ * Maps a raw SQLite log row into the public cached log shape.
+ *
+ * @param row Log row read from SQLite.
+ * @returns Normalized cached log entry.
+ */
+export function mapLogRow(row: LogRow): CachedLogEntry {
+  return {
+    id: row.id,
+    type: row.type,
+    message: row.message,
+    details: parseLogDetails(row.details_json),
+    createdAt: row.created_at
+  };
+}
+
+/**
  * Maps SQLite sync-state columns into the cache sync-state shape.
  *
  * @param row Joined thread row containing sync-state columns.
@@ -142,3 +159,14 @@ function resolveCachedThreadTitle(
   return preview;
 }
 
+function parseLogDetails(value: string | null): unknown {
+  if (value === null || value.length === 0) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+}

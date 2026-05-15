@@ -8,6 +8,10 @@ import Database, { type Database as BetterSqliteDatabase } from "better-sqlite3"
 
 import type {
   CachedOlderTurnsQuery,
+  CachedLogCreateInput,
+  CachedLogEntry,
+  CachedLogListQuery,
+  CachedLogPage,
   CachedOlderTurnsResult,
   CachedProject,
   CachedSource,
@@ -21,6 +25,13 @@ import type {
   ThreadListCacheQuery
 } from "./types.js";
 import { runMigrations } from "./sqlite/migrations.js";
+import {
+  clearLogs,
+  clearLogsOlderThan,
+  createLog,
+  deleteLog,
+  listLogs
+} from "./sqlite/logQueries.js";
 import {
   clearSourceAssociations,
   createSource,
@@ -209,6 +220,59 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<void> {
     await setProjectHidden(this.database, projectId, isHidden);
+  }
+
+  /**
+   * Creates an application log entry.
+   *
+   * @param input Log payload.
+   *
+   * @returns Created log entry.
+   */
+  async createLog(input: CachedLogCreateInput): Promise<CachedLogEntry> {
+    return await createLog(this.database, input);
+  }
+
+  /**
+   * Lists application logs.
+   *
+   * @param query Log pagination query.
+   *
+   * @returns Log page.
+   */
+  async listLogs(query: CachedLogListQuery): Promise<CachedLogPage> {
+    return await listLogs(this.database, query);
+  }
+
+  /**
+   * Deletes one application log entry.
+   *
+   * @param logId Log identifier.
+   *
+   * @returns Promise resolved when deletion completes.
+   */
+  async deleteLog(logId: string): Promise<void> {
+    await deleteLog(this.database, logId);
+  }
+
+  /**
+   * Deletes all application logs.
+   *
+   * @returns Promise resolved when deletion completes.
+   */
+  async clearLogs(): Promise<void> {
+    await clearLogs(this.database);
+  }
+
+  /**
+   * Deletes application logs older than the provided timestamp.
+   *
+   * @param createdBefore Exclusive timestamp cutoff.
+   *
+   * @returns Promise resolved when deletion completes.
+   */
+  async clearLogsOlderThan(createdBefore: string): Promise<void> {
+    await clearLogsOlderThan(this.database, createdBefore);
   }
 
   /**

@@ -4,6 +4,7 @@
 import type {
   OpenCodexActivity,
   OpenCodexApproval,
+  OpenCodexLogEntry,
   OpenCodexMessage,
   OpenCodexProject,
   OpenCodexSettings,
@@ -52,4 +53,7 @@ export type OpenCodexEvent =
   | { type: "turn.started"; threadId: string; turnId: string }
   | { type: "turn.completed"; threadId: string; turnId: string; durationMs: number | null }
   | { type: "models.updated"; models: string[] }
+  | { type: "logs.created"; log: OpenCodexLogEntry }
+  | { type: "logs.deleted"; logId: string }
+  | { type: "logs.cleared" }
   | { type: "error"; message: string; details?: unknown; recoverable?: boolean; threadId?: string };

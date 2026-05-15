@@ -4,6 +4,7 @@
 import type {
   OpenCodexApprovalDecision,
   OpenCodexImageAttachment,
+  OpenCodexLogRetentionUnit,
   OpenCodexReasoningEffort,
   OpenCodexSourceLocalSettings,
   OpenCodexSettings,
@@ -75,5 +76,13 @@ export type OpenCodexRequest =
   | { type: "project.trust"; projectPath: string }
   | { type: "project.trust.dismiss"; projectPath: string }
   | { type: "models.list" }
+  | { type: "logs.list"; beforeCreatedAt?: string | null; limit?: number }
+  | { type: "logs.delete"; logId: string }
+  | {
+      type: "logs.clear";
+      mode: "all" | "olderThan";
+      amount?: number;
+      unit?: OpenCodexLogRetentionUnit;
+    }
   | { type: "settings.get" }
   | { type: "settings.update"; patch: Partial<OpenCodexSettings> };

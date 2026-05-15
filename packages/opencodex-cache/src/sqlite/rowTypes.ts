@@ -42,6 +42,14 @@ export type ProjectRow = {
   edited_at: string;
 };
 
+export type LogRow = {
+  id: string;
+  type: "error" | "warning" | "info";
+  message: string;
+  details_json: string | null;
+  created_at: string;
+};
+
 export type SourceRow = {
   id: string;
   kind: "local";
@@ -50,4 +58,3 @@ export type SourceRow = {
   created_at: string;
   updated_at: string;
 };
-

@@ -3,6 +3,11 @@
  */
 export type {
   CachedProject,
+  CachedLogCreateInput,
+  CachedLogEntry,
+  CachedLogListQuery,
+  CachedLogPage,
+  CachedLogType,
   CachedSource,
   CachedSourceBase,
   CachedSourceCommandMode,

@@ -3,6 +3,7 @@
  */
 export type CachedThreadScope = "currentProject" | "all";
 export type CachedSourceColor = "blue" | "indigo" | "purple" | "pink" | "red" | "orange" | "amber" | "teal";
+export type CachedLogType = "error" | "warning" | "info";
 
 export type CachedThreadSummary = {
   id: string;
@@ -32,6 +33,30 @@ export type CachedProject = {
   updatedAt: string;
   lastSeenAt: string;
   editedAt: string;
+};
+
+export type CachedLogEntry = {
+  id: string;
+  type: CachedLogType;
+  message: string;
+  details: unknown;
+  createdAt: string;
+};
+
+export type CachedLogListQuery = {
+  beforeCreatedAt?: string | null;
+  limit: number;
+};
+
+export type CachedLogPage = {
+  logs: CachedLogEntry[];
+  hasMore: boolean;
+};
+
+export type CachedLogCreateInput = {
+  type: CachedLogType;
+  message: string;
+  details?: unknown;
 };
 
 export type CachedSourceCommandMode = "auto" | "custom";
@@ -196,6 +221,45 @@ export interface OpenCodexCacheRepository {
    * @returns Cached projects ordered for display.
    */
   listProjects(): Promise<CachedProject[]>;
+
+  /**
+   * Creates a persisted application log entry.
+   *
+   * @param input Log payload to persist.
+   * @returns Created log entry.
+   */
+  createLog(input: CachedLogCreateInput): Promise<CachedLogEntry>;
+
+  /**
+   * Lists application logs from newest to oldest.
+   *
+   * @param query Log pagination query.
+   * @returns Log page.
+   */
+  listLogs(query: CachedLogListQuery): Promise<CachedLogPage>;
+
+  /**
+   * Deletes one application log entry.
+   *
+   * @param logId Log identifier.
+   * @returns Promise resolved when deletion completes.
+   */
+  deleteLog(logId: string): Promise<void>;
+
+  /**
+   * Deletes all application logs.
+   *
+   * @returns Promise resolved when deletion completes.
+   */
+  clearLogs(): Promise<void>;
+
+  /**
+   * Deletes application logs older than the provided timestamp.
+   *
+   * @param createdBefore Exclusive timestamp cutoff.
+   * @returns Promise resolved when deletion completes.
+   */
+  clearLogsOlderThan(createdBefore: string): Promise<void>;
 
   /**
    * Inserts or updates thread index summaries.

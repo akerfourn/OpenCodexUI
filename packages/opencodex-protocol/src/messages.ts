@@ -5,6 +5,8 @@ export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
 export type OpenCodexMessagePhase = "commentary" | "final_answer";
 export type OpenCodexColorScheme = "light" | "dark" | "system";
 export type OpenCodexEnterKeyBehavior = "newline" | "send" | "smart";
+export type OpenCodexLogType = "error" | "warning" | "info";
+export type OpenCodexLogRetentionUnit = "hours" | "days" | "weeks" | "months";
 
 export type OpenCodexExecPolicyAmendment = string[];
 
@@ -69,6 +71,19 @@ export type OpenCodexProject = {
   updatedAt: string;
   lastSeenAt: string;
   editedAt: string;
+};
+
+export type OpenCodexLogEntry = {
+  id: string;
+  type: OpenCodexLogType;
+  message: string;
+  details: unknown;
+  createdAt: string;
+};
+
+export type OpenCodexLogPage = {
+  logs: OpenCodexLogEntry[];
+  hasMore: boolean;
 };
 
 export type OpenCodexSettings = {

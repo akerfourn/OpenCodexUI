@@ -127,6 +127,12 @@ export class OpenCodexRequestRouter {
         return { ok: true };
       case "models.list":
         return this.runtime.listModels();
+      case "logs.list":
+        return this.runtime.listLogs(request.beforeCreatedAt ?? null, request.limit ?? 30);
+      case "logs.delete":
+        return this.runtime.deleteLog(request.logId);
+      case "logs.clear":
+        return this.runtime.clearLogs(request.mode, request.amount ?? 24, request.unit ?? "hours");
       case "settings.get":
         return this.runtime.getSettings();
       case "settings.update":

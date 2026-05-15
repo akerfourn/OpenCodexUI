@@ -4,6 +4,7 @@
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import WorkspacesOutlinedIcon from "@mui/icons-material/WorkspacesOutlined";
+import SubjectOutlinedIcon from "@mui/icons-material/SubjectOutlined";
 import { List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
@@ -32,6 +33,11 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
 
   function selectSettings(): void {
     selectSection("settings");
+  }
+
+  function selectLogs(): void {
+    selectSection("logs");
+    void store.logsStore.loadLatest();
   }
 
   function selectSources(): void {
@@ -64,6 +70,12 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
         </ListItemButton>
       </List>
       <List dense sx={{ mt: "auto" }}>
+        <ListItemButton selected={selectedSection === "logs"} onClick={selectLogs}>
+          <ListItemIcon>
+            <SubjectOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("home.logs")} />
+        </ListItemButton>
         <ListItemButton selected={selectedSection === "settings"} onClick={selectSettings}>
           <ListItemIcon>
             <SettingsOutlinedIcon fontSize="small" />

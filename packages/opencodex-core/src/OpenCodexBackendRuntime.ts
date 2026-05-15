@@ -12,6 +12,9 @@ import type {
   OpenCodexApprovalDecision,
   OpenCodexEvent,
   OpenCodexImageAttachment,
+  OpenCodexLogEntry,
+  OpenCodexLogPage,
+  OpenCodexLogRetentionUnit,
   OpenCodexProject,
   OpenCodexRequest,
   OpenCodexSettings,
@@ -194,6 +197,7 @@ export class OpenCodexBackendRuntime {
   handleRequestError(request: OpenCodexRequest, error: unknown): never {
     const normalized = normalizeError(error, this.settings.language);
     const recoverableThreadId = this.readRecoverableThreadId(request, error);
+    this.persistLog("error", normalized.message, normalized.details);
     this.emit({
       type: "error",
       message: normalized.message,
@@ -229,6 +233,59 @@ export class OpenCodexBackendRuntime {
    */
   async listProjects(): Promise<OpenCodexProject[]> {
     return await this.projectSourceService.listProjects();
+  }
+
+  /**
+   * Lists persisted application logs.
+   *
+   * @param beforeCreatedAt Optional pagination cursor.
+   * @param limit Maximum number of entries to read.
+   *
+   * @returns Log page.
+   */
+  async listLogs(beforeCreatedAt: string | null, limit: number): Promise<OpenCodexLogPage> {
+    if (this.cacheRepository === null) {
+      return { logs: [], hasMore: false };
+    }
+
+    return await this.cacheRepository.listLogs({ beforeCreatedAt, limit });
+  }
+
+  /**
+   * Deletes one persisted application log.
+   *
+   * @param logId Log identifier.
+   *
+   * @returns Success result.
+   */
+  async deleteLog(logId: string): Promise<{ ok: true }> {
+    await this.cacheRepository?.deleteLog(logId);
+    this.emit({ type: "logs.deleted", logId });
+    return { ok: true };
+  }
+
+  /**
+   * Clears persisted application logs.
+   *
+   * @param mode Clear mode.
+   * @param amount Retention amount when keeping recent logs.
+   * @param unit Retention unit when keeping recent logs.
+   *
+   * @returns Success result.
+   */
+  async clearLogs(
+    mode: "all" | "olderThan",
+    amount: number,
+    unit: OpenCodexLogRetentionUnit
+  ): Promise<{ ok: true }> {
+    if (mode === "all") {
+      await this.cacheRepository?.clearLogs();
+    } else {
+      await this.cacheRepository?.clearLogsOlderThan(calculateRetentionCutoff(amount, unit));
+    }
+
+    this.emit({ type: "logs.cleared" });
+    return { ok: true };
   }
 
   /**
@@ -666,6 +723,7 @@ export class OpenCodexBackendRuntime {
    */
   private handleClientError(error: Error): void {
     const normalized = normalizeError(error, this.settings.language);
+    this.persistLog("error", normalized.message, normalized.details);
     this.emit({ type: "error", message: normalized.message, details: normalized.details });
   }
 
@@ -717,6 +775,22 @@ export class OpenCodexBackendRuntime {
    */
   private emit(event: OpenCodexEvent): void {
     this.options.emit(event);
+  }
+
+  private persistLog(
+    type: OpenCodexLogEntry["type"],
+    message: string,
+    details: unknown
+  ): void {
+    if (this.cacheRepository === null) {
+      return;
+    }
+
+    void this.cacheRepository.createLog({ type, message, details }).then((log) => {
+      this.emit({ type: "logs.created", log });
+    }).catch((error: unknown) => {
+      this.options.logger?.(`application log write failed: ${String(error)}`);
+    });
   }
 
   /**
@@ -810,4 +884,27 @@ export class OpenCodexBackendRuntime {
     });
   }
 
+}
+
+function calculateRetentionCutoff(amount: number, unit: OpenCodexLogRetentionUnit): string {
+  const normalizedAmount = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : 24;
+  const cutoff = new Date();
+
+  if (unit === "hours") {
+    cutoff.setHours(cutoff.getHours() - normalizedAmount);
+  }
+
+  if (unit === "days") {
+    cutoff.setDate(cutoff.getDate() - normalizedAmount);
+  }
+
+  if (unit === "weeks") {
+    cutoff.setDate(cutoff.getDate() - normalizedAmount * 7);
+  }
+
+  if (unit === "months") {
+    cutoff.setMonth(cutoff.getMonth() - normalizedAmount);
+  }
+
+  return cutoff.toISOString();
 }

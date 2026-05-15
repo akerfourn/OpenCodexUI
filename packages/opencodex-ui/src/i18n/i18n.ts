@@ -96,8 +96,36 @@ export const resources = {
         searchProjects: "Rechercher un projet",
         showHiddenProjects: "Afficher les projets masques",
         showProject: "Afficher le projet",
+        logs: "Logs",
         sources: "Sources",
         settings: "Paramètres"
+      },
+      logs: {
+        applyCleanup: "Nettoyer",
+        cancel: "Annuler",
+        cleanup: "Nettoyer les logs",
+        cleanupAll: "Tout supprimer",
+        cleanupAmount: "Durée",
+        cleanupMode: "Mode",
+        cleanupOlderThan: "Garder les logs récents",
+        cleanupUnit: "Unité",
+        delete: "Supprimer le log",
+        details: "Détails du log",
+        empty: "Aucun log pour le moment.",
+        loadMore: "Charger plus de logs",
+        title: "Logs",
+        types: {
+          error: "Erreur",
+          info: "Information",
+          warning: "Avertissement"
+        },
+        units: {
+          days: "jours",
+          hours: "heures",
+          months: "mois",
+          weeks: "semaines"
+        },
+        viewLogs: "Voir les logs"
       },
       language: {
         en: "English",
@@ -309,8 +337,36 @@ export const resources = {
         searchProjects: "Search projects",
         showHiddenProjects: "Show hidden projects",
         showProject: "Show project",
+        logs: "Logs",
         sources: "Sources",
         settings: "Settings"
+      },
+      logs: {
+        applyCleanup: "Clean",
+        cancel: "Cancel",
+        cleanup: "Clean logs",
+        cleanupAll: "Delete everything",
+        cleanupAmount: "Duration",
+        cleanupMode: "Mode",
+        cleanupOlderThan: "Keep recent logs",
+        cleanupUnit: "Unit",
+        delete: "Delete log",
+        details: "Log details",
+        empty: "No logs yet.",
+        loadMore: "Load more logs",
+        title: "Logs",
+        types: {
+          error: "Error",
+          info: "Information",
+          warning: "Warning"
+        },
+        units: {
+          days: "days",
+          hours: "hours",
+          months: "months",
+          weeks: "weeks"
+        },
+        viewLogs: "View logs"
       },
       language: {
         en: "English",

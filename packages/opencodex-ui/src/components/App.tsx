@@ -2,7 +2,8 @@
  * Renders the app component for the OpenCodex UI.
  */
 import { observer } from "mobx-react-lite";
-import { Box } from "@mui/material";
+import { Box, Button, Snackbar } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
 import { AppTabsX } from "./app/AppTabs";
@@ -24,24 +25,41 @@ type AppProps = {
  * @returns Nothing.
  */
 export function App({ store }: AppProps) {
-  const errorContent = store.appStore.errorMessage === null ? null : (
-    <pre className="error-banner">{store.appStore.errorMessage}</pre>
-  );
+  const { t } = useTranslation();
+  const errorMessage = store.appStore.errorMessage;
   const activeProjectStore = store.navigationStore.activeProjectStore;
   const mainContent = store.navigationStore.activeTabId === HOME_TAB_ID || activeProjectStore === null
     ? <HomeViewX store={store} />
     : <ProjectViewX store={store} projectStore={activeProjectStore} />;
 
+  function handleCloseError(): void {
+    store.appStore.clearErrorMessage();
+  }
+
+  function handleOpenLogs(): void {
+    store.openLogsHome();
+    store.appStore.clearErrorMessage();
+  }
+
   return (
     <Box component="main" className="app-shell">
       <AppTabsX store={store} />
       <section className="app-content">
-        {errorContent}
         {mainContent}
       </section>
       <ApprovalDialogX store={store.approvalsStore} />
       <ProjectTrustDialogX store={store.projectsStore.trustStore} />
       <CloseProjectDialogX store={store} />
+      <Snackbar
+        open={errorMessage !== null}
+        message={errorMessage?.split("\n")[0] ?? ""}
+        onClose={handleCloseError}
+        action={(
+          <Button color="inherit" size="small" onClick={handleOpenLogs}>
+            {t("logs.viewLogs")}
+          </Button>
+        )}
+      />
     </Box>
   );
 }

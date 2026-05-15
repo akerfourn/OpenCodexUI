@@ -15,6 +15,7 @@ import { AppStore } from "./AppStore";
 import { ApprovalsStore } from "./ApprovalsStore";
 import type { ChatStore } from "./ChatStore";
 import { HomeStore } from "./HomeStore";
+import { LogsStore } from "./LogsStore";
 import { NavigationStore } from "./NavigationStore";
 import type { ProjectStore } from "./ProjectStore";
 import { ProjectsStore } from "./ProjectsStore";
@@ -29,6 +30,7 @@ export class RootStore {
   readonly appStore = new AppStore(this);
   readonly approvalsStore = new ApprovalsStore(this);
   readonly homeStore = new HomeStore();
+  readonly logsStore = new LogsStore(this);
   readonly navigationStore = new NavigationStore(this);
   readonly projectsStore = new ProjectsStore(this);
   readonly sourcesStore = new SourcesStore(this);
@@ -93,6 +95,7 @@ export class RootStore {
   handleEvent(event: OpenCodexEvent): void {
     this.appStore.handleEvent(event);
     this.approvalsStore.handleEvent(event);
+    this.logsStore.handleEvent(event);
     this.projectsStore.handleEvent(event);
     this.sourcesStore.handleEvent(event);
 
@@ -109,6 +112,17 @@ export class RootStore {
   openSourcesHome(): void {
     this.homeStore.selectSection("sources");
     this.navigationStore.activateHome();
+  }
+
+  /**
+   * Opens the persisted application logs section on Home.
+   *
+   * @returns Nothing.
+   */
+  openLogsHome(): void {
+    this.homeStore.selectSection("logs");
+    this.navigationStore.activateHome();
+    void this.logsStore.loadLatest();
   }
 
   /**
@@ -204,4 +218,3 @@ export class RootStore {
   }
 
 }
-

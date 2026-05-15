@@ -5,6 +5,7 @@ import { observer } from "mobx-react-lite";
 
 import type { RootStore } from "../../stores/RootStore";
 import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
+import { HomeLogsViewX } from "./HomeLogsView";
 import { HomeProjectsViewX } from "./HomeProjectsView";
 import { HomeSettingsViewX } from "./HomeSettingsView";
 import { HomeSidebarX } from "./HomeSidebar";
@@ -30,6 +31,10 @@ export function HomeView({ store }: HomeViewProps) {
 
   if (store.homeStore.selectedSection === "settings") {
     mainContent = <HomeSettingsViewX store={store} />;
+  }
+
+  if (store.homeStore.selectedSection === "logs") {
+    mainContent = <HomeLogsViewX store={store} />;
   }
 
   return (
