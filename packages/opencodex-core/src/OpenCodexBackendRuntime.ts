@@ -12,6 +12,8 @@ import type {
   OpenCodexApprovalDecision,
   OpenCodexEvent,
   OpenCodexImageAttachment,
+  OpenCodexGitCommitResult,
+  OpenCodexGitStatus,
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
@@ -42,6 +44,7 @@ import {
 } from "./backend/errors.js";
 import { ThreadConversationService } from "./backend/ThreadConversationService.js";
 import { ThreadCacheService } from "./backend/ThreadCacheService.js";
+import { GitService } from "./backend/GitService.js";
 
 /**
  * Coordinates backend services exposed to the UI transport.
@@ -57,6 +60,7 @@ export class OpenCodexBackendRuntime {
   private readonly projectTrustService: ProjectTrustService;
   private readonly threadCacheService: ThreadCacheService;
   private readonly threadConversationService: ThreadConversationService;
+  private readonly gitService: GitService;
 
   /**
    * Creates a backend runtime and wires its internal services.
@@ -123,6 +127,9 @@ export class OpenCodexBackendRuntime {
       cacheProject: (projectPath, sourceId) => this.cacheProject(projectPath, sourceId),
       readCachedProjects: () => this.readCachedProjects(),
       handleClientError: (error) => this.handleClientError(error)
+    });
+    this.gitService = new GitService({
+      ensureClient: (sourceId) => this.ensureClient(sourceId)
     });
   }
 
@@ -641,6 +648,69 @@ export class OpenCodexBackendRuntime {
       this.emit({ type: "models.updated", models });
       return models;
     }
+  }
+
+  /**
+   * Reads Git status for a project through its Codex source.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Parsed Git status.
+   */
+  async readGitStatus(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    return await this.gitService.status(projectPath, sourceId);
+  }
+
+  /**
+   * Stages selected Git paths.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param paths Relative paths to stage.
+   *
+   * @returns Refreshed Git status.
+   */
+  async stageGitPaths(
+    projectPath: string,
+    sourceId: string | null,
+    paths: string[]
+  ): Promise<OpenCodexGitStatus> {
+    return await this.gitService.stage(projectPath, sourceId, paths);
+  }
+
+  /**
+   * Unstages selected Git paths.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param paths Relative paths to unstage.
+   *
+   * @returns Refreshed Git status.
+   */
+  async unstageGitPaths(
+    projectPath: string,
+    sourceId: string | null,
+    paths: string[]
+  ): Promise<OpenCodexGitStatus> {
+    return await this.gitService.unstage(projectPath, sourceId, paths);
+  }
+
+  /**
+   * Creates a Git commit from staged paths.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param message Commit message.
+   *
+   * @returns Commit result.
+   */
+  async commitGitChanges(
+    projectPath: string,
+    sourceId: string | null,
+    message: string
+  ): Promise<OpenCodexGitCommitResult> {
+    return await this.gitService.commit(projectPath, sourceId, message);
   }
 
   /**

@@ -127,6 +127,14 @@ export class OpenCodexRequestRouter {
         return { ok: true };
       case "models.list":
         return this.runtime.listModels();
+      case "git.status":
+        return this.runtime.readGitStatus(request.projectPath, request.sourceId);
+      case "git.stage":
+        return this.runtime.stageGitPaths(request.projectPath, request.sourceId, request.paths);
+      case "git.unstage":
+        return this.runtime.unstageGitPaths(request.projectPath, request.sourceId, request.paths);
+      case "git.commit":
+        return this.runtime.commitGitChanges(request.projectPath, request.sourceId, request.message);
       case "logs.list":
         return this.runtime.listLogs(request.beforeCreatedAt ?? null, request.limit ?? 30);
       case "logs.delete":

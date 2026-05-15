@@ -1,0 +1,226 @@
+/**
+ * Renders Git controls for one opened project.
+ */
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
+import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
+import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import {
+  Alert,
+  Box,
+  Button,
+  Divider,
+  IconButton,
+  LinearProgress,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography
+} from "@mui/material";
+import { observer } from "mobx-react-lite";
+import type { ChangeEvent } from "react";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+
+import type { ProjectStore } from "../../stores/ProjectStore";
+import { ProjectGitFileRow } from "./ProjectGitFileRow";
+import { GitSectionHeader } from "./GitSectionHeader";
+
+type ProjectGitPanelProps = {
+  projectStore: ProjectStore;
+};
+
+/**
+ * Renders the project Git panel.
+ *
+ * @param props Component props.
+ *
+ * @returns Rendered Git panel.
+ */
+export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
+  const { t } = useTranslation();
+  const gitStore = projectStore.gitStore;
+  const projectPath = projectStore.projectPath;
+  const sourceId = projectStore.project.sourceId;
+
+  useEffect(() => {
+    void gitStore.refresh();
+  }, [gitStore, projectPath, sourceId]);
+
+  function handleRefresh(): void {
+    void gitStore.refresh();
+  }
+
+  function handleStageSelected(): void {
+    void gitStore.stageSelected();
+  }
+
+  function handleStageAll(): void {
+    void gitStore.stageAll();
+  }
+
+  function handleUnstageSelected(): void {
+    void gitStore.unstageSelected();
+  }
+
+  function handleUnstageAll(): void {
+    void gitStore.unstageAll();
+  }
+
+  function handleCommitMessageChange(event: ChangeEvent<HTMLInputElement>): void {
+    gitStore.setCommitMessage(event.target.value);
+  }
+
+  function handleCommit(): void {
+    void gitStore.commit();
+  }
+
+  return (
+    <aside className="git-panel">
+      <Stack className="git-panel-header" direction="row" spacing={1} sx={{ alignItems: "center" }}>
+        <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
+          <Typography variant="subtitle1" component="h2" noWrap>
+            {t("git.title")}
+          </Typography>
+          {gitStore.status.branchName !== null ? (
+            <Typography variant="caption" color="text.secondary" noWrap>
+              {gitStore.status.branchName}
+            </Typography>
+          ) : null}
+        </Box>
+        <Tooltip title={t("git.refresh")}>
+          <IconButton
+            aria-label={t("git.refresh")}
+            size="small"
+            disabled={!gitStore.isAvailable || gitStore.isLoading}
+            onClick={handleRefresh}
+          >
+            <RefreshOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+
+      {gitStore.isLoading ? <LinearProgress /> : null}
+
+      <Stack className="git-panel-content" spacing={1.5}>
+        {!gitStore.isAvailable ? (
+          <Alert severity="warning">{t("git.sourceUnavailable")}</Alert>
+        ) : null}
+
+        {gitStore.isAvailable && gitStore.hasLoaded && !gitStore.status.isRepository ? (
+          <Alert severity="info">{t("git.noRepository")}</Alert>
+        ) : null}
+
+        {gitStore.errorMessage !== null ? (
+          <Alert severity="error">{gitStore.errorMessage}</Alert>
+        ) : null}
+
+        {gitStore.status.isRepository ? (
+          <>
+            <Stack spacing={1}>
+              <GitSectionHeader
+                title={t("git.changed")}
+                count={gitStore.changedFilesCount}
+                primaryActionLabel={t("git.stageSelected")}
+                secondaryActionLabel={t("git.stageAll")}
+                primaryActionDisabled={gitStore.selectedChangedPaths.length === 0 || gitStore.isLoading}
+                secondaryActionDisabled={gitStore.changedFilesCount === 0 || gitStore.isLoading}
+                onPrimaryAction={handleStageSelected}
+                onSecondaryAction={handleStageAll}
+              />
+              {gitStore.status.changedFiles.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  {t("git.noChangedFiles")}
+                </Typography>
+              ) : (
+                <Stack className="git-file-list" spacing={0.25}>
+                  {gitStore.status.changedFiles.map((file) => (
+                    <ProjectGitFileRow
+                      key={`changed:${file.path}`}
+                      actionIcon={<KeyboardArrowDownOutlinedIcon fontSize="small" />}
+                      actionLabel={t("git.stageFile")}
+                      checked={gitStore.selectedChangedPaths.includes(file.path)}
+                      file={file}
+                      onAction={gitStore.stagePath}
+                      onToggle={gitStore.toggleChangedPath}
+                    />
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+
+            <Divider />
+
+            <Stack spacing={1}>
+              <GitSectionHeader
+                title={t("git.staged")}
+                count={gitStore.stagedFilesCount}
+                primaryActionLabel={t("git.unstageSelected")}
+                secondaryActionLabel={t("git.unstageAll")}
+                primaryActionDisabled={gitStore.selectedStagedPaths.length === 0 || gitStore.isLoading}
+                secondaryActionDisabled={gitStore.stagedFilesCount === 0 || gitStore.isLoading}
+                onPrimaryAction={handleUnstageSelected}
+                onSecondaryAction={handleUnstageAll}
+              />
+              {gitStore.status.stagedFiles.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  {t("git.noStagedFiles")}
+                </Typography>
+              ) : (
+                <Stack className="git-file-list" spacing={0.25}>
+                  {gitStore.status.stagedFiles.map((file) => (
+                    <ProjectGitFileRow
+                      key={`staged:${file.path}`}
+                      actionIcon={<KeyboardArrowUpOutlinedIcon fontSize="small" />}
+                      actionLabel={t("git.unstageFile")}
+                      checked={gitStore.selectedStagedPaths.includes(file.path)}
+                      file={file}
+                      onAction={gitStore.unstagePath}
+                      onToggle={gitStore.toggleStagedPath}
+                    />
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+
+            <Divider />
+
+            <Stack spacing={1}>
+              <TextField
+                label={t("git.commitMessage")}
+                value={gitStore.commitMessage}
+                minRows={3}
+                multiline
+                fullWidth
+                disabled={gitStore.stagedFilesCount === 0 || gitStore.isCommitting}
+                onChange={handleCommitMessageChange}
+              />
+              <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
+                <Tooltip title={t("git.generateMessageUnavailable")}>
+                  <span>
+                    <IconButton
+                      aria-label={t("git.generateMessage")}
+                      size="small"
+                      disabled
+                    >
+                      <AutoAwesomeOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Button
+                  variant="contained"
+                  disabled={!gitStore.canCommit}
+                  onClick={handleCommit}
+                >
+                  {t("git.commit")}
+                </Button>
+              </Stack>
+            </Stack>
+          </>
+        ) : null}
+      </Stack>
+    </aside>
+  );
+}
+
+export const ProjectGitPanelX = observer(ProjectGitPanel);

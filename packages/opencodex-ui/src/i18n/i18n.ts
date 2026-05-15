@@ -68,6 +68,26 @@ export const resources = {
         refresh: "Rafraîchir",
         rename: "Renommer"
       },
+      git: {
+        changed: "Modifiés",
+        commit: "Commit",
+        commitMessage: "Message de commit",
+        generateMessage: "Générer le message",
+        generateMessageUnavailable: "La génération automatique sera ajoutée plus tard.",
+        noChangedFiles: "Aucun fichier modifié.",
+        noRepository: "Ce projet n'est pas un dépôt Git.",
+        noStagedFiles: "Aucun fichier staged.",
+        refresh: "Rafraîchir l'état Git",
+        sourceUnavailable: "Les actions Git nécessitent une source Codex associée.",
+        staged: "Staged",
+        stageAll: "Tout stage",
+        stageFile: "Stage le fichier",
+        stageSelected: "Stage",
+        title: "Git",
+        unstageAll: "Tout retirer",
+        unstageFile: "Retirer du stage",
+        unstageSelected: "Retirer"
+      },
       closeProject: {
         cancel: "Annuler",
         confirmCheckbox: "Je confirme que je veux fermer ce projet",
@@ -308,6 +328,26 @@ export const resources = {
         reasoning: "Reasoning: {{effort}}",
         refresh: "Refresh",
         rename: "Rename"
+      },
+      git: {
+        changed: "Changed",
+        commit: "Commit",
+        commitMessage: "Commit message",
+        generateMessage: "Generate message",
+        generateMessageUnavailable: "Automatic generation will be added later.",
+        noChangedFiles: "No changed files.",
+        noRepository: "This project is not a Git repository.",
+        noStagedFiles: "No staged files.",
+        refresh: "Refresh Git status",
+        sourceUnavailable: "Git actions require an associated Codex source.",
+        staged: "Staged",
+        stageAll: "Stage all",
+        stageFile: "Stage file",
+        stageSelected: "Stage",
+        title: "Git",
+        unstageAll: "Unstage all",
+        unstageFile: "Unstage file",
+        unstageSelected: "Unstage"
       },
       closeProject: {
         cancel: "Cancel",

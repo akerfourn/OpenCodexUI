@@ -86,6 +86,36 @@ export type OpenCodexLogPage = {
   hasMore: boolean;
 };
 
+export type OpenCodexGitFileState =
+  | "added"
+  | "modified"
+  | "deleted"
+  | "renamed"
+  | "copied"
+  | "untracked"
+  | "conflicted"
+  | "unknown";
+
+export type OpenCodexGitFile = {
+  path: string;
+  originalPath: string | null;
+  status: OpenCodexGitFileState;
+  stagedStatus: OpenCodexGitFileState | null;
+  unstagedStatus: OpenCodexGitFileState | null;
+};
+
+export type OpenCodexGitStatus = {
+  isRepository: boolean;
+  branchName: string | null;
+  changedFiles: OpenCodexGitFile[];
+  stagedFiles: OpenCodexGitFile[];
+};
+
+export type OpenCodexGitCommitResult = {
+  ok: true;
+  output: string;
+};
+
 export type OpenCodexSettings = {
   codexCommand: string;
   defaultSourceId: string | null;

@@ -289,6 +289,66 @@ textarea {
   overflow: hidden;
 }
 
+.project-workspace-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.git-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background);
+}
+
+.git-panel-header {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 10px 12px;
+}
+
+.git-panel-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.git-file-list {
+  min-width: 0;
+}
+
+.git-file-row {
+  min-width: 0;
+  border-radius: 6px;
+  padding: 2px 0;
+}
+
+.git-file-row:hover {
+  background: color-mix(in srgb, var(--vscode-focusBorder) 8%, transparent);
+}
+
+.git-file-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-file-state {
+  flex: 0 0 auto;
+  text-transform: lowercase;
+}
+
 .chat-view {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
@@ -407,5 +467,15 @@ textarea {
   .home-sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--vscode-sideBar-border);
+  }
+
+  .project-workspace-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(220px, 34dvh);
+  }
+
+  .git-panel {
+    border-top: 1px solid var(--vscode-panel-border);
+    border-left: 0;
   }
 }

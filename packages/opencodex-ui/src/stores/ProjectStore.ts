@@ -9,6 +9,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ChatStore } from "./ChatStore";
+import { ProjectGitStore } from "./ProjectGitStore";
 import type { ProjectTrustRequest } from "./ProjectTrustStore";
 import type { RootStore } from "./RootStore";
 import { ThreadListStore } from "./ThreadListStore";
@@ -23,6 +24,7 @@ export class ProjectStore {
   selectedChatId: string | null = null;
   trustRequest: ProjectTrustRequest | null = null;
   readonly threadListStore: ThreadListStore;
+  readonly gitStore: ProjectGitStore;
   readonly chatsById = new Map<string, ChatStore>();
 
   /**
@@ -36,6 +38,7 @@ export class ProjectStore {
   ) {
     this.project = project;
     this.threadListStore = new ThreadListStore(this, root);
+    this.gitStore = new ProjectGitStore(this, root);
     makeAutoObservable<ProjectStore, "root">(this, { root: false });
   }
 

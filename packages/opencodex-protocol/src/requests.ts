@@ -76,6 +76,10 @@ export type OpenCodexRequest =
   | { type: "project.trust"; projectPath: string }
   | { type: "project.trust.dismiss"; projectPath: string }
   | { type: "models.list" }
+  | { type: "git.status"; projectPath: string; sourceId: string | null }
+  | { type: "git.stage"; projectPath: string; sourceId: string | null; paths: string[] }
+  | { type: "git.unstage"; projectPath: string; sourceId: string | null; paths: string[] }
+  | { type: "git.commit"; projectPath: string; sourceId: string | null; message: string }
   | { type: "logs.list"; beforeCreatedAt?: string | null; limit?: number }
   | { type: "logs.delete"; logId: string }
   | {
