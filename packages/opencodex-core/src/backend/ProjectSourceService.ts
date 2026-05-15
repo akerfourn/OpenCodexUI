@@ -418,6 +418,7 @@ export class ProjectSourceService {
     ));
 
     await this.writeThreadIndex(threads);
+    await this.deleteEmptyUnsyncedThreadShells(source.id, threads);
   }
 
   /**
@@ -438,6 +439,49 @@ export class ProjectSourceService {
       await repository.upsertThreadIndex(threads.map((thread) => toCachedThreadSummary(thread)));
     } catch (error) {
       this.options.backendOptions.logger?.(`thread cache index write failed: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Removes empty cached thread shells after a source has reported its real thread index.
+   *
+   * @param sourceId Source identifier being synchronized.
+   * @param threads Threads reported by the source.
+   *
+   * @returns Promise resolved when cleanup completes.
+   */
+  private async deleteEmptyUnsyncedThreadShells(
+    sourceId: string,
+    threads: OpenCodexThreadWithProjectState[]
+  ): Promise<void> {
+    const repository = this.options.cacheRepository;
+
+    if (repository === null) {
+      return;
+    }
+
+    const projectPaths = new Set<string>();
+
+    for (const thread of threads) {
+      if (thread.projectPath !== null && thread.projectPath !== undefined) {
+        projectPaths.add(thread.projectPath);
+      }
+    }
+
+    try {
+      for (const projectPath of projectPaths) {
+        const deletedCount = await repository.deleteEmptyUnsyncedThreads(projectPath, sourceId);
+
+        if (deletedCount > 0) {
+          this.options.backendOptions.logger?.(
+            `deleted ${deletedCount} empty unsynced cached thread(s) for ${projectPath}`
+          );
+        }
+      }
+    } catch (error) {
+      this.options.backendOptions.logger?.(
+        `empty thread cache cleanup failed: ${String(error)}`
+      );
     }
   }
 

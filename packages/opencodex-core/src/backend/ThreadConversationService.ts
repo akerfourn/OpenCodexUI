@@ -81,6 +81,14 @@ export class ThreadConversationService {
     const currentProjectPath = scope === "currentProject"
       ? this.resolveCurrentProjectPath(projectPath)
       : null;
+
+    if (sourceId !== null) {
+      await this.options.threadCacheService.deleteEmptyUnsyncedThreads(
+        currentProjectPath,
+        sourceId
+      );
+    }
+
     const cachedThreads = await this.options.threadCacheService.readThreads(
       scope,
       currentProjectPath,

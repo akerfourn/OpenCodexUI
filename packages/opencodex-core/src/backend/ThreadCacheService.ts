@@ -78,6 +78,35 @@ export class ThreadCacheService {
   }
 
   /**
+   * Deletes empty never-synced cached thread shells for one project.
+   *
+   * @param projectPath Project path to clean.
+   * @param sourceId Optional source identifier.
+   *
+   * @returns Promise resolved once cleanup completes.
+   */
+  async deleteEmptyUnsyncedThreads(
+    projectPath: string | null,
+    sourceId?: string | null
+  ): Promise<void> {
+    const repository = this.options.cacheRepository;
+
+    if (repository === null || projectPath === null) {
+      return;
+    }
+
+    try {
+      const deletedCount = await repository.deleteEmptyUnsyncedThreads(projectPath, sourceId);
+
+      if (deletedCount > 0) {
+        this.log(`deleted ${deletedCount} empty unsynced cached thread(s) for ${projectPath}`);
+      }
+    } catch (error) {
+      this.log(`empty thread cache cleanup failed: ${String(error)}`);
+    }
+  }
+
+  /**
    * Reads a cached thread snapshot.
    *
    * @param threadId Thread identifier.

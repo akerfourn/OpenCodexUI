@@ -38,6 +38,7 @@ import {
 } from "./sqlite/projectQueries.js";
 import {
   deleteThread,
+  deleteEmptyUnsyncedThreads,
   getOlderTurns,
   getSyncState,
   getThread,
@@ -254,6 +255,21 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async deleteThread(threadId: string): Promise<void> {
     await deleteThread(this.database, threadId);
+  }
+
+  /**
+   * Deletes empty never-synced thread shells for one project.
+   *
+   * @param currentProjectPath Project path to clean.
+   * @param sourceId Optional source identifier.
+   *
+   * @returns Number of deleted thread rows.
+   */
+  async deleteEmptyUnsyncedThreads(
+    currentProjectPath: string,
+    sourceId?: string | null
+  ): Promise<number> {
+    return await deleteEmptyUnsyncedThreads(this.database, currentProjectPath, sourceId);
   }
 
   /**

@@ -338,6 +338,68 @@ describe("SqliteOpenCodexCacheRepository", () => {
     ]);
   });
 
+  it("should delete only empty unsynced thread shells", async () => {
+    await repository.upsertThreadIndex([
+      {
+        id: "empty-shell",
+        codexTitle: "",
+        customTitle: null,
+        title: "",
+        preview: "",
+        model: "gpt-5.5",
+        reasoningEffort: "low",
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        sourceId: "source-1",
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      },
+      {
+        id: "real-thread",
+        codexTitle: "Real thread",
+        customTitle: null,
+        title: "Real thread",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        sourceId: "source-1",
+        branchName: "main",
+        updatedAt: "2026-01-02T00:00:00.000Z"
+      },
+      {
+        id: "other-source-empty-shell",
+        codexTitle: "",
+        customTitle: null,
+        title: "",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "OpenCodexUI",
+        projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
+        sourceId: "source-2",
+        branchName: "main",
+        updatedAt: "2026-01-03T00:00:00.000Z"
+      }
+    ]);
+
+    const deletedCount = await repository.deleteEmptyUnsyncedThreads(
+      "/home/adrien/Projets/Perso/OpenCodexUI",
+      "source-1"
+    );
+    const threads = await repository.listThreads({
+      scope: "currentProject",
+      currentProjectPath: "/home/adrien/Projets/Perso/OpenCodexUI"
+    });
+
+    expect(deletedCount).toBe(1);
+    expect(threads.map((thread) => thread.id)).toEqual([
+      "other-source-empty-shell",
+      "real-thread"
+    ]);
+  });
+
   it("should persist turns without storing the UI message projection", async () => {
     await repository.saveThreadSnapshot({
       thread: {

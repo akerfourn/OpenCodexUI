@@ -232,6 +232,18 @@ export interface OpenCodexCacheRepository {
   deleteThread(threadId: string): Promise<void>;
 
   /**
+   * Deletes empty, never-synced cached thread shells for one project.
+   *
+   * @param currentProjectPath Project path to clean.
+   * @param sourceId Optional source identifier.
+   * @returns Number of deleted thread rows.
+   */
+  deleteEmptyUnsyncedThreads(
+    currentProjectPath: string,
+    sourceId?: string | null
+  ): Promise<number>;
+
+  /**
    * Lists cached thread summaries for a scope and optional filters.
    *
    * @param query Thread list query.

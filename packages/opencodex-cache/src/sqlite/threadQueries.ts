@@ -127,6 +127,54 @@ export async function deleteThread(
 }
 
 /**
+ * Deletes empty never-synced thread shells for one project.
+ *
+ * @param database SQLite database connection.
+ * @param currentProjectPath Project path to clean.
+ * @param sourceId Optional source identifier.
+ * @returns Number of deleted thread rows.
+ */
+export async function deleteEmptyUnsyncedThreads(
+  database: BetterSqliteDatabase,
+  currentProjectPath: string,
+  sourceId?: string | null
+): Promise<number> {
+  const projectPath = normalizeProjectPath(currentProjectPath);
+
+  if (projectPath === null) {
+    return 0;
+  }
+
+  const sourceClause = createSourceClause(sourceId);
+  const result = database
+    .prepare(
+      `
+      DELETE FROM threads
+      WHERE
+        cwd = @projectPath
+        ${sourceClause.sql}
+        AND COALESCE(title, '') = ''
+        AND COALESCE(codex_title, '') = ''
+        AND COALESCE(custom_title, '') = ''
+        AND COALESCE(preview, '') = ''
+        AND has_loaded_latest = 0
+        AND last_synced_at IS NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM turns
+          WHERE turns.thread_id = threads.id
+        )
+      `
+    )
+    .run({
+      ...sourceClause.params,
+      projectPath
+    });
+
+  return result.changes;
+}
+
+/**
  * Lists cached threads using scope, source, and search filters.
  *
  * @param database SQLite database connection.
@@ -186,6 +234,36 @@ export async function listThreads(
     .all(params) as ThreadRow[];
 
   return rows.map((row) => mapThreadRow(row));
+}
+
+/**
+ * Creates a source filter clause for optional source-aware cleanup queries.
+ *
+ * @param sourceId Source identifier semantics matching thread list queries.
+ * @returns SQL fragment and parameters.
+ */
+function createSourceClause(sourceId: string | null | undefined): {
+  sql: string;
+  params: Record<string, string>;
+} {
+  if (sourceId === null) {
+    return {
+      sql: "AND source_id IS NULL",
+      params: {}
+    };
+  }
+
+  if (sourceId !== undefined) {
+    return {
+      sql: "AND source_id = @sourceId",
+      params: { sourceId }
+    };
+  }
+
+  return {
+    sql: "",
+    params: {}
+  };
 }
 
 /**
