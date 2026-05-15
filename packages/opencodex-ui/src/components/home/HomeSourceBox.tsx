@@ -219,11 +219,6 @@ export function HomeSourceBox({
       }}
     >
       <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-        {isDefault ? (
-          <Tooltip title={t("sources.defaultSource")}>
-            <StarRoundedIcon color="warning" fontSize="small" sx={{ mt: 0.25 }} />
-          </Tooltip>
-        ) : null}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flex: "1 1 auto" }}>
           <Box
             component="span"
@@ -239,7 +234,17 @@ export function HomeSourceBox({
             ]}
           />
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="subtitle1" component="h3" noWrap>
+            <Typography
+              variant="subtitle1"
+              component="h3"
+              noWrap
+              sx={{ alignItems: "center", display: "flex", gap: 0.5 }}
+            >
+              {isDefault ? (
+                <Tooltip title={t("sources.defaultSource")}>
+                  <StarRoundedIcon color="warning" fontSize="small" />
+                </Tooltip>
+              ) : null}
               {source.name}
             </Typography>
             <Typography variant="body2" color="text.secondary" noWrap>
