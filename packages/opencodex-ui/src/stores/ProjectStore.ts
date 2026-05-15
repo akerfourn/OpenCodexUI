@@ -13,6 +13,8 @@ import type { ProjectTrustRequest } from "./ProjectTrustStore";
 import type { RootStore } from "./RootStore";
 import { ThreadListStore } from "./ThreadListStore";
 
+export type ThreadIndicatorState = "idle" | "running" | "unseen";
+
 /**
  * Stores project-specific chat metadata and loaded chat stores.
  */
@@ -177,6 +179,45 @@ export class ProjectStore {
   }
 
   /**
+   * Returns whether one chat in this project is currently running.
+   *
+   * @returns `true` when at least one loaded chat is active.
+   */
+  get hasRunningChatIndicator(): boolean {
+    return Array.from(this.chatsById.values()).some((chatStore) => (
+      chatStore.hasRunningTurnIndicator
+    ));
+  }
+
+  /**
+   * Returns whether one chat in this project has unseen completed work.
+   *
+   * @returns `true` when at least one loaded chat should be highlighted.
+   */
+  get hasUnseenChatIndicator(): boolean {
+    return Array.from(this.chatsById.values()).some((chatStore) => (
+      chatStore.hasUnseenTurnIndicator
+    ));
+  }
+
+  /**
+   * Returns the aggregated work indicator for this project.
+   *
+   * @returns Project indicator state.
+   */
+  get indicatorState(): ThreadIndicatorState {
+    if (this.hasRunningChatIndicator) {
+      return "running";
+    }
+
+    if (this.hasUnseenChatIndicator) {
+      return "unseen";
+    }
+
+    return "idle";
+  }
+
+  /**
    * Updates project metadata after it is refreshed by the backend.
    *
    * @param project Project metadata to apply.
@@ -273,6 +314,56 @@ export class ProjectStore {
    */
   selectChat(threadId: string): void {
     this.selectedChatId = threadId;
+    this.markThreadSeen(threadId);
+  }
+
+  /**
+   * Marks the selected chat as seen when it is loaded.
+   *
+   * @returns Nothing.
+   */
+  markSelectedChatSeen(): void {
+    if (this.selectedChatId === null) {
+      return;
+    }
+
+    this.markThreadSeen(this.selectedChatId);
+  }
+
+  /**
+   * Marks one chat as seen when it is loaded.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Nothing.
+   */
+  markThreadSeen(threadId: string): void {
+    this.chatsById.get(threadId)?.markSeen();
+  }
+
+  /**
+   * Returns the work indicator state for one thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Thread indicator state.
+   */
+  getThreadIndicatorState(threadId: string): ThreadIndicatorState {
+    const chatStore = this.chatsById.get(threadId);
+
+    if (chatStore === undefined) {
+      return "idle";
+    }
+
+    if (chatStore.hasRunningTurnIndicator) {
+      return "running";
+    }
+
+    if (chatStore.hasUnseenTurnIndicator) {
+      return "unseen";
+    }
+
+    return "idle";
   }
 
   /**

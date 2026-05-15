@@ -124,12 +124,34 @@ textarea {
   gap: 6px;
 }
 
+.work-indicator-pulse {
+  animation: opencodex-work-indicator-pulse 1.4s ease-in-out infinite;
+}
+
 .project-tab-label .MuiIconButton-root {
   padding: 2px;
 }
 
 .project-tab-label .MuiTypography-root {
   min-width: 0;
+}
+
+@keyframes opencodex-work-indicator-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.28;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .work-indicator-pulse {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 .app-content {

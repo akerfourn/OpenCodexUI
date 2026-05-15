@@ -58,6 +58,7 @@ export class NavigationStore {
   activateTab(tabId: string): void {
     if (this.tabs.some((tab) => tab.id === tabId)) {
       this.activeTabId = tabId;
+      this.markActiveProjectChatSeen();
     }
   }
 
@@ -85,6 +86,7 @@ export class NavigationStore {
 
     if (activate) {
       this.activeTabId = projectId;
+      this.markActiveProjectChatSeen();
     }
   }
 
@@ -170,5 +172,9 @@ export class NavigationStore {
     }
 
     return false;
+  }
+
+  private markActiveProjectChatSeen(): void {
+    this.activeProjectStore?.markSelectedChatSeen();
   }
 }

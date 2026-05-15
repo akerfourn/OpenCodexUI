@@ -7,7 +7,7 @@ import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
 import { HOME_TAB_ID, type RootStore } from "../../stores/RootStore";
-import { ProjectTabLabel } from "./ProjectTabLabel";
+import { ProjectTabLabelX } from "./ProjectTabLabel";
 
 type AppTabsProps = {
   store: RootStore;
@@ -53,7 +53,7 @@ export function AppTabs({ store }: AppTabsProps) {
           <Tab
             key={projectStore.project.id}
             value={projectStore.project.id}
-            label={<ProjectTabLabel projectStore={projectStore} onClose={handleProjectClose} />}
+            label={<ProjectTabLabelX projectStore={projectStore} onClose={handleProjectClose} />}
             sx={{ minHeight: 36, py: 0.5 }}
           />
         ))}

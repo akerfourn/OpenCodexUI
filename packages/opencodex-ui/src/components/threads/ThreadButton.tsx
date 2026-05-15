@@ -31,6 +31,9 @@ export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
 
   const isActive = projectStore.selectedChatId === thread.id;
   const isLoading = projectStore.loadingThreadId === thread.id;
+  const indicatorState = projectStore.getThreadIndicatorState(thread.id);
+  const shouldShowLoading = isLoading || indicatorState === "running";
+  const chatIconClassName = indicatorState === "unseen" ? "work-indicator-pulse" : undefined;
   const metadata = getThreadMetadata(thread);
 
   return (
@@ -41,10 +44,10 @@ export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
       sx={{ mb: 0.5, alignItems: "flex-start", borderRadius: 1 }}
     >
       <ListItemIcon sx={{ minWidth: 28, color: "inherit", mt: "2px" }}>
-        {isLoading ? (
+        {shouldShowLoading ? (
           <CircularProgress size={16} thickness={5} />
         ) : (
-          <ChatBubbleOutlineOutlinedIcon fontSize="small" />
+          <ChatBubbleOutlineOutlinedIcon className={chatIconClassName} fontSize="small" />
         )}
       </ListItemIcon>
       <Box sx={{ minWidth: 0, flex: 1 }}>

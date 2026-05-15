@@ -43,6 +43,7 @@ export class ChatStore {
   isWorking = false;
   isStartingTurn = false;
   isEditingLastTurn = false;
+  hasUnseenCompletedTurn = false;
   activeTurnId: string | null = null;
   pendingTurnId: string | null = null;
   olderMessagesPrependVersion = 0;
@@ -74,6 +75,29 @@ export class ChatStore {
       !this.isEditingLastTurn &&
       !this.isRecovering
     );
+  }
+
+  /**
+   * Returns whether the chat should show a running-work indicator.
+   *
+   * @returns `true` when a turn is currently active or starting.
+   */
+  get hasRunningTurnIndicator(): boolean {
+    return (
+      this.isWorking ||
+      this.isStartingTurn ||
+      this.isEditingLastTurn ||
+      this.isRecovering
+    );
+  }
+
+  /**
+   * Returns whether the chat has completed work that the user has not opened.
+   *
+   * @returns `true` when unseen completed work should be highlighted.
+   */
+  get hasUnseenTurnIndicator(): boolean {
+    return this.hasUnseenCompletedTurn && !this.hasRunningTurnIndicator;
   }
 
   get canSteerActiveTurn(): boolean {
@@ -162,6 +186,7 @@ export class ChatStore {
   clearLoadedState(): void {
     this.turns = [];
     this.pendingTurnId = null;
+    this.hasUnseenCompletedTurn = false;
     this.hasMoreOlderMessages = false;
     this.isLoadingOlderMessages = false;
     this.isSyncing = false;
@@ -376,6 +401,7 @@ export class ChatStore {
     applyThreadTurns(this, this.root, turns, shouldMergeTurns ? "merge" : "replace", source);
     this.scrollToBottomVersion += 1;
     this.root.appStore.errorMessage = null;
+    this.markSeen();
 
     if (this.thread.model !== null) {
       this.root.appStore.selectedModel = this.thread.model;
@@ -475,16 +501,29 @@ export class ChatStore {
     this.isStartingTurn = false;
     this.isEditingLastTurn = false;
     this.isWorking = true;
+    this.hasUnseenCompletedTurn = false;
     this.activeTurnId = turnId;
     movePendingTurnToStartedTurn(this, turnId);
   }
 
   applyTurnCompleted(turnId: string, durationMs: number | null): void {
+    const shouldMarkUnseen = !this.isVisibleChat();
+
     this.isWorking = false;
     this.activeTurnId = null;
     this.pendingTurnId = null;
     this.isEditingLastTurn = false;
+    this.hasUnseenCompletedTurn = shouldMarkUnseen;
     applyTurnDuration(this, turnId, durationMs);
+  }
+
+  /**
+   * Marks the latest completed work as seen.
+   *
+   * @returns Nothing.
+   */
+  markSeen(): void {
+    this.hasUnseenCompletedTurn = false;
   }
 
   /**
@@ -602,6 +641,13 @@ export class ChatStore {
     }
 
     turn.items = turn.items.filter((item) => item.id !== itemId);
+  }
+
+  private isVisibleChat(): boolean {
+    return (
+      this.root.navigationStore.activeProjectStore?.project.id === this.projectStore.project.id &&
+      this.projectStore.selectedChatId === this.thread.id
+    );
   }
 
 }
