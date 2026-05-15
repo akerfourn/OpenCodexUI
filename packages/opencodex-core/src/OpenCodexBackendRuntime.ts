@@ -27,7 +27,8 @@ import type {
   OpenCodexSource,
   OpenCodexSourceLocalSettings,
   OpenCodexThread,
-  OpenCodexTurn
+  OpenCodexTurn,
+  OpenCodexUsageLimits
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ThreadTurnCache } from "./ThreadTurnCache.js";
@@ -51,6 +52,10 @@ import { ThreadCacheService } from "./backend/ThreadCacheService.js";
 import { GitService } from "./backend/GitService.js";
 import { CommitMessageService } from "./backend/CommitMessageService.js";
 import { readObject, readString } from "./mapping.js";
+import {
+  mapUsageLimitsNotification,
+  mapUsageLimitsResponse
+} from "./backend/usageMapping.js";
 
 /**
  * Coordinates backend services exposed to the UI transport.
@@ -181,6 +186,7 @@ export class OpenCodexBackendRuntime {
     await this.projectSourceService.cacheProject(this.options.projectPath, null);
     await this.listProjects();
     await this.listModels();
+    await this.readUsageLimits();
     return { ok: true };
   }
 
@@ -673,6 +679,26 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Reads current Codex account usage limits.
+   *
+   * @returns Usage limits, or `null` when unavailable.
+   */
+  async readUsageLimits(): Promise<OpenCodexUsageLimits | null> {
+    const client = await this.ensureClient();
+
+    try {
+      const response = await client.request("account/rateLimits/read", undefined);
+      const usage = mapUsageLimitsResponse(response);
+      this.emit({ type: "usage.updated", usage });
+      return usage;
+    } catch (error) {
+      this.options.logger?.(`account/rateLimits/read unavailable: ${String(error)}`);
+      this.emit({ type: "usage.updated", usage: null });
+      return null;
+    }
+  }
+
+  /**
    * Reads Git status for a project through its Codex source.
    *
    * @param projectPath Project path.
@@ -832,6 +858,17 @@ export class OpenCodexBackendRuntime {
 
     this.threadConversationService.recordNotification(notification);
     this.notificationService.handleNotification(notification, sourceId);
+
+    if (notification.method === "account/rateLimits/updated") {
+      this.emit({
+        type: "usage.updated",
+        usage: mapUsageLimitsNotification(notification.params)
+      });
+    }
+
+    if (notification.method === "turn/completed") {
+      void this.readUsageLimits();
+    }
   }
 
   /**

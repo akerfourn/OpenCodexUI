@@ -21,6 +21,7 @@ import { NavigationStore } from "./NavigationStore";
 import type { ProjectStore } from "./ProjectStore";
 import { ProjectsStore } from "./ProjectsStore";
 import { SourcesStore } from "./SourcesStore";
+import { UsageStore } from "./UsageStore";
 
 export { HOME_TAB_ID, type OpenCodexAppTab } from "./NavigationStore";
 
@@ -36,6 +37,7 @@ export class RootStore {
   readonly navigationStore = new NavigationStore(this);
   readonly projectsStore = new ProjectsStore(this);
   readonly sourcesStore = new SourcesStore(this);
+  readonly usageStore = new UsageStore(this);
   private threadSelectionStartedAt: number | null = null;
 
   /**
@@ -100,6 +102,7 @@ export class RootStore {
     this.logsStore.handleEvent(event);
     this.projectsStore.handleEvent(event);
     this.sourcesStore.handleEvent(event);
+    this.usageStore.handleEvent(event);
 
     if (event.type === "error") {
       this.applyErrorEvent(event);

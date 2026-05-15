@@ -232,6 +232,14 @@ export const resources = {
         light: "Clair",
         system: "Système"
       },
+      usage: {
+        labels: {
+          "5h": "5h",
+          weekly: "Sem.",
+          usage: "Usage"
+        },
+        tooltip: "{{label}}: {{usedPercent}} % utilisés, {{remainingPercent}} % restants. Reset: {{reset}}"
+      },
       rename: {
         cancel: "Annuler",
         submit: "Renommer",
@@ -522,6 +530,14 @@ export const resources = {
         label: "Theme",
         light: "Light",
         system: "System"
+      },
+      usage: {
+        labels: {
+          "5h": "5h",
+          weekly: "Week",
+          usage: "Usage"
+        },
+        tooltip: "{{label}}: {{usedPercent}}% used, {{remainingPercent}}% remaining. Reset: {{reset}}"
       },
       rename: {
         cancel: "Cancel",

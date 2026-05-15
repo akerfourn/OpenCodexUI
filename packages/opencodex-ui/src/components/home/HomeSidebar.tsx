@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 
 import type { HomeSection } from "../../stores/HomeStore";
 import type { RootStore } from "../../stores/RootStore";
+import { UsageLimitsWidgetX } from "../usage/UsageLimitsWidget";
 
 type HomeSidebarProps = {
   store: RootStore;
@@ -95,6 +96,7 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
           <ListItemText primary={t("home.settings")} />
         </ListItemButton>
       </List>
+      <UsageLimitsWidgetX store={store.usageStore} />
     </aside>
   );
 }

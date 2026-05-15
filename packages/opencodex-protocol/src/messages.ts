@@ -120,6 +120,29 @@ export type OpenCodexGitCommitResult = {
   output: string;
 };
 
+export type OpenCodexUsageWindow = {
+  label: "5h" | "weekly" | "usage";
+  usedPercent: number;
+  remainingPercent: number;
+  windowDurationMins: number | null;
+  resetsAt: string | null;
+};
+
+export type OpenCodexUsageCredits = {
+  hasCredits: boolean;
+  unlimited: boolean;
+  balance: string | null;
+};
+
+export type OpenCodexUsageLimits = {
+  limitId: string | null;
+  limitName: string | null;
+  planType: string | null;
+  primary: OpenCodexUsageWindow | null;
+  secondary: OpenCodexUsageWindow | null;
+  credits: OpenCodexUsageCredits | null;
+};
+
 export type OpenCodexCommitPrompt = {
   prompt: string;
   defaultPrompt: string;

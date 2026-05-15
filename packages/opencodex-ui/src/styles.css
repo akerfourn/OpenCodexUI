@@ -276,6 +276,18 @@ textarea {
   padding: 0 8px 12px;
 }
 
+.usage-limits-widget {
+  flex: 0 0 auto;
+  padding: 8px 12px 12px;
+}
+
+.usage-window-bar {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
 .main-pane,
 .chat-view {
   min-width: 0;

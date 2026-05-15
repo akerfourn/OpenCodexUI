@@ -127,6 +127,8 @@ export class OpenCodexRequestRouter {
         return { ok: true };
       case "models.list":
         return this.runtime.listModels();
+      case "usage.read":
+        return this.runtime.readUsageLimits();
       case "git.status":
         return this.runtime.readGitStatus(request.projectPath, request.sourceId);
       case "git.stage":
