@@ -39,7 +39,10 @@ export class GitService {
     if (response.exitCode !== 0 && isNotRepositoryResponse(response)) {
       return {
         isRepository: false,
+        aheadCount: 0,
+        behindCount: 0,
         branchName: null,
+        upstreamName: null,
         changedFiles: [],
         stagedFiles: []
       };
@@ -113,11 +116,35 @@ export class GitService {
     };
   }
 
+  /**
+   * Pushes local commits to the configured upstream.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Refreshed status.
+   */
+  async push(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    await this.runGit(projectPath, sourceId, ["push"], { timeoutMs: 120_000 });
+    return await this.status(projectPath, sourceId);
+  }
+
+  /**
+   * Pulls remote commits from the configured upstream.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Refreshed status.
+   */
+  async pull(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    await this.runGit(projectPath, sourceId, ["pull", "--ff-only"], { timeoutMs: 120_000 });
+    return await this.status(projectPath, sourceId);
+  }
+
   private async runGit(
     projectPath: string,
     sourceId: string | null,
     args: string[],
-    options: { allowFailure?: boolean } = {}
+    options: { allowFailure?: boolean; timeoutMs?: number } = {}
   ): Promise<GitProcessResult> {
     if (sourceId === null) {
       throw new Error("Git operations require a Codex source.");
@@ -127,7 +154,7 @@ export class GitService {
     const response = await runHostProcess(client, {
       command: ["git", ...args],
       cwd: projectPath,
-      timeoutMs: 30_000,
+      timeoutMs: options.timeoutMs ?? 30_000,
       outputBytesCap: 2_000_000
     });
 

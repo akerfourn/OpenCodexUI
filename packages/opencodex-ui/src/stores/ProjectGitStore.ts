@@ -13,7 +13,10 @@ import type { RootStore } from "./RootStore";
 
 const emptyGitStatus: OpenCodexGitStatus = {
   isRepository: false,
+  aheadCount: 0,
+  behindCount: 0,
   branchName: null,
+  upstreamName: null,
   changedFiles: [],
   stagedFiles: []
 };
@@ -28,6 +31,8 @@ export class ProjectGitStore {
   hasLoaded = false;
   isLoading = false;
   isCommitting = false;
+  isPulling = false;
+  isPushing = false;
   selectedChangedPaths: string[] = [];
   selectedStagedPaths: string[] = [];
 
@@ -65,6 +70,26 @@ export class ProjectGitStore {
       this.commitMessage.trim().length > 0 &&
       !this.isCommitting &&
       !this.isLoading
+    );
+  }
+
+  get canPush(): boolean {
+    return (
+      this.status.isRepository &&
+      this.status.upstreamName !== null &&
+      this.status.aheadCount > 0 &&
+      !this.isLoading &&
+      !this.isPushing
+    );
+  }
+
+  get canPull(): boolean {
+    return (
+      this.status.isRepository &&
+      this.status.upstreamName !== null &&
+      this.status.behindCount > 0 &&
+      !this.isLoading &&
+      !this.isPulling
     );
   }
 
@@ -163,6 +188,64 @@ export class ProjectGitStore {
     } finally {
       runInAction(() => {
         this.isCommitting = false;
+      });
+    }
+  }
+
+  async push(): Promise<void> {
+    if (!this.canPush) {
+      return;
+    }
+
+    this.isPushing = true;
+    this.errorMessage = null;
+
+    try {
+      const status = await this.root.request<OpenCodexGitStatus>({
+        type: "git.push",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      });
+
+      runInAction(() => {
+        this.applyStatus(status);
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.errorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isPushing = false;
+      });
+    }
+  }
+
+  async pull(): Promise<void> {
+    if (!this.canPull) {
+      return;
+    }
+
+    this.isPulling = true;
+    this.errorMessage = null;
+
+    try {
+      const status = await this.root.request<OpenCodexGitStatus>({
+        type: "git.pull",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      });
+
+      runInAction(() => {
+        this.applyStatus(status);
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.errorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isPulling = false;
       });
     }
   }

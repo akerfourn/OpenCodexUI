@@ -80,6 +80,8 @@ export type OpenCodexRequest =
   | { type: "git.stage"; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.unstage"; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.commit"; projectPath: string; sourceId: string | null; message: string }
+  | { type: "git.pull"; projectPath: string; sourceId: string | null }
+  | { type: "git.push"; projectPath: string; sourceId: string | null }
   | { type: "logs.list"; beforeCreatedAt?: string | null; limit?: number }
   | { type: "logs.delete"; logId: string }
   | {

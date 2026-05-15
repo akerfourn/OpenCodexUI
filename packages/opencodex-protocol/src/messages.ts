@@ -106,7 +106,10 @@ export type OpenCodexGitFile = {
 
 export type OpenCodexGitStatus = {
   isRepository: boolean;
+  aheadCount: number;
+  behindCount: number;
   branchName: string | null;
+  upstreamName: string | null;
   changedFiles: OpenCodexGitFile[];
   stagedFiles: OpenCodexGitFile[];
 };

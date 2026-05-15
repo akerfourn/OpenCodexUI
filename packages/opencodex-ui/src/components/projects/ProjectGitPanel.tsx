@@ -75,6 +75,14 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
     void gitStore.commit();
   }
 
+  function handlePush(): void {
+    void gitStore.push();
+  }
+
+  function handlePull(): void {
+    void gitStore.pull();
+  }
+
   return (
     <aside className="git-panel">
       <Stack className="git-panel-header" direction="row" spacing={1} sx={{ alignItems: "center" }}>
@@ -117,6 +125,31 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
 
         {gitStore.status.isRepository ? (
           <>
+            {gitStore.status.upstreamName !== null ? (
+              <Stack direction="row" spacing={1}>
+                {gitStore.status.behindCount > 0 ? (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    disabled={!gitStore.canPull}
+                    onClick={handlePull}
+                  >
+                    {t("git.pullChanges", { count: gitStore.status.behindCount })}
+                  </Button>
+                ) : null}
+                {gitStore.status.aheadCount > 0 ? (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    disabled={!gitStore.canPush}
+                    onClick={handlePush}
+                  >
+                    {t("git.pushChanges", { count: gitStore.status.aheadCount })}
+                  </Button>
+                ) : null}
+              </Stack>
+            ) : null}
+
             <Stack spacing={1}>
               <GitSectionHeader
                 title={t("git.changed")}
@@ -183,39 +216,43 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
               )}
             </Stack>
 
-            <Divider />
+            {gitStore.stagedFilesCount > 0 ? (
+              <>
+                <Divider />
 
-            <Stack spacing={1}>
-              <TextField
-                label={t("git.commitMessage")}
-                value={gitStore.commitMessage}
-                minRows={3}
-                multiline
-                fullWidth
-                disabled={gitStore.stagedFilesCount === 0 || gitStore.isCommitting}
-                onChange={handleCommitMessageChange}
-              />
-              <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
-                <Tooltip title={t("git.generateMessageUnavailable")}>
-                  <span>
-                    <IconButton
-                      aria-label={t("git.generateMessage")}
-                      size="small"
-                      disabled
+                <Stack spacing={1}>
+                  <TextField
+                    label={t("git.commitMessage")}
+                    value={gitStore.commitMessage}
+                    minRows={3}
+                    multiline
+                    fullWidth
+                    disabled={gitStore.isCommitting}
+                    onChange={handleCommitMessageChange}
+                  />
+                  <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
+                    <Tooltip title={t("git.generateMessageUnavailable")}>
+                      <span>
+                        <IconButton
+                          aria-label={t("git.generateMessage")}
+                          size="small"
+                          disabled
+                        >
+                          <AutoAwesomeOutlinedIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Button
+                      variant="contained"
+                      disabled={!gitStore.canCommit}
+                      onClick={handleCommit}
                     >
-                      <AutoAwesomeOutlinedIcon fontSize="small" />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-                <Button
-                  variant="contained"
-                  disabled={!gitStore.canCommit}
-                  onClick={handleCommit}
-                >
-                  {t("git.commit")}
-                </Button>
-              </Stack>
-            </Stack>
+                      {t("git.commit")}
+                    </Button>
+                  </Stack>
+                </Stack>
+              </>
+            ) : null}
           </>
         ) : null}
       </Stack>

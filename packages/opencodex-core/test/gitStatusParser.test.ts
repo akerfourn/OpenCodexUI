@@ -9,6 +9,8 @@ describe("parseGitStatus", () => {
   it("should split staged and unstaged files from porcelain v2 output", () => {
     const output = [
       "# branch.head main",
+      "# branch.upstream origin/main",
+      "# branch.ab +2 -1",
       "1 M. N... 100644 100644 100644 abc abc staged.ts",
       "1 .M N... 100644 100644 100644 abc abc changed.ts",
       "? new-file.ts",
@@ -17,7 +19,10 @@ describe("parseGitStatus", () => {
 
     expect(parseGitStatus(output)).toEqual({
       isRepository: true,
+      aheadCount: 2,
+      behindCount: 1,
       branchName: "main",
+      upstreamName: "origin/main",
       changedFiles: [
         {
           path: "changed.ts",

@@ -714,6 +714,30 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Pushes local commits to the configured upstream.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Refreshed Git status.
+   */
+  async pushGitChanges(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    return await this.gitService.push(projectPath, sourceId);
+  }
+
+  /**
+   * Pulls remote commits from the configured upstream.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Refreshed Git status.
+   */
+  async pullGitChanges(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    return await this.gitService.pull(projectPath, sourceId);
+  }
+
+  /**
    * Routes Codex notifications into the notification service.
    *
    * @param notification Codex notification.

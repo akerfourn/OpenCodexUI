@@ -135,6 +135,10 @@ export class OpenCodexRequestRouter {
         return this.runtime.unstageGitPaths(request.projectPath, request.sourceId, request.paths);
       case "git.commit":
         return this.runtime.commitGitChanges(request.projectPath, request.sourceId, request.message);
+      case "git.pull":
+        return this.runtime.pullGitChanges(request.projectPath, request.sourceId);
+      case "git.push":
+        return this.runtime.pushGitChanges(request.projectPath, request.sourceId);
       case "logs.list":
         return this.runtime.listLogs(request.beforeCreatedAt ?? null, request.limit ?? 30);
       case "logs.delete":
