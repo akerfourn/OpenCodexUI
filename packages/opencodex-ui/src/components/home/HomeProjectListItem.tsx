@@ -50,7 +50,11 @@ export function HomeProjectListItem({
   }
 
   return (
-    <ListItemButton onClick={handleOpen} sx={{ borderRadius: 1, mb: 0.5 }}>
+    <ListItemButton
+      className="home-project-list-item"
+      onClick={handleOpen}
+      sx={{ borderRadius: 1, mb: 0.5 }}
+    >
       <ListItemIcon sx={{ minWidth: 34 }}>
         <FolderOutlinedIcon fontSize="small" />
       </ListItemIcon>
@@ -88,6 +92,7 @@ export function HomeProjectListItem({
       <Tooltip title={hiddenButtonLabel}>
         <IconButton
           aria-label={hiddenButtonLabel}
+          className="home-project-hidden-button"
           size="small"
           onClick={handleSetHidden}
           sx={{ flex: "0 0 auto", ml: 1 }}

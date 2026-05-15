@@ -230,6 +230,16 @@ textarea {
   padding: 24px;
 }
 
+.home-project-hidden-button {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.home-project-list-item:hover .home-project-hidden-button,
+.home-project-list-item:focus-within .home-project-hidden-button {
+  opacity: 1;
+}
+
 .home-content-panel {
   width: 100%;
   max-width: 920px;
