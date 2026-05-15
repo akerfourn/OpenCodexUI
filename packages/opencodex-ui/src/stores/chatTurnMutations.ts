@@ -19,7 +19,7 @@ export function applyThreadTurns(
   strategy: "replace" | "merge",
   source: string
 ): void {
-  const mergedTurns = preserveLiveActivityItems(chatStore.turns, nextTurns);
+  const mergedTurns = preserveLiveTurnItems(chatStore.turns, nextTurns);
 
   if (strategy === "replace" || chatStore.turns.length === 0) {
     chatStore.turns = mergedTurns;
@@ -260,7 +260,7 @@ function findPendingUserTurn(chatStore: ChatStore, content: string): OpenCodexTu
   return pendingTurn;
 }
 
-function preserveLiveActivityItems(
+function preserveLiveTurnItems(
   currentTurns: OpenCodexTurn[],
   nextTurns: OpenCodexTurn[]
 ): OpenCodexTurn[] {
@@ -277,21 +277,34 @@ function preserveLiveActivityItems(
       return nextTurn;
     }
 
+    const currentItemsById = new Map(currentTurn.items.map((item) => [item.id, item]));
     const nextItemIds = new Set(nextTurn.items.map((item) => item.id));
-    const missingLiveActivities = currentTurn.items.filter((item) => (
-      item.role === "activity" &&
+    let didPreserveExistingItem = false;
+    const preservedItems = nextTurn.items.map((nextItem) => {
+      const currentItem = currentItemsById.get(nextItem.id);
+
+      if (currentItem === undefined) {
+        return nextItem;
+      }
+
+      const preservedItem = chooseMostCompleteLiveItem(currentItem, nextItem);
+      didPreserveExistingItem = didPreserveExistingItem || preservedItem !== nextItem;
+      return preservedItem;
+    });
+    const missingLiveItems = currentTurn.items.filter((item) => (
+      shouldPreserveLiveItem(item) &&
       !nextItemIds.has(item.id)
     ));
 
-    if (missingLiveActivities.length === 0) {
+    if (missingLiveItems.length === 0 && !didPreserveExistingItem) {
       return nextTurn;
     }
 
     return {
       ...nextTurn,
       items: [
-        ...nextTurn.items,
-        ...missingLiveActivities
+        ...preservedItems,
+        ...missingLiveItems
       ]
     };
   });
@@ -305,4 +318,30 @@ function preserveLiveActivityItems(
     ...mergedTurns,
     ...missingPendingTurns
   ];
+}
+
+function chooseMostCompleteLiveItem(
+  currentItem: OpenCodexTurn["items"][number],
+  nextItem: OpenCodexTurn["items"][number]
+): OpenCodexTurn["items"][number] {
+  if (!shouldPreserveLiveItem(currentItem)) {
+    return nextItem;
+  }
+
+  if (currentItem.content.length > nextItem.content.length) {
+    return {
+      ...nextItem,
+      ...currentItem
+    };
+  }
+
+  return nextItem;
+}
+
+function shouldPreserveLiveItem(item: OpenCodexTurn["items"][number]): boolean {
+  return (
+    item.role === "activity" ||
+    item.status === "streaming" ||
+    (item.role === "assistant" && item.phase === "commentary")
+  );
 }

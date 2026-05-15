@@ -129,7 +129,9 @@ export class ThreadListStore {
     if (isChangingThread) {
       this.loadingThreadId = threadId;
 
-      if (chatStore !== null) {
+      if (chatStore !== null && chatStore.turns.length > 0) {
+        chatStore.isSyncing = true;
+      } else if (chatStore !== null) {
         chatStore.clearLoadedState();
       }
     } else if (chatStore !== null) {
