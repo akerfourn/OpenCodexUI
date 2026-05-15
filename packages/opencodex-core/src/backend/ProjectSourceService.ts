@@ -18,10 +18,8 @@ import type {
 import type { OpenCodexBackendOptions } from "../types.js";
 import { THREAD_LIST_PAGE_SIZE, THREAD_SOURCE_KINDS } from "./constants.js";
 import { readThreadPages } from "./codexReaders.js";
-import {
-  shouldHideProjectPath,
-  toOpenCodexProject
-} from "./projectMapping.js";
+import { toOpenCodexProject } from "./projectMapping.js";
+import { ProjectPathVisibilityValidator } from "./projectPathVisibility.js";
 import {
   createDefaultCachedSource,
   toOpenCodexSource
@@ -404,18 +402,24 @@ export class ProjectSourceService {
    */
   private async syncSource(source: CachedSource): Promise<void> {
     const client = await this.options.ensureClient(source.id);
-    const threads = (await readThreadPages(client, {
+    const projectPathValidator = new ProjectPathVisibilityValidator(source, client);
+    const sourceThreads = await readThreadPages(client, {
       limit: THREAD_LIST_PAGE_SIZE,
       sortKey: "updated_at",
       sortDirection: "desc",
       sourceKinds: THREAD_SOURCE_KINDS
-    })).map((thread) => withSourceId(
-      {
-        ...thread,
-        projectHidden: shouldHideProjectPath(thread.projectPath, source)
-      },
-      source.id
-    ));
+    });
+    const threads = await Promise.all(sourceThreads.map(async (thread) => {
+      const projectHidden = await projectPathValidator.shouldHideProjectPath(thread.projectPath);
+
+      return withSourceId(
+        {
+          ...thread,
+          projectHidden
+        },
+        source.id
+      );
+    }));
 
     await this.writeThreadIndex(threads);
     await this.deleteEmptyUnsyncedThreadShells(source.id, threads);
