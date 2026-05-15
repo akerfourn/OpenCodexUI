@@ -6,7 +6,11 @@ import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexColorScheme, OpenCodexLanguage } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexColorScheme,
+  OpenCodexEnterKeyBehavior,
+  OpenCodexLanguage
+} from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
 
@@ -35,6 +39,10 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
 
   function handleAllowTurnSteeringChange(event: ChangeEvent<HTMLInputElement>): void {
     appStore.setAllowTurnSteering(event.target.checked);
+  }
+
+  function handleEnterKeyBehaviorChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
+    appStore.setEnterKeyBehavior(event.target.value as OpenCodexEnterKeyBehavior);
   }
 
   return (
@@ -66,6 +74,23 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
         <MenuItem value="light">{t("theme.light")}</MenuItem>
         <MenuItem value="dark">{t("theme.dark")}</MenuItem>
       </TextField>
+      <Stack spacing={0.5}>
+        <TextField
+          select
+          value={appStore.settings.enterKeyBehavior}
+          label={t("settings.enterKeyBehavior")}
+          fullWidth
+          size="small"
+          onChange={handleEnterKeyBehaviorChange}
+        >
+          <MenuItem value="newline">{t("settings.enterKeyBehaviorOptions.newline")}</MenuItem>
+          <MenuItem value="send">{t("settings.enterKeyBehaviorOptions.send")}</MenuItem>
+          <MenuItem value="smart">{t("settings.enterKeyBehaviorOptions.smart")}</MenuItem>
+        </TextField>
+        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+          {t(`settings.enterKeyBehaviorDescriptions.${appStore.settings.enterKeyBehavior}`)}
+        </Typography>
+      </Stack>
       <FormControlLabel
         sx={{ alignItems: "flex-start", m: 0 }}
         control={(

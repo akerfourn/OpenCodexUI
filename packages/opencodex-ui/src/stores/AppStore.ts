@@ -2,6 +2,7 @@ import { makeAutoObservable } from "mobx";
 
 import type {
   OpenCodexColorScheme,
+  OpenCodexEnterKeyBehavior,
   OpenCodexEvent,
   OpenCodexLanguage,
   OpenCodexReasoningEffort,
@@ -25,7 +26,8 @@ export class AppStore implements RootChildStore {
     experimentalApi: true,
     allowTurnSteering: false,
     language: "system",
-    colorScheme: "system"
+    colorScheme: "system",
+    enterKeyBehavior: "newline"
   };
   launchProjectPath: string | null = null;
   models: string[] = [];
@@ -174,6 +176,21 @@ export class AppStore implements RootChildStore {
     void this.root.request({
       type: "settings.update",
       patch: { colorScheme }
+    });
+  }
+
+  /**
+   * Updates the Enter key behavior used by the chat composer.
+   *
+   * @param enterKeyBehavior Enter key behavior setting.
+   *
+   * @returns Nothing.
+   */
+  setEnterKeyBehavior(enterKeyBehavior: OpenCodexEnterKeyBehavior): void {
+    this.settings = { ...this.settings, enterKeyBehavior };
+    void this.root.request({
+      type: "settings.update",
+      patch: { enterKeyBehavior }
     });
   }
 

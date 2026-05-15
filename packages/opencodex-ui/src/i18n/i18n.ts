@@ -135,7 +135,18 @@ export const resources = {
       },
       settings: {
         allowTurnSteering: "Permettre le guidage pendant la réflexion",
-        allowTurnSteeringDescription: "Permet de guider l'agent pendant qu'il réfléchit, en lui fournissant de nouvelles directives sans attendre la réponse finale."
+        allowTurnSteeringDescription: "Permet de guider l'agent pendant qu'il réfléchit, en lui fournissant de nouvelles directives sans attendre la réponse finale.",
+        enterKeyBehavior: "Comportement de la touche Entrée",
+        enterKeyBehaviorDescriptions: {
+          newline: "Entrée ajoute toujours une nouvelle ligne. Ctrl+Entrée envoie le message.",
+          send: "Entrée envoie toujours le message. Maj+Entrée ajoute une nouvelle ligne.",
+          smart: "Entrée envoie si le message tient sur une seule ligne. Après une nouvelle ligne, Entrée continue d'en ajouter."
+        },
+        enterKeyBehaviorOptions: {
+          newline: "Toujours sauter une ligne",
+          send: "Toujours envoyer le message",
+          smart: "Comportement intelligent"
+        }
       },
       theme: {
         dark: "Sombre",
@@ -337,7 +348,18 @@ export const resources = {
       },
       settings: {
         allowTurnSteering: "Allow steering while thinking",
-        allowTurnSteeringDescription: "Allows sending a message into the active turn while Codex is thinking."
+        allowTurnSteeringDescription: "Allows sending a message into the active turn while Codex is thinking.",
+        enterKeyBehavior: "Enter key behavior",
+        enterKeyBehaviorDescriptions: {
+          newline: "Enter always inserts a new line. Ctrl+Enter sends the message.",
+          send: "Enter always sends the message. Shift+Enter inserts a new line.",
+          smart: "Enter sends single-line messages. After a line break, Enter keeps inserting new lines."
+        },
+        enterKeyBehaviorOptions: {
+          newline: "Always insert a new line",
+          send: "Always send the message",
+          smart: "Smart behavior"
+        }
       },
       theme: {
         dark: "Dark",

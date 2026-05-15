@@ -4,6 +4,7 @@
 export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
 export type OpenCodexMessagePhase = "commentary" | "final_answer";
 export type OpenCodexColorScheme = "light" | "dark" | "system";
+export type OpenCodexEnterKeyBehavior = "newline" | "send" | "smart";
 
 export type OpenCodexExecPolicyAmendment = string[];
 
@@ -80,6 +81,7 @@ export type OpenCodexSettings = {
   allowTurnSteering: boolean;
   language: OpenCodexLanguage;
   colorScheme: OpenCodexColorScheme;
+  enterKeyBehavior: OpenCodexEnterKeyBehavior;
 };
 
 export type OpenCodexThread = {

@@ -7,6 +7,7 @@ import { Button, IconButton, Stack, TextField, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 import type {
+  OpenCodexEnterKeyBehavior,
   OpenCodexImageAttachment,
   OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
@@ -80,7 +81,21 @@ export function ChatComposer({
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
-    if (!event.ctrlKey || event.key !== "Enter") {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (event.ctrlKey) {
+      event.preventDefault();
+      void submitDraft();
+      return;
+    }
+
+    if (event.shiftKey || !shouldSubmitOnEnter(store.appStore.settings.enterKeyBehavior, draft)) {
       return;
     }
 
@@ -236,4 +251,19 @@ function readImageAttachmentFromFile(file: File): Promise<OpenCodexImageAttachme
 
 function createAttachmentId(): string {
   return `attachment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function shouldSubmitOnEnter(
+  enterKeyBehavior: OpenCodexEnterKeyBehavior,
+  draft: string
+): boolean {
+  if (enterKeyBehavior === "send") {
+    return true;
+  }
+
+  if (enterKeyBehavior === "smart") {
+    return !draft.includes("\n");
+  }
+
+  return false;
 }

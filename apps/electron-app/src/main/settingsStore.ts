@@ -18,7 +18,8 @@ export const defaultSettings: OpenCodexSettings = {
   experimentalApi: true,
   allowTurnSteering: false,
   language: "system",
-  colorScheme: "system"
+  colorScheme: "system",
+  enterKeyBehavior: "newline"
 };
 
 /**
