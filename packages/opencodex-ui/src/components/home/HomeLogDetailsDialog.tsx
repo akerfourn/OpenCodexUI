@@ -2,6 +2,7 @@
  * Renders application log details.
  */
 import {
+  Box,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -11,6 +12,8 @@ import {
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexLogEntry } from "@open-codex-ui/opencodex-protocol";
+
+import { CopyIconButton } from "../common/CopyIconButton";
 
 type HomeLogDetailsDialogProps = {
   log: OpenCodexLogEntry | null;
@@ -26,10 +29,26 @@ type HomeLogDetailsDialogProps = {
  */
 export function HomeLogDetailsDialog({ log, onClose }: HomeLogDetailsDialogProps) {
   const { t } = useTranslation();
+  const copyValue = log === null ? "" : formatLogForClipboard(log);
 
   return (
     <Dialog open={log !== null} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>{t("logs.details")}</DialogTitle>
+      <DialogTitle>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+          <Box sx={{ flex: "1 1 auto" }}>
+            {t("logs.details")}
+          </Box>
+          {log === null ? null : (
+            <CopyIconButton
+              value={copyValue}
+              label={t("logs.copy")}
+              copiedLabel={t("message.copied")}
+              buttonSize={32}
+              iconSize={18}
+            />
+          )}
+        </Stack>
+      </DialogTitle>
       <DialogContent dividers sx={{ maxHeight: "70vh" }}>
         {log === null ? null : (
           <Stack spacing={2}>
@@ -76,4 +95,18 @@ function formatDetails(details: unknown): string {
   } catch {
     return String(details);
   }
+}
+
+function formatLogForClipboard(log: OpenCodexLogEntry): string {
+  return [
+    `id: ${log.id}`,
+    `createdAt: ${log.createdAt}`,
+    `type: ${log.type}`,
+    "",
+    "message:",
+    log.message,
+    "",
+    "details:",
+    formatDetails(log.details)
+  ].join("\n");
 }
