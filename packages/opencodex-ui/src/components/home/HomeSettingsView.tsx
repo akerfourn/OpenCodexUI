@@ -67,17 +67,25 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
         <MenuItem value="dark">{t("theme.dark")}</MenuItem>
       </TextField>
       <FormControlLabel
+        sx={{ alignItems: "flex-start", m: 0 }}
         control={(
           <Switch
             checked={appStore.settings.allowTurnSteering}
             onChange={handleAllowTurnSteeringChange}
+            sx={{ mt: -0.5 }}
           />
         )}
-        label={t("settings.allowTurnSteering")}
+        label={(
+          <Stack spacing={0.25}>
+            <Typography variant="body1">
+              {t("settings.allowTurnSteering")}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+              {t("settings.allowTurnSteeringDescription")}
+            </Typography>
+          </Stack>
+        )}
       />
-      <Typography variant="body2" color="text.secondary">
-        {t("settings.allowTurnSteeringDescription")}
-      </Typography>
     </Stack>
   );
 }

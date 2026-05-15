@@ -60,7 +60,7 @@ export const resources = {
         removeAttachment: "Retirer l'image",
         reasoning: "Raisonnement",
         send: "Envoyer",
-        steer: "Orienter"
+        steer: "Guider"
       },
       header: {
         model: "Modèle: {{model}}",
@@ -134,8 +134,8 @@ export const resources = {
         reasoning: "Réflexion"
       },
       settings: {
-        allowTurnSteering: "Autoriser l'orientation pendant la réflexion",
-        allowTurnSteeringDescription: "Permet d'envoyer un message dans le turn actif pendant que Codex réfléchit."
+        allowTurnSteering: "Permettre le guidage pendant la réflexion",
+        allowTurnSteeringDescription: "Permet de guider l'agent pendant qu'il réfléchit, en lui fournissant de nouvelles directives sans attendre la réponse finale."
       },
       theme: {
         dark: "Sombre",
