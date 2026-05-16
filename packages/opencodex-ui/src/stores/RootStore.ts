@@ -166,7 +166,28 @@ export class RootStore {
     void this.transport.request({
       type: "system.openLink",
       href: trimmedHref,
-      projectPath: this.activeProjectStore?.projectPath ?? null
+      projectPath: this.activeProjectStore?.projectPath ?? null,
+      sourceId: this.activeProjectStore?.project.sourceId ?? null
+    });
+  }
+
+  /**
+   * Requests opening of a project folder through its configured source opener.
+   *
+   * @param projectPath Project folder path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Nothing.
+   */
+  openProjectInIde(projectPath: string, sourceId: string | null): void {
+    if (sourceId === null) {
+      return;
+    }
+
+    void this.transport.request({
+      type: "system.openProject",
+      projectPath,
+      sourceId
     });
   }
 

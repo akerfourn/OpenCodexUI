@@ -765,7 +765,11 @@ export class OpenCodexBackendRuntime {
    *
    * @returns Success result.
    */
-  async openLink(href: string, projectPath: string | null): Promise<{ ok: true }> {
+  async openLink(
+    href: string,
+    projectPath: string | null,
+    sourceId: string | null
+  ): Promise<{ ok: true }> {
     const target = href.trim();
 
     if (target.length === 0) {
@@ -776,7 +780,38 @@ export class OpenCodexBackendRuntime {
       throw new Error(getBackendLabels(this.settings.language).missingLinkHandler);
     }
 
-    await this.options.openExternalLink(target, this.resolveCurrentProjectPath(projectPath));
+    const source = sourceId === null ? null : await this.resolveSource(sourceId);
+    const openerCommand = source?.settings.openFileCommand ?? null;
+
+    await this.options.openExternalLink(
+      target,
+      this.resolveCurrentProjectPath(projectPath),
+      openerCommand
+    );
+    return { ok: true };
+  }
+
+  /**
+   * Opens a project folder through its configured source opener.
+   *
+   * @param projectPath Project folder path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Success result.
+   */
+  async openProjectInIde(projectPath: string, sourceId: string | null): Promise<{ ok: true }> {
+    if (sourceId === null) {
+      return { ok: true };
+    }
+
+    const source = await this.resolveSource(sourceId);
+    const openerCommand = source.settings.openFolderCommand;
+
+    if (openerCommand === null || this.options.openExternalLink === undefined) {
+      return { ok: true };
+    }
+
+    await this.options.openExternalLink(projectPath, projectPath, openerCommand);
     return { ok: true };
   }
 

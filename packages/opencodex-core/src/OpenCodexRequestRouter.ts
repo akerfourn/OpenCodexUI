@@ -106,7 +106,13 @@ export class OpenCodexRequestRouter {
       case "thread.compact":
         return this.runtime.compactThread(request.threadId, request.projectPath ?? null);
       case "system.openLink":
-        return this.runtime.openLink(request.href, request.projectPath ?? null);
+        return this.runtime.openLink(
+          request.href,
+          request.projectPath ?? null,
+          request.sourceId ?? null
+        );
+      case "system.openProject":
+        return this.runtime.openProjectInIde(request.projectPath, request.sourceId);
       case "turn.start":
         return this.runtime.startTurn(
           request.threadId,

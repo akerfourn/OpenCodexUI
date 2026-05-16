@@ -515,7 +515,9 @@ function migrateLegacySources(database: BetterSqliteDatabase): void {
       settings: serializeSourceSettings({
         commandMode: row.command_mode === "custom" ? "custom" : "auto",
         command: normalizeNullableText(row.command),
-        color: "blue"
+        color: "blue",
+        openFolderCommand: null,
+        openFileCommand: null
       }),
       createdAt: row.created_at,
       updatedAt: row.updated_at

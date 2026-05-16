@@ -15,7 +15,9 @@ export function createDefaultLocalSourceSettings(): CachedSourceLocalSettings {
   return {
     commandMode: "auto",
     command: null,
-    color: "blue"
+    color: "blue",
+    openFolderCommand: null,
+    openFileCommand: null
   };
 }
 
@@ -29,7 +31,9 @@ export function serializeSourceSettings(settings: CachedSourceLocalSettings): st
   return JSON.stringify({
     commandMode: settings.commandMode,
     command: normalizeNullableText(settings.command),
-    color: settings.color
+    color: settings.color,
+    openFolderCommand: normalizeNullableText(settings.openFolderCommand),
+    openFileCommand: normalizeNullableText(settings.openFileCommand)
   });
 }
 
@@ -47,7 +51,9 @@ export function parseLocalSourceSettings(value: string): CachedSourceLocalSettin
     return {
       commandMode,
       command: normalizeNullableText(parsed.command ?? null),
-      color: normalizeSourceColor(parsed.color)
+      color: normalizeSourceColor(parsed.color),
+      openFolderCommand: normalizeNullableText(parsed.openFolderCommand ?? null),
+      openFileCommand: normalizeNullableText(parsed.openFileCommand ?? null)
     };
   } catch {
     return createDefaultLocalSourceSettings();
@@ -87,4 +93,3 @@ export function normalizeNullableText(value: string | null): string | null {
   const trimmedValue = value?.trim() ?? "";
   return trimmedValue.length > 0 ? trimmedValue : null;
 }
-

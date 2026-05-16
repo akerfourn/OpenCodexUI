@@ -355,5 +355,5 @@ function canOpenProjectFileLinks(store: RootStore, projectStore: ProjectStore): 
 
   const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
 
-  return source?.settings.commandMode === "auto";
+  return source?.settings.openFileCommand !== null && source?.settings.openFileCommand !== undefined;
 }

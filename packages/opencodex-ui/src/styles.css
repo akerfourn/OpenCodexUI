@@ -258,17 +258,51 @@ textarea {
   padding: 12px;
 }
 
+.project-sidebar-header {
+  display: block;
+}
+
+.project-sidebar-title {
+  width: 100%;
+}
+
+.project-sidebar-title-row {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.project-sidebar-title-row h1 {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .project-sidebar-header-actions {
+  display: flex;
   flex: 0 0 auto;
 }
 
-.project-sidebar-refresh {
+.project-sidebar-hover-actions {
+  position: absolute;
+  right: 34px;
+  display: flex;
+  flex: 0 0 auto;
+  padding-left: 10px;
+  background: var(--vscode-sideBar-background);
+}
+
+.project-sidebar-hover-action {
   opacity: 0;
   transition: opacity 140ms ease;
 }
 
-.side-header:hover .project-sidebar-refresh,
-.side-header:focus-within .project-sidebar-refresh {
+.project-sidebar-header:hover .project-sidebar-hover-action,
+.project-sidebar-header:focus-within .project-sidebar-hover-action {
   opacity: 1;
 }
 

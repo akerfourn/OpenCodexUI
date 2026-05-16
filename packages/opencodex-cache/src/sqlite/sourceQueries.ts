@@ -212,7 +212,13 @@ export async function updateSource(
         : source.settings.command,
       color: patch.settings?.color !== undefined
         ? normalizeSourceColor(patch.settings.color)
-        : source.settings.color
+        : source.settings.color,
+      openFolderCommand: patch.settings?.openFolderCommand !== undefined
+        ? normalizeNullableText(patch.settings.openFolderCommand)
+        : source.settings.openFolderCommand,
+      openFileCommand: patch.settings?.openFileCommand !== undefined
+        ? normalizeNullableText(patch.settings.openFileCommand)
+        : source.settings.openFileCommand
     },
     updatedAt: new Date().toISOString()
   };

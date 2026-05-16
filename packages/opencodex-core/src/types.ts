@@ -38,7 +38,11 @@ export type OpenCodexBackendOptions = {
    *
    * @returns Promise resolved with the requested result.
    */
-  openExternalLink?(href: string, projectPath: string | null): Promise<void> | void;
+  openExternalLink?(
+    href: string,
+    projectPath: string | null,
+    openerCommand: string | null
+  ): Promise<void> | void;
   /**
    * Lets the host application pick a project directory.
    *

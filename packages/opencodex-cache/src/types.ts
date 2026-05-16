@@ -65,6 +65,8 @@ export type CachedSourceLocalSettings = {
   commandMode: CachedSourceCommandMode;
   command: string | null;
   color: CachedSourceColor;
+  openFolderCommand: string | null;
+  openFileCommand: string | null;
 };
 
 export type CachedSourceBase = {

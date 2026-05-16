@@ -2,6 +2,7 @@
  * Renders the chat list for one opened project.
  */
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
+import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { Alert, Box, Button, IconButton, LinearProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
@@ -28,6 +29,9 @@ type ProjectThreadListProps = {
 export function ProjectThreadList({ store, projectStore }: ProjectThreadListProps) {
   const { t } = useTranslation();
   const threadListStore = projectStore.threadListStore;
+  const source = store.sourcesStore.sources.find((entry) => entry.id === projectStore.project.sourceId);
+  const canOpenProject = source?.settings.openFolderCommand !== null &&
+    source?.settings.openFolderCommand !== undefined;
 
   function handleSearch(event: ChangeEvent<HTMLInputElement>): void {
     threadListStore.setSearchTerm(event.target.value);
@@ -41,44 +45,62 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
     projectStore.refreshThreads();
   }
 
+  function handleOpenProject(): void {
+    store.openProjectInIde(projectStore.projectPath, projectStore.project.sourceId);
+  }
+
   function handleOpenSources(): void {
     store.openSourcesHome();
   }
 
   return (
     <aside className="thread-list">
-      <header className="side-header">
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h6" component="h1" noWrap>
-            {projectStore.displayName}
-          </Typography>
+      <header className="side-header project-sidebar-header">
+        <Box className="project-sidebar-title" sx={{ minWidth: 0 }}>
+          <Box className="project-sidebar-title-row">
+            <Typography variant="h6" component="h1" noWrap>
+              {projectStore.displayName}
+            </Typography>
+            <Stack className="project-sidebar-hover-actions" direction="row" spacing={0.5}>
+              <IconButton
+                className="project-sidebar-hover-action"
+                aria-label={t("sidebar.openProject")}
+                title={t("sidebar.openProject")}
+                size="small"
+                disabled={!canOpenProject}
+                onClick={handleOpenProject}
+              >
+                <OpenInNewOutlinedIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                className="project-sidebar-hover-action"
+                aria-label={t("sidebar.refresh")}
+                title={t("sidebar.refresh")}
+                size="small"
+                disabled={projectStore.isOrphan}
+                onClick={handleRefreshThreads}
+              >
+                <RefreshOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+            <Stack className="project-sidebar-header-actions" direction="row" spacing={0.5}>
+              <Tooltip title={t("sidebar.openNewChat")}>
+                <IconButton
+                  aria-label={t("sidebar.openNewChat")}
+                  color="primary"
+                  size="small"
+                  disabled={projectStore.isOrphan}
+                  onClick={handleNewThread}
+                >
+                  <AddOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </Box>
           <Typography variant="caption" component="div" color="text.secondary" noWrap>
             {projectStore.projectPath}
           </Typography>
         </Box>
-        <Stack className="project-sidebar-header-actions" direction="row" spacing={0.5}>
-          <IconButton
-            className="project-sidebar-refresh"
-            aria-label={t("sidebar.refresh")}
-            title={t("sidebar.refresh")}
-            size="small"
-            disabled={projectStore.isOrphan}
-            onClick={handleRefreshThreads}
-          >
-            <RefreshOutlinedIcon fontSize="small" />
-          </IconButton>
-          <Tooltip title={t("sidebar.openNewChat")}>
-            <IconButton
-              aria-label={t("sidebar.openNewChat")}
-              color="primary"
-              size="small"
-              disabled={projectStore.isOrphan}
-              onClick={handleNewThread}
-            >
-              <AddOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
       </header>
 
       {projectStore.isOrphan ? (

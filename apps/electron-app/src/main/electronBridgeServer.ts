@@ -2,6 +2,7 @@
  * Hosts the Electron-side bridge between renderer IPC requests and the backend.
  */
 import { BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -46,8 +47,8 @@ export class ElectronBridgeServer {
       userDataPath: options.userDataPath,
       defaultCommitPromptPath: resolveDefaultCommitPromptPath(),
       saveSettings: options.saveSettings,
-      openExternalLink: async (href, projectPath) => {
-        await openExternalLink(href, projectPath);
+      openExternalLink: async (href, projectPath, openerCommand) => {
+        await openExternalLink(href, projectPath, openerCommand);
       },
       pickProjectDirectory: async (mode) => {
         return this.pickProjectDirectory(mode);
@@ -353,9 +354,14 @@ function isMissingPathError(error: unknown): boolean {
  *
  * @param href Link value requested by the user interface.
  * @param projectPath Current project path used to resolve relative file links.
+ * @param openerCommand Source-specific command used for local path targets.
  * @returns Promise resolved once Electron has handled the request.
  */
-async function openExternalLink(href: string, projectPath: string | null): Promise<void> {
+async function openExternalLink(
+  href: string,
+  projectPath: string | null,
+  openerCommand: string | null
+): Promise<void> {
   const target = href.trim();
 
   if (target.length === 0) {
@@ -369,11 +375,17 @@ async function openExternalLink(href: string, projectPath: string | null): Promi
     return;
   }
 
-  const error = await shell.openPath(resolved.value);
-
-  if (error.length > 0) {
-    shell.showItemInFolder(resolved.value);
+  if (openerCommand === null) {
+    return;
   }
+
+  openDetachedCommand(openerCommand, {
+    projectPath,
+    filePath: resolved.value,
+    relativePath: projectPath === null ? resolved.value : path.relative(projectPath, resolved.value),
+    line: resolved.line,
+    column: resolved.column
+  });
 }
 
 /**
@@ -386,28 +398,144 @@ async function openExternalLink(href: string, projectPath: string | null): Promi
 function resolveOpenTarget(
   href: string,
   projectPath: string | null
-): { type: "url"; value: string } | { type: "path"; value: string } {
+): { type: "url"; value: string } | {
+  type: "path";
+  value: string;
+  line: string | null;
+  column: string | null;
+} {
   try {
     const url = new URL(href);
 
     if (url.protocol === "file:") {
-      return { type: "path", value: stripLocationSuffix(fileURLToPath(url)) };
+      const location = readLocation(fileURLToPath(url));
+      return {
+        type: "path",
+        value: location.path,
+        line: location.line,
+        column: location.column
+      };
     }
 
     return { type: "url", value: href };
   } catch {
-    const cleanedPath = stripLocationSuffix(href);
+    const location = readLocation(href);
+    const cleanedPath = location.path;
 
     if (path.isAbsolute(cleanedPath)) {
-      return { type: "path", value: cleanedPath };
+      return { type: "path", value: cleanedPath, line: location.line, column: location.column };
     }
 
     if (projectPath !== null) {
-      return { type: "path", value: path.resolve(projectPath, cleanedPath) };
+      return {
+        type: "path",
+        value: path.resolve(projectPath, cleanedPath),
+        line: location.line,
+        column: location.column
+      };
     }
 
-    return { type: "path", value: path.resolve(process.cwd(), cleanedPath) };
+    return {
+      type: "path",
+      value: path.resolve(process.cwd(), cleanedPath),
+      line: location.line,
+      column: location.column
+    };
   }
+}
+
+type OpenCommandContext = {
+  projectPath: string | null;
+  filePath: string;
+  relativePath: string;
+  line: string | null;
+  column: string | null;
+};
+
+/**
+ * Starts an opener command independently from the OpenCodexUI process.
+ *
+ * @param commandLine Source-specific command line.
+ * @param context Placeholder values available to the command.
+ */
+function openDetachedCommand(commandLine: string, context: OpenCommandContext): void {
+  const parts = splitCommandLine(commandLine).map((part) => substituteOpenCommandPlaceholder(part, context));
+
+  if (parts.length === 0) {
+    return;
+  }
+
+  const [command, ...args] = parts;
+
+  if (command === undefined || command.length === 0) {
+    return;
+  }
+
+  const child = spawn(command, args, {
+    detached: true,
+    stdio: "ignore",
+    windowsHide: false
+  });
+
+  child.unref();
+}
+
+/**
+ * Replaces source opener placeholders inside one command argument.
+ *
+ * @param value Command argument.
+ * @param context Placeholder values.
+ * @returns Argument with placeholders replaced.
+ */
+function substituteOpenCommandPlaceholder(value: string, context: OpenCommandContext): string {
+  return value
+    .replaceAll("%D", context.projectPath ?? "")
+    .replaceAll("%F", context.filePath)
+    .replaceAll("%R", context.relativePath)
+    .replaceAll("%L", context.line ?? "")
+    .replaceAll("%C", context.column ?? "");
+}
+
+/**
+ * Splits a simple command line into executable and arguments.
+ *
+ * @param value Command line to split.
+ * @returns Command-line parts with quoted segments preserved.
+ */
+function splitCommandLine(value: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let quote: "\"" | "'" | null = null;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+
+    if ((character === "\"" || character === "'") && quote === null) {
+      quote = character;
+      continue;
+    }
+
+    if (character === quote) {
+      quote = null;
+      continue;
+    }
+
+    if (character === " " && quote === null) {
+      if (current.length > 0) {
+        parts.push(current);
+        current = "";
+      }
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current.length > 0) {
+    parts.push(current);
+  }
+
+  return parts;
 }
 
 /**
@@ -416,8 +544,26 @@ function resolveOpenTarget(
  * @param value File path or URL-derived path that may include line or column hints.
  * @returns Clean filesystem path without location metadata.
  */
-function stripLocationSuffix(value: string): string {
-  return value
-    .replace(/#L\d+(?:-L\d+)?$/i, "")
-    .replace(/:(\d+)(?::(\d+))?$/, "");
+function readLocation(value: string): { path: string; line: string | null; column: string | null } {
+  const lineHashMatch = /#L(\d+)(?:-L\d+)?$/i.exec(value);
+
+  if (lineHashMatch !== null) {
+    return {
+      path: value.slice(0, lineHashMatch.index),
+      line: lineHashMatch[1] ?? null,
+      column: null
+    };
+  }
+
+  const suffixMatch = /:(\d+)(?::(\d+))?$/.exec(value);
+
+  if (suffixMatch !== null) {
+    return {
+      path: value.slice(0, suffixMatch.index),
+      line: suffixMatch[1] ?? null,
+      column: suffixMatch[2] ?? null
+    };
+  }
+
+  return { path: value, line: null, column: null };
 }

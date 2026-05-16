@@ -75,6 +75,7 @@ export const resources = {
       },
       header: {
         model: "Modèle: {{model}}",
+        openProject: "Ouvrir le projet",
         reasoning: "Raisonnement: {{effort}}",
         refresh: "Rafraîchir",
         rename: "Renommer"
@@ -275,6 +276,7 @@ export const resources = {
         filterTabs: "Filtre des conversations",
         new: "Nouveau",
         openNewChat: "Ouvrir un nouveau chat",
+        openProject: "Ouvrir le projet",
         otherChats: "Autres chats",
         refresh: "Synchroniser les chats",
         search: "Rechercher"
@@ -306,6 +308,12 @@ export const resources = {
         editTitle: "Editer la source",
         name: "Nom",
         orphan: "Orphelin",
+        openers: "Ouverture externe",
+        openersHelp: "%D: dossier du projet, %F: fichier, %R: chemin relatif, %L: ligne, %C: colonne. Exemple: code -g %F:%L:%C",
+        openersPresetVsCode: "VSCode",
+        openersPresets: "Choisir un preset",
+        openFileCommand: "Commande pour ouvrir un fichier",
+        openFolderCommand: "Commande pour ouvrir le projet",
         pickExecutable: "Sélectionner",
         resolvedCommand: "Commande utilisée",
         source: "Source",
@@ -385,6 +393,7 @@ export const resources = {
       },
       header: {
         model: "Model: {{model}}",
+        openProject: "Open project",
         reasoning: "Reasoning: {{effort}}",
         refresh: "Refresh",
         rename: "Rename"
@@ -585,6 +594,7 @@ export const resources = {
         filterTabs: "Conversation filter",
         new: "New",
         openNewChat: "Open a new chat",
+        openProject: "Open project",
         otherChats: "Other chats",
         refresh: "Sync chats",
         search: "Search"
@@ -616,6 +626,12 @@ export const resources = {
         editTitle: "Edit source",
         name: "Name",
         orphan: "Orphan",
+        openers: "External opening",
+        openersHelp: "%D: project folder, %F: file, %R: relative path, %L: line, %C: column. Example: code -g %F:%L:%C",
+        openersPresetVsCode: "VSCode",
+        openersPresets: "Choose a preset",
+        openFileCommand: "Open file command",
+        openFolderCommand: "Open project command",
         pickExecutable: "Select",
         resolvedCommand: "Command in use",
         source: "Source",

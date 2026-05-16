@@ -48,10 +48,11 @@ export function createDefaultCachedSource(): CachedSource {
     settings: {
       commandMode: "auto",
       command: null,
-      color: "blue"
+      color: "blue",
+      openFolderCommand: null,
+      openFileCommand: null
     },
     createdAt: now,
     updatedAt: now
   };
 }
-

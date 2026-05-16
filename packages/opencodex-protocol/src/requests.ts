@@ -61,7 +61,8 @@ export type OpenCodexRequest =
   | { type: "threads.rename"; threadId: string; name: string }
   | { type: "thread.review"; threadId: string; projectPath?: string | null }
   | { type: "thread.compact"; threadId: string; projectPath?: string | null }
-  | { type: "system.openLink"; href: string; projectPath?: string | null }
+  | { type: "system.openLink"; href: string; projectPath?: string | null; sourceId?: string | null }
+  | { type: "system.openProject"; projectPath: string; sourceId: string | null }
   | {
       type: "turn.start";
       threadId: string | null;

@@ -42,6 +42,8 @@ export type OpenCodexSourceLocalSettings = {
   commandMode: OpenCodexSourceCommandMode;
   command: string | null;
   color: OpenCodexSourceColor;
+  openFolderCommand: string | null;
+  openFileCommand: string | null;
 };
 
 export type OpenCodexSourceBase = {

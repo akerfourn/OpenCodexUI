@@ -1,9 +1,11 @@
 /**
  * Renders one Codex source card and its edit dialog.
  */
+import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
+import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
 import {
@@ -16,6 +18,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  Menu,
   MenuItem,
   Radio,
   RadioGroup,
@@ -25,7 +28,7 @@ import {
   Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { SelectProps } from "@mui/material/Select";
 
@@ -66,6 +69,13 @@ export function HomeSourceBox({
   const [colorDraft, setColorDraft] = useState(source.settings.color);
   const [commandModeDraft, setCommandModeDraft] = useState(source.settings.commandMode);
   const [commandDraft, setCommandDraft] = useState(source.settings.command ?? "");
+  const [openFolderCommandDraft, setOpenFolderCommandDraft] = useState(
+    source.settings.openFolderCommand ?? ""
+  );
+  const [openFileCommandDraft, setOpenFileCommandDraft] = useState(
+    source.settings.openFileCommand ?? ""
+  );
+  const [presetMenuAnchor, setPresetMenuAnchor] = useState<HTMLElement | null>(null);
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
   const [isDeleteConfirmed, setIsDeleteConfirmed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -77,7 +87,16 @@ export function HomeSourceBox({
     setColorDraft(source.settings.color);
     setCommandModeDraft(source.settings.commandMode);
     setCommandDraft(source.settings.command ?? "");
-  }, [source.settings.color, source.settings.command, source.settings.commandMode, source.name]);
+    setOpenFolderCommandDraft(source.settings.openFolderCommand ?? "");
+    setOpenFileCommandDraft(source.settings.openFileCommand ?? "");
+  }, [
+    source.settings.color,
+    source.settings.command,
+    source.settings.commandMode,
+    source.settings.openFileCommand,
+    source.settings.openFolderCommand,
+    source.name
+  ]);
 
   function handleEdit(): void {
     onEdit(source.id);
@@ -103,6 +122,32 @@ export function HomeSourceBox({
     setCommandDraft(event.target.value);
   }
 
+  function handleOpenFolderCommandChange(
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ): void {
+    setOpenFolderCommandDraft(event.target.value);
+  }
+
+  function handleOpenFileCommandChange(
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ): void {
+    setOpenFileCommandDraft(event.target.value);
+  }
+
+  function handlePresetMenuOpen(event: MouseEvent<HTMLButtonElement>): void {
+    setPresetMenuAnchor(event.currentTarget);
+  }
+
+  function handlePresetMenuClose(): void {
+    setPresetMenuAnchor(null);
+  }
+
+  function handleApplyVsCodePreset(): void {
+    setOpenFolderCommandDraft("code -r %D");
+    setOpenFileCommandDraft("code -g %F:%L:%C");
+    setPresetMenuAnchor(null);
+  }
+
   function handlePickExecutable(): void {
     void sourcesStore.pickSourceExecutablePath().then((path) => {
       if (path !== null) {
@@ -124,7 +169,9 @@ export function HomeSourceBox({
       settings: {
         color: colorDraft,
         commandMode: commandModeDraft,
-        command: commandDraft
+        command: commandDraft,
+        openFolderCommand: openFolderCommandDraft,
+        openFileCommand: openFileCommandDraft
       }
     });
     onCloseEdit();
@@ -359,6 +406,50 @@ export function HomeSourceBox({
                   </Button>
                 </Stack>
               ) : null}
+              <Stack spacing={1}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  <Typography variant="subtitle2">
+                    {t("sources.openers")}
+                  </Typography>
+                  <Tooltip title={t("sources.openersHelp")}>
+                    <HelpOutlineOutlinedIcon color="action" fontSize="small" />
+                  </Tooltip>
+                  <Tooltip title={t("sources.openersPresets")}>
+                    <IconButton
+                      size="small"
+                      aria-label={t("sources.openersPresets")}
+                      onClick={handlePresetMenuOpen}
+                    >
+                      <CodeOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Menu
+                    anchorEl={presetMenuAnchor}
+                    open={presetMenuAnchor !== null}
+                    onClose={handlePresetMenuClose}
+                  >
+                    <MenuItem onClick={handleApplyVsCodePreset}>
+                      {t("sources.openersPresetVsCode")}
+                    </MenuItem>
+                  </Menu>
+                </Box>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={openFolderCommandDraft}
+                  label={t("sources.openFolderCommand")}
+                  placeholder="code -r %D"
+                  onChange={handleOpenFolderCommandChange}
+                />
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={openFileCommandDraft}
+                  label={t("sources.openFileCommand")}
+                  placeholder="code -g %F:%L:%C"
+                  onChange={handleOpenFileCommandChange}
+                />
+              </Stack>
             </Stack>
           </DialogContent>
           <DialogActions>
