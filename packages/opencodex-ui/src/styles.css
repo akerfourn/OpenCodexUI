@@ -355,7 +355,7 @@ textarea {
   overflow: hidden;
 }
 
-.git-panel {
+.project-side-panel {
   display: flex;
   min-width: 0;
   min-height: 0;
@@ -363,6 +363,30 @@ textarea {
   overflow: hidden;
   border-left: 1px solid var(--vscode-panel-border);
   background: var(--vscode-sideBar-background);
+}
+
+.project-side-panel-tabs {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.project-side-panel-tabs .MuiTabs-root {
+  min-height: 30px;
+}
+
+.project-side-panel-tabs .MuiTab-root {
+  min-height: 30px;
+  padding: 3px 12px;
+  text-transform: none;
+}
+
+.git-panel {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .git-panel-header {
@@ -707,7 +731,7 @@ textarea {
     grid-template-rows: minmax(0, 1fr) minmax(220px, 34dvh);
   }
 
-  .git-panel {
+  .project-side-panel {
     border-top: 1px solid var(--vscode-panel-border);
     border-left: 0;
   }

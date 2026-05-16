@@ -92,6 +92,7 @@ export const resources = {
         generateMessageUnavailable: "Stagez au moins un fichier pour générer un message.",
         generatingMessage: "Génération...",
         noChangedFiles: "Aucun fichier modifié.",
+        noBranch: "Branche inconnue",
         noRepository: "Ce projet n'est pas un dépôt Git.",
         noStagedFiles: "Aucun fichier staged.",
         pullChanges: "Récupérer {{count}} changement(s) ↓",
@@ -260,6 +261,10 @@ export const resources = {
       project: {
         orphanSource: "Ce projet n'est plus associe a une source Codex. Il est disponible en lecture seule jusqu'a une resynchronisation."
       },
+      projectTools: {
+        git: "Git",
+        tabs: "Outils du projet"
+      },
       trustProject: {
         cancel: "Plus tard",
         confirmCheckbox: "Je fais confiance au contenu local de ce projet",
@@ -410,6 +415,7 @@ export const resources = {
         generateMessageUnavailable: "Stage at least one file to generate a message.",
         generatingMessage: "Generating...",
         noChangedFiles: "No changed files.",
+        noBranch: "Unknown branch",
         noRepository: "This project is not a Git repository.",
         noStagedFiles: "No staged files.",
         pullChanges: "Pull {{count}} change(s) ↓",
@@ -577,6 +583,10 @@ export const resources = {
       },
       project: {
         orphanSource: "This project is no longer associated with a Codex source. It is read-only until it is resynchronized."
+      },
+      projectTools: {
+        git: "Git",
+        tabs: "Project tools"
       },
       trustProject: {
         cancel: "Later",

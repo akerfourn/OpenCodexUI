@@ -7,7 +7,7 @@ import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { ChatViewX } from "../chat/ChatView";
 import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
-import { ProjectGitPanelX } from "./ProjectGitPanel";
+import { ProjectSidePanel } from "./ProjectSidePanel";
 import { ProjectThreadListX } from "./ProjectThreadList";
 
 type ProjectViewProps = {
@@ -33,7 +33,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
         <section className="main-pane">
           <ChatViewX store={store} projectStore={projectStore} />
         </section>
-        <ProjectGitPanelX store={store} projectStore={projectStore} />
+        <ProjectSidePanel store={store} projectStore={projectStore} />
       </section>
     </ResizableSidebarLayout>
   );

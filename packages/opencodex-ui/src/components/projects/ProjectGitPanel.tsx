@@ -108,17 +108,18 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     : t("git.generateMessageUnavailable");
 
   return (
-    <aside className="git-panel">
+    <section className="git-panel">
       <Stack className="git-panel-header" direction="row" spacing={1} sx={{ alignItems: "center" }}>
         <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-          <Typography variant="subtitle1" component="h2" noWrap>
-            {t("git.title")}
-          </Typography>
           {gitStore.status.branchName !== null ? (
             <Typography variant="caption" color="text.secondary" noWrap>
               {gitStore.status.branchName}
             </Typography>
-          ) : null}
+          ) : (
+            <Typography variant="caption" color="text.secondary" noWrap>
+              {t("git.noBranch")}
+            </Typography>
+          )}
         </Box>
         <Tooltip title={t("git.refresh")}>
           <IconButton
@@ -126,8 +127,9 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
             size="small"
             disabled={!gitStore.isAvailable || gitStore.isLoading}
             onClick={handleRefresh}
+            sx={{ height: 26, width: 26 }}
           >
-            <RefreshOutlinedIcon fontSize="small" />
+            <RefreshOutlinedIcon sx={{ fontSize: 16 }} />
           </IconButton>
         </Tooltip>
       </Stack>
@@ -301,7 +303,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         open={isGenerateDialogOpen}
         onClose={handleCloseGenerateDialog}
       />
-    </aside>
+    </section>
   );
 }
 
