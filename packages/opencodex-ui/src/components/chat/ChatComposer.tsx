@@ -2,8 +2,11 @@
  * Renders the chat composer component for the OpenCodex UI.
  */
 import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
+import AssistantDirectionRoundedIcon from "@mui/icons-material/AssistantDirectionRounded";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
 import { useCallback, useEffect, useState } from "react";
-import { Button, IconButton, Stack, Tooltip } from "@mui/material";
+import { IconButton, Stack, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -57,6 +60,7 @@ export function ChatComposer({
   const canSteer = chatStore.canSteerActiveTurn;
   const isSteering = isWorking && canSteer;
   const canSubmit = (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
+  const canShowSubmit = !isWorking || canSteer;
   const canAttachImages = !isWorking || canSteer;
   const areAdvancedActionsDisabled = (
     isWorking ||
@@ -246,11 +250,6 @@ export function ChatComposer({
           onReasoningEffortChange={handleEffortChange}
         />
         <div className="spacer" />
-        {isWorking ? (
-          <Button type="button" variant="outlined" onClick={handleInterrupt}>
-            {t("composer.interrupt")}
-          </Button>
-        ) : null}
         <ChatAdvancedActionsMenu
           disabled={areAdvancedActionsDisabled}
           onReview={handleReview}
@@ -268,9 +267,34 @@ export function ChatComposer({
             </IconButton>
           </span>
         </Tooltip>
-        <Button variant="contained" type="submit" disabled={!canSubmit}>
-          {isSteering ? t("composer.steer") : t("composer.send")}
-        </Button>
+        {isWorking ? (
+          <Tooltip title={t("composer.interrupt")}>
+            <span>
+              <IconButton
+                className="composer-icon-button composer-icon-button-stop"
+                type="button"
+                aria-label={t("composer.interrupt")}
+                onClick={handleInterrupt}
+              >
+                <StopCircleRoundedIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+        ) : null}
+        {canShowSubmit ? (
+          <Tooltip title={isSteering ? t("composer.steer") : t("composer.send")}>
+            <span>
+              <IconButton
+                className="composer-icon-button composer-icon-button-primary"
+                type="submit"
+                aria-label={isSteering ? t("composer.steer") : t("composer.send")}
+                disabled={!canSubmit}
+              >
+                {isSteering ? <AssistantDirectionRoundedIcon /> : <SendRoundedIcon />}
+              </IconButton>
+            </span>
+          </Tooltip>
+        ) : null}
       </Stack>
     </form>
   );

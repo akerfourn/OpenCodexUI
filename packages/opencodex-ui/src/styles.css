@@ -572,6 +572,39 @@ textarea {
   margin-top: 10px;
 }
 
+.composer-icon-button.MuiIconButton-root {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+}
+
+.composer-icon-button-primary.MuiIconButton-root {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.composer-icon-button-primary.MuiIconButton-root:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.composer-icon-button-primary.MuiIconButton-root.Mui-disabled {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-disabledForeground);
+}
+
+.composer-icon-button-stop.MuiIconButton-root {
+  border: 1px solid var(--vscode-button-border);
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+.composer-icon-button-stop.MuiIconButton-root:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.composer-icon-button-stop.MuiIconButton-root .MuiSvgIcon-root {
+  color: inherit;
+}
+
 .spacer {
   flex: 1;
 }
