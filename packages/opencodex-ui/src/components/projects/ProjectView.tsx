@@ -9,6 +9,7 @@ import { ChatViewX } from "../chat/ChatView";
 import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
 import { ProjectSidePanel } from "./ProjectSidePanel";
 import { ProjectThreadListX } from "./ProjectThreadList";
+import { ProjectWorkspaceLayout } from "./ProjectWorkspaceLayout";
 
 type ProjectViewProps = {
   store: RootStore;
@@ -29,12 +30,15 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
       defaultSidebarWidth={320}
       sidebar={<ProjectThreadListX store={store} projectStore={projectStore} />}
     >
-      <section className="project-workspace-main">
-        <section className="main-pane">
-          <ChatViewX store={store} projectStore={projectStore} />
-        </section>
-        <ProjectSidePanel store={store} projectStore={projectStore} />
-      </section>
+      <ProjectWorkspaceLayout
+        defaultPanelWidth={360}
+        mainPanel={(
+          <section className="main-pane">
+            <ChatViewX store={store} projectStore={projectStore} />
+          </section>
+        )}
+        sidePanel={<ProjectSidePanel store={store} projectStore={projectStore} />}
+      />
     </ResizableSidebarLayout>
   );
 }
