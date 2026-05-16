@@ -18,6 +18,7 @@ import { CommitPromptStore } from "./CommitPromptStore";
 import { HomeStore } from "./HomeStore";
 import { LogsStore } from "./LogsStore";
 import { NavigationStore } from "./NavigationStore";
+import { PluginsStore } from "./PluginsStore";
 import type { ProjectStore } from "./ProjectStore";
 import { ProjectsStore } from "./ProjectsStore";
 import { SourcesStore } from "./SourcesStore";
@@ -35,6 +36,7 @@ export class RootStore {
   readonly homeStore = new HomeStore();
   readonly logsStore = new LogsStore(this);
   readonly navigationStore = new NavigationStore(this);
+  readonly pluginsStore = new PluginsStore(this);
   readonly projectsStore = new ProjectsStore(this);
   readonly sourcesStore = new SourcesStore(this);
   readonly usageStore = new UsageStore(this);

@@ -7,6 +7,7 @@ import type { RootStore } from "../../stores/RootStore";
 import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
 import { HomeCommitViewX } from "./HomeCommitView";
 import { HomeLogsViewX } from "./HomeLogsView";
+import { HomePluginsViewX } from "./HomePluginsView";
 import { HomeProjectsViewX } from "./HomeProjectsView";
 import { HomeSettingsViewX } from "./HomeSettingsView";
 import { HomeSidebarX } from "./HomeSidebar";
@@ -36,6 +37,10 @@ export function HomeView({ store }: HomeViewProps) {
 
   if (store.homeStore.selectedSection === "commit") {
     mainContent = <HomeCommitViewX store={store} />;
+  }
+
+  if (store.homeStore.selectedSection === "plugins") {
+    mainContent = <HomePluginsViewX store={store} />;
   }
 
   if (store.homeStore.selectedSection === "logs") {

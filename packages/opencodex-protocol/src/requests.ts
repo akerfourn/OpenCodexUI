@@ -99,6 +99,22 @@ export type OpenCodexRequest =
   | { type: "project.trust.dismiss"; projectPath: string }
   | { type: "models.list" }
   | { type: "usage.read" }
+  | { type: "plugins.list"; sourceId: string | null }
+  | {
+      type: "plugins.read";
+      sourceId: string | null;
+      marketplaceName: string;
+      marketplacePath: string | null;
+      pluginName: string;
+    }
+  | {
+      type: "plugins.install";
+      sourceId: string | null;
+      marketplaceName: string;
+      marketplacePath: string | null;
+      pluginName: string;
+    }
+  | { type: "plugins.uninstall"; sourceId: string | null; pluginId: string }
   | { type: "git.status"; projectPath: string; sourceId: string | null }
   | { type: "git.stage"; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.unstage"; projectPath: string; sourceId: string | null; paths: string[] }

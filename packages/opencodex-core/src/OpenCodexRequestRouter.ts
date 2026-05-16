@@ -156,6 +156,24 @@ export class OpenCodexRequestRouter {
         return this.runtime.listModels();
       case "usage.read":
         return this.runtime.readUsageLimits();
+      case "plugins.list":
+        return this.runtime.listPlugins(request.sourceId);
+      case "plugins.read":
+        return this.runtime.readPlugin(
+          request.sourceId,
+          request.marketplaceName,
+          request.marketplacePath,
+          request.pluginName
+        );
+      case "plugins.install":
+        return this.runtime.installPlugin(
+          request.sourceId,
+          request.marketplaceName,
+          request.marketplacePath,
+          request.pluginName
+        );
+      case "plugins.uninstall":
+        return this.runtime.uninstallPlugin(request.sourceId, request.pluginId);
       case "git.status":
         return this.runtime.readGitStatus(request.projectPath, request.sourceId);
       case "git.stage":

@@ -2,6 +2,7 @@
  * Renders the Home vertical navigation.
  */
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import WorkspacesOutlinedIcon from "@mui/icons-material/WorkspacesOutlined";
@@ -54,6 +55,14 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
     void store.commitPromptStore.load();
   }
 
+  function selectPlugins(): void {
+    selectSection("plugins");
+    store.pluginsStore.selectDefaultSource(
+      store.sourcesStore.sources,
+      store.appStore.settings.defaultSourceId
+    );
+  }
+
   function selectSection(section: HomeSection): void {
     store.homeStore.selectSection(section);
   }
@@ -83,6 +92,12 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
             <AutoAwesomeOutlinedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary={t(commitLabelKey)} />
+        </ListItemButton>
+        <ListItemButton selected={selectedSection === "plugins"} onClick={selectPlugins}>
+          <ListItemIcon>
+            <ExtensionOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("home.plugins")} />
         </ListItemButton>
       </List>
       <List dense sx={{ mt: "auto" }}>

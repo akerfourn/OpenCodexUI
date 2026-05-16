@@ -208,6 +208,93 @@ export type OpenCodexProjectCommandRun = {
   logPath: string | null;
 };
 
+export type OpenCodexPluginInstallPolicy =
+  | "available"
+  | "notAvailable"
+  | "installedByDefault"
+  | "unknown";
+
+export type OpenCodexPluginAvailability = "available" | "disabledByAdmin" | "unknown";
+
+export type OpenCodexPluginSourceType = "local" | "git" | "remote" | "unknown";
+
+export type OpenCodexPluginMarketplace = {
+  name: string;
+  displayName: string;
+  path: string | null;
+  plugins: OpenCodexPluginSummary[];
+};
+
+export type OpenCodexPluginSummary = {
+  id: string;
+  name: string;
+  marketplaceName: string;
+  marketplaceDisplayName: string;
+  marketplacePath: string | null;
+  displayName: string;
+  shortDescription: string | null;
+  longDescription: string | null;
+  developerName: string | null;
+  category: string | null;
+  capabilities: string[];
+  keywords: string[];
+  installed: boolean;
+  enabled: boolean;
+  installPolicy: OpenCodexPluginInstallPolicy;
+  availability: OpenCodexPluginAvailability;
+  authPolicy: string;
+  sourceType: OpenCodexPluginSourceType;
+  logoUrl: string | null;
+  composerIconUrl: string | null;
+  isFeatured: boolean;
+};
+
+export type OpenCodexPluginSkillSummary = {
+  name: string;
+  displayName: string;
+  description: string;
+  shortDescription: string | null;
+  enabled: boolean;
+};
+
+export type OpenCodexPluginAppSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  installUrl: string | null;
+  needsAuth: boolean;
+};
+
+export type OpenCodexPluginHookSummary = {
+  key: string;
+  eventName: string;
+};
+
+export type OpenCodexPluginDetail = {
+  marketplaceName: string;
+  marketplacePath: string | null;
+  summary: OpenCodexPluginSummary;
+  description: string | null;
+  skills: OpenCodexPluginSkillSummary[];
+  hooks: OpenCodexPluginHookSummary[];
+  apps: OpenCodexPluginAppSummary[];
+  mcpServers: string[];
+};
+
+export type OpenCodexPluginListResult = {
+  sourceId: string | null;
+  marketplaces: OpenCodexPluginMarketplace[];
+  featuredPluginIds: string[];
+  categories: string[];
+  loadErrors: string[];
+};
+
+export type OpenCodexPluginInstallResult = {
+  ok: true;
+  authPolicy: string | null;
+  appsNeedingAuth: OpenCodexPluginAppSummary[];
+};
+
 export type OpenCodexSettings = {
   codexCommand: string;
   defaultSourceId: string | null;

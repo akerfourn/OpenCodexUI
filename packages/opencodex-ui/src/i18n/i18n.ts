@@ -198,6 +198,7 @@ export const resources = {
         projects: "Projets",
         commit: "Commit",
         saveChanges: "Enregistrement",
+        plugins: "Plugins",
         recentProjects: "Projets récents",
         refreshProjects: "Synchroniser les projets récents",
         searchProjects: "Rechercher un projet",
@@ -234,6 +235,41 @@ export const resources = {
           weeks: "semaines"
         },
         viewLogs: "Voir les logs"
+      },
+      plugins: {
+        categories: {
+          all: "Toutes"
+        },
+        category: "Catégorie",
+        close: "Fermer",
+        description: "Explorez les plugins exposés par Codex pour la source sélectionnée.",
+        empty: "Aucun plugin ne correspond aux filtres.",
+        enabled: "Activé",
+        experimentalNotice: "Cette intégration utilise l'API plugins expérimentale de Codex. " +
+          "Les informations peuvent varier selon la version de la CLI.",
+        featured: "Mis en avant",
+        filter: "Type",
+        filters: {
+          all: "Tous les plugins",
+          available: "Disponibles",
+          installed: "Installés"
+        },
+        install: "Installer",
+        installed: "Installé",
+        installedByDefault: "Installé par défaut",
+        integrations: "Intégrations",
+        mcpServer: "Serveur MCP",
+        needsAuth: "Authentification requise",
+        noDescription: "Aucune description disponible.",
+        noIntegrations: "Aucune intégration déclarée.",
+        noSkills: "Aucun skill déclaré.",
+        noSource: "Aucune source Codex disponible.",
+        refresh: "Rafraîchir les plugins",
+        search: "Rechercher des plugins",
+        skills: "Skills",
+        source: "Source",
+        title: "Plugins",
+        uninstall: "Désinstaller"
       },
       commitPrompt: {
         cancel: "Annuler",
@@ -605,6 +641,7 @@ export const resources = {
         projects: "Projects",
         commit: "Commit",
         saveChanges: "Saving",
+        plugins: "Plugins",
         recentProjects: "Recent projects",
         refreshProjects: "Sync recent projects",
         searchProjects: "Search projects",
@@ -641,6 +678,40 @@ export const resources = {
           weeks: "weeks"
         },
         viewLogs: "View logs"
+      },
+      plugins: {
+        categories: {
+          all: "All"
+        },
+        category: "Category",
+        close: "Close",
+        description: "Explore plugins exposed by Codex for the selected source.",
+        empty: "No plugin matches the current filters.",
+        enabled: "Enabled",
+        experimentalNotice: "This integration uses Codex's experimental plugins API. Metadata may vary across CLI versions.",
+        featured: "Featured",
+        filter: "Type",
+        filters: {
+          all: "All plugins",
+          available: "Available",
+          installed: "Installed"
+        },
+        install: "Install",
+        installed: "Installed",
+        installedByDefault: "Installed by default",
+        integrations: "Integrations",
+        mcpServer: "MCP server",
+        needsAuth: "Authentication required",
+        noDescription: "No description available.",
+        noIntegrations: "No declared integration.",
+        noSkills: "No declared skill.",
+        noSource: "No Codex source available.",
+        refresh: "Refresh plugins",
+        search: "Search plugins",
+        skills: "Skills",
+        source: "Source",
+        title: "Plugins",
+        uninstall: "Uninstall"
       },
       commitPrompt: {
         cancel: "Cancel",

@@ -24,6 +24,9 @@ import type {
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
+  OpenCodexPluginDetail,
+  OpenCodexPluginInstallResult,
+  OpenCodexPluginListResult,
   OpenCodexProject,
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRun,
@@ -59,6 +62,7 @@ import { ThreadCacheService } from "./backend/ThreadCacheService.js";
 import { GitService } from "./backend/GitService.js";
 import { CommitMessageService } from "./backend/CommitMessageService.js";
 import { ProjectCommandService } from "./backend/ProjectCommandService.js";
+import { PluginService } from "./backend/PluginService.js";
 import { readObject, readString } from "./mapping.js";
 import {
   mapUsageLimitsNotification,
@@ -82,6 +86,7 @@ export class OpenCodexBackendRuntime {
   private readonly gitService: GitService;
   private readonly commitMessageService: CommitMessageService;
   private readonly projectCommandService: ProjectCommandService;
+  private readonly pluginService: PluginService;
   private readonly ignoredNotificationThreadIds = new Set<string>();
 
   /**
@@ -172,6 +177,9 @@ export class OpenCodexBackendRuntime {
       cacheRepository: this.cacheRepository,
       userDataPath: options.userDataPath,
       emit: (event) => this.emit(event),
+      ensureClient: (sourceId) => this.ensureClient(sourceId)
+    });
+    this.pluginService = new PluginService({
       ensureClient: (sourceId) => this.ensureClient(sourceId)
     });
   }
@@ -866,6 +874,73 @@ export class OpenCodexBackendRuntime {
       this.emit({ type: "usage.updated", usage: null });
       return null;
     }
+  }
+
+  /**
+   * Lists plugins visible from a Codex source.
+   *
+   * @param sourceId Source identifier, or `null` for the default source.
+   * @returns Plugin marketplaces.
+   */
+  async listPlugins(sourceId: string | null): Promise<OpenCodexPluginListResult> {
+    return await this.pluginService.list(sourceId);
+  }
+
+  /**
+   * Reads one plugin detail from a Codex source.
+   *
+   * @param sourceId Source identifier, or `null` for the default source.
+   * @param marketplaceName Marketplace identifier.
+   * @param marketplacePath Local marketplace path, when available.
+   * @param pluginName Plugin name inside the marketplace.
+   * @returns Plugin detail.
+   */
+  async readPlugin(
+    sourceId: string | null,
+    marketplaceName: string,
+    marketplacePath: string | null,
+    pluginName: string
+  ): Promise<OpenCodexPluginDetail> {
+    return await this.pluginService.read({
+      sourceId,
+      marketplaceName,
+      marketplacePath,
+      pluginName
+    });
+  }
+
+  /**
+   * Installs one plugin through a Codex source.
+   *
+   * @param sourceId Source identifier, or `null` for the default source.
+   * @param marketplaceName Marketplace identifier.
+   * @param marketplacePath Local marketplace path, when available.
+   * @param pluginName Plugin name inside the marketplace.
+   * @returns Installation result.
+   */
+  async installPlugin(
+    sourceId: string | null,
+    marketplaceName: string,
+    marketplacePath: string | null,
+    pluginName: string
+  ): Promise<OpenCodexPluginInstallResult> {
+    return await this.pluginService.install({
+      sourceId,
+      marketplaceName,
+      marketplacePath,
+      pluginName
+    });
+  }
+
+  /**
+   * Uninstalls one plugin through a Codex source.
+   *
+   * @param sourceId Source identifier, or `null` for the default source.
+   * @param pluginId Installed plugin identifier.
+   * @returns Success result.
+   */
+  async uninstallPlugin(sourceId: string | null, pluginId: string): Promise<{ ok: true }> {
+    return await this.pluginService.uninstall(sourceId, pluginId);
   }
 
   /**
