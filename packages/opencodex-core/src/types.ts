@@ -14,6 +14,7 @@ export type OpenCodexBackendOptions = {
   cacheRepository?: OpenCodexCacheRepository | null;
   userDataPath?: string;
   defaultCommitPromptPath?: string;
+  generationCommitPromptPath?: string;
   /**
    * Emits a backend event to the UI transport.
    *

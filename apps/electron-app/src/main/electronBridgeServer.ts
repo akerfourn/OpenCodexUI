@@ -46,6 +46,7 @@ export class ElectronBridgeServer {
       cacheRepository,
       userDataPath: options.userDataPath,
       defaultCommitPromptPath: resolveDefaultCommitPromptPath(),
+      generationCommitPromptPath: resolveGenerationCommitPromptPath(),
       saveSettings: options.saveSettings,
       openExternalLink: async (href, projectPath, openerCommand) => {
         await openExternalLink(href, projectPath, openerCommand);
@@ -186,18 +187,26 @@ export class ElectronBridgeServer {
 }
 
 function resolveDefaultCommitPromptPath(): string {
+  return resolvePackagedMarkdownPath("prompt-commit.default.md");
+}
+
+function resolveGenerationCommitPromptPath(): string {
+  return resolvePackagedMarkdownPath("prompt-commit.generation.md");
+}
+
+function resolvePackagedMarkdownPath(fileName: string): string {
   const packagedResourcesPath = process.resourcesPath === undefined
     ? null
-    : path.join(process.resourcesPath, "prompt-commit.default.md");
+    : path.join(process.resourcesPath, fileName);
 
   const candidates = [
     packagedResourcesPath,
-    path.resolve(process.cwd(), "..", "..", "prompt-commit.default.md"),
-    path.resolve(process.cwd(), "prompt-commit.default.md")
+    path.resolve(process.cwd(), "..", "..", fileName),
+    path.resolve(process.cwd(), fileName)
   ].filter((candidate): candidate is string => candidate !== null);
 
   return candidates.find((candidate) => fsSync.existsSync(candidate))
-    ?? path.resolve(process.cwd(), "..", "..", "prompt-commit.default.md");
+    ?? path.resolve(process.cwd(), "..", "..", fileName);
 }
 
 async function createImageAttachmentFromPath(

@@ -12,6 +12,8 @@ files:
 extraResources:
   - from: ../../prompt-commit.default.md
     to: prompt-commit.default.md
+  - from: ../../prompt-commit.generation.md
+    to: prompt-commit.generation.md
 
 asarUnpack:
   - "**/node_modules/better-sqlite3/**/*"

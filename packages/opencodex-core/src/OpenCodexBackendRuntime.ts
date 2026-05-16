@@ -156,6 +156,7 @@ export class OpenCodexBackendRuntime {
     this.commitMessageService = new CommitMessageService({
       userDataPath: options.userDataPath,
       defaultPromptPath: options.defaultCommitPromptPath,
+      generationPromptPath: options.generationCommitPromptPath,
       gitService: this.gitService,
       getSettings: () => this.settings,
       ensureClient: (sourceId) => this.ensureClient(sourceId),
