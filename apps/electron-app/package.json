@@ -1,6 +1,6 @@
 {
   "name": "open-codex-ui-electron-app",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Electron desktop UI for the local Codex app-server.",
   "author": "OpenCodexUI contributors",
   "private": true,
