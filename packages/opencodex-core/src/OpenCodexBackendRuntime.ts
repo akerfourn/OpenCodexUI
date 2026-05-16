@@ -2,6 +2,7 @@ import {
   CodexProcessError,
   type CodexNotification,
   type FuzzyFileSearchResponse,
+  type v2,
   type CodexServerRequest
 } from "@open-codex-ui/codex-rpc";
 import type {
@@ -13,6 +14,7 @@ import type {
   OpenCodexApprovalDecision,
   OpenCodexCommitMessageGenerationResult,
   OpenCodexCommitMessageLanguage,
+  OpenCodexComposerReference,
   OpenCodexCommitPrompt,
   OpenCodexEvent,
   OpenCodexFileSearchResult,
@@ -26,6 +28,7 @@ import type {
   OpenCodexRequest,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
+  OpenCodexSkillSearchResult,
   OpenCodexSource,
   OpenCodexSourceLocalSettings,
   OpenCodexThread,
@@ -262,6 +265,56 @@ export class OpenCodexBackendRuntime {
         fileName: file.file_name,
         matchType: file.match_type
       }));
+  }
+
+  /**
+   * Searches Codex skills available for a project.
+   *
+   * @param projectPath Project root path.
+   * @param sourceId Source identifier, or `null`.
+   * @param query User query without the `$` trigger.
+   * @param limit Maximum number of results.
+   *
+   * @returns Matching skills.
+   */
+  async searchProjectSkills(
+    projectPath: string,
+    sourceId: string | null,
+    query: string,
+    limit: number
+  ): Promise<OpenCodexSkillSearchResult[]> {
+    const root = normalizeProjectPath(projectPath);
+
+    if (root === null) {
+      return [];
+    }
+
+    const client = await this.ensureClient(sourceId);
+    const response = await client.request<v2.SkillsListResponse>("skills/list", {
+      cwds: [root],
+      forceReload: false
+    });
+    const allSkills = response.data.flatMap((entry: v2.SkillsListEntry) => entry.skills);
+    const enabledSkills = allSkills.filter((skill: v2.SkillMetadata) => skill.enabled);
+    const scoredSkills = enabledSkills
+      .map((skill: v2.SkillMetadata) => ({
+        skill,
+        score: scoreSkillSearchResult(skill.name, skill.interface?.displayName, query)
+      }))
+      .filter((entry: { skill: v2.SkillMetadata; score: number }) => entry.score >= 0)
+      .sort((
+        left: { skill: v2.SkillMetadata; score: number },
+        right: { skill: v2.SkillMetadata; score: number }
+      ) => right.score - left.score || left.skill.name.localeCompare(right.skill.name));
+
+    return scoredSkills.slice(0, Math.max(1, limit)).map(({ skill }) => ({
+      name: skill.name,
+      displayName: skill.interface?.displayName ?? skill.name,
+      description: skill.description,
+      shortDescription: skill.interface?.shortDescription ?? skill.shortDescription ?? null,
+      path: String(skill.path),
+      scope: skill.scope
+    }));
   }
 
   /**
@@ -581,6 +634,7 @@ export class OpenCodexBackendRuntime {
     sourceId: string | null,
     text: string,
     attachments: OpenCodexImageAttachment[],
+    references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
   ): Promise<{ threadId: string; turnId: string }> {
@@ -590,6 +644,7 @@ export class OpenCodexBackendRuntime {
       sourceId,
       text,
       attachments,
+      references,
       model,
       reasoningEffort
     );
@@ -609,13 +664,15 @@ export class OpenCodexBackendRuntime {
     threadId: string,
     turnId: string,
     text: string,
-    attachments: OpenCodexImageAttachment[]
+    attachments: OpenCodexImageAttachment[],
+    references: OpenCodexComposerReference[]
   ): Promise<{ threadId: string; turnId: string }> {
     return await this.threadConversationService.steerTurn(
       threadId,
       turnId,
       text,
-      attachments
+      attachments,
+      references
     );
   }
 
@@ -638,6 +695,7 @@ export class OpenCodexBackendRuntime {
     sourceId: string | null,
     text: string,
     attachments: OpenCodexImageAttachment[],
+    references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
   ): Promise<{ threadId: string }> {
@@ -647,6 +705,7 @@ export class OpenCodexBackendRuntime {
       sourceId,
       text,
       attachments,
+      references,
       model,
       reasoningEffort
     );
@@ -1177,4 +1236,54 @@ function readRelativeFilePath(root: string, filePath: string): string {
   }
 
   return normalizedPath.replace(/^\/+/, "");
+}
+
+function scoreSkillSearchResult(
+  name: string,
+  displayName: string | undefined,
+  query: string
+): number {
+  const normalizedQuery = query.trim().toLowerCase();
+  const candidates = [
+    name.toLowerCase(),
+    displayName?.toLowerCase() ?? ""
+  ];
+
+  if (normalizedQuery.length === 0) {
+    return 1;
+  }
+
+  if (candidates.some((candidate) => candidate === normalizedQuery)) {
+    return 100;
+  }
+
+  if (candidates.some((candidate) => candidate.startsWith(normalizedQuery))) {
+    return 80;
+  }
+
+  if (candidates.some((candidate) => candidate.includes(normalizedQuery))) {
+    return 60;
+  }
+
+  if (candidates.some((candidate) => isFuzzyMatch(candidate, normalizedQuery))) {
+    return 30;
+  }
+
+  return -1;
+}
+
+function isFuzzyMatch(candidate: string, query: string): boolean {
+  let candidateIndex = 0;
+
+  for (const queryCharacter of query) {
+    candidateIndex = candidate.indexOf(queryCharacter, candidateIndex);
+
+    if (candidateIndex === -1) {
+      return false;
+    }
+
+    candidateIndex += 1;
+  }
+
+  return true;
 }

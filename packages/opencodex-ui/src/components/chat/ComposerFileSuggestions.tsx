@@ -1,16 +1,17 @@
 /**
- * Renders file suggestions for composer references.
+ * Renders suggestions for composer references.
  */
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
+import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import { Box, List, ListItemButton, ListItemIcon, Paper, Typography } from "@mui/material";
 import { useEffect, useRef } from "react";
 
-import type { OpenCodexFileSearchResult } from "@open-codex-ui/opencodex-protocol";
+import type { ComposerReferenceSuggestion } from "./composerReferences";
 
 type ComposerFileSuggestionsProps = {
-  suggestions: OpenCodexFileSearchResult[];
+  suggestions: ComposerReferenceSuggestion[];
   highlightedIndex: number;
-  onSelect(suggestion: OpenCodexFileSearchResult): void;
+  onSelect(suggestion: ComposerReferenceSuggestion): void;
 };
 
 /**
@@ -41,7 +42,7 @@ export function ComposerFileSuggestions({
       <List dense disablePadding>
         {suggestions.map((suggestion, index) => (
           <ListItemButton
-            key={`${suggestion.root}:${suggestion.relativePath}`}
+            key={readSuggestionKey(suggestion)}
             ref={index === highlightedIndex ? activeItemRef : undefined}
             selected={index === highlightedIndex}
             onMouseDown={(event) => {
@@ -50,14 +51,18 @@ export function ComposerFileSuggestions({
             }}
           >
             <ListItemIcon sx={{ minWidth: 28 }}>
-              <InsertDriveFileOutlinedIcon fontSize="small" color="disabled" />
+              {suggestion.type === "skill" ? (
+                <PsychologyOutlinedIcon fontSize="small" color="secondary" />
+              ) : (
+                <InsertDriveFileOutlinedIcon fontSize="small" color="disabled" />
+              )}
             </ListItemIcon>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
-                {suggestion.fileName}
+                {readSuggestionTitle(suggestion)}
               </Typography>
               <Typography variant="caption" noWrap component="div" sx={{ opacity: 0.68 }}>
-                {suggestion.relativePath}
+                {readSuggestionSubtitle(suggestion)}
               </Typography>
             </Box>
           </ListItemButton>
@@ -65,4 +70,28 @@ export function ComposerFileSuggestions({
       </List>
     </Paper>
   );
+}
+
+function readSuggestionKey(suggestion: ComposerReferenceSuggestion): string {
+  if (suggestion.type === "skill") {
+    return `skill:${suggestion.result.path}`;
+  }
+
+  return `file:${suggestion.result.root}:${suggestion.result.relativePath}`;
+}
+
+function readSuggestionTitle(suggestion: ComposerReferenceSuggestion): string {
+  if (suggestion.type === "skill") {
+    return `$${suggestion.result.name}`;
+  }
+
+  return suggestion.result.fileName;
+}
+
+function readSuggestionSubtitle(suggestion: ComposerReferenceSuggestion): string {
+  if (suggestion.type === "skill") {
+    return suggestion.result.shortDescription ?? suggestion.result.description;
+  }
+
+  return suggestion.result.relativePath;
 }

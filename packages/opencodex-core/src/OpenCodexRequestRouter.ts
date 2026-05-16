@@ -77,6 +77,13 @@ export class OpenCodexRequestRouter {
           request.query,
           request.limit ?? 8
         );
+      case "skills.search":
+        return this.runtime.searchProjectSkills(
+          request.projectPath,
+          request.sourceId,
+          request.query,
+          request.limit ?? 8
+        );
       case "threads.list":
         return this.runtime.listThreads(
           request.scope,
@@ -103,6 +110,7 @@ export class OpenCodexRequestRouter {
           request.sourceId ?? null,
           request.text,
           request.attachments ?? [],
+          request.references ?? [],
           request.model ?? null,
           request.reasoningEffort ?? null
         );
@@ -111,7 +119,8 @@ export class OpenCodexRequestRouter {
           request.threadId,
           request.turnId,
           request.text,
-          request.attachments ?? []
+          request.attachments ?? [],
+          request.references ?? []
         );
       case "turn.editLast":
         return this.runtime.editLastTurn(
@@ -120,6 +129,7 @@ export class OpenCodexRequestRouter {
           request.sourceId ?? null,
           request.text,
           request.attachments ?? [],
+          request.references ?? [],
           request.model ?? null,
           request.reasoningEffort ?? null
         );

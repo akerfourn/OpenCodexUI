@@ -8,43 +8,49 @@ import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { EditorRefPlugin } from "@lexical/react/LexicalEditorRefPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
-import { $createLinkNode, $isLinkNode, LinkNode } from "@lexical/link";
+import { LinkNode } from "@lexical/link";
 import {
-  $createTextNode,
   $getNodeByKey,
   $getRoot,
-  $getSelection,
-  $isRangeSelection,
   $isTextNode,
   type EditorState,
-  type LexicalEditor,
-  type LexicalNode,
-  type NodeKey
+  type LexicalEditor
 } from "lexical";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 
-import type { OpenCodexFileSearchResult } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexComposerReference,
+  OpenCodexFileSearchResult,
+  OpenCodexSkillSearchResult
+} from "@open-codex-ui/opencodex-protocol";
 
 import { ComposerFileSuggestionKeyPlugin } from "./ComposerFileSuggestionKeyPlugin";
-import { ComposerFileSuggestions } from "./ComposerFileSuggestions";
+import {
+  ComposerFileSuggestions
+} from "./ComposerFileSuggestions";
 import { ComposerPlainTextValuePlugin } from "./ComposerPlainTextValuePlugin";
+import {
+  createTriggerKey,
+  isSkillUrl,
+  mapFileSuggestions,
+  mapSkillSuggestions,
+  readReferenceTrigger,
+  replaceTriggerWithReferenceLink,
+  serializeComposerContent,
+  type ComposerReferenceSuggestion,
+  type ReferenceTriggerState
+} from "./composerReferences";
 
 type ComposerPlainTextInputProps = {
   value: string;
   placeholder: string;
   canOpenFileLinks: boolean;
-  onChange(value: string, markdown: string): void;
+  onChange(value: string, markdown: string, references: OpenCodexComposerReference[]): void;
   onSearchFiles(query: string): Promise<OpenCodexFileSearchResult[]>;
+  onSearchSkills(query: string): Promise<OpenCodexSkillSearchResult[]>;
   onOpenFileLink(href: string): void;
   onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void;
-};
-
-type FileTriggerState = {
-  nodeKey: NodeKey;
-  startOffset: number;
-  endOffset: number;
-  query: string;
 };
 
 /**
@@ -59,16 +65,17 @@ export function ComposerPlainTextInput({
   canOpenFileLinks,
   onChange,
   onSearchFiles,
+  onSearchSkills,
   onOpenFileLink,
   onKeyDown
 }: ComposerPlainTextInputProps) {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const lexicalEditorRef = useRef<LexicalEditor | null>(null);
-  const activeTriggerRef = useRef<FileTriggerState | null>(null);
-  const [activeTrigger, setActiveTrigger] = useState<FileTriggerState | null>(null);
+  const activeTriggerRef = useRef<ReferenceTriggerState | null>(null);
+  const [activeTrigger, setActiveTrigger] = useState<ReferenceTriggerState | null>(null);
   const [cancelledTriggerKey, setCancelledTriggerKey] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const [suggestions, setSuggestions] = useState<OpenCodexFileSearchResult[]>([]);
+  const [suggestions, setSuggestions] = useState<ComposerReferenceSuggestion[]>([]);
   const initialConfig = useMemo<InitialConfigType>(() => ({
     namespace: "OpenCodexComposer",
     nodes: [LinkNode],
@@ -89,7 +96,11 @@ export function ComposerPlainTextInput({
 
     let isCurrent = true;
     const timeout = window.setTimeout(() => {
-      void onSearchFiles(activeTrigger.query).then((results) => {
+      const searchPromise = activeTrigger.kind === "file"
+        ? onSearchFiles(activeTrigger.query).then(mapFileSuggestions)
+        : onSearchSkills(activeTrigger.query).then(mapSkillSuggestions);
+
+      void searchPromise.then((results) => {
         if (!isCurrent) {
           return;
         }
@@ -107,12 +118,13 @@ export function ComposerPlainTextInput({
       isCurrent = false;
       window.clearTimeout(timeout);
     };
-  }, [activeTrigger, onSearchFiles]);
+  }, [activeTrigger, onSearchFiles, onSearchSkills]);
 
   function handleChange(editorState: EditorState): void {
     editorState.read(() => {
-      onChange($getRoot().getTextContent(), serializeMarkdown());
-      updateFileTrigger();
+      const serialized = serializeComposerContent();
+      onChange($getRoot().getTextContent(), serialized.markdown, serialized.references);
+      updateReferenceTrigger();
     });
 
     requestAnimationFrame(scrollEditorToBottom);
@@ -137,10 +149,6 @@ export function ComposerPlainTextInput({
   }
 
   function handleEditorClick(event: MouseEvent<HTMLDivElement>): void {
-    if (!canOpenFileLinks) {
-      return;
-    }
-
     const target = event.target;
 
     if (!(target instanceof HTMLElement)) {
@@ -160,6 +168,15 @@ export function ComposerPlainTextInput({
     }
 
     event.preventDefault();
+
+    if (isSkillLink(link)) {
+      return;
+    }
+
+    if (!canOpenFileLinks) {
+      return;
+    }
+
     onOpenFileLink(href);
   }
 
@@ -197,7 +214,7 @@ export function ComposerPlainTextInput({
     }
 
     if (event.key === "Enter" || event.key === "Tab") {
-      insertFileReference(suggestions[highlightedIndex] ?? suggestions[0]);
+      insertReference(suggestions[highlightedIndex] ?? suggestions[0]);
       event.stopPropagation();
       event.preventDefault();
       return true;
@@ -217,7 +234,7 @@ export function ComposerPlainTextInput({
     setSuggestions([]);
   }
 
-  function insertFileReference(suggestion: OpenCodexFileSearchResult | undefined): void {
+  function insertReference(suggestion: ComposerReferenceSuggestion | undefined): void {
     const trigger = activeTriggerRef.current;
 
     if (trigger === null || suggestion === undefined) {
@@ -242,7 +259,7 @@ export function ComposerPlainTextInput({
         return;
       }
 
-      replaceTriggerWithFileLink(node, trigger, suggestion);
+      replaceTriggerWithReferenceLink(node, trigger, suggestion);
     });
   }
 
@@ -258,7 +275,7 @@ export function ComposerPlainTextInput({
         <ComposerFileSuggestions
           suggestions={suggestions}
           highlightedIndex={highlightedIndex}
-          onSelect={insertFileReference}
+          onSelect={insertReference}
         />
         <div className="composer-editor-shell">
           <PlainTextPlugin
@@ -285,7 +302,7 @@ export function ComposerPlainTextInput({
             hasActiveTrigger={activeTrigger !== null}
             highlightedIndex={highlightedIndex}
             suggestions={suggestions}
-            onSelect={insertFileReference}
+            onSelect={insertReference}
           />
           <EditorRefPlugin editorRef={lexicalEditorRef} />
         </div>
@@ -293,8 +310,8 @@ export function ComposerPlainTextInput({
     </LexicalComposer>
   );
 
-  function updateFileTrigger(): void {
-    const trigger = readFileTrigger();
+  function updateReferenceTrigger(): void {
+    const trigger = readReferenceTrigger();
 
     if (trigger === null) {
       setActiveTrigger(null);
@@ -312,95 +329,6 @@ export function ComposerPlainTextInput({
   }
 }
 
-function serializeMarkdown(): string {
-  return $getRoot().getChildren().map(serializeNode).join("\n");
-}
-
-function serializeNode(node: LexicalNode): string {
-  if ($isLinkNode(node)) {
-    const text = node.getChildren().map(serializeNode).join("");
-    return `[${text}](${node.getURL()})`;
-  }
-
-  if ("getChildren" in node && typeof node.getChildren === "function") {
-    return node.getChildren().map(serializeNode).join("");
-  }
-
-  return node.getTextContent();
-}
-
-function readFileTrigger(): FileTriggerState | null {
-  const selection = $getSelection();
-
-  if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-    return null;
-  }
-
-  const anchor = selection.anchor;
-  const node = anchor.getNode();
-
-  if (!$isTextNode(node)) {
-    return null;
-  }
-
-  const text = node.getTextContent();
-  const cursorOffset = anchor.offset;
-  const beforeCursor = text.slice(0, cursorOffset);
-  const startOffset = beforeCursor.lastIndexOf("@");
-
-  if (startOffset < 0) {
-    return null;
-  }
-
-  if (startOffset > 0 && !/\s/.test(beforeCursor[startOffset - 1] ?? "")) {
-    return null;
-  }
-
-  const query = beforeCursor.slice(startOffset + 1);
-
-  if (query.includes("\n")) {
-    return null;
-  }
-
-  return {
-    nodeKey: node.getKey(),
-    startOffset,
-    endOffset: cursorOffset,
-    query: query.trim()
-  };
-}
-
-function createTriggerKey(trigger: FileTriggerState): string {
-  return `${trigger.nodeKey}:${trigger.startOffset}:${trigger.query}`;
-}
-
-function replaceTriggerWithFileLink(
-  node: Extract<LexicalNode, { getTextContent(): string }>,
-  trigger: FileTriggerState,
-  suggestion: OpenCodexFileSearchResult
-): void {
-  if (!$isTextNode(node)) {
-    return;
-  }
-
-  const text = node.getTextContent();
-  const before = text.slice(0, trigger.startOffset);
-  const after = text.slice(trigger.endOffset);
-  const link = $createLinkNode(suggestion.relativePath, {
-    title: suggestion.relativePath
-  });
-  const trailingText = after.startsWith(" ") ? after : ` ${after}`;
-  const trailingNode = $createTextNode(trailingText);
-
-  link.append($createTextNode(suggestion.fileName).setMode("token"));
-
-  if (before.length > 0) {
-    node.setTextContent(before);
-    node.insertAfter(link);
-  } else {
-    node.replace(link);
-  }
-
-  link.insertAfter(trailingNode);
-  trailingNode.select(1, 1);
+function isSkillLink(link: HTMLAnchorElement): boolean {
+  return link.relList.contains("opencodex-skill") || isSkillUrl(link.getAttribute("href") ?? "");
 }

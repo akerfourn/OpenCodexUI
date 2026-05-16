@@ -3,6 +3,7 @@ import type { CodexAppServerClient, CodexNotification } from "@open-codex-ui/cod
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
+  OpenCodexComposerReference,
   OpenCodexEvent,
   OpenCodexImageAttachment,
   OpenCodexMessage,
@@ -384,12 +385,13 @@ export class ThreadConversationService {
     sourceId: string | null,
     text: string,
     attachments: OpenCodexImageAttachment[],
+    references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
     shouldResumeExistingThread = true
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
-    const input = buildTurnInput(trimmedText, attachments);
+    const input = buildTurnInput(trimmedText, attachments, references);
 
     if (input.length === 0) {
       return { threadId: threadId ?? "", turnId: "" };
@@ -459,10 +461,11 @@ export class ThreadConversationService {
     threadId: string,
     turnId: string,
     text: string,
-    attachments: OpenCodexImageAttachment[]
+    attachments: OpenCodexImageAttachment[],
+    references: OpenCodexComposerReference[]
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
-    const input = buildTurnInput(trimmedText, attachments);
+    const input = buildTurnInput(trimmedText, attachments, references);
 
     if (input.length === 0) {
       return { threadId, turnId };
@@ -527,6 +530,7 @@ export class ThreadConversationService {
     sourceId: string | null,
     _text: string,
     _attachments: OpenCodexImageAttachment[],
+    _references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
   ): Promise<{ threadId: string }> {

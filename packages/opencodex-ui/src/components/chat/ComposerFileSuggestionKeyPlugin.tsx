@@ -8,13 +8,13 @@ import {
 } from "lexical";
 import { useEffect } from "react";
 
-import type { OpenCodexFileSearchResult } from "@open-codex-ui/opencodex-protocol";
+import type { ComposerReferenceSuggestion } from "./composerReferences";
 
 type ComposerFileSuggestionKeyPluginProps = {
   hasActiveTrigger: boolean;
   highlightedIndex: number;
-  suggestions: OpenCodexFileSearchResult[];
-  onSelect(suggestion: OpenCodexFileSearchResult): void;
+  suggestions: ComposerReferenceSuggestion[];
+  onSelect(suggestion: ComposerReferenceSuggestion): void;
 };
 
 /**

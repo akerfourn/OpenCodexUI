@@ -82,6 +82,22 @@ export type OpenCodexFileSearchResult = {
   matchType: "file" | "directory";
 };
 
+export type OpenCodexSkillSearchResult = {
+  name: string;
+  displayName: string;
+  description: string;
+  shortDescription: string | null;
+  path: string;
+  scope: string;
+};
+
+export type OpenCodexComposerReference =
+  | {
+      type: "skill";
+      name: string;
+      path: string;
+    };
+
 export type OpenCodexLogEntry = {
   id: string;
   type: OpenCodexLogType;

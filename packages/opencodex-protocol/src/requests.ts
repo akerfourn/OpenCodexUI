@@ -4,6 +4,7 @@
 import type {
   OpenCodexApprovalDecision,
   OpenCodexCommitMessageLanguage,
+  OpenCodexComposerReference,
   OpenCodexImageAttachment,
   OpenCodexLogRetentionUnit,
   OpenCodexReasoningEffort,
@@ -40,6 +41,13 @@ export type OpenCodexRequest =
       limit?: number;
     }
   | {
+      type: "skills.search";
+      projectPath: string;
+      sourceId: string | null;
+      query: string;
+      limit?: number;
+    }
+  | {
       type: "threads.list";
       scope: OpenCodexThreadScope;
       projectPath?: string | null;
@@ -59,6 +67,7 @@ export type OpenCodexRequest =
       sourceId?: string | null;
       text: string;
       attachments?: OpenCodexImageAttachment[];
+      references?: OpenCodexComposerReference[];
       model?: string | null;
       reasoningEffort?: OpenCodexReasoningEffort | null;
     }
@@ -68,6 +77,7 @@ export type OpenCodexRequest =
       turnId: string;
       text: string;
       attachments?: OpenCodexImageAttachment[];
+      references?: OpenCodexComposerReference[];
     }
   | {
       type: "turn.editLast";
@@ -76,6 +86,7 @@ export type OpenCodexRequest =
       sourceId?: string | null;
       text: string;
       attachments?: OpenCodexImageAttachment[];
+      references?: OpenCodexComposerReference[];
       model?: string | null;
       reasoningEffort?: OpenCodexReasoningEffort | null;
     }

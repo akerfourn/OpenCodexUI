@@ -7,10 +7,12 @@ import { Button, IconButton, Stack, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 import type {
+  OpenCodexComposerReference,
   OpenCodexEnterKeyBehavior,
   OpenCodexFileSearchResult,
   OpenCodexImageAttachment,
-  OpenCodexReasoningEffort
+  OpenCodexReasoningEffort,
+  OpenCodexSkillSearchResult
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ChatStore } from "../../stores/ChatStore";
@@ -49,6 +51,7 @@ export function ChatComposer({
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
   const [draftMarkdown, setDraftMarkdown] = useState("");
+  const [draftReferences, setDraftReferences] = useState<OpenCodexComposerReference[]>([]);
   const [attachments, setAttachments] = useState<OpenCodexImageAttachment[]>([]);
   const canSteer = chatStore.canSteerActiveTurn;
   const isSteering = isWorking && canSteer;
@@ -58,14 +61,20 @@ export function ChatComposer({
   useEffect(() => {
     setDraft("");
     setDraftMarkdown("");
+    setDraftReferences([]);
     setAttachments([]);
   }, [chatStore.thread.id]);
 
   const canOpenFileLinks = canOpenProjectFileLinks(store, projectStore);
 
-  function handleDraftChange(value: string, markdown: string): void {
+  function handleDraftChange(
+    value: string,
+    markdown: string,
+    references: OpenCodexComposerReference[]
+  ): void {
     setDraft(value);
     setDraftMarkdown(markdown);
+    setDraftReferences(references);
   }
 
   async function submitDraft(): Promise<void> {
@@ -74,7 +83,7 @@ export function ChatComposer({
     }
 
     const text = draftMarkdown.trim().length > 0 ? draftMarkdown : draft;
-    const wasAccepted = await chatStore.sendMessage(text, attachments);
+    const wasAccepted = await chatStore.sendMessage(text, attachments, draftReferences);
 
     if (!wasAccepted) {
       return;
@@ -82,6 +91,7 @@ export function ChatComposer({
 
     setDraft("");
     setDraftMarkdown("");
+    setDraftReferences([]);
     setAttachments([]);
   }
 
@@ -151,6 +161,18 @@ export function ChatComposer({
     });
   }, [projectStore.project.sourceId, projectStore.projectPath, store]);
 
+  const searchProjectSkills = useCallback(async (
+    query: string
+  ): Promise<OpenCodexSkillSearchResult[]> => {
+    return await store.request<OpenCodexSkillSearchResult[]>({
+      type: "skills.search",
+      projectPath: projectStore.projectPath,
+      sourceId: projectStore.project.sourceId,
+      query,
+      limit: 8
+    });
+  }, [projectStore.project.sourceId, projectStore.projectPath, store]);
+
   const handleOpenFileLink = useCallback((href: string): void => {
     if (!canOpenFileLinks) {
       return;
@@ -191,6 +213,7 @@ export function ChatComposer({
         canOpenFileLinks={canOpenFileLinks}
         onChange={handleDraftChange}
         onSearchFiles={searchProjectFiles}
+        onSearchSkills={searchProjectSkills}
         onOpenFileLink={handleOpenFileLink}
         onKeyDown={handleKeyDown}
       />

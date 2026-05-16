@@ -548,6 +548,12 @@ textarea {
   vertical-align: baseline;
 }
 
+.composer-editor a[rel~="opencodex-skill"] {
+  border-color: color-mix(in srgb, #a855f7 55%, transparent);
+  background: color-mix(in srgb, #a855f7 16%, transparent);
+  color: #c084fc;
+}
+
 .composer-file-suggestions {
   position: absolute;
   right: 0;

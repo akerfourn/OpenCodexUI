@@ -6,6 +6,7 @@ import { makeAutoObservable, runInAction } from "mobx";
 import type {
   OpenCodexActivity,
   OpenCodexApproval,
+  OpenCodexComposerReference,
   OpenCodexImageAttachment,
   OpenCodexMessage,
   OpenCodexMessagePhase,
@@ -248,6 +249,7 @@ export class ChatStore {
   sendMessage(
     text: string,
     attachments: OpenCodexImageAttachment[] = [],
+    references: OpenCodexComposerReference[] = [],
     model: string | null = this.root.appStore.selectedModel,
     reasoningEffort: OpenCodexReasoningEffort = this.root.appStore.reasoningEffort
   ): Promise<boolean> {
@@ -270,7 +272,7 @@ export class ChatStore {
         return Promise.resolve(false);
       }
 
-      return this.steerActiveTurn(trimmedText, attachments);
+      return this.steerActiveTurn(trimmedText, attachments, references);
     }
 
     this.isStartingTurn = true;
@@ -283,6 +285,7 @@ export class ChatStore {
       sourceId,
       text: trimmedText,
       attachments,
+      references: cloneComposerReferences(references),
       model,
       reasoningEffort
     });
@@ -306,7 +309,8 @@ export class ChatStore {
     text: string,
     attachments: OpenCodexImageAttachment[] = [],
     model: string | null = this.root.appStore.selectedModel,
-    reasoningEffort: OpenCodexReasoningEffort = this.root.appStore.reasoningEffort
+    reasoningEffort: OpenCodexReasoningEffort = this.root.appStore.reasoningEffort,
+    references: OpenCodexComposerReference[] = []
   ): boolean {
     const trimmedText = text.trim();
     const sourceId = this.thread.sourceId ?? this.projectStore.project.sourceId;
@@ -335,6 +339,7 @@ export class ChatStore {
       sourceId,
       text: trimmedText,
       attachments: plainAttachments,
+      references: cloneComposerReferences(references),
       model,
       reasoningEffort
     }).then((result) => {
@@ -347,6 +352,7 @@ export class ChatStore {
         sourceId,
         text: trimmedText,
         attachments: plainAttachments,
+        references: cloneComposerReferences(references),
         model,
         reasoningEffort
       }).catch((error: unknown) => {
@@ -587,7 +593,8 @@ export class ChatStore {
 
   private steerActiveTurn(
     content: string,
-    attachments: OpenCodexImageAttachment[]
+    attachments: OpenCodexImageAttachment[],
+    references: OpenCodexComposerReference[]
   ): Promise<boolean> {
     const turnId = this.activeTurnId;
 
@@ -602,7 +609,8 @@ export class ChatStore {
       threadId: this.thread.id,
       turnId,
       text: content,
-      attachments
+      attachments,
+      references: cloneComposerReferences(references)
     }).then(() => true).catch(() => {
       runInAction(() => {
         this.removeTurnItem(turnId, optimisticItemId);
@@ -650,6 +658,14 @@ export class ChatStore {
     );
   }
 
+}
+
+function cloneComposerReferences(references: OpenCodexComposerReference[]): OpenCodexComposerReference[] {
+  return references.map((reference) => ({
+    type: reference.type,
+    name: reference.name,
+    path: reference.path
+  }));
 }
 
 function cloneImageAttachments(attachments: OpenCodexImageAttachment[]): OpenCodexImageAttachment[] {
