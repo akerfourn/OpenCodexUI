@@ -33,7 +33,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
         <section className="main-pane">
           <ChatViewX store={store} projectStore={projectStore} />
         </section>
-        <ProjectGitPanelX projectStore={projectStore} />
+        <ProjectGitPanelX store={store} projectStore={projectStore} />
       </section>
     </ResizableSidebarLayout>
   );

@@ -23,12 +23,14 @@ import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { CommitMessageGenerationDialogX } from "./CommitMessageGenerationDialog";
 import { ProjectGitFileRow } from "./ProjectGitFileRow";
 import { GitSectionHeader } from "./GitSectionHeader";
 
 type ProjectGitPanelProps = {
+  store: RootStore;
   projectStore: ProjectStore;
 };
 
@@ -39,11 +41,14 @@ type ProjectGitPanelProps = {
  *
  * @returns Rendered Git panel.
  */
-export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
+export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const { t } = useTranslation();
   const gitStore = projectStore.gitStore;
   const projectPath = projectStore.projectPath;
   const sourceId = projectStore.project.sourceId;
+  const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
+  const canOpenFiles = source?.settings.openFileCommand !== null &&
+    source?.settings.openFileCommand !== undefined;
   const [isGenerateDialogOpen, setGenerateDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -92,6 +97,10 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
 
   function handlePull(): void {
     void gitStore.pull();
+  }
+
+  function handleOpenFile(path: string): void {
+    store.openExternalLink(path);
   }
 
   const generateTooltip = gitStore.canGenerateCommitMessage
@@ -197,9 +206,11 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
                       key={`changed:${file.path}`}
                       actionIcon={<KeyboardArrowDownOutlinedIcon fontSize="small" />}
                       actionLabel={t("git.stageFile")}
+                      canOpenFile={canOpenFiles}
                       checked={gitStore.selectedChangedPaths.includes(file.path)}
                       file={file}
                       onAction={gitStore.stagePath}
+                      onOpenFile={handleOpenFile}
                       onToggle={gitStore.toggleChangedPath}
                     />
                   ))}
@@ -231,9 +242,11 @@ export function ProjectGitPanel({ projectStore }: ProjectGitPanelProps) {
                       key={`staged:${file.path}`}
                       actionIcon={<KeyboardArrowUpOutlinedIcon fontSize="small" />}
                       actionLabel={t("git.unstageFile")}
+                      canOpenFile={canOpenFiles}
                       checked={gitStore.selectedStagedPaths.includes(file.path)}
                       file={file}
                       onAction={gitStore.unstagePath}
+                      onOpenFile={handleOpenFile}
                       onToggle={gitStore.toggleStagedPath}
                     />
                   ))}

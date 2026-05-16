@@ -11,8 +11,10 @@ type ProjectGitFileRowProps = {
   actionIcon: ReactNode;
   actionLabel: string;
   checked: boolean;
+  canOpenFile: boolean;
   file: OpenCodexGitFile;
   onAction(path: string): void;
+  onOpenFile(path: string): void;
   onToggle(path: string): void;
 };
 
@@ -27,8 +29,10 @@ export function ProjectGitFileRow({
   actionIcon,
   actionLabel,
   checked,
+  canOpenFile,
   file,
   onAction,
+  onOpenFile,
   onToggle
 }: ProjectGitFileRowProps) {
   function handleToggle(): void {
@@ -39,8 +43,26 @@ export function ProjectGitFileRow({
     onAction(file.path);
   }
 
+  function handleOpenFile(): void {
+    onOpenFile(file.path);
+  }
+
   const fileDisplay = splitGitPath(file.path);
   const statusDisplay = getStatusDisplay(file.status);
+  const nameContent = canOpenFile ? (
+    <button
+      className="git-file-name git-file-name-link"
+      type="button"
+      title={file.path}
+      onClick={handleOpenFile}
+    >
+      {fileDisplay.name}
+    </button>
+  ) : (
+    <Typography className="git-file-name" variant="body2">
+      {fileDisplay.name}
+    </Typography>
+  );
 
   return (
     <Stack
@@ -56,9 +78,7 @@ export function ProjectGitFileRow({
         onChange={handleToggle}
       />
       <span className="git-file-copy" title={file.path}>
-        <Typography className="git-file-name" variant="body2">
-          {fileDisplay.name}
-        </Typography>
+        {nameContent}
         {fileDisplay.directory.length > 0 ? (
           <Typography className="git-file-directory" variant="caption" color="text.secondary">
             {fileDisplay.directory}

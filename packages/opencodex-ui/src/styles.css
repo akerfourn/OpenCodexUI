@@ -411,6 +411,22 @@ textarea {
   font-size: 13px;
 }
 
+.git-file-name-link {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.git-file-name-link:hover,
+.git-file-name-link:focus-visible {
+  text-decoration: underline;
+}
+
 .git-file-directory {
   font-size: 11px;
 }

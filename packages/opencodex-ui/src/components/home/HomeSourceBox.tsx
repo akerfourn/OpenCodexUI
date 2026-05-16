@@ -143,8 +143,8 @@ export function HomeSourceBox({
   }
 
   function handleApplyVsCodePreset(): void {
-    setOpenFolderCommandDraft("code -r %D");
-    setOpenFileCommandDraft("code -g %F:%L:%C");
+    setOpenFolderCommandDraft("code %D");
+    setOpenFileCommandDraft("code --goto %F:%L:%C");
     setPresetMenuAnchor(null);
   }
 
@@ -438,7 +438,7 @@ export function HomeSourceBox({
                   fullWidth
                   value={openFolderCommandDraft}
                   label={t("sources.openFolderCommand")}
-                  placeholder="code -r %D"
+                  placeholder="code %D"
                   onChange={handleOpenFolderCommandChange}
                 />
                 <TextField
