@@ -103,7 +103,39 @@ export const resources = {
         stageAll: "Tout stage",
         stageFile: "Stage le fichier",
         stageSelected: "Stage",
+        simple: {
+          changed: "Modifiés",
+          commit: "Enregistrer",
+          commitMessage: "Message d'enregistrement",
+          generateMessage: "Générer le message",
+          generateMessageUnavailable: "Préparez au moins un fichier pour générer un message.",
+          noChangedFiles: "Aucun fichier modifié.",
+          noStagedFiles: "Aucun fichier préparé.",
+          staged: "Changements préparés",
+          stageAll: "Tout préparer",
+          stageFile: "Préparer le fichier",
+          stageSelected: "Préparer",
+          unstageAll: "Tout retirer",
+          unstageFile: "Retirer des changements préparés",
+          unstageSelected: "Retirer"
+        },
         title: "Git",
+        technical: {
+          changed: "Modifiés",
+          commit: "Commit",
+          commitMessage: "Message de commit",
+          generateMessage: "Générer le message",
+          generateMessageUnavailable: "Stagez au moins un fichier pour générer un message.",
+          noChangedFiles: "Aucun fichier modifié.",
+          noStagedFiles: "Aucun fichier staged.",
+          staged: "Staged",
+          stageAll: "Tout stage",
+          stageFile: "Stage le fichier",
+          stageSelected: "Stage",
+          unstageAll: "Tout retirer",
+          unstageFile: "Retirer du stage",
+          unstageSelected: "Retirer"
+        },
         unstageAll: "Tout retirer",
         unstageFile: "Retirer du stage",
         unstageSelected: "Retirer"
@@ -165,6 +197,7 @@ export const resources = {
         projectPathPlaceholder: "/home/adrien/projet",
         projects: "Projets",
         commit: "Commit",
+        saveChanges: "Enregistrement",
         recentProjects: "Projets récents",
         refreshProjects: "Synchroniser les projets récents",
         searchProjects: "Rechercher un projet",
@@ -219,6 +252,14 @@ export const resources = {
         reset: "Réinitialiser",
         save: "Enregistrer",
         saving: "Enregistrement...",
+        simple: {
+          description: "Configurez le prompt utilisé pour générer les messages depuis les changements préparés.",
+          title: "Génération d'enregistrement"
+        },
+        technical: {
+          description: "Configurez le prompt utilisé pour générer les messages depuis les changements staged.",
+          title: "Génération de commit"
+        },
         title: "Génération de commit",
         usingCustom: "Prompt personnalisé stocké dans le dossier de configuration.",
         usingDefault: "Prompt par défaut embarqué."
@@ -270,6 +311,15 @@ export const resources = {
           newline: "Toujours sauter une ligne",
           send: "Toujours envoyer le message",
           smart: "Comportement intelligent"
+        },
+        versioningVocabulary: "Vocabulaire de versionnement",
+        versioningVocabularyDescriptions: {
+          simple: "Utilise des mots plus accessibles comme préparer et enregistrer.",
+          technical: "Utilise le vocabulaire Git habituel comme stage, commit et staged."
+        },
+        versioningVocabularyOptions: {
+          simple: "Simplifié",
+          technical: "Technique"
         }
       },
       theme: {
@@ -460,7 +510,39 @@ export const resources = {
         stageAll: "Stage all",
         stageFile: "Stage file",
         stageSelected: "Stage",
+        simple: {
+          changed: "Changed",
+          commit: "Save",
+          commitMessage: "Save message",
+          generateMessage: "Generate message",
+          generateMessageUnavailable: "Prepare at least one file to generate a message.",
+          noChangedFiles: "No changed files.",
+          noStagedFiles: "No prepared files.",
+          staged: "Prepared changes",
+          stageAll: "Prepare all",
+          stageFile: "Prepare file",
+          stageSelected: "Prepare",
+          unstageAll: "Remove all",
+          unstageFile: "Remove from prepared changes",
+          unstageSelected: "Remove"
+        },
         title: "Git",
+        technical: {
+          changed: "Changed",
+          commit: "Commit",
+          commitMessage: "Commit message",
+          generateMessage: "Generate message",
+          generateMessageUnavailable: "Stage at least one file to generate a message.",
+          noChangedFiles: "No changed files.",
+          noStagedFiles: "No staged files.",
+          staged: "Staged",
+          stageAll: "Stage all",
+          stageFile: "Stage file",
+          stageSelected: "Stage",
+          unstageAll: "Unstage all",
+          unstageFile: "Unstage file",
+          unstageSelected: "Unstage"
+        },
         unstageAll: "Unstage all",
         unstageFile: "Unstage file",
         unstageSelected: "Unstage"
@@ -522,6 +604,7 @@ export const resources = {
         projectPathPlaceholder: "/home/adrien/project",
         projects: "Projects",
         commit: "Commit",
+        saveChanges: "Saving",
         recentProjects: "Recent projects",
         refreshProjects: "Sync recent projects",
         searchProjects: "Search projects",
@@ -576,6 +659,14 @@ export const resources = {
         reset: "Reset",
         save: "Save",
         saving: "Saving...",
+        simple: {
+          description: "Configure the prompt used to generate messages from prepared changes.",
+          title: "Save message generation"
+        },
+        technical: {
+          description: "Configure the prompt used to generate messages from staged changes.",
+          title: "Commit generation"
+        },
         title: "Commit generation",
         usingCustom: "Custom prompt stored in the settings directory.",
         usingDefault: "Embedded default prompt."
@@ -627,6 +718,15 @@ export const resources = {
           newline: "Always insert a new line",
           send: "Always send the message",
           smart: "Smart behavior"
+        },
+        versioningVocabulary: "Versioning vocabulary",
+        versioningVocabularyDescriptions: {
+          simple: "Uses more accessible words like prepare and save.",
+          technical: "Uses standard Git vocabulary like stage, commit, and staged."
+        },
+        versioningVocabularyOptions: {
+          simple: "Simplified",
+          technical: "Technical"
         }
       },
       theme: {

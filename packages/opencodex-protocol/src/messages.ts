@@ -6,6 +6,7 @@ export type OpenCodexMessagePhase = "commentary" | "final_answer";
 export type OpenCodexColorScheme = "light" | "dark" | "system";
 export type OpenCodexEnterKeyBehavior = "newline" | "send" | "smart";
 export type OpenCodexCommitMessageLanguage = "en" | "fr";
+export type OpenCodexVersioningVocabulary = "simple" | "technical";
 export type OpenCodexLogType = "error" | "warning" | "info";
 export type OpenCodexLogRetentionUnit = "hours" | "days" | "weeks" | "months";
 
@@ -221,6 +222,7 @@ export type OpenCodexSettings = {
   language: OpenCodexLanguage;
   colorScheme: OpenCodexColorScheme;
   enterKeyBehavior: OpenCodexEnterKeyBehavior;
+  versioningVocabulary: OpenCodexVersioningVocabulary;
 };
 
 export type OpenCodexThread = {

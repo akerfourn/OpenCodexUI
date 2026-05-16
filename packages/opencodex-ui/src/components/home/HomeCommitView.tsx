@@ -41,6 +41,9 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
   const { t } = useTranslation();
   const promptStore = store.commitPromptStore;
   const appStore = store.appStore;
+  const commitPromptLabelsKey = appStore.settings.versioningVocabulary === "technical"
+    ? "commitPrompt.technical"
+    : "commitPrompt.simple";
   const modelValue = appStore.settings.commitMessageModel ?? defaultModelValue;
   const reasoningValue = appStore.settings.commitMessageReasoningEffort ?? defaultReasoningValue;
   const [isEditingPrompt, setEditingPrompt] = useState(false);
@@ -188,10 +191,10 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
           <Stack spacing={1.5}>
             <Box>
               <Typography variant="h5" component="h2">
-                {t("commitPrompt.title")}
+                {t(`${commitPromptLabelsKey}.title`)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {t("commitPrompt.description")}
+                {t(`${commitPromptLabelsKey}.description`)}
               </Typography>
             </Box>
 

@@ -9,7 +9,8 @@ import { useTranslation } from "react-i18next";
 import type {
   OpenCodexColorScheme,
   OpenCodexEnterKeyBehavior,
-  OpenCodexLanguage
+  OpenCodexLanguage,
+  OpenCodexVersioningVocabulary
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
@@ -43,6 +44,10 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
 
   function handleEnterKeyBehaviorChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     appStore.setEnterKeyBehavior(event.target.value as OpenCodexEnterKeyBehavior);
+  }
+
+  function handleVersioningVocabularyChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
+    appStore.setVersioningVocabulary(event.target.value as OpenCodexVersioningVocabulary);
   }
 
   return (
@@ -89,6 +94,22 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
         </TextField>
         <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
           {t(`settings.enterKeyBehaviorDescriptions.${appStore.settings.enterKeyBehavior}`)}
+        </Typography>
+      </Stack>
+      <Stack spacing={0.5}>
+        <TextField
+          select
+          value={appStore.settings.versioningVocabulary}
+          label={t("settings.versioningVocabulary")}
+          fullWidth
+          size="small"
+          onChange={handleVersioningVocabularyChange}
+        >
+          <MenuItem value="simple">{t("settings.versioningVocabularyOptions.simple")}</MenuItem>
+          <MenuItem value="technical">{t("settings.versioningVocabularyOptions.technical")}</MenuItem>
+        </TextField>
+        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+          {t(`settings.versioningVocabularyDescriptions.${appStore.settings.versioningVocabulary}`)}
         </Typography>
       </Stack>
       <FormControlLabel

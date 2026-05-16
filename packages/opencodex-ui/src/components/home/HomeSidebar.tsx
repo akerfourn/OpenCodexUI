@@ -28,6 +28,9 @@ type HomeSidebarProps = {
 export function HomeSidebar({ store }: HomeSidebarProps) {
   const { t } = useTranslation();
   const selectedSection = store.homeStore.selectedSection;
+  const commitLabelKey = store.appStore.settings.versioningVocabulary === "technical"
+    ? "home.commit"
+    : "home.saveChanges";
 
   function selectProjects(): void {
     selectSection("projects");
@@ -79,7 +82,7 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
           <ListItemIcon>
             <AutoAwesomeOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText primary={t("home.commit")} />
+          <ListItemText primary={t(commitLabelKey)} />
         </ListItemButton>
       </List>
       <List dense sx={{ mt: "auto" }}>

@@ -49,6 +49,9 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
   const canOpenFiles = source?.settings.openFileCommand !== null &&
     source?.settings.openFileCommand !== undefined;
+  const gitLabelsKey = store.appStore.settings.versioningVocabulary === "technical"
+    ? "git.technical"
+    : "git.simple";
   const [isGenerateDialogOpen, setGenerateDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -104,8 +107,8 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   }
 
   const generateTooltip = gitStore.canGenerateCommitMessage
-    ? t("git.generateMessage")
-    : t("git.generateMessageUnavailable");
+    ? t(`${gitLabelsKey}.generateMessage`)
+    : t(`${gitLabelsKey}.generateMessageUnavailable`);
 
   return (
     <section className="git-panel">
@@ -188,10 +191,10 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
             <Stack spacing={1}>
               <GitSectionHeader
-                title={t("git.changed")}
+                title={t(`${gitLabelsKey}.changed`)}
                 count={gitStore.changedFilesCount}
-                primaryActionLabel={t("git.stageSelected")}
-                secondaryActionLabel={t("git.stageAll")}
+                primaryActionLabel={t(`${gitLabelsKey}.stageSelected`)}
+                secondaryActionLabel={t(`${gitLabelsKey}.stageAll`)}
                 primaryActionDisabled={gitStore.selectedChangedPaths.length === 0 || gitStore.isLoading}
                 secondaryActionDisabled={gitStore.changedFilesCount === 0 || gitStore.isLoading}
                 onPrimaryAction={handleStageSelected}
@@ -199,7 +202,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
               />
               {gitStore.status.changedFiles.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
-                  {t("git.noChangedFiles")}
+                  {t(`${gitLabelsKey}.noChangedFiles`)}
                 </Typography>
               ) : (
                 <Stack className="git-file-list" spacing={0.25}>
@@ -207,7 +210,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                     <ProjectGitFileRow
                       key={`changed:${file.path}`}
                       actionIcon={<KeyboardArrowDownOutlinedIcon fontSize="small" />}
-                      actionLabel={t("git.stageFile")}
+                      actionLabel={t(`${gitLabelsKey}.stageFile`)}
                       canOpenFile={canOpenFiles}
                       checked={gitStore.selectedChangedPaths.includes(file.path)}
                       file={file}
@@ -224,10 +227,10 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
             <Stack spacing={1}>
               <GitSectionHeader
-                title={t("git.staged")}
+                title={t(`${gitLabelsKey}.staged`)}
                 count={gitStore.stagedFilesCount}
-                primaryActionLabel={t("git.unstageSelected")}
-                secondaryActionLabel={t("git.unstageAll")}
+                primaryActionLabel={t(`${gitLabelsKey}.unstageSelected`)}
+                secondaryActionLabel={t(`${gitLabelsKey}.unstageAll`)}
                 primaryActionDisabled={gitStore.selectedStagedPaths.length === 0 || gitStore.isLoading}
                 secondaryActionDisabled={gitStore.stagedFilesCount === 0 || gitStore.isLoading}
                 onPrimaryAction={handleUnstageSelected}
@@ -235,7 +238,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
               />
               {gitStore.status.stagedFiles.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
-                  {t("git.noStagedFiles")}
+                  {t(`${gitLabelsKey}.noStagedFiles`)}
                 </Typography>
               ) : (
                 <Stack className="git-file-list" spacing={0.25}>
@@ -243,7 +246,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                     <ProjectGitFileRow
                       key={`staged:${file.path}`}
                       actionIcon={<KeyboardArrowUpOutlinedIcon fontSize="small" />}
-                      actionLabel={t("git.unstageFile")}
+                      actionLabel={t(`${gitLabelsKey}.unstageFile`)}
                       canOpenFile={canOpenFiles}
                       checked={gitStore.selectedStagedPaths.includes(file.path)}
                       file={file}
@@ -263,7 +266,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                 <Stack spacing={1}>
                   {gitStore.isGeneratingCommitMessage ? <LinearProgress /> : null}
                   <TextField
-                    label={t("git.commitMessage")}
+                    label={t(`${gitLabelsKey}.commitMessage`)}
                     value={gitStore.commitMessage}
                     minRows={3}
                     multiline
@@ -275,7 +278,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                     <Tooltip title={generateTooltip}>
                       <span>
                         <IconButton
-                          aria-label={t("git.generateMessage")}
+                          aria-label={t(`${gitLabelsKey}.generateMessage`)}
                           size="small"
                           disabled={!gitStore.canGenerateCommitMessage}
                           onClick={handleOpenGenerateDialog}
@@ -289,7 +292,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                       disabled={!gitStore.canCommit}
                       onClick={handleCommit}
                     >
-                      {t("git.commit")}
+                      {t(`${gitLabelsKey}.commit`)}
                     </Button>
                   </Stack>
                 </Stack>

@@ -22,7 +22,8 @@ export const defaultSettings: OpenCodexSettings = {
   allowTurnSteering: false,
   language: "system",
   colorScheme: "system",
-  enterKeyBehavior: "newline"
+  enterKeyBehavior: "newline",
+  versioningVocabulary: "simple"
 };
 
 /**

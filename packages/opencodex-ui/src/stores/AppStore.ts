@@ -7,7 +7,8 @@ import type {
   OpenCodexEvent,
   OpenCodexLanguage,
   OpenCodexReasoningEffort,
-  OpenCodexSettings
+  OpenCodexSettings,
+  OpenCodexVersioningVocabulary
 } from "@open-codex-ui/opencodex-protocol";
 
 import { applyOpenCodexLanguage } from "../i18n/i18n";
@@ -31,7 +32,8 @@ export class AppStore implements RootChildStore {
     allowTurnSteering: false,
     language: "system",
     colorScheme: "system",
-    enterKeyBehavior: "newline"
+    enterKeyBehavior: "newline",
+    versioningVocabulary: "simple"
   };
   launchProjectPath: string | null = null;
   models: string[] = [];
@@ -220,6 +222,21 @@ export class AppStore implements RootChildStore {
     void this.root.request({
       type: "settings.update",
       patch: { enterKeyBehavior }
+    });
+  }
+
+  /**
+   * Updates the versioning vocabulary used by Git-related UI.
+   *
+   * @param versioningVocabulary Vocabulary mode.
+   *
+   * @returns Nothing.
+   */
+  setVersioningVocabulary(versioningVocabulary: OpenCodexVersioningVocabulary): void {
+    this.settings = { ...this.settings, versioningVocabulary };
+    void this.root.request({
+      type: "settings.update",
+      patch: { versioningVocabulary }
     });
   }
 
