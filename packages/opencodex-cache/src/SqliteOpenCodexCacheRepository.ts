@@ -14,6 +14,9 @@ import type {
   CachedLogPage,
   CachedOlderTurnsResult,
   CachedProject,
+  CachedProjectCommand,
+  CachedProjectCommandCreateInput,
+  CachedProjectCommandUpdateInput,
   CachedSource,
   CachedSourceLocalSettings,
   CachedThreadDelta,
@@ -32,6 +35,13 @@ import {
   deleteLog,
   listLogs
 } from "./sqlite/logQueries.js";
+import {
+  createProjectCommand,
+  deleteProjectCommand,
+  listProjectCommands,
+  readProjectCommand,
+  updateProjectCommand
+} from "./sqlite/projectCommandQueries.js";
 import {
   clearSourceAssociations,
   createSource,
@@ -273,6 +283,67 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async clearLogsOlderThan(createdBefore: string): Promise<void> {
     await clearLogsOlderThan(this.database, createdBefore);
+  }
+
+  /**
+   * Lists commands configured for one project.
+   *
+   * @param projectId Project identifier.
+   *
+   * @returns Cached project commands.
+   */
+  async listProjectCommands(projectId: string): Promise<CachedProjectCommand[]> {
+    return await listProjectCommands(this.database, projectId);
+  }
+
+  /**
+   * Creates a command for a project.
+   *
+   * @param input Command input.
+   *
+   * @returns Created command.
+   */
+  async createProjectCommand(
+    input: CachedProjectCommandCreateInput
+  ): Promise<CachedProjectCommand> {
+    return await createProjectCommand(this.database, input);
+  }
+
+  /**
+   * Reads one project command.
+   *
+   * @param commandId Command identifier.
+   *
+   * @returns Matching command.
+   */
+  async getProjectCommand(commandId: string): Promise<CachedProjectCommand> {
+    return await readProjectCommand(this.database, commandId);
+  }
+
+  /**
+   * Updates a project command.
+   *
+   * @param commandId Command identifier.
+   * @param patch Command patch.
+   *
+   * @returns Updated command.
+   */
+  async updateProjectCommand(
+    commandId: string,
+    patch: CachedProjectCommandUpdateInput
+  ): Promise<CachedProjectCommand> {
+    return await updateProjectCommand(this.database, commandId, patch);
+  }
+
+  /**
+   * Deletes a project command.
+   *
+   * @param commandId Command identifier.
+   *
+   * @returns Promise resolved when deletion completes.
+   */
+  async deleteProjectCommand(commandId: string): Promise<void> {
+    await deleteProjectCommand(this.database, commandId);
   }
 
   /**

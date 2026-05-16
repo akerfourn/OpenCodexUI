@@ -108,6 +108,39 @@ export const resources = {
         unstageFile: "Retirer du stage",
         unstageSelected: "Retirer"
       },
+      commands: {
+        add: "Ajouter",
+        allowParallel: "Autoriser plusieurs instances en parallèle",
+        cancel: "Annuler",
+        closeRun: "Retirer l'instance",
+        command: "Commande",
+        createTitle: "Ajouter une commande",
+        delete: "Supprimer",
+        deleteConfirmCheckbox: "Je confirme la suppression de cette commande",
+        deleteDescription: "La commande « {{name}} » sera supprimée du projet.",
+        deleteRunningDisabled: "Arrêtez les instances en cours avant de supprimer cette commande.",
+        deleteTitle: "Supprimer la commande ?",
+        description: "Lancez des tâches dans le dossier du projet.",
+        edit: "Éditer",
+        editTitle: "Éditer la commande",
+        empty: "Aucune commande configurée.",
+        logsTitle: "Logs de la commande",
+        name: "Nom",
+        noLogs: "Aucun log reçu pour le moment.",
+        openLogs: "Voir les logs",
+        persistLogs: "Persister les logs sur disque",
+        run: "Lancer",
+        running: "En cours",
+        save: "Enregistrer",
+        sourceUnavailable: "Les commandes nécessitent une source Codex associée.",
+        status: {
+          exited: "Terminée",
+          failed: "Échec",
+          killed: "Arrêtée",
+          running: "En cours"
+        },
+        stopRun: "Arrêter l'instance"
+      },
       closeProject: {
         cancel: "Annuler",
         confirmCheckbox: "Je confirme que je veux fermer ce projet",
@@ -262,6 +295,7 @@ export const resources = {
         orphanSource: "Ce projet n'est plus associe a une source Codex. Il est disponible en lecture seule jusqu'a une resynchronisation."
       },
       projectTools: {
+        commands: "Commandes",
         git: "Git",
         tabs: "Outils du projet"
       },
@@ -431,6 +465,39 @@ export const resources = {
         unstageFile: "Unstage file",
         unstageSelected: "Unstage"
       },
+      commands: {
+        add: "Add",
+        allowParallel: "Allow parallel instances",
+        cancel: "Cancel",
+        closeRun: "Close instance",
+        command: "Command",
+        createTitle: "Add command",
+        delete: "Delete",
+        deleteConfirmCheckbox: "I confirm I want to delete this command",
+        deleteDescription: "The command “{{name}}” will be removed from the project.",
+        deleteRunningDisabled: "Stop running instances before deleting this command.",
+        deleteTitle: "Delete command?",
+        description: "Run tasks in the project directory.",
+        edit: "Edit",
+        editTitle: "Edit command",
+        empty: "No command configured.",
+        logsTitle: "Command logs",
+        name: "Name",
+        noLogs: "No logs received yet.",
+        openLogs: "View logs",
+        persistLogs: "Persist logs to disk",
+        run: "Run",
+        running: "Running",
+        save: "Save",
+        sourceUnavailable: "Commands require an associated Codex source.",
+        status: {
+          exited: "Completed",
+          failed: "Failed",
+          killed: "Stopped",
+          running: "Running"
+        },
+        stopRun: "Stop instance"
+      },
       closeProject: {
         cancel: "Cancel",
         confirmCheckbox: "I confirm I want to close this project",
@@ -585,6 +652,7 @@ export const resources = {
         orphanSource: "This project is no longer associated with a Codex source. It is read-only until it is resynchronized."
       },
       projectTools: {
+        commands: "Commands",
         git: "Git",
         tabs: "Project tools"
       },

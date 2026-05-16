@@ -25,6 +25,8 @@ import type {
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
   OpenCodexProject,
+  OpenCodexProjectCommand,
+  OpenCodexProjectCommandRun,
   OpenCodexRequest,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
@@ -56,6 +58,7 @@ import { ThreadConversationService } from "./backend/ThreadConversationService.j
 import { ThreadCacheService } from "./backend/ThreadCacheService.js";
 import { GitService } from "./backend/GitService.js";
 import { CommitMessageService } from "./backend/CommitMessageService.js";
+import { ProjectCommandService } from "./backend/ProjectCommandService.js";
 import { readObject, readString } from "./mapping.js";
 import {
   mapUsageLimitsNotification,
@@ -78,6 +81,7 @@ export class OpenCodexBackendRuntime {
   private readonly threadConversationService: ThreadConversationService;
   private readonly gitService: GitService;
   private readonly commitMessageService: CommitMessageService;
+  private readonly projectCommandService: ProjectCommandService;
   private readonly ignoredNotificationThreadIds = new Set<string>();
 
   /**
@@ -162,6 +166,12 @@ export class OpenCodexBackendRuntime {
         this.ignoredNotificationThreadIds.delete(threadId);
       },
       logger: options.logger
+    });
+    this.projectCommandService = new ProjectCommandService({
+      cacheRepository: this.cacheRepository,
+      userDataPath: options.userDataPath,
+      emit: (event) => this.emit(event),
+      ensureClient: (sourceId) => this.ensureClient(sourceId)
     });
   }
 
@@ -933,6 +943,104 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Lists commands configured for a project.
+   *
+   * @param projectId Project identifier.
+   *
+   * @returns Project commands.
+   */
+  async listProjectCommands(projectId: string): Promise<OpenCodexProjectCommand[]> {
+    return await this.projectCommandService.listCommands(projectId);
+  }
+
+  /**
+   * Creates a project command.
+   *
+   * @param projectId Project identifier.
+   * @param name Command display name.
+   * @param command Command line.
+   * @param allowParallel Whether multiple instances may run at once.
+   * @param persistLogs Whether output should be written to disk.
+   *
+   * @returns Created command.
+   */
+  async createProjectCommand(
+    projectId: string,
+    name: string,
+    command: string,
+    allowParallel: boolean,
+    persistLogs: boolean
+  ): Promise<OpenCodexProjectCommand> {
+    return await this.projectCommandService.createCommand({
+      projectId,
+      name,
+      command,
+      allowParallel,
+      persistLogs
+    });
+  }
+
+  /**
+   * Updates a project command.
+   *
+   * @param commandId Command identifier.
+   * @param patch Command patch.
+   *
+   * @returns Updated command.
+   */
+  async updateProjectCommand(
+    commandId: string,
+    patch: {
+      name?: string;
+      command?: string;
+      allowParallel?: boolean;
+      persistLogs?: boolean;
+    }
+  ): Promise<OpenCodexProjectCommand> {
+    return await this.projectCommandService.updateCommand(commandId, patch);
+  }
+
+  /**
+   * Deletes a project command.
+   *
+   * @param commandId Command identifier.
+   *
+   * @returns Success result.
+   */
+  async deleteProjectCommand(commandId: string): Promise<{ ok: true }> {
+    await this.projectCommandService.deleteCommand(commandId);
+    return { ok: true };
+  }
+
+  /**
+   * Starts a project command.
+   *
+   * @param commandId Command identifier.
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   *
+   * @returns Started run.
+   */
+  async runProjectCommand(
+    commandId: string,
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexProjectCommandRun> {
+    return await this.projectCommandService.runCommand(commandId, projectPath, sourceId);
+  }
+
+  /**
+   * Stops a project command run.
+   *
+   * @param runId Run identifier.
+   *
+   * @returns Success result.
+   */
+  async stopProjectCommandRun(runId: string): Promise<{ ok: true }> {
+    return await this.projectCommandService.stopRun(runId);
+  }
+
+  /**
    * Reads the editable commit generation prompt.
    *
    * @returns Prompt state.
@@ -1016,6 +1124,7 @@ export class OpenCodexBackendRuntime {
     }
 
     this.threadConversationService.recordNotification(notification);
+    this.projectCommandService.handleNotification(notification);
     this.notificationService.handleNotification(notification, sourceId);
 
     if (notification.method === "account/rateLimits/updated") {

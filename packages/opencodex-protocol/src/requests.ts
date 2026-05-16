@@ -105,6 +105,33 @@ export type OpenCodexRequest =
   | { type: "git.commit"; projectPath: string; sourceId: string | null; message: string }
   | { type: "git.pull"; projectPath: string; sourceId: string | null }
   | { type: "git.push"; projectPath: string; sourceId: string | null }
+  | { type: "projectCommands.list"; projectId: string }
+  | {
+      type: "projectCommands.create";
+      projectId: string;
+      name: string;
+      command: string;
+      allowParallel: boolean;
+      persistLogs: boolean;
+    }
+  | {
+      type: "projectCommands.update";
+      commandId: string;
+      patch: {
+        name?: string;
+        command?: string;
+        allowParallel?: boolean;
+        persistLogs?: boolean;
+      };
+    }
+  | { type: "projectCommands.delete"; commandId: string }
+  | {
+      type: "projectCommands.run";
+      commandId: string;
+      projectPath: string;
+      sourceId: string | null;
+    }
+  | { type: "projectCommands.stop"; runId: string }
   | { type: "commitPrompt.get" }
   | { type: "commitPrompt.update"; prompt: string }
   | { type: "commitPrompt.reset" }

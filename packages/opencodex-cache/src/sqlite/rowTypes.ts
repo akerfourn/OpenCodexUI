@@ -50,6 +50,17 @@ export type LogRow = {
   created_at: string;
 };
 
+export type ProjectCommandRow = {
+  id: string;
+  project_id: string;
+  name: string;
+  command: string;
+  allow_parallel: number;
+  persist_logs: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SourceRow = {
   id: string;
   kind: "local";

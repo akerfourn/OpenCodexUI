@@ -168,6 +168,28 @@ export class OpenCodexRequestRouter {
         return this.runtime.pullGitChanges(request.projectPath, request.sourceId);
       case "git.push":
         return this.runtime.pushGitChanges(request.projectPath, request.sourceId);
+      case "projectCommands.list":
+        return this.runtime.listProjectCommands(request.projectId);
+      case "projectCommands.create":
+        return this.runtime.createProjectCommand(
+          request.projectId,
+          request.name,
+          request.command,
+          request.allowParallel,
+          request.persistLogs
+        );
+      case "projectCommands.update":
+        return this.runtime.updateProjectCommand(request.commandId, request.patch);
+      case "projectCommands.delete":
+        return this.runtime.deleteProjectCommand(request.commandId);
+      case "projectCommands.run":
+        return this.runtime.runProjectCommand(
+          request.commandId,
+          request.projectPath,
+          request.sourceId
+        );
+      case "projectCommands.stop":
+        return this.runtime.stopProjectCommandRun(request.runId);
       case "commitPrompt.get":
         return this.runtime.readCommitPrompt();
       case "commitPrompt.update":

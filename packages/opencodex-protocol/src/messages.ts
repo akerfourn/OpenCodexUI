@@ -179,6 +179,34 @@ export type OpenCodexCommitMessageGenerationResult = {
   message: string;
 };
 
+export type OpenCodexProjectCommand = {
+  id: string;
+  projectId: string;
+  name: string;
+  command: string;
+  allowParallel: boolean;
+  persistLogs: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OpenCodexProjectCommandRunStatus = "running" | "exited" | "failed" | "killed";
+
+export type OpenCodexProjectCommandOutputStream = "stdout" | "stderr";
+
+export type OpenCodexProjectCommandRun = {
+  id: string;
+  projectId: string;
+  commandId: string;
+  processHandle: string;
+  command: string;
+  status: OpenCodexProjectCommandRunStatus;
+  startedAt: string;
+  exitedAt: string | null;
+  exitCode: number | null;
+  logPath: string | null;
+};
+
 export type OpenCodexSettings = {
   codexCommand: string;
   defaultSourceId: string | null;

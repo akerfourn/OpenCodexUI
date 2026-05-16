@@ -59,6 +59,32 @@ export type CachedLogCreateInput = {
   details?: unknown;
 };
 
+export type CachedProjectCommand = {
+  id: string;
+  projectId: string;
+  name: string;
+  command: string;
+  allowParallel: boolean;
+  persistLogs: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CachedProjectCommandCreateInput = {
+  projectId: string;
+  name: string;
+  command: string;
+  allowParallel: boolean;
+  persistLogs: boolean;
+};
+
+export type CachedProjectCommandUpdateInput = {
+  name?: string;
+  command?: string;
+  allowParallel?: boolean;
+  persistLogs?: boolean;
+};
+
 export type CachedSourceCommandMode = "auto" | "custom";
 
 export type CachedSourceLocalSettings = {
@@ -262,6 +288,50 @@ export interface OpenCodexCacheRepository {
    * @returns Promise resolved when deletion completes.
    */
   clearLogsOlderThan(createdBefore: string): Promise<void>;
+
+  /**
+   * Lists commands configured for one project.
+   *
+   * @param projectId Project identifier.
+   * @returns Project commands ordered for display.
+   */
+  listProjectCommands(projectId: string): Promise<CachedProjectCommand[]>;
+
+  /**
+   * Creates a project command.
+   *
+   * @param input Command configuration.
+   * @returns Created command.
+   */
+  createProjectCommand(input: CachedProjectCommandCreateInput): Promise<CachedProjectCommand>;
+
+  /**
+   * Reads one project command.
+   *
+   * @param commandId Command identifier.
+   * @returns Matching command.
+   */
+  getProjectCommand(commandId: string): Promise<CachedProjectCommand>;
+
+  /**
+   * Updates a project command.
+   *
+   * @param commandId Command identifier.
+   * @param patch Command update.
+   * @returns Updated command.
+   */
+  updateProjectCommand(
+    commandId: string,
+    patch: CachedProjectCommandUpdateInput
+  ): Promise<CachedProjectCommand>;
+
+  /**
+   * Deletes a project command.
+   *
+   * @param commandId Command identifier.
+   * @returns Promise resolved when deletion completes.
+   */
+  deleteProjectCommand(commandId: string): Promise<void>;
 
   /**
    * Inserts or updates thread index summaries.

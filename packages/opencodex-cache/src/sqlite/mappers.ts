@@ -3,13 +3,14 @@
  */
 import type {
   CachedProject,
+  CachedProjectCommand,
   CachedSource,
   CachedLogEntry,
   CachedThreadSummary,
   CachedThreadSyncState
 } from "../types.js";
 import { parseLocalSourceSettings } from "./sourceSettings.js";
-import type { LogRow, ProjectRow, SourceRow, ThreadRow } from "./rowTypes.js";
+import type { LogRow, ProjectCommandRow, ProjectRow, SourceRow, ThreadRow } from "./rowTypes.js";
 
 /**
  * Maps a raw SQLite thread row into the public cached thread summary shape.
@@ -93,6 +94,25 @@ export function mapLogRow(row: LogRow): CachedLogEntry {
     message: row.message,
     details: parseLogDetails(row.details_json),
     createdAt: row.created_at
+  };
+}
+
+/**
+ * Maps a raw SQLite project command row into the public cache shape.
+ *
+ * @param row Command row read from SQLite.
+ * @returns Normalized project command.
+ */
+export function mapProjectCommandRow(row: ProjectCommandRow): CachedProjectCommand {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    name: row.name,
+    command: row.command,
+    allowParallel: row.allow_parallel === 1,
+    persistLogs: row.persist_logs === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   };
 }
 

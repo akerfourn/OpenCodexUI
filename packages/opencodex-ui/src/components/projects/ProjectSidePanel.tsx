@@ -7,9 +7,10 @@ import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
+import { ProjectCommandsPanelX } from "./ProjectCommandsPanel";
 import { ProjectGitPanelX } from "./ProjectGitPanel";
 
-type ProjectSidePanelTab = "git";
+type ProjectSidePanelTab = "git" | "commands";
 
 type ProjectSidePanelProps = {
   store: RootStore;
@@ -31,9 +32,9 @@ export function ProjectSidePanel({ store, projectStore }: ProjectSidePanelProps)
     setSelectedTab(value);
   }
 
-  const panelContent = selectedTab === "git" ? (
-    <ProjectGitPanelX store={store} projectStore={projectStore} />
-  ) : null;
+  const panelContent = selectedTab === "git"
+    ? <ProjectGitPanelX store={store} projectStore={projectStore} />
+    : <ProjectCommandsPanelX projectStore={projectStore} />;
 
   return (
     <aside className="project-side-panel">
@@ -45,6 +46,7 @@ export function ProjectSidePanel({ store, projectStore }: ProjectSidePanelProps)
           onChange={handleTabChange}
         >
           <Tab value="git" label={t("projectTools.git")} />
+          <Tab value="commands" label={t("projectTools.commands")} />
         </Tabs>
       </Box>
       {panelContent}

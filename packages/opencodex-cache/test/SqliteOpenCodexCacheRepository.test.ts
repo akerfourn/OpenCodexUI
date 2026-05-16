@@ -65,6 +65,46 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(visibleProject?.isHidden).toBe(false);
   });
 
+  it("should persist project commands", async () => {
+    const project = await repository.upsertProject("/tmp/commands-project");
+
+    const command = await repository.createProjectCommand({
+      projectId: project.id,
+      name: "Dev",
+      command: "npm run dev",
+      allowParallel: false,
+      persistLogs: true
+    });
+
+    expect(await repository.listProjectCommands(project.id)).toMatchObject([
+      {
+        id: command.id,
+        projectId: project.id,
+        name: "Dev",
+        command: "npm run dev",
+        allowParallel: false,
+        persistLogs: true
+      }
+    ]);
+
+    const updatedCommand = await repository.updateProjectCommand(command.id, {
+      name: "Dev server",
+      allowParallel: true
+    });
+
+    expect(updatedCommand).toMatchObject({
+      id: command.id,
+      name: "Dev server",
+      command: "npm run dev",
+      allowParallel: true,
+      persistLogs: true
+    });
+
+    await repository.deleteProjectCommand(command.id);
+
+    expect(await repository.listProjectCommands(project.id)).toHaveLength(0);
+  });
+
   it("should persist and page application logs", async () => {
     await repository.createLog({
       type: "error",

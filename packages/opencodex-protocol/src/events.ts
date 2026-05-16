@@ -7,6 +7,8 @@ import type {
   OpenCodexLogEntry,
   OpenCodexMessage,
   OpenCodexProject,
+  OpenCodexProjectCommandRun,
+  OpenCodexProjectCommandOutputStream,
   OpenCodexSettings,
   OpenCodexSource,
   OpenCodexThread,
@@ -58,4 +60,22 @@ export type OpenCodexEvent =
   | { type: "logs.created"; log: OpenCodexLogEntry }
   | { type: "logs.deleted"; logId: string }
   | { type: "logs.cleared" }
+  | { type: "projectCommand.started"; projectId: string; run: OpenCodexProjectCommandRun }
+  | {
+      type: "projectCommand.output";
+      projectId: string;
+      commandId: string;
+      runId: string;
+      stream: OpenCodexProjectCommandOutputStream;
+      delta: string;
+    }
+  | {
+      type: "projectCommand.exited";
+      projectId: string;
+      commandId: string;
+      runId: string;
+      status: OpenCodexProjectCommandRun["status"];
+      exitCode: number | null;
+      exitedAt: string;
+    }
   | { type: "error"; message: string; details?: unknown; recoverable?: boolean; threadId?: string };
