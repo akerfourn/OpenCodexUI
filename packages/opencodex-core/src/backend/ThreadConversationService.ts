@@ -153,14 +153,15 @@ export class ThreadConversationService {
     const openStartedAt = Date.now();
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
 
-    if (cachedSnapshot !== null && cachedSnapshot.syncState.hasLoadedLatest) {
+    if (cachedSnapshot !== null && cachedSnapshot.turns.length > 0) {
       const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
       const turns = this.options.threadCacheService.readTurns(cacheEntry);
       this.logThreadTiming("sqlite load finished", {
         threadId,
         startedAt: openStartedAt,
         turnCount: turns.length,
-        cacheHit: true
+        cacheHit: true,
+        hasLoadedLatest: cachedSnapshot.syncState.hasLoadedLatest
       });
 
       this.emitThreadOpened(cacheEntry, turns);

@@ -155,12 +155,35 @@ textarea {
 }
 
 .app-content {
+  position: relative;
   display: flex;
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
-  flex-direction: column;
   overflow: hidden;
+}
+
+.app-view {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.app-view-active {
+  position: relative;
+  z-index: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.app-view-hidden {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .resizable-sidebar-shell {

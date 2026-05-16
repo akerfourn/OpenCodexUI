@@ -49,12 +49,17 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const previousScrollStateRef = useRef<{ height: number; top: number } | null>(null);
   const shouldStickToBottomRef = useRef(true);
   const previousOlderMessagesPrependVersionRef = useRef(chatStore.olderMessagesPrependVersion);
+  const previousOlderMessagesRevealVersionRef = useRef(chatStore.olderMessagesPrependVersion);
   const previousThreadIdRef = useRef(chatStore.thread.id);
+  const previousTurnCountRef = useRef(chatStore.turns.length);
   const currentThread = chatStore.thread;
   const editableItem = chatStore.editableLastUserItem;
   const [editedMessage, setEditedMessage] = useState<string | null>(null);
+  const [visibleTurnCount, setVisibleTurnCount] = useState(INITIAL_VISIBLE_TURN_COUNT);
+  const visibleTurns = getVisibleTurns(chatStore.turns, visibleTurnCount);
+  const hiddenOlderTurnCount = Math.max(chatStore.turns.length - visibleTurnCount, 0);
   const entries = buildTimelineEntries(
-    chatStore.turns,
+    visibleTurns,
     chatStore.activeTurnId,
     chatStore.isWorking || chatStore.isStartingTurn
   );
@@ -64,6 +69,8 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
 
   useEffect(() => {
     setEditedMessage(null);
+    setVisibleTurnCount(INITIAL_VISIBLE_TURN_COUNT);
+    previousTurnCountRef.current = chatStore.turns.length;
   }, [chatStore.thread.id]);
 
   function handleStartEdit(content: string): void {
@@ -154,7 +161,31 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
     container.scrollTop = container.scrollHeight - previousState.height + previousState.top;
     shouldStickToBottomRef.current = isNearBottom(container);
     previousScrollStateRef.current = null;
-  }, [chatStore.olderMessagesPrependVersion]);
+  }, [chatStore.olderMessagesPrependVersion, visibleTurnCount]);
+
+  useLayoutEffect(() => {
+    const didPrependOlderMessages = (
+      previousOlderMessagesRevealVersionRef.current !== chatStore.olderMessagesPrependVersion
+    );
+    const previousTurnCount = previousTurnCountRef.current;
+
+    previousOlderMessagesRevealVersionRef.current = chatStore.olderMessagesPrependVersion;
+    previousTurnCountRef.current = chatStore.turns.length;
+
+    if (!didPrependOlderMessages) {
+      return;
+    }
+
+    const addedTurnCount = Math.max(chatStore.turns.length - previousTurnCount, 0);
+
+    if (addedTurnCount === 0) {
+      return;
+    }
+
+    setVisibleTurnCount((currentCount) => (
+      Math.min(chatStore.turns.length, currentCount + addedTurnCount)
+    ));
+  }, [chatStore.olderMessagesPrependVersion, chatStore.turns.length]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -184,9 +215,23 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
 
     if (
       container.scrollTop > 80 ||
-      chatStore.isLoadingOlderMessages ||
-      !chatStore.hasMoreOlderMessages
+      chatStore.isLoadingOlderMessages
     ) {
+      return;
+    }
+
+    if (hiddenOlderTurnCount > 0) {
+      previousScrollStateRef.current = {
+        height: container.scrollHeight,
+        top: container.scrollTop
+      };
+      setVisibleTurnCount((currentCount) => (
+        Math.min(chatStore.turns.length, currentCount + TURN_WINDOW_INCREMENT)
+      ));
+      return;
+    }
+
+    if (!chatStore.hasMoreOlderMessages) {
       return;
     }
 
@@ -338,6 +383,8 @@ type TimelineEntry =
     };
 
 const BOTTOM_SCROLL_THRESHOLD_PX = 96;
+const INITIAL_VISIBLE_TURN_COUNT = 10;
+const TURN_WINDOW_INCREMENT = 10;
 
 function isEditableTimelineItem(
   entry: TimelineEntry,
@@ -371,6 +418,22 @@ function scrollToBottom(container: HTMLDivElement): void {
 function isNearBottom(container: HTMLDivElement): boolean {
   const remainingScroll = container.scrollHeight - container.scrollTop - container.clientHeight;
   return remainingScroll <= BOTTOM_SCROLL_THRESHOLD_PX;
+}
+
+/**
+ * Returns the bounded turn window rendered by the timeline.
+ *
+ * @param turns Loaded chat turns.
+ * @param visibleTurnCount Maximum number of recent turns to render.
+ *
+ * @returns Visible turn window.
+ */
+function getVisibleTurns(turns: OpenCodexTurn[], visibleTurnCount: number): OpenCodexTurn[] {
+  if (turns.length <= visibleTurnCount) {
+    return turns;
+  }
+
+  return turns.slice(-visibleTurnCount);
 }
 
 /**

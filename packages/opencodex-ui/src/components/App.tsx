@@ -27,10 +27,8 @@ type AppProps = {
 export function App({ store }: AppProps) {
   const { t } = useTranslation();
   const errorMessage = store.appStore.errorMessage;
-  const activeProjectStore = store.navigationStore.activeProjectStore;
-  const mainContent = store.navigationStore.activeTabId === HOME_TAB_ID || activeProjectStore === null
-    ? <HomeViewX store={store} />
-    : <ProjectViewX store={store} projectStore={activeProjectStore} />;
+  const activeTabId = store.navigationStore.activeTabId;
+  const projectTabStores = store.navigationStore.projectTabStores;
 
   function handleCloseError(): void {
     store.appStore.clearErrorMessage();
@@ -45,7 +43,27 @@ export function App({ store }: AppProps) {
     <Box component="main" className="app-shell">
       <AppTabsX store={store} />
       <section className="app-content">
-        {mainContent}
+        <div
+          className={activeTabId === HOME_TAB_ID ? "app-view app-view-active" : "app-view app-view-hidden"}
+          aria-hidden={activeTabId === HOME_TAB_ID ? undefined : true}
+          tabIndex={activeTabId === HOME_TAB_ID ? undefined : -1}
+        >
+          <HomeViewX store={store} />
+        </div>
+        {projectTabStores.map((projectStore) => {
+          const isActive = activeTabId === projectStore.project.id;
+
+          return (
+            <div
+              key={projectStore.project.id}
+              className={isActive ? "app-view app-view-active" : "app-view app-view-hidden"}
+              aria-hidden={isActive ? undefined : true}
+              tabIndex={isActive ? undefined : -1}
+            >
+              <ProjectViewX store={store} projectStore={projectStore} />
+            </div>
+          );
+        })}
       </section>
       <ApprovalDialogX store={store.approvalsStore} />
       <ProjectTrustDialogX store={store.projectsStore.trustStore} />
