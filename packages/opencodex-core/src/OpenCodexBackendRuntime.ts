@@ -1,6 +1,7 @@
 import {
   CodexProcessError,
   type CodexNotification,
+  type FuzzyFileSearchResponse,
   type CodexServerRequest
 } from "@open-codex-ui/codex-rpc";
 import type {
@@ -14,6 +15,7 @@ import type {
   OpenCodexCommitMessageLanguage,
   OpenCodexCommitPrompt,
   OpenCodexEvent,
+  OpenCodexFileSearchResult,
   OpenCodexImageAttachment,
   OpenCodexGitCommitResult,
   OpenCodexGitStatus,
@@ -219,6 +221,47 @@ export class OpenCodexBackendRuntime {
    */
   async pickSourceExecutable(): Promise<string | null> {
     return await this.options.pickExecutableFile?.() ?? null;
+  }
+
+  /**
+   * Searches project files through the Codex source filesystem.
+   *
+   * @param projectPath Project root path.
+   * @param sourceId Source identifier, or `null`.
+   * @param query Fuzzy search query.
+   * @param limit Maximum number of results.
+   *
+   * @returns Matching files.
+   */
+  async searchProjectFiles(
+    projectPath: string,
+    sourceId: string | null,
+    query: string,
+    limit: number
+  ): Promise<OpenCodexFileSearchResult[]> {
+    const root = normalizeProjectPath(projectPath);
+
+    if (root === null) {
+      return [];
+    }
+
+    const client = await this.ensureClient(sourceId);
+    const response = await client.request<FuzzyFileSearchResponse>("fuzzyFileSearch", {
+      query,
+      roots: [root],
+      cancellationToken: null
+    });
+
+    return response.files
+      .filter((file) => file.match_type === "file")
+      .slice(0, Math.max(1, limit))
+      .map((file) => ({
+        root: file.root,
+        path: file.path,
+        relativePath: readRelativeFilePath(file.root, file.path),
+        fileName: file.file_name,
+        matchType: file.match_type
+      }));
   }
 
   /**
@@ -1122,4 +1165,16 @@ function calculateRetentionCutoff(amount: number, unit: OpenCodexLogRetentionUni
   }
 
   return cutoff.toISOString();
+}
+
+function readRelativeFilePath(root: string, filePath: string): string {
+  const normalizedRoot = root.replaceAll("\\", "/").replace(/\/+$/, "");
+  const normalizedPath = filePath.replaceAll("\\", "/");
+  const rootPrefix = `${normalizedRoot}/`;
+
+  if (normalizedPath.startsWith(rootPrefix)) {
+    return normalizedPath.slice(rootPrefix.length);
+  }
+
+  return normalizedPath.replace(/^\/+/, "");
 }

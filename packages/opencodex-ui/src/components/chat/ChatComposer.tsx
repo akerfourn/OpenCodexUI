@@ -2,17 +2,19 @@
  * Renders the chat composer component for the OpenCodex UI.
  */
 import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button, IconButton, Stack, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 import type {
   OpenCodexEnterKeyBehavior,
+  OpenCodexFileSearchResult,
   OpenCodexImageAttachment,
   OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ChatStore } from "../../stores/ChatStore";
+import type { ProjectStore } from "../../stores/ProjectStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ComposerAttachmentList } from "./ComposerAttachmentList";
 import { ComposerPlainTextInput } from "./ComposerPlainTextInput";
@@ -21,6 +23,7 @@ import { ModelSettingsFields } from "./ModelSettingsFields";
 type ChatComposerProps = {
   store: RootStore;
   chatStore: ChatStore;
+  projectStore: ProjectStore;
   selectedModel: string | null;
   reasoningEffort: OpenCodexReasoningEffort;
   modelOptions: string[];
@@ -37,6 +40,7 @@ type ChatComposerProps = {
 export function ChatComposer({
   store,
   chatStore,
+  projectStore,
   selectedModel,
   reasoningEffort,
   modelOptions,
@@ -44,6 +48,7 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState("");
+  const [draftMarkdown, setDraftMarkdown] = useState("");
   const [attachments, setAttachments] = useState<OpenCodexImageAttachment[]>([]);
   const canSteer = chatStore.canSteerActiveTurn;
   const isSteering = isWorking && canSteer;
@@ -52,11 +57,15 @@ export function ChatComposer({
 
   useEffect(() => {
     setDraft("");
+    setDraftMarkdown("");
     setAttachments([]);
   }, [chatStore.thread.id]);
 
-  function handleDraftChange(value: string): void {
+  const canOpenFileLinks = canOpenProjectFileLinks(store, projectStore);
+
+  function handleDraftChange(value: string, markdown: string): void {
     setDraft(value);
+    setDraftMarkdown(markdown);
   }
 
   async function submitDraft(): Promise<void> {
@@ -64,13 +73,15 @@ export function ChatComposer({
       return;
     }
 
-    const wasAccepted = await chatStore.sendMessage(draft, attachments);
+    const text = draftMarkdown.trim().length > 0 ? draftMarkdown : draft;
+    const wasAccepted = await chatStore.sendMessage(text, attachments);
 
     if (!wasAccepted) {
       return;
     }
 
     setDraft("");
+    setDraftMarkdown("");
     setAttachments([]);
   }
 
@@ -128,6 +139,26 @@ export function ChatComposer({
     setAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId));
   }
 
+  const searchProjectFiles = useCallback(async (
+    query: string
+  ): Promise<OpenCodexFileSearchResult[]> => {
+    return await store.request<OpenCodexFileSearchResult[]>({
+      type: "files.search",
+      projectPath: projectStore.projectPath,
+      sourceId: projectStore.project.sourceId,
+      query,
+      limit: 8
+    });
+  }, [projectStore.project.sourceId, projectStore.projectPath, store]);
+
+  const handleOpenFileLink = useCallback((href: string): void => {
+    if (!canOpenFileLinks) {
+      return;
+    }
+
+    store.openExternalLink(href);
+  }, [canOpenFileLinks, store]);
+
   function handlePaste(event: React.ClipboardEvent<HTMLFormElement>): void {
     const items = Array.from(event.clipboardData.items);
     const imageFiles = items
@@ -157,7 +188,10 @@ export function ChatComposer({
       <ComposerPlainTextInput
         value={draft}
         placeholder={t("composer.messagePlaceholder")}
+        canOpenFileLinks={canOpenFileLinks}
         onChange={handleDraftChange}
+        onSearchFiles={searchProjectFiles}
+        onOpenFileLink={handleOpenFileLink}
         onKeyDown={handleKeyDown}
       />
       <ComposerAttachmentList
@@ -242,4 +276,16 @@ function shouldSubmitOnEnter(
   }
 
   return false;
+}
+
+function canOpenProjectFileLinks(store: RootStore, projectStore: ProjectStore): boolean {
+  const sourceId = projectStore.project.sourceId;
+
+  if (sourceId === null) {
+    return false;
+  }
+
+  const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
+
+  return source?.settings.commandMode === "auto";
 }

@@ -33,6 +33,13 @@ export type OpenCodexRequest =
     }
   | { type: "sources.pickExecutable" }
   | {
+      type: "files.search";
+      projectPath: string;
+      sourceId: string | null;
+      query: string;
+      limit?: number;
+    }
+  | {
       type: "threads.list";
       scope: OpenCodexThreadScope;
       projectPath?: string | null;

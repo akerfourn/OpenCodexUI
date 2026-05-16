@@ -490,10 +490,8 @@ textarea {
 .composer-editor-shell {
   position: relative;
   width: 100%;
-  max-width: 820px;
   min-width: 0;
   max-height: 50vh;
-  justify-self: center;
   overflow: hidden;
   border: 1px solid var(--vscode-input-border);
   border-radius: 4px;
@@ -504,6 +502,14 @@ textarea {
 .composer-editor-shell:focus-within {
   border-color: var(--vscode-focusBorder);
   outline: 1px solid var(--vscode-focusBorder);
+}
+
+.composer-input-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 820px;
+  min-width: 0;
+  justify-self: center;
 }
 
 .composer-editor {
@@ -526,6 +532,31 @@ textarea {
   left: 14px;
   color: var(--vscode-descriptionForeground);
   pointer-events: none;
+}
+
+.composer-editor a {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--vscode-focusBorder) 45%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--vscode-focusBorder) 10%, transparent);
+  color: var(--vscode-focusBorder);
+  font-weight: 700;
+  padding: 0 4px;
+  text-decoration: none;
+  vertical-align: baseline;
+}
+
+.composer-file-suggestions {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 10;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--vscode-panel-border);
 }
 
 .composer-controls {

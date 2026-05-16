@@ -74,6 +74,14 @@ export type OpenCodexProject = {
   editedAt: string;
 };
 
+export type OpenCodexFileSearchResult = {
+  root: string;
+  path: string;
+  relativePath: string;
+  fileName: string;
+  matchType: "file" | "directory";
+};
+
 export type OpenCodexLogEntry = {
   id: string;
   type: OpenCodexLogType;

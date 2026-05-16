@@ -79,6 +79,7 @@ export function ChatView({ store, projectStore }: ChatViewProps) {
         <ChatComposer
           store={store}
           chatStore={chatStore}
+          projectStore={projectStore}
           selectedModel={appStore.selectedModel}
           reasoningEffort={appStore.reasoningEffort}
           modelOptions={appStore.modelOptions}

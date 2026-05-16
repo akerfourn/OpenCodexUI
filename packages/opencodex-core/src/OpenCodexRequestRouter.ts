@@ -70,6 +70,13 @@ export class OpenCodexRequestRouter {
         return this.runtime.updateSource(request.sourceId, request.patch);
       case "sources.pickExecutable":
         return this.runtime.pickSourceExecutable();
+      case "files.search":
+        return this.runtime.searchProjectFiles(
+          request.projectPath,
+          request.sourceId,
+          request.query,
+          request.limit ?? 8
+        );
       case "threads.list":
         return this.runtime.listThreads(
           request.scope,
