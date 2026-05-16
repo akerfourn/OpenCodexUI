@@ -724,6 +724,28 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Starts an inline review of the current thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Success result.
+   */
+  async startThreadReview(threadId: string, projectPath: string | null): Promise<{ ok: true }> {
+    return await this.threadConversationService.startReview(threadId, projectPath);
+  }
+
+  /**
+   * Starts context compaction for a thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Success result.
+   */
+  async compactThread(threadId: string, projectPath: string | null): Promise<{ ok: true }> {
+    return await this.threadConversationService.compactThread(threadId, projectPath);
+  }
+
+  /**
    * Renames a thread.
    *
    * @param threadId Thread identifier.
@@ -1076,7 +1098,12 @@ export class OpenCodexBackendRuntime {
       return request.threadId;
     }
 
-    if (request.type === "threads.open" || request.type === "threads.recover") {
+    if (
+      request.type === "threads.open" ||
+      request.type === "threads.recover" ||
+      request.type === "thread.review" ||
+      request.type === "thread.compact"
+    ) {
       return request.threadId;
     }
 

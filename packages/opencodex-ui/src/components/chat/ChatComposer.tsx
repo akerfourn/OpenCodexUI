@@ -18,6 +18,7 @@ import type {
 import type { ChatStore } from "../../stores/ChatStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import type { RootStore } from "../../stores/RootStore";
+import { ChatAdvancedActionsMenu } from "./ChatAdvancedActionsMenu";
 import { ComposerAttachmentList } from "./ComposerAttachmentList";
 import { ComposerPlainTextInput } from "./ComposerPlainTextInput";
 import { ModelSettingsFields } from "./ModelSettingsFields";
@@ -57,6 +58,13 @@ export function ChatComposer({
   const isSteering = isWorking && canSteer;
   const canSubmit = (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
   const canAttachImages = !isWorking || canSteer;
+  const areAdvancedActionsDisabled = (
+    isWorking ||
+    chatStore.isStartingTurn ||
+    chatStore.isEditingLastTurn ||
+    chatStore.isRecovering ||
+    projectStore.isOrphan
+  );
 
   useEffect(() => {
     setDraft("");
@@ -133,6 +141,14 @@ export function ChatComposer({
 
   function handleInterrupt(): void {
     chatStore.interruptTurn();
+  }
+
+  function handleReview(): void {
+    chatStore.startReview();
+  }
+
+  function handleCompact(): void {
+    chatStore.compactThread();
   }
 
   async function handleAttachImages(): Promise<void> {
@@ -235,6 +251,11 @@ export function ChatComposer({
             {t("composer.interrupt")}
           </Button>
         ) : null}
+        <ChatAdvancedActionsMenu
+          disabled={areAdvancedActionsDisabled}
+          onReview={handleReview}
+          onCompact={handleCompact}
+        />
         <Tooltip title={t("composer.attachImage")}>
           <span>
             <IconButton

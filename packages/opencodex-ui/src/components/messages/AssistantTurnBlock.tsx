@@ -54,8 +54,9 @@ export function AssistantTurnBlock({
   const [expanded, setExpanded] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const blockRef = isLast ? lastMessageRef : undefined;
+  const runningStartedAt = turn.startedAt ?? readFirstCreatedAt(preludeItems);
   const displayedDurationMs = isRunning
-    ? Math.max(0, now - readStartedAtTime(turn.startedAt))
+    ? Math.max(0, now - readStartedAtTime(runningStartedAt))
     : turn.durationMs;
   const label = isRunning
     ? t("reasoningBlock.active", { duration: formatDuration(displayedDurationMs) ?? "0 s" })
@@ -89,6 +90,7 @@ export function AssistantTurnBlock({
       return undefined;
     }
 
+    setNow(Date.now());
     const interval = window.setInterval(() => {
       setNow(Date.now());
     }, 1000);
@@ -252,6 +254,16 @@ function readStartedAtTime(value: string | null): number {
 
   const time = Date.parse(value);
   return Number.isNaN(time) ? Date.now() : time;
+}
+
+function readFirstCreatedAt(items: OpenCodexTurnItem[]): string | null {
+  for (const item of items) {
+    if (item.createdAt !== null) {
+      return item.createdAt;
+    }
+  }
+
+  return null;
 }
 
 /**

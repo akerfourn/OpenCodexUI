@@ -51,6 +51,17 @@ export const resources = {
         untitled: "Conversation sans titre"
       },
       composer: {
+        advanced: {
+          cancel: "Annuler",
+          compact: "Compacter le contexte",
+          compactDescription: "Codex va résumer le contexte de cette conversation pour libérer de la place dans la fenêtre de contexte. L'historique reste visible, mais le modèle travaillera ensuite depuis ce résumé.",
+          compactTitle: "Compacter cette conversation ?",
+          confirm: "Valider",
+          open: "Actions avancées",
+          review: "Lancer une review",
+          reviewDescription: "Codex va analyser les changements non commités du projet et lancer une review dans cette conversation.",
+          reviewTitle: "Lancer une review ?"
+        },
         attachedImage: "Image jointe",
         attachImage: "Ajouter une image",
         imageIndex: "Image {{index}}",
@@ -350,6 +361,17 @@ export const resources = {
         untitled: "Untitled conversation"
       },
       composer: {
+        advanced: {
+          cancel: "Cancel",
+          compact: "Compact context",
+          compactDescription: "Codex will summarize this conversation context to free space in the context window. The history remains visible, but the model will continue from that summary.",
+          compactTitle: "Compact this conversation?",
+          confirm: "Confirm",
+          open: "Advanced actions",
+          review: "Start review",
+          reviewDescription: "Codex will inspect the project's uncommitted changes and start a review in this conversation.",
+          reviewTitle: "Start a review?"
+        },
         attachedImage: "Attached image",
         attachImage: "Attach image",
         imageIndex: "Image {{index}}",

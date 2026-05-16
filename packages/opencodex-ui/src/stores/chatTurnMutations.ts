@@ -198,12 +198,16 @@ export function movePendingTurnToStartedTurn(chatStore: ChatStore, turnId: strin
   const existingTurn = chatStore.turns.find((turn) => turn.id === turnId);
 
   if (pendingTurn === undefined) {
-    findOrCreateTurn(chatStore, turnId);
+    const turn = findOrCreateTurn(chatStore, turnId);
+    turn.status = "running";
+    turn.startedAt = turn.startedAt ?? new Date().toISOString();
     return;
   }
 
   if (existingTurn !== undefined) {
     existingTurn.items = [...pendingTurn.items, ...existingTurn.items];
+    existingTurn.startedAt = existingTurn.startedAt ?? pendingTurn.startedAt ?? new Date().toISOString();
+    existingTurn.status = "running";
     chatStore.turns = chatStore.turns.filter((turn) => turn !== pendingTurn);
     return;
   }

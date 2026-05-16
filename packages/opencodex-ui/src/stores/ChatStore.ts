@@ -217,6 +217,42 @@ export class ChatStore {
     });
   }
 
+  startReview(): void {
+    if (!this.canRunAdvancedAction) {
+      return;
+    }
+
+    this.isStartingTurn = true;
+    void this.root.request({
+      type: "thread.review",
+      threadId: this.thread.id,
+      projectPath: this.projectStore.projectPath
+    }).catch((error: unknown) => {
+      runInAction(() => {
+        this.isStartingTurn = false;
+        this.root.appStore.errorMessage = readErrorMessage(error);
+      });
+    });
+  }
+
+  compactThread(): void {
+    if (!this.canRunAdvancedAction) {
+      return;
+    }
+
+    this.isStartingTurn = true;
+    void this.root.request({
+      type: "thread.compact",
+      threadId: this.thread.id,
+      projectPath: this.projectStore.projectPath
+    }).catch((error: unknown) => {
+      runInAction(() => {
+        this.isStartingTurn = false;
+        this.root.appStore.errorMessage = readErrorMessage(error);
+      });
+    });
+  }
+
   loadOlderMessages(): void {
     if (
       this.isLoadingOlderMessages ||
@@ -655,6 +691,16 @@ export class ChatStore {
     return (
       this.root.navigationStore.activeProjectStore?.project.id === this.projectStore.project.id &&
       this.projectStore.selectedChatId === this.thread.id
+    );
+  }
+
+  private get canRunAdvancedAction(): boolean {
+    return (
+      !this.projectStore.isOrphan &&
+      !this.isWorking &&
+      !this.isStartingTurn &&
+      !this.isEditingLastTurn &&
+      !this.isRecovering
     );
   }
 

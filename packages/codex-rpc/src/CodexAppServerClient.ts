@@ -27,6 +27,7 @@ import type { ThreadResumeParams } from "./generated/v2/ThreadResumeParams";
 import type { ThreadResumeResponse } from "./generated/v2/ThreadResumeResponse";
 import type { ThreadRollbackParams } from "./generated/v2/ThreadRollbackParams";
 import type { ThreadRollbackResponse } from "./generated/v2/ThreadRollbackResponse";
+import type { ThreadCompactStartResponse } from "./generated/v2/ThreadCompactStartResponse";
 import type { ThreadSetNameResponse } from "./generated/v2/ThreadSetNameResponse";
 import type { ThreadStartParams } from "./generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "./generated/v2/ThreadStartResponse";
@@ -34,6 +35,7 @@ import type { ThreadTurnsItemsListParams } from "./generated/v2/ThreadTurnsItems
 import type { ThreadTurnsItemsListResponse } from "./generated/v2/ThreadTurnsItemsListResponse";
 import type { ThreadTurnsListParams } from "./generated/v2/ThreadTurnsListParams";
 import type { ThreadTurnsListResponse } from "./generated/v2/ThreadTurnsListResponse";
+import type { ReviewStartResponse } from "./generated/v2/ReviewStartResponse";
 import type { TurnInterruptResponse } from "./generated/v2/TurnInterruptResponse";
 import type { TurnStartParams } from "./generated/v2/TurnStartParams";
 import type { TurnStartResponse } from "./generated/v2/TurnStartResponse";
@@ -328,6 +330,30 @@ export class CodexAppServerClient {
    */
   async rollbackThread(params: ThreadRollbackParams): Promise<ThreadRollbackResponse> {
     return this.request<ThreadRollbackResponse>("thread/rollback", params);
+  }
+
+  /**
+   * Starts a context compaction for a thread.
+   *
+   * @param threadId Identifier of the thread to compact.
+   * @returns Promise resolved once the request is accepted.
+   */
+  async compactThread(threadId: string): Promise<ThreadCompactStartResponse> {
+    return this.request<ThreadCompactStartResponse>("thread/compact/start", { threadId });
+  }
+
+  /**
+   * Starts an inline review of the thread's uncommitted changes.
+   *
+   * @param threadId Identifier of the thread to review.
+   * @returns Promise resolved with the review turn metadata.
+   */
+  async startReview(threadId: string): Promise<ReviewStartResponse> {
+    return this.request<ReviewStartResponse>("review/start", {
+      threadId,
+      target: { type: "uncommittedChanges" },
+      delivery: "inline"
+    });
   }
 
   /**

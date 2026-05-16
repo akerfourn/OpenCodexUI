@@ -59,6 +59,8 @@ export type OpenCodexRequest =
   | { type: "threads.recover"; threadId: string }
   | { type: "threads.create"; projectPath?: string | null; sourceId?: string | null }
   | { type: "threads.rename"; threadId: string; name: string }
+  | { type: "thread.review"; threadId: string; projectPath?: string | null }
+  | { type: "thread.compact"; threadId: string; projectPath?: string | null }
   | { type: "system.openLink"; href: string; projectPath?: string | null }
   | {
       type: "turn.start";

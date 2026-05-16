@@ -622,6 +622,54 @@ export class ThreadConversationService {
   }
 
   /**
+   * Starts an inline review of the thread's uncommitted changes.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when Codex accepts the review request.
+   */
+  async startReview(threadId: string, projectPath: string | null): Promise<{ ok: true }> {
+    const sourceId = await this.resolveThreadSourceId(threadId);
+
+    if (sourceId === null) {
+      throw new Error("Cannot start a review for a thread without a Codex source.");
+    }
+
+    const client = await this.options.ensureClient(sourceId);
+    await this.resumeThreadForTurn(client, threadId, projectPath, null);
+    const response = await client.startReview(threadId);
+    const turn = readObject(readObject(response).turn);
+    const turnId = readString(turn.id);
+
+    if (turnId.length > 0) {
+      this.options.emit({ type: "turn.started", threadId, turnId });
+    }
+
+    return { ok: true };
+  }
+
+  /**
+   * Starts context compaction for a thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when Codex accepts the compaction request.
+   */
+  async compactThread(threadId: string, projectPath: string | null): Promise<{ ok: true }> {
+    const sourceId = await this.resolveThreadSourceId(threadId);
+
+    if (sourceId === null) {
+      throw new Error("Cannot compact a thread without a Codex source.");
+    }
+
+    const client = await this.options.ensureClient(sourceId);
+    await this.resumeThreadForTurn(client, threadId, projectPath, null);
+    await client.compactThread(threadId);
+
+    return { ok: true };
+  }
+
+  /**
    * Synchronizes a thread shortly after a turn completes.
    *
    * @param threadId Thread identifier.
