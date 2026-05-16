@@ -20,10 +20,16 @@ asarUnpack:
 
 linux:
   icon: build/icon.png
+  executableName: open-codex-ui
   target:
     - AppImage
     - deb
   category: Development
+  maintainer: Adrien Kerfourn <ak.sitecontact@gmail.com>
+
+deb:
+  packageName: open-codex-ui
+  artifactName: open-codex-ui_${version}_${arch}.${ext}
 
 mac:
   icon: build/icon.icns

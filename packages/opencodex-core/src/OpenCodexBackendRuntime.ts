@@ -207,7 +207,6 @@ export class OpenCodexBackendRuntime {
       sources: await this.projectSourceService.listOpenCodexSources(),
       projectPath: this.options.projectPath
     });
-    await this.projectSourceService.cacheProject(this.options.projectPath, null);
     await this.listProjects();
     await this.listModels();
     await this.readUsageLimits();
@@ -479,6 +478,17 @@ export class OpenCodexBackendRuntime {
    */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<{ ok: true }> {
     return await this.projectSourceService.setProjectHidden(projectId, isHidden);
+  }
+
+  /**
+   * Deletes a project from the local cache.
+   *
+   * @param projectId Project identifier.
+   *
+   * @returns Success result.
+   */
+  async deleteProject(projectId: string): Promise<{ ok: true }> {
+    return await this.projectSourceService.deleteProject(projectId);
   }
 
   /**

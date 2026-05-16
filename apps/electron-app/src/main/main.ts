@@ -113,14 +113,13 @@ async function disposeAndExit(code: number): Promise<void> {
 }
 
 /**
- * Resolves the project path associated with the current Electron session.
+ * Resolves the explicitly configured project path associated with the current
+ * Electron session.
  *
- * @returns Project path derived from the environment or the current working directory.
+ * @returns Project path from the environment, or `null` when none is provided.
  */
-function resolveProjectPath(): string {
-  return process.env.OPENCODEX_PROJECT_PATH
-    ?? process.env.INIT_CWD
-    ?? process.cwd();
+function resolveProjectPath(): string | null {
+  return process.env.OPENCODEX_PROJECT_PATH ?? null;
 }
 
 /**

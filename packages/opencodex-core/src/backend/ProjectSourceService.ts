@@ -147,6 +147,25 @@ export class ProjectSourceService {
   }
 
   /**
+   * Deletes a project from the local cache.
+   *
+   * @param projectId Project identifier.
+   *
+   * @returns Success result.
+   */
+  async deleteProject(projectId: string): Promise<{ ok: true }> {
+    const repository = this.options.cacheRepository;
+
+    if (repository === null) {
+      return { ok: true };
+    }
+
+    await repository.deleteProject(projectId);
+    this.options.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
+    return { ok: true };
+  }
+
+  /**
    * Deletes a non-default source and clears its project associations.
    *
    * @param sourceId Source identifier.

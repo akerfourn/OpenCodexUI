@@ -244,6 +244,16 @@ export interface OpenCodexCacheRepository {
   setProjectHidden(projectId: string, isHidden: boolean): Promise<void>;
 
   /**
+   * Deletes a cached project.
+   *
+   * Existing cached threads are preserved and become orphaned.
+   *
+   * @param projectId Project identifier.
+   * @returns Promise resolved when the project is deleted.
+   */
+  deleteProject(projectId: string): Promise<void>;
+
+  /**
    * Lists cached projects.
    *
    * @returns Cached projects ordered for display.

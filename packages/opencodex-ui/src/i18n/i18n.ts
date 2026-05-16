@@ -184,6 +184,11 @@ export const resources = {
       home: {
         allSources: "Toutes les sources",
         createPath: "Créer/Ouvrir",
+        deleteProjectCancel: "Annuler",
+        deleteProjectConfirm: "Supprimer du cache",
+        deleteProjectDescription: "Cette action supprime uniquement l'entrée locale du cache OpenCodexUI. Les conversations Codex ne sont pas supprimées.",
+        deleteProjectFromCache: "Supprimer du cache",
+        deleteProjectTitle: "Supprimer {{project}} du cache ?",
         noProjectSearchResults: "Aucun projet ne correspond à cette recherche.",
         noRecentProjects: "Aucun projet récent pour le moment.",
         hideHiddenProjects: "Masquer les projets masques",
@@ -627,6 +632,11 @@ export const resources = {
       home: {
         allSources: "All sources",
         createPath: "Create/Open",
+        deleteProjectCancel: "Cancel",
+        deleteProjectConfirm: "Remove from cache",
+        deleteProjectDescription: "This only removes the local OpenCodexUI cache entry. Codex conversations are not deleted.",
+        deleteProjectFromCache: "Remove from cache",
+        deleteProjectTitle: "Remove {{project}} from cache?",
         noProjectSearchResults: "No project matches this search.",
         noRecentProjects: "No recent projects yet.",
         hideHiddenProjects: "Hide hidden projects",

@@ -22,12 +22,13 @@ import {
 } from "@mui/material";
 import Fuse from "fuse.js";
 import { observer } from "mobx-react-lite";
-import type { ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
+import { HomeProjectDeleteDialog } from "./HomeProjectDeleteDialog";
 import { HomeProjectListItem } from "./HomeProjectListItem";
 
 type HomeProjectsViewProps = {
@@ -43,6 +44,8 @@ type HomeProjectsViewProps = {
  */
 export function HomeProjectsView({ store }: HomeProjectsViewProps) {
   const { t } = useTranslation();
+  const [projectPendingDeletion, setProjectPendingDeletion] =
+    useState<OpenCodexProject | null>(null);
   const projectsStore = store.projectsStore;
   const sourcesStore = store.sourcesStore;
 
@@ -68,6 +71,19 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
 
   function handleSetProjectHidden(projectId: string, isHidden: boolean): void {
     projectsStore.setProjectHidden(projectId, isHidden);
+  }
+
+  function handleDeleteProject(project: OpenCodexProject): void {
+    setProjectPendingDeletion(project);
+  }
+
+  function handleCancelProjectDeletion(): void {
+    setProjectPendingDeletion(null);
+  }
+
+  function handleConfirmProjectDeletion(projectId: string): void {
+    projectsStore.deleteProject(projectId);
+    setProjectPendingDeletion(null);
   }
 
   function handleSourceChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
@@ -211,6 +227,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
                   sourceColor={source === null ? null : source.settings.color}
                   onOpen={handleOpenRecent}
                   onSetHidden={handleSetProjectHidden}
+                  onDelete={handleDeleteProject}
                 />
               );
             })}
@@ -223,6 +240,11 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
           </Typography>
         )}
       </Box>
+      <HomeProjectDeleteDialog
+        project={projectPendingDeletion}
+        onCancel={handleCancelProjectDeletion}
+        onConfirm={handleConfirmProjectDeletion}
+      />
     </Stack>
   );
 }

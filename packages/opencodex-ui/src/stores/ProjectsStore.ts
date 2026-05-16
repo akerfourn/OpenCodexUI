@@ -183,6 +183,20 @@ export class ProjectsStore implements RootChildStore {
   }
 
   /**
+   * Deletes a project from the local cache.
+   *
+   * @param projectId Project identifier.
+   *
+   * @returns Nothing.
+   */
+  deleteProject(projectId: string): void {
+    void this.root.request({
+      type: "projects.delete",
+      projectId
+    });
+  }
+
+  /**
    * Opens or updates a project tab.
    *
    * @param project Project metadata.

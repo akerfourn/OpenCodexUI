@@ -1,8 +1,12 @@
 {
   "name": "open-codex-ui-electron-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Electron desktop UI for the local Codex app-server.",
-  "author": "OpenCodexUI contributors",
+  "author": {
+    "name": "Adrien Kerfourn",
+    "email": "ak.sitecontact@gmail.com"
+  },
+  "homepage": "https://github.com/akerfourn/OpenCodexUI",
   "private": true,
   "packageManager": "npm@11.11.0",
   "type": "module",

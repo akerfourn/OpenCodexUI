@@ -53,6 +53,7 @@ import {
   updateSource
 } from "./sqlite/sourceQueries.js";
 import {
+  deleteProject,
   listProjects,
   setProjectHidden,
   upsertProject
@@ -230,6 +231,17 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<void> {
     await setProjectHidden(this.database, projectId, isHidden);
+  }
+
+  /**
+   * Deletes a cached project.
+   *
+   * @param projectId Project identifier.
+   *
+   * @returns Promise resolved when the row is deleted.
+   */
+  async deleteProject(projectId: string): Promise<void> {
+    await deleteProject(this.database, projectId);
   }
 
   /**

@@ -105,6 +105,52 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(await repository.listProjectCommands(project.id)).toHaveLength(0);
   });
 
+  it("should delete a cached project without deleting its threads", async () => {
+    const project = await repository.upsertProject("/tmp/deleted-project");
+    await repository.createProjectCommand({
+      projectId: project.id,
+      name: "Dev",
+      command: "npm run dev",
+      allowParallel: false,
+      persistLogs: false
+    });
+    await repository.upsertThreadIndex([
+      {
+        id: "deleted-project-thread",
+        codexTitle: "Deleted project thread",
+        customTitle: null,
+        title: "Deleted project thread",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "deleted-project",
+        projectPath: "/tmp/deleted-project",
+        sourceId: null,
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.deleteProject(project.id);
+
+    const projects = await repository.listProjects();
+    const threads = await repository.listThreads({
+      scope: "currentProject",
+      currentProjectPath: "/tmp/deleted-project",
+      sourceId: null
+    });
+
+    expect(projects.some((entry) => entry.id === project.id)).toBe(false);
+    expect(await repository.listProjectCommands(project.id)).toHaveLength(0);
+    expect(threads).toMatchObject([
+      {
+        id: "deleted-project-thread",
+        projectPath: "/tmp/deleted-project",
+        projectName: null
+      }
+    ]);
+  });
+
   it("should persist and page application logs", async () => {
     await repository.createLog({
       type: "error",

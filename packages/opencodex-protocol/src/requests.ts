@@ -19,6 +19,7 @@ export type OpenCodexRequest =
   | { type: "projects.open"; projectPath: string; sourceId?: string | null; createIfMissing?: boolean }
   | { type: "projects.pickDirectory"; mode: "open" | "create"; sourceId?: string | null }
   | { type: "projects.setHidden"; projectId: string; isHidden: boolean }
+  | { type: "projects.delete"; projectId: string }
   | { type: "attachments.pickImages" }
   | { type: "sources.list" }
   | { type: "sources.create"; name?: string }

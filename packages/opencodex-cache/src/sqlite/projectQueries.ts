@@ -138,3 +138,23 @@ export async function setProjectHidden(
       updatedAt: new Date().toISOString()
     });
 }
+
+/**
+ * Deletes a cached project row.
+ *
+ * Cached threads remain in the database and become orphaned through the
+ * existing foreign-key `ON DELETE SET NULL` behavior.
+ *
+ * @param database SQLite database connection.
+ * @param projectId Project identifier.
+ *
+ * @returns Promise resolved when the row is deleted.
+ */
+export async function deleteProject(
+  database: BetterSqliteDatabase,
+  projectId: string
+): Promise<void> {
+  database
+    .prepare("DELETE FROM projects WHERE id = @projectId")
+    .run({ projectId });
+}

@@ -1,6 +1,7 @@
 /**
  * Renders one project entry in the Home project list.
  */
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
@@ -18,6 +19,7 @@ type HomeProjectListItemProps = {
   sourceColor: OpenCodexSourceColor | null;
   onOpen(projectPath: string, sourceId: string | null): void;
   onSetHidden(projectId: string, isHidden: boolean): void;
+  onDelete(project: OpenCodexProject): void;
 };
 
 /**
@@ -32,7 +34,8 @@ export function HomeProjectListItem({
   sourceName,
   sourceColor,
   onOpen,
-  onSetHidden
+  onSetHidden,
+  onDelete
 }: HomeProjectListItemProps) {
   const { i18n, t } = useTranslation();
   const projectName = project.displayName ?? project.defaultName;
@@ -47,6 +50,11 @@ export function HomeProjectListItem({
   function handleSetHidden(event: MouseEvent<HTMLButtonElement>): void {
     event.stopPropagation();
     onSetHidden(project.id, !project.isHidden);
+  }
+
+  function handleDelete(event: MouseEvent<HTMLButtonElement>): void {
+    event.stopPropagation();
+    onDelete(project);
   }
 
   return (
@@ -102,6 +110,17 @@ export function HomeProjectListItem({
           ) : (
             <VisibilityOffOutlinedIcon fontSize="small" />
           )}
+        </IconButton>
+      </Tooltip>
+      <Tooltip title={t("home.deleteProjectFromCache")}>
+        <IconButton
+          aria-label={t("home.deleteProjectFromCache")}
+          className="home-project-hidden-button"
+          size="small"
+          onClick={handleDelete}
+          sx={{ flex: "0 0 auto", ml: 0.5 }}
+        >
+          <DeleteOutlineOutlinedIcon fontSize="small" />
         </IconButton>
       </Tooltip>
     </ListItemButton>
