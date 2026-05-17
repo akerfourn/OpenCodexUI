@@ -5,11 +5,17 @@ directories:
   buildResources: build
   output: release
 
+afterPack: scripts/after-pack.cjs
+
 files:
   - dist/**/*
   - package.json
 
 extraResources:
+  - from: build/icon.ico
+    to: icon.ico
+  - from: build/icon.png
+    to: icon.png
   - from: ../../prompt-commit.default.md
     to: prompt-commit.default.md
   - from: ../../prompt-commit.generation.md
@@ -39,5 +45,13 @@ mac:
 
 win:
   icon: build/icon.ico
+  signAndEditExecutable: false
   target:
     - nsis
+    - portable
+
+nsis:
+  artifactName: OpenCodexUI Setup ${version}.${ext}
+
+portable:
+  artifactName: OpenCodexUI Portable ${version}.${ext}

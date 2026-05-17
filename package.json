@@ -9,15 +9,15 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w open-codex-ui-electron-app",
-    "build": "npm run build:packages && npm run build -w open-codex-ui-electron-app",
+    "dev": "npm run dev -w apps/electron-app",
+    "build": "npm run build:packages && npm run build -w apps/electron-app",
     "build:packages": "npm run build -w @open-codex-ui/codex-rpc && npm run build -w @open-codex-ui/opencodex-protocol && npm run build -w @open-codex-ui/opencodex-cache && npm run build -w @open-codex-ui/opencodex-core && npm run build -w @open-codex-ui/opencodex-ui",
-    "dist": "npm run build:packages && npm run dist -w open-codex-ui-electron-app",
-    "dist:dir": "npm run build:packages && npm run dist:dir -w open-codex-ui-electron-app",
-    "icons": "npm run icons -w open-codex-ui-electron-app",
-    "rebuild:sqlite:electron": "npm run rebuild:sqlite:electron -w open-codex-ui-electron-app",
+    "dist": "npm run build:packages && npm run dist -w apps/electron-app",
+    "dist:dir": "npm run build:packages && npm run dist:dir -w apps/electron-app",
+    "icons": "npm run icons -w apps/electron-app",
+    "rebuild:sqlite:electron": "npm run rebuild:sqlite:electron -w apps/electron-app",
     "rebuild:sqlite:node": "npm rebuild better-sqlite3",
-    "typecheck": "npm run build:packages && npm run typecheck -w open-codex-ui-electron-app",
+    "typecheck": "npm run build:packages && npm run typecheck -w apps/electron-app",
     "check": "npm run typecheck",
     "test": "npm run rebuild:sqlite:node && npm run test --workspaces --if-present",
     "generate:codex-types": "codex app-server generate-ts --experimental --out packages/codex-rpc/src/generated"

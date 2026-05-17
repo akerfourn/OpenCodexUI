@@ -128,6 +128,17 @@ function resolveProjectPath(): string | null {
  * @returns Absolute icon path when the generated icon exists, otherwise null.
  */
 function resolveWindowIconPath(): string | null {
-  const iconPath = path.join(__dirname, "..", "..", "build", "icon.png");
-  return existsSync(iconPath) ? iconPath : null;
+  const iconFileName = process.platform === "win32" ? "icon.ico" : "icon.png";
+  const iconCandidates = [
+    path.join(process.resourcesPath, iconFileName),
+    path.join(__dirname, "..", "..", "build", iconFileName)
+  ];
+
+  for (const iconPath of iconCandidates) {
+    if (existsSync(iconPath)) {
+      return iconPath;
+    }
+  }
+
+  return null;
 }

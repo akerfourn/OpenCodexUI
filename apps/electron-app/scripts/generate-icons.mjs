@@ -53,14 +53,18 @@ async function main() {
   await assertFileExists(sourceIconPath);
   await mkdir(buildResourcesPath, { recursive: true });
 
-  const hasConvert = await commandExists("convert");
-  if (!hasConvert) {
-    throw new Error("ImageMagick `convert` is required to generate PNG and ICO icons.");
+  const imageCommand = await resolveImageMagickCommand();
+  if (imageCommand === null) {
+    await assertGeneratedIconsExist();
+    console.warn(
+      "[OpenCodexUI icons] skipped regeneration: ImageMagick is unavailable and existing icons are present."
+    );
+    return;
   }
 
-  await generateLinuxPng();
-  await generateWindowsIco();
-  await generateMacIcns();
+  await generateLinuxPng(imageCommand);
+  await generateWindowsIco(imageCommand);
+  await generateMacIcns(imageCommand);
 }
 
 /**
@@ -68,8 +72,8 @@ async function main() {
  *
  * @returns Promise resolved once the PNG has been written.
  */
-async function generateLinuxPng() {
-  await runCommand("convert", [
+async function generateLinuxPng(imageCommand) {
+  await runCommand(imageCommand, [
     sourceIconPath,
     "-resize",
     "512x512",
@@ -89,8 +93,8 @@ async function generateLinuxPng() {
  *
  * @returns Promise resolved once the ICO has been written.
  */
-async function generateWindowsIco() {
-  await runCommand("convert", [
+async function generateWindowsIco(imageCommand) {
+  await runCommand(imageCommand, [
     sourceIconPath,
     "-background",
     "none",
@@ -110,14 +114,14 @@ async function generateWindowsIco() {
  *
  * @returns Promise resolved once the ICNS has been written or skipped.
  */
-async function generateMacIcns() {
+async function generateMacIcns(imageCommand) {
   if (await commandExists("iconutil")) {
-    await generateMacIcnsWithIconutil();
+    await generateMacIcnsWithIconutil(imageCommand);
     return;
   }
 
   if (await commandExists("png2icns")) {
-    await generateMacIcnsWithPng2Icns();
+    await generateMacIcnsWithPng2Icns(imageCommand);
     return;
   }
 
@@ -131,10 +135,10 @@ async function generateMacIcns() {
  *
  * @returns Promise resolved once the ICNS has been written.
  */
-async function generateMacIcnsWithIconutil() {
+async function generateMacIcnsWithIconutil(imageCommand) {
   await rm(iconSetPath, { recursive: true, force: true });
   await mkdir(iconSetPath, { recursive: true });
-  await generateIconSetFiles();
+  await generateIconSetFiles(imageCommand);
   await runCommand("iconutil", ["-c", "icns", iconSetPath, "-o", iconIcnsPath]);
   await rm(iconSetPath, { recursive: true, force: true });
   console.info(`[OpenCodexUI icons] wrote ${relativeToRepo(iconIcnsPath)}`);
@@ -145,10 +149,10 @@ async function generateMacIcnsWithIconutil() {
  *
  * @returns Promise resolved once the ICNS has been written.
  */
-async function generateMacIcnsWithPng2Icns() {
+async function generateMacIcnsWithPng2Icns(imageCommand) {
   await rm(iconSetPath, { recursive: true, force: true });
   await mkdir(iconSetPath, { recursive: true });
-  await generateIconSetFiles(png2IcnsSizes);
+  await generateIconSetFiles(imageCommand, png2IcnsSizes);
 
   const iconSetFiles = png2IcnsSizes.map((icon) => resolve(iconSetPath, icon.name));
   await runCommand("png2icns", [iconIcnsPath, ...iconSetFiles]);
@@ -162,9 +166,9 @@ async function generateMacIcnsWithPng2Icns() {
  * @param icons Icon dimensions and filenames to generate.
  * @returns Promise resolved once all iconset files have been written.
  */
-async function generateIconSetFiles(icons = iconSetSizes) {
+async function generateIconSetFiles(imageCommand, icons = iconSetSizes) {
   for (const icon of icons) {
-    await runCommand("convert", [
+    await runCommand(imageCommand, [
       sourceIconPath,
       "-resize",
       `${icon.size}x${icon.size}`,
@@ -187,13 +191,45 @@ async function generateIconSetFiles(icons = iconSetSizes) {
  */
 async function commandExists(command) {
   return new Promise((resolvePromise) => {
-    const child = spawn("sh", ["-c", `command -v ${command}`], {
+    const resolverCommand = process.platform === "win32" ? "where.exe" : "sh";
+    const resolverArgs = process.platform === "win32"
+      ? [command]
+      : ["-c", `command -v ${command}`];
+    const child = spawn(resolverCommand, resolverArgs, {
       stdio: "ignore"
     });
 
     child.on("error", () => resolvePromise(false));
     child.on("exit", (code) => resolvePromise(code === 0));
   });
+}
+
+/**
+ * Resolves the ImageMagick command available on the current platform.
+ *
+ * @returns Command name, or `null` when ImageMagick is unavailable.
+ */
+async function resolveImageMagickCommand() {
+  if (await commandExists("magick")) {
+    return "magick";
+  }
+
+  if (process.platform !== "win32" && await commandExists("convert")) {
+    return "convert";
+  }
+
+  return null;
+}
+
+/**
+ * Verifies that versioned generated icons are available when regeneration is skipped.
+ *
+ * @returns Promise resolved once every required icon exists.
+ */
+async function assertGeneratedIconsExist() {
+  await assertFileExists(iconPngPath);
+  await assertFileExists(iconIcoPath);
+  await assertFileExists(iconIcnsPath);
 }
 
 /**

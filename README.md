@@ -52,6 +52,11 @@ Linux builds currently include:
 - `OpenCodexUI-<version>.AppImage`
 - `open-codex-ui_<version>_amd64.deb`
 
+Windows builds currently include:
+
+- `OpenCodexUI Setup <version>.exe`
+- `OpenCodexUI Portable <version>.exe`
+
 The application stores its own settings and cache in the operating system's
 application data directory. It does not store Codex credentials.
 
@@ -207,7 +212,7 @@ The settings file is merged with application defaults. Current defaults include:
 - Some historical Codex activity details may not be available from the CLI API.
 - Local command execution is intended for user-defined project tasks; review
   commands before running them.
-- Cross-platform support is a goal, but the first release is primarily tested
-  on Linux.
+- Cross-platform support covers Linux and Windows, with macOS intended as a
+  supported target once packaging is tested there.
 - The renderer bundle is still a single large bundle, so Vite may report a
   chunk-size warning during production builds.
