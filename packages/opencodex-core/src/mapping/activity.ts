@@ -75,7 +75,7 @@ export function createActivityFromNotification(notification: CodexNotification):
   }
 
   if (notification.method === "item/fileChange/patchUpdated") {
-    return createActivity(itemId, threadId, "fileChange", turnId, "patch updated");
+    return createActivity(itemId, threadId, "fileChange", turnId, "Modification fichier: completed");
   }
 
   if (notification.method === "item/commandExecution/terminalInteraction") {
@@ -93,7 +93,16 @@ export function createActivityFromNotification(notification: CodexNotification):
   }
 
   if (notification.method === "turn/diff/updated") {
-    return createActivity(createId("diff"), threadId, "fileChange", turnId, readString(params.diff));
+    return createActivity(
+      `diff-${turnId}`,
+      threadId,
+      "fileChange",
+      turnId,
+      summarizeDiffActivity(readString(params.diff)),
+      "running",
+      null,
+      readString(params.diff)
+    );
   }
 
   if (notification.method === "hook/started" || notification.method === "hook/completed") {
@@ -410,6 +419,25 @@ function createActivity(
     details,
     status
   };
+}
+
+function summarizeDiffActivity(diff: string): string {
+  const changedFileCount = countChangedFiles(diff);
+
+  if (changedFileCount === 0) {
+    return "Diff mis à jour";
+  }
+
+  if (changedFileCount === 1) {
+    return "Diff mis à jour: 1 fichier modifié";
+  }
+
+  return `Diff mis à jour: ${changedFileCount} fichiers modifiés`;
+}
+
+function countChangedFiles(diff: string): number {
+  const matches = diff.match(/^diff --git /gm);
+  return matches?.length ?? 0;
 }
 
 function resolveActivityKind(type: string): string {

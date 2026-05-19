@@ -25,6 +25,7 @@ import type { OpenCodexImageAttachment, OpenCodexMessage } from "@open-codex-ui/
 
 import { CopyIconButton } from "../common/CopyIconButton";
 import { CommandActivityRow } from "./CommandActivityRow";
+import { FileChangeActivityRow } from "./FileChangeActivityRow";
 import { ImageAttachmentPreviewGrid } from "./ImageAttachmentPreviewGrid";
 import { MarkdownMessageM } from "./MarkdownMessage";
 
@@ -212,6 +213,12 @@ export function MessageRow({
     >
       {role === "activity" && isCommandActivityKind(kind) ? (
         <CommandActivityRow
+          content={content}
+          details={details}
+          icon={renderActivityKindIcon(kind)}
+        />
+      ) : role === "activity" && kind === "fileChange" ? (
+        <FileChangeActivityRow
           content={content}
           details={details}
           icon={renderActivityKindIcon(kind)}

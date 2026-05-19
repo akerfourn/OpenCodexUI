@@ -61,6 +61,14 @@ export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActi
   turn.status = "running";
 
   if (existing !== undefined) {
+    if (activity.kind === "fileChange") {
+      existing.content = activity.content;
+      existing.status = toMessageStatus(activity.status);
+      existing.summary = activity.summary;
+      existing.details = activity.details;
+      return;
+    }
+
     if (normalizeActivityContent(existing.content) === normalizeActivityContent(activity.content)) {
       existing.status = toMessageStatus(activity.status);
       return;

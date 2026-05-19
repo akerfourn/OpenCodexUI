@@ -252,6 +252,34 @@ describe("OpenCodex mapping", () => {
     });
   });
 
+  it("should keep turn diff notifications compact and stable", () => {
+    const activity = createActivityFromNotification({
+      method: "turn/diff/updated",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        diff: [
+          "diff --git a/src/a.ts b/src/a.ts",
+          "index 1111111..2222222 100644",
+          "--- a/src/a.ts",
+          "+++ b/src/a.ts",
+          "@@ -1 +1 @@",
+          "-old",
+          "+new"
+        ].join("\n")
+      }
+    });
+
+    expect(activity).toMatchObject({
+      id: "diff-turn-1",
+      threadId: "thread-1",
+      kind: "fileChange",
+      title: "turn-1",
+      content: "Diff mis à jour: 1 fichier modifié",
+      details: expect.stringContaining("diff --git a/src/a.ts b/src/a.ts")
+    });
+  });
+
   it("should map structured command execution items to activities", () => {
     expect(
       createActivityFromNotification({
