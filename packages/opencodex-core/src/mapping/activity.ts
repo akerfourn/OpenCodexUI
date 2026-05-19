@@ -21,6 +21,7 @@ import {
   summarizeRawResponseItem
 } from "./activitySummary.js";
 import { createId, readObject, readString } from "./primitives.js";
+import { sanitizeTerminalOutput } from "../backend/terminalOutput.js";
 
 /**
  * Creates a streaming activity record from a Codex notification.
@@ -67,11 +68,23 @@ export function createActivityFromNotification(notification: CodexNotification):
     notification.method === "command/exec/outputDelta" ||
     notification.method === "item/commandExecution/outputDelta"
   ) {
-    return createActivity(itemId, threadId, "commandExecution", turnId, readString(params.delta));
+    return createActivity(
+      itemId,
+      threadId,
+      "commandExecution",
+      turnId,
+      sanitizeTerminalOutput(readString(params.delta))
+    );
   }
 
   if (notification.method === "item/fileChange/outputDelta") {
-    return createActivity(itemId, threadId, "fileChange", turnId, readString(params.delta));
+    return createActivity(
+      itemId,
+      threadId,
+      "fileChange",
+      turnId,
+      sanitizeTerminalOutput(readString(params.delta))
+    );
   }
 
   if (notification.method === "item/fileChange/patchUpdated") {
@@ -79,7 +92,13 @@ export function createActivityFromNotification(notification: CodexNotification):
   }
 
   if (notification.method === "item/commandExecution/terminalInteraction") {
-    return createActivity(itemId, threadId, "commandExecution", turnId, readString(params.message));
+    return createActivity(
+      itemId,
+      threadId,
+      "commandExecution",
+      turnId,
+      sanitizeTerminalOutput(readString(params.message))
+    );
   }
 
   if (notification.method === "turn/plan/updated") {

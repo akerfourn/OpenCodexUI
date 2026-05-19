@@ -22,6 +22,8 @@ import type {
   OpenCodexProjectCommandRun
 } from "@open-codex-ui/opencodex-protocol";
 
+import { sanitizeTerminalOutput } from "./terminalOutput.js";
+
 export type ProjectCommandServiceOptions = {
   cacheRepository: OpenCodexCacheRepository | null;
   userDataPath?: string;
@@ -258,7 +260,7 @@ export class ProjectCommandService {
       return;
     }
 
-    const delta = decodeBase64Output(output.deltaBase64);
+    const delta = sanitizeTerminalOutput(decodeBase64Output(output.deltaBase64));
 
     if (delta.length === 0) {
       return;

@@ -11,6 +11,7 @@ import {
   readReasoningDeltaText,
   readReasoningSegments
 } from "../mapping/activitySummary.js";
+import { sanitizeTerminalOutput } from "./terminalOutput.js";
 import { createId } from "./turnInput.js";
 
 export type LiveTurnMutation = {
@@ -90,7 +91,7 @@ export function recordLiveNotification(
       readString(params.itemId),
       "commandExecution",
       "aggregatedOutput",
-      readString(params.delta)
+      sanitizeTerminalOutput(readString(params.delta))
     );
   }
 
@@ -101,7 +102,7 @@ export function recordLiveNotification(
       readString(params.itemId),
       "fileChange",
       "output",
-      readString(params.delta)
+      sanitizeTerminalOutput(readString(params.delta))
     );
   }
 
