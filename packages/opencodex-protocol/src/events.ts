@@ -12,6 +12,7 @@ import type {
   OpenCodexSettings,
   OpenCodexSource,
   OpenCodexThread,
+  OpenCodexThreadTokenUsage,
   OpenCodexTurn,
   OpenCodexUsageLimits
 } from "./messages";
@@ -33,7 +34,13 @@ export type OpenCodexEvent =
       currentProjectFilterAvailable: boolean;
       projectPath: string | null;
     }
-  | { type: "thread.opened"; thread: OpenCodexThread; turns: OpenCodexTurn[]; hasMoreOlderMessages?: boolean }
+  | {
+      type: "thread.opened";
+      thread: OpenCodexThread;
+      turns: OpenCodexTurn[];
+      hasMoreOlderMessages?: boolean;
+      tokenUsage?: OpenCodexThreadTokenUsage | null;
+    }
   | { type: "thread.created"; thread: OpenCodexThread; turns: OpenCodexTurn[] }
   | { type: "thread.metadata.updated"; thread: OpenCodexThread }
   | { type: "thread.turns.prepended"; threadId: string; turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }
@@ -43,6 +50,7 @@ export type OpenCodexEvent =
   | { type: "thread.recovery.started"; threadId: string }
   | { type: "thread.recovery.completed"; threadId: string }
   | { type: "thread.renamed"; threadId: string; name: string }
+  | { type: "thread.tokenUsage.updated"; usage: OpenCodexThreadTokenUsage }
   | { type: "message.started"; threadId: string; message: OpenCodexMessage }
   | { type: "message.delta"; threadId: string; messageId: string; turnId: string; delta: string; phase?: OpenCodexMessage["phase"] }
   | { type: "message.completed"; threadId: string; messageId: string }

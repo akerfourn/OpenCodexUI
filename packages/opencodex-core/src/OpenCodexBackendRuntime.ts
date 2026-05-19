@@ -68,6 +68,7 @@ import {
   mapUsageLimitsNotification,
   mapUsageLimitsResponse
 } from "./backend/usageMapping.js";
+import { mapThreadTokenUsageNotification } from "./backend/threadTokenUsageMapping.js";
 
 /**
  * Coordinates backend services exposed to the UI transport.
@@ -1218,6 +1219,21 @@ export class OpenCodexBackendRuntime {
         type: "usage.updated",
         usage: mapUsageLimitsNotification(notification.params)
       });
+    }
+
+    if (notification.method === "thread/tokenUsage/updated") {
+      const usage = mapThreadTokenUsageNotification(notification.params);
+
+      if (usage !== null) {
+        const cacheEntry = this.threadTurnCache.get(usage.threadId);
+
+        if (cacheEntry !== null) {
+          cacheEntry.tokenUsage = usage;
+        }
+
+        void this.threadCacheService.writeTokenUsage(usage);
+        this.emit({ type: "thread.tokenUsage.updated", usage });
+      }
     }
 
     if (notification.method === "turn/completed") {

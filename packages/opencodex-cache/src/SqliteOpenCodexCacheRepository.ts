@@ -24,6 +24,7 @@ import type {
   CachedThreadSnapshot,
   CachedThreadSummary,
   CachedThreadSyncState,
+  CachedThreadTokenUsage,
   OpenCodexCacheRepository,
   ThreadListCacheQuery
 } from "./types.js";
@@ -66,6 +67,7 @@ import {
   getThread,
   listThreads,
   saveThreadDelta,
+  saveThreadTokenUsage,
   saveThreadSnapshot,
   updateThreadCodexTitle,
   updateThreadTitle,
@@ -476,6 +478,17 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async saveThreadDelta(delta: CachedThreadDelta): Promise<void> {
     await saveThreadDelta(this.database, delta);
+  }
+
+  /**
+   * Saves the latest known thread token usage.
+   *
+   * @param usage Token usage snapshot.
+   *
+   * @returns Promise resolved when save completes.
+   */
+  async saveThreadTokenUsage(usage: CachedThreadTokenUsage): Promise<void> {
+    await saveThreadTokenUsage(this.database, usage);
   }
 
   /**

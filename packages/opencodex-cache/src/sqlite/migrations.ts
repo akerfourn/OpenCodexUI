@@ -102,6 +102,7 @@ export function runMigrations(database: BetterSqliteDatabase): void {
   applySchemaMigrationV7(database);
   applySchemaMigrationV8(database);
   applySchemaMigrationV9(database);
+  applySchemaMigrationV10(database);
 }
 
 /**
@@ -505,6 +506,37 @@ function applySchemaMigrationV9(database: BetterSqliteDatabase): void {
     database
       .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
       .run(9, now);
+  });
+
+  applyMigration();
+}
+
+/**
+ * Adds nullable per-thread token usage cache.
+ *
+ * This is intentionally an additive column-only migration. Older app versions
+ * keep working because their explicit INSERT/SELECT statements ignore this
+ * extra nullable column.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Nothing.
+ */
+function applySchemaMigrationV10(database: BetterSqliteDatabase): void {
+  const migration = database
+    .prepare("SELECT version FROM schema_migrations WHERE version = ?")
+    .get(10);
+
+  if (migration !== undefined) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const applyMigration = database.transaction(() => {
+    addColumnIfMissing(database, "threads", "token_usage_json", "TEXT");
+    database
+      .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
+      .run(10, now);
   });
 
   applyMigration();

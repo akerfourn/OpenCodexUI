@@ -170,6 +170,24 @@ export type OpenCodexUsageLimits = {
   credits: OpenCodexUsageCredits | null;
 };
 
+export type OpenCodexThreadTokenUsageBreakdown = {
+  totalTokens: number;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningOutputTokens: number;
+};
+
+export type OpenCodexThreadTokenUsage = {
+  threadId: string;
+  turnId: string;
+  total: OpenCodexThreadTokenUsageBreakdown;
+  last: OpenCodexThreadTokenUsageBreakdown;
+  contextWindowTokens: number;
+  modelContextWindow: number | null;
+  usedPercent: number | null;
+};
+
 export type OpenCodexCommitPrompt = {
   prompt: string;
   defaultPrompt: string;

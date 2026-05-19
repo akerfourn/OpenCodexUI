@@ -6,6 +6,7 @@ import type {
   OpenCodexMessage,
   OpenCodexMessagePhase,
   OpenCodexThread,
+  OpenCodexThreadTokenUsage,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -47,7 +48,8 @@ export class ProjectThreadEventsStore implements RootChildStore {
           event.thread,
           event.turns,
           event.type,
-          event.type === "thread.opened" ? event.hasMoreOlderMessages ?? false : false
+          event.type === "thread.opened" ? event.hasMoreOlderMessages ?? false : false,
+          event.type === "thread.opened" ? event.tokenUsage ?? null : null
         );
         return;
       case "thread.metadata.updated":
@@ -73,6 +75,9 @@ export class ProjectThreadEventsStore implements RootChildStore {
         return;
       case "thread.renamed":
         this.applyThreadRename(event.threadId, event.name);
+        return;
+      case "thread.tokenUsage.updated":
+        this.applyThreadTokenUsage(event.usage);
         return;
       case "message.started":
         this.applyMessageStarted(event.threadId, event.message);
@@ -161,7 +166,8 @@ export class ProjectThreadEventsStore implements RootChildStore {
     thread: OpenCodexThread,
     turns: OpenCodexTurn[],
     source: "thread.opened" | "thread.created",
-    hasMoreOlderMessages: boolean
+    hasMoreOlderMessages: boolean,
+    tokenUsage: OpenCodexThreadTokenUsage | null
   ): void {
     const projectStore = this.projectsStore.ensureProjectStoreForThread(thread);
     const openedThread = projectStore.upsertThread(thread);
@@ -173,6 +179,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
     projectStore.selectChat(openedThread.id);
     this.root.approvalsStore.attachPendingApprovalsToChat(chatStore);
     chatStore.applyOpenedSnapshot(turns, source, hasMoreOlderMessages, shouldMergeTurns);
+    chatStore.applyTokenUsage(tokenUsage);
   }
 
   private applyThreadMetadata(thread: OpenCodexThread): void {
@@ -269,6 +276,16 @@ export class ProjectThreadEventsStore implements RootChildStore {
     }
 
     projectStore.renameThread(threadId, name);
+  }
+
+  private applyThreadTokenUsage(usage: OpenCodexThreadTokenUsage): void {
+    const chatStore = this.findChatStore(usage.threadId);
+
+    if (chatStore === null) {
+      return;
+    }
+
+    chatStore.applyTokenUsage(usage);
   }
 
   private applyMessageStarted(threadId: string, message: OpenCodexMessage): void {

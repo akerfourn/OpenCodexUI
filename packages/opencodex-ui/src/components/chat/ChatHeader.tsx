@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import type { ChatStore } from "../../stores/ChatStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { RenameModal } from "../dialogs/RenameModal";
+import { ThreadContextUsageIndicator } from "./ThreadContextUsageIndicator";
 
 type ChatHeaderProps = {
   projectStore: ProjectStore;
@@ -76,6 +77,7 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
     <>
       <Box component="header" className="chat-header" sx={{ position: "relative" }}>
         <Box className="chat-title" sx={{ minWidth: 0, flex: "1 1 auto" }}>
+          <ThreadContextUsageIndicator usage={chatStore.tokenUsage} />
           <Typography variant="h6" component="h2" noWrap>
             {title}
           </Typography>

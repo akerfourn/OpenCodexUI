@@ -1058,7 +1058,8 @@ export class ThreadConversationService {
       type: "thread.opened",
       thread: cacheEntry.thread,
       turns,
-      hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns
+      hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns,
+      tokenUsage: cacheEntry.tokenUsage
     });
   }
 

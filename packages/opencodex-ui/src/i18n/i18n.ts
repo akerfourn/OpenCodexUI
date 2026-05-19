@@ -74,6 +74,8 @@ export const resources = {
         steer: "Guider"
       },
       header: {
+        contextUsageTooltip:
+          "Contexte courant: {{used}} / {{max}} tokens utilisés ({{percent}} %). Total du thread: {{total}} tokens.",
         model: "Modèle: {{model}}",
         openProject: "Ouvrir le projet",
         reasoning: "Raisonnement: {{effort}}",
@@ -522,6 +524,8 @@ export const resources = {
         steer: "Steer"
       },
       header: {
+        contextUsageTooltip:
+          "Current context: {{used}} / {{max}} tokens used ({{percent}}%). Thread total: {{total}} tokens.",
         model: "Model: {{model}}",
         openProject: "Open project",
         reasoning: "Reasoning: {{effort}}",

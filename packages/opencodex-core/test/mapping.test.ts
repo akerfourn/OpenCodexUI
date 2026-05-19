@@ -11,9 +11,42 @@ import {
   mapTurnsToMessages,
   mapTurnsToOpenCodexTurns
 } from "../src/mapping";
+import { mapThreadTokenUsageNotification } from "../src/backend/threadTokenUsageMapping";
 import { readReasoningDeltaText, readReasoningSegments } from "../src/mapping/activitySummary";
 
 describe("OpenCodex mapping", () => {
+  it("should use the latest turn usage for context-window pressure", () => {
+    const usage = mapThreadTokenUsageNotification({
+      threadId: "thread-1",
+      turnId: "turn-1",
+      tokenUsage: {
+        total: {
+          totalTokens: 1_000_000,
+          inputTokens: 900_000,
+          cachedInputTokens: 100_000,
+          outputTokens: 90_000,
+          reasoningOutputTokens: 10_000
+        },
+        last: {
+          totalTokens: 125_000,
+          inputTokens: 100_000,
+          cachedInputTokens: 50_000,
+          outputTokens: 20_000,
+          reasoningOutputTokens: 5_000
+        },
+        modelContextWindow: 250_000
+      }
+    });
+
+    expect(usage).toMatchObject({
+      contextWindowTokens: 125_000,
+      usedPercent: 50,
+      total: {
+        totalTokens: 1_000_000
+      }
+    });
+  });
+
   it("should map a Codex thread to an OpenCodex thread", () => {
     expect(
       mapThread({

@@ -119,10 +119,29 @@ export type CachedThreadSyncState = {
   lastSyncedAt: string | null;
 };
 
+export type CachedThreadTokenUsageBreakdown = {
+  totalTokens: number;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningOutputTokens: number;
+};
+
+export type CachedThreadTokenUsage = {
+  threadId: string;
+  turnId: string;
+  total: CachedThreadTokenUsageBreakdown;
+  last: CachedThreadTokenUsageBreakdown;
+  contextWindowTokens: number;
+  modelContextWindow: number | null;
+  usedPercent: number | null;
+};
+
 export type CachedThreadSnapshot = {
   thread: CachedThreadSummary;
   turns: unknown[];
   syncState: CachedThreadSyncState;
+  tokenUsage: CachedThreadTokenUsage | null;
 };
 
 export type CachedThreadReadOptions = {
@@ -437,6 +456,14 @@ export interface OpenCodexCacheRepository {
    * @returns Sync state, or `null` when the thread is unknown.
    */
   getSyncState(threadId: string): Promise<CachedThreadSyncState | null>;
+
+  /**
+   * Persists the latest known token usage for a cached thread.
+   *
+   * @param usage Thread token usage snapshot.
+   * @returns Promise resolved when the write completes.
+   */
+  saveThreadTokenUsage(usage: CachedThreadTokenUsage): Promise<void>;
 
   /**
    * Closes resources owned by the repository.

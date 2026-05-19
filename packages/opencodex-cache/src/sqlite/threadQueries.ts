@@ -12,11 +12,13 @@ import type {
   CachedThreadSnapshot,
   CachedThreadSummary,
   CachedThreadSyncState,
+  CachedThreadTokenUsage,
   ThreadListCacheQuery
 } from "../types.js";
 import {
   createEmptySyncState,
   mapSyncState,
+  mapThreadTokenUsage,
   mapThreadRow
 } from "./mappers.js";
 import type { ThreadRow } from "./rowTypes.js";
@@ -280,20 +282,23 @@ export async function getThread(
   threadId: string,
   options: CachedThreadReadOptions = {}
 ): Promise<CachedThreadSnapshot | null> {
-  const thread = readThread(database, threadId);
+  const threadRow = readThreadRow(database, threadId);
 
-  if (thread === null) {
+  if (threadRow === null) {
     return null;
   }
 
+  const thread = mapThreadRow(threadRow);
   const turnRows = readLatestTurnRows(database, threadId, options.latestTurnLimit ?? null);
   const turns = parseTurnRows(turnRows);
-  const syncState = readSyncState(database, threadId);
+  const syncState = mapSyncState(threadRow);
+  const tokenUsage = mapThreadTokenUsage(threadRow);
   const hasMoreCachedTurns = hasMoreCachedTurnsBefore(database, threadId, turnRows[0]?.id ?? null);
 
   return {
     thread,
     turns,
+    tokenUsage,
     syncState: {
       ...syncState,
       oldestTurnId: turnRows[0]?.id ?? syncState.oldestTurnId,
@@ -367,6 +372,32 @@ export async function saveThreadDelta(
   });
 
   writeDelta();
+}
+
+/**
+ * Saves the latest known token usage for a cached thread.
+ *
+ * @param database SQLite database connection.
+ * @param usage Thread token usage snapshot.
+ *
+ * @returns Promise resolved when save completes.
+ */
+export async function saveThreadTokenUsage(
+  database: BetterSqliteDatabase,
+  usage: CachedThreadTokenUsage
+): Promise<void> {
+  database
+    .prepare(
+      `
+      UPDATE threads SET
+        token_usage_json = @tokenUsageJson
+      WHERE id = @threadId
+      `
+    )
+    .run({
+      threadId: usage.threadId,
+      tokenUsageJson: JSON.stringify(usage)
+    });
 }
 
 /**

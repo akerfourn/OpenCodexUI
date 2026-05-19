@@ -6,6 +6,7 @@ import type {
   OpenCodexEvent,
   OpenCodexSettings,
   OpenCodexThread,
+  OpenCodexThreadTokenUsage,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -314,6 +315,27 @@ export class ThreadCacheService {
       await repository.updateThreadCodexTitle(threadId, title);
     } catch (error) {
       this.log(`thread cache codex title write failed: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Writes the latest known token usage for a thread.
+   *
+   * @param usage Token usage snapshot.
+   *
+   * @returns Promise resolved when the write attempt completes.
+   */
+  async writeTokenUsage(usage: OpenCodexThreadTokenUsage): Promise<void> {
+    const repository = this.options.cacheRepository;
+
+    if (repository === null) {
+      return;
+    }
+
+    try {
+      await repository.saveThreadTokenUsage(usage);
+    } catch (error) {
+      this.log(`thread token usage cache write failed: ${String(error)}`);
     }
   }
 

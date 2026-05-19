@@ -65,6 +65,60 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(visibleProject?.isHidden).toBe(false);
   });
 
+  it("should persist the latest thread token usage", async () => {
+    await repository.upsertThreadIndex([
+      {
+        id: "thread-usage",
+        codexTitle: "Usage",
+        customTitle: null,
+        title: "Usage",
+        preview: "",
+        model: "gpt-5.5",
+        reasoningEffort: "medium",
+        projectName: "OpenCodexUI",
+        projectPath: "/tmp/thread-usage-project",
+        sourceId: null,
+        branchName: "main",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.saveThreadTokenUsage({
+      threadId: "thread-usage",
+      turnId: "turn-1",
+      total: {
+        totalTokens: 2_500,
+        inputTokens: 2_000,
+        cachedInputTokens: 500,
+        outputTokens: 400,
+        reasoningOutputTokens: 100
+      },
+      last: {
+        totalTokens: 500,
+        inputTokens: 300,
+        cachedInputTokens: 100,
+        outputTokens: 150,
+        reasoningOutputTokens: 50
+      },
+      contextWindowTokens: 500,
+      modelContextWindow: 10_000,
+      usedPercent: 5
+    });
+
+    const snapshot = await repository.getThread("thread-usage");
+
+    expect(snapshot?.tokenUsage).toMatchObject({
+      threadId: "thread-usage",
+      turnId: "turn-1",
+      modelContextWindow: 10_000,
+      contextWindowTokens: 500,
+      usedPercent: 5,
+      total: {
+        totalTokens: 2_500
+      }
+    });
+  });
+
   it("should persist project commands", async () => {
     const project = await repository.upsertProject("/tmp/commands-project");
 
@@ -576,7 +630,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
         hasLoadedLatest: true,
         hasLoadedAllOlderTurns: true,
         lastSyncedAt: "2026-01-01T00:00:01.000Z"
-      }
+      },
+      tokenUsage: null
     });
 
     const snapshot = await repository.getThread("thread-1");
@@ -632,7 +687,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
         hasLoadedLatest: true,
         hasLoadedAllOlderTurns: true,
         lastSyncedAt: "2026-01-01T00:00:03.000Z"
-      }
+      },
+      tokenUsage: null
     });
 
     const snapshot = await repository.getThread("thread-1", { latestTurnLimit: 2 });
@@ -673,7 +729,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
         hasLoadedLatest: true,
         hasLoadedAllOlderTurns: true,
         lastSyncedAt: "2026-01-01T00:00:03.000Z"
-      }
+      },
+      tokenUsage: null
     });
 
     const snapshot = await repository.getThread("thread-1", { latestTurnLimit: 2 });
@@ -712,7 +769,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
         hasLoadedLatest: true,
         hasLoadedAllOlderTurns: true,
         lastSyncedAt: "2026-01-01T00:00:03.000Z"
-      }
+      },
+      tokenUsage: null
     });
 
     const result = await repository.getOlderTurns({

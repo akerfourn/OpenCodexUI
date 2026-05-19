@@ -659,6 +659,34 @@ textarea {
   white-space: nowrap;
 }
 
+.thread-context-usage {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  width: 30px;
+  height: 30px;
+}
+
+.thread-context-usage-track {
+  color: color-mix(in srgb, var(--vscode-foreground) 16%, transparent);
+}
+
+.thread-context-usage-value {
+  position: absolute;
+  inset: 0;
+  color: var(--vscode-progressBar-background);
+}
+
+.thread-context-usage-label {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .chat-header-actions {
   display: flex;
   flex: 0 0 auto;

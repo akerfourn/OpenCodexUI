@@ -20,6 +20,8 @@ export type {
   CachedThreadSnapshot,
   CachedThreadSummary,
   CachedThreadSyncState,
+  CachedThreadTokenUsage,
+  CachedThreadTokenUsageBreakdown,
   OpenCodexCacheRepository,
   ThreadListCacheQuery
 } from "./types.js";

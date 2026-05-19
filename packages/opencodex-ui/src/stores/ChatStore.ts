@@ -12,6 +12,7 @@ import type {
   OpenCodexMessagePhase,
   OpenCodexReasoningEffort,
   OpenCodexThread,
+  OpenCodexThreadTokenUsage,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -47,6 +48,7 @@ export class ChatStore {
   hasUnseenCompletedTurn = false;
   activeTurnId: string | null = null;
   pendingTurnId: string | null = null;
+  tokenUsage: OpenCodexThreadTokenUsage | null = null;
   olderMessagesPrependVersion = 0;
   scrollToBottomVersion = 0;
 
@@ -193,6 +195,7 @@ export class ChatStore {
     this.isSyncing = false;
     this.isRefreshing = false;
     this.isRecovering = false;
+    this.tokenUsage = null;
   }
 
   refresh(): void {
@@ -497,6 +500,10 @@ export class ChatStore {
   applyRename(name: string): void {
     this.projectStore.renameThread(this.thread.id, name);
     this.setThread({ ...this.thread, customTitle: name, title: name });
+  }
+
+  applyTokenUsage(usage: OpenCodexThreadTokenUsage | null): void {
+    this.tokenUsage = usage;
   }
 
   applyMessageStarted(message: OpenCodexMessage): void {

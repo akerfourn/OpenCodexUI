@@ -114,7 +114,8 @@ export function toCachedThreadSnapshot(cacheEntry: ThreadTurnCacheEntry): Cached
   return {
     thread: toCachedThreadSummary(cacheEntry.thread),
     turns: Array.from(cacheEntry.turnsById.values()),
-    syncState: toCachedSyncState(cacheEntry)
+    syncState: toCachedSyncState(cacheEntry),
+    tokenUsage: cacheEntry.tokenUsage
   };
 }
 

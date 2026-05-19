@@ -7,7 +7,8 @@ import type {
   CachedSource,
   CachedLogEntry,
   CachedThreadSummary,
-  CachedThreadSyncState
+  CachedThreadSyncState,
+  CachedThreadTokenUsage
 } from "../types.js";
 import { parseLocalSourceSettings } from "./sourceSettings.js";
 import type { LogRow, ProjectCommandRow, ProjectRow, SourceRow, ThreadRow } from "./rowTypes.js";
@@ -132,6 +133,24 @@ export function mapSyncState(row: ThreadRow): CachedThreadSyncState {
     hasLoadedAllOlderTurns: row.has_loaded_all_older_turns === 1,
     lastSyncedAt: row.last_synced_at
   };
+}
+
+/**
+ * Maps cached thread token usage JSON into the public cache shape.
+ *
+ * @param row Joined thread row containing token usage JSON.
+ * @returns Token usage snapshot, or `null`.
+ */
+export function mapThreadTokenUsage(row: ThreadRow): CachedThreadTokenUsage | null {
+  if (row.token_usage_json === null || row.token_usage_json.trim().length === 0) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(row.token_usage_json) as CachedThreadTokenUsage;
+  } catch {
+    return null;
+  }
 }
 
 /**

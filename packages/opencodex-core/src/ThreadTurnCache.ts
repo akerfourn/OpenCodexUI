@@ -1,7 +1,10 @@
 /**
  * Stores thread metadata and merged turn payloads for the active UI session.
  */
-import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexThread,
+  OpenCodexThreadTokenUsage
+} from "@open-codex-ui/opencodex-protocol";
 import type { CachedThreadSnapshot, CachedThreadSyncState } from "@open-codex-ui/opencodex-cache";
 
 import { readObject, readString } from "./mapping.js";
@@ -24,6 +27,7 @@ export type ThreadTurnCacheEntry = {
   hasLoadedLatest: boolean;
   hasLoadedAllOlderTurns: boolean;
   lastSyncedAt: string | null;
+  tokenUsage: OpenCodexThreadTokenUsage | null;
 };
 
 /**
@@ -67,7 +71,8 @@ export class ThreadTurnCache {
       olderCursor: null,
       hasLoadedLatest: false,
       hasLoadedAllOlderTurns: false,
-      lastSyncedAt: null
+      lastSyncedAt: null,
+      tokenUsage: null
     };
 
     this.entries.set(thread.id, created);
@@ -315,6 +320,7 @@ export class ThreadTurnCache {
     entry.orderedTurnIds = [];
     mergeTurns(entry, snapshot.turns);
     applySyncState(entry, snapshot.syncState);
+    entry.tokenUsage = snapshot.tokenUsage;
     return entry;
   }
 
