@@ -460,6 +460,10 @@ function buildTimelineEntries(
 
     for (const item of turn.items) {
       if (isVisiblePreludeItem(item, finalAssistantContents)) {
+        if (appendPreludeBeforeTrailingFinal(entries, turn, item)) {
+          continue;
+        }
+
         pendingPreludeItems.push(item);
         continue;
       }
@@ -515,6 +519,65 @@ function isVisiblePreludeItem(
 
   const content = normalizeContent(item.content);
   return content.length === 0 || !finalAssistantContents.has(content);
+}
+
+function appendPreludeBeforeTrailingFinal(
+  entries: TimelineEntry[],
+  turn: OpenCodexTurn,
+  item: OpenCodexTurnItem
+): boolean {
+  const lastEntry = entries[entries.length - 1];
+
+  if (!isFinalAssistantEntry(lastEntry, turn)) {
+    return false;
+  }
+
+  const preludeEntry = findPreviousPreludeEntry(entries, turn);
+
+  if (preludeEntry !== null) {
+    preludeEntry.items.push(item);
+    return true;
+  }
+
+  entries.splice(entries.length - 1, 0, {
+    type: "turnPrelude",
+    key: buildTurnPreludeKey(turn, 0, entries.length),
+    turn,
+    items: [item],
+    isRunning: false
+  });
+
+  return true;
+}
+
+function isFinalAssistantEntry(
+  entry: TimelineEntry | undefined,
+  turn: OpenCodexTurn
+): entry is Extract<TimelineEntry, { type: "item" }> {
+  if (entry === undefined || entry.type !== "item" || entry.turn.id !== turn.id) {
+    return false;
+  }
+
+  return entry.item.role === "assistant" && entry.item.phase === "final_answer";
+}
+
+function findPreviousPreludeEntry(
+  entries: TimelineEntry[],
+  turn: OpenCodexTurn
+): Extract<TimelineEntry, { type: "turnPrelude" }> | null {
+  for (let index = entries.length - 2; index >= 0; index -= 1) {
+    const entry = entries[index];
+
+    if (entry === undefined || entry.turn.id !== turn.id) {
+      return null;
+    }
+
+    if (entry.type === "turnPrelude") {
+      return entry;
+    }
+  }
+
+  return null;
 }
 
 function normalizeContent(content: string): string {
