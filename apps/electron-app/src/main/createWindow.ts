@@ -19,8 +19,11 @@ type CreateWindowOptions = {
  * @returns Configured Electron browser window instance.
  */
 export function createWindow(options: CreateWindowOptions): BrowserWindow {
+  const devServerUrl = options.devServerUrl ?? null;
+  const isDevMode = devServerUrl !== null;
+  const title = isDevMode ? "OpenCodexUI [dev mode]" : "OpenCodexUI";
   const window = new BrowserWindow({
-    title: "OpenCodexUI",
+    title,
     width: 1440,
     height: 960,
     minWidth: 960,
@@ -28,13 +31,19 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
     icon: options.iconPath ?? undefined,
     webPreferences: {
       contextIsolation: true,
-      devTools: options.devServerUrl !== undefined && options.devServerUrl !== null,
+      devTools: isDevMode,
       nodeIntegration: false,
       preload: options.preloadPath
     }
   });
 
-  if (options.devServerUrl !== undefined && options.devServerUrl !== null) {
+  window.on("page-title-updated", (event) => {
+    event.preventDefault();
+    window.setTitle(title);
+  });
+  window.setTitle(title);
+
+  if (isDevMode) {
     window.webContents.on("before-input-event", (event, input) => {
       const isDevToolsShortcut = input.key === "F12" || (
         input.control &&
@@ -51,8 +60,8 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
     });
   }
 
-  if (options.devServerUrl !== undefined && options.devServerUrl !== null) {
-    void window.loadURL(options.devServerUrl);
+  if (isDevMode) {
+    void window.loadURL(devServerUrl);
   } else {
     void window.loadFile(path.join(options.rendererPath, "index.html"));
   }
