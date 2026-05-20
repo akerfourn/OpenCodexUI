@@ -213,7 +213,8 @@ export const resources = {
         showProject: "Afficher le projet",
         logs: "Logs",
         sources: "Sources",
-        settings: "Paramètres"
+        settings: "Paramètres",
+        version: "Version {{version}}"
       },
       logs: {
         applyCleanup: "Nettoyer",
@@ -666,7 +667,8 @@ export const resources = {
         showProject: "Show project",
         logs: "Logs",
         sources: "Sources",
-        settings: "Settings"
+        settings: "Settings",
+        version: "Version {{version}}"
       },
       logs: {
         applyCleanup: "Clean",

@@ -29,6 +29,7 @@ type HomeSidebarProps = {
 export function HomeSidebar({ store }: HomeSidebarProps) {
   const { t } = useTranslation();
   const selectedSection = store.homeStore.selectedSection;
+  const appVersion = store.appStore.appVersion;
   const commitLabelKey = store.appStore.settings.versioningVocabulary === "technical"
     ? "home.commit"
     : "home.saveChanges";
@@ -114,6 +115,15 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
           <ListItemText primary={t("home.settings")} />
         </ListItemButton>
       </List>
+      {appVersion !== null ? (
+        <Typography
+          className="home-sidebar-version"
+          variant="caption"
+          color="text.secondary"
+        >
+          {t("home.version", { version: appVersion })}
+        </Typography>
+      ) : null}
       <UsageLimitsWidgetX store={store.usageStore} />
     </aside>
   );

@@ -20,6 +20,7 @@ import type {
 type ElectronBridgeServerOptions = {
   settings: OpenCodexSettings;
   projectPath: string | null;
+  appVersion: string;
   userDataPath: string;
   saveSettings(settings: OpenCodexSettings): Promise<void>;
 };
@@ -43,6 +44,7 @@ export class ElectronBridgeServer {
     this.runtime = new OpenCodexBackendRuntime({
       settings: options.settings,
       projectPath: options.projectPath,
+      appVersion: options.appVersion,
       cacheRepository,
       userDataPath: options.userDataPath,
       defaultCommitPromptPath: resolveDefaultCommitPromptPath(),

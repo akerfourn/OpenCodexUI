@@ -11,6 +11,7 @@ import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 export type OpenCodexBackendOptions = {
   settings: OpenCodexSettings;
   projectPath: string | null;
+  appVersion?: string | null;
   cacheRepository?: OpenCodexCacheRepository | null;
   userDataPath?: string;
   defaultCommitPromptPath?: string;

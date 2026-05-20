@@ -42,6 +42,7 @@ export class AppStore implements RootChildStore {
   errorMessage: string | null = null;
   connectionStatus = "stopped";
   isBootstrapping = false;
+  appVersion: string | null = null;
 
   constructor(private readonly root: RootStore) {
     makeAutoObservable<AppStore, "root">(this, { root: false });
@@ -106,7 +107,7 @@ export class AppStore implements RootChildStore {
         this.connectionStatus = event.status;
         return;
       case "app.bootstrap":
-        this.applyBootstrap(event.settings, event.projectPath);
+        this.applyBootstrap(event.settings, event.projectPath, event.appVersion);
         return;
       case "projects.updated":
         this.isBootstrapping = false;
@@ -287,7 +288,11 @@ export class AppStore implements RootChildStore {
     });
   }
 
-  private applyBootstrap(settings: OpenCodexSettings, launchProjectPath: string | null): void {
+  private applyBootstrap(
+    settings: OpenCodexSettings,
+    launchProjectPath: string | null,
+    appVersion: string | null
+  ): void {
     this.settings = {
       ...this.settings,
       ...settings
@@ -295,6 +300,7 @@ export class AppStore implements RootChildStore {
     this.launchProjectPath = launchProjectPath;
     this.selectedModel = settings.defaultModel;
     this.reasoningEffort = settings.defaultReasoningEffort ?? "medium";
+    this.appVersion = appVersion;
     applyOpenCodexLanguage(settings.language);
   }
 }

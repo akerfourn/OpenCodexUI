@@ -42,6 +42,7 @@ async function main(): Promise<void> {
   bridgeServer = new ElectronBridgeServer({
     settings,
     projectPath,
+    appVersion: app.getVersion(),
     userDataPath,
     saveSettings: (nextSettings) => settingsStore.save(nextSettings)
   });

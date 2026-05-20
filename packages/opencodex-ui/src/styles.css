@@ -286,6 +286,12 @@ textarea {
   opacity: 1;
 }
 
+.home-sidebar-version {
+  flex: 0 0 auto;
+  padding: 6px 12px 10px;
+  text-align: center;
+}
+
 .home-content-panel {
   width: 100%;
   max-width: 920px;

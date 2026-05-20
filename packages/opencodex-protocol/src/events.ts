@@ -24,6 +24,7 @@ export type OpenCodexEvent =
       settings: OpenCodexSettings;
       sources: OpenCodexSource[];
       projectPath: string | null;
+      appVersion: string | null;
     }
   | { type: "projects.updated"; projects: OpenCodexProject[] }
   | { type: "project.opened"; project: OpenCodexProject }

@@ -206,7 +206,8 @@ export class OpenCodexBackendRuntime {
       type: "app.bootstrap",
       settings: this.settings,
       sources: await this.projectSourceService.listOpenCodexSources(),
-      projectPath: this.options.projectPath
+      projectPath: this.options.projectPath,
+      appVersion: this.options.appVersion ?? null
     });
     await this.listProjects();
     await this.listModels();
