@@ -1,6 +1,6 @@
 import type { CodexAppServerClient, CodexNotification } from "@open-codex-ui/codex-rpc";
 
-import type { CachedSource } from "@open-codex-ui/opencodex-cache";
+import type { CachedSource, CachedThreadSnapshot } from "@open-codex-ui/opencodex-cache";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexComposerReference,
@@ -28,7 +28,7 @@ import {
   type ThreadListParams
 } from "./constants.js";
 import { readReasoningEffort, readThreadPages } from "./codexReaders.js";
-import { isMissingRolloutError, toError } from "./errors.js";
+import { isMissingRolloutError, isUnmaterializedThreadError, toError } from "./errors.js";
 import {
   recordLiveNotification,
   shouldPersistLiveNotification
@@ -182,6 +182,21 @@ export class ThreadConversationService {
       return { thread: cacheEntry.thread, turns };
     }
 
+    if (cachedSnapshot !== null && isUnmaterializedThreadSnapshot(cachedSnapshot)) {
+      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+      const turns = this.options.threadCacheService.readTurns(cacheEntry);
+      this.logThreadTiming("sqlite load finished", {
+        threadId,
+        startedAt: openStartedAt,
+        turnCount: turns.length,
+        cacheHit: true,
+        materialized: false
+      });
+
+      this.emitThreadOpened(cacheEntry, turns);
+      return { thread: cacheEntry.thread, turns };
+    }
+
     const client = await this.options.ensureClient(cachedSnapshot?.thread.sourceId ?? null);
     this.logThreadTiming("sqlite load finished", {
       threadId,
@@ -208,7 +223,27 @@ export class ThreadConversationService {
 
     const cacheEntry = this.options.threadTurnCache.getOrCreate(thread);
     const hadLoadedLatest = cacheEntry.hasLoadedLatest;
-    const latestTurns = await this.loadLatestTurns(client, cacheEntry);
+    let latestTurns: unknown[];
+
+    try {
+      latestTurns = await this.loadLatestTurns(client, cacheEntry);
+    } catch (error) {
+      if (!isUnmaterializedThreadError(error)) {
+        throw error;
+      }
+
+      const turns = this.options.threadCacheService.readTurns(cacheEntry);
+
+      await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      this.logThreadTiming("codex load finished", {
+        threadId,
+        startedAt: codexStartedAt,
+        turnCount: turns.length,
+        mode: "unmaterialized-thread"
+      });
+      this.emitThreadOpened(cacheEntry, turns);
+      return { thread: cacheEntry.thread, turns };
+    }
 
     await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
     await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
@@ -791,7 +826,18 @@ export class ThreadConversationService {
 
     try {
       const previousSignature = createCacheSignature(cacheEntry);
-      const latestTurns = await this.loadLatestTurns(client, cacheEntry);
+      let latestTurns: unknown[];
+
+      try {
+        latestTurns = await this.loadLatestTurns(client, cacheEntry);
+      } catch (error) {
+        if (isUnmaterializedThreadError(error)) {
+          return;
+        }
+
+        throw error;
+      }
+
       await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
       await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
       const nextSignature = createCacheSignature(cacheEntry);
@@ -829,6 +875,20 @@ export class ThreadConversationService {
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
     if (cachedSnapshot === null || cachedSnapshot.thread.sourceId === null) {
       throw new Error("Cannot synchronize a thread without a Codex source.");
+    }
+
+    if (isUnmaterializedThreadSnapshot(cachedSnapshot)) {
+      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+
+      this.options.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
+      this.logThreadTiming("codex load finished", {
+        threadId,
+        startedAt: syncStartedAt,
+        turnCount: 0,
+        mode: "unmaterialized-thread"
+      });
+      this.options.emit({ type: "thread.sync.completed", threadId });
+      return;
     }
 
     const sourceId = cachedSnapshot.thread.sourceId;
@@ -1173,4 +1233,8 @@ function delay(durationMs: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, durationMs);
   });
+}
+
+function isUnmaterializedThreadSnapshot(snapshot: CachedThreadSnapshot): boolean {
+  return snapshot.turns.length === 0 && !snapshot.syncState.hasLoadedLatest;
 }

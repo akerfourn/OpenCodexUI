@@ -69,3 +69,11 @@ export function getBackendLabels(language: OpenCodexSettings["language"]): Backe
 export function isMissingRolloutError(error: unknown): boolean {
   return error instanceof JsonRpcError && error.message.includes("no rollout found for thread id");
 }
+
+export function isUnmaterializedThreadError(error: unknown): boolean {
+  return (
+    error instanceof JsonRpcError &&
+    error.message.includes("is not materialized yet") &&
+    error.message.includes("thread/turns/list")
+  );
+}
