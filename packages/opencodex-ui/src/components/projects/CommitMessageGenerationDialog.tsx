@@ -1,15 +1,7 @@
 /**
  * Renders the optional instruction dialog for commit message generation.
  */
-import {
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField
-} from "@mui/material";
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
@@ -48,17 +40,16 @@ export function CommitMessageGenerationDialog({
   }
 
   function handleClose(): void {
-    if (!gitStore.isGeneratingCommitMessage) {
-      onClose();
-    }
+    onClose();
   }
 
-  async function handleGenerate(): Promise<void> {
-    await gitStore.generateCommitMessage(instruction);
-
-    if (gitStore.errorMessage === null) {
-      onClose();
+  function handleGenerate(): void {
+    if (!gitStore.canGenerateCommitMessage) {
+      return;
     }
+
+    void gitStore.generateCommitMessage(instruction);
+    onClose();
   }
 
   return (
@@ -72,26 +63,20 @@ export function CommitMessageGenerationDialog({
           margin="dense"
           multiline
           fullWidth
-          disabled={gitStore.isGeneratingCommitMessage}
           helperText={t("git.generateInstructionHelp")}
           onChange={handleInstructionChange}
         />
       </DialogContent>
       <DialogActions>
-        <Button disabled={gitStore.isGeneratingCommitMessage} onClick={handleClose}>
+        <Button onClick={handleClose}>
           {t("git.generateCancel")}
         </Button>
         <Button
           variant="contained"
           disabled={!gitStore.canGenerateCommitMessage}
-          startIcon={
-            gitStore.isGeneratingCommitMessage
-              ? <CircularProgress color="inherit" size={16} />
-              : undefined
-          }
           onClick={handleGenerate}
         >
-          {gitStore.isGeneratingCommitMessage ? t("git.generatingMessage") : t("git.generateMessage")}
+          {t("git.generateMessage")}
         </Button>
       </DialogActions>
     </Dialog>

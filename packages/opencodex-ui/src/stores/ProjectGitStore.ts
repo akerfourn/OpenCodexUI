@@ -71,6 +71,7 @@ export class ProjectGitStore {
       this.stagedFilesCount > 0 &&
       this.commitMessage.trim().length > 0 &&
       !this.isCommitting &&
+      !this.isGeneratingCommitMessage &&
       !this.isLoading
     );
   }
