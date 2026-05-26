@@ -271,7 +271,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                     minRows={3}
                     multiline
                     fullWidth
-                    disabled={gitStore.isCommitting}
+                    disabled={gitStore.isCommitting || gitStore.isGeneratingCommitMessage}
                     onChange={handleCommitMessageChange}
                   />
                   <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>

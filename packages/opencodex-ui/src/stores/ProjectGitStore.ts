@@ -106,6 +106,10 @@ export class ProjectGitStore {
   }
 
   setCommitMessage(value: string): void {
+    if (this.isGeneratingCommitMessage) {
+      return;
+    }
+
     this.commitMessage = value;
   }
 
