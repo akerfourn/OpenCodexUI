@@ -48,9 +48,13 @@ export class ChatStore {
   hasUnseenCompletedTurn = false;
   activeTurnId: string | null = null;
   pendingTurnId: string | null = null;
+  selectedModel: string | null = null;
+  reasoningEffort: OpenCodexReasoningEffort = "medium";
   tokenUsage: OpenCodexThreadTokenUsage | null = null;
   olderMessagesPrependVersion = 0;
   scrollToBottomVersion = 0;
+  private hasExplicitModelSelection = false;
+  private hasExplicitReasoningEffortSelection = false;
 
   /**
    * Creates a chat store for the provided thread.
@@ -63,9 +67,16 @@ export class ChatStore {
     private readonly root: RootStore
   ) {
     this.thread = thread;
-    makeAutoObservable<ChatStore, "projectStore" | "root">(this, {
+    this.selectedModel = resolveInitialSelectedModel(thread, root);
+    this.reasoningEffort = resolveInitialReasoningEffort(thread, root);
+    makeAutoObservable<
+      ChatStore,
+      "projectStore" | "root" | "hasExplicitModelSelection" | "hasExplicitReasoningEffortSelection"
+    >(this, {
       projectStore: false,
-      root: false
+      root: false,
+      hasExplicitModelSelection: false,
+      hasExplicitReasoningEffortSelection: false
     });
   }
 
@@ -179,6 +190,38 @@ export class ChatStore {
    */
   setThread(thread: OpenCodexThread): void {
     this.thread = thread;
+
+    if (!this.hasExplicitModelSelection && thread.model !== null) {
+      this.selectedModel = thread.model;
+    }
+
+    if (!this.hasExplicitReasoningEffortSelection && thread.reasoningEffort !== null) {
+      this.reasoningEffort = thread.reasoningEffort;
+    }
+  }
+
+  /**
+   * Updates the model used by this chat composer for future turns.
+   *
+   * @param value Model identifier, or `null` for backend default.
+   *
+   * @returns Nothing.
+   */
+  setSelectedModel(value: string | null): void {
+    this.selectedModel = value;
+    this.hasExplicitModelSelection = true;
+  }
+
+  /**
+   * Updates the reasoning effort used by this chat composer for future turns.
+   *
+   * @param value Reasoning effort to use for future turns.
+   *
+   * @returns Nothing.
+   */
+  setReasoningEffort(value: OpenCodexReasoningEffort): void {
+    this.reasoningEffort = value;
+    this.hasExplicitReasoningEffortSelection = true;
   }
 
   /**
@@ -289,8 +332,8 @@ export class ChatStore {
     text: string,
     attachments: OpenCodexImageAttachment[] = [],
     references: OpenCodexComposerReference[] = [],
-    model: string | null = this.root.appStore.selectedModel,
-    reasoningEffort: OpenCodexReasoningEffort = this.root.appStore.reasoningEffort
+    model: string | null = this.selectedModel,
+    reasoningEffort: OpenCodexReasoningEffort = this.reasoningEffort
   ): Promise<boolean> {
     const trimmedText = text.trim();
     const sourceId = this.thread.sourceId ?? this.projectStore.project.sourceId;
@@ -347,8 +390,8 @@ export class ChatStore {
   editLastTurn(
     text: string,
     attachments: OpenCodexImageAttachment[] = [],
-    model: string | null = this.root.appStore.selectedModel,
-    reasoningEffort: OpenCodexReasoningEffort = this.root.appStore.reasoningEffort,
+    model: string | null = this.selectedModel,
+    reasoningEffort: OpenCodexReasoningEffort = this.reasoningEffort,
     references: OpenCodexComposerReference[] = []
   ): boolean {
     const trimmedText = text.trim();
@@ -447,14 +490,6 @@ export class ChatStore {
     this.scrollToBottomVersion += 1;
     this.root.appStore.errorMessage = null;
     this.markSeen();
-
-    if (this.thread.model !== null) {
-      this.root.appStore.selectedModel = this.thread.model;
-    }
-
-    if (this.thread.reasoningEffort !== null) {
-      this.root.appStore.reasoningEffort = this.thread.reasoningEffort;
-    }
   }
 
   applyTurnsPrepended(turns: OpenCodexTurn[], hasMoreOlderMessages: boolean): void {
@@ -738,6 +773,21 @@ function readErrorMessage(error: unknown): string {
   }
 
   return String(error);
+}
+
+function resolveInitialSelectedModel(thread: OpenCodexThread, root: RootStore): string | null {
+  if (thread.model !== null) {
+    return thread.model;
+  }
+
+  return root.appStore.models[0] ?? root.appStore.selectedModel ?? root.appStore.settings.defaultModel;
+}
+
+function resolveInitialReasoningEffort(
+  thread: OpenCodexThread,
+  root: RootStore
+): OpenCodexReasoningEffort {
+  return thread.reasoningEffort ?? root.appStore.settings.defaultReasoningEffort ?? "medium";
 }
 
 function readLoadOlderResult(value: unknown): {

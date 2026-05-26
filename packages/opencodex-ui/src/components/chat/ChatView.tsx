@@ -27,7 +27,6 @@ type ChatViewProps = {
  */
 export function ChatView({ store, projectStore }: ChatViewProps) {
   const { t } = useTranslation();
-  const appStore = store.appStore;
   const chatStore = projectStore.selectedChat;
   const isOrphanProject = projectStore.isOrphan;
 
@@ -80,9 +79,7 @@ export function ChatView({ store, projectStore }: ChatViewProps) {
           store={store}
           chatStore={chatStore}
           projectStore={projectStore}
-          selectedModel={appStore.selectedModel}
-          reasoningEffort={appStore.reasoningEffort}
-          modelOptions={appStore.modelOptions}
+          modelOptions={store.appStore.modelOptions}
           isWorking={
             chatStore.isWorking ||
             chatStore.isStartingTurn ||

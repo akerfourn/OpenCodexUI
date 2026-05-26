@@ -192,15 +192,6 @@ export class ProjectThreadEventsStore implements RootChildStore {
       chatStore.setThread(updatedThread);
     }
 
-    if (this.root.activeChatStore?.thread.id === updatedThread.id) {
-      if (updatedThread.model !== null) {
-        this.root.appStore.selectedModel = updatedThread.model;
-      }
-
-      if (updatedThread.reasoningEffort !== null) {
-        this.root.appStore.reasoningEffort = updatedThread.reasoningEffort;
-      }
-    }
   }
 
   private applyTurnsPrepended(

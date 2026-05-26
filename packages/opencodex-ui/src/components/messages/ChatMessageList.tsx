@@ -86,11 +86,11 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   }
 
   function handleModelChange(value: string | null): void {
-    store.appStore.setSelectedModel(value);
+    chatStore.setSelectedModel(value);
   }
 
   function handleEffortChange(value: OpenCodexReasoningEffort): void {
-    store.appStore.setReasoningEffort(value);
+    chatStore.setReasoningEffort(value);
   }
 
   function handleSubmitEdit(event: FormEvent<HTMLFormElement>): void {
@@ -114,8 +114,8 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
 
     const submittedMessage = editedMessage;
     const submittedAttachments = editableItem?.attachments ?? [];
-    const submittedModel = store.appStore.selectedModel;
-    const submittedReasoningEffort = store.appStore.reasoningEffort;
+    const submittedModel = chatStore.selectedModel;
+    const submittedReasoningEffort = chatStore.reasoningEffort;
 
     flushSync(() => {
       setEditedMessage(null);
@@ -349,8 +349,8 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
             }}
           >
             <ModelSettingsFields
-              selectedModel={store.appStore.selectedModel}
-              reasoningEffort={store.appStore.reasoningEffort}
+              selectedModel={chatStore.selectedModel}
+              reasoningEffort={chatStore.reasoningEffort}
               modelOptions={store.appStore.modelOptions}
               onModelChange={handleModelChange}
               onReasoningEffortChange={handleEffortChange}

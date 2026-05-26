@@ -811,13 +811,13 @@ export class ThreadConversationService {
    * @param cacheEntry In-memory thread cache entry.
    * @param existingStartedAt Optional timing start timestamp.
    *
-   * @returns Promise resolved when synchronization completes.
+   * @returns `true` when synchronized turns changed the cached thread content.
    */
   private async syncLatestTurns(
     client: CodexAppServerClient,
     cacheEntry: ThreadTurnCacheEntry,
     existingStartedAt: number | null = null
-  ): Promise<void> {
+  ): Promise<boolean> {
     const syncStartedAt = existingStartedAt ?? Date.now();
 
     if (existingStartedAt === null) {
@@ -825,6 +825,7 @@ export class ThreadConversationService {
     }
 
     try {
+      const previousThread = cacheEntry.thread;
       const previousSignature = createCacheSignature(cacheEntry);
       let latestTurns: unknown[];
 
@@ -832,24 +833,28 @@ export class ThreadConversationService {
         latestTurns = await this.loadLatestTurns(client, cacheEntry);
       } catch (error) {
         if (isUnmaterializedThreadError(error)) {
-          return;
+          return false;
         }
 
         throw error;
       }
 
-      await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
-      await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
       const nextSignature = createCacheSignature(cacheEntry);
 
-      if (previousSignature !== nextSignature) {
-        this.options.emit({
-          type: "thread.turns.synced",
-          threadId: cacheEntry.thread.id,
-          turns: this.options.threadCacheService.readTurns(cacheEntry),
-          hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns
-        });
+      if (previousSignature === nextSignature) {
+        cacheEntry.thread = previousThread;
+        return false;
       }
+
+      await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
+      this.options.emit({
+        type: "thread.turns.synced",
+        threadId: cacheEntry.thread.id,
+        turns: this.options.threadCacheService.readTurns(cacheEntry),
+        hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns
+      });
+      return true;
     } finally {
       this.logThreadTiming("codex load finished", {
         threadId: cacheEntry.thread.id,
@@ -878,9 +883,6 @@ export class ThreadConversationService {
     }
 
     if (isUnmaterializedThreadSnapshot(cachedSnapshot)) {
-      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
-
-      this.options.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
       this.logThreadTiming("codex load finished", {
         threadId,
         startedAt: syncStartedAt,
@@ -892,20 +894,14 @@ export class ThreadConversationService {
     }
 
     const sourceId = cachedSnapshot.thread.sourceId;
-    const cachedThread = cachedSnapshot.thread;
     const client = await this.options.ensureClient(sourceId);
-    const thread = await this.readThreadMetadata(
-      client,
-      threadId,
-      sourceId,
-      cachedThread.model,
-      cachedThread.reasoningEffort
-    );
-    const cacheEntry = this.options.threadTurnCache.getOrCreate(thread);
+    const cacheEntry = this.options.threadTurnCache.get(threadId)
+      ?? this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+    const didSyncTurns = await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
 
-    await this.options.threadCacheService.writeIndex([thread]);
-    this.options.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
-    await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
+    if (didSyncTurns) {
+      this.options.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
+    }
   }
 
   /**

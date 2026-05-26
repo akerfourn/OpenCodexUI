@@ -14,7 +14,6 @@ import type {
   OpenCodexEnterKeyBehavior,
   OpenCodexFileSearchResult,
   OpenCodexImageAttachment,
-  OpenCodexReasoningEffort,
   OpenCodexSkillSearchResult
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -30,8 +29,6 @@ type ChatComposerProps = {
   store: RootStore;
   chatStore: ChatStore;
   projectStore: ProjectStore;
-  selectedModel: string | null;
-  reasoningEffort: OpenCodexReasoningEffort;
   modelOptions: string[];
   isWorking: boolean;
 };
@@ -47,8 +44,6 @@ export function ChatComposer({
   store,
   chatStore,
   projectStore,
-  selectedModel,
-  reasoningEffort,
   modelOptions,
   isWorking
 }: ChatComposerProps) {
@@ -136,11 +131,11 @@ export function ChatComposer({
   }
 
   function handleModelChange(value: string | null): void {
-    store.appStore.setSelectedModel(value);
+    chatStore.setSelectedModel(value);
   }
 
-  function handleEffortChange(value: OpenCodexReasoningEffort): void {
-    store.appStore.setReasoningEffort(value);
+  function handleEffortChange(value: ChatStore["reasoningEffort"]): void {
+    chatStore.setReasoningEffort(value);
   }
 
   function handleInterrupt(): void {
@@ -243,8 +238,8 @@ export function ChatComposer({
       />
       <Stack className="composer-controls" direction="row" spacing={1}>
         <ModelSettingsFields
-          selectedModel={selectedModel}
-          reasoningEffort={reasoningEffort}
+          selectedModel={chatStore.selectedModel}
+          reasoningEffort={chatStore.reasoningEffort}
           modelOptions={modelOptions}
           onModelChange={handleModelChange}
           onReasoningEffortChange={handleEffortChange}
