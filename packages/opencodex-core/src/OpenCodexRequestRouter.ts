@@ -103,6 +103,13 @@ export class OpenCodexRequestRouter {
         return this.runtime.createThread(request.projectPath ?? null, request.sourceId ?? null);
       case "threads.rename":
         return this.runtime.renameThread(request.threadId, request.name);
+      case "threads.updateComposerSettings":
+        await this.runtime.updateThreadComposerSettings(
+          request.threadId,
+          request.model,
+          request.reasoningEffort
+        );
+        return { ok: true };
       case "thread.review":
         return this.runtime.startThreadReview(request.threadId, request.projectPath ?? null);
       case "thread.compact":

@@ -1,7 +1,7 @@
 /**
  * Covers chat-local composer model settings.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 
@@ -35,6 +35,33 @@ describe("ChatStore composer model settings", () => {
 
     expect(chatStore.selectedModel).toBe("gpt-5.4-mini");
     expect(chatStore.reasoningEffort).toBe("high");
+  });
+
+  it("should update visible thread metadata when the user changes settings", () => {
+    const rootStore = createRootStore();
+    const projectStore = createProjectStore();
+    const chatStore = new ChatStore(
+      createThread({
+        model: "gpt-5.5",
+        reasoningEffort: "medium"
+      }),
+      projectStore,
+      rootStore
+    );
+
+    chatStore.setReasoningEffort("high");
+
+    expect(chatStore.thread.reasoningEffort).toBe("high");
+    expect(projectStore.upsertThread).toHaveBeenCalledWith(expect.objectContaining({
+      id: "thread-1",
+      reasoningEffort: "high"
+    }));
+    expect(rootStore.request).toHaveBeenCalledWith({
+      type: "threads.updateComposerSettings",
+      threadId: "thread-1",
+      model: "gpt-5.5",
+      reasoningEffort: "high"
+    });
   });
 
   it("should apply metadata refreshes before the user changes settings", () => {
@@ -96,7 +123,8 @@ function createProjectStore(): ProjectStore {
       sourceId: "source-1"
     },
     projectPath: "/tmp/project",
-    isOrphan: false
+    isOrphan: false,
+    upsertThread: vi.fn((thread: OpenCodexThread) => thread)
   } as ProjectStore;
 }
 
@@ -112,6 +140,7 @@ function createRootStore(): RootStore {
     },
     navigationStore: {
       activeProjectStore: null
-    }
+    },
+    request: vi.fn(() => Promise.resolve({ ok: true }))
   } as RootStore;
 }

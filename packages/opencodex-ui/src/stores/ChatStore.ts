@@ -71,12 +71,17 @@ export class ChatStore {
     this.reasoningEffort = resolveInitialReasoningEffort(thread, root);
     makeAutoObservable<
       ChatStore,
-      "projectStore" | "root" | "hasExplicitModelSelection" | "hasExplicitReasoningEffortSelection"
+      | "projectStore"
+      | "root"
+      | "hasExplicitModelSelection"
+      | "hasExplicitReasoningEffortSelection"
+      | "updateComposerThreadMetadata"
     >(this, {
       projectStore: false,
       root: false,
       hasExplicitModelSelection: false,
-      hasExplicitReasoningEffortSelection: false
+      hasExplicitReasoningEffortSelection: false,
+      updateComposerThreadMetadata: false
     });
   }
 
@@ -210,6 +215,7 @@ export class ChatStore {
   setSelectedModel(value: string | null): void {
     this.selectedModel = value;
     this.hasExplicitModelSelection = true;
+    this.updateComposerThreadMetadata(value, this.reasoningEffort);
   }
 
   /**
@@ -222,6 +228,40 @@ export class ChatStore {
   setReasoningEffort(value: OpenCodexReasoningEffort): void {
     this.reasoningEffort = value;
     this.hasExplicitReasoningEffortSelection = true;
+    this.updateComposerThreadMetadata(this.selectedModel, value);
+  }
+
+  /**
+   * Applies local composer metadata to the visible thread and cache.
+   *
+   * @param model Selected model identifier.
+   * @param reasoningEffort Selected reasoning effort.
+   *
+   * @returns Nothing.
+   */
+  private updateComposerThreadMetadata(
+    model: string | null,
+    reasoningEffort: OpenCodexReasoningEffort | null
+  ): void {
+    const thread = {
+      ...this.thread,
+      model,
+      reasoningEffort
+    };
+
+    this.thread = thread;
+    this.projectStore.upsertThread(thread);
+
+    void this.root.request({
+      type: "threads.updateComposerSettings",
+      threadId: thread.id,
+      model,
+      reasoningEffort
+    }).catch((error: unknown) => {
+      runInAction(() => {
+        this.root.appStore.errorMessage = readErrorMessage(error);
+      });
+    });
   }
 
   /**

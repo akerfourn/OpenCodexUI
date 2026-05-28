@@ -647,6 +647,27 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Persists the local composer model settings for a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param model Selected model identifier.
+   * @param reasoningEffort Selected reasoning effort.
+   *
+   * @returns Promise resolved when metadata has been written.
+   */
+  async updateThreadComposerSettings(
+    threadId: string,
+    model: string | null,
+    reasoningEffort: OpenCodexReasoningEffort | null
+  ): Promise<void> {
+    await this.threadConversationService.updateThreadComposerSettings(
+      threadId,
+      model,
+      reasoningEffort
+    );
+  }
+
+  /**
    * Starts a user turn.
    *
    * @param threadId Thread identifier, or `null` to create one.

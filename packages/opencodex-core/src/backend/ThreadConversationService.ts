@@ -403,6 +403,43 @@ export class ThreadConversationService {
   }
 
   /**
+   * Updates the locally selected composer settings for a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param model Selected model identifier.
+   * @param reasoningEffort Selected reasoning effort.
+   *
+   * @returns Promise resolved when the local cache is updated.
+   */
+  async updateThreadComposerSettings(
+    threadId: string,
+    model: string | null,
+    reasoningEffort: OpenCodexThread["reasoningEffort"]
+  ): Promise<void> {
+    const memoryEntry = this.options.threadTurnCache.get(threadId);
+    const cachedSnapshot = memoryEntry === null
+      ? await this.options.threadCacheService.readSnapshot(threadId)
+      : null;
+    const currentThread = memoryEntry?.thread ?? cachedSnapshot?.thread ?? null;
+
+    if (currentThread === null) {
+      return;
+    }
+
+    const thread = {
+      ...currentThread,
+      model,
+      reasoningEffort
+    };
+
+    if (memoryEntry !== null) {
+      memoryEntry.thread = thread;
+    }
+
+    await this.options.threadCacheService.writeIndex([thread]);
+  }
+
+  /**
    * Starts a user turn, creating a thread first when needed.
    *
    * @param threadId Thread identifier, or `null` to create a thread.
