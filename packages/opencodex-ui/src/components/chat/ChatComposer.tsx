@@ -7,6 +7,7 @@ import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
 import { useCallback, useEffect, useState } from "react";
 import { IconButton, Stack, Tooltip } from "@mui/material";
+import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -294,6 +295,8 @@ export function ChatComposer({
     </form>
   );
 }
+
+export const ChatComposerX = observer(ChatComposer);
 
 function readImageAttachmentFromFile(file: File): Promise<OpenCodexImageAttachment> {
   return new Promise((resolve, reject) => {

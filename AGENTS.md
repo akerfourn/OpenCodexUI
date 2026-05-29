@@ -28,6 +28,10 @@ This file applies to the whole repository.
 ## MobX and transport boundaries
 
 - Keep MobX observable objects inside UI state and rendering code.
+- React components that read MobX observable state must be rendered through an
+  `observer` wrapper by default.
+- Leaving a MobX-reading component unobserved must be rare, explicitly
+  justified, and documented near the component.
 - Before sending data through `RootStore.request`, Electron IPC, or any backend
   transport, convert it to plain structured-clone-compatible data.
 - Do not pass observable arrays, observable objects, class instances, reactions,

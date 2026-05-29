@@ -48,6 +48,17 @@ export const MarkdownMessageM = memo(MarkdownMessage);
 - If both behaviors seem necessary, prefer splitting the component into smaller
   parts so each file stays simple and each wrapper stays obvious.
 
+## MobX observer usage
+
+- Any React component that reads MobX observable data must be exported with an
+  observed wrapper by default.
+- Use the existing naming convention: keep the plain component export and expose
+  the observed wrapper with the `X` suffix.
+- Import and render the observed wrapper from parent components.
+- Unobserved components that read MobX state are exceptions only. They must be
+  rare, have a strong measured reason, and include a local comment explaining
+  why they intentionally bypass `observer`.
+
 ## Structure and readability
 
 - Keep component names explicit and stable.
@@ -55,4 +66,3 @@ export const MarkdownMessageM = memo(MarkdownMessage);
 - Prefer top-level named handlers and helpers over nested component factories.
 - Keep the undecorated component as the source of truth; the suffixed export is
   the wrapper that is actually used by the app.
-
