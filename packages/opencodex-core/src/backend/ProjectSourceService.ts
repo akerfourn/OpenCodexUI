@@ -248,7 +248,8 @@ export class ProjectSourceService {
     createIfMissing: boolean
   ): Promise<OpenCodexProject> {
     const ensuredProjectPath = await this.ensureProjectPath(projectPath, createIfMissing);
-    const project = await this.cacheProject(ensuredProjectPath, sourceId);
+    const resolvedSource = await this.resolveSource(sourceId);
+    const project = await this.cacheProject(ensuredProjectPath, resolvedSource.id);
 
     if (project === null) {
       throw new Error("Project path is required.");

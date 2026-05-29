@@ -41,6 +41,15 @@ export class GitService {
    * @returns Parsed Git status.
    */
   async status(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    const repositoryCheck = await this.runGit(projectPath, sourceId, [
+      "rev-parse",
+      "--is-inside-work-tree"
+    ], { allowFailure: true });
+
+    if (repositoryCheck.exitCode !== 0 || repositoryCheck.stdout.trim() !== "true") {
+      return createEmptyGitStatus();
+    }
+
     const response = await this.runGit(projectPath, sourceId, [
       "status",
       "--porcelain=v2",
@@ -48,23 +57,23 @@ export class GitService {
       "--branch"
     ], { allowFailure: true });
 
-    if (response.exitCode !== 0 && isNotRepositoryResponse(response)) {
-      return {
-        isRepository: false,
-        aheadCount: 0,
-        behindCount: 0,
-        branchName: null,
-        upstreamName: null,
-        changedFiles: [],
-        stagedFiles: []
-      };
-    }
-
     if (response.exitCode !== 0) {
       throw new Error(createGitErrorMessage(response));
     }
 
     return parseGitStatus(response.stdout);
+  }
+
+  /**
+   * Initializes a repository and returns its refreshed status.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Refreshed Git status.
+   */
+  async init(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    await this.runGit(projectPath, sourceId, ["init"]);
+    return await this.status(projectPath, sourceId);
   }
 
   /**
@@ -267,9 +276,16 @@ function readProcessExitedNotification(value: unknown): v2.ProcessExitedNotifica
   };
 }
 
-function isNotRepositoryResponse(response: GitProcessResult): boolean {
-  const output = `${response.stderr}\n${response.stdout}`.toLowerCase();
-  return output.includes("not a git repository");
+function createEmptyGitStatus(): OpenCodexGitStatus {
+  return {
+    isRepository: false,
+    aheadCount: 0,
+    behindCount: 0,
+    branchName: null,
+    upstreamName: null,
+    changedFiles: [],
+    stagedFiles: []
+  };
 }
 
 function normalizePaths(paths: string[]): string[] {

@@ -62,6 +62,10 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     void gitStore.refresh();
   }
 
+  function handleInitializeRepository(): void {
+    void gitStore.initializeRepository();
+  }
+
   function handleStageSelected(): void {
     void gitStore.stageSelected();
   }
@@ -145,7 +149,26 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         ) : null}
 
         {gitStore.isAvailable && gitStore.hasLoaded && !gitStore.status.isRepository ? (
-          <Alert severity="info">{t("git.noRepository")}</Alert>
+          <Alert
+            severity="info"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                disabled={gitStore.isInitializingRepository}
+                startIcon={
+                  gitStore.isInitializingRepository
+                    ? <CircularProgress color="inherit" size={14} />
+                    : undefined
+                }
+                onClick={handleInitializeRepository}
+              >
+                {t("git.initializeRepository")}
+              </Button>
+            }
+          >
+            {t("git.noRepository")}
+          </Alert>
         ) : null}
 
         {gitStore.errorMessage !== null ? (

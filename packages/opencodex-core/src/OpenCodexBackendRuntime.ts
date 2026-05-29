@@ -989,6 +989,21 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Initializes a Git repository for a project through its Codex source.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Refreshed Git status.
+   */
+  async initializeGitRepository(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexGitStatus> {
+    return await this.gitService.init(projectPath, sourceId);
+  }
+
+  /**
    * Stages selected Git paths.
    *
    * @param projectPath Project path.

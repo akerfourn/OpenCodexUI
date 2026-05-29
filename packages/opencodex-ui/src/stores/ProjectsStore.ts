@@ -80,7 +80,7 @@ export class ProjectsStore implements RootChildStore {
     }
 
     const resolvedSourceId = sourceId === undefined
-      ? this.root.homeStore.selectedSourceId ?? this.root.settings.defaultSourceId
+      ? this.resolveProjectOpenSourceId()
       : sourceId;
     const existingProject = this.findProjectStoreByPath(trimmedPath, resolvedSourceId);
 
@@ -113,7 +113,7 @@ export class ProjectsStore implements RootChildStore {
    * @returns Nothing.
    */
   openProjectFromPicker(mode: "open" | "create"): void {
-    const sourceId = this.root.homeStore.selectedSourceId ?? this.root.settings.defaultSourceId;
+    const sourceId = this.resolveProjectOpenSourceId();
 
     this.root.homeStore.isOpeningProject = true;
     this.root.appStore.errorMessage = null;
@@ -351,7 +351,7 @@ export class ProjectsStore implements RootChildStore {
   private applyProjectOpened(project: OpenCodexProject): void {
     this.root.homeStore.isOpeningProject = false;
     this.openProjectTab(project, true);
-    this.projectStoresById.get(project.id)?.refreshThreads(this.pendingProjectOpenSourceId);
+    this.projectStoresById.get(project.id)?.refreshThreads(project.sourceId ?? this.pendingProjectOpenSourceId);
     this.pendingProjectOpenSourceId = null;
   }
 
@@ -373,6 +373,13 @@ export class ProjectsStore implements RootChildStore {
 
       projectStore.setProject(project);
     }
+  }
+
+  private resolveProjectOpenSourceId(): string | null {
+    return this.root.homeStore.selectedSourceId
+      ?? this.root.settings.defaultSourceId
+      ?? this.root.sourcesStore.sources[0]?.id
+      ?? null;
   }
 }
 

@@ -33,6 +33,7 @@ export class ProjectGitStore {
   isLoading = false;
   isCommitting = false;
   isGeneratingCommitMessage = false;
+  isInitializingRepository = false;
   isPulling = false;
   isPushing = false;
   selectedChangedPaths: string[] = [];
@@ -148,6 +149,36 @@ export class ProjectGitStore {
     } finally {
       runInAction(() => {
         this.isLoading = false;
+        this.hasLoaded = true;
+      });
+    }
+  }
+
+  async initializeRepository(): Promise<void> {
+    if (!this.isAvailable || this.isInitializingRepository) {
+      return;
+    }
+
+    this.isInitializingRepository = true;
+    this.errorMessage = null;
+
+    try {
+      const status = await this.root.request<OpenCodexGitStatus>({
+        type: "git.init",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      });
+
+      runInAction(() => {
+        this.applyStatus(status);
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.errorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isInitializingRepository = false;
         this.hasLoaded = true;
       });
     }
