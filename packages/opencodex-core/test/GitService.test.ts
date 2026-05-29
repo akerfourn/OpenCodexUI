@@ -65,6 +65,109 @@ describe("GitService", () => {
       ["git", "status", "--porcelain=v2", "-z", "--branch"]
     ]);
   });
+
+  it("should list local branches before remote branches", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "feature/ui\n", stderr: "" },
+      {
+        exitCode: 0,
+        stdout: [
+          "refs/remotes/origin/main\torigin/main\t",
+          "refs/heads/main\tmain\torigin/main",
+          "refs/remotes/origin/HEAD\torigin/HEAD\t",
+          "refs/heads/feature/ui\tfeature/ui\t",
+          ""
+        ].join("\n"),
+        stderr: ""
+      }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const branches = await service.branches("/workspace/project", "source-1");
+
+    expect(branches).toEqual([
+      {
+        name: "feature/ui",
+        fullName: "refs/heads/feature/ui",
+        kind: "local",
+        upstreamName: null,
+        isCurrent: true
+      },
+      {
+        name: "main",
+        fullName: "refs/heads/main",
+        kind: "local",
+        upstreamName: "origin/main",
+        isCurrent: false
+      },
+      {
+        name: "origin/main",
+        fullName: "refs/remotes/origin/main",
+        kind: "remote",
+        upstreamName: null,
+        isCurrent: false
+      }
+    ]);
+    expect(client.commands).toEqual([
+      ["git", "branch", "--show-current"],
+      [
+        "git",
+        "for-each-ref",
+        "--format=%(refname)%09%(refname:short)%09%(upstream:short)",
+        "refs/heads",
+        "refs/remotes"
+      ]
+    ]);
+  });
+
+  it("should checkout existing branches and refresh status", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "", stderr: "" },
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: "# branch.head feature/api\0", stderr: "" }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const status = await service.checkoutBranch(
+      "/workspace/project",
+      "source-1",
+      "feature/api",
+      "local"
+    );
+
+    expect(status.branchName).toBe("feature/api");
+    expect(client.commands).toEqual([
+      ["git", "checkout", "feature/api"],
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"]
+    ]);
+  });
+
+  it("should create and checkout a new local branch", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "feature/new\n", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" },
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: "# branch.head feature/new\0", stderr: "" }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const status = await service.createBranch("/workspace/project", "source-1", "feature/new");
+
+    expect(status.branchName).toBe("feature/new");
+    expect(client.commands).toEqual([
+      ["git", "check-ref-format", "--branch", "feature/new"],
+      ["git", "checkout", "-b", "feature/new"],
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"]
+    ]);
+  });
 });
 
 class FakeCodexClient {

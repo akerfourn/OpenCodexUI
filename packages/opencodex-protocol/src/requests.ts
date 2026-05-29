@@ -8,6 +8,7 @@ import type {
   OpenCodexImageAttachment,
   OpenCodexLogRetentionUnit,
   OpenCodexReasoningEffort,
+  OpenCodexGitBranchKind,
   OpenCodexSourceLocalSettings,
   OpenCodexSettings,
   OpenCodexThreadScope
@@ -124,6 +125,15 @@ export type OpenCodexRequest =
   | { type: "plugins.uninstall"; sourceId: string | null; pluginId: string }
   | { type: "git.status"; projectPath: string; sourceId: string | null }
   | { type: "git.init"; projectPath: string; sourceId: string | null }
+  | { type: "git.branches"; projectPath: string; sourceId: string | null }
+  | {
+      type: "git.checkout";
+      projectPath: string;
+      sourceId: string | null;
+      branchName: string;
+      branchKind: OpenCodexGitBranchKind;
+    }
+  | { type: "git.branch.create"; projectPath: string; sourceId: string | null; branchName: string }
   | { type: "git.stage"; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.unstage"; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.commit"; projectPath: string; sourceId: string | null; message: string }

@@ -5,6 +5,8 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexCommitMessageGenerationResult,
+  OpenCodexGitBranch,
+  OpenCodexGitBranchKind,
   OpenCodexGitCommitResult,
   OpenCodexGitStatus
 } from "@open-codex-ui/opencodex-protocol";
@@ -28,9 +30,14 @@ const emptyGitStatus: OpenCodexGitStatus = {
 export class ProjectGitStore {
   status: OpenCodexGitStatus = emptyGitStatus;
   commitMessage = "";
+  branches: OpenCodexGitBranch[] = [];
   errorMessage: string | null = null;
+  branchErrorMessage: string | null = null;
   hasLoaded = false;
+  hasLoadedBranches = false;
   isLoading = false;
+  isLoadingBranches = false;
+  isCheckingOutBranch = false;
   isCommitting = false;
   isGeneratingCommitMessage = false;
   isInitializingRepository = false;
@@ -182,6 +189,51 @@ export class ProjectGitStore {
         this.hasLoaded = true;
       });
     }
+  }
+
+  async loadBranches(): Promise<void> {
+    if (!this.isAvailable || !this.status.isRepository) {
+      this.branches = [];
+      this.hasLoadedBranches = true;
+      return;
+    }
+
+    this.isLoadingBranches = true;
+    this.branchErrorMessage = null;
+
+    try {
+      const branches = await this.root.request<OpenCodexGitBranch[]>({
+        type: "git.branches",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      });
+
+      runInAction(() => {
+        this.branches = branches;
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.branchErrorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isLoadingBranches = false;
+        this.hasLoadedBranches = true;
+      });
+    }
+  }
+
+  async checkoutBranch(branch: OpenCodexGitBranch): Promise<boolean> {
+    return await this.applyBranchStatusRequest("git.checkout", {
+      branchName: branch.name,
+      branchKind: branch.kind
+    });
+  }
+
+  async createBranch(branchName: string): Promise<boolean> {
+    return await this.applyBranchStatusRequest("git.branch.create", {
+      branchName: branchName.trim()
+    });
   }
 
   async stageSelected(): Promise<void> {
@@ -372,6 +424,59 @@ export class ProjectGitStore {
     } finally {
       runInAction(() => {
         this.isLoading = false;
+      });
+    }
+  }
+
+  private async applyBranchStatusRequest(
+    type: "git.checkout",
+    request: { branchName: string; branchKind: OpenCodexGitBranchKind }
+  ): Promise<boolean>;
+  private async applyBranchStatusRequest(
+    type: "git.branch.create",
+    request: { branchName: string }
+  ): Promise<boolean>;
+  private async applyBranchStatusRequest(
+    type: "git.checkout" | "git.branch.create",
+    request: { branchName: string; branchKind?: OpenCodexGitBranchKind }
+  ): Promise<boolean> {
+    if (!this.isAvailable || this.isCheckingOutBranch) {
+      return false;
+    }
+
+    this.isCheckingOutBranch = true;
+    this.branchErrorMessage = null;
+    this.errorMessage = null;
+
+    try {
+      const status = type === "git.checkout"
+        ? await this.root.request<OpenCodexGitStatus>({
+          type,
+          projectPath: this.projectStore.projectPath,
+          sourceId: this.projectStore.project.sourceId,
+          branchName: request.branchName,
+          branchKind: request.branchKind ?? "local"
+        })
+        : await this.root.request<OpenCodexGitStatus>({
+          type,
+          projectPath: this.projectStore.projectPath,
+          sourceId: this.projectStore.project.sourceId,
+          branchName: request.branchName
+        });
+
+      runInAction(() => {
+        this.applyStatus(status);
+      });
+      await this.loadBranches();
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.branchErrorMessage = readErrorMessage(error);
+      });
+      return false;
+    } finally {
+      runInAction(() => {
+        this.isCheckingOutBranch = false;
       });
     }
   }

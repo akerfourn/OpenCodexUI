@@ -2,6 +2,7 @@
  * Renders Git controls for one opened project.
  */
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
@@ -26,6 +27,7 @@ import { useTranslation } from "react-i18next";
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { CommitMessageGenerationDialogX } from "./CommitMessageGenerationDialog";
+import { ProjectBranchSwitcherDialogX } from "./ProjectBranchSwitcherDialog";
 import { ProjectGitFileRow } from "./ProjectGitFileRow";
 import { GitSectionHeader } from "./GitSectionHeader";
 
@@ -53,6 +55,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     ? "git.technical"
     : "git.simple";
   const [isGenerateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [isBranchDialogOpen, setBranchDialogOpen] = useState(false);
 
   useEffect(() => {
     void gitStore.refresh();
@@ -64,6 +67,14 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   function handleInitializeRepository(): void {
     void gitStore.initializeRepository();
+  }
+
+  function handleOpenBranchDialog(): void {
+    setBranchDialogOpen(true);
+  }
+
+  function handleCloseBranchDialog(): void {
+    setBranchDialogOpen(false);
   }
 
   function handleStageSelected(): void {
@@ -128,16 +139,31 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
             </Typography>
           )}
         </Box>
+        <Tooltip title={t("git.branchSwitcher")}>
+          <span className="git-panel-header-action">
+            <IconButton
+              aria-label={t("git.branchSwitcher")}
+              size="small"
+              disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
+              onClick={handleOpenBranchDialog}
+              sx={{ height: 26, width: 26 }}
+            >
+              <AccountTreeOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
         <Tooltip title={t("git.refresh")}>
-          <IconButton
-            aria-label={t("git.refresh")}
-            size="small"
-            disabled={!gitStore.isAvailable || gitStore.isLoading}
-            onClick={handleRefresh}
-            sx={{ height: 26, width: 26 }}
-          >
-            <RefreshOutlinedIcon sx={{ fontSize: 16 }} />
-          </IconButton>
+          <span className="git-panel-header-action">
+            <IconButton
+              aria-label={t("git.refresh")}
+              size="small"
+              disabled={!gitStore.isAvailable || gitStore.isLoading}
+              onClick={handleRefresh}
+              sx={{ height: 26, width: 26 }}
+            >
+              <RefreshOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </span>
         </Tooltip>
       </Stack>
 
@@ -328,6 +354,11 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         gitStore={gitStore}
         open={isGenerateDialogOpen}
         onClose={handleCloseGenerateDialog}
+      />
+      <ProjectBranchSwitcherDialogX
+        gitStore={gitStore}
+        open={isBranchDialogOpen}
+        onClose={handleCloseBranchDialog}
       />
     </section>
   );

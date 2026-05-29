@@ -142,6 +142,16 @@ export type OpenCodexGitStatus = {
   stagedFiles: OpenCodexGitFile[];
 };
 
+export type OpenCodexGitBranchKind = "local" | "remote";
+
+export type OpenCodexGitBranch = {
+  name: string;
+  fullName: string;
+  kind: OpenCodexGitBranchKind;
+  upstreamName: string | null;
+  isCurrent: boolean;
+};
+
 export type OpenCodexGitCommitResult = {
   ok: true;
   output: string;

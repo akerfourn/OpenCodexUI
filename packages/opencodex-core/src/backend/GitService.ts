@@ -3,6 +3,8 @@
  */
 import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 import type {
+  OpenCodexGitBranch,
+  OpenCodexGitBranchKind,
   OpenCodexGitCommitResult,
   OpenCodexGitStatus
 } from "@open-codex-ui/opencodex-protocol";
@@ -73,6 +75,72 @@ export class GitService {
    */
   async init(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
     await this.runGit(projectPath, sourceId, ["init"]);
+    return await this.status(projectPath, sourceId);
+  }
+
+  /**
+   * Lists local and remote branches.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Local branches followed by remote branches.
+   */
+  async branches(projectPath: string, sourceId: string | null): Promise<OpenCodexGitBranch[]> {
+    const currentBranchResponse = await this.runGit(projectPath, sourceId, [
+      "branch",
+      "--show-current"
+    ]);
+    const currentBranchName = currentBranchResponse.stdout.trim();
+    const response = await this.runGit(projectPath, sourceId, [
+      "for-each-ref",
+      "--format=%(refname)%09%(refname:short)%09%(upstream:short)",
+      "refs/heads",
+      "refs/remotes"
+    ]);
+
+    return parseGitBranches(response.stdout, currentBranchName);
+  }
+
+  /**
+   * Checks out an existing local or remote branch and returns refreshed status.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param branchName Branch name.
+   * @param branchKind Branch kind.
+   * @returns Refreshed status.
+   */
+  async checkoutBranch(
+    projectPath: string,
+    sourceId: string | null,
+    branchName: string,
+    branchKind: OpenCodexGitBranchKind
+  ): Promise<OpenCodexGitStatus> {
+    const normalizedBranchName = normalizeBranchName(branchName);
+    const args = branchKind === "remote"
+      ? ["checkout", "--track", normalizedBranchName]
+      : ["checkout", normalizedBranchName];
+
+    await this.runGit(projectPath, sourceId, args);
+    return await this.status(projectPath, sourceId);
+  }
+
+  /**
+   * Creates and checks out a new local branch.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param branchName Branch name.
+   * @returns Refreshed status.
+   */
+  async createBranch(
+    projectPath: string,
+    sourceId: string | null,
+    branchName: string
+  ): Promise<OpenCodexGitStatus> {
+    const normalizedBranchName = normalizeBranchName(branchName);
+    await this.validateBranchName(projectPath, sourceId, normalizedBranchName);
+    await this.runGit(projectPath, sourceId, ["checkout", "-b", normalizedBranchName]);
     return await this.status(projectPath, sourceId);
   }
 
@@ -186,6 +254,22 @@ export class GitService {
     };
   }
 
+  private async validateBranchName(
+    projectPath: string,
+    sourceId: string | null,
+    branchName: string
+  ): Promise<void> {
+    const response = await this.runGit(projectPath, sourceId, [
+      "check-ref-format",
+      "--branch",
+      branchName
+    ], { allowFailure: true });
+
+    if (response.exitCode !== 0) {
+      throw new Error(createGitErrorMessage(response));
+    }
+  }
+
   private async runGit(
     projectPath: string,
     sourceId: string | null,
@@ -286,6 +370,69 @@ function createEmptyGitStatus(): OpenCodexGitStatus {
     changedFiles: [],
     stagedFiles: []
   };
+}
+
+function parseGitBranches(output: string, currentBranchName: string): OpenCodexGitBranch[] {
+  const branches = output
+    .split("\n")
+    .map((line) => parseGitBranchLine(line, currentBranchName))
+    .filter((branch): branch is OpenCodexGitBranch => branch !== null);
+
+  return branches.sort((first, second) => {
+    if (first.kind !== second.kind) {
+      return first.kind === "local" ? -1 : 1;
+    }
+
+    return first.name.localeCompare(second.name);
+  });
+}
+
+function parseGitBranchLine(line: string, currentBranchName: string): OpenCodexGitBranch | null {
+  const trimmedLine = line.trim();
+
+  if (trimmedLine.length === 0) {
+    return null;
+  }
+
+  const columns = trimmedLine.split("\t");
+  const fullName = columns[0] ?? "";
+  const shortName = columns[1] ?? "";
+  const upstreamName = columns[2] ?? "";
+  const kind = readBranchKind(fullName);
+
+  if (kind === null || shortName.length === 0 || shortName.endsWith("/HEAD")) {
+    return null;
+  }
+
+  return {
+    name: shortName,
+    fullName,
+    kind,
+    upstreamName: upstreamName.length > 0 ? upstreamName : null,
+    isCurrent: kind === "local" && shortName === currentBranchName
+  };
+}
+
+function readBranchKind(fullName: string): OpenCodexGitBranchKind | null {
+  if (fullName.startsWith("refs/heads/")) {
+    return "local";
+  }
+
+  if (fullName.startsWith("refs/remotes/")) {
+    return "remote";
+  }
+
+  return null;
+}
+
+function normalizeBranchName(branchName: string): string {
+  const normalizedBranchName = branchName.trim();
+
+  if (normalizedBranchName.length === 0) {
+    throw new Error("Branch name is required.");
+  }
+
+  return normalizedBranchName;
 }
 
 function normalizePaths(paths: string[]): string[] {

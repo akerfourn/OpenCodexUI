@@ -18,6 +18,8 @@ import type {
   OpenCodexCommitPrompt,
   OpenCodexEvent,
   OpenCodexFileSearchResult,
+  OpenCodexGitBranch,
+  OpenCodexGitBranchKind,
   OpenCodexImageAttachment,
   OpenCodexGitCommitResult,
   OpenCodexGitStatus,
@@ -1001,6 +1003,57 @@ export class OpenCodexBackendRuntime {
     sourceId: string | null
   ): Promise<OpenCodexGitStatus> {
     return await this.gitService.init(projectPath, sourceId);
+  }
+
+  /**
+   * Lists local and remote Git branches for a project.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Branch collection.
+   */
+  async listGitBranches(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexGitBranch[]> {
+    return await this.gitService.branches(projectPath, sourceId);
+  }
+
+  /**
+   * Checks out an existing Git branch and returns the refreshed status.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param branchName Branch name.
+   * @param branchKind Branch kind.
+   *
+   * @returns Refreshed Git status.
+   */
+  async checkoutGitBranch(
+    projectPath: string,
+    sourceId: string | null,
+    branchName: string,
+    branchKind: OpenCodexGitBranchKind
+  ): Promise<OpenCodexGitStatus> {
+    return await this.gitService.checkoutBranch(projectPath, sourceId, branchName, branchKind);
+  }
+
+  /**
+   * Creates and checks out a new Git branch.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param branchName Branch name.
+   *
+   * @returns Refreshed Git status.
+   */
+  async createGitBranch(
+    projectPath: string,
+    sourceId: string | null,
+    branchName: string
+  ): Promise<OpenCodexGitStatus> {
+    return await this.gitService.createBranch(projectPath, sourceId, branchName);
   }
 
   /**

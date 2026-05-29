@@ -446,6 +446,16 @@ textarea {
   padding: 10px 12px;
 }
 
+.git-panel-header-action {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.git-panel-header:hover .git-panel-header-action,
+.git-panel-header:focus-within .git-panel-header-action {
+  opacity: 1;
+}
+
 .git-panel-content {
   flex: 1 1 auto;
   min-height: 0;
