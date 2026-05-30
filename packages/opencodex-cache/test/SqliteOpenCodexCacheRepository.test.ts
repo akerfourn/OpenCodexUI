@@ -65,6 +65,31 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(visibleProject?.isHidden).toBe(false);
   });
 
+  it("should persist project preferences", async () => {
+    const project = await repository.upsertProject("/tmp/project-preferences");
+
+    const updatedProject = await repository.updateProjectPreferences(project.id, {
+      git: {
+        referenceTagName: "v1.2.0"
+      }
+    });
+
+    expect(updatedProject?.preferences).toEqual({
+      git: {
+        referenceTagName: "v1.2.0"
+      }
+    });
+
+    const projects = await repository.listProjects();
+    const persistedProject = projects.find((entry) => entry.id === project.id);
+
+    expect(persistedProject?.preferences).toEqual({
+      git: {
+        referenceTagName: "v1.2.0"
+      }
+    });
+  });
+
   it("should persist the latest thread token usage", async () => {
     await repository.upsertThreadIndex([
       {

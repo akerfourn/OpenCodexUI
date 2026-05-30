@@ -399,6 +399,7 @@ function createClientProject(
     defaultName,
     displayName: null,
     isHidden: false,
+    preferences: {},
     createdAt: now,
     updatedAt: now,
     lastSeenAt: now,

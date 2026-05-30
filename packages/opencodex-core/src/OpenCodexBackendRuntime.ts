@@ -31,6 +31,7 @@ import type {
   OpenCodexPluginInstallResult,
   OpenCodexPluginListResult,
   OpenCodexProject,
+  OpenCodexProjectPreferences,
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRun,
   OpenCodexRequest,
@@ -497,6 +498,21 @@ export class OpenCodexBackendRuntime {
    */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<{ ok: true }> {
     return await this.projectSourceService.setProjectHidden(projectId, isHidden);
+  }
+
+  /**
+   * Updates project preferences.
+   *
+   * @param projectId Project identifier.
+   * @param patch Preferences patch.
+   *
+   * @returns Updated project.
+   */
+  async updateProjectPreferences(
+    projectId: string,
+    patch: Partial<OpenCodexProjectPreferences>
+  ): Promise<OpenCodexProject> {
+    return await this.projectSourceService.updateProjectPreferences(projectId, patch);
   }
 
   /**

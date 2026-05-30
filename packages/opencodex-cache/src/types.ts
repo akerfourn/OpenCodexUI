@@ -29,10 +29,17 @@ export type CachedProject = {
   defaultName: string;
   displayName: string | null;
   isHidden: boolean;
+  preferences: CachedProjectPreferences;
   createdAt: string;
   updatedAt: string;
   lastSeenAt: string;
   editedAt: string;
+};
+
+export type CachedProjectPreferences = {
+  git?: {
+    referenceTagName?: string | null;
+  };
 };
 
 export type CachedLogEntry = {
@@ -261,6 +268,18 @@ export interface OpenCodexCacheRepository {
    * @returns Promise resolved when the update completes.
    */
   setProjectHidden(projectId: string, isHidden: boolean): Promise<void>;
+
+  /**
+   * Updates project-level preferences.
+   *
+   * @param projectId Project identifier.
+   * @param preferences Preferences to store.
+   * @returns Updated cached project, or `null` when the project no longer exists.
+   */
+  updateProjectPreferences(
+    projectId: string,
+    preferences: CachedProjectPreferences
+  ): Promise<CachedProject | null>;
 
   /**
    * Deletes a cached project.

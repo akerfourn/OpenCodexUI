@@ -4,8 +4,9 @@
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import { createProjectIdentity } from "../projectIdentity.js";
-import type { CachedProject } from "../types.js";
+import type { CachedProject, CachedProjectPreferences } from "../types.js";
 import { mapProjectRow } from "./mappers.js";
+import { serializeProjectPreferences } from "./projectPreferences.js";
 import type { ProjectRow } from "./rowTypes.js";
 
 /**
@@ -140,6 +141,38 @@ export async function setProjectHidden(
 }
 
 /**
+ * Updates the stored preferences for one cached project.
+ *
+ * @param database SQLite database connection.
+ * @param projectId Project identifier.
+ * @param preferences Preferences to store.
+ *
+ * @returns Updated project, or `null` when no project matches.
+ */
+export async function updateProjectPreferences(
+  database: BetterSqliteDatabase,
+  projectId: string,
+  preferences: CachedProjectPreferences
+): Promise<CachedProject | null> {
+  database
+    .prepare(
+      `
+      UPDATE projects SET
+        preferences_json = @preferencesJson,
+        updated_at = @updatedAt
+      WHERE id = @projectId
+      `
+    )
+    .run({
+      projectId,
+      preferencesJson: serializeProjectPreferences(preferences),
+      updatedAt: new Date().toISOString()
+    });
+
+  return readProjectById(database, projectId);
+}
+
+/**
  * Deletes a cached project row.
  *
  * Cached threads remain in the database and become orphaned through the
@@ -157,4 +190,22 @@ export async function deleteProject(
   database
     .prepare("DELETE FROM projects WHERE id = @projectId")
     .run({ projectId });
+}
+
+function readProjectById(database: BetterSqliteDatabase, projectId: string): CachedProject | null {
+  const row = database
+    .prepare(
+      `
+      SELECT
+        projects.*,
+        COALESCE(MAX(threads.updated_at), projects.created_at) AS edited_at
+      FROM projects
+      LEFT JOIN threads ON threads.project_id = projects.id
+      WHERE projects.id = @projectId
+      GROUP BY projects.id
+      `
+    )
+    .get({ projectId }) as ProjectRow | undefined;
+
+  return row === undefined ? null : mapProjectRow(row);
 }

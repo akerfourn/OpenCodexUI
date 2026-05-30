@@ -37,6 +37,7 @@ export type ProjectRow = {
   default_name: string;
   display_name: string | null;
   is_hidden: number;
+  preferences_json: string | null;
   created_at: string;
   updated_at: string;
   last_seen_at: string;

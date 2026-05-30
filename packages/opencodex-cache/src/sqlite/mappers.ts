@@ -10,6 +10,7 @@ import type {
   CachedThreadSyncState,
   CachedThreadTokenUsage
 } from "../types.js";
+import { parseProjectPreferences } from "./projectPreferences.js";
 import { parseLocalSourceSettings } from "./sourceSettings.js";
 import type { LogRow, ProjectCommandRow, ProjectRow, SourceRow, ThreadRow } from "./rowTypes.js";
 
@@ -58,6 +59,7 @@ export function mapProjectRow(row: ProjectRow): CachedProject {
     defaultName: row.default_name,
     displayName: row.display_name,
     isHidden: row.is_hidden === 1,
+    preferences: parseProjectPreferences(row.preferences_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     lastSeenAt: row.last_seen_at,

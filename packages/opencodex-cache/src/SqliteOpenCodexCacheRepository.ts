@@ -14,6 +14,7 @@ import type {
   CachedLogPage,
   CachedOlderTurnsResult,
   CachedProject,
+  CachedProjectPreferences,
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
   CachedProjectCommandUpdateInput,
@@ -57,6 +58,7 @@ import {
   deleteProject,
   listProjects,
   setProjectHidden,
+  updateProjectPreferences,
   upsertProject
 } from "./sqlite/projectQueries.js";
 import {
@@ -233,6 +235,21 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<void> {
     await setProjectHidden(this.database, projectId, isHidden);
+  }
+
+  /**
+   * Updates project preferences.
+   *
+   * @param projectId Project identifier.
+   * @param preferences Preferences to persist.
+   *
+   * @returns Updated project, or `null` when missing.
+   */
+  async updateProjectPreferences(
+    projectId: string,
+    preferences: CachedProjectPreferences
+  ): Promise<CachedProject | null> {
+    return await updateProjectPreferences(this.database, projectId, preferences);
   }
 
   /**

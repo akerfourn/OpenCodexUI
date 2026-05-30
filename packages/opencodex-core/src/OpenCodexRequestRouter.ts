@@ -56,6 +56,8 @@ export class OpenCodexRequestRouter {
         );
       case "projects.setHidden":
         return this.runtime.setProjectHidden(request.projectId, request.isHidden);
+      case "projects.preferences.update":
+        return this.runtime.updateProjectPreferences(request.projectId, request.patch);
       case "projects.delete":
         return this.runtime.deleteProject(request.projectId);
       case "attachments.pickImages":

@@ -3,6 +3,7 @@
  */
 export type {
   CachedProject,
+  CachedProjectPreferences,
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
   CachedProjectCommandUpdateInput,

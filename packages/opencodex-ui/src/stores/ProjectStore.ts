@@ -263,6 +263,7 @@ export class ProjectStore {
    */
   setProject(project: OpenCodexProject): void {
     this.project = project;
+    this.gitStore.applyProjectPreferences(project.preferences);
     this.repairStoredThreadSources();
   }
 

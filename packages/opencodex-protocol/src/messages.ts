@@ -71,10 +71,17 @@ export type OpenCodexProject = {
   defaultName: string;
   displayName: string | null;
   isHidden: boolean;
+  preferences: OpenCodexProjectPreferences;
   createdAt: string;
   updatedAt: string;
   lastSeenAt: string;
   editedAt: string;
+};
+
+export type OpenCodexProjectPreferences = {
+  git?: {
+    referenceTagName?: string | null;
+  };
 };
 
 export type OpenCodexFileSearchResult = {

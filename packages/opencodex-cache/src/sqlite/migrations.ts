@@ -103,6 +103,7 @@ export function runMigrations(database: BetterSqliteDatabase): void {
   applySchemaMigrationV8(database);
   applySchemaMigrationV9(database);
   applySchemaMigrationV10(database);
+  applySchemaMigrationV11(database);
 }
 
 /**
@@ -537,6 +538,36 @@ function applySchemaMigrationV10(database: BetterSqliteDatabase): void {
     database
       .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
       .run(10, now);
+  });
+
+  applyMigration();
+}
+
+/**
+ * Adds nullable project preferences.
+ *
+ * This is an additive nullable JSON column. Older application versions keep
+ * working because their explicit project statements ignore unknown columns.
+ *
+ * @param database SQLite database connection.
+ *
+ * @returns Nothing.
+ */
+function applySchemaMigrationV11(database: BetterSqliteDatabase): void {
+  const migration = database
+    .prepare("SELECT version FROM schema_migrations WHERE version = ?")
+    .get(11);
+
+  if (migration !== undefined) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const applyMigration = database.transaction(() => {
+    addColumnIfMissing(database, "projects", "preferences_json", "TEXT");
+    database
+      .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
+      .run(11, now);
   });
 
   applyMigration();

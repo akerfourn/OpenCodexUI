@@ -10,6 +10,7 @@ import { createProjectIdentity, normalizeProjectPath } from "@open-codex-ui/open
 import type {
   OpenCodexEvent,
   OpenCodexProject,
+  OpenCodexProjectPreferences,
   OpenCodexSettings,
   OpenCodexSource,
   OpenCodexSourceLocalSettings
@@ -144,6 +145,45 @@ export class ProjectSourceService {
     await repository.setProjectHidden(projectId, isHidden);
     this.options.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
     return { ok: true };
+  }
+
+  /**
+   * Updates project preferences.
+   *
+   * @param projectId Project identifier.
+   * @param patch Preferences patch.
+   *
+   * @returns Updated project.
+   */
+  async updateProjectPreferences(
+    projectId: string,
+    patch: Partial<OpenCodexProjectPreferences>
+  ): Promise<OpenCodexProject> {
+    const repository = this.requireCacheRepository("Project preferences storage is unavailable.");
+    const projects = await repository.listProjects();
+    const previousProject = projects.find((project) => project.id === projectId);
+
+    if (previousProject === undefined) {
+      throw new Error(`Project not found: ${projectId}`);
+    }
+
+    const preferences = {
+      ...previousProject.preferences,
+      ...patch,
+      git: {
+        ...previousProject.preferences.git,
+        ...patch.git
+      }
+    };
+    const updatedProject = await repository.updateProjectPreferences(projectId, preferences);
+
+    if (updatedProject === null) {
+      throw new Error(`Project not found: ${projectId}`);
+    }
+
+    const project = toOpenCodexProject(updatedProject);
+    this.options.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
+    return project;
   }
 
   /**
@@ -557,6 +597,7 @@ function createUncachedProject(projectIdentity: ProjectIdentity, sourceId: strin
     defaultName: projectIdentity.defaultName,
     displayName: null,
     isHidden: false,
+    preferences: {},
     createdAt: now,
     updatedAt: now,
     lastSeenAt: now,

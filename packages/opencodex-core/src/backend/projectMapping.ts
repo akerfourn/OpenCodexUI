@@ -12,6 +12,7 @@ export function toOpenCodexProject(project: CachedProject): OpenCodexProject {
     defaultName: project.defaultName,
     displayName: project.displayName,
     isHidden: project.isHidden,
+    preferences: project.preferences,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     lastSeenAt: project.lastSeenAt,

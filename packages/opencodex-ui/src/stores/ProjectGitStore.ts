@@ -9,7 +9,9 @@ import type {
   OpenCodexGitBranchKind,
   OpenCodexGitCommitResult,
   OpenCodexGitStatus,
-  OpenCodexGitTag
+  OpenCodexGitTag,
+  OpenCodexProject,
+  OpenCodexProjectPreferences
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectStore } from "./ProjectStore";
@@ -70,6 +72,7 @@ export class ProjectGitStore {
         autoBind: true
       }
     );
+    this.applyProjectPreferences(projectStore.project.preferences);
   }
 
   get isAvailable(): boolean {
@@ -129,6 +132,21 @@ export class ProjectGitStore {
     }
 
     this.commitMessage = value;
+  }
+
+  applyProjectPreferences(preferences: OpenCodexProjectPreferences): void {
+    const referenceTagName = normalizeNullableText(preferences.git?.referenceTagName ?? null);
+
+    if (referenceTagName === this.selectedReferenceTagName) {
+      return;
+    }
+
+    this.selectedReferenceTagName = referenceTagName;
+    this.commitsSinceReferenceTag = null;
+
+    if (referenceTagName !== null && this.status.isRepository) {
+      void this.loadCommitsSinceReferenceTag(referenceTagName);
+    }
   }
 
   toggleChangedPath(path: string): void {
@@ -355,7 +373,12 @@ export class ProjectGitStore {
         this.tags = tags;
         this.selectedReferenceTagName = normalizedTagName;
       });
-      await this.loadCommitsSinceReferenceTag(normalizedTagName);
+      const loaded = await this.loadCommitsSinceReferenceTag(normalizedTagName);
+
+      if (loaded) {
+        this.persistReferenceTagPreference(normalizedTagName);
+      }
+
       return true;
     } catch (error) {
       runInAction(() => {
@@ -381,7 +404,13 @@ export class ProjectGitStore {
       this.commitsSinceReferenceTag = null;
     });
 
-    return await this.loadCommitsSinceReferenceTag(normalizedTagName);
+    const loaded = await this.loadCommitsSinceReferenceTag(normalizedTagName);
+
+    if (loaded) {
+      this.persistReferenceTagPreference(normalizedTagName);
+    }
+
+    return loaded;
   }
 
   async stageSelected(): Promise<void> {
@@ -698,6 +727,7 @@ export class ProjectGitStore {
     if (!stillExists) {
       this.selectedReferenceTagName = null;
       this.commitsSinceReferenceTag = null;
+      this.persistReferenceTagPreference(null);
     }
   }
 
@@ -707,6 +737,30 @@ export class ProjectGitStore {
     this.commitsSinceReferenceTag = null;
     this.hasLoadedTags = true;
     this.tagErrorMessage = null;
+  }
+
+  private persistReferenceTagPreference(referenceTagName: string | null): void {
+    const preferences: OpenCodexProjectPreferences = {
+      ...this.projectStore.project.preferences,
+      git: {
+        ...this.projectStore.project.preferences.git,
+        referenceTagName
+      }
+    };
+
+    void this.root.request<OpenCodexProject>({
+      type: "projects.preferences.update",
+      projectId: this.projectStore.project.id,
+      patch: preferences
+    }).then((project) => {
+      runInAction(() => {
+        this.projectStore.setProject(project);
+      });
+    }).catch((error) => {
+      runInAction(() => {
+        this.tagErrorMessage = readErrorMessage(error);
+      });
+    });
   }
 }
 
@@ -725,6 +779,15 @@ function keepExistingPaths(paths: string[], availablePaths: string[]): string[] 
 
 function normalizePaths(paths: string[]): string[] {
   return paths.map((path) => path.trim()).filter((path) => path.length > 0);
+}
+
+function normalizeNullableText(value: string | null): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 function readErrorMessage(error: unknown): string {
