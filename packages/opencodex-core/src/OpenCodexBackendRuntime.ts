@@ -104,6 +104,7 @@ export class OpenCodexBackendRuntime {
     this.cacheRepository = options.cacheRepository ?? null;
     this.clientPool = new OpenCodexClientPool({
       getSettings: () => this.settings,
+      getAppVersion: () => this.options.appVersion ?? null,
       resolveSource: (sourceId) => this.resolveSource(sourceId),
       emit: (event) => this.emit(event),
       logger: options.logger,

@@ -63,6 +63,10 @@ export type ProcessFactory = (command: string, args: string[]) => ProcessLike;
 export type CodexAppServerClientOptions = {
   command?: string;
   args?: string[];
+  clientInfo?: {
+    name: string;
+    version: string;
+  };
   requestTimeoutMs?: number;
   experimentalApi?: boolean;
   processFactory?: ProcessFactory;

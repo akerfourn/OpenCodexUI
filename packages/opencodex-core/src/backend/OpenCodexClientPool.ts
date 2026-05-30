@@ -13,6 +13,7 @@ import { resolveSourceCommand } from "./sourceMapping.js";
 
 export type OpenCodexClientPoolOptions = {
   getSettings(): OpenCodexSettings;
+  getAppVersion(): string | null;
   resolveSource(sourceId: string | null): Promise<CachedSource>;
   emit(event: OpenCodexEvent): void;
   logger?(message: string): void;
@@ -61,6 +62,10 @@ export class OpenCodexClientPool {
     const settings = this.options.getSettings();
     const client = new CodexAppServerClient({
       command: resolveSourceCommand(source, settings.codexCommand),
+      clientInfo: {
+        name: "OpenCodexUI",
+        version: this.options.getAppVersion() ?? "unknown"
+      },
       experimentalApi: settings.experimentalApi,
       logger: (message) => this.options.logger?.(message),
       stderr: (message) => this.options.handleStderr(message, source.id)

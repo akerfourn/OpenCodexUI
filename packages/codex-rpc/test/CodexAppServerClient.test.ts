@@ -71,6 +71,39 @@ describe("CodexAppServerClient", () => {
     await expect(client.request("demo/method")).resolves.toEqual({ method: "demo/method" });
   });
 
+  it("should send configured client info during initialization", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = new CodexAppServerClient({
+      processFactory: () => fakeProcess,
+      requestTimeoutMs: 100,
+      clientInfo: {
+        name: "OpenCodexUI",
+        version: "1.3.0"
+      }
+    });
+    const requests: Record<string, unknown>[] = [];
+
+    respondToRequests(fakeProcess, (request) => {
+      requests.push(request);
+
+      if (request.id !== undefined) {
+        fakeProcess.stdout.write(`{"id":${request.id},"result":{}}\n`);
+      }
+    });
+
+    await client.start();
+
+    expect(requests[0]).toEqual(expect.objectContaining({
+      method: "initialize",
+      params: expect.objectContaining({
+        clientInfo: {
+          name: "OpenCodexUI",
+          version: "1.3.0"
+        }
+      })
+    }));
+  });
+
   it("should dispatch server notifications", async () => {
     const fakeProcess = new FakeProcess();
     const client = createClient(fakeProcess);

@@ -61,6 +61,7 @@ type ClientEvents = {
 export class CodexAppServerClient {
   private readonly command: string;
   private readonly args: string[];
+  private readonly clientInfo: { name: string; version: string };
   private readonly requestTimeoutMs: number;
   private readonly experimentalApi: boolean;
   private readonly processFactory: ProcessFactory;
@@ -83,6 +84,7 @@ export class CodexAppServerClient {
   constructor(options: CodexAppServerClientOptions = {}) {
     this.command = options.command ?? "codex";
     this.args = options.args ?? ["app-server"];
+    this.clientInfo = options.clientInfo ?? { name: "OpenCodexUI", version: "unknown" };
     this.requestTimeoutMs = options.requestTimeoutMs ?? 120_000;
     this.experimentalApi = options.experimentalApi ?? true;
     this.processFactory = options.processFactory ?? defaultProcessFactory;
@@ -471,10 +473,7 @@ export class CodexAppServerClient {
    */
   private async initialize(): Promise<void> {
     await this.request("initialize", {
-      clientInfo: {
-        name: "OpenCodexUI",
-        version: "0.0.1"
-      },
+      clientInfo: this.clientInfo,
       capabilities: {
         experimentalApi: this.experimentalApi
       }
