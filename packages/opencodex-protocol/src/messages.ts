@@ -352,6 +352,7 @@ export type OpenCodexSettings = {
   colorScheme: OpenCodexColorScheme;
   enterKeyBehavior: OpenCodexEnterKeyBehavior;
   versioningVocabulary: OpenCodexVersioningVocabulary;
+  discordRichPresenceEnabled: boolean;
 };
 
 export type OpenCodexThread = {

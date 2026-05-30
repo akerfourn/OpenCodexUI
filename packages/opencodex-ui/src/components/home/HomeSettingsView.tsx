@@ -42,6 +42,10 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
     appStore.setAllowTurnSteering(event.target.checked);
   }
 
+  function handleDiscordRichPresenceChange(event: ChangeEvent<HTMLInputElement>): void {
+    appStore.setDiscordRichPresenceEnabled(event.target.checked);
+  }
+
   function handleEnterKeyBehaviorChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     appStore.setEnterKeyBehavior(event.target.value as OpenCodexEnterKeyBehavior);
   }
@@ -128,6 +132,26 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
               {t("settings.allowTurnSteeringDescription")}
+            </Typography>
+          </Stack>
+        )}
+      />
+      <FormControlLabel
+        sx={{ alignItems: "flex-start", m: 0 }}
+        control={(
+          <Switch
+            checked={appStore.settings.discordRichPresenceEnabled}
+            onChange={handleDiscordRichPresenceChange}
+            sx={{ mt: -0.5 }}
+          />
+        )}
+        label={(
+          <Stack spacing={0.25}>
+            <Typography variant="body1">
+              {t("settings.discordRichPresence")}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+              {t("settings.discordRichPresenceDescription")}
             </Typography>
           </Stack>
         )}

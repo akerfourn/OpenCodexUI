@@ -23,7 +23,8 @@ export const defaultSettings: OpenCodexSettings = {
   language: "system",
   colorScheme: "system",
   enterKeyBehavior: "newline",
-  versioningVocabulary: "simple"
+  versioningVocabulary: "simple",
+  discordRichPresenceEnabled: true
 };
 
 /**

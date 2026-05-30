@@ -17,6 +17,8 @@ import type {
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
 
+import { DiscordPresenceService } from "./discordPresenceService.js";
+
 type ElectronBridgeServerOptions = {
   settings: OpenCodexSettings;
   projectPath: string | null;
@@ -31,6 +33,7 @@ type ElectronBridgeServerOptions = {
 export class ElectronBridgeServer {
   private readonly runtime: OpenCodexBackendRuntime;
   private readonly requestRouter: OpenCodexRequestRouter;
+  private readonly discordPresenceService: DiscordPresenceService;
   private window: BrowserWindow | null = null;
 
   /**
@@ -40,6 +43,7 @@ export class ElectronBridgeServer {
    */
   constructor(options: ElectronBridgeServerOptions) {
     const cacheRepository = createCacheRepository(options.userDataPath);
+    const logger = (message: string) => console.log(`[OpenCodexUI] ${message}`);
 
     this.runtime = new OpenCodexBackendRuntime({
       settings: options.settings,
@@ -65,10 +69,14 @@ export class ElectronBridgeServer {
       ensureProjectDirectory: async (projectPath, createIfMissing) => {
         return ensureProjectDirectory(projectPath, createIfMissing);
       },
-      logger: (message) => console.log(`[OpenCodexUI] ${message}`),
+      logger,
       emit: (event) => this.emit(event)
     });
     this.requestRouter = new OpenCodexRequestRouter(this.runtime);
+    this.discordPresenceService = new DiscordPresenceService(
+      options.settings.discordRichPresenceEnabled,
+      logger
+    );
   }
 
   /**
@@ -87,7 +95,14 @@ export class ElectronBridgeServer {
    */
   register(): void {
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
-      return this.requestRouter.handleRequest(request);
+      const response = await this.requestRouter.handleRequest(request);
+
+      if (request.type === "settings.update" && response !== undefined) {
+        const settings = response as OpenCodexSettings;
+        this.discordPresenceService.setEnabled(settings.discordRichPresenceEnabled);
+      }
+
+      return response;
     });
   }
 
@@ -98,6 +113,7 @@ export class ElectronBridgeServer {
    */
   async dispose(): Promise<void> {
     ipcMain.removeHandler("opencodex:request");
+    await this.discordPresenceService.dispose();
     await this.runtime.dispose();
   }
 
@@ -108,6 +124,7 @@ export class ElectronBridgeServer {
    * @returns Nothing.
    */
   private emit(event: OpenCodexEvent): void {
+    this.discordPresenceService.handleEvent(event);
     this.window?.webContents.send("opencodex:event", event);
   }
 

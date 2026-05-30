@@ -33,7 +33,8 @@ export class AppStore implements RootChildStore {
     language: "system",
     colorScheme: "system",
     enterKeyBehavior: "newline",
-    versioningVocabulary: "simple"
+    versioningVocabulary: "simple",
+    discordRichPresenceEnabled: true
   };
   launchProjectPath: string | null = null;
   models: string[] = [];
@@ -238,6 +239,21 @@ export class AppStore implements RootChildStore {
     void this.root.request({
       type: "settings.update",
       patch: { versioningVocabulary }
+    });
+  }
+
+  /**
+   * Updates Discord Rich Presence usage.
+   *
+   * @param discordRichPresenceEnabled Whether Discord Rich Presence is enabled.
+   *
+   * @returns Nothing.
+   */
+  setDiscordRichPresenceEnabled(discordRichPresenceEnabled: boolean): void {
+    this.settings = { ...this.settings, discordRichPresenceEnabled };
+    void this.root.request({
+      type: "settings.update",
+      patch: { discordRichPresenceEnabled }
     });
   }
 

@@ -29,10 +29,12 @@
     "@open-codex-ui/opencodex-protocol": "file:../../packages/opencodex-protocol",
     "@open-codex-ui/opencodex-ui": "file:../../packages/opencodex-ui",
     "better-sqlite3": "^12.9.0",
+    "discord-rpc": "^4.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/discord-rpc": "^4.0.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

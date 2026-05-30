@@ -111,6 +111,7 @@ function createSettings(): OpenCodexSettings {
     language: "en",
     colorScheme: "system",
     enterKeyBehavior: "newline",
-    versioningVocabulary: "simple"
+    versioningVocabulary: "simple",
+    discordRichPresenceEnabled: true
   };
 }

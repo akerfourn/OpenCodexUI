@@ -367,6 +367,8 @@ export const resources = {
       settings: {
         allowTurnSteering: "Permettre le guidage pendant la réflexion",
         allowTurnSteeringDescription: "Permet de guider l'agent pendant qu'il réfléchit, en lui fournissant de nouvelles directives sans attendre la réponse finale.",
+        discordRichPresence: "Afficher l'activité dans Discord",
+        discordRichPresenceDescription: "Publie uniquement un statut générique dans Discord, sans nom de projet ni contenu de chat.",
         enterKeyBehavior: "Comportement de la touche Entrée",
         enterKeyBehaviorDescriptions: {
           newline: "Entrée ajoute toujours une nouvelle ligne. Ctrl+Entrée envoie le message.",
@@ -839,6 +841,8 @@ export const resources = {
       settings: {
         allowTurnSteering: "Allow steering while thinking",
         allowTurnSteeringDescription: "Allows sending a message into the active turn while Codex is thinking.",
+        discordRichPresence: "Show activity in Discord",
+        discordRichPresenceDescription: "Publishes only a generic Discord status, without project names or chat content.",
         enterKeyBehavior: "Enter key behavior",
         enterKeyBehaviorDescriptions: {
           newline: "Enter always inserts a new line. Ctrl+Enter sends the message.",
