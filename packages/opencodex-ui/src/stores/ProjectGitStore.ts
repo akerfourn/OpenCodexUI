@@ -8,7 +8,8 @@ import type {
   OpenCodexGitBranch,
   OpenCodexGitBranchKind,
   OpenCodexGitCommitResult,
-  OpenCodexGitStatus
+  OpenCodexGitStatus,
+  OpenCodexGitTag
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectStore } from "./ProjectStore";
@@ -31,13 +32,21 @@ export class ProjectGitStore {
   status: OpenCodexGitStatus = emptyGitStatus;
   commitMessage = "";
   branches: OpenCodexGitBranch[] = [];
+  tags: OpenCodexGitTag[] = [];
+  selectedReferenceTagName: string | null = null;
+  commitsSinceReferenceTag: number | null = null;
   errorMessage: string | null = null;
   branchErrorMessage: string | null = null;
+  tagErrorMessage: string | null = null;
   hasLoaded = false;
   hasLoadedBranches = false;
+  hasLoadedTags = false;
   isLoading = false;
   isLoadingBranches = false;
+  isLoadingTags = false;
   isCheckingOutBranch = false;
+  isCreatingTag = false;
+  isLoadingTagReference = false;
   isCommitting = false;
   isGeneratingCommitMessage = false;
   isInitializingRepository = false;
@@ -148,7 +157,14 @@ export class ProjectGitStore {
 
       runInAction(() => {
         this.applyStatus(status);
+        if (!status.isRepository) {
+          this.clearTags();
+        }
       });
+
+      if (status.isRepository) {
+        void this.loadTags();
+      }
     } catch (error) {
       runInAction(() => {
         this.errorMessage = readErrorMessage(error);
@@ -178,7 +194,13 @@ export class ProjectGitStore {
 
       runInAction(() => {
         this.applyStatus(status);
+        if (!status.isRepository) {
+          this.clearTags();
+        }
       });
+      if (status.isRepository) {
+        void this.loadTags();
+      }
     } catch (error) {
       runInAction(() => {
         this.errorMessage = readErrorMessage(error);
@@ -223,6 +245,45 @@ export class ProjectGitStore {
     }
   }
 
+  async loadTags(): Promise<void> {
+    if (!this.isAvailable || !this.status.isRepository) {
+      this.tags = [];
+      this.selectedReferenceTagName = null;
+      this.commitsSinceReferenceTag = null;
+      this.hasLoadedTags = true;
+      return;
+    }
+
+    this.isLoadingTags = true;
+    this.tagErrorMessage = null;
+
+    try {
+      const tags = await this.root.request<OpenCodexGitTag[]>({
+        type: "git.tags",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      });
+
+      runInAction(() => {
+        this.tags = tags;
+        this.keepSelectedReferenceTag();
+      });
+
+      if (this.selectedReferenceTagName !== null) {
+        await this.loadCommitsSinceReferenceTag(this.selectedReferenceTagName);
+      }
+    } catch (error) {
+      runInAction(() => {
+        this.tagErrorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isLoadingTags = false;
+        this.hasLoadedTags = true;
+      });
+    }
+  }
+
   async checkoutBranch(branch: OpenCodexGitBranch): Promise<boolean> {
     return await this.applyBranchStatusRequest("git.checkout", {
       branchName: branch.name,
@@ -234,6 +295,57 @@ export class ProjectGitStore {
     return await this.applyBranchStatusRequest("git.branch.create", {
       branchName: branchName.trim()
     });
+  }
+
+  async createTag(tagName: string): Promise<boolean> {
+    const normalizedTagName = tagName.trim();
+
+    if (!this.isAvailable || this.isCreatingTag || normalizedTagName.length === 0) {
+      return false;
+    }
+
+    this.isCreatingTag = true;
+    this.tagErrorMessage = null;
+
+    try {
+      const tags = await this.root.request<OpenCodexGitTag[]>({
+        type: "git.tag.create",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId,
+        tagName: normalizedTagName
+      });
+
+      runInAction(() => {
+        this.tags = tags;
+        this.selectedReferenceTagName = normalizedTagName;
+      });
+      await this.loadCommitsSinceReferenceTag(normalizedTagName);
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.tagErrorMessage = readErrorMessage(error);
+      });
+      return false;
+    } finally {
+      runInAction(() => {
+        this.isCreatingTag = false;
+      });
+    }
+  }
+
+  async selectReferenceTag(tagName: string): Promise<boolean> {
+    const normalizedTagName = tagName.trim();
+
+    if (!this.isAvailable || normalizedTagName.length === 0) {
+      return false;
+    }
+
+    runInAction(() => {
+      this.selectedReferenceTagName = normalizedTagName;
+      this.commitsSinceReferenceTag = null;
+    });
+
+    return await this.loadCommitsSinceReferenceTag(normalizedTagName);
   }
 
   async stageSelected(): Promise<void> {
@@ -341,7 +453,13 @@ export class ProjectGitStore {
 
       runInAction(() => {
         this.applyStatus(status);
+        if (!status.isRepository) {
+          this.clearTags();
+        }
       });
+      if (status.isRepository) {
+        void this.loadTags();
+      }
     } catch (error) {
       runInAction(() => {
         this.errorMessage = readErrorMessage(error);
@@ -370,7 +488,13 @@ export class ProjectGitStore {
 
       runInAction(() => {
         this.applyStatus(status);
+        if (!status.isRepository) {
+          this.clearTags();
+        }
       });
+      if (status.isRepository) {
+        void this.loadTags();
+      }
     } catch (error) {
       runInAction(() => {
         this.errorMessage = readErrorMessage(error);
@@ -466,8 +590,14 @@ export class ProjectGitStore {
 
       runInAction(() => {
         this.applyStatus(status);
+        if (!status.isRepository) {
+          this.clearTags();
+        }
       });
       await this.loadBranches();
+      if (status.isRepository) {
+        await this.loadTags();
+      }
       return true;
     } catch (error) {
       runInAction(() => {
@@ -491,6 +621,56 @@ export class ProjectGitStore {
       this.selectedStagedPaths,
       status.stagedFiles.map((file) => file.path)
     );
+  }
+
+  private async loadCommitsSinceReferenceTag(tagName: string): Promise<boolean> {
+    this.isLoadingTagReference = true;
+    this.tagErrorMessage = null;
+
+    try {
+      const count = await this.root.request<number>({
+        type: "git.tag.commitsSince",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId,
+        tagName
+      });
+
+      runInAction(() => {
+        this.commitsSinceReferenceTag = count;
+      });
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.tagErrorMessage = readErrorMessage(error);
+      });
+      return false;
+    } finally {
+      runInAction(() => {
+        this.isLoadingTagReference = false;
+      });
+    }
+  }
+
+  private keepSelectedReferenceTag(): void {
+    if (this.selectedReferenceTagName === null) {
+      this.commitsSinceReferenceTag = null;
+      return;
+    }
+
+    const stillExists = this.tags.some((tag) => tag.name === this.selectedReferenceTagName);
+
+    if (!stillExists) {
+      this.selectedReferenceTagName = null;
+      this.commitsSinceReferenceTag = null;
+    }
+  }
+
+  private clearTags(): void {
+    this.tags = [];
+    this.selectedReferenceTagName = null;
+    this.commitsSinceReferenceTag = null;
+    this.hasLoadedTags = true;
+    this.tagErrorMessage = null;
   }
 }
 

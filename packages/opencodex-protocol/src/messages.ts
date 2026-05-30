@@ -152,6 +152,13 @@ export type OpenCodexGitBranch = {
   isCurrent: boolean;
 };
 
+export type OpenCodexGitTag = {
+  name: string;
+  fullName: string;
+  targetHash: string | null;
+  createdAt: string | null;
+};
+
 export type OpenCodexGitCommitResult = {
   ok: true;
   output: string;

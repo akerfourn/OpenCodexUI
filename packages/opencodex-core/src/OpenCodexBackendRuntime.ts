@@ -23,6 +23,7 @@ import type {
   OpenCodexImageAttachment,
   OpenCodexGitCommitResult,
   OpenCodexGitStatus,
+  OpenCodexGitTag,
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
@@ -1020,6 +1021,55 @@ export class OpenCodexBackendRuntime {
     sourceId: string | null
   ): Promise<OpenCodexGitBranch[]> {
     return await this.gitService.branches(projectPath, sourceId);
+  }
+
+  /**
+   * Lists Git tags for a project.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Tag collection.
+   */
+  async listGitTags(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexGitTag[]> {
+    return await this.gitService.tags(projectPath, sourceId);
+  }
+
+  /**
+   * Creates a lightweight Git tag.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param tagName Tag name.
+   *
+   * @returns Refreshed tag collection.
+   */
+  async createGitTag(
+    projectPath: string,
+    sourceId: string | null,
+    tagName: string
+  ): Promise<OpenCodexGitTag[]> {
+    return await this.gitService.createTag(projectPath, sourceId, tagName);
+  }
+
+  /**
+   * Counts commits since a reference tag.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param tagName Tag name.
+   *
+   * @returns Commit count.
+   */
+  async countGitCommitsSinceTag(
+    projectPath: string,
+    sourceId: string | null,
+    tagName: string
+  ): Promise<number> {
+    return await this.gitService.commitsSinceTag(projectPath, sourceId, tagName);
   }
 
   /**

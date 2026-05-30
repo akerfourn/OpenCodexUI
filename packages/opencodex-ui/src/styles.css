@@ -443,7 +443,7 @@ textarea {
 .git-panel-header {
   flex: 0 0 auto;
   border-bottom: 1px solid var(--vscode-panel-border);
-  padding: 10px 12px;
+  padding: 8px 12px;
 }
 
 .git-panel-header-action {

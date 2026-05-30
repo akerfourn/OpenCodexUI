@@ -168,6 +168,95 @@ describe("GitService", () => {
       ["git", "status", "--porcelain=v2", "-z", "--branch"]
     ]);
   });
+
+  it("should list Git tags with metadata", async () => {
+    const client = new FakeCodexClient([
+      {
+        exitCode: 0,
+        stdout: [
+          "refs/tags/v1.2.0\tv1.2.0\tabc1234\t2026-05-01T10:00:00+00:00",
+          "refs/tags/v1.1.0\tv1.1.0\tdef5678\t2026-04-01T10:00:00+00:00",
+          ""
+        ].join("\n"),
+        stderr: ""
+      }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const tags = await service.tags("/workspace/project", "source-1");
+
+    expect(tags).toEqual([
+      {
+        name: "v1.2.0",
+        fullName: "refs/tags/v1.2.0",
+        targetHash: "abc1234",
+        createdAt: "2026-05-01T10:00:00+00:00"
+      },
+      {
+        name: "v1.1.0",
+        fullName: "refs/tags/v1.1.0",
+        targetHash: "def5678",
+        createdAt: "2026-04-01T10:00:00+00:00"
+      }
+    ]);
+    expect(client.commands).toEqual([
+      [
+        "git",
+        "for-each-ref",
+        "--sort=-creatordate",
+        "--format=%(refname)%09%(refname:short)%09%(objectname:short)%09%(creatordate:iso-strict)",
+        "refs/tags"
+      ]
+    ]);
+  });
+
+  it("should create lightweight tags and refresh the tag list", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" },
+      {
+        exitCode: 0,
+        stdout: "refs/tags/v1.2.1\tv1.2.1\tabc1234\t2026-05-02T10:00:00+00:00\n",
+        stderr: ""
+      }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const tags = await service.createTag("/workspace/project", "source-1", "v1.2.1");
+
+    expect(tags[0]?.name).toBe("v1.2.1");
+    expect(client.commands).toEqual([
+      ["git", "check-ref-format", "refs/tags/v1.2.1"],
+      ["git", "tag", "v1.2.1"],
+      [
+        "git",
+        "for-each-ref",
+        "--sort=-creatordate",
+        "--format=%(refname)%09%(refname:short)%09%(objectname:short)%09%(creatordate:iso-strict)",
+        "refs/tags"
+      ]
+    ]);
+  });
+
+  it("should count commits since a tag", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "7\n", stderr: "" }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const count = await service.commitsSinceTag("/workspace/project", "source-1", "v1.2.0");
+
+    expect(count).toBe(7);
+    expect(client.commands).toEqual([
+      ["git", "rev-list", "--count", "v1.2.0..HEAD"]
+    ]);
+  });
 });
 
 class FakeCodexClient {

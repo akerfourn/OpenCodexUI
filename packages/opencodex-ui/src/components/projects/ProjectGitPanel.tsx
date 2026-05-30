@@ -28,6 +28,8 @@ import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { CommitMessageGenerationDialogX } from "./CommitMessageGenerationDialog";
 import { ProjectBranchSwitcherDialogX } from "./ProjectBranchSwitcherDialog";
+import { ProjectGitReferenceTagRowX } from "./ProjectGitReferenceTagRow";
+import { ProjectTagSelectorDialogX } from "./ProjectTagSelectorDialog";
 import { ProjectGitFileRow } from "./ProjectGitFileRow";
 import { GitSectionHeader } from "./GitSectionHeader";
 
@@ -56,6 +58,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     : "git.simple";
   const [isGenerateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [isBranchDialogOpen, setBranchDialogOpen] = useState(false);
+  const [isTagDialogOpen, setTagDialogOpen] = useState(false);
 
   useEffect(() => {
     void gitStore.refresh();
@@ -75,6 +78,14 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   function handleCloseBranchDialog(): void {
     setBranchDialogOpen(false);
+  }
+
+  function handleOpenTagDialog(): void {
+    setTagDialogOpen(true);
+  }
+
+  function handleCloseTagDialog(): void {
+    setTagDialogOpen(false);
   }
 
   function handleStageSelected(): void {
@@ -127,7 +138,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   return (
     <section className="git-panel">
-      <Stack className="git-panel-header" direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <Stack className="git-panel-header" direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
         <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
           {gitStore.status.branchName !== null ? (
             <Typography variant="caption" color="text.secondary" noWrap>
@@ -138,6 +149,13 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
               {t("git.noBranch")}
             </Typography>
           )}
+          {gitStore.status.isRepository ? (
+            <ProjectGitReferenceTagRowX
+              dense
+              gitStore={gitStore}
+              onOpenSelector={handleOpenTagDialog}
+            />
+          ) : null}
         </Box>
         <Tooltip title={t("git.branchSwitcher")}>
           <span className="git-panel-header-action">
@@ -236,6 +254,10 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                   </Button>
                 ) : null}
               </Stack>
+            ) : null}
+
+            {gitStore.tagErrorMessage !== null ? (
+              <Alert severity="error">{gitStore.tagErrorMessage}</Alert>
             ) : null}
 
             <Stack spacing={1}>
@@ -359,6 +381,11 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         gitStore={gitStore}
         open={isBranchDialogOpen}
         onClose={handleCloseBranchDialog}
+      />
+      <ProjectTagSelectorDialogX
+        gitStore={gitStore}
+        open={isTagDialogOpen}
+        onClose={handleCloseTagDialog}
       />
     </section>
   );

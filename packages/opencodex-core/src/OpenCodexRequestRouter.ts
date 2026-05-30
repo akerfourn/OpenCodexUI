@@ -189,6 +189,16 @@ export class OpenCodexRequestRouter {
         return this.runtime.initializeGitRepository(request.projectPath, request.sourceId);
       case "git.branches":
         return this.runtime.listGitBranches(request.projectPath, request.sourceId);
+      case "git.tags":
+        return this.runtime.listGitTags(request.projectPath, request.sourceId);
+      case "git.tag.create":
+        return this.runtime.createGitTag(request.projectPath, request.sourceId, request.tagName);
+      case "git.tag.commitsSince":
+        return this.runtime.countGitCommitsSinceTag(
+          request.projectPath,
+          request.sourceId,
+          request.tagName
+        );
       case "git.checkout":
         return this.runtime.checkoutGitBranch(
           request.projectPath,

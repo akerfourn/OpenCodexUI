@@ -6,7 +6,8 @@ import type {
   OpenCodexGitBranch,
   OpenCodexGitBranchKind,
   OpenCodexGitCommitResult,
-  OpenCodexGitStatus
+  OpenCodexGitStatus,
+  OpenCodexGitTag
 } from "@open-codex-ui/opencodex-protocol";
 
 import { parseGitStatus } from "./gitStatusParser.js";
@@ -99,6 +100,71 @@ export class GitService {
     ]);
 
     return parseGitBranches(response.stdout, currentBranchName);
+  }
+
+  /**
+   * Lists Git tags.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Existing tags, newest first when Git can provide a date.
+   */
+  async tags(projectPath: string, sourceId: string | null): Promise<OpenCodexGitTag[]> {
+    const response = await this.runGit(projectPath, sourceId, [
+      "for-each-ref",
+      "--sort=-creatordate",
+      "--format=%(refname)%09%(refname:short)%09%(objectname:short)%09%(creatordate:iso-strict)",
+      "refs/tags"
+    ]);
+
+    return parseGitTags(response.stdout);
+  }
+
+  /**
+   * Creates a lightweight Git tag and returns the refreshed tag list.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param tagName Tag name.
+   * @returns Refreshed tags.
+   */
+  async createTag(
+    projectPath: string,
+    sourceId: string | null,
+    tagName: string
+  ): Promise<OpenCodexGitTag[]> {
+    const normalizedTagName = normalizeTagName(tagName);
+    await this.validateTagName(projectPath, sourceId, normalizedTagName);
+    await this.runGit(projectPath, sourceId, ["tag", normalizedTagName]);
+    return await this.tags(projectPath, sourceId);
+  }
+
+  /**
+   * Counts commits since a reference tag.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param tagName Tag name.
+   * @returns Number of commits reachable from HEAD after the tag.
+   */
+  async commitsSinceTag(
+    projectPath: string,
+    sourceId: string | null,
+    tagName: string
+  ): Promise<number> {
+    const normalizedTagName = normalizeTagName(tagName);
+    const response = await this.runGit(projectPath, sourceId, [
+      "rev-list",
+      "--count",
+      `${normalizedTagName}..HEAD`
+    ]);
+    const count = Number.parseInt(response.stdout.trim(), 10);
+
+    if (!Number.isFinite(count)) {
+      throw new Error("Unable to read commit count since tag.");
+    }
+
+    return count;
   }
 
   /**
@@ -270,6 +336,25 @@ export class GitService {
     }
   }
 
+  private async validateTagName(
+    projectPath: string,
+    sourceId: string | null,
+    tagName: string
+  ): Promise<void> {
+    if (tagName.startsWith("-")) {
+      throw new Error("Tag name cannot start with a dash.");
+    }
+
+    const response = await this.runGit(projectPath, sourceId, [
+      "check-ref-format",
+      `refs/tags/${tagName}`
+    ], { allowFailure: true });
+
+    if (response.exitCode !== 0) {
+      throw new Error(createGitErrorMessage(response));
+    }
+  }
+
   private async runGit(
     projectPath: string,
     sourceId: string | null,
@@ -413,6 +498,38 @@ function parseGitBranchLine(line: string, currentBranchName: string): OpenCodexG
   };
 }
 
+function parseGitTags(output: string): OpenCodexGitTag[] {
+  return output
+    .split("\n")
+    .map(parseGitTagLine)
+    .filter((tag): tag is OpenCodexGitTag => tag !== null);
+}
+
+function parseGitTagLine(line: string): OpenCodexGitTag | null {
+  const trimmedLine = line.trim();
+
+  if (trimmedLine.length === 0) {
+    return null;
+  }
+
+  const columns = trimmedLine.split("\t");
+  const fullName = columns[0] ?? "";
+  const shortName = columns[1] ?? "";
+  const targetHash = columns[2] ?? "";
+  const createdAt = columns[3] ?? "";
+
+  if (!fullName.startsWith("refs/tags/") || shortName.length === 0) {
+    return null;
+  }
+
+  return {
+    name: shortName,
+    fullName,
+    targetHash: targetHash.length > 0 ? targetHash : null,
+    createdAt: createdAt.length > 0 ? createdAt : null
+  };
+}
+
 function readBranchKind(fullName: string): OpenCodexGitBranchKind | null {
   if (fullName.startsWith("refs/heads/")) {
     return "local";
@@ -433,6 +550,16 @@ function normalizeBranchName(branchName: string): string {
   }
 
   return normalizedBranchName;
+}
+
+function normalizeTagName(tagName: string): string {
+  const normalizedTagName = tagName.trim();
+
+  if (normalizedTagName.length === 0) {
+    throw new Error("Tag name is required.");
+  }
+
+  return normalizedTagName;
 }
 
 function normalizePaths(paths: string[]): string[] {
