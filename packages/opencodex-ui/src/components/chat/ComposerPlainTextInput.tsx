@@ -315,6 +315,7 @@ export function ComposerPlainTextInput({
 
     if (trigger === null) {
       setActiveTrigger(null);
+      setCancelledTriggerKey(null);
       return;
     }
 

@@ -58,6 +58,7 @@ export function ChatComposer({
   const canSubmit = (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
   const canShowSubmit = !isWorking || canSteer;
   const canAttachImages = !isWorking || canSteer;
+  const sourceId = chatStore.sourceId;
   const areAdvancedActionsDisabled = (
     isWorking ||
     chatStore.isStartingTurn ||
@@ -73,7 +74,7 @@ export function ChatComposer({
     setAttachments([]);
   }, [chatStore.thread.id]);
 
-  const canOpenFileLinks = canOpenProjectFileLinks(store, projectStore);
+  const canOpenFileLinks = canOpenProjectFileLinks(store, sourceId);
 
   function handleDraftChange(
     value: string,
@@ -171,11 +172,11 @@ export function ChatComposer({
     return await store.request<OpenCodexFileSearchResult[]>({
       type: "files.search",
       projectPath: projectStore.projectPath,
-      sourceId: projectStore.project.sourceId,
+      sourceId,
       query,
       limit: 8
     });
-  }, [projectStore.project.sourceId, projectStore.projectPath, store]);
+  }, [projectStore.projectPath, sourceId, store]);
 
   const searchProjectSkills = useCallback(async (
     query: string
@@ -183,11 +184,11 @@ export function ChatComposer({
     return await store.request<OpenCodexSkillSearchResult[]>({
       type: "skills.search",
       projectPath: projectStore.projectPath,
-      sourceId: projectStore.project.sourceId,
+      sourceId,
       query,
       limit: 8
     });
-  }, [projectStore.project.sourceId, projectStore.projectPath, store]);
+  }, [projectStore.projectPath, sourceId, store]);
 
   const handleOpenFileLink = useCallback((href: string): void => {
     if (!canOpenFileLinks) {
@@ -344,9 +345,7 @@ function shouldSubmitOnEnter(
   return false;
 }
 
-function canOpenProjectFileLinks(store: RootStore, projectStore: ProjectStore): boolean {
-  const sourceId = projectStore.project.sourceId;
-
+function canOpenProjectFileLinks(store: RootStore, sourceId: string | null): boolean {
   if (sourceId === null) {
     return false;
   }

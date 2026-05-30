@@ -66,7 +66,7 @@ export class ChatStore {
     private readonly projectStore: ProjectStore,
     private readonly root: RootStore
   ) {
-    this.thread = thread;
+    this.thread = projectStore.ensureThreadSource(thread);
     this.selectedModel = resolveInitialSelectedModel(thread, root);
     this.reasoningEffort = resolveInitialReasoningEffort(thread, root);
     makeAutoObservable<
@@ -120,18 +120,25 @@ export class ChatStore {
   }
 
   get canSteerActiveTurn(): boolean {
-    const sourceId = this.thread.sourceId ?? this.projectStore.project.sourceId;
-
     return (
       this.root.appStore.settings.allowTurnSteering &&
       this.isWorking &&
       this.activeTurnId !== null &&
-      sourceId !== null &&
+      this.sourceId !== null &&
       !this.projectStore.isOrphan &&
       !this.isStartingTurn &&
       !this.isEditingLastTurn &&
       !this.isRecovering
     );
+  }
+
+  /**
+   * Returns the Codex source that owns this chat.
+   *
+   * @returns Resolved source identifier, or `null` when unavailable.
+   */
+  get sourceId(): string | null {
+    return this.projectStore.resolveThreadSourceId(this.thread);
   }
 
   get editableLastUserItem(): {
@@ -194,14 +201,14 @@ export class ChatStore {
    * @returns Nothing.
    */
   setThread(thread: OpenCodexThread): void {
-    this.thread = thread;
+    this.thread = this.projectStore.ensureThreadSource(thread);
 
-    if (!this.hasExplicitModelSelection && thread.model !== null) {
-      this.selectedModel = thread.model;
+    if (!this.hasExplicitModelSelection && this.thread.model !== null) {
+      this.selectedModel = this.thread.model;
     }
 
-    if (!this.hasExplicitReasoningEffortSelection && thread.reasoningEffort !== null) {
-      this.reasoningEffort = thread.reasoningEffort;
+    if (!this.hasExplicitReasoningEffortSelection && this.thread.reasoningEffort !== null) {
+      this.reasoningEffort = this.thread.reasoningEffort;
     }
   }
 
@@ -376,7 +383,7 @@ export class ChatStore {
     reasoningEffort: OpenCodexReasoningEffort = this.reasoningEffort
   ): Promise<boolean> {
     const trimmedText = text.trim();
-    const sourceId = this.thread.sourceId ?? this.projectStore.project.sourceId;
+    const sourceId = this.sourceId;
 
     if (
       (trimmedText.length === 0 && attachments.length === 0) ||
@@ -435,7 +442,7 @@ export class ChatStore {
     references: OpenCodexComposerReference[] = []
   ): boolean {
     const trimmedText = text.trim();
-    const sourceId = this.thread.sourceId ?? this.projectStore.project.sourceId;
+    const sourceId = this.sourceId;
     const editableItem = this.editableLastUserItem;
     const previousTurns = this.turns;
     const plainAttachments = cloneImageAttachments(attachments);

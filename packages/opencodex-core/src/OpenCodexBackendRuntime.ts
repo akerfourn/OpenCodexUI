@@ -273,6 +273,17 @@ export class OpenCodexBackendRuntime {
     }
 
     const client = await this.ensureClient(sourceId);
+    const normalizedLimit = Math.max(1, limit);
+
+    if (query.trim().length === 0) {
+      const response = await client.request<v2.FsReadDirectoryResponse>("fs/readDirectory", {
+        path: root
+      });
+      const files = mapRootDirectorySearchResults(root, response.entries);
+
+      return filterSearchableProjectFiles(files).slice(0, normalizedLimit);
+    }
+
     const response = await client.request<FuzzyFileSearchResponse>("fuzzyFileSearch", {
       query,
       roots: [root],
@@ -289,7 +300,7 @@ export class OpenCodexBackendRuntime {
         matchType: file.match_type
       }));
 
-    return filterSearchableProjectFiles(files).slice(0, Math.max(1, limit));
+    return filterSearchableProjectFiles(files).slice(0, normalizedLimit);
   }
 
   /**
@@ -1651,6 +1662,43 @@ function readRelativeFilePath(root: string, filePath: string): string {
   }
 
   return normalizedPath.replace(/^\/+/, "");
+}
+
+function mapRootDirectorySearchResults(
+  root: string,
+  entries: v2.FsReadDirectoryEntry[]
+): OpenCodexFileSearchResult[] {
+  return entries
+    .filter((entry) => entry.isFile || entry.isDirectory)
+    .sort(compareDirectoryEntry)
+    .map((entry) => ({
+      root,
+      path: joinSourcePath(root, entry.fileName),
+      relativePath: entry.fileName,
+      fileName: entry.fileName,
+      matchType: entry.isDirectory ? "directory" : "file"
+    }));
+}
+
+function compareDirectoryEntry(
+  left: v2.FsReadDirectoryEntry,
+  right: v2.FsReadDirectoryEntry
+): number {
+  if (left.isDirectory !== right.isDirectory) {
+    return left.isDirectory ? -1 : 1;
+  }
+
+  return left.fileName.localeCompare(right.fileName);
+}
+
+function joinSourcePath(root: string, childName: string): string {
+  if (root.endsWith("/") || root.endsWith("\\")) {
+    return `${root}${childName}`;
+  }
+
+  const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
+
+  return `${root}${separator}${childName}`;
 }
 
 function scoreSkillSearchResult(

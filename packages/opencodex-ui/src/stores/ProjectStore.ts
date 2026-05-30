@@ -64,6 +64,37 @@ export class ProjectStore {
   }
 
   /**
+   * Resolves the Codex source that owns one thread.
+   *
+   * @param thread Thread metadata.
+   *
+   * @returns Thread source, or the project source fallback.
+   */
+  resolveThreadSourceId(thread: OpenCodexThread): string | null {
+    return thread.sourceId ?? this.project.sourceId;
+  }
+
+  /**
+   * Repairs thread metadata with the project source when Codex omitted it.
+   *
+   * @param thread Thread metadata.
+   *
+   * @returns Thread metadata with a resolved source when available.
+   */
+  ensureThreadSource(thread: OpenCodexThread): OpenCodexThread {
+    const sourceId = this.resolveThreadSourceId(thread);
+
+    if (sourceId === thread.sourceId) {
+      return thread;
+    }
+
+    return {
+      ...thread,
+      sourceId
+    };
+  }
+
+  /**
    * Returns the display name shown in tabs and lists.
    *
    * @returns Project display name.
@@ -232,6 +263,7 @@ export class ProjectStore {
    */
   setProject(project: OpenCodexProject): void {
     this.project = project;
+    this.repairStoredThreadSources();
   }
 
   /**
@@ -435,5 +467,28 @@ export class ProjectStore {
     this.chatsById.clear();
     this.threadListStore.clear();
     this.selectedChatId = null;
+  }
+
+  private repairStoredThreadSources(): void {
+    if (this.project.sourceId === null) {
+      return;
+    }
+
+    const repairedThreads = this.threadListStore.threads.map((thread) => (
+      this.ensureThreadSource(thread)
+    ));
+    const hasRepairedThread = repairedThreads.some((thread, index) => (
+      thread !== this.threadListStore.threads[index]
+    ));
+
+    if (hasRepairedThread) {
+      this.threadListStore.threads = repairedThreads;
+    }
+
+    for (const chatStore of this.chatsById.values()) {
+      if (chatStore.thread.sourceId === null) {
+        chatStore.setThread(chatStore.thread);
+      }
+    }
   }
 }

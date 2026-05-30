@@ -227,22 +227,27 @@ export class ThreadListStore {
   }
 
   private mergeThreadMetadata(thread: OpenCodexThread): OpenCodexThread {
+    const resolvedThread = this.projectStore.ensureThreadSource(thread);
     const existingThread = this.findThread(thread.id)
       ?? this.projectStore.chatsById.get(thread.id)?.thread
       ?? null;
 
     if (existingThread === null) {
-      return thread;
+      return resolvedThread;
     }
 
-    if (thread.customTitle !== null && thread.customTitle.trim().length > 0) {
-      return thread;
+    if (resolvedThread.customTitle !== null && resolvedThread.customTitle.trim().length > 0) {
+      return resolvedThread;
     }
 
     return {
-      ...thread,
+      ...resolvedThread,
       customTitle: existingThread.customTitle,
-      title: resolveThreadTitle(thread.codexTitle, existingThread.customTitle, thread.preview)
+      title: resolveThreadTitle(
+        resolvedThread.codexTitle,
+        existingThread.customTitle,
+        resolvedThread.preview
+      )
     };
   }
 }

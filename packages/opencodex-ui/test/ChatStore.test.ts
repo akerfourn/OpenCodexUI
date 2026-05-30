@@ -88,6 +88,37 @@ describe("ChatStore composer model settings", () => {
     expect(chatStore.selectedModel).toBe("gpt-5.5");
     expect(chatStore.reasoningEffort).toBe("medium");
   });
+
+  it("should repair a thread source from the project source", () => {
+    const chatStore = createChatStore({
+      sourceId: null
+    });
+
+    expect(chatStore.thread.sourceId).toBe("source-1");
+    expect(chatStore.sourceId).toBe("source-1");
+  });
+
+  it("should start turns with the resolved chat source", async () => {
+    const rootStore = createRootStore();
+    const projectStore = createProjectStore();
+    const chatStore = new ChatStore(
+      createThread({
+        sourceId: null
+      }),
+      projectStore,
+      rootStore
+    );
+
+    const wasAccepted = await chatStore.sendMessage("hello");
+
+    expect(wasAccepted).toBe(true);
+    expect(rootStore.request).toHaveBeenCalledWith(expect.objectContaining({
+      type: "turn.start",
+      threadId: "thread-1",
+      sourceId: "source-1",
+      text: "hello"
+    }));
+  });
 });
 
 function createChatStore(threadPatch: Partial<OpenCodexThread>): ChatStore {
@@ -124,6 +155,21 @@ function createProjectStore(): ProjectStore {
     },
     projectPath: "/tmp/project",
     isOrphan: false,
+    resolveThreadSourceId: vi.fn((thread: OpenCodexThread) => (
+      thread.sourceId ?? "source-1"
+    )),
+    ensureThreadSource: vi.fn((thread: OpenCodexThread) => {
+      const sourceId = thread.sourceId ?? "source-1";
+
+      if (sourceId === thread.sourceId) {
+        return thread;
+      }
+
+      return {
+        ...thread,
+        sourceId
+      };
+    }),
     upsertThread: vi.fn((thread: OpenCodexThread) => thread)
   } as ProjectStore;
 }
