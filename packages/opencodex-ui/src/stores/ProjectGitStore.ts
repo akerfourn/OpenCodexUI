@@ -106,6 +106,14 @@ export class ProjectGitStore {
     );
   }
 
+  get commitGenerationModelLabel(): string | null {
+    return this.root.appStore.settings.commitMessageModel;
+  }
+
+  get commitGenerationReasoningEffortLabel(): string | null {
+    return this.root.appStore.settings.commitMessageReasoningEffort;
+  }
+
   get canPush(): boolean {
     return (
       this.status.isRepository &&

@@ -1,7 +1,16 @@
 /**
  * Renders the optional instruction dialog for commit message generation.
  */
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
@@ -28,6 +37,8 @@ export function CommitMessageGenerationDialog({
 }: CommitMessageGenerationDialogProps) {
   const { t } = useTranslation();
   const [instruction, setInstruction] = useState("");
+  const modelLabel = gitStore.commitGenerationModelLabel ?? t("commitPrompt.defaultModel");
+  const reasoningLabel = gitStore.commitGenerationReasoningEffortLabel ?? t("commitPrompt.defaultReasoning");
 
   useEffect(() => {
     if (open) {
@@ -56,16 +67,24 @@ export function CommitMessageGenerationDialog({
     <Dialog open={open} fullWidth maxWidth="sm" onClose={handleClose}>
       <DialogTitle>{t("git.generateDialogTitle")}</DialogTitle>
       <DialogContent>
-        <TextField
-          label={t("git.generateInstruction")}
-          value={instruction}
-          minRows={4}
-          margin="dense"
-          multiline
-          fullWidth
-          helperText={t("git.generateInstructionHelp")}
-          onChange={handleInstructionChange}
-        />
+        <Stack spacing={1.5} sx={{ pt: 0.5 }}>
+          <Typography variant="caption" color="text.secondary">
+            {t("git.generateRuntime", {
+              model: modelLabel,
+              reasoning: reasoningLabel
+            })}
+          </Typography>
+          <TextField
+            label={t("git.generateInstruction")}
+            value={instruction}
+            minRows={4}
+            margin="dense"
+            multiline
+            fullWidth
+            helperText={t("git.generateInstructionHelp")}
+            onChange={handleInstructionChange}
+          />
+        </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>
