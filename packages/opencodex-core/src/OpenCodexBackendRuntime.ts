@@ -65,6 +65,7 @@ import { GitService } from "./backend/GitService.js";
 import { CommitMessageService } from "./backend/CommitMessageService.js";
 import { ProjectCommandService } from "./backend/ProjectCommandService.js";
 import { PluginService } from "./backend/PluginService.js";
+import { filterSearchableProjectFiles } from "./backend/fileSearchFilters.js";
 import { readObject, readString } from "./mapping.js";
 import {
   mapUsageLimitsNotification,
@@ -277,9 +278,8 @@ export class OpenCodexBackendRuntime {
       cancellationToken: null
     });
 
-    return response.files
+    const files = response.files
       .filter((file) => file.match_type === "file")
-      .slice(0, Math.max(1, limit))
       .map((file) => ({
         root: file.root,
         path: file.path,
@@ -287,6 +287,8 @@ export class OpenCodexBackendRuntime {
         fileName: file.file_name,
         matchType: file.match_type
       }));
+
+    return filterSearchableProjectFiles(files).slice(0, Math.max(1, limit));
   }
 
   /**
