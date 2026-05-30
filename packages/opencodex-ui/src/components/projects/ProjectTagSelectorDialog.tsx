@@ -2,6 +2,7 @@
  * Renders Git tag search, reference selection, and lightweight tag creation.
  */
 import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
+import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
 import {
   Alert,
   Box,
@@ -11,12 +12,14 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
@@ -82,9 +85,35 @@ export function ProjectTagSelectorDialog({
     }
   }
 
+  function handleFetchTags(): void {
+    void gitStore.fetchTags();
+  }
+
   return (
     <Dialog open={open} fullWidth maxWidth="sm" onClose={onClose}>
-      <DialogTitle>{t("git.tagSelectorTitle")}</DialogTitle>
+      <DialogTitle>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+          <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
+            {t("git.tagSelectorTitle")}
+          </Box>
+          <Tooltip title={t("git.fetchTags")}>
+            <span>
+              <IconButton
+                aria-label={t("git.fetchTags")}
+                size="small"
+                disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isFetchingTags}
+                onClick={handleFetchTags}
+              >
+                {gitStore.isFetchingTags ? (
+                  <CircularProgress size={18} />
+                ) : (
+                  <SyncOutlinedIcon fontSize="small" />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Stack>
+      </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
           <TextField
@@ -93,7 +122,7 @@ export function ProjectTagSelectorDialog({
             size="small"
             label={t("git.tagSearch")}
             value={searchTerm}
-            disabled={gitStore.isCreatingTag || gitStore.isLoadingTagReference}
+            disabled={gitStore.isCreatingTag || gitStore.isLoadingTagReference || gitStore.isFetchingTags}
             onChange={handleSearchChange}
           />
 
@@ -101,7 +130,7 @@ export function ProjectTagSelectorDialog({
             <Alert severity="error">{gitStore.tagErrorMessage}</Alert>
           ) : null}
 
-          {gitStore.isLoadingTags ? (
+          {gitStore.isLoadingTags || gitStore.isFetchingTags ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
               <CircularProgress size={24} />
             </Box>

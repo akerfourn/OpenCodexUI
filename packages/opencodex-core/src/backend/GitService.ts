@@ -121,6 +121,21 @@ export class GitService {
   }
 
   /**
+   * Fetches remote tags and returns the refreshed local tag list.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Refreshed tag collection.
+   */
+  async fetchTags(projectPath: string, sourceId: string | null): Promise<OpenCodexGitTag[]> {
+    await this.runGit(projectPath, sourceId, ["fetch", "--tags", "--prune-tags"], {
+      timeoutMs: 120_000
+    });
+
+    return await this.tags(projectPath, sourceId);
+  }
+
+  /**
    * Creates a lightweight Git tag and returns the refreshed tag list.
    *
    * @param projectPath Project working directory.

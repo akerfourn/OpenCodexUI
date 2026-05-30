@@ -44,6 +44,7 @@ export class ProjectGitStore {
   isLoading = false;
   isLoadingBranches = false;
   isLoadingTags = false;
+  isFetchingTags = false;
   isCheckingOutBranch = false;
   isCreatingTag = false;
   isLoadingTagReference = false;
@@ -279,6 +280,41 @@ export class ProjectGitStore {
     } finally {
       runInAction(() => {
         this.isLoadingTags = false;
+        this.hasLoadedTags = true;
+      });
+    }
+  }
+
+  async fetchTags(): Promise<void> {
+    if (!this.isAvailable || !this.status.isRepository || this.isFetchingTags) {
+      return;
+    }
+
+    this.isFetchingTags = true;
+    this.tagErrorMessage = null;
+
+    try {
+      const tags = await this.root.request<OpenCodexGitTag[]>({
+        type: "git.tags.fetch",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      });
+
+      runInAction(() => {
+        this.tags = tags;
+        this.keepSelectedReferenceTag();
+      });
+
+      if (this.selectedReferenceTagName !== null) {
+        await this.loadCommitsSinceReferenceTag(this.selectedReferenceTagName);
+      }
+    } catch (error) {
+      runInAction(() => {
+        this.tagErrorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isFetchingTags = false;
         this.hasLoadedTags = true;
       });
     }

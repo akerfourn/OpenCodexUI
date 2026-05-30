@@ -1051,6 +1051,21 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Fetches remote Git tags and returns the refreshed local tag list.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Tag collection.
+   */
+  async fetchGitTags(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexGitTag[]> {
+    return await this.gitService.fetchTags(projectPath, sourceId);
+  }
+
+  /**
    * Creates a lightweight Git tag.
    *
    * @param projectPath Project path.

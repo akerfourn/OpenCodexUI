@@ -127,6 +127,7 @@ export type OpenCodexRequest =
   | { type: "git.init"; projectPath: string; sourceId: string | null }
   | { type: "git.branches"; projectPath: string; sourceId: string | null }
   | { type: "git.tags"; projectPath: string; sourceId: string | null }
+  | { type: "git.tags.fetch"; projectPath: string; sourceId: string | null }
   | { type: "git.tag.create"; projectPath: string; sourceId: string | null; tagName: string }
   | { type: "git.tag.commitsSince"; projectPath: string; sourceId: string | null; tagName: string }
   | {
