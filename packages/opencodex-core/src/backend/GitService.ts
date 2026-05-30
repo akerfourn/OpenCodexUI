@@ -226,6 +226,26 @@ export class GitService {
   }
 
   /**
+   * Merges an existing local branch into the current branch.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param branchName Local branch name.
+   * @returns Refreshed status.
+   */
+  async mergeBranch(
+    projectPath: string,
+    sourceId: string | null,
+    branchName: string
+  ): Promise<OpenCodexGitStatus> {
+    const normalizedBranchName = normalizeBranchName(branchName);
+    await this.runGit(projectPath, sourceId, ["merge", normalizedBranchName], {
+      timeoutMs: 120_000
+    });
+    return await this.status(projectPath, sourceId);
+  }
+
+  /**
    * Stages selected paths.
    *
    * @param projectPath Project working directory.

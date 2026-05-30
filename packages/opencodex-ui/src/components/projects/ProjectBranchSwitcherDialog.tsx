@@ -120,15 +120,15 @@ export function ProjectBranchSwitcherDialog({
               <ProjectBranchGroupX
                 title={t("git.localBranches")}
                 branches={localBranches}
-                gitStore={gitStore}
-                onCheckout={handleCheckoutBranch}
+                isBusy={gitStore.isCheckingOutBranch}
+                onSelect={handleCheckoutBranch}
               />
               <Divider />
               <ProjectBranchGroupX
                 title={t("git.remoteBranches")}
                 branches={remoteBranches}
-                gitStore={gitStore}
-                onCheckout={handleCheckoutBranch}
+                isBusy={gitStore.isCheckingOutBranch}
+                onSelect={handleCheckoutBranch}
               />
             </Stack>
           )}

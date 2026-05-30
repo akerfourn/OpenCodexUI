@@ -48,6 +48,7 @@ export class ProjectGitStore {
   isLoadingTags = false;
   isFetchingTags = false;
   isCheckingOutBranch = false;
+  isMergingBranch = false;
   isCreatingTag = false;
   isLoadingTagReference = false;
   isCommitting = false;
@@ -357,6 +358,10 @@ export class ProjectGitStore {
     return await this.applyBranchStatusRequest("git.branch.create", {
       branchName: branchName.trim()
     });
+  }
+
+  async mergeBranch(branch: OpenCodexGitBranch): Promise<boolean> {
+    return await this.applyMergeStatusRequest(branch.name);
   }
 
   async createTag(tagName: string): Promise<boolean> {
@@ -676,10 +681,53 @@ export class ProjectGitStore {
       runInAction(() => {
         this.branchErrorMessage = readErrorMessage(error);
       });
+      await this.refresh();
       return false;
     } finally {
       runInAction(() => {
         this.isCheckingOutBranch = false;
+      });
+    }
+  }
+
+  private async applyMergeStatusRequest(branchName: string): Promise<boolean> {
+    const normalizedBranchName = branchName.trim();
+
+    if (!this.isAvailable || this.isMergingBranch || normalizedBranchName.length === 0) {
+      return false;
+    }
+
+    this.isMergingBranch = true;
+    this.branchErrorMessage = null;
+    this.errorMessage = null;
+
+    try {
+      const status = await this.root.request<OpenCodexGitStatus>({
+        type: "git.merge",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId,
+        branchName: normalizedBranchName
+      });
+
+      runInAction(() => {
+        this.applyStatus(status);
+        if (!status.isRepository) {
+          this.clearTags();
+        }
+      });
+      await this.loadBranches();
+      if (status.isRepository) {
+        await this.loadTags();
+      }
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.branchErrorMessage = readErrorMessage(error);
+      });
+      return false;
+    } finally {
+      runInAction(() => {
+        this.isMergingBranch = false;
       });
     }
   }

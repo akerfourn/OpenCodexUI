@@ -3,6 +3,7 @@
  */
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
+import CallMergeOutlinedIcon from "@mui/icons-material/CallMergeOutlined";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
@@ -27,6 +28,7 @@ import { useTranslation } from "react-i18next";
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { CommitMessageGenerationDialogX } from "./CommitMessageGenerationDialog";
+import { ProjectBranchMergeDialogX } from "./ProjectBranchMergeDialog";
 import { ProjectBranchSwitcherDialogX } from "./ProjectBranchSwitcherDialog";
 import { ProjectGitReferenceTagRowX } from "./ProjectGitReferenceTagRow";
 import { ProjectTagSelectorDialogX } from "./ProjectTagSelectorDialog";
@@ -58,6 +60,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     : "git.simple";
   const [isGenerateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [isBranchDialogOpen, setBranchDialogOpen] = useState(false);
+  const [isMergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [isTagDialogOpen, setTagDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -78,6 +81,14 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   function handleCloseBranchDialog(): void {
     setBranchDialogOpen(false);
+  }
+
+  function handleOpenMergeDialog(): void {
+    setMergeDialogOpen(true);
+  }
+
+  function handleCloseMergeDialog(): void {
+    setMergeDialogOpen(false);
   }
 
   function handleOpenTagDialog(): void {
@@ -167,6 +178,19 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
               sx={{ height: 26, width: 26 }}
             >
               <AccountTreeOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title={t("git.mergeBranch")}>
+          <span className="git-panel-header-action">
+            <IconButton
+              aria-label={t("git.mergeBranch")}
+              size="small"
+              disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
+              onClick={handleOpenMergeDialog}
+              sx={{ height: 26, width: 26 }}
+            >
+              <CallMergeOutlinedIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </span>
         </Tooltip>
@@ -381,6 +405,11 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         gitStore={gitStore}
         open={isBranchDialogOpen}
         onClose={handleCloseBranchDialog}
+      />
+      <ProjectBranchMergeDialogX
+        gitStore={gitStore}
+        open={isMergeDialogOpen}
+        onClose={handleCloseMergeDialog}
       />
       <ProjectTagSelectorDialogX
         gitStore={gitStore}

@@ -141,6 +141,7 @@ export type OpenCodexRequest =
       branchKind: OpenCodexGitBranchKind;
     }
   | { type: "git.branch.create"; projectPath: string; sourceId: string | null; branchName: string }
+  | { type: "git.merge"; projectPath: string; sourceId: string | null; branchName: string }
   | { type: "git.stage"; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.unstage"; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.commit"; projectPath: string; sourceId: string | null; message: string }

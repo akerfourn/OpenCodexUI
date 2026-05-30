@@ -13,13 +13,11 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexGitBranch } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
-
 type ProjectBranchGroupProps = {
   title: string;
   branches: OpenCodexGitBranch[];
-  gitStore: ProjectGitStore;
-  onCheckout(branch: OpenCodexGitBranch): Promise<void>;
+  isBusy: boolean;
+  onSelect(branch: OpenCodexGitBranch): Promise<void>;
 };
 
 /**
@@ -32,8 +30,8 @@ type ProjectBranchGroupProps = {
 export function ProjectBranchGroup({
   title,
   branches,
-  gitStore,
-  onCheckout
+  isBusy,
+  onSelect
 }: ProjectBranchGroupProps) {
   const { t } = useTranslation();
 
@@ -51,9 +49,9 @@ export function ProjectBranchGroup({
           {branches.map((branch) => (
             <ListItemButton
               key={branch.fullName}
-              disabled={gitStore.isCheckingOutBranch || branch.isCurrent}
+              disabled={isBusy || branch.isCurrent}
               onClick={() => {
-                void onCheckout(branch);
+                void onSelect(branch);
               }}
             >
               <ListItemText

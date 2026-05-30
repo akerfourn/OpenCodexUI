@@ -1163,6 +1163,23 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Merges an existing Git branch into the current branch.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param branchName Branch name.
+   *
+   * @returns Refreshed Git status.
+   */
+  async mergeGitBranch(
+    projectPath: string,
+    sourceId: string | null,
+    branchName: string
+  ): Promise<OpenCodexGitStatus> {
+    return await this.gitService.mergeBranch(projectPath, sourceId, branchName);
+  }
+
+  /**
    * Stages selected Git paths.
    *
    * @param projectPath Project path.

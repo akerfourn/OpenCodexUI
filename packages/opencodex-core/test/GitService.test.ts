@@ -169,6 +169,26 @@ describe("GitService", () => {
     ]);
   });
 
+  it("should merge an existing local branch and refresh status", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "Already up to date.\n", stderr: "" },
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: "# branch.head main\0", stderr: "" }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const status = await service.mergeBranch("/workspace/project", "source-1", "feature/api");
+
+    expect(status.branchName).toBe("main");
+    expect(client.commands).toEqual([
+      ["git", "merge", "feature/api"],
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"]
+    ]);
+  });
+
   it("should list Git tags with metadata", async () => {
     const client = new FakeCodexClient([
       {
