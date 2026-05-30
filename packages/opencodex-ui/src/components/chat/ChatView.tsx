@@ -10,7 +10,7 @@ import type { ProjectStore } from "../../stores/ProjectStore";
 import { ChatComposerX } from "./ChatComposer";
 import { ChatHeaderX } from "./ChatHeader";
 import { ChatMessageListX } from "../messages/ChatMessageList";
-import { ChatEmptyState } from "./ChatEmptyState";
+import { ChatEmptyStateX } from "./ChatEmptyState";
 import { ChatLoadingState } from "./ChatLoadingState";
 
 type ChatViewProps = {
@@ -28,7 +28,10 @@ type ChatViewProps = {
 export function ChatView({ store, projectStore }: ChatViewProps) {
   const { t } = useTranslation();
   const chatStore = projectStore.selectedChat;
-  const isOrphanProject = projectStore.isOrphan;
+  const isReadOnlyProject = projectStore.isReadOnlyFromCache;
+  const readOnlyMessage = projectStore.isOrphan
+    ? t("project.orphanSource")
+    : t("project.codexSourceUnavailable");
 
   function handleOpenSources(): void {
     store.openSourcesHome();
@@ -45,7 +48,7 @@ export function ChatView({ store, projectStore }: ChatViewProps) {
   if (chatStore === null) {
     return (
       <Stack className="chat-view chat-view-empty">
-        <ChatEmptyState projectStore={projectStore} />
+        <ChatEmptyStateX projectStore={projectStore} />
       </Stack>
     );
   }
@@ -61,7 +64,7 @@ export function ChatView({ store, projectStore }: ChatViewProps) {
   return (
     <Stack className="chat-view">
       <ChatHeaderX projectStore={projectStore} chatStore={chatStore} />
-      {isOrphanProject ? (
+      {isReadOnlyProject ? (
         <Alert
           severity="warning"
           action={(
@@ -70,11 +73,11 @@ export function ChatView({ store, projectStore }: ChatViewProps) {
             </Button>
           )}
         >
-          {t("project.orphanSource")}
+          {readOnlyMessage}
         </Alert>
       ) : null}
       {messageContent}
-      {isOrphanProject ? null : (
+      {isReadOnlyProject ? null : (
         <ChatComposerX
           store={store}
           chatStore={chatStore}

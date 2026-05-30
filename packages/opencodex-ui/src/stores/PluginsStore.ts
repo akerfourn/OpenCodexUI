@@ -88,7 +88,7 @@ export class PluginsStore implements RootChildStore {
     this.selectedSourceId = sourceId;
     this.clearPluginData();
 
-    if (sourceId !== null) {
+    if (sourceId !== null && this.root.sourcesStore.isSourceReady(sourceId)) {
       void this.load();
     }
   }
@@ -110,7 +110,10 @@ export class PluginsStore implements RootChildStore {
   }
 
   async load(): Promise<void> {
-    if (this.selectedSourceId === null) {
+    if (
+      this.selectedSourceId === null ||
+      !this.root.sourcesStore.isSourceReady(this.selectedSourceId)
+    ) {
       return;
     }
 

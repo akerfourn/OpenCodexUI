@@ -3,7 +3,7 @@
  */
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
-import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -100,6 +100,12 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
           </IconButton>
         </Tooltip>
       </Box>
+
+      {sourcesStore.hasUnavailableCodexSources ? (
+        <Alert severity="warning">
+          {t("sources.unavailableSources")}
+        </Alert>
+      ) : null}
 
       {sortedSources.map((source) => (
         <HomeSourceBoxX

@@ -64,7 +64,7 @@ export function ChatComposer({
     chatStore.isStartingTurn ||
     chatStore.isEditingLastTurn ||
     chatStore.isRecovering ||
-    projectStore.isOrphan
+    projectStore.isReadOnlyFromCache
   );
 
   useEffect(() => {

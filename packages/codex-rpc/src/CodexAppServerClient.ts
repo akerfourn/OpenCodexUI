@@ -587,4 +587,4 @@ export class CodexAppServerClient {
   }
 }
 
-export { resolveCodexCommandPath } from "./process";
+export { resolveCodexCommand, resolveCodexCommandPath } from "./process";

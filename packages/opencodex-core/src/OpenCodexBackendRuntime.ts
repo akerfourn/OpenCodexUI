@@ -41,6 +41,7 @@ import type {
   OpenCodexSource,
   OpenCodexSourceLocalSettings,
   OpenCodexThread,
+  OpenCodexToolVersionStatus,
   OpenCodexTurn,
   OpenCodexUsageLimits
 } from "@open-codex-ui/opencodex-protocol";
@@ -68,6 +69,7 @@ import { CommitMessageService } from "./backend/CommitMessageService.js";
 import { ProjectCommandService } from "./backend/ProjectCommandService.js";
 import { PluginService } from "./backend/PluginService.js";
 import { filterSearchableProjectFiles } from "./backend/fileSearchFilters.js";
+import { readGitVersionStatus } from "./backend/toolVersionDetection.js";
 import { readObject, readString } from "./mapping.js";
 import {
   mapUsageLimitsNotification,
@@ -1007,6 +1009,15 @@ export class OpenCodexBackendRuntime {
    */
   async uninstallPlugin(sourceId: string | null, pluginId: string): Promise<{ ok: true }> {
     return await this.pluginService.uninstall(sourceId, pluginId);
+  }
+
+  /**
+   * Reads the Git version available to the host runtime.
+   *
+   * @returns Git availability and version information.
+   */
+  async readGitVersion(): Promise<OpenCodexToolVersionStatus> {
+    return await readGitVersionStatus();
   }
 
   /**

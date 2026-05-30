@@ -23,6 +23,22 @@ export class SourcesStore implements RootChildStore {
     makeAutoObservable<SourcesStore, "root">(this, { root: false });
   }
 
+  get hasUnavailableCodexSources(): boolean {
+    return this.sources.some((source) => source.codex.status !== "ready");
+  }
+
+  findSource(sourceId: string | null): OpenCodexSource | null {
+    if (sourceId === null) {
+      return null;
+    }
+
+    return this.sources.find((source) => source.id === sourceId) ?? null;
+  }
+
+  isSourceReady(sourceId: string | null): boolean {
+    return this.findSource(sourceId)?.codex.status === "ready";
+  }
+
   handleEvent(event: OpenCodexEvent): void {
     switch (event.type) {
       case "app.bootstrap":

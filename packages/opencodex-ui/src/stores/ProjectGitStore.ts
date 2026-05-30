@@ -76,7 +76,7 @@ export class ProjectGitStore {
   }
 
   get isAvailable(): boolean {
-    return this.projectStore.project.sourceId !== null;
+    return this.projectStore.isCodexSourceReady;
   }
 
   get changedFilesCount(): number {

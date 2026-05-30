@@ -87,7 +87,7 @@ export class ChatStore {
 
   get canRefresh(): boolean {
     return (
-      !this.projectStore.isOrphan &&
+      !this.projectStore.isReadOnlyFromCache &&
       !this.isRefreshing &&
       !this.isWorking &&
       !this.isStartingTurn &&
@@ -125,7 +125,7 @@ export class ChatStore {
       this.isWorking &&
       this.activeTurnId !== null &&
       this.sourceId !== null &&
-      !this.projectStore.isOrphan &&
+      !this.projectStore.isReadOnlyFromCache &&
       !this.isStartingTurn &&
       !this.isEditingLastTurn &&
       !this.isRecovering
@@ -148,7 +148,7 @@ export class ChatStore {
     attachments: OpenCodexImageAttachment[];
   } | null {
     if (
-      this.projectStore.isOrphan ||
+      this.projectStore.isReadOnlyFromCache ||
       this.isWorking ||
       this.isStartingTurn ||
       this.isEditingLastTurn ||
@@ -298,7 +298,7 @@ export class ChatStore {
   }
 
   recover(): void {
-    if (this.isRecovering || this.projectStore.isOrphan) {
+    if (this.isRecovering || this.projectStore.isReadOnlyFromCache) {
       return;
     }
 
@@ -387,7 +387,7 @@ export class ChatStore {
 
     if (
       (trimmedText.length === 0 && attachments.length === 0) ||
-      this.projectStore.isOrphan ||
+      this.projectStore.isReadOnlyFromCache ||
       sourceId === null ||
       this.isStartingTurn ||
       this.isEditingLastTurn ||
@@ -507,7 +507,7 @@ export class ChatStore {
   rename(name: string): void {
     const trimmedName = name.trim();
 
-    if (trimmedName.length === 0 || this.projectStore.isOrphan) {
+    if (trimmedName.length === 0 || this.projectStore.isReadOnlyFromCache) {
       return;
     }
 
@@ -785,7 +785,7 @@ export class ChatStore {
 
   private get canRunAdvancedAction(): boolean {
     return (
-      !this.projectStore.isOrphan &&
+      !this.projectStore.isReadOnlyFromCache &&
       !this.isWorking &&
       !this.isStartingTurn &&
       !this.isEditingLastTurn &&

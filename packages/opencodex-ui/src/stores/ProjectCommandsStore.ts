@@ -68,7 +68,7 @@ export class ProjectCommandsStore {
    * @returns `true` when the project has an active Codex source.
    */
   get isAvailable(): boolean {
-    return this.projectStore.project.sourceId !== null;
+    return this.projectStore.isCodexSourceReady;
   }
 
   /**

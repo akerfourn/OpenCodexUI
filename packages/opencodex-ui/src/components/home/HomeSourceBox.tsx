@@ -2,12 +2,14 @@
  * Renders one Codex source card and its edit dialog.
  */
 import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
+import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import {
   Box,
   Button,
@@ -297,6 +299,26 @@ export function HomeSourceBox({
             <Typography variant="body2" color="text.secondary" noWrap>
               {source.resolvedCommand}
             </Typography>
+            <Box
+              sx={{
+                alignItems: "center",
+                color: source.codex.status === "ready" ? "success.main" : "warning.main",
+                display: "flex",
+                gap: 0.5,
+                mt: 0.5
+              }}
+            >
+              {source.codex.status === "ready" ? (
+                <CheckCircleOutlineOutlinedIcon sx={{ fontSize: 16 }} />
+              ) : (
+                <WarningAmberOutlinedIcon sx={{ fontSize: 16 }} />
+              )}
+              <Typography variant="caption" noWrap>
+                {source.codex.status === "ready"
+                  ? t("sources.codexDetected", { version: source.codex.version ?? t("sources.unknownVersion") })
+                  : t("sources.codexUnavailable")}
+              </Typography>
+            </Box>
           </Box>
         </Box>
         <Tooltip title={t("sources.edit")}>

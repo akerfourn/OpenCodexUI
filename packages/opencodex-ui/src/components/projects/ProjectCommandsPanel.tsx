@@ -69,6 +69,7 @@ export function ProjectCommandsPanel({ projectStore }: ProjectCommandsPanelProps
           variant="contained"
           size="small"
           startIcon={<AddOutlinedIcon />}
+          disabled={!commandsStore.isAvailable}
           onClick={handleCreate}
         >
           {t("commands.add")}

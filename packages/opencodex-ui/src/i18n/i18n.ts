@@ -295,6 +295,7 @@ export const resources = {
         search: "Rechercher des plugins",
         skills: "Skills",
         source: "Source",
+        sourceUnavailable: "La source Codex sélectionnée est inactive.",
         title: "Plugins",
         uninstall: "Désinstaller"
       },
@@ -304,6 +305,9 @@ export const resources = {
         defaultReasoning: "Raisonnement par défaut",
         description: "Configurez le prompt utilisé pour générer les messages depuis les changements staged.",
         edit: "Éditer",
+        gitChecking: "Détection de Git...",
+        gitDetected: "Git est détecté en version {{version}}.",
+        gitUnavailable: "Git doit être installé pour générer et enregistrer des changements depuis l'application.",
         languages: {
           en: "Anglais",
           fr: "Français"
@@ -324,6 +328,7 @@ export const resources = {
           title: "Génération de commit"
         },
         title: "Génération de commit",
+        unknownGitVersion: "inconnue",
         usingCustom: "Prompt personnalisé stocké dans le dossier de configuration.",
         usingDefault: "Prompt par défaut embarqué."
       },
@@ -410,6 +415,7 @@ export const resources = {
         title: "Renommer le chat"
       },
       project: {
+        codexSourceUnavailable: "La source Codex de ce projet est inactive. Le projet reste consultable depuis le cache local.",
         orphanSource: "Ce projet n'est plus associe a une source Codex. Il est disponible en lecture seule jusqu'a une resynchronisation."
       },
       projectTools: {
@@ -455,6 +461,8 @@ export const resources = {
           teal: "Turquoise"
         },
         defaultSource: "Source par defaut",
+        codexDetected: "Codex détecté en version {{version}}",
+        codexUnavailable: "Codex non détecté",
         delete: "Supprimer",
         deleteConfirmCheckbox: "Je confirme la suppression de cette source",
         deleteDescription: "Cette source est associee a {{count}} projet(s). La supprimer rendra ces projets orphelins.",
@@ -477,7 +485,9 @@ export const resources = {
         save: "Enregistrer",
         sync: "Resynchroniser",
         syncAll: "Tout resynchroniser",
-        title: "Sources Codex"
+        title: "Sources Codex",
+        unknownVersion: "inconnue",
+        unavailableSources: "Une ou plusieurs sources ne détectent pas l'installation de Codex. Vérifiez leur commande."
       },
       tabs: {
         closeProject: "Fermer {{project}}",
@@ -769,6 +779,7 @@ export const resources = {
         search: "Search plugins",
         skills: "Skills",
         source: "Source",
+        sourceUnavailable: "The selected Codex source is inactive.",
         title: "Plugins",
         uninstall: "Uninstall"
       },
@@ -778,6 +789,9 @@ export const resources = {
         defaultReasoning: "Default reasoning",
         description: "Configure the prompt used to generate messages from staged changes.",
         edit: "Edit",
+        gitChecking: "Detecting Git...",
+        gitDetected: "Git is detected in version {{version}}.",
+        gitUnavailable: "Git must be installed to generate and save changes from the application.",
         languages: {
           en: "English",
           fr: "French"
@@ -798,6 +812,7 @@ export const resources = {
           title: "Commit generation"
         },
         title: "Commit generation",
+        unknownGitVersion: "unknown",
         usingCustom: "Custom prompt stored in the settings directory.",
         usingDefault: "Embedded default prompt."
       },
@@ -884,6 +899,7 @@ export const resources = {
         title: "Rename chat"
       },
       project: {
+        codexSourceUnavailable: "This project's Codex source is inactive. The project remains readable from the local cache.",
         orphanSource: "This project is no longer associated with a Codex source. It is read-only until it is resynchronized."
       },
       projectTools: {
@@ -929,6 +945,8 @@ export const resources = {
           teal: "Teal"
         },
         defaultSource: "Default source",
+        codexDetected: "Codex detected in version {{version}}",
+        codexUnavailable: "Codex not detected",
         delete: "Delete",
         deleteConfirmCheckbox: "I confirm I want to delete this source",
         deleteDescription: "This source is associated with {{count}} project(s). Deleting it will orphan those projects.",
@@ -951,7 +969,9 @@ export const resources = {
         save: "Save",
         sync: "Resync",
         syncAll: "Resync all",
-        title: "Codex sources"
+        title: "Codex sources",
+        unknownVersion: "unknown",
+        unavailableSources: "One or more sources cannot detect a Codex installation. Check their command."
       },
       tabs: {
         closeProject: "Close {{project}}",

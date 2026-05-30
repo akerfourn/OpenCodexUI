@@ -63,6 +63,18 @@ export class ProjectStore {
     return this.project.sourceId === null;
   }
 
+  get isCodexSourceReady(): boolean {
+    return this.root.sourcesStore.isSourceReady(this.project.sourceId);
+  }
+
+  get isCodexSourceUnavailable(): boolean {
+    return this.project.sourceId !== null && !this.isCodexSourceReady;
+  }
+
+  get isReadOnlyFromCache(): boolean {
+    return this.isOrphan || this.isCodexSourceUnavailable;
+  }
+
   /**
    * Resolves the Codex source that owns one thread.
    *

@@ -50,7 +50,8 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
 
   useEffect(() => {
     void promptStore.load();
-  }, [promptStore]);
+    void appStore.loadGitVersion();
+  }, [appStore, promptStore]);
 
   function handlePromptChange(event: ChangeEvent<HTMLInputElement>): void {
     promptStore.setPrompt(event.target.value);
@@ -103,6 +104,19 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
 
   const errorContent = promptStore.errorMessage === null ? null : (
     <Alert severity="error">{promptStore.errorMessage}</Alert>
+  );
+  const gitVersionContent = appStore.gitVersionStatus === null ? (
+    <Alert severity="info">{t("commitPrompt.gitChecking")}</Alert>
+  ) : appStore.gitVersionStatus?.status === "ready" ? (
+    <Alert severity="success">
+      {t("commitPrompt.gitDetected", {
+        version: appStore.gitVersionStatus.version ?? t("commitPrompt.unknownGitVersion")
+      })}
+    </Alert>
+  ) : (
+    <Alert severity="warning">
+      {t("commitPrompt.gitUnavailable")}
+    </Alert>
   );
   const actionContent = isEditingPrompt ? (
     <>
@@ -199,6 +213,7 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
             </Box>
 
             {errorContent}
+            {gitVersionContent}
 
             <Stack
               direction={{ xs: "column", md: "row" }}

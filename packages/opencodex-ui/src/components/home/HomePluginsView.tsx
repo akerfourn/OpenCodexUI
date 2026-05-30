@@ -64,6 +64,9 @@ export function HomePluginsView({ store }: HomePluginsViewProps) {
 
   const hasSource = pluginsStore.selectedSourceId !== null;
   const selectedSourceValue = pluginsStore.selectedSourceId ?? "";
+  const selectedSource = store.sourcesStore.findSource(pluginsStore.selectedSourceId);
+  const isSelectedSourceReady = selectedSource?.codex.status === "ready";
+  const canUseSelectedSource = hasSource && isSelectedSourceReady;
 
   return (
     <Stack className="home-content-panel" spacing={2}>
@@ -80,7 +83,7 @@ export function HomePluginsView({ store }: HomePluginsViewProps) {
           <span>
             <IconButton
               aria-label={t("plugins.refresh")}
-              disabled={!hasSource || pluginsStore.isLoading}
+              disabled={!canUseSelectedSource || pluginsStore.isLoading}
               onClick={handleRefresh}
             >
               <RefreshOutlinedIcon />
@@ -149,6 +152,10 @@ export function HomePluginsView({ store }: HomePluginsViewProps) {
         <Alert severity="error">{pluginsStore.errorMessage}</Alert>
       ) : null}
 
+      {hasSource && !isSelectedSourceReady ? (
+        <Alert severity="warning">{t("plugins.sourceUnavailable")}</Alert>
+      ) : null}
+
       {pluginsStore.loadErrors.map((error) => (
         <Alert key={error} severity="warning">{error}</Alert>
       ))}
@@ -159,24 +166,26 @@ export function HomePluginsView({ store }: HomePluginsViewProps) {
         </Typography>
       ) : null}
 
-      {hasSource && pluginsStore.visiblePlugins.length === 0 && !pluginsStore.isLoading ? (
+      {canUseSelectedSource && pluginsStore.visiblePlugins.length === 0 && !pluginsStore.isLoading ? (
         <Typography variant="body2" color="text.secondary">
           {t("plugins.empty")}
         </Typography>
       ) : null}
 
-      <Stack spacing={1}>
-        {pluginsStore.visiblePlugins.map((plugin) => (
-          <HomePluginListItem
-            key={`${plugin.marketplaceName}:${plugin.name}:${plugin.id}`}
-            plugin={plugin}
-            isBusy={pluginsStore.isPluginBusy(plugin.id)}
-            onOpen={pluginsStore.openPlugin}
-            onInstall={pluginsStore.installPlugin}
-            onUninstall={pluginsStore.uninstallPlugin}
-          />
-        ))}
-      </Stack>
+      {canUseSelectedSource ? (
+        <Stack spacing={1}>
+          {pluginsStore.visiblePlugins.map((plugin) => (
+            <HomePluginListItem
+              key={`${plugin.marketplaceName}:${plugin.name}:${plugin.id}`}
+              plugin={plugin}
+              isBusy={pluginsStore.isPluginBusy(plugin.id)}
+              onOpen={pluginsStore.openPlugin}
+              onInstall={pluginsStore.installPlugin}
+              onUninstall={pluginsStore.uninstallPlugin}
+            />
+          ))}
+        </Stack>
+      ) : null}
 
       <HomePluginDetailDialogX store={pluginsStore} />
     </Stack>

@@ -30,8 +30,12 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
   const { t } = useTranslation();
   const threadListStore = projectStore.threadListStore;
   const source = store.sourcesStore.sources.find((entry) => entry.id === projectStore.project.sourceId);
+  const isReadOnlyProject = projectStore.isReadOnlyFromCache;
   const canOpenProject = source?.settings.openFolderCommand !== null &&
     source?.settings.openFolderCommand !== undefined;
+  const sourceWarning = projectStore.isOrphan
+    ? t("project.orphanSource")
+    : t("project.codexSourceUnavailable");
 
   function handleSearch(event: ChangeEvent<HTMLInputElement>): void {
     threadListStore.setSearchTerm(event.target.value);
@@ -77,7 +81,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
                 aria-label={t("sidebar.refresh")}
                 title={t("sidebar.refresh")}
                 size="small"
-                disabled={projectStore.isOrphan}
+                disabled={isReadOnlyProject}
                 onClick={handleRefreshThreads}
               >
                 <RefreshOutlinedIcon fontSize="small" />
@@ -89,7 +93,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
                   aria-label={t("sidebar.openNewChat")}
                   color="primary"
                   size="small"
-                  disabled={projectStore.isOrphan}
+                  disabled={isReadOnlyProject}
                   onClick={handleNewThread}
                 >
                   <AddOutlinedIcon fontSize="small" />
@@ -103,7 +107,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
         </Box>
       </header>
 
-      {projectStore.isOrphan ? (
+      {isReadOnlyProject ? (
         <Alert
           severity="warning"
           sx={{ mx: 1.5, mb: 1 }}
@@ -113,7 +117,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
             </Button>
           )}
         >
-          {t("project.orphanSource")}
+          {sourceWarning}
         </Alert>
       ) : null}
 

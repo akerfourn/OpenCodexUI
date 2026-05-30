@@ -185,6 +185,8 @@ export class OpenCodexRequestRouter {
         );
       case "plugins.uninstall":
         return this.runtime.uninstallPlugin(request.sourceId, request.pluginId);
+      case "git.version":
+        return this.runtime.readGitVersion();
       case "git.status":
         return this.runtime.readGitStatus(request.projectPath, request.sourceId);
       case "git.init":

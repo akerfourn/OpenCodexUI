@@ -3,14 +3,18 @@
  */
 import { resolveCodexCommandPath } from "@open-codex-ui/codex-rpc";
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
-import type { OpenCodexSource } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexSource,
+  OpenCodexToolVersionStatus
+} from "@open-codex-ui/opencodex-protocol";
 
 import { LEGACY_DEFAULT_SOURCE_ID } from "./constants.js";
 
 export function toOpenCodexSource(
   source: CachedSource,
   fallbackCommand: string,
-  associatedProjectCount: number
+  associatedProjectCount: number,
+  codex: OpenCodexToolVersionStatus
 ): OpenCodexSource {
   const command = resolveSourceCommand(source, fallbackCommand);
 
@@ -19,6 +23,7 @@ export function toOpenCodexSource(
     kind: source.kind,
     name: source.name,
     associatedProjectCount,
+    codex,
     settings: source.settings,
     resolvedCommand: resolveCodexCommandPath(command),
     createdAt: source.createdAt,

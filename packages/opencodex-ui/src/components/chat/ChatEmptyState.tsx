@@ -2,6 +2,7 @@
  * Renders the chat empty state component for the OpenCodex UI.
  */
 import { Button, Stack, Typography } from "@mui/material";
+import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectStore } from "../../stores/ProjectStore";
@@ -32,7 +33,7 @@ export function ChatEmptyState({ projectStore }: ChatEmptyStateProps) {
       <Button
         variant="contained"
         type="button"
-        disabled={projectStore === null || projectStore.isOrphan}
+        disabled={projectStore === null || projectStore.isReadOnlyFromCache}
         onClick={handleNewThread}
       >
         {t("chat.start")}
@@ -40,3 +41,5 @@ export function ChatEmptyState({ projectStore }: ChatEmptyStateProps) {
     </Stack>
   );
 }
+
+export const ChatEmptyStateX = observer(ChatEmptyState);

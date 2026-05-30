@@ -1,4 +1,4 @@
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexColorScheme,
@@ -8,6 +8,7 @@ import type {
   OpenCodexLanguage,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
+  OpenCodexToolVersionStatus,
   OpenCodexVersioningVocabulary
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -44,6 +45,8 @@ export class AppStore implements RootChildStore {
   connectionStatus = "stopped";
   isBootstrapping = false;
   appVersion: string | null = null;
+  gitVersionStatus: OpenCodexToolVersionStatus | null = null;
+  isLoadingGitVersion = false;
 
   constructor(private readonly root: RootStore) {
     makeAutoObservable<AppStore, "root">(this, { root: false });
@@ -92,6 +95,32 @@ export class AppStore implements RootChildStore {
       await this.root.request({ type: "app.bootstrap" });
     } catch {
       this.isBootstrapping = false;
+    }
+  }
+
+  /**
+   * Detects the Git command available to the host runtime.
+   *
+   * @returns Promise resolved when the diagnostic is stored.
+   */
+  async loadGitVersion(): Promise<void> {
+    if (this.isLoadingGitVersion) {
+      return;
+    }
+
+    this.isLoadingGitVersion = true;
+
+    try {
+      const gitVersionStatus = await this.root.request<OpenCodexToolVersionStatus>({
+        type: "git.version"
+      });
+      runInAction(() => {
+        this.gitVersionStatus = gitVersionStatus;
+      });
+    } finally {
+      runInAction(() => {
+        this.isLoadingGitVersion = false;
+      });
     }
   }
 

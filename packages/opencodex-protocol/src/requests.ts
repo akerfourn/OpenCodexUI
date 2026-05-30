@@ -125,6 +125,7 @@ export type OpenCodexRequest =
       pluginName: string;
     }
   | { type: "plugins.uninstall"; sourceId: string | null; pluginId: string }
+  | { type: "git.version" }
   | { type: "git.status"; projectPath: string; sourceId: string | null }
   | { type: "git.init"; projectPath: string; sourceId: string | null }
   | { type: "git.branches"; projectPath: string; sourceId: string | null }

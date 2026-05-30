@@ -9,7 +9,7 @@ import { isRecord } from "./events";
 import type { ProcessLike } from "./types";
 import { CodexProcessError } from "./types";
 
-type ResolvedCodexCommand = {
+export type ResolvedCodexCommand = {
   command: string;
   args: string[];
 };
@@ -79,7 +79,7 @@ export function resolveCodexCommandPath(command: string): string {
  * @param args Default arguments passed to Codex.
  * @returns Executable path and complete argument list.
  */
-function resolveCodexCommand(command: string, args: string[]): ResolvedCodexCommand {
+export function resolveCodexCommand(command: string, args: string[]): ResolvedCodexCommand {
   const trimmedCommand = command.trim();
 
   if (trimmedCommand.length === 0) {

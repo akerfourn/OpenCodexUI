@@ -71,7 +71,7 @@ export class ThreadListStore {
   refresh(sourceIdOverride?: string | null): void {
     const sourceId = sourceIdOverride ?? this.projectStore.project.sourceId;
 
-    if (sourceId === null) {
+    if (sourceId === null || !this.root.sourcesStore.isSourceReady(sourceId)) {
       return;
     }
 
@@ -91,7 +91,7 @@ export class ThreadListStore {
    * @returns Nothing.
    */
   createThread(): void {
-    if (this.projectStore.isOrphan) {
+    if (this.projectStore.isReadOnlyFromCache) {
       return;
     }
 

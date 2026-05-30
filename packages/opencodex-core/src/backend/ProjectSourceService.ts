@@ -25,6 +25,7 @@ import {
   createDefaultCachedSource,
   toOpenCodexSource
 } from "./sourceMapping.js";
+import { readCodexVersionStatus } from "./toolVersionDetection.js";
 import {
   toCachedThreadSummary,
   withSourceId
@@ -85,7 +86,12 @@ export class ProjectSourceService {
     const repository = this.requireCacheRepository("Source storage is unavailable.");
     const createdSource = await repository.createSource(name);
     const settings = this.options.getSettings();
-    const source = toOpenCodexSource(createdSource, settings.codexCommand, 0);
+    const source = toOpenCodexSource(
+      createdSource,
+      settings.codexCommand,
+      0,
+      await readCodexVersionStatus(createdSource, settings.codexCommand)
+    );
     this.options.emit({
       type: "sources.updated",
       sources: await this.listOpenCodexSources(),
@@ -261,7 +267,8 @@ export class ProjectSourceService {
     const source = toOpenCodexSource(
       updatedSource,
       settings.codexCommand,
-      await repository.getSourceProjectCount(updatedSource.id)
+      await repository.getSourceProjectCount(updatedSource.id),
+      await readCodexVersionStatus(updatedSource, settings.codexCommand)
     );
 
     this.options.emit({
@@ -440,7 +447,16 @@ export class ProjectSourceService {
     const settings = this.options.getSettings();
 
     if (repository === null) {
-      return [toOpenCodexSource(createDefaultCachedSource(), settings.codexCommand, 0)];
+      const defaultSource = createDefaultCachedSource();
+
+      return [
+        toOpenCodexSource(
+          defaultSource,
+          settings.codexCommand,
+          0,
+          await readCodexVersionStatus(defaultSource, settings.codexCommand)
+        )
+      ];
     }
 
     const sources = await repository.listSources();
@@ -448,7 +464,8 @@ export class ProjectSourceService {
       toOpenCodexSource(
         source,
         settings.codexCommand,
-        await repository.getSourceProjectCount(source.id)
+        await repository.getSourceProjectCount(source.id),
+        await readCodexVersionStatus(source, settings.codexCommand)
       )
     )));
   }
@@ -461,6 +478,15 @@ export class ProjectSourceService {
    * @returns Promise resolved when synchronization completes.
    */
   private async syncSource(source: CachedSource): Promise<void> {
+    const codexStatus = await readCodexVersionStatus(source, this.options.getSettings().codexCommand);
+
+    if (codexStatus.status !== "ready") {
+      this.options.backendOptions.logger?.(
+        `skipping source sync because Codex is unavailable for ${source.name}: ${codexStatus.message ?? "unknown"}`
+      );
+      return;
+    }
+
     const client = await this.options.ensureClient(source.id);
     const projectPathValidator = new ProjectPathVisibilityValidator(source, client);
     const sourceThreads = await readThreadPages(client, {
