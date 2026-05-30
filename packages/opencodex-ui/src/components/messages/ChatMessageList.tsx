@@ -2,7 +2,20 @@
  * Renders the chat message list component for the OpenCodex UI.
  */
 import { observer } from "mobx-react-lite";
-import { Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
+import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  TextField,
+  Tooltip,
+  Typography
+} from "@mui/material";
 import {
   useCallback,
   useEffect,
@@ -55,6 +68,7 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const currentThread = chatStore.thread;
   const editableItem = chatStore.editableLastUserItem;
   const [editedMessage, setEditedMessage] = useState<string | null>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [visibleTurnCount, setVisibleTurnCount] = useState(INITIAL_VISIBLE_TURN_COUNT);
   const visibleTurns = getVisibleTurns(chatStore.turns, visibleTurnCount);
   const hiddenOlderTurnCount = Math.max(chatStore.turns.length - visibleTurnCount, 0);
@@ -96,6 +110,18 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   function handleSubmitEdit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     submitEditMessage();
+  }
+
+  function handleScrollToBottom(): void {
+    const container = containerRef.current;
+
+    if (container === null) {
+      return;
+    }
+
+    scrollToBottom(container);
+    shouldStickToBottomRef.current = true;
+    setShowScrollToBottom(false);
   }
 
   function handleEditKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -143,6 +169,7 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
     const frame = requestAnimationFrame(() => {
       scrollToBottom(container);
       shouldStickToBottomRef.current = true;
+      setShowScrollToBottom(false);
     });
 
     return () => {
@@ -159,7 +186,9 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
     }
 
     container.scrollTop = container.scrollHeight - previousState.height + previousState.top;
-    shouldStickToBottomRef.current = isNearBottom(container);
+    const isPinnedToBottom = isAtBottom(container);
+    shouldStickToBottomRef.current = isPinnedToBottom;
+    setShowScrollToBottom(!isPinnedToBottom);
     previousScrollStateRef.current = null;
   }, [chatStore.olderMessagesPrependVersion, visibleTurnCount]);
 
@@ -211,7 +240,9 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
 
   function handleScroll(event: UIEvent<HTMLDivElement>): void {
     const container = event.currentTarget;
-    shouldStickToBottomRef.current = isNearBottom(container);
+    const isPinnedToBottom = isAtBottom(container);
+    shouldStickToBottomRef.current = isPinnedToBottom;
+    setShowScrollToBottom(!isPinnedToBottom);
 
     if (
       container.scrollTop > 80 ||
@@ -244,88 +275,140 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
 
   return (
     <Box
-      ref={containerRef}
-      onScroll={handleScroll}
       sx={{
         display: "flex",
-        flexDirection: "column",
-        alignItems: "stretch",
+        position: "relative",
         minHeight: 0,
-        overflowX: "hidden",
-        overflowY: "auto",
-        gap: 1.25,
-        px: 2,
-        py: 2.25
+        flex: "1 1 auto"
       }}
     >
-      {chatStore.isLoadingOlderMessages ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
-          <CircularProgress size={18} thickness={5} />
-        </Box>
-      ) : null}
-      {entries.map((entry, index) => {
-        const isLast = index === entries.length - 1;
+      <Box
+        ref={containerRef}
+        onScroll={handleScroll}
+        sx={{
+          display: "flex",
+          flex: "1 1 auto",
+          flexDirection: "column",
+          alignItems: "stretch",
+          minHeight: 0,
+          overflowX: "hidden",
+          overflowY: "auto",
+          gap: 1.25,
+          px: 2,
+          py: 2.25
+        }}
+      >
+        {chatStore.isLoadingOlderMessages ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+            <CircularProgress size={18} thickness={5} />
+          </Box>
+        ) : null}
+        {entries.map((entry, index) => {
+          const isLast = index === entries.length - 1;
 
-        if (entry.type === "turnPrelude") {
+          if (entry.type === "turnPrelude") {
+            return (
+              <AssistantTurnBlock
+                key={entry.key}
+                turn={entry.turn}
+                preludeItems={entry.items}
+                isRunning={entry.isRunning}
+                lastMessageRef={lastMessageRef}
+                isLast={isLast}
+                onOpenLink={handleOpenLink}
+              />
+            );
+          }
+
           return (
-            <AssistantTurnBlock
+            <MessageRowM
               key={entry.key}
-              turn={entry.turn}
-              preludeItems={entry.items}
-              isRunning={entry.isRunning}
-              lastMessageRef={lastMessageRef}
               isLast={isLast}
+              lastMessageRef={lastMessageRef}
               onOpenLink={handleOpenLink}
+              role={entry.item.role}
+              phase={entry.item.phase}
+              kind={entry.item.kind}
+              content={entry.item.content}
+              createdAt={entry.item.createdAt ?? entry.turn.completedAt ?? entry.turn.startedAt}
+              details={entry.item.details}
+              attachments={entry.item.attachments ?? []}
+              canEdit={isEditableTimelineItem(entry, editableItem)}
+              onEdit={() => handleStartEdit(entry.item.content)}
             />
           );
-        }
-
-        return (
-          <MessageRowM
-            key={entry.key}
-            isLast={isLast}
-            lastMessageRef={lastMessageRef}
-            onOpenLink={handleOpenLink}
-            role={entry.item.role}
-            phase={entry.item.phase}
-            kind={entry.item.kind}
-            content={entry.item.content}
-            createdAt={entry.item.createdAt ?? entry.turn.completedAt ?? entry.turn.startedAt}
-            details={entry.item.details}
-            attachments={entry.item.attachments ?? []}
-            canEdit={isEditableTimelineItem(entry, editableItem)}
-            onEdit={() => handleStartEdit(entry.item.content)}
-          />
-        );
-      })}
-      {chatStore.isSyncing && chatStore.turns.length > 0 ? (
+        })}
+        {chatStore.isSyncing && chatStore.turns.length > 0 ? (
+          <Box
+            sx={{
+              alignItems: "center",
+              color: "text.secondary",
+              display: "flex",
+              gap: 1,
+              justifyContent: "center",
+              py: 1
+            }}
+          >
+            <CircularProgress size={16} thickness={5} />
+            <Typography variant="caption">
+              {chatStore.isRecovering ? t("chat.recovering") : t("chat.syncing")}
+            </Typography>
+          </Box>
+        ) : null}
         <Box
+          aria-hidden="true"
           sx={{
-            alignItems: "center",
-            color: "text.secondary",
+            width: 1,
+            height: "1px",
+            mt: "-1px",
+            flex: "0 0 auto",
+            overflow: "hidden",
+            pointerEvents: "none"
+          }}
+        />
+      </Box>
+      <Tooltip title={t("chat.scrollToBottom")}>
+        <Box
+          component="span"
+          sx={{
+            position: "absolute",
+            right: 30,
+            bottom: 0,
+            zIndex: 3,
+            height: 80,
             display: "flex",
-            gap: 1,
-            justifyContent: "center",
-            py: 1
+            alignItems: "flex-start",
+            overflow: "hidden",
+            pointerEvents: showScrollToBottom ? "auto" : "none",
           }}
         >
-          <CircularProgress size={16} thickness={5} />
-          <Typography variant="caption">
-            {chatStore.isRecovering ? t("chat.recovering") : t("chat.syncing")}
-          </Typography>
+          <IconButton
+            aria-label={t("chat.scrollToBottom")}
+            className="scroll-to-bottom-button"
+            color="primary"
+            size="large"
+            onClick={handleScrollToBottom}
+            sx={{
+              bgcolor: "#ffffff",
+              boxShadow: 4,
+              color: "primary.main",
+              animation: showScrollToBottom
+                ? "opencodex-scroll-button-rise 360ms cubic-bezier(0.22, 1, 0.36, 1)"
+                : "none",
+              mt: 2,
+              opacity: 0.7,
+              transform: showScrollToBottom ? "translateY(0)" : "translateY(64px)",
+              transition: "opacity 160ms ease, background-color 160ms ease, transform 180ms ease",
+              "&:hover": {
+                bgcolor: "#ffffff",
+                opacity: 1
+              }
+            }}
+          >
+            <ArrowDownwardRoundedIcon />
+          </IconButton>
         </Box>
-      ) : null}
-      <Box
-        aria-hidden="true"
-        sx={{
-          width: 1,
-          height: "1px",
-          mt: "-1px",
-          flex: "0 0 auto",
-          overflow: "hidden",
-          pointerEvents: "none"
-        }}
-      />
+      </Tooltip>
       <Dialog open={editedMessage !== null} fullWidth maxWidth="md" onClose={handleCancelEdit}>
         <Box component="form" onSubmit={handleSubmitEdit}>
           <DialogTitle>{t("message.editLast")}</DialogTitle>
@@ -382,7 +465,7 @@ type TimelineEntry =
       isRunning: boolean;
     };
 
-const BOTTOM_SCROLL_THRESHOLD_PX = 96;
+const BOTTOM_SCROLL_THRESHOLD_PX = 4;
 const INITIAL_VISIBLE_TURN_COUNT = 10;
 const TURN_WINDOW_INCREMENT = 10;
 
@@ -409,13 +492,13 @@ function scrollToBottom(container: HTMLDivElement): void {
 }
 
 /**
- * Checks whether the user is close enough to the bottom to keep auto-scrolling.
+ * Checks whether the user is at the bottom edge.
  *
  * @param container Message scroll container.
  *
  * @returns `true` when the latest message is effectively visible.
  */
-function isNearBottom(container: HTMLDivElement): boolean {
+function isAtBottom(container: HTMLDivElement): boolean {
   const remainingScroll = container.scrollHeight - container.scrollTop - container.clientHeight;
   return remainingScroll <= BOTTOM_SCROLL_THRESHOLD_PX;
 }

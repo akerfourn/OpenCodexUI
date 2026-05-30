@@ -46,6 +46,7 @@ export const resources = {
         newConversation: "Nouvelle conversation",
         noWorkspace: "Workspace non renseigné",
         recovering: "Reconnexion à Codex...",
+        scrollToBottom: "Aller au dernier message",
         start: "Démarrer un chat",
         syncing: "Synchronisation avec Codex...",
         untitled: "Conversation sans titre"
@@ -518,6 +519,7 @@ export const resources = {
         newConversation: "New conversation",
         noWorkspace: "Workspace not provided",
         recovering: "Reconnecting to Codex...",
+        scrollToBottom: "Go to latest message",
         start: "Start a chat",
         syncing: "Syncing with Codex...",
         untitled: "Untitled conversation"

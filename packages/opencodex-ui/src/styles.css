@@ -147,10 +147,32 @@ textarea {
   }
 }
 
+@keyframes opencodex-scroll-button-rise {
+  0% {
+    transform: translateY(64px);
+  }
+
+  68% {
+    transform: translateY(-10px);
+  }
+
+  84% {
+    transform: translateY(3px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .work-indicator-pulse {
     animation: none;
     opacity: 1;
+  }
+
+  .scroll-to-bottom-button {
+    animation-duration: 1ms;
   }
 }
 
