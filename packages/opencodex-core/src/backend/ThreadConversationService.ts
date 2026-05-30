@@ -472,7 +472,7 @@ export class ThreadConversationService {
 
     const targetSourceId = threadId === null
       ? sourceId
-      : await this.resolveThreadSourceId(threadId);
+      : await this.resolveThreadSourceId(threadId, sourceId);
 
     if (targetSourceId === null) {
       throw new Error("Cannot start a turn for a project without a Codex source.");
@@ -1196,7 +1196,10 @@ export class ThreadConversationService {
    *
    * @returns Source identifier, or `null`.
    */
-  private async resolveThreadSourceId(threadId: string): Promise<string | null> {
+  private async resolveThreadSourceId(
+    threadId: string,
+    fallbackSourceId: string | null = null
+  ): Promise<string | null> {
     const cacheEntry = this.options.threadTurnCache.get(threadId);
 
     if (cacheEntry?.thread.sourceId !== null && cacheEntry?.thread.sourceId !== undefined) {
@@ -1204,7 +1207,44 @@ export class ThreadConversationService {
     }
 
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
-    return cachedSnapshot?.thread.sourceId ?? null;
+    const cachedSourceId = cachedSnapshot?.thread.sourceId ?? null;
+
+    if (cachedSourceId !== null) {
+      return cachedSourceId;
+    }
+
+    if (fallbackSourceId === null) {
+      return null;
+    }
+
+    await this.repairThreadSourceId(threadId, fallbackSourceId);
+    return fallbackSourceId;
+  }
+
+  private async repairThreadSourceId(threadId: string, sourceId: string): Promise<void> {
+    const cacheEntry = this.options.threadTurnCache.get(threadId);
+
+    if (cacheEntry !== null) {
+      cacheEntry.thread = {
+        ...cacheEntry.thread,
+        sourceId
+      };
+      await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      return;
+    }
+
+    const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
+
+    if (cachedSnapshot === null) {
+      return;
+    }
+
+    await this.options.threadCacheService.writeIndex([
+      {
+        ...cachedSnapshot.thread,
+        sourceId
+      }
+    ]);
   }
 
   /**
