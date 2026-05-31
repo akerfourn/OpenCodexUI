@@ -184,6 +184,45 @@ export class ChatStore {
     };
   }
 
+  get editableLastUserItemIdentity(): {
+    turnId: string;
+    itemId: string;
+  } | null {
+    if (
+      this.projectStore.isReadOnlyFromCache ||
+      this.isWorking ||
+      this.isStartingTurn ||
+      this.isEditingLastTurn ||
+      this.isRecovering ||
+      this.turns.length === 0
+    ) {
+      return null;
+    }
+
+    const lastTurn = this.turns.at(-1);
+
+    if (lastTurn === undefined || lastTurn.id.startsWith("pending:")) {
+      return null;
+    }
+
+    const userItems = lastTurn.items.filter((item) => item.role === "user");
+
+    if (userItems.length !== 1) {
+      return null;
+    }
+
+    const userItem = userItems[0];
+
+    if (userItem === undefined || userItem.kind === "steer") {
+      return null;
+    }
+
+    return {
+      turnId: lastTurn.id,
+      itemId: userItem.id
+    };
+  }
+
   /**
    * Returns the approval currently pending for this chat.
    *

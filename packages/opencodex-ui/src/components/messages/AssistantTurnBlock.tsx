@@ -1,6 +1,7 @@
 /**
  * Renders the assistant turn block component for the OpenCodex UI.
  */
+import { observer } from "mobx-react-lite";
 import { useEffect, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -160,6 +161,8 @@ export function AssistantTurnBlock({
     </Box>
   );
 }
+
+export const AssistantTurnBlockX = observer(AssistantTurnBlock);
 
 /**
  * Returns block kind.
