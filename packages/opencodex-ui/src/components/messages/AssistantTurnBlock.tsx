@@ -64,8 +64,8 @@ export function AssistantTurnBlock({
     : formatBlockLabel(getBlockKind(preludeItems), turn.durationMs, t);
   const isExpanded = isRunning || expanded;
   const detailsContent = isExpanded ? (
-    <AccordionDetails sx={{ pt: 0, pb: 1.25, px: 1.25 }}>
-      <Stack spacing={1}>
+    <AccordionDetails sx={{ pt: 0, pb: 1.25, px: 1.25, minWidth: 0, maxWidth: "100%" }}>
+      <Stack spacing={1} sx={{ minWidth: 0, maxWidth: "100%" }}>
         {preludeItems.map((item, index) => (
           <MessageRowM
             key={buildMessageKey(item, index)}
@@ -102,7 +102,16 @@ export function AssistantTurnBlock({
   }, [isRunning]);
 
   return (
-    <Box ref={blockRef} component="article">
+    <Box
+      ref={blockRef}
+      component="article"
+      sx={{
+        minWidth: 0,
+        width: "100%",
+        maxWidth: "100%",
+        overflow: "hidden"
+      }}
+    >
       <Accordion
         expanded={isExpanded}
         elevation={0}
@@ -120,6 +129,9 @@ export function AssistantTurnBlock({
           borderColor: "divider",
           borderRadius: 1.5,
           bgcolor: "background.paper",
+          minWidth: 0,
+          width: "100%",
+          maxWidth: "100%",
           overflow: "hidden",
           "&:before": {
             display: "none"
@@ -138,6 +150,7 @@ export function AssistantTurnBlock({
             "& .MuiAccordionSummary-content": {
               alignItems: "center",
               gap: 1,
+              minWidth: 0,
               my: 1
             }
           }}
@@ -147,7 +160,7 @@ export function AssistantTurnBlock({
           ) : (
             <PsychologyOutlinedIcon fontSize="small" />
           )}
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 600, minWidth: 0 }}>
             {label}
           </Typography>
           {preludeItems.length > 0 ? (

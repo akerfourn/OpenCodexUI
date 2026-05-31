@@ -305,6 +305,9 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
         display: "flex",
         position: "relative",
         minHeight: 0,
+        minWidth: 0,
+        width: "100%",
+        maxWidth: "100%",
         flex: "1 1 auto"
       }}
     >
@@ -317,6 +320,9 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
           flexDirection: "column",
           alignItems: "stretch",
           minHeight: 0,
+          minWidth: 0,
+          width: "100%",
+          maxWidth: "100%",
           overflowX: "hidden",
           overflowY: "auto",
           gap: 1.25,
