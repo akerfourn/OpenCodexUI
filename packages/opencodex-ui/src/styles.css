@@ -849,6 +849,47 @@ textarea {
   border-radius: 6px;
 }
 
+.composer-setting-button.MuiButton-root {
+  min-width: 0;
+  height: 34px;
+  max-width: 190px;
+  justify-content: flex-start;
+  border-radius: 6px;
+  color: var(--vscode-foreground);
+  padding: 0 8px;
+  text-transform: none;
+}
+
+.composer-setting-button.MuiButton-root:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.composer-setting-button.MuiButton-root.Mui-disabled {
+  color: var(--vscode-disabledForeground);
+}
+
+.composer-setting-button .MuiButton-startIcon {
+  margin-right: 6px;
+}
+
+.composer-setting-button .MuiButton-endIcon {
+  margin-left: 4px;
+}
+
+.composer-setting-button .MuiButton-icon {
+  color: var(--vscode-descriptionForeground);
+}
+
+.composer-setting-button .MuiButton-label,
+.composer-setting-button.MuiButton-root {
+  overflow: hidden;
+}
+
+.composer-setting-button .MuiTypography-root {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .composer-icon-button-primary.MuiIconButton-root {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
