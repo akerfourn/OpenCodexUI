@@ -26,14 +26,7 @@ type AssistantTurnBlockProps = {
   isRunning: boolean;
   lastMessageRef: RefObject<HTMLElement>;
   isLast: boolean;
-/**
- * Handles on open link.
- *
- * @param href Link target to open.
- *
- * @returns Nothing.
- */
-onOpenLink(href: string): void;
+  onOpenLink(href: string): void;
 };
 
 /**
@@ -106,10 +99,13 @@ export function AssistantTurnBlock({
       ref={blockRef}
       component="article"
       sx={{
+        display: "block",
+        flex: "0 0 auto",
         minWidth: 0,
+        minHeight: 36,
         width: "100%",
         maxWidth: "100%",
-        overflow: "hidden"
+        overflow: "visible"
       }}
     >
       <Accordion
@@ -141,7 +137,7 @@ export function AssistantTurnBlock({
         <AccordionSummary
           expandIcon={<ExpandMoreIcon fontSize="small" />}
           sx={{
-            minHeight: 0,
+            minHeight: 36,
             px: 1.25,
             position: isRunning ? "sticky" : "static",
             top: 0,
@@ -151,7 +147,7 @@ export function AssistantTurnBlock({
               alignItems: "center",
               gap: 1,
               minWidth: 0,
-              my: 1
+              my: 0.75
             }
           }}
         >

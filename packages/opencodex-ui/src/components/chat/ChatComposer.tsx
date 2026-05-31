@@ -157,6 +157,10 @@ export function ChatComposer({
     chatStore.compactThread();
   }
 
+  function handleExportLastTurn(): void {
+    chatStore.exportLastTurnDebugJson();
+  }
+
   async function handleAttachImages(): Promise<void> {
     const pickedAttachments = await store.pickImageAttachments();
 
@@ -257,8 +261,10 @@ export function ChatComposer({
         <div className="spacer" />
         <ChatAdvancedActionsMenu
           disabled={areAdvancedActionsDisabled}
+          canExportLastTurn={chatStore.turns.length > 0}
           onReview={handleReview}
           onCompact={handleCompact}
+          onExportLastTurn={handleExportLastTurn}
         />
         <Tooltip title={t("composer.attachImage")}>
           <span>

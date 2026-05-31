@@ -22,7 +22,7 @@ export function applyThreadTurns(
   const mergedTurns = preserveLiveTurnItems(chatStore.turns, nextTurns);
 
   if (strategy === "replace" || chatStore.turns.length === 0) {
-    chatStore.turns = mergedTurns;
+    chatStore.setTurns(mergedTurns);
     root.logStorePopulation(chatStore.thread.id, source, mergedTurns.length, true, 0);
     return;
   }
@@ -34,10 +34,10 @@ export function applyThreadTurns(
     return;
   }
 
-  chatStore.turns = [
+  chatStore.setTurns([
     ...chatStore.turns.slice(0, firstChangedIndex),
     ...mergedTurns.slice(firstChangedIndex)
-  ];
+  ]);
   root.logStorePopulation(chatStore.thread.id, source, mergedTurns.length, true, firstChangedIndex);
 }
 
@@ -216,7 +216,7 @@ export function movePendingTurnToStartedTurn(chatStore: ChatStore, turnId: strin
     existingTurn.items = [...pendingTurn.items, ...existingTurn.items];
     existingTurn.startedAt = existingTurn.startedAt ?? pendingTurn.startedAt ?? new Date().toISOString();
     existingTurn.status = "running";
-    chatStore.turns = chatStore.turns.filter((turn) => turn !== pendingTurn);
+    chatStore.setTurns(chatStore.turns.filter((turn) => turn !== pendingTurn));
     return;
   }
 
@@ -225,6 +225,7 @@ export function movePendingTurnToStartedTurn(chatStore: ChatStore, turnId: strin
   pendingTurn.status = "running";
   pendingTurn.startedAt = pendingTurn.startedAt ?? new Date().toISOString();
   chatStore.pendingTurnId = null;
+  chatStore.syncTurnStores();
 }
 
 export function findOrCreateTurn(chatStore: ChatStore, turnId: string): OpenCodexTurn {
@@ -244,7 +245,7 @@ export function findOrCreateTurn(chatStore: ChatStore, turnId: string): OpenCode
     items: []
   };
 
-  chatStore.turns.push(created);
+  chatStore.appendTurn(created);
   return created;
 }
 

@@ -31,12 +31,12 @@ import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import type {
-  OpenCodexReasoningEffort,
-  OpenCodexTurn
+  OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ChatStore } from "../../stores/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
+import type { ChatTurnStore } from "../../stores/ChatTurnStore";
 import { ModelSettingsFields } from "../chat/ModelSettingsFields";
 import { ChatTurnViewX } from "./ChatTurnView";
 
@@ -68,8 +68,8 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const [editedMessage, setEditedMessage] = useState<string | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [visibleTurnCount, setVisibleTurnCount] = useState(INITIAL_VISIBLE_TURN_COUNT);
-  const visibleTurns = getVisibleTurns(chatStore.turns, visibleTurnCount);
-  const hiddenOlderTurnCount = Math.max(chatStore.turns.length - visibleTurnCount, 0);
+  const visibleTurnStores = getVisibleTurnStores(chatStore.turnStores, visibleTurnCount);
+  const hiddenOlderTurnCount = Math.max(chatStore.turnStores.length - visibleTurnCount, 0);
   const isWorking = chatStore.isWorking || chatStore.isStartingTurn;
   const handleOpenLink = useCallback((href: string) => {
     store.openExternalLink(href);
@@ -342,13 +342,13 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
             <CircularProgress size={18} thickness={5} />
           </Box>
         ) : null}
-        {visibleTurns.map((turn, index) => (
+        {visibleTurnStores.map((turnStore, index) => (
           <ChatTurnViewX
-            key={turn.id}
-            turn={turn}
+            key={turnStore.id}
+            turnStore={turnStore}
             activeTurnId={chatStore.activeTurnId}
             isWorking={isWorking}
-            isLastTurn={index === visibleTurns.length - 1}
+            isLastTurn={index === visibleTurnStores.length - 1}
             editableItem={editableItem}
             lastMessageRef={lastMessageRef}
             onOpenLink={handleOpenLink}
@@ -511,10 +511,13 @@ function isAtBottom(container: HTMLDivElement): boolean {
  *
  * @returns Visible turn window.
  */
-function getVisibleTurns(turns: OpenCodexTurn[], visibleTurnCount: number): OpenCodexTurn[] {
-  if (turns.length <= visibleTurnCount) {
-    return turns;
+function getVisibleTurnStores(
+  turnStores: ChatTurnStore[],
+  visibleTurnCount: number
+): ChatTurnStore[] {
+  if (turnStores.length <= visibleTurnCount) {
+    return turnStores;
   }
 
-  return turns.slice(-visibleTurnCount);
+  return turnStores.slice(-visibleTurnCount);
 }

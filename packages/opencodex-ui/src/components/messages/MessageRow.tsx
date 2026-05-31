@@ -89,6 +89,7 @@ export function MessageRow({
         ref={articleRef}
         component="article"
         sx={{
+          flex: "0 0 auto",
           minWidth: 0,
           width: "100%",
           maxWidth: "100%",
@@ -193,6 +194,7 @@ export function MessageRow({
       ref={articleRef}
       component="article"
       sx={{
+        flex: "0 0 auto",
         minWidth: 0,
         width: "100%",
         maxWidth: "100%",

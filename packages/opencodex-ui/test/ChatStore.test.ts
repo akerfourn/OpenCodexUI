@@ -177,7 +177,20 @@ function createProjectStore(): ProjectStore {
 function createRootStore(): RootStore {
   return {
     appStore: {
-      models: ["gpt-5.5", "gpt-5.4-mini"],
+      models: [
+        {
+          id: "gpt-5.5",
+          model: "gpt-5.5",
+          displayName: "GPT-5.5",
+          serviceTiers: []
+        },
+        {
+          id: "gpt-5.4-mini",
+          model: "gpt-5.4-mini",
+          displayName: "GPT-5.4 Mini",
+          serviceTiers: []
+        }
+      ],
       selectedModel: "gpt-5.4",
       settings: {
         defaultModel: null,

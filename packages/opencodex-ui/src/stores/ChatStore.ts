@@ -1,7 +1,7 @@
 /**
  * Holds the observable UI state for one chat loaded in memory.
  */
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable, runInAction, toJS } from "mobx";
 
 import type {
   OpenCodexActivity,
@@ -19,6 +19,7 @@ import type {
 
 import type { ProjectStore } from "./ProjectStore";
 import type { RootStore } from "./RootStore";
+import { ChatTurnStore } from "./ChatTurnStore";
 import {
   appendActivityItem,
   applyThreadTurns,
@@ -37,6 +38,7 @@ import {
 export class ChatStore {
   thread: OpenCodexThread;
   turns: OpenCodexTurn[] = [];
+  turnStores: ChatTurnStore[] = [];
   approvals: OpenCodexApproval[] = [];
   hasMoreOlderMessages = false;
   isLoadingOlderMessages = false;
@@ -57,6 +59,7 @@ export class ChatStore {
   scrollToBottomVersion = 0;
   private hasExplicitModelSelection = false;
   private hasExplicitReasoningEffortSelection = false;
+  private turnStoresById = new Map<string, ChatTurnStore>();
 
   /**
    * Creates a chat store for the provided thread.
@@ -75,12 +78,14 @@ export class ChatStore {
       ChatStore,
       | "projectStore"
       | "root"
+      | "turnStoresById"
       | "hasExplicitModelSelection"
       | "hasExplicitReasoningEffortSelection"
       | "updateComposerThreadMetadata"
     >(this, {
       projectStore: false,
       root: false,
+      turnStoresById: false,
       hasExplicitModelSelection: false,
       hasExplicitReasoningEffortSelection: false,
       updateComposerThreadMetadata: false
@@ -330,7 +335,7 @@ export class ChatStore {
    * @returns Nothing.
    */
   clearLoadedState(): void {
-    this.turns = [];
+    this.setTurns([]);
     this.pendingTurnId = null;
     this.hasUnseenCompletedTurn = false;
     this.hasMoreOlderMessages = false;
@@ -339,6 +344,49 @@ export class ChatStore {
     this.isRefreshing = false;
     this.isRecovering = false;
     this.tokenUsage = null;
+  }
+
+  setTurns(turns: OpenCodexTurn[]): void {
+    this.turns = turns;
+    this.syncTurnStores();
+  }
+
+  appendTurn(turn: OpenCodexTurn): void {
+    this.turns.push(turn);
+    this.upsertTurnStore(turn);
+  }
+
+  syncTurnStores(): void {
+    const nextStores: ChatTurnStore[] = [];
+    const nextStoresById = new Map<string, ChatTurnStore>();
+
+    for (const turn of this.turns) {
+      const existingStore = this.turnStoresById.get(turn.id);
+      const turnStore = existingStore ?? new ChatTurnStore(turn);
+
+      if (existingStore !== undefined) {
+        turnStore.setTurn(turn);
+      }
+
+      nextStores.push(turnStore);
+      nextStoresById.set(turn.id, turnStore);
+    }
+
+    this.turnStores = nextStores;
+    this.turnStoresById = nextStoresById;
+  }
+
+  private upsertTurnStore(turn: OpenCodexTurn): void {
+    const existingStore = this.turnStoresById.get(turn.id);
+
+    if (existingStore !== undefined) {
+      existingStore.setTurn(turn);
+      return;
+    }
+
+    const turnStore = new ChatTurnStore(turn);
+    this.turnStoresById.set(turn.id, turnStore);
+    this.turnStores.push(turnStore);
   }
 
   refresh(): void {
@@ -397,6 +445,36 @@ export class ChatStore {
         this.root.appStore.errorMessage = readErrorMessage(error);
       });
     });
+  }
+
+  exportLastTurnDebugJson(): void {
+    const lastTurn = this.turns.at(-1);
+    const lastTurnStore = this.turnStores.at(-1);
+
+    if (lastTurn === undefined) {
+      console.info("[OpenCodexUI debug] no turn to export");
+      return;
+    }
+
+    const payload = toPlainJson({
+      thread: {
+        id: this.thread.id,
+        title: this.thread.title
+      },
+      activeTurnId: this.activeTurnId,
+      isWorking: this.isWorking,
+      rawTurn: lastTurn,
+      structuredTurn: lastTurnStore === undefined ? null : {
+        id: lastTurnStore.id,
+        threadId: lastTurnStore.threadId,
+        isRunning: lastTurnStore.isRunning(this.activeTurnId, this.isWorking),
+        subTurns: lastTurnStore.subTurns,
+        finalAnswer: lastTurnStore.finalAnswer
+      }
+    });
+
+    console.log("[OpenCodexUI debug] last turn JSON");
+    console.log(JSON.stringify(payload, null, 2));
   }
 
   loadOlderMessages(): void {
@@ -513,7 +591,7 @@ export class ChatStore {
 
     this.isEditingLastTurn = true;
     this.isStartingTurn = true;
-    this.turns = this.turns.slice(0, -1);
+    this.setTurns(this.turns.slice(0, -1));
     this.pendingTurnId = null;
     this.createOptimisticUserTurn(trimmedText, plainAttachments);
 
@@ -551,7 +629,7 @@ export class ChatStore {
       });
     }).catch((error: unknown) => {
       runInAction(() => {
-        this.turns = previousTurns;
+        this.setTurns(previousTurns);
         this.pendingTurnId = null;
         this.isEditingLastTurn = false;
         this.isStartingTurn = false;
@@ -600,7 +678,7 @@ export class ChatStore {
   applyTurnsPrepended(turns: OpenCodexTurn[], hasMoreOlderMessages: boolean): void {
     this.isLoadingOlderMessages = false;
     this.hasMoreOlderMessages = hasMoreOlderMessages;
-    this.turns = [...turns, ...this.turns];
+    this.setTurns([...turns, ...this.turns]);
     this.olderMessagesPrependVersion += 1;
   }
 
@@ -770,7 +848,7 @@ export class ChatStore {
     };
 
     this.pendingTurnId = turnId;
-    this.turns.push(created);
+    this.appendTurn(created);
     this.scrollToBottomVersion += 1;
   }
 
@@ -870,6 +948,10 @@ function cloneImageAttachments(attachments: OpenCodexImageAttachment[]): OpenCod
     name: attachment.name ?? null,
     previewUrl: attachment.previewUrl ?? null
   }));
+}
+
+function toPlainJson<TValue>(value: TValue): TValue {
+  return JSON.parse(JSON.stringify(toJS(value))) as TValue;
 }
 
 function readErrorMessage(error: unknown): string {
