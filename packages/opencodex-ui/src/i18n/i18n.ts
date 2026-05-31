@@ -71,6 +71,8 @@ export const resources = {
         model: "Modèle",
         removeAttachment: "Retirer l'image",
         reasoning: "Raisonnement",
+        serviceTier: "Vitesse",
+        serviceTierDefault: "Auto",
         send: "Envoyer",
         steer: "Guider"
       },
@@ -560,6 +562,8 @@ export const resources = {
         model: "Model",
         removeAttachment: "Remove image",
         reasoning: "Reasoning",
+        serviceTier: "Speed",
+        serviceTierDefault: "Auto",
         send: "Send",
         steer: "Steer"
       },

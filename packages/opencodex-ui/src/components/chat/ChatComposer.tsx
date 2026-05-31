@@ -59,6 +59,7 @@ export function ChatComposer({
   const canShowSubmit = !isWorking || canSteer;
   const canAttachImages = !isWorking || canSteer;
   const sourceId = chatStore.sourceId;
+  const serviceTierOptions = store.appStore.getServiceTierOptions(chatStore.selectedModel);
   const areAdvancedActionsDisabled = (
     isWorking ||
     chatStore.isStartingTurn ||
@@ -138,6 +139,10 @@ export function ChatComposer({
 
   function handleEffortChange(value: ChatStore["reasoningEffort"]): void {
     chatStore.setReasoningEffort(value);
+  }
+
+  function handleServiceTierChange(value: ChatStore["selectedServiceTier"]): void {
+    chatStore.setSelectedServiceTier(value);
   }
 
   function handleInterrupt(): void {
@@ -242,9 +247,12 @@ export function ChatComposer({
         <ModelSettingsFields
           selectedModel={chatStore.selectedModel}
           reasoningEffort={chatStore.reasoningEffort}
+          selectedServiceTier={chatStore.selectedServiceTier}
           modelOptions={modelOptions}
+          serviceTierOptions={serviceTierOptions}
           onModelChange={handleModelChange}
           onReasoningEffortChange={handleEffortChange}
+          onServiceTierChange={handleServiceTierChange}
         />
         <div className="spacer" />
         <ChatAdvancedActionsMenu

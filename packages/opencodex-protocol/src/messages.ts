@@ -39,6 +39,20 @@ export type OpenCodexSourceKind = "local";
 export type OpenCodexSourceCommandMode = "auto" | "custom";
 export type OpenCodexSourceColor = "blue" | "indigo" | "purple" | "pink" | "red" | "orange" | "amber" | "teal";
 export type OpenCodexToolAvailabilityStatus = "ready" | "unavailable";
+export type OpenCodexServiceTier = string;
+
+export type OpenCodexModelServiceTier = {
+  id: OpenCodexServiceTier;
+  name: string;
+  description: string;
+};
+
+export type OpenCodexModel = {
+  id: string;
+  model: string;
+  displayName: string;
+  serviceTiers: OpenCodexModelServiceTier[];
+};
 
 export type OpenCodexToolVersionStatus = {
   status: OpenCodexToolAvailabilityStatus;

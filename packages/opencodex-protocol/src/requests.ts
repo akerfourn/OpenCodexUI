@@ -8,6 +8,7 @@ import type {
   OpenCodexImageAttachment,
   OpenCodexLogRetentionUnit,
   OpenCodexReasoningEffort,
+  OpenCodexServiceTier,
   OpenCodexGitBranchKind,
   OpenCodexProjectPreferences,
   OpenCodexSourceLocalSettings,
@@ -68,6 +69,7 @@ export type OpenCodexRequest =
       threadId: string;
       model: string | null;
       reasoningEffort: OpenCodexReasoningEffort | null;
+      serviceTier?: OpenCodexServiceTier | null;
     }
   | { type: "thread.review"; threadId: string; projectPath?: string | null }
   | { type: "thread.compact"; threadId: string; projectPath?: string | null }
@@ -83,6 +85,7 @@ export type OpenCodexRequest =
       references?: OpenCodexComposerReference[];
       model?: string | null;
       reasoningEffort?: OpenCodexReasoningEffort | null;
+      serviceTier?: OpenCodexServiceTier | null;
     }
   | {
       type: "turn.steer";
@@ -102,6 +105,7 @@ export type OpenCodexRequest =
       references?: OpenCodexComposerReference[];
       model?: string | null;
       reasoningEffort?: OpenCodexReasoningEffort | null;
+      serviceTier?: OpenCodexServiceTier | null;
     }
   | { type: "turn.interrupt"; threadId: string; turnId: string }
   | { type: "approval.respond"; approvalId: string; decision: OpenCodexApprovalDecision }

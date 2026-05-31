@@ -133,7 +133,8 @@ export class OpenCodexRequestRouter {
           request.attachments ?? [],
           request.references ?? [],
           request.model ?? null,
-          request.reasoningEffort ?? null
+          request.reasoningEffort ?? null,
+          request.serviceTier ?? null
         );
       case "turn.steer":
         return this.runtime.steerTurn(
@@ -152,7 +153,8 @@ export class OpenCodexRequestRouter {
           request.attachments ?? [],
           request.references ?? [],
           request.model ?? null,
-          request.reasoningEffort ?? null
+          request.reasoningEffort ?? null,
+          request.serviceTier ?? null
         );
       case "turn.interrupt":
         return this.runtime.interruptTurn(request.threadId, request.turnId);

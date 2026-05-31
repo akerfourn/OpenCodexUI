@@ -11,6 +11,7 @@ import type {
   OpenCodexMessage,
   OpenCodexMessagePhase,
   OpenCodexReasoningEffort,
+  OpenCodexServiceTier,
   OpenCodexThread,
   OpenCodexThreadTokenUsage,
   OpenCodexTurn
@@ -50,6 +51,7 @@ export class ChatStore {
   pendingTurnId: string | null = null;
   selectedModel: string | null = null;
   reasoningEffort: OpenCodexReasoningEffort = "medium";
+  selectedServiceTier: OpenCodexServiceTier | null = null;
   tokenUsage: OpenCodexThreadTokenUsage | null = null;
   olderMessagesPrependVersion = 0;
   scrollToBottomVersion = 0;
@@ -260,6 +262,7 @@ export class ChatStore {
    */
   setSelectedModel(value: string | null): void {
     this.selectedModel = value;
+    this.selectedServiceTier = resolveAvailableServiceTier(value, this.selectedServiceTier, this.root);
     this.hasExplicitModelSelection = true;
     this.updateComposerThreadMetadata(value, this.reasoningEffort);
   }
@@ -275,6 +278,17 @@ export class ChatStore {
     this.reasoningEffort = value;
     this.hasExplicitReasoningEffortSelection = true;
     this.updateComposerThreadMetadata(this.selectedModel, value);
+  }
+
+  /**
+   * Updates the service tier used by this chat composer for future turns.
+   *
+   * @param value Service tier identifier, or `null` for Codex default.
+   *
+   * @returns Nothing.
+   */
+  setSelectedServiceTier(value: OpenCodexServiceTier | null): void {
+    this.selectedServiceTier = resolveAvailableServiceTier(this.selectedModel, value, this.root);
   }
 
   /**
@@ -419,7 +433,8 @@ export class ChatStore {
     attachments: OpenCodexImageAttachment[] = [],
     references: OpenCodexComposerReference[] = [],
     model: string | null = this.selectedModel,
-    reasoningEffort: OpenCodexReasoningEffort = this.reasoningEffort
+    reasoningEffort: OpenCodexReasoningEffort = this.reasoningEffort,
+    serviceTier: OpenCodexServiceTier | null = this.selectedServiceTier
   ): Promise<boolean> {
     const trimmedText = text.trim();
     const sourceId = this.sourceId;
@@ -455,7 +470,8 @@ export class ChatStore {
       attachments,
       references: cloneComposerReferences(references),
       model,
-      reasoningEffort
+      reasoningEffort,
+      serviceTier
     });
 
     return Promise.resolve(true);
@@ -478,7 +494,8 @@ export class ChatStore {
     attachments: OpenCodexImageAttachment[] = [],
     model: string | null = this.selectedModel,
     reasoningEffort: OpenCodexReasoningEffort = this.reasoningEffort,
-    references: OpenCodexComposerReference[] = []
+    references: OpenCodexComposerReference[] = [],
+    serviceTier: OpenCodexServiceTier | null = this.selectedServiceTier
   ): boolean {
     const trimmedText = text.trim();
     const sourceId = this.sourceId;
@@ -509,7 +526,8 @@ export class ChatStore {
       attachments: plainAttachments,
       references: cloneComposerReferences(references),
       model,
-      reasoningEffort
+      reasoningEffort,
+      serviceTier
     }).then((result) => {
       const targetThreadId = result.threadId ?? this.thread.id;
 
@@ -522,7 +540,8 @@ export class ChatStore {
         attachments: plainAttachments,
         references: cloneComposerReferences(references),
         model,
-        reasoningEffort
+        reasoningEffort,
+        serviceTier
       }).catch((error: unknown) => {
         runInAction(() => {
           this.isStartingTurn = false;
@@ -866,7 +885,7 @@ function resolveInitialSelectedModel(thread: OpenCodexThread, root: RootStore): 
     return thread.model;
   }
 
-  return root.appStore.models[0] ?? root.appStore.selectedModel ?? root.appStore.settings.defaultModel;
+  return root.appStore.models[0]?.model ?? root.appStore.selectedModel ?? root.appStore.settings.defaultModel;
 }
 
 function resolveInitialReasoningEffort(
@@ -874,6 +893,21 @@ function resolveInitialReasoningEffort(
   root: RootStore
 ): OpenCodexReasoningEffort {
   return thread.reasoningEffort ?? root.appStore.settings.defaultReasoningEffort ?? "medium";
+}
+
+function resolveAvailableServiceTier(
+  model: string | null,
+  serviceTier: OpenCodexServiceTier | null,
+  root: RootStore
+): OpenCodexServiceTier | null {
+  if (serviceTier === null) {
+    return null;
+  }
+
+  const tiers = root.appStore.getServiceTierOptions(model);
+  const isAvailable = tiers.some((tier) => tier.id === serviceTier);
+
+  return isAvailable ? serviceTier : null;
 }
 
 function readLoadOlderResult(value: unknown): {

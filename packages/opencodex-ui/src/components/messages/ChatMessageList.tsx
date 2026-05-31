@@ -133,6 +133,10 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
     chatStore.setReasoningEffort(value);
   }
 
+  function handleServiceTierChange(value: string | null): void {
+    chatStore.setSelectedServiceTier(value);
+  }
+
   function handleSubmitEdit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     submitEditMessage();
@@ -168,6 +172,7 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
     const submittedAttachments = chatStore.editableLastUserItem?.attachments ?? [];
     const submittedModel = chatStore.selectedModel;
     const submittedReasoningEffort = chatStore.reasoningEffort;
+    const submittedServiceTier = chatStore.selectedServiceTier;
 
     flushSync(() => {
       setEditedMessage(null);
@@ -177,7 +182,9 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
       submittedMessage,
       submittedAttachments,
       submittedModel,
-      submittedReasoningEffort
+      submittedReasoningEffort,
+      [],
+      submittedServiceTier
     );
 
     if (!wasAccepted) {
@@ -445,9 +452,12 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
             <ModelSettingsFields
               selectedModel={chatStore.selectedModel}
               reasoningEffort={chatStore.reasoningEffort}
+              selectedServiceTier={chatStore.selectedServiceTier}
               modelOptions={store.appStore.modelOptions}
+              serviceTierOptions={store.appStore.getServiceTierOptions(chatStore.selectedModel)}
               onModelChange={handleModelChange}
               onReasoningEffortChange={handleEffortChange}
+              onServiceTierChange={handleServiceTierChange}
             />
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button type="button" onClick={handleCancelEdit}>

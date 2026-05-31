@@ -6,6 +6,7 @@ import type {
   OpenCodexApproval,
   OpenCodexLogEntry,
   OpenCodexMessage,
+  OpenCodexModel,
   OpenCodexProject,
   OpenCodexProjectCommandRun,
   OpenCodexProjectCommandOutputStream,
@@ -64,7 +65,7 @@ export type OpenCodexEvent =
   | { type: "project.trust.completed"; projectPath: string }
   | { type: "turn.started"; threadId: string; turnId: string }
   | { type: "turn.completed"; threadId: string; turnId: string; durationMs: number | null }
-  | { type: "models.updated"; models: string[] }
+  | { type: "models.updated"; models: OpenCodexModel[] }
   | { type: "usage.updated"; usage: OpenCodexUsageLimits | null }
   | { type: "logs.created"; log: OpenCodexLogEntry }
   | { type: "logs.deleted"; logId: string }

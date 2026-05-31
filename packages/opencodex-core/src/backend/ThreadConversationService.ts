@@ -449,6 +449,7 @@ export class ThreadConversationService {
    * @param attachments Image attachments.
    * @param model Optional model override.
    * @param reasoningEffort Optional reasoning effort override.
+   * @param serviceTier Optional service tier override.
    *
    * @returns Thread and turn identifiers.
    */
@@ -461,6 +462,7 @@ export class ThreadConversationService {
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
+    serviceTier: string | null,
     shouldResumeExistingThread = true
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
@@ -508,6 +510,7 @@ export class ThreadConversationService {
       threadId: targetThreadId,
       input,
       model,
+      serviceTier,
       effort: reasoningEffort ?? this.options.getSettings().defaultReasoningEffort
     });
     const turn = readObject(readObject(turnResponse).turn);
@@ -594,6 +597,7 @@ export class ThreadConversationService {
    * @param _attachments Image attachments.
    * @param model Optional model override.
    * @param reasoningEffort Optional reasoning effort override.
+   * @param _serviceTier Optional service tier override.
    *
    * @returns Thread and turn identifiers.
    */
@@ -605,7 +609,8 @@ export class ThreadConversationService {
     _attachments: OpenCodexImageAttachment[],
     _references: OpenCodexComposerReference[],
     model: string | null,
-    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
+    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
+    _serviceTier: string | null
   ): Promise<{ threadId: string }> {
     const targetSourceId = await this.resolveThreadSourceId(threadId) ?? sourceId;
 

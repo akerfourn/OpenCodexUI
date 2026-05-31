@@ -5,14 +5,21 @@ import { MenuItem, Stack, TextField } from "@mui/material";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexReasoningEffort } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexModelServiceTier,
+  OpenCodexReasoningEffort,
+  OpenCodexServiceTier
+} from "@open-codex-ui/opencodex-protocol";
 
 type ModelSettingsFieldsProps = {
   selectedModel: string | null;
   reasoningEffort: OpenCodexReasoningEffort;
+  selectedServiceTier: OpenCodexServiceTier | null;
   modelOptions: string[];
+  serviceTierOptions: OpenCodexModelServiceTier[];
   onModelChange(value: string | null): void;
   onReasoningEffortChange(value: OpenCodexReasoningEffort): void;
+  onServiceTierChange(value: OpenCodexServiceTier | null): void;
 };
 
 /**
@@ -25,9 +32,12 @@ type ModelSettingsFieldsProps = {
 export function ModelSettingsFields({
   selectedModel,
   reasoningEffort,
+  selectedServiceTier,
   modelOptions,
+  serviceTierOptions,
   onModelChange,
-  onReasoningEffortChange
+  onReasoningEffortChange,
+  onServiceTierChange
 }: ModelSettingsFieldsProps) {
   const { t } = useTranslation();
 
@@ -37,6 +47,12 @@ export function ModelSettingsFields({
 
   function handleEffortChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     onReasoningEffortChange(event.target.value as OpenCodexReasoningEffort);
+  }
+
+  function handleServiceTierChange(
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ): void {
+    onServiceTierChange(event.target.value.length > 0 ? event.target.value : null);
   }
 
   return (
@@ -67,6 +83,22 @@ export function ModelSettingsFields({
         <MenuItem value="medium">medium</MenuItem>
         <MenuItem value="high">high</MenuItem>
         <MenuItem value="xhigh">xhigh</MenuItem>
+      </TextField>
+      <TextField
+        select
+        size="small"
+        value={selectedServiceTier ?? ""}
+        label={t("composer.serviceTier")}
+        onChange={handleServiceTierChange}
+        disabled={serviceTierOptions.length === 0}
+        sx={{ maxWidth: 160, minWidth: 130 }}
+      >
+        <MenuItem value="">{t("composer.serviceTierDefault")}</MenuItem>
+        {serviceTierOptions.map((tier) => (
+          <MenuItem value={tier.id} key={tier.id}>
+            {tier.name.length > 0 ? tier.name : tier.id}
+          </MenuItem>
+        ))}
       </TextField>
     </Stack>
   );

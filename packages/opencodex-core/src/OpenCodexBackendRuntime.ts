@@ -27,6 +27,7 @@ import type {
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
+  OpenCodexModel,
   OpenCodexPluginDetail,
   OpenCodexPluginInstallResult,
   OpenCodexPluginListResult,
@@ -723,7 +724,8 @@ export class OpenCodexBackendRuntime {
     attachments: OpenCodexImageAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
-    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
+    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
+    serviceTier: string | null
   ): Promise<{ threadId: string; turnId: string }> {
     return await this.threadConversationService.startTurn(
       threadId,
@@ -733,7 +735,8 @@ export class OpenCodexBackendRuntime {
       attachments,
       references,
       model,
-      reasoningEffort
+      reasoningEffort,
+      serviceTier
     );
   }
 
@@ -784,7 +787,8 @@ export class OpenCodexBackendRuntime {
     attachments: OpenCodexImageAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
-    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null
+    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
+    serviceTier: string | null
   ): Promise<{ threadId: string }> {
     return await this.threadConversationService.editLastTurn(
       threadId,
@@ -794,7 +798,8 @@ export class OpenCodexBackendRuntime {
       attachments,
       references,
       model,
-      reasoningEffort
+      reasoningEffort,
+      serviceTier
     );
   }
 
@@ -907,7 +912,7 @@ export class OpenCodexBackendRuntime {
    *
    * @returns Model identifiers.
    */
-  async listModels(): Promise<string[]> {
+  async listModels(): Promise<OpenCodexModel[]> {
     const client = await this.ensureClient();
 
     try {

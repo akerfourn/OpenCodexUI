@@ -6,6 +6,8 @@ import type {
   OpenCodexEnterKeyBehavior,
   OpenCodexEvent,
   OpenCodexLanguage,
+  OpenCodexModel,
+  OpenCodexModelServiceTier,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
   OpenCodexToolVersionStatus,
@@ -38,7 +40,7 @@ export class AppStore implements RootChildStore {
     discordRichPresenceEnabled: true
   };
   launchProjectPath: string | null = null;
-  models: string[] = [];
+  models: OpenCodexModel[] = [];
   selectedModel: string | null = null;
   reasoningEffort: OpenCodexReasoningEffort = "medium";
   errorMessage: string | null = null;
@@ -58,7 +60,7 @@ export class AppStore implements RootChildStore {
    * @returns Model option list.
    */
   get modelOptions(): string[] {
-    const options = [...this.models];
+    const options = this.models.map((model) => model.model);
 
     if (this.selectedModel !== null && !options.includes(this.selectedModel)) {
       options.unshift(this.selectedModel);
@@ -73,7 +75,7 @@ export class AppStore implements RootChildStore {
    * @returns Model option list.
    */
   get commitMessageModelOptions(): string[] {
-    const options = [...this.models];
+    const options = this.models.map((model) => model.model);
     const selectedModel = this.settings.commitMessageModel;
 
     if (selectedModel !== null && !options.includes(selectedModel)) {
@@ -144,7 +146,7 @@ export class AppStore implements RootChildStore {
         return;
       case "models.updated":
         this.models = event.models;
-        this.selectedModel = this.selectedModel ?? event.models[0] ?? null;
+        this.selectedModel = this.selectedModel ?? event.models[0]?.model ?? null;
         return;
       default:
         return;
@@ -193,6 +195,21 @@ export class AppStore implements RootChildStore {
    */
   setReasoningEffort(value: OpenCodexReasoningEffort): void {
     this.reasoningEffort = value;
+  }
+
+  /**
+   * Returns service tier choices for the provided model.
+   *
+   * @param model Model identifier.
+   *
+   * @returns Service tiers advertised by Codex.
+   */
+  getServiceTierOptions(model: string | null): OpenCodexModelServiceTier[] {
+    if (model === null) {
+      return [];
+    }
+
+    return this.models.find((entry) => entry.model === model)?.serviceTiers ?? [];
   }
 
   /**
