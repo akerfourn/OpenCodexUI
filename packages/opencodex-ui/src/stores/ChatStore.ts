@@ -1,7 +1,7 @@
 /**
  * Holds the observable UI state for one chat loaded in memory.
  */
-import { makeAutoObservable, runInAction, toJS } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexActivity,
@@ -445,36 +445,6 @@ export class ChatStore {
         this.root.appStore.errorMessage = readErrorMessage(error);
       });
     });
-  }
-
-  exportLastTurnDebugJson(): void {
-    const lastTurn = this.turns.at(-1);
-    const lastTurnStore = this.turnStores.at(-1);
-
-    if (lastTurn === undefined) {
-      console.info("[OpenCodexUI debug] no turn to export");
-      return;
-    }
-
-    const payload = toPlainJson({
-      thread: {
-        id: this.thread.id,
-        title: this.thread.title
-      },
-      activeTurnId: this.activeTurnId,
-      isWorking: this.isWorking,
-      rawTurn: lastTurn,
-      structuredTurn: lastTurnStore === undefined ? null : {
-        id: lastTurnStore.id,
-        threadId: lastTurnStore.threadId,
-        isRunning: lastTurnStore.isRunning(this.activeTurnId, this.isWorking),
-        subTurns: lastTurnStore.subTurns,
-        finalAnswer: lastTurnStore.finalAnswer
-      }
-    });
-
-    console.log("[OpenCodexUI debug] last turn JSON");
-    console.log(JSON.stringify(payload, null, 2));
   }
 
   loadOlderMessages(): void {
@@ -948,10 +918,6 @@ function cloneImageAttachments(attachments: OpenCodexImageAttachment[]): OpenCod
     name: attachment.name ?? null,
     previewUrl: attachment.previewUrl ?? null
   }));
-}
-
-function toPlainJson<TValue>(value: TValue): TValue {
-  return JSON.parse(JSON.stringify(toJS(value))) as TValue;
 }
 
 function readErrorMessage(error: unknown): string {

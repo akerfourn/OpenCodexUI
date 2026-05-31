@@ -21,10 +21,8 @@ export type ChatAdvancedAction = "review" | "compact";
 
 type ChatAdvancedActionsMenuProps = {
   disabled: boolean;
-  canExportLastTurn: boolean;
   onReview(): void;
   onCompact(): void;
-  onExportLastTurn(): void;
 };
 
 /**
@@ -35,10 +33,8 @@ type ChatAdvancedActionsMenuProps = {
  */
 export function ChatAdvancedActionsMenu({
   disabled,
-  canExportLastTurn,
   onReview,
-  onCompact,
-  onExportLastTurn
+  onCompact
 }: ChatAdvancedActionsMenuProps) {
   const { t } = useTranslation();
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
@@ -55,11 +51,6 @@ export function ChatAdvancedActionsMenu({
 
   function handleSelectAction(action: ChatAdvancedAction): void {
     setPendingAction(action);
-    handleCloseMenu();
-  }
-
-  function handleExportLastTurn(): void {
-    onExportLastTurn();
     handleCloseMenu();
   }
 
@@ -95,7 +86,7 @@ export function ChatAdvancedActionsMenu({
           <IconButton
             type="button"
             aria-label={t("composer.advanced.open")}
-            disabled={disabled && !canExportLastTurn}
+            disabled={disabled}
             onClick={handleOpenMenu}
           >
             <MoreVertIcon />
@@ -112,9 +103,6 @@ export function ChatAdvancedActionsMenu({
         </MenuItem>
         <MenuItem disabled={disabled} onClick={() => handleSelectAction("compact")}>
           {t("composer.advanced.compact")}
-        </MenuItem>
-        <MenuItem disabled={!canExportLastTurn} onClick={handleExportLastTurn}>
-          {t("composer.advanced.exportLastTurn")}
         </MenuItem>
       </Menu>
       <Dialog open={pendingAction !== null} onClose={handleCancel}>
