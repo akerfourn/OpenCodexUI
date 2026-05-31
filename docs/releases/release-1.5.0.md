@@ -12,6 +12,14 @@ active reasoning, and exposing Codex service tiers in the composer.
   - keep `Auto` as the default when no explicit tier is selected
 - Improved long-chat streaming performance by moving per-turn rendering into a
   dedicated `ChatTurnView` observer component
+- Reworked chat rendering around turn/sub-turn structures:
+  - user guidance, reasoning/activity items, and final answers are grouped from
+    Codex turn items before rendering
+  - historical reasoning blocks are preserved when loading cached or synced
+    turns
+  - active turn updates are isolated to the currently changing turn
+- Replaced the large model/reasoning/speed selects with compact menu buttons in
+  the composer toolbar
 - Restored bottom-lock behavior while the final assistant message streams
 - Prevented long reasoning/activity rows from expanding the central chat layout
   beyond its visible pane
@@ -24,6 +32,8 @@ active reasoning, and exposing Codex service tiers in the composer.
   tier
 - The edit-last-message modal uses the same model, reasoning, and service tier
   controls as the main composer
+- The composer now keeps model, reasoning, and speed controls visible with less
+  horizontal space
 - Long activity content inside the reasoning block now stays constrained to the
   chat width
 
@@ -31,6 +41,8 @@ active reasoning, and exposing Codex service tiers in the composer.
 
 - Added protocol DTOs for model service tier metadata
 - Extended turn start and edit requests with an optional `serviceTier`
+- Added a `ChatTurnStore` and a UI-side turn structure builder to keep Codex
+  item grouping out of React rendering code
 - Kept message list rendering focused on scroll/window management while each
   turn owns its observable content reads
 - Added width constraints around the chat message list and assistant activity
