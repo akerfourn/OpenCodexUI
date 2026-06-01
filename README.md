@@ -2,6 +2,10 @@
 
 OpenCodexUI is a local desktop client for Codex CLI.
 
+OpenCodexUI is an independent community project. It is not affiliated with,
+endorsed by, or sponsored by OpenAI or the official
+[OpenAI Codex](https://github.com/openai/codex) project.
+
 It runs as an Electron application, uses the local `codex app-server`, and keeps
 the UI focused on projects, conversations, Git workflows, local tasks, plugins,
 and commit message generation.
