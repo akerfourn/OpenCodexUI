@@ -6,6 +6,7 @@ import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import CallMergeOutlinedIcon from "@mui/icons-material/CallMergeOutlined";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
+import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import {
   Alert,
@@ -135,6 +136,10 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     void gitStore.push();
   }
 
+  function handlePublishBranch(): void {
+    void gitStore.publishBranch();
+  }
+
   function handlePull(): void {
     void gitStore.pull();
   }
@@ -149,7 +154,12 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   return (
     <section className="git-panel">
-      <Stack className="git-panel-header" direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
+      <Stack
+        className="git-panel-header"
+        direction="row"
+        spacing={0.25}
+        sx={{ alignItems: "flex-start" }}
+      >
         <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
           {gitStore.status.branchName !== null ? (
             <Typography variant="caption" color="text.secondary" noWrap>
@@ -194,6 +204,25 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
             </IconButton>
           </span>
         </Tooltip>
+        {gitStore.status.branchName !== null && gitStore.status.upstreamName === null ? (
+          <Tooltip title={t("git.publishBranchTooltip")}>
+            <span className="git-panel-header-action">
+              <IconButton
+                aria-label={t("git.publishBranch")}
+                size="small"
+                disabled={!gitStore.canPublishBranch}
+                onClick={handlePublishBranch}
+                sx={{ height: 26, width: 26 }}
+              >
+                {gitStore.isPushing ? (
+                  <CircularProgress color="inherit" size={14} />
+                ) : (
+                  <PublishOutlinedIcon sx={{ fontSize: 16 }} />
+                )}
+              </IconButton>
+            </span>
+          </Tooltip>
+        ) : null}
         <Tooltip title={t("git.refresh")}>
           <span className="git-panel-header-action">
             <IconButton

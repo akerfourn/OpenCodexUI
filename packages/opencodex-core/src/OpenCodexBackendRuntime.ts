@@ -1248,6 +1248,21 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Publishes the current local branch to a remote and configures its upstream.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Refreshed Git status.
+   */
+  async publishCurrentGitBranch(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexGitStatus> {
+    return await this.gitService.publishCurrentBranch(projectPath, sourceId);
+  }
+
+  /**
    * Lists commands configured for a project.
    *
    * @param projectId Project identifier.

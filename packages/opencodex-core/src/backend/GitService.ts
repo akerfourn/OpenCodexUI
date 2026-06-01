@@ -319,6 +319,42 @@ export class GitService {
   }
 
   /**
+   * Pushes the current local branch and configures its upstream.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Refreshed status.
+   */
+  async publishCurrentBranch(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexGitStatus> {
+    const status = await this.status(projectPath, sourceId);
+
+    if (!status.isRepository) {
+      throw new Error("This project is not a Git repository.");
+    }
+
+    if (status.branchName === null) {
+      throw new Error("Cannot publish a detached HEAD.");
+    }
+
+    if (status.upstreamName !== null) {
+      return await this.push(projectPath, sourceId);
+    }
+
+    const remoteName = await this.resolveDefaultRemoteName(projectPath, sourceId);
+    await this.runGit(
+      projectPath,
+      sourceId,
+      ["push", "--set-upstream", remoteName, status.branchName],
+      { timeoutMs: 120_000 }
+    );
+
+    return await this.status(projectPath, sourceId);
+  }
+
+  /**
    * Pulls remote commits from the configured upstream.
    *
    * @param projectPath Project working directory.
@@ -328,6 +364,29 @@ export class GitService {
   async pull(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
     await this.runGit(projectPath, sourceId, ["pull", "--ff-only"], { timeoutMs: 120_000 });
     return await this.status(projectPath, sourceId);
+  }
+
+  private async resolveDefaultRemoteName(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<string> {
+    const response = await this.runGit(projectPath, sourceId, ["remote"]);
+    const remotes = response.stdout
+      .split("\n")
+      .map((remoteName) => remoteName.trim())
+      .filter((remoteName) => remoteName.length > 0);
+
+    if (remotes.length === 0) {
+      throw new Error("No Git remote is configured for this repository.");
+    }
+
+    const firstRemoteName = remotes[0];
+
+    if (firstRemoteName === undefined) {
+      throw new Error("No Git remote is configured for this repository.");
+    }
+
+    return remotes.includes("origin") ? "origin" : firstRemoteName;
   }
 
   /**

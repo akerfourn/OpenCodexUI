@@ -125,6 +125,16 @@ export class ProjectGitStore {
     );
   }
 
+  get canPublishBranch(): boolean {
+    return (
+      this.status.isRepository &&
+      this.status.branchName !== null &&
+      this.status.upstreamName === null &&
+      !this.isLoading &&
+      !this.isPushing
+    );
+  }
+
   get canPull(): boolean {
     return (
       this.status.isRepository &&
@@ -535,6 +545,42 @@ export class ProjectGitStore {
           this.clearTags();
         }
       });
+      if (status.isRepository) {
+        void this.loadTags();
+      }
+    } catch (error) {
+      runInAction(() => {
+        this.errorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isPushing = false;
+      });
+    }
+  }
+
+  async publishBranch(): Promise<void> {
+    if (!this.canPublishBranch) {
+      return;
+    }
+
+    this.isPushing = true;
+    this.errorMessage = null;
+
+    try {
+      const status = await this.root.request<OpenCodexGitStatus>({
+        type: "git.branch.publish",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      });
+
+      runInAction(() => {
+        this.applyStatus(status);
+        if (!status.isRepository) {
+          this.clearTags();
+        }
+      });
+      await this.loadBranches();
       if (status.isRepository) {
         void this.loadTags();
       }

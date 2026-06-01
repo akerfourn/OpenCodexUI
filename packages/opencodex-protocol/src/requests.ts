@@ -151,6 +151,7 @@ export type OpenCodexRequest =
   | { type: "git.commit"; projectPath: string; sourceId: string | null; message: string }
   | { type: "git.pull"; projectPath: string; sourceId: string | null }
   | { type: "git.push"; projectPath: string; sourceId: string | null }
+  | { type: "git.branch.publish"; projectPath: string; sourceId: string | null }
   | { type: "projectCommands.list"; projectId: string }
   | {
       type: "projectCommands.create";

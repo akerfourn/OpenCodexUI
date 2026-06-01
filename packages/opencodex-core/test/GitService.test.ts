@@ -189,6 +189,37 @@ describe("GitService", () => {
     ]);
   });
 
+  it("should publish the current local branch and configure its upstream", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: "# branch.head feature/api\0", stderr: "" },
+      { exitCode: 0, stdout: "backup\norigin\n", stderr: "" },
+      { exitCode: 0, stdout: "branch 'feature/api' set up to track 'origin/feature/api'.\n", stderr: "" },
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      {
+        exitCode: 0,
+        stdout: "# branch.head feature/api\0# branch.upstream origin/feature/api\0",
+        stderr: ""
+      }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const status = await service.publishCurrentBranch("/workspace/project", "source-1");
+
+    expect(status.branchName).toBe("feature/api");
+    expect(status.upstreamName).toBe("origin/feature/api");
+    expect(client.commands).toEqual([
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote"],
+      ["git", "push", "--set-upstream", "origin", "feature/api"],
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"]
+    ]);
+  });
+
   it("should list Git tags with metadata", async () => {
     const client = new FakeCodexClient([
       {

@@ -228,6 +228,8 @@ export class OpenCodexRequestRouter {
         return this.runtime.pullGitChanges(request.projectPath, request.sourceId);
       case "git.push":
         return this.runtime.pushGitChanges(request.projectPath, request.sourceId);
+      case "git.branch.publish":
+        return this.runtime.publishCurrentGitBranch(request.projectPath, request.sourceId);
       case "projectCommands.list":
         return this.runtime.listProjectCommands(request.projectId);
       case "projectCommands.create":
