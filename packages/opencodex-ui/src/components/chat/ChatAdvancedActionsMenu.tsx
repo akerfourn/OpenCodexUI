@@ -99,6 +99,7 @@ export function ChatAdvancedActionsMenu({
       <Tooltip title={t("composer.advanced.open")}>
         <span>
           <IconButton
+            className="composer-icon-button"
             type="button"
             aria-label={t("composer.advanced.open")}
             disabled={isMenuDisabled}

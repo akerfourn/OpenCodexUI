@@ -755,7 +755,7 @@ textarea {
   z-index: 1;
   border-top: 1px solid var(--vscode-panel-border);
   background: var(--vscode-editor-background);
-  padding: 12px 16px 14px;
+  padding: 10px 16px 8px;
 }
 
 .composer-editor-shell {
@@ -840,13 +840,18 @@ textarea {
   width: 100%;
   max-width: 820px;
   min-width: 0;
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .composer-icon-button.MuiIconButton-root {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 6px;
+  padding: 5px;
+}
+
+.composer-icon-button.MuiIconButton-root .MuiSvgIcon-root {
+  font-size: 20px;
 }
 
 .composer-setting-button.MuiButton-root {
