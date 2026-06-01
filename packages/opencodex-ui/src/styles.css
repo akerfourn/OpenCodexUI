@@ -595,6 +595,24 @@ textarea {
   align-items: center;
 }
 
+.project-command-add-button.MuiIconButton-root {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.project-command-add-button.MuiIconButton-root:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.project-command-add-button.MuiIconButton-root.Mui-disabled {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-disabledForeground);
+}
+
 .project-commands-content {
   flex: 1 1 auto;
   min-height: 0;
@@ -631,7 +649,7 @@ textarea {
 
 .project-command-runs {
   border-top: 1px solid var(--vscode-panel-border);
-  padding: 6px 8px 8px;
+  padding: 5px 8px 7px;
 }
 
 .project-command-run-row {
@@ -639,7 +657,7 @@ textarea {
   min-width: 0;
   border-radius: 6px;
   background: color-mix(in srgb, var(--vscode-focusBorder) 7%, transparent);
-  padding: 4px;
+  padding: 3px 4px;
 }
 
 .project-command-log-output {

@@ -75,12 +75,14 @@ export function ProjectCommandRunRow({
         </IconButton>
       </Tooltip>
       <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-        <Typography variant="body2" noWrap>
-          {isRunning ? t("commands.running") : t(`commands.status.${run.status}`)}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" noWrap>
-          {formatDuration(durationMs)}
-        </Typography>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "baseline", minWidth: 0 }}>
+          <Typography variant="body2" noWrap>
+            {isRunning ? t("commands.running") : t(`commands.status.${run.status}`)}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" noWrap>
+            {formatDuration(durationMs)}
+          </Typography>
+        </Stack>
       </Box>
       <Tooltip title={t("commands.openLogs")}>
         <IconButton size="small" color={logsColor} onClick={handleOpenLogs}>

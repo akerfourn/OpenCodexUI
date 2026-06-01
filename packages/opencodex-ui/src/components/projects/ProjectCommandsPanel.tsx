@@ -2,7 +2,7 @@
  * Renders the project commands tool panel.
  */
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
-import { Alert, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -65,15 +65,19 @@ export function ProjectCommandsPanel({ projectStore }: ProjectCommandsPanelProps
             {t("commands.description")}
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={<AddOutlinedIcon />}
-          disabled={!commandsStore.isAvailable}
-          onClick={handleCreate}
-        >
-          {t("commands.add")}
-        </Button>
+        <Tooltip title={t("commands.add")}>
+          <span>
+            <IconButton
+              className="project-command-add-button"
+              type="button"
+              aria-label={t("commands.add")}
+              disabled={!commandsStore.isAvailable}
+              onClick={handleCreate}
+            >
+              <AddOutlinedIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
       </Stack>
 
       {commandsStore.isLoading ? <CircularProgress size={18} /> : null}
