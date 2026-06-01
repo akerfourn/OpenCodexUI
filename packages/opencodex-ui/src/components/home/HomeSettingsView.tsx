@@ -1,7 +1,7 @@
 /**
  * Renders application settings on the Home tab.
  */
-import { FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
+import { Box, Button, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -44,6 +44,10 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
 
   function handleDiscordRichPresenceChange(event: ChangeEvent<HTMLInputElement>): void {
     appStore.setDiscordRichPresenceEnabled(event.target.checked);
+  }
+
+  function handleDiscordReconnect(): void {
+    appStore.reconnectDiscordRichPresence();
   }
 
   function handleEnterKeyBehaviorChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
@@ -136,26 +140,41 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           </Stack>
         )}
       />
-      <FormControlLabel
-        sx={{ alignItems: "flex-start", m: 0 }}
-        control={(
-          <Switch
-            checked={appStore.settings.discordRichPresenceEnabled}
-            onChange={handleDiscordRichPresenceChange}
-            sx={{ mt: -0.5 }}
+      <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
+        <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
+          <FormControlLabel
+            sx={{ alignItems: "flex-start", m: 0 }}
+            control={(
+              <Switch
+                checked={appStore.settings.discordRichPresenceEnabled}
+                onChange={handleDiscordRichPresenceChange}
+                sx={{ mt: -0.5 }}
+              />
+            )}
+            label={(
+              <Stack spacing={0.25}>
+                <Typography variant="body1">
+                  {t("settings.discordRichPresence")}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                  {t("settings.discordRichPresenceDescription")}
+                </Typography>
+              </Stack>
+            )}
           />
-        )}
-        label={(
-          <Stack spacing={0.25}>
-            <Typography variant="body1">
-              {t("settings.discordRichPresence")}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
-              {t("settings.discordRichPresenceDescription")}
-            </Typography>
-          </Stack>
-        )}
-      />
+        </Box>
+        {appStore.settings.discordRichPresenceEnabled ? (
+          <Button
+            type="button"
+            variant="outlined"
+            size="small"
+            sx={{ flex: "0 0 auto", mt: 0.25 }}
+            onClick={handleDiscordReconnect}
+          >
+            {t("settings.discordReconnect")}
+          </Button>
+        ) : null}
+      </Stack>
     </Stack>
   );
 }

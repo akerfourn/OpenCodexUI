@@ -113,6 +113,7 @@ export type OpenCodexRequest =
   | { type: "project.trust.dismiss"; projectPath: string }
   | { type: "models.list" }
   | { type: "usage.read" }
+  | { type: "discord.reconnect" }
   | { type: "plugins.list"; sourceId: string | null }
   | {
       type: "plugins.read";

@@ -304,6 +304,15 @@ export class AppStore implements RootChildStore {
   }
 
   /**
+   * Forces Discord Rich Presence to reconnect.
+   *
+   * @returns Nothing.
+   */
+  reconnectDiscordRichPresence(): void {
+    void this.root.request({ type: "discord.reconnect" });
+  }
+
+  /**
    * Updates the model used for one-shot commit message generation.
    *
    * @param commitMessageModel Model identifier, or `null` for backend default.

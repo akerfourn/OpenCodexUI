@@ -51,6 +51,20 @@ export class DiscordPresenceService {
   }
 
   /**
+   * Forces a Discord RPC reconnect while keeping the current activity state.
+   *
+   * @returns Promise resolved once the reconnect attempt has been started.
+   */
+  async reconnect(): Promise<void> {
+    if (!this.isEnabled) {
+      return;
+    }
+
+    await this.disconnect();
+    await this.connect();
+  }
+
+  /**
    * Applies backend events to the presence state.
    *
    * @param event Backend event.
@@ -118,7 +132,6 @@ export class DiscordPresenceService {
   private async disconnect(): Promise<void> {
     const client = this.client;
 
-    this.activeTurns.clear();
     this.client = null;
     this.isReady = false;
     this.isConnecting = false;

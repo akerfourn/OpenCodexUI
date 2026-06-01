@@ -95,6 +95,11 @@ export class ElectronBridgeServer {
    */
   register(): void {
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
+      if (request.type === "discord.reconnect") {
+        await this.discordPresenceService.reconnect();
+        return { ok: true };
+      }
+
       const response = await this.requestRouter.handleRequest(request);
 
       if (request.type === "settings.update" && response !== undefined) {
