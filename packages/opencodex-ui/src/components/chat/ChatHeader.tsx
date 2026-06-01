@@ -3,7 +3,7 @@
  */
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
-import { Box, CircularProgress, IconButton, LinearProgress, Typography } from "@mui/material";
+import { Box, CircularProgress, IconButton, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { useTranslation } from "react-i18next";
@@ -108,17 +108,6 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
             </IconButton>
           </Box>
         </Box>
-        {chatStore.isSyncing ? (
-          <LinearProgress
-            sx={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: 2
-            }}
-          />
-        ) : null}
       </Box>
       {renameModal}
     </>

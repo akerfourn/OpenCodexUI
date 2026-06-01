@@ -250,6 +250,15 @@ export class ProjectStore {
   }
 
   /**
+   * Returns whether one loaded chat is synchronizing with Codex.
+   *
+   * @returns `true` when at least one chat sync is active.
+   */
+  get hasSyncingChat(): boolean {
+    return Array.from(this.chatsById.values()).some((chatStore) => chatStore.isSyncing);
+  }
+
+  /**
    * Returns the aggregated work indicator for this project.
    *
    * @returns Project indicator state.

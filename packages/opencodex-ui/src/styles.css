@@ -314,6 +314,11 @@ textarea {
   text-align: center;
 }
 
+.project-sidebar-sync {
+  flex: 0 0 auto;
+  padding: 4px 12px 0;
+}
+
 .home-content-panel {
   width: 100%;
   max-width: 920px;

@@ -356,23 +356,6 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
             onContentLayoutChange={handleLastTurnLayoutChange}
           />
         ))}
-        {chatStore.isSyncing && chatStore.turns.length > 0 ? (
-          <Box
-            sx={{
-              alignItems: "center",
-              color: "text.secondary",
-              display: "flex",
-              gap: 1,
-              justifyContent: "center",
-              py: 1
-            }}
-          >
-            <CircularProgress size={16} thickness={5} />
-            <Typography variant="caption">
-              {chatStore.isRecovering ? t("chat.recovering") : t("chat.syncing")}
-            </Typography>
-          </Box>
-        ) : null}
         <Box
           aria-hidden="true"
           sx={{

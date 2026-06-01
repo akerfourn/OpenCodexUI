@@ -4,7 +4,7 @@
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
-import { Alert, Box, Button, IconButton, LinearProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, IconButton, LinearProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -141,6 +141,19 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
           <ThreadButtonX key={thread.id} projectStore={projectStore} thread={thread} />
         ))}
       </div>
+      {projectStore.hasSyncingChat ? (
+        <Stack
+          className="project-sidebar-sync"
+          direction="row"
+          spacing={0.75}
+          sx={{ alignItems: "center" }}
+        >
+          <CircularProgress size={12} thickness={5} />
+          <Typography variant="caption" color="text.secondary" noWrap>
+            {t("chat.syncing")}
+          </Typography>
+        </Stack>
+      ) : null}
       <UsageLimitsWidgetX store={store.usageStore} />
     </aside>
   );
