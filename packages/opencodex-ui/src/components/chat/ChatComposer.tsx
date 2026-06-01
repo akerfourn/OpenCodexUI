@@ -1,7 +1,6 @@
 /**
  * Renders the chat composer component for the OpenCodex UI.
  */
-import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import AssistantDirectionRoundedIcon from "@mui/icons-material/AssistantDirectionRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
@@ -257,21 +256,13 @@ export function ChatComposer({
         <div className="spacer" />
         <ChatAdvancedActionsMenu
           disabled={areAdvancedActionsDisabled}
+          attachImagesDisabled={!canAttachImages}
           onReview={handleReview}
           onCompact={handleCompact}
+          onAttachImages={() => {
+            void handleAttachImages();
+          }}
         />
-        <Tooltip title={t("composer.attachImage")}>
-          <span>
-            <IconButton
-              type="button"
-              aria-label={t("composer.attachImage")}
-              disabled={!canAttachImages}
-              onClick={handleAttachImages}
-            >
-              <AddPhotoAlternateOutlinedIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
         {isWorking ? (
           <Tooltip title={t("composer.interrupt")}>
             <span>
