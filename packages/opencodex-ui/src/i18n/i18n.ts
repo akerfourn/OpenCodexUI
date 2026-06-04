@@ -271,6 +271,23 @@ export const resources = {
         },
         viewLogs: "Voir les logs"
       },
+      onboarding: {
+        codexDescription: "OpenCodexUI pilote votre installation locale de Codex. L'application ne fournit pas Codex et n'utilise pas une authentification séparée.",
+        codexDocs: "Documentation Codex",
+        codexMissing: "Codex n'est pas détecté pour la source par défaut.",
+        codexReady: "Codex est prêt en version {{version}}.",
+        codexTitle: "Codex CLI",
+        finish: "Commencer",
+        gitDescription: "Git permet de suivre vos changements, préparer des enregistrements et travailler par branches depuis OpenCodexUI.",
+        gitMissing: "Git n'est pas détecté sur cette machine.",
+        gitOptional: "Git est recommandé pour les projets versionnés, mais vous pouvez continuer sans lui.",
+        gitReady: "Git est prêt en version {{version}}.",
+        gitTitle: "Git",
+        refresh: "Revérifier",
+        subtitle: "Vérifiez les prérequis locaux avant de commencer à travailler avec Codex.",
+        title: "Bienvenue dans OpenCodexUI",
+        unknownVersion: "inconnue"
+      },
       plugins: {
         categories: {
           all: "Toutes"
@@ -764,6 +781,23 @@ export const resources = {
           weeks: "weeks"
         },
         viewLogs: "View logs"
+      },
+      onboarding: {
+        codexDescription: "OpenCodexUI drives your local Codex installation. The app does not bundle Codex and does not use separate authentication.",
+        codexDocs: "Codex documentation",
+        codexMissing: "Codex is not detected for the default source.",
+        codexReady: "Codex is ready in version {{version}}.",
+        codexTitle: "Codex CLI",
+        finish: "Start",
+        gitDescription: "Git lets OpenCodexUI track changes, prepare saves, and work with branches from the app.",
+        gitMissing: "Git is not detected on this machine.",
+        gitOptional: "Git is recommended for versioned projects, but you can continue without it.",
+        gitReady: "Git is ready in version {{version}}.",
+        gitTitle: "Git",
+        refresh: "Check again",
+        subtitle: "Check local prerequisites before you start working with Codex.",
+        title: "Welcome to OpenCodexUI",
+        unknownVersion: "unknown"
       },
       plugins: {
         categories: {

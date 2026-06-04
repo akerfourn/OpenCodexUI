@@ -57,6 +57,9 @@ export function createDefaultCachedSource(): CachedSource {
       openFolderCommand: null,
       openFileCommand: null
     },
+    lastDetectedCodexVersion: null,
+    lastDetectedCodexAt: null,
+    lastDetectionError: null,
     createdAt: now,
     updatedAt: now
   };

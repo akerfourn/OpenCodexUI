@@ -7,6 +7,7 @@ import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import type {
   CachedSource,
+  CachedSourceCodexDetection,
   CachedSourceLocalSettings
 } from "../types.js";
 import { DEFAULT_SOURCE_NAME } from "./constants.js";
@@ -40,6 +41,9 @@ export async function ensureDefaultSource(database: BetterSqliteDatabase): Promi
     kind: "local",
     name: DEFAULT_SOURCE_NAME,
     settings: createDefaultLocalSourceSettings(),
+    lastDetectedCodexVersion: null,
+    lastDetectedCodexAt: null,
+    lastDetectionError: null,
     createdAt: now,
     updatedAt: now
   };
@@ -91,6 +95,9 @@ export async function createSource(
     kind: "local",
     name,
     settings: createDefaultLocalSourceSettings(),
+    lastDetectedCodexVersion: null,
+    lastDetectedCodexAt: null,
+    lastDetectionError: null,
     createdAt: now,
     updatedAt: now
   };
@@ -236,6 +243,38 @@ export async function updateSource(
     .run({ ...nextSource, settingsJson: serializeSourceSettings(nextSource.settings) });
 
   return nextSource;
+}
+
+/**
+ * Updates the persisted Codex CLI diagnostic for a source.
+ *
+ * @param database SQLite database connection.
+ * @param sourceId Source identifier.
+ * @param detection Detection result to store.
+ *
+ * @returns Nothing.
+ */
+export async function updateSourceCodexDetection(
+  database: BetterSqliteDatabase,
+  sourceId: string,
+  detection: CachedSourceCodexDetection
+): Promise<void> {
+  database
+    .prepare(
+      `
+      UPDATE sources SET
+        last_detected_codex_version = @version,
+        last_detected_codex_at = @checkedAt,
+        last_detection_error = @error
+      WHERE id = @sourceId
+      `
+    )
+    .run({
+      sourceId,
+      version: detection.version,
+      checkedAt: detection.checkedAt,
+      error: detection.error
+    });
 }
 
 /**

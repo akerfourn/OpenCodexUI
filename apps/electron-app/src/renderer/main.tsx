@@ -18,6 +18,8 @@ import { ElectronOpenCodexTransport } from "./electronTransport";
 initializeOpenCodexI18n();
 
 const store = new RootStore(new ElectronOpenCodexTransport());
+store.appStore.setForceOnboarding(import.meta.env.DEV);
+
 const rootElement = document.getElementById("root");
 let lastFocusRefreshAt = 0;
 

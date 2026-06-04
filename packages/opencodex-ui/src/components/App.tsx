@@ -9,6 +9,7 @@ import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
 import { AppTabsX } from "./app/AppTabs";
 import { ApprovalDialogX } from "./dialogs/ApprovalDialog";
 import { HomeViewX } from "./home/HomeView";
+import { OnboardingViewX } from "./onboarding/OnboardingView";
 import { ProjectTrustDialogX } from "./dialogs/ProjectTrustDialog";
 import { CloseProjectDialogX } from "./dialogs/CloseProjectDialog";
 import { ProjectViewX } from "./projects/ProjectView";
@@ -37,6 +38,28 @@ export function App({ store }: AppProps) {
   function handleOpenLogs(): void {
     store.openLogsHome();
     store.appStore.clearErrorMessage();
+  }
+
+  const snackbar = (
+    <Snackbar
+      open={errorMessage !== null}
+      message={errorMessage?.split("\n")[0] ?? ""}
+      onClose={handleCloseError}
+      action={(
+        <Button color="inherit" size="small" onClick={handleOpenLogs}>
+          {t("logs.viewLogs")}
+        </Button>
+      )}
+    />
+  );
+
+  if (store.appStore.shouldShowOnboarding) {
+    return (
+      <Box component="main" className="app-shell">
+        <OnboardingViewX store={store} />
+        {snackbar}
+      </Box>
+    );
   }
 
   return (
@@ -68,16 +91,7 @@ export function App({ store }: AppProps) {
       <ApprovalDialogX store={store.approvalsStore} />
       <ProjectTrustDialogX store={store.projectsStore.trustStore} />
       <CloseProjectDialogX store={store} />
-      <Snackbar
-        open={errorMessage !== null}
-        message={errorMessage?.split("\n")[0] ?? ""}
-        onClose={handleCloseError}
-        action={(
-          <Button color="inherit" size="small" onClick={handleOpenLogs}>
-            {t("logs.viewLogs")}
-          </Button>
-        )}
-      />
+      {snackbar}
     </Box>
   );
 }

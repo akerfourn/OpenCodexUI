@@ -16,6 +16,7 @@ export class SourcesStore implements RootChildStore {
   sources: OpenCodexSource[] = [];
   syncingSourceIds: string[] = [];
   isSyncingAllSources = false;
+  isRefreshingSources = false;
   private allSourcesSyncStartedAt: number | null = null;
   private readonly sourceSyncStartedAtById = new Map<string, number>();
 
@@ -90,6 +91,32 @@ export class SourcesStore implements RootChildStore {
       type: "sources.delete",
       sourceId
     });
+  }
+
+  /**
+   * Reloads source diagnostics without launching a full project synchronization.
+   *
+   * @returns Promise resolved when the source list request completes.
+   */
+  async refreshSources(): Promise<void> {
+    if (this.isRefreshingSources) {
+      return;
+    }
+
+    this.isRefreshingSources = true;
+
+    try {
+      const sources = await this.root.request<OpenCodexSource[]>({
+        type: "sources.list"
+      });
+      runInAction(() => {
+        this.sources = sources;
+      });
+    } finally {
+      runInAction(() => {
+        this.isRefreshingSources = false;
+      });
+    }
   }
 
   syncSource(sourceId: string): void {

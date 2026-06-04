@@ -368,6 +368,25 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should persist the latest Codex detection for a source", async () => {
+    const source = await repository.ensureDefaultSource();
+
+    await repository.updateSourceCodexDetection(source.id, {
+      version: "codex-cli 0.130.0",
+      checkedAt: "2026-06-01T12:00:00.000Z",
+      error: null
+    });
+
+    const detectedSource = await repository.getSource(source.id);
+
+    expect(detectedSource).toMatchObject({
+      id: source.id,
+      lastDetectedCodexVersion: "codex-cli 0.130.0",
+      lastDetectedCodexAt: "2026-06-01T12:00:00.000Z",
+      lastDetectionError: null
+    });
+  });
+
   it("should create the automatic default source with a generated id", async () => {
     const source = await repository.ensureDefaultSource();
     const sameSource = await repository.ensureDefaultSource();

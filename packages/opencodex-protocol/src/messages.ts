@@ -376,6 +376,7 @@ export type OpenCodexSettings = {
   enterKeyBehavior: OpenCodexEnterKeyBehavior;
   versioningVocabulary: OpenCodexVersioningVocabulary;
   discordRichPresenceEnabled: boolean;
+  onboardingCompleted: boolean;
 };
 
 export type OpenCodexThread = {

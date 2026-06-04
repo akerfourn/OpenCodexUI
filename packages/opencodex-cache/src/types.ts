@@ -105,8 +105,17 @@ export type CachedSourceLocalSettings = {
 export type CachedSourceBase = {
   id: string;
   name: string;
+  lastDetectedCodexVersion: string | null;
+  lastDetectedCodexAt: string | null;
+  lastDetectionError: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CachedSourceCodexDetection = {
+  version: string | null;
+  checkedAt: string;
+  error: string | null;
 };
 
 export type CachedLocalSource = CachedSourceBase & {
@@ -234,6 +243,18 @@ export interface OpenCodexCacheRepository {
       settings?: Partial<CachedSourceLocalSettings>;
     }
   ): Promise<CachedSource>;
+
+  /**
+   * Stores the latest Codex CLI detection result for a source.
+   *
+   * @param sourceId Source identifier.
+   * @param detection Latest detection result.
+   * @returns Promise resolved when the metadata is stored.
+   */
+  updateSourceCodexDetection(
+    sourceId: string,
+    detection: CachedSourceCodexDetection
+  ): Promise<void>;
 
   /**
    * Deletes a source after clearing dependent associations.

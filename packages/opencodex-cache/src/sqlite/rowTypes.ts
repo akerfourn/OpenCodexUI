@@ -68,6 +68,9 @@ export type SourceRow = {
   kind: "local";
   name: string;
   settings: string;
+  last_detected_codex_version: string | null;
+  last_detected_codex_at: string | null;
+  last_detection_error: string | null;
   created_at: string;
   updated_at: string;
 };

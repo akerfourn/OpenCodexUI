@@ -37,7 +37,8 @@ export class AppStore implements RootChildStore {
     colorScheme: "system",
     enterKeyBehavior: "newline",
     versioningVocabulary: "simple",
-    discordRichPresenceEnabled: true
+    discordRichPresenceEnabled: true,
+    onboardingCompleted: false
   };
   launchProjectPath: string | null = null;
   models: OpenCodexModel[] = [];
@@ -49,6 +50,8 @@ export class AppStore implements RootChildStore {
   appVersion: string | null = null;
   gitVersionStatus: OpenCodexToolVersionStatus | null = null;
   isLoadingGitVersion = false;
+  forceOnboarding = false;
+  forcedOnboardingDismissed = false;
 
   constructor(private readonly root: RootStore) {
     makeAutoObservable<AppStore, "root">(this, { root: false });
@@ -83,6 +86,34 @@ export class AppStore implements RootChildStore {
     }
 
     return options;
+  }
+
+  /**
+   * Returns whether the startup onboarding should replace the main shell.
+   *
+   * @returns Whether onboarding is currently visible.
+   */
+  get shouldShowOnboarding(): boolean {
+    if (this.isBootstrapping) {
+      return false;
+    }
+
+    if (!this.settings.onboardingCompleted) {
+      return true;
+    }
+
+    return this.forceOnboarding && !this.forcedOnboardingDismissed;
+  }
+
+  /**
+   * Forces onboarding display for the current development session.
+   *
+   * @param forceOnboarding Whether onboarding should appear at startup.
+   *
+   * @returns Nothing.
+   */
+  setForceOnboarding(forceOnboarding: boolean): void {
+    this.forceOnboarding = forceOnboarding;
   }
 
   /**
@@ -310,6 +341,24 @@ export class AppStore implements RootChildStore {
    */
   reconnectDiscordRichPresence(): void {
     void this.root.request({ type: "discord.reconnect" });
+  }
+
+  /**
+   * Marks onboarding as completed and hides forced onboarding for this session.
+   *
+   * @returns Nothing.
+   */
+  completeOnboarding(): void {
+    this.forcedOnboardingDismissed = true;
+    this.settings = {
+      ...this.settings,
+      onboardingCompleted: true
+    };
+
+    void this.root.request({
+      type: "settings.update",
+      patch: { onboardingCompleted: true }
+    });
   }
 
   /**

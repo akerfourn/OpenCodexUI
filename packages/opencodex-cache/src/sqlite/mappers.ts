@@ -79,6 +79,9 @@ export function mapSourceRow(row: SourceRow): CachedSource {
     kind: row.kind,
     name: row.name,
     settings: parseLocalSourceSettings(row.settings),
+    lastDetectedCodexVersion: row.last_detected_codex_version,
+    lastDetectedCodexAt: row.last_detected_codex_at,
+    lastDetectionError: row.last_detection_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };

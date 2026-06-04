@@ -185,6 +185,31 @@ textarea {
   overflow: hidden;
 }
 
+.onboarding-shell {
+  display: grid;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  place-items: center;
+  overflow: auto;
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(88, 166, 255, 0.16), transparent 32rem),
+    var(--vscode-editor-background);
+}
+
+.onboarding-panel {
+  width: min(760px, 100%);
+  padding: 28px;
+  border: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-editorWidget-background);
+}
+
+.onboarding-check {
+  padding: 20px;
+  background: transparent;
+}
+
 .app-view {
   display: flex;
   min-width: 0;

@@ -19,6 +19,7 @@ import type {
   CachedProjectCommandCreateInput,
   CachedProjectCommandUpdateInput,
   CachedSource,
+  CachedSourceCodexDetection,
   CachedSourceLocalSettings,
   CachedThreadDelta,
   CachedThreadReadOptions,
@@ -52,7 +53,8 @@ import {
   getSource,
   getSourceProjectCount,
   listSources,
-  updateSource
+  updateSource,
+  updateSourceCodexDetection
 } from "./sqlite/sourceQueries.js";
 import {
   deleteProject,
@@ -180,6 +182,21 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     }
   ): Promise<CachedSource> {
     return await updateSource(this.database, sourceId, patch);
+  }
+
+  /**
+   * Stores the latest Codex CLI detection result for a source.
+   *
+   * @param sourceId Source identifier.
+   * @param detection Latest detection result.
+   *
+   * @returns Promise resolved when the diagnostic is persisted.
+   */
+  async updateSourceCodexDetection(
+    sourceId: string,
+    detection: CachedSourceCodexDetection
+  ): Promise<void> {
+    await updateSourceCodexDetection(this.database, sourceId, detection);
   }
 
   /**

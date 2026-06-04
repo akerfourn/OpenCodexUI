@@ -13,7 +13,8 @@ import type {
   OpenCodexProjectPreferences,
   OpenCodexSettings,
   OpenCodexSource,
-  OpenCodexSourceLocalSettings
+  OpenCodexSourceLocalSettings,
+  OpenCodexToolVersionStatus
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { OpenCodexBackendOptions } from "../types.js";
@@ -90,7 +91,7 @@ export class ProjectSourceService {
       createdSource,
       settings.codexCommand,
       0,
-      await readCodexVersionStatus(createdSource, settings.codexCommand)
+      await this.readAndStoreCodexVersionStatus(createdSource, settings.codexCommand)
     );
     this.options.emit({
       type: "sources.updated",
@@ -268,7 +269,7 @@ export class ProjectSourceService {
       updatedSource,
       settings.codexCommand,
       await repository.getSourceProjectCount(updatedSource.id),
-      await readCodexVersionStatus(updatedSource, settings.codexCommand)
+      await this.readAndStoreCodexVersionStatus(updatedSource, settings.codexCommand)
     );
 
     this.options.emit({
@@ -465,9 +466,29 @@ export class ProjectSourceService {
         source,
         settings.codexCommand,
         await repository.getSourceProjectCount(source.id),
-        await readCodexVersionStatus(source, settings.codexCommand)
+        await this.readAndStoreCodexVersionStatus(source, settings.codexCommand)
       )
     )));
+  }
+
+  private async readAndStoreCodexVersionStatus(
+    source: CachedSource,
+    fallbackCommand: string
+  ): Promise<OpenCodexToolVersionStatus> {
+    const status = await readCodexVersionStatus(source, fallbackCommand);
+    const repository = this.options.cacheRepository;
+
+    if (repository === null) {
+      return status;
+    }
+
+    await repository.updateSourceCodexDetection(source.id, {
+      version: status.version,
+      checkedAt: status.checkedAt,
+      error: status.status === "ready" ? null : status.message
+    });
+
+    return status;
   }
 
   /**

@@ -24,7 +24,8 @@ export const defaultSettings: OpenCodexSettings = {
   colorScheme: "system",
   enterKeyBehavior: "newline",
   versioningVocabulary: "simple",
-  discordRichPresenceEnabled: true
+  discordRichPresenceEnabled: true,
+  onboardingCompleted: false
 };
 
 /**

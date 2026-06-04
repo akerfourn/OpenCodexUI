@@ -14,6 +14,7 @@ export type {
   CachedLogType,
   CachedSource,
   CachedSourceBase,
+  CachedSourceCodexDetection,
   CachedSourceCommandMode,
   CachedSourceLocalSettings,
   CachedThreadDelta,
