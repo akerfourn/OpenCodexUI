@@ -5,8 +5,19 @@ import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutli
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  FormControlLabel,
+  Paper,
+  Stack,
+  Switch,
+  Typography
+} from "@mui/material";
 import { observer } from "mobx-react-lite";
+import type { ChangeEvent } from "react";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,21 +44,22 @@ export function OnboardingView({ store }: OnboardingViewProps) {
   const appStore = store.appStore;
   const sourcesStore = store.sourcesStore;
   const defaultSource = getDefaultSource(sourcesStore.sources, appStore.settings.defaultSourceId);
-  const isCodexReady = defaultSource?.codex.status === "ready";
+  const codexStatus = defaultSource?.codex.status ?? "unavailable";
+  const isCodexReady = codexStatus === "ready";
+  const isCodexOutdated = codexStatus === "outdated";
+  const isCodexUsable = isCodexReady || (isCodexOutdated && appStore.settings.allowOutdatedCodex);
   const isGitReady = appStore.gitVersionStatus?.status === "ready";
   const isCheckingCodex = sourcesStore.isRefreshingSources;
   const isCheckingGit = appStore.isLoadingGitVersion;
   const codexVersion = defaultSource?.codex.version ?? t("onboarding.unknownVersion");
   const gitVersion = appStore.gitVersionStatus?.version ?? t("onboarding.unknownVersion");
-  const codexStatusText = isCodexReady
-    ? t("onboarding.codexReady", { version: codexVersion })
-    : t("onboarding.codexMissing");
+  const codexStatusText = getCodexStatusText(codexStatus, codexVersion, t);
   const gitStatusText = isGitReady
     ? t("onboarding.gitReady", { version: gitVersion })
     : t("onboarding.gitMissing");
-  const codexStatusIcon = getStatusIcon(isCodexReady, isCheckingCodex);
-  const gitStatusIcon = getStatusIcon(isGitReady, isCheckingGit);
-  const codexRefreshVariant = isCodexReady ? "text" : "contained";
+  const codexStatusIcon = getStatusIcon(codexStatus, isCheckingCodex);
+  const gitStatusIcon = getStatusIcon(isGitReady ? "ready" : "unavailable", isCheckingGit);
+  const codexRefreshVariant = isCodexUsable ? "text" : "contained";
   const gitRefreshVariant = isGitReady ? "text" : "outlined";
 
   useEffect(() => {
@@ -64,6 +76,10 @@ export function OnboardingView({ store }: OnboardingViewProps) {
 
   function handleRefreshGit(): void {
     void appStore.loadGitVersion();
+  }
+
+  function handleAllowOutdatedCodexChange(event: ChangeEvent<HTMLInputElement>): void {
+    appStore.setAllowOutdatedCodex(event.target.checked);
   }
 
   function handleFinish(): void {
@@ -100,6 +116,25 @@ export function OnboardingView({ store }: OnboardingViewProps) {
                 <Typography variant="body2" color="text.secondary">
                   {t("onboarding.codexDescription")}
                 </Typography>
+                {isCodexOutdated ? (
+                  <Alert severity="warning" variant="outlined">
+                    <Stack spacing={1}>
+                      <Typography variant="body2">
+                        {t("onboarding.codexOutdated", { version: codexVersion })}
+                      </Typography>
+                      <FormControlLabel
+                        sx={{ m: 0 }}
+                        control={(
+                          <Switch
+                            checked={appStore.settings.allowOutdatedCodex}
+                            onChange={handleAllowOutdatedCodexChange}
+                          />
+                        )}
+                        label={t("onboarding.forceOutdatedCodex")}
+                      />
+                    </Stack>
+                  </Alert>
+                ) : null}
                 <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
                   <Button
                     variant={codexRefreshVariant}
@@ -153,7 +188,7 @@ export function OnboardingView({ store }: OnboardingViewProps) {
           </Stack>
 
           <Stack direction="row" sx={{ justifyContent: "flex-end" }}>
-            <Button variant="contained" onClick={handleFinish} disabled={!isCodexReady}>
+            <Button variant="contained" onClick={handleFinish} disabled={!isCodexUsable}>
               {t("onboarding.finish")}
             </Button>
           </Stack>
@@ -173,14 +208,34 @@ function getDefaultSource(sources: OpenCodexSource[], defaultSourceId: string | 
   return sources.find((source) => source.id === defaultSourceId) ?? sources[0] ?? null;
 }
 
-function getStatusIcon(isReady: boolean, isChecking: boolean): ReactNode {
+function getStatusIcon(status: "ready" | "outdated" | "unavailable", isChecking: boolean): ReactNode {
   if (isChecking) {
     return <CircularProgress size={28} />;
   }
 
-  if (isReady) {
+  if (status === "ready") {
     return <CheckCircleOutlineOutlinedIcon color="success" fontSize="large" />;
   }
 
+  if (status === "outdated") {
+    return <ErrorOutlineOutlinedIcon color="warning" fontSize="large" />;
+  }
+
   return <ErrorOutlineOutlinedIcon color="error" fontSize="large" />;
+}
+
+function getCodexStatusText(
+  status: "ready" | "outdated" | "unavailable",
+  version: string,
+  translate: ReturnType<typeof useTranslation>["t"]
+): string {
+  if (status === "ready") {
+    return translate("onboarding.codexReady", { version });
+  }
+
+  if (status === "outdated") {
+    return translate("onboarding.codexOutdatedStatus", { version });
+  }
+
+  return translate("onboarding.codexMissing");
 }

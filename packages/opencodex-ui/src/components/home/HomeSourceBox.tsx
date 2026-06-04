@@ -314,9 +314,7 @@ export function HomeSourceBox({
                 <WarningAmberOutlinedIcon sx={{ fontSize: 16 }} />
               )}
               <Typography variant="caption" noWrap>
-                {source.codex.status === "ready"
-                  ? t("sources.codexDetected", { version: source.codex.version ?? t("sources.unknownVersion") })
-                  : t("sources.codexUnavailable")}
+                {getCodexStatusLabel(source.codex.status, source.codex.version, t)}
               </Typography>
             </Box>
           </Box>
@@ -528,3 +526,23 @@ export function HomeSourceBox({
 }
 
 export const HomeSourceBoxX = observer(HomeSourceBox);
+
+function getCodexStatusLabel(
+  status: "ready" | "outdated" | "unavailable",
+  version: string | null,
+  translate: ReturnType<typeof useTranslation>["t"]
+): string {
+  if (status === "ready") {
+    return translate("sources.codexDetected", {
+      version: version ?? translate("sources.unknownVersion")
+    });
+  }
+
+  if (status === "outdated") {
+    return translate("sources.codexOutdated", {
+      version: version ?? translate("sources.unknownVersion")
+    });
+  }
+
+  return translate("sources.codexUnavailable");
+}

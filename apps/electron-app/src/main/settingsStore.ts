@@ -25,7 +25,8 @@ export const defaultSettings: OpenCodexSettings = {
   enterKeyBehavior: "newline",
   versioningVocabulary: "simple",
   discordRichPresenceEnabled: true,
-  onboardingCompleted: false
+  onboardingCompleted: false,
+  allowOutdatedCodex: false
 };
 
 /**

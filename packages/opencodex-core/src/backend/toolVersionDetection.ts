@@ -16,6 +16,7 @@ type ProcessResult = {
 };
 
 const versionTimeoutMs = 4_000;
+export const MINIMUM_CODEX_CLI_VERSION = "0.137.0";
 
 /**
  * Reads the Codex CLI version for one configured source.
@@ -30,8 +31,29 @@ export async function readCodexVersionStatus(
 ): Promise<OpenCodexToolVersionStatus> {
   const commandLine = resolveSourceCommand(source, fallbackCommand);
   const resolvedCommand = resolveCodexCommand(commandLine, ["--version"]);
+  const status = await readCommandVersionStatus(resolvedCommand.command, resolvedCommand.args, "Codex CLI");
 
-  return await readCommandVersionStatus(resolvedCommand.command, resolvedCommand.args, "Codex CLI");
+  if (status.status !== "ready") {
+    return status;
+  }
+
+  if (status.version === null) {
+    return {
+      ...status,
+      status: "unavailable",
+      message: "Codex CLI version could not be detected."
+    };
+  }
+
+  if (isCodexCliVersionSupported(status.version)) {
+    return status;
+  }
+
+  return {
+    ...status,
+    status: "outdated",
+    message: `Codex CLI ${status.version} is older than required ${MINIMUM_CODEX_CLI_VERSION}.`
+  };
 }
 
 /**
@@ -117,4 +139,38 @@ function parseVersion(output: string): string | null {
   const match = output.match(/\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?/);
 
   return match?.[0] ?? null;
+}
+
+export function isCodexCliVersionSupported(version: string): boolean {
+  return compareVersionNumbers(version, MINIMUM_CODEX_CLI_VERSION) >= 0;
+}
+
+function compareVersionNumbers(left: string, right: string): number {
+  const leftParts = parseVersionParts(left);
+  const rightParts = parseVersionParts(right);
+
+  for (let index = 0; index < 3; index += 1) {
+    const leftPart = leftParts[index] ?? 0;
+    const rightPart = rightParts[index] ?? 0;
+
+    if (leftPart !== rightPart) {
+      return leftPart - rightPart;
+    }
+  }
+
+  return 0;
+}
+
+function parseVersionParts(version: string): number[] {
+  const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
+
+  if (match === null) {
+    return [0, 0, 0];
+  }
+
+  return [
+    Number.parseInt(match[1] ?? "0", 10),
+    Number.parseInt(match[2] ?? "0", 10),
+    Number.parseInt(match[3] ?? "0", 10)
+  ];
 }

@@ -25,7 +25,7 @@ export class SourcesStore implements RootChildStore {
   }
 
   get hasUnavailableCodexSources(): boolean {
-    return this.sources.some((source) => source.codex.status !== "ready");
+    return this.sources.some((source) => !this.isSourceReady(source.id));
   }
 
   findSource(sourceId: string | null): OpenCodexSource | null {
@@ -37,7 +37,13 @@ export class SourcesStore implements RootChildStore {
   }
 
   isSourceReady(sourceId: string | null): boolean {
-    return this.findSource(sourceId)?.codex.status === "ready";
+    const status = this.findSource(sourceId)?.codex.status;
+
+    if (status === "ready") {
+      return true;
+    }
+
+    return status === "outdated" && this.root.appStore.settings.allowOutdatedCodex;
   }
 
   handleEvent(event: OpenCodexEvent): void {

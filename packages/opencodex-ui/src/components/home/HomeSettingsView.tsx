@@ -1,7 +1,7 @@
 /**
  * Renders application settings on the Home tab.
  */
-import { Box, Button, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -40,6 +40,10 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
 
   function handleAllowTurnSteeringChange(event: ChangeEvent<HTMLInputElement>): void {
     appStore.setAllowTurnSteering(event.target.checked);
+  }
+
+  function handleAllowOutdatedCodexChange(event: ChangeEvent<HTMLInputElement>): void {
+    appStore.setAllowOutdatedCodex(event.target.checked);
   }
 
   function handleDiscordRichPresenceChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -140,6 +144,33 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           </Stack>
         )}
       />
+      <Stack spacing={1}>
+        <FormControlLabel
+          sx={{ alignItems: "flex-start", m: 0 }}
+          control={(
+            <Switch
+              checked={appStore.settings.allowOutdatedCodex}
+              onChange={handleAllowOutdatedCodexChange}
+              sx={{ mt: -0.5 }}
+            />
+          )}
+          label={(
+            <Stack spacing={0.25}>
+              <Typography variant="body1">
+                {t("settings.allowOutdatedCodex")}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                {t("settings.allowOutdatedCodexDescription")}
+              </Typography>
+            </Stack>
+          )}
+        />
+        {appStore.settings.allowOutdatedCodex ? (
+          <Alert severity="warning" variant="outlined">
+            {t("settings.allowOutdatedCodexWarning")}
+          </Alert>
+        ) : null}
+      </Stack>
       <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
         <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
           <FormControlLabel

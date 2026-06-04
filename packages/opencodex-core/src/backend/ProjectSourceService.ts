@@ -499,11 +499,14 @@ export class ProjectSourceService {
    * @returns Promise resolved when synchronization completes.
    */
   private async syncSource(source: CachedSource): Promise<void> {
-    const codexStatus = await readCodexVersionStatus(source, this.options.getSettings().codexCommand);
+    const settings = this.options.getSettings();
+    const codexStatus = await this.readAndStoreCodexVersionStatus(source, settings.codexCommand);
+    const isCodexUsable = codexStatus.status === "ready" ||
+      (codexStatus.status === "outdated" && settings.allowOutdatedCodex);
 
-    if (codexStatus.status !== "ready") {
+    if (!isCodexUsable) {
       this.options.backendOptions.logger?.(
-        `skipping source sync because Codex is unavailable for ${source.name}: ${codexStatus.message ?? "unknown"}`
+        `skipping source sync because Codex is not usable for ${source.name}: ${codexStatus.message ?? "unknown"}`
       );
       return;
     }

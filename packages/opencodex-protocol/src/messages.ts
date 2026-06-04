@@ -38,7 +38,7 @@ export type OpenCodexLanguage = "system" | "fr" | "en";
 export type OpenCodexSourceKind = "local";
 export type OpenCodexSourceCommandMode = "auto" | "custom";
 export type OpenCodexSourceColor = "blue" | "indigo" | "purple" | "pink" | "red" | "orange" | "amber" | "teal";
-export type OpenCodexToolAvailabilityStatus = "ready" | "unavailable";
+export type OpenCodexToolAvailabilityStatus = "ready" | "outdated" | "unavailable";
 export type OpenCodexServiceTier = string;
 
 export type OpenCodexModelServiceTier = {
@@ -377,6 +377,7 @@ export type OpenCodexSettings = {
   versioningVocabulary: OpenCodexVersioningVocabulary;
   discordRichPresenceEnabled: boolean;
   onboardingCompleted: boolean;
+  allowOutdatedCodex: boolean;
 };
 
 export type OpenCodexThread = {

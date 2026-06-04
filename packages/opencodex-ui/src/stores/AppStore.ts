@@ -38,7 +38,8 @@ export class AppStore implements RootChildStore {
     enterKeyBehavior: "newline",
     versioningVocabulary: "simple",
     discordRichPresenceEnabled: true,
-    onboardingCompleted: false
+    onboardingCompleted: false,
+    allowOutdatedCodex: false
   };
   launchProjectPath: string | null = null;
   models: OpenCodexModel[] = [];
@@ -341,6 +342,21 @@ export class AppStore implements RootChildStore {
    */
   reconnectDiscordRichPresence(): void {
     void this.root.request({ type: "discord.reconnect" });
+  }
+
+  /**
+   * Updates whether outdated Codex CLI versions can still be used.
+   *
+   * @param allowOutdatedCodex Whether outdated Codex sources are usable.
+   *
+   * @returns Nothing.
+   */
+  setAllowOutdatedCodex(allowOutdatedCodex: boolean): void {
+    this.settings = { ...this.settings, allowOutdatedCodex };
+    void this.root.request({
+      type: "settings.update",
+      patch: { allowOutdatedCodex }
+    });
   }
 
   /**
