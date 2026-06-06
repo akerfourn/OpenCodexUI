@@ -54,6 +54,10 @@ export class ChatStore {
   selectedModel: string | null = null;
   reasoningEffort: OpenCodexReasoningEffort = "medium";
   selectedServiceTier: OpenCodexServiceTier | null = null;
+  composerDraft = "";
+  composerDraftMarkdown = "";
+  composerDraftReferences: OpenCodexComposerReference[] = [];
+  composerAttachments: OpenCodexImageAttachment[] = [];
   tokenUsage: OpenCodexThreadTokenUsage | null = null;
   olderMessagesPrependVersion = 0;
   scrollToBottomVersion = 0;
@@ -294,6 +298,64 @@ export class ChatStore {
    */
   setSelectedServiceTier(value: OpenCodexServiceTier | null): void {
     this.selectedServiceTier = resolveAvailableServiceTier(this.selectedModel, value, this.root);
+  }
+
+  /**
+   * Updates the in-memory composer draft for this chat.
+   *
+   * @param value Plain text draft.
+   * @param markdown Markdown serialization including composer references.
+   * @param references Composer references embedded in the markdown draft.
+   *
+   * @returns Nothing.
+   */
+  setComposerDraft(
+    value: string,
+    markdown: string,
+    references: OpenCodexComposerReference[]
+  ): void {
+    this.composerDraft = value;
+    this.composerDraftMarkdown = markdown;
+    this.composerDraftReferences = cloneComposerReferences(references);
+  }
+
+  /**
+   * Appends image attachments to the in-memory composer draft.
+   *
+   * @param attachments Image attachments to add.
+   *
+   * @returns Nothing.
+   */
+  addComposerAttachments(attachments: OpenCodexImageAttachment[]): void {
+    this.composerAttachments = [
+      ...this.composerAttachments,
+      ...cloneImageAttachments(attachments)
+    ];
+  }
+
+  /**
+   * Removes one image attachment from the in-memory composer draft.
+   *
+   * @param attachmentId Attachment identifier.
+   *
+   * @returns Nothing.
+   */
+  removeComposerAttachment(attachmentId: string): void {
+    this.composerAttachments = this.composerAttachments.filter((attachment) => {
+      return attachment.id !== attachmentId;
+    });
+  }
+
+  /**
+   * Clears the in-memory composer draft after a successful send.
+   *
+   * @returns Nothing.
+   */
+  clearComposerDraft(): void {
+    this.composerDraft = "";
+    this.composerDraftMarkdown = "";
+    this.composerDraftReferences = [];
+    this.composerAttachments = [];
   }
 
   /**

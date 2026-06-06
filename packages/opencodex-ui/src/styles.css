@@ -478,9 +478,17 @@ textarea {
 }
 
 .project-side-panel-tabs .MuiTab-root {
+  min-width: 84px;
   min-height: 30px;
-  padding: 3px 12px;
+  padding: 3px 8px;
   text-transform: none;
+}
+
+.project-side-panel-tab-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .git-panel {

@@ -4,7 +4,7 @@
 import AssistantDirectionRoundedIcon from "@mui/icons-material/AssistantDirectionRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { IconButton, Stack, Tooltip } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
@@ -48,10 +48,10 @@ export function ChatComposer({
   isWorking
 }: ChatComposerProps) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState("");
-  const [draftMarkdown, setDraftMarkdown] = useState("");
-  const [draftReferences, setDraftReferences] = useState<OpenCodexComposerReference[]>([]);
-  const [attachments, setAttachments] = useState<OpenCodexImageAttachment[]>([]);
+  const draft = chatStore.composerDraft;
+  const draftMarkdown = chatStore.composerDraftMarkdown;
+  const draftReferences = chatStore.composerDraftReferences;
+  const attachments = chatStore.composerAttachments;
   const canSteer = chatStore.canSteerActiveTurn;
   const isSteering = isWorking && canSteer;
   const canSubmit = (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
@@ -67,13 +67,6 @@ export function ChatComposer({
     projectStore.isReadOnlyFromCache
   );
 
-  useEffect(() => {
-    setDraft("");
-    setDraftMarkdown("");
-    setDraftReferences([]);
-    setAttachments([]);
-  }, [chatStore.thread.id]);
-
   const canOpenFileLinks = canOpenProjectFileLinks(store, sourceId);
 
   function handleDraftChange(
@@ -81,9 +74,7 @@ export function ChatComposer({
     markdown: string,
     references: OpenCodexComposerReference[]
   ): void {
-    setDraft(value);
-    setDraftMarkdown(markdown);
-    setDraftReferences(references);
+    chatStore.setComposerDraft(value, markdown, references);
   }
 
   async function submitDraft(): Promise<void> {
@@ -98,10 +89,7 @@ export function ChatComposer({
       return;
     }
 
-    setDraft("");
-    setDraftMarkdown("");
-    setDraftReferences([]);
-    setAttachments([]);
+    chatStore.clearComposerDraft();
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
@@ -163,11 +151,11 @@ export function ChatComposer({
       return;
     }
 
-    setAttachments((current) => [...current, ...pickedAttachments]);
+    chatStore.addComposerAttachments(pickedAttachments);
   }
 
   function handleRemoveAttachment(attachmentId: string): void {
-    setAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId));
+    chatStore.removeComposerAttachment(attachmentId);
   }
 
   const searchProjectFiles = useCallback(async (
@@ -220,7 +208,7 @@ export function ChatComposer({
   async function addImageFiles(imageFiles: File[]): Promise<void> {
     try {
       const pastedAttachments = await Promise.all(imageFiles.map(readImageAttachmentFromFile));
-      setAttachments((current) => [...current, ...pastedAttachments]);
+      chatStore.addComposerAttachments(pastedAttachments);
     } catch {
       // Ignore unreadable clipboard files and leave the composer unchanged.
     }
