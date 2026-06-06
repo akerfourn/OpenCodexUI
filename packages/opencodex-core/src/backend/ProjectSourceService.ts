@@ -180,6 +180,10 @@ export class ProjectSourceService {
       git: {
         ...previousProject.preferences.git,
         ...patch.git
+      },
+      context: {
+        ...previousProject.preferences.context,
+        ...patch.context
       }
     };
     const updatedProject = await repository.updateProjectPreferences(projectId, preferences);
@@ -327,6 +331,15 @@ export class ProjectSourceService {
     }
 
     return this.openProject(selectedPath, sourceId, mode === "create");
+  }
+
+  /**
+   * Lets the host select an external context folder.
+   *
+   * @returns Selected folder path, or `null` when cancelled.
+   */
+  async pickProjectContextFolder(): Promise<string | null> {
+    return await this.options.backendOptions.pickProjectDirectory?.("open") ?? null;
   }
 
   /**

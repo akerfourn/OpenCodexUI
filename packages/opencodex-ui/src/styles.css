@@ -653,6 +653,24 @@ textarea {
   padding: 12px;
 }
 
+.project-context-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.project-context-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  padding: 6px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 92%, var(--vscode-focusBorder));
+}
+
 .project-command-card {
   border: 1px solid var(--vscode-panel-border);
   border-radius: 8px;

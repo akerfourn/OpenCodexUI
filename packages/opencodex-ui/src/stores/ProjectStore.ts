@@ -10,6 +10,7 @@ import type {
 
 import { ChatStore } from "./ChatStore";
 import { ProjectCommandsStore } from "./ProjectCommandsStore";
+import { ProjectContextStore } from "./ProjectContextStore";
 import { ProjectGitStore } from "./ProjectGitStore";
 import type { ProjectTrustRequest } from "./ProjectTrustStore";
 import type { RootStore } from "./RootStore";
@@ -27,6 +28,7 @@ export class ProjectStore {
   readonly threadListStore: ThreadListStore;
   readonly gitStore: ProjectGitStore;
   readonly commandsStore: ProjectCommandsStore;
+  readonly contextStore: ProjectContextStore;
   readonly chatsById = new Map<string, ChatStore>();
 
   /**
@@ -42,6 +44,7 @@ export class ProjectStore {
     this.threadListStore = new ThreadListStore(this, root);
     this.gitStore = new ProjectGitStore(this, root);
     this.commandsStore = new ProjectCommandsStore(this, root);
+    this.contextStore = new ProjectContextStore(this, root);
     makeAutoObservable<ProjectStore, "root">(this, { root: false });
   }
 

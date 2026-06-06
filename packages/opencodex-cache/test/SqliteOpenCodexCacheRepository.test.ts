@@ -90,6 +90,55 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should persist project context folder preferences", async () => {
+    const project = await repository.upsertProject("/tmp/project-context");
+
+    const updatedProject = await repository.updateProjectPreferences(project.id, {
+      context: {
+        permissionsProfileId: "opencodex-context",
+        folders: [
+          {
+            id: "folder-1",
+            path: "/tmp/project-docs",
+            label: "Docs",
+            enabled: true
+          },
+          {
+            id: "folder-2",
+            path: "/tmp/project-fixtures",
+            label: null,
+            enabled: false
+          }
+        ],
+        lastSyncedAt: null
+      }
+    });
+
+    expect(updatedProject?.preferences.context).toEqual({
+      permissionsProfileId: "opencodex-context",
+      folders: [
+        {
+          id: "folder-1",
+          path: "/tmp/project-docs",
+          label: "Docs",
+          enabled: true
+        },
+        {
+          id: "folder-2",
+          path: "/tmp/project-fixtures",
+          label: null,
+          enabled: false
+        }
+      ],
+      lastSyncedAt: null
+    });
+
+    const projects = await repository.listProjects();
+    const persistedProject = projects.find((entry) => entry.id === project.id);
+
+    expect(persistedProject?.preferences.context?.folders).toHaveLength(2);
+  });
+
   it("should persist the latest thread token usage", async () => {
     await repository.upsertThreadIndex([
       {

@@ -3,6 +3,11 @@
  */
 import type { CachedProjectPreferences } from "../types.js";
 
+const defaultPermissionsProfileId = "opencodex-context";
+type NormalizedContextFolder = NonNullable<
+  NonNullable<CachedProjectPreferences["context"]>["folders"]
+>[number];
+
 /**
  * Parses project preferences from SQLite JSON.
  *
@@ -30,7 +35,7 @@ export function parseProjectPreferences(value: string | null): CachedProjectPref
 export function serializeProjectPreferences(preferences: CachedProjectPreferences): string | null {
   const normalized = normalizeProjectPreferences(preferences);
 
-  if (normalized.git === undefined) {
+  if (normalized.git === undefined && normalized.context === undefined) {
     return null;
   }
 
@@ -49,12 +54,13 @@ export function normalizeProjectPreferences(value: unknown): CachedProjectPrefer
   }
 
   const git = normalizeGitPreferences(value.git);
+  const context = normalizeContextPreferences(value.context);
 
-  if (git === undefined) {
+  if (git === undefined && context === undefined) {
     return {};
   }
 
-  return { git };
+  return { git, context };
 }
 
 function normalizeGitPreferences(value: unknown): CachedProjectPreferences["git"] | undefined {
@@ -69,6 +75,75 @@ function normalizeGitPreferences(value: unknown): CachedProjectPreferences["git"
   }
 
   return { referenceTagName };
+}
+
+function normalizeContextPreferences(value: unknown): CachedProjectPreferences["context"] | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const permissionsProfileId = normalizeNullableText(value.permissionsProfileId) ?? defaultPermissionsProfileId;
+  const folders = normalizeContextFolders(value.folders);
+  const lastSyncedAt = normalizeNullableText(value.lastSyncedAt);
+
+  if (folders.length === 0 && lastSyncedAt === undefined && permissionsProfileId === defaultPermissionsProfileId) {
+    return undefined;
+  }
+
+  return {
+    permissionsProfileId,
+    folders,
+    lastSyncedAt: lastSyncedAt ?? null
+  };
+}
+
+function normalizeContextFolders(value: unknown): NormalizedContextFolder[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const folders = [];
+
+  for (const item of value) {
+    const folder = normalizeContextFolder(item);
+
+    if (folder !== null) {
+      folders.push(folder);
+    }
+  }
+
+  return folders;
+}
+
+function normalizeContextFolder(
+  value: unknown
+): NormalizedContextFolder | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = normalizeRequiredText(value.id);
+  const path = normalizeRequiredText(value.path);
+
+  if (id === null || path === null) {
+    return null;
+  }
+
+  return {
+    id,
+    path,
+    label: normalizeNullableText(value.label) ?? null,
+    enabled: value.enabled !== false
+  };
+}
+
+function normalizeRequiredText(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 function normalizeNullableText(value: unknown): string | null | undefined {

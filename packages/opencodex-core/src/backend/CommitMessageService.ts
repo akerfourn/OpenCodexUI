@@ -131,8 +131,7 @@ export class CommitMessageService {
       cwd: projectPath,
       model: selectedModel,
       ephemeral: true,
-      experimentalRawEvents: false,
-      persistExtendedHistory: false
+      experimentalRawEvents: false
     });
     const threadId = thread.thread.id;
     this.options.ignoreThreadNotifications(threadId);

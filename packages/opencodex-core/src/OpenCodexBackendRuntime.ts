@@ -69,6 +69,7 @@ import { GitService } from "./backend/GitService.js";
 import { CommitMessageService } from "./backend/CommitMessageService.js";
 import { ProjectCommandService } from "./backend/ProjectCommandService.js";
 import { PluginService } from "./backend/PluginService.js";
+import { ProjectContextService } from "./backend/ProjectContextService.js";
 import { filterSearchableProjectFiles } from "./backend/fileSearchFilters.js";
 import { readGitVersionStatus } from "./backend/toolVersionDetection.js";
 import { readObject, readString } from "./mapping.js";
@@ -96,6 +97,7 @@ export class OpenCodexBackendRuntime {
   private readonly commitMessageService: CommitMessageService;
   private readonly projectCommandService: ProjectCommandService;
   private readonly pluginService: PluginService;
+  private readonly projectContextService: ProjectContextService;
   private readonly ignoredNotificationThreadIds = new Set<string>();
 
   /**
@@ -190,6 +192,10 @@ export class OpenCodexBackendRuntime {
       ensureClient: (sourceId) => this.ensureClient(sourceId)
     });
     this.pluginService = new PluginService({
+      ensureClient: (sourceId) => this.ensureClient(sourceId)
+    });
+    this.projectContextService = new ProjectContextService({
+      cacheRepository: this.cacheRepository,
       ensureClient: (sourceId) => this.ensureClient(sourceId)
     });
   }
@@ -519,6 +525,17 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Synchronizes project context folders into `.codex/config.toml`.
+   *
+   * @param projectId Project identifier.
+   *
+   * @returns Updated project.
+   */
+  async syncProjectContext(projectId: string): Promise<OpenCodexProject> {
+    return await this.projectContextService.syncProjectContext(projectId);
+  }
+
+  /**
    * Deletes a project from the local cache.
    *
    * @param projectId Project identifier.
@@ -587,6 +604,15 @@ export class OpenCodexBackendRuntime {
     sourceId: string | null
   ): Promise<OpenCodexProject | null> {
     return await this.projectSourceService.pickProjectDirectory(mode, sourceId);
+  }
+
+  /**
+   * Opens the host directory picker for an external context folder.
+   *
+   * @returns Selected folder path, or `null` when cancelled.
+   */
+  async pickProjectContextFolder(): Promise<string | null> {
+    return await this.projectSourceService.pickProjectContextFolder();
   }
 
   /**

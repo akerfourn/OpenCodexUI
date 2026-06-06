@@ -452,8 +452,22 @@ export const resources = {
       },
       projectTools: {
         commands: "Commandes",
+        context: "Dossiers de contexte",
         git: "Git",
         tabs: "Outils du projet"
+      },
+      contextFolders: {
+        add: "Ajouter",
+        description: "Ajoutez des dossiers que Codex pourra lire en plus du projet courant.",
+        empty: "Aucun dossier externe configuré.",
+        lastSynced: "Synchronisé le {{date}}",
+        notSynced: "Configuration non synchronisée.",
+        path: "Chemin du dossier",
+        remove: "Supprimer le dossier",
+        sourceUnavailable: "La source Codex du projet est inactive.",
+        sync: "Synchroniser la configuration Codex",
+        toggle: "Activer le dossier",
+        trustRequired: "Le projet doit être marqué comme fiable pour que Codex charge .codex/config.toml."
       },
       trustProject: {
         cancel: "Plus tard",
@@ -969,8 +983,22 @@ export const resources = {
       },
       projectTools: {
         commands: "Commands",
+        context: "Context folders",
         git: "Git",
         tabs: "Project tools"
+      },
+      contextFolders: {
+        add: "Add",
+        description: "Add folders Codex may read in addition to the current project.",
+        empty: "No external folder configured.",
+        lastSynced: "Synced on {{date}}",
+        notSynced: "Configuration is not synchronized.",
+        path: "Folder path",
+        remove: "Remove folder",
+        sourceUnavailable: "The project's Codex source is inactive.",
+        sync: "Synchronize Codex configuration",
+        toggle: "Enable folder",
+        trustRequired: "The project must be trusted before Codex loads .codex/config.toml."
       },
       trustProject: {
         cancel: "Later",

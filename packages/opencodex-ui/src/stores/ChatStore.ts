@@ -548,9 +548,11 @@ export class ChatStore {
   ): Promise<boolean> {
     const trimmedText = text.trim();
     const sourceId = this.sourceId;
+    const plainAttachments = cloneImageAttachments(attachments);
+    const plainReferences = cloneComposerReferences(references);
 
     if (
-      (trimmedText.length === 0 && attachments.length === 0) ||
+      (trimmedText.length === 0 && plainAttachments.length === 0) ||
       this.projectStore.isReadOnlyFromCache ||
       sourceId === null ||
       this.isStartingTurn ||
@@ -565,11 +567,11 @@ export class ChatStore {
         return Promise.resolve(false);
       }
 
-      return this.steerActiveTurn(trimmedText, attachments, references);
+      return this.steerActiveTurn(trimmedText, plainAttachments, plainReferences);
     }
 
     this.isStartingTurn = true;
-    this.createOptimisticUserTurn(trimmedText, attachments);
+    this.createOptimisticUserTurn(trimmedText, plainAttachments);
 
     void this.root.request({
       type: "turn.start",
@@ -577,11 +579,16 @@ export class ChatStore {
       projectPath: this.projectStore.projectPath,
       sourceId,
       text: trimmedText,
-      attachments,
-      references: cloneComposerReferences(references),
+      attachments: plainAttachments,
+      references: plainReferences,
       model,
       reasoningEffort,
       serviceTier
+    }).catch((error: unknown) => {
+      runInAction(() => {
+        this.clearPendingTurnAfterStartFailure();
+        this.root.appStore.errorMessage = readErrorMessage(error);
+      });
     });
 
     return Promise.resolve(true);
@@ -942,6 +949,21 @@ export class ChatStore {
     }
 
     turn.items = turn.items.filter((item) => item.id !== itemId);
+  }
+
+  private clearPendingTurnAfterStartFailure(): void {
+    const pendingTurnId = this.pendingTurnId;
+
+    this.isStartingTurn = false;
+    this.isWorking = false;
+    this.activeTurnId = null;
+    this.pendingTurnId = null;
+
+    if (pendingTurnId === null) {
+      return;
+    }
+
+    this.setTurns(this.turns.filter((turn) => turn.id !== pendingTurnId));
   }
 
   private isVisibleChat(): boolean {

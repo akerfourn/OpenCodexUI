@@ -105,6 +105,18 @@ export type OpenCodexProjectPreferences = {
   git?: {
     referenceTagName?: string | null;
   };
+  context?: {
+    permissionsProfileId?: string | null;
+    folders?: OpenCodexProjectContextFolder[];
+    lastSyncedAt?: string | null;
+  };
+};
+
+export type OpenCodexProjectContextFolder = {
+  id: string;
+  path: string;
+  label: string | null;
+  enabled: boolean;
 };
 
 export type OpenCodexFileSearchResult = {

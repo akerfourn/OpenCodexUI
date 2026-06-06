@@ -23,6 +23,8 @@ export type OpenCodexRequest =
   | { type: "projects.pickDirectory"; mode: "open" | "create"; sourceId?: string | null }
   | { type: "projects.setHidden"; projectId: string; isHidden: boolean }
   | { type: "projects.preferences.update"; projectId: string; patch: Partial<OpenCodexProjectPreferences> }
+  | { type: "projects.context.sync"; projectId: string }
+  | { type: "projects.context.pickFolder" }
   | { type: "projects.delete"; projectId: string }
   | { type: "attachments.pickImages" }
   | { type: "sources.list" }

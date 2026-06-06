@@ -40,6 +40,18 @@ export type CachedProjectPreferences = {
   git?: {
     referenceTagName?: string | null;
   };
+  context?: {
+    permissionsProfileId?: string | null;
+    folders?: CachedProjectContextFolder[];
+    lastSyncedAt?: string | null;
+  };
+};
+
+export type CachedProjectContextFolder = {
+  id: string;
+  path: string;
+  label: string | null;
+  enabled: boolean;
 };
 
 export type CachedLogEntry = {

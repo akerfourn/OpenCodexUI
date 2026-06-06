@@ -35,6 +35,10 @@ import type { ThreadTurnsItemsListParams } from "./generated/v2/ThreadTurnsItems
 import type { ThreadTurnsItemsListResponse } from "./generated/v2/ThreadTurnsItemsListResponse";
 import type { ThreadTurnsListParams } from "./generated/v2/ThreadTurnsListParams";
 import type { ThreadTurnsListResponse } from "./generated/v2/ThreadTurnsListResponse";
+import type { FsCreateDirectoryResponse } from "./generated/v2/FsCreateDirectoryResponse";
+import type { FsGetMetadataResponse } from "./generated/v2/FsGetMetadataResponse";
+import type { FsReadFileResponse } from "./generated/v2/FsReadFileResponse";
+import type { FsWriteFileResponse } from "./generated/v2/FsWriteFileResponse";
 import type { ReviewStartResponse } from "./generated/v2/ReviewStartResponse";
 import type { TurnInterruptResponse } from "./generated/v2/TurnInterruptResponse";
 import type { TurnStartParams } from "./generated/v2/TurnStartParams";
@@ -290,7 +294,6 @@ export class CodexAppServerClient {
   async startThread(params: Partial<ThreadStartParams> = {}): Promise<ThreadStartResponse> {
     return this.request<ThreadStartResponse>("thread/start", {
       experimentalRawEvents: false,
-      persistExtendedHistory: true,
       ...params
     });
   }
@@ -304,13 +307,56 @@ export class CodexAppServerClient {
    */
   async resumeThread(
     threadId: string,
-    params: Partial<Omit<ThreadResumeParams, "threadId" | "persistExtendedHistory">> = {}
+    params: Partial<Omit<ThreadResumeParams, "threadId">> = {}
   ): Promise<ThreadResumeResponse> {
     return this.request<ThreadResumeResponse>("thread/resume", {
       threadId,
-      persistExtendedHistory: true,
       ...params
     });
+  }
+
+  /**
+   * Reads a file through Codex app-server filesystem access.
+   *
+   * @param path Absolute source-local file path.
+   * @returns Base64 encoded file contents.
+   */
+  async readFile(path: string): Promise<FsReadFileResponse> {
+    return this.request<FsReadFileResponse>("fs/readFile", { path });
+  }
+
+  /**
+   * Writes a file through Codex app-server filesystem access.
+   *
+   * @param path Absolute source-local file path.
+   * @param dataBase64 Base64 encoded file contents.
+   * @returns Empty success response.
+   */
+  async writeFile(path: string, dataBase64: string): Promise<FsWriteFileResponse> {
+    return this.request<FsWriteFileResponse>("fs/writeFile", { path, dataBase64 });
+  }
+
+  /**
+   * Creates a directory through Codex app-server filesystem access.
+   *
+   * @param path Absolute source-local directory path.
+   * @returns Empty success response.
+   */
+  async createDirectory(path: string): Promise<FsCreateDirectoryResponse> {
+    return this.request<FsCreateDirectoryResponse>("fs/createDirectory", {
+      path,
+      recursive: true
+    });
+  }
+
+  /**
+   * Reads filesystem metadata through Codex app-server filesystem access.
+   *
+   * @param path Absolute source-local path.
+   * @returns Path metadata.
+   */
+  async getMetadata(path: string): Promise<FsGetMetadataResponse> {
+    return this.request<FsGetMetadataResponse>("fs/getMetadata", { path });
   }
 
   /**
