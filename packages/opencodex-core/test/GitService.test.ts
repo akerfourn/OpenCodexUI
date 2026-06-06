@@ -37,6 +37,7 @@ describe("GitService", () => {
       behindCount: 0,
       branchName: null,
       upstreamName: null,
+      pendingCommitMessage: null,
       changedFiles: [],
       stagedFiles: []
     });
@@ -63,6 +64,45 @@ describe("GitService", () => {
       ["git", "init"],
       ["git", "rev-parse", "--is-inside-work-tree"],
       ["git", "status", "--porcelain=v2", "-z", "--branch"]
+    ]);
+  });
+
+  it("should read a prepared revert commit message when a revert is pending", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      {
+        exitCode: 0,
+        stdout: "1 M. N... 100644 100644 100644 abc abc docs/releases/release-1.6.0.md\0",
+        stderr: ""
+      },
+      { exitCode: 0, stdout: "/workspace/project/.git/REVERT_HEAD\n", stderr: "" },
+      { exitCode: 0, stdout: "/workspace/project/.git/MERGE_MSG\n", stderr: "" }
+    ]);
+    client.metadataByPath.set("/workspace/project/.git/REVERT_HEAD", {
+      isDirectory: false,
+      isFile: true,
+      isSymlink: false,
+      createdAtMs: 0,
+      modifiedAtMs: 0
+    });
+    client.filesByPath.set(
+      "/workspace/project/.git/MERGE_MSG",
+      "Revert \"docs(releases): expand 1.6.0 notes\"\n\nThis reverts commit 14f6c7f.\n"
+    );
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const status = await service.status("/workspace/project", "source-1");
+
+    expect(status.pendingCommitMessage).toBe(
+      "Revert \"docs(releases): expand 1.6.0 notes\"\n\nThis reverts commit 14f6c7f."
+    );
+    expect(client.commands).toEqual([
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "rev-parse", "--path-format=absolute", "--git-path", "REVERT_HEAD"],
+      ["git", "rev-parse", "--path-format=absolute", "--git-path", "MERGE_MSG"]
     ]);
   });
 
@@ -312,6 +352,8 @@ describe("GitService", () => {
 
 class FakeCodexClient {
   readonly commands: string[][] = [];
+  readonly filesByPath = new Map<string, string>();
+  readonly metadataByPath = new Map<string, v2.FsGetMetadataResponse>();
   private readonly listeners = new Set<FakeNotificationListener>();
 
   constructor(private readonly responses: FakeProcessResponse[]) {}
@@ -332,10 +374,19 @@ class FakeCodexClient {
 
   async request<TResponse>(
     method: string,
-    params: v2.ProcessSpawnParams
+    params: v2.ProcessSpawnParams | v2.FsGetMetadataParams | v2.FsReadFileParams
   ): Promise<TResponse> {
+    if (method === "fs/getMetadata") {
+      return this.getMetadata(params as v2.FsGetMetadataParams) as TResponse;
+    }
+
+    if (method === "fs/readFile") {
+      return this.readFile(params as v2.FsReadFileParams) as TResponse;
+    }
+
     expect(method).toBe("process/spawn");
-    this.commands.push([...params.command]);
+    const processParams = params as v2.ProcessSpawnParams;
+    this.commands.push([...processParams.command]);
     const response = this.responses.shift();
 
     if (response === undefined) {
@@ -346,7 +397,7 @@ class FakeCodexClient {
       const notification = {
         method: "process/exited",
         params: {
-          processHandle: params.processHandle,
+          processHandle: processParams.processHandle,
           exitCode: response.exitCode,
           stdout: response.stdout,
           stdoutCapReached: false,
@@ -361,5 +412,27 @@ class FakeCodexClient {
     });
 
     return {} as TResponse;
+  }
+
+  private getMetadata(params: v2.FsGetMetadataParams): v2.FsGetMetadataResponse {
+    const metadata = this.metadataByPath.get(params.path);
+
+    if (metadata === undefined) {
+      throw new Error(`No fake metadata configured for ${params.path}.`);
+    }
+
+    return metadata;
+  }
+
+  private readFile(params: v2.FsReadFileParams): v2.FsReadFileResponse {
+    const content = this.filesByPath.get(params.path);
+
+    if (content === undefined) {
+      throw new Error(`No fake file configured for ${params.path}.`);
+    }
+
+    return {
+      dataBase64: Buffer.from(content, "utf8").toString("base64")
+    };
   }
 }

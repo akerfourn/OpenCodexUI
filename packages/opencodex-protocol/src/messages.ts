@@ -168,6 +168,7 @@ export type OpenCodexGitStatus = {
   behindCount: number;
   branchName: string | null;
   upstreamName: string | null;
+  pendingCommitMessage: string | null;
   changedFiles: OpenCodexGitFile[];
   stagedFiles: OpenCodexGitFile[];
 };

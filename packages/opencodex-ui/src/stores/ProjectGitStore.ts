@@ -23,6 +23,7 @@ const emptyGitStatus: OpenCodexGitStatus = {
   behindCount: 0,
   branchName: null,
   upstreamName: null,
+  pendingCommitMessage: null,
   changedFiles: [],
   stagedFiles: []
 };
@@ -780,6 +781,11 @@ export class ProjectGitStore {
 
   private applyStatus(status: OpenCodexGitStatus): void {
     this.status = status;
+
+    if (this.commitMessage.trim().length === 0 && status.pendingCommitMessage !== null) {
+      this.commitMessage = status.pendingCommitMessage;
+    }
+
     this.selectedChangedPaths = keepExistingPaths(
       this.selectedChangedPaths,
       status.changedFiles.map((file) => file.path)

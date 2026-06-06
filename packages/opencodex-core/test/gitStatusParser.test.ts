@@ -23,6 +23,7 @@ describe("parseGitStatus", () => {
       behindCount: 1,
       branchName: "main",
       upstreamName: "origin/main",
+      pendingCommitMessage: null,
       changedFiles: [
         {
           path: "changed.ts",

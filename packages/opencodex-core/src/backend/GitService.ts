@@ -17,6 +17,11 @@ type GitProcessResult = Pick<
   "exitCode" | "stdout" | "stdoutCapReached" | "stderr" | "stderrCapReached"
 >;
 
+type PendingCommitMessageSource = {
+  markerPath: string;
+  messagePath: string;
+};
+
 export type OpenCodexStagedCommitContext = {
   stat: string;
   nameStatus: string;
@@ -64,7 +69,15 @@ export class GitService {
       throw new Error(createGitErrorMessage(response));
     }
 
-    return parseGitStatus(response.stdout);
+    const status = parseGitStatus(response.stdout);
+    const pendingCommitMessage = status.stagedFiles.length > 0
+      ? await this.readPendingCommitMessage(projectPath, sourceId)
+      : null;
+
+    return {
+      ...status,
+      pendingCommitMessage
+    };
   }
 
   /**
@@ -414,6 +427,99 @@ export class GitService {
     };
   }
 
+  private async readPendingCommitMessage(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<string | null> {
+    const client = await this.options.ensureClient(sourceId);
+    const source = await this.findPendingCommitMessageSource(projectPath, sourceId);
+
+    if (source === null) {
+      return null;
+    }
+
+    const messagePath = await this.resolveGitPath(projectPath, sourceId, source.messagePath);
+
+    if (messagePath === null) {
+      return null;
+    }
+
+    try {
+      const response = await client.request<v2.FsReadFileResponse>("fs/readFile", {
+        path: messagePath
+      });
+      const message = Buffer.from(response.dataBase64, "base64").toString("utf8").trim();
+      return message.length > 0 ? message : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async findPendingCommitMessageSource(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<PendingCommitMessageSource | null> {
+    const sources: PendingCommitMessageSource[] = [
+      { markerPath: "REVERT_HEAD", messagePath: "MERGE_MSG" },
+      { markerPath: "MERGE_HEAD", messagePath: "MERGE_MSG" },
+      { markerPath: "CHERRY_PICK_HEAD", messagePath: "MERGE_MSG" },
+      { markerPath: "rebase-merge", messagePath: "COMMIT_EDITMSG" },
+      { markerPath: "rebase-apply", messagePath: "COMMIT_EDITMSG" }
+    ];
+
+    for (const source of sources) {
+      const hasMarker = await this.hasGitPath(projectPath, sourceId, source.markerPath);
+
+      if (hasMarker) {
+        return source;
+      }
+    }
+
+    return null;
+  }
+
+  private async hasGitPath(
+    projectPath: string,
+    sourceId: string | null,
+    path: string
+  ): Promise<boolean> {
+    const client = await this.options.ensureClient(sourceId);
+    const resolvedPath = await this.resolveGitPath(projectPath, sourceId, path);
+
+    if (resolvedPath === null) {
+      return false;
+    }
+
+    try {
+      const metadata = await client.request<v2.FsGetMetadataResponse>("fs/getMetadata", {
+        path: resolvedPath
+      });
+      return metadata.isFile || metadata.isDirectory;
+    } catch {
+      return false;
+    }
+  }
+
+  private async resolveGitPath(
+    projectPath: string,
+    sourceId: string | null,
+    path: string
+  ): Promise<string | null> {
+    const response = await this.runGit(projectPath, sourceId, [
+      "rev-parse",
+      "--path-format=absolute",
+      "--git-path",
+      path
+    ], { allowFailure: true });
+    const resolvedPath = response.stdout.trim();
+
+    if (response.exitCode !== 0 || resolvedPath.length === 0) {
+      return null;
+    }
+
+    return resolvedPath;
+  }
+
   private async validateBranchName(
     projectPath: string,
     sourceId: string | null,
@@ -546,6 +652,7 @@ function createEmptyGitStatus(): OpenCodexGitStatus {
     behindCount: 0,
     branchName: null,
     upstreamName: null,
+    pendingCommitMessage: null,
     changedFiles: [],
     stagedFiles: []
   };
