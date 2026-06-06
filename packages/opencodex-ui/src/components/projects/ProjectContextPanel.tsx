@@ -2,15 +2,12 @@
  * Renders external read-only context folders for one project.
  */
 import CreateNewFolderOutlinedIcon from "@mui/icons-material/CreateNewFolderOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
 import {
   Alert,
-  Box,
   CircularProgress,
   IconButton,
   Stack,
-  Switch,
   Tooltip,
   Typography
 } from "@mui/material";
@@ -18,6 +15,7 @@ import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectStore } from "../../stores/ProjectStore";
+import { ProjectContextFolderRowX } from "./ProjectContextFolderRow";
 
 type ProjectContextPanelProps = {
   projectStore: ProjectStore;
@@ -83,39 +81,12 @@ export function ProjectContextPanel({ projectStore }: ProjectContextPanelProps) 
           ) : null}
 
           {contextStore.folders.map((folder) => (
-            <Box key={folder.id} className="project-context-folder-row">
-              <Switch
-                size="small"
-                checked={folder.enabled}
-                disabled={!contextStore.isAvailable || isBusy}
-                aria-label={t("contextFolders.toggle")}
-                onChange={(_event, checked) => {
-                  void contextStore.setFolderEnabled(folder.id, checked);
-                }}
-              />
-              <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-                <Typography variant="body2" noWrap>
-                  {folder.label ?? folder.path}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" noWrap>
-                  {folder.path}
-                </Typography>
-              </Box>
-              <Tooltip title={t("contextFolders.remove")}>
-                <span>
-                  <IconButton
-                    size="small"
-                    disabled={!contextStore.isAvailable || isBusy}
-                    aria-label={t("contextFolders.remove")}
-                    onClick={() => {
-                      void contextStore.removeFolder(folder.id);
-                    }}
-                  >
-                    <DeleteOutlineOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </Box>
+            <ProjectContextFolderRowX
+              key={folder.id}
+              contextStore={contextStore}
+              folder={folder}
+              disabled={!contextStore.isAvailable || isBusy}
+            />
           ))}
         </Stack>
 

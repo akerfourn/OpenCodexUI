@@ -110,6 +110,14 @@ export class ProjectContextStore {
     await this.updateFolder(folderId, { enabled });
   }
 
+  async renameFolder(folderId: string, label: string | null): Promise<void> {
+    const normalizedLabel = label?.trim();
+
+    await this.updateFolder(folderId, {
+      label: normalizedLabel !== undefined && normalizedLabel.length > 0 ? normalizedLabel : null
+    });
+  }
+
   async syncConfig(): Promise<void> {
     if (!this.canSync) {
       return;
