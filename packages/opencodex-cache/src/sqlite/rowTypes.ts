@@ -23,6 +23,7 @@ export type ThreadRow = {
   has_loaded_all_older_turns: number;
   last_synced_at: string | null;
   token_usage_json: string | null;
+  is_archived: number;
 };
 
 export type TurnRow = {

@@ -2,8 +2,12 @@
  * Renders the thread button component for the OpenCodex UI.
  */
 import { observer } from "mobx-react-lite";
-import { Box, CircularProgress, ListItemButton, ListItemIcon, Typography } from "@mui/material";
+import { useState, type MouseEvent } from "react";
+import { Box, CircularProgress, IconButton, ListItemButton, ListItemIcon, Menu, MenuItem, Stack, Typography } from "@mui/material";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
+import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
+import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
@@ -24,22 +28,67 @@ type ThreadButtonProps = {
  */
 export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
   const { t } = useTranslation();
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const threadListStore = projectStore.threadListStore;
+  const isMenuOpen = menuAnchor !== null;
 
   function handleOpenThread(): void {
+    if (threadListStore.isShowingArchivedThreads) {
+      return;
+    }
+
     projectStore.openThread(thread.id);
+  }
+
+  function handleOpenMenu(event: MouseEvent<HTMLButtonElement>): void {
+    event.stopPropagation();
+    setMenuAnchor(event.currentTarget);
+  }
+
+  function handleCloseMenu(): void {
+    setMenuAnchor(null);
+  }
+
+  function handleArchiveThread(): void {
+    handleCloseMenu();
+    threadListStore.archiveThread(thread.id);
+  }
+
+  function handleUnarchiveThread(): void {
+    handleCloseMenu();
+    threadListStore.unarchiveThread(thread.id);
   }
 
   const isActive = projectStore.selectedChatId === thread.id;
   const isLoading = projectStore.loadingThreadId === thread.id;
+  const isArchiving = threadListStore.archivingThreadId === thread.id;
   const indicatorState = projectStore.getThreadIndicatorState(thread.id);
-  const shouldShowLoading = isLoading || indicatorState === "running";
+  const shouldShowLoading = isLoading || isArchiving || indicatorState === "running";
   const chatIconClassName = indicatorState === "unseen" ? "work-indicator-pulse" : undefined;
   const metadata = getThreadMetadata(thread);
+  const archiveAction = threadListStore.isShowingArchivedThreads
+    ? (
+        <MenuItem onClick={handleUnarchiveThread}>
+          <ListItemIcon sx={{ minWidth: 32 }}>
+            <UnarchiveOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          {t("sidebar.unarchiveThread")}
+        </MenuItem>
+      )
+    : (
+        <MenuItem onClick={handleArchiveThread}>
+          <ListItemIcon sx={{ minWidth: 32 }}>
+            <ArchiveOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          {t("sidebar.archiveThread")}
+        </MenuItem>
+      );
 
   return (
     <ListItemButton
+      component="div"
       selected={isActive}
-      disabled={isLoading}
+      disabled={isLoading || isArchiving}
       onClick={handleOpenThread}
       sx={{ mb: 0.5, alignItems: "flex-start", borderRadius: 1 }}
     >
@@ -50,16 +99,36 @@ export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
           <ChatBubbleOutlineOutlinedIcon className={chatIconClassName} fontSize="small" />
         )}
       </ListItemIcon>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Typography variant="body2" noWrap>
-          {getThreadTitle(thread, t("chat.untitled"))}
-        </Typography>
-        {metadata !== null ? (
-          <Typography variant="caption" component="div" color="text.secondary" noWrap>
-            {metadata}
+      <Stack direction="row" spacing={0.5} sx={{ minWidth: 0, flex: 1, alignItems: "flex-start" }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography variant="body2" noWrap>
+            {getThreadTitle(thread, t("chat.untitled"))}
           </Typography>
-        ) : null}
-      </Box>
+          {metadata !== null ? (
+            <Typography variant="caption" component="div" color="text.secondary" noWrap>
+              {metadata}
+            </Typography>
+          ) : null}
+        </Box>
+        <IconButton
+          aria-label={t("sidebar.threadActions")}
+          size="small"
+          disabled={isArchiving}
+          onClick={handleOpenMenu}
+          sx={{ mt: -0.5 }}
+        >
+          <MoreVertOutlinedIcon fontSize="small" />
+        </IconButton>
+      </Stack>
+      <Menu
+        anchorEl={menuAnchor}
+        open={isMenuOpen}
+        onClose={handleCloseMenu}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        {archiveAction}
+      </Menu>
     </ListItemButton>
   );
 }

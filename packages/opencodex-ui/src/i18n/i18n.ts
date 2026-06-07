@@ -489,6 +489,7 @@ export const resources = {
       },
       sidebar: {
         allChats: "Tous les chats",
+        archiveThread: "Archiver",
         currentProject: "Projet courant",
         filterNotice: "Le filtrage par projet n'est pas disponible avec ce workspace.",
         filterTabs: "Filtre des conversations",
@@ -497,7 +498,11 @@ export const resources = {
         openProject: "Ouvrir le projet",
         otherChats: "Autres chats",
         refresh: "Synchroniser les chats",
-        search: "Rechercher"
+        search: "Rechercher",
+        showActiveChats: "Retour aux chats actifs",
+        showArchivedChats: "Voir les chats archivés",
+        threadActions: "Actions de conversation",
+        unarchiveThread: "Désarchiver"
       },
       sources: {
         add: "Ajouter",
@@ -1029,6 +1034,7 @@ export const resources = {
       },
       sidebar: {
         allChats: "All chats",
+        archiveThread: "Archive",
         currentProject: "Current project",
         filterNotice: "Project filtering is not available with this workspace.",
         filterTabs: "Conversation filter",
@@ -1037,7 +1043,11 @@ export const resources = {
         openProject: "Open project",
         otherChats: "Other chats",
         refresh: "Sync chats",
-        search: "Search"
+        search: "Search",
+        showActiveChats: "Back to active chats",
+        showArchivedChats: "Show archived chats",
+        threadActions: "Conversation actions",
+        unarchiveThread: "Unarchive"
       },
       sources: {
         add: "Add",

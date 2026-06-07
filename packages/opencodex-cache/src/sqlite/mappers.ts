@@ -35,7 +35,8 @@ export function mapThreadRow(row: ThreadRow): CachedThreadSummary {
     projectName,
     projectPath: row.cwd,
     branchName: row.branch_name,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    isArchived: row.is_archived === 1
   };
 
   if (row.status !== null) {

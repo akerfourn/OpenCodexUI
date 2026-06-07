@@ -77,7 +77,8 @@ export class ThreadConversationService {
     scope: "currentProject" | "all",
     projectPath: string | null,
     sourceId: string | null,
-    searchTerm?: string
+    searchTerm?: string,
+    isArchived = false
   ): Promise<OpenCodexThread[]> {
     const currentProjectPath = scope === "currentProject"
       ? this.resolveCurrentProjectPath(projectPath)
@@ -94,11 +95,12 @@ export class ThreadConversationService {
       scope,
       currentProjectPath,
       sourceId,
-      searchTerm
+      searchTerm,
+      isArchived
     );
 
     if (cachedThreads.length > 0) {
-      this.emitThreadsUpdated(cachedThreads, currentProjectPath);
+      this.emitThreadsUpdated(cachedThreads, currentProjectPath, isArchived);
     }
 
     if (sourceId === null) {
@@ -111,7 +113,8 @@ export class ThreadConversationService {
       limit: THREAD_LIST_PAGE_SIZE,
       sortKey: "updated_at",
       sortDirection: "desc",
-      sourceKinds: THREAD_SOURCE_KINDS
+      sourceKinds: THREAD_SOURCE_KINDS,
+      archived: isArchived
     };
     const trimmedSearchTerm = searchTerm?.trim() ?? "";
 
@@ -125,6 +128,7 @@ export class ThreadConversationService {
 
     const threads = (await readThreadPages(client, params)).map((thread) => ({
       ...thread,
+      isArchived,
       sourceId: resolvedSource.id
     }));
     await this.options.threadCacheService.writeIndex(threads);
@@ -133,13 +137,38 @@ export class ThreadConversationService {
       scope,
       currentProjectPath,
       resolvedSource.id,
-      searchTerm
+      searchTerm,
+      isArchived
     );
     const updatedThreads = mergeFreshThreadList(threads, mergedThreads);
-    this.emitThreadsUpdated(updatedThreads, currentProjectPath);
+    this.emitThreadsUpdated(updatedThreads, currentProjectPath, isArchived);
     this.options.emit({ type: "projects.updated", projects: await this.options.readCachedProjects() });
 
     return updatedThreads;
+  }
+
+  /**
+   * Archives a Codex thread and updates the local cache marker.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when the archive completes.
+   */
+  async archiveThread(threadId: string): Promise<{ ok: true }> {
+    await this.setThreadArchiveState(threadId, true);
+    return { ok: true };
+  }
+
+  /**
+   * Restores an archived Codex thread and updates the local cache marker.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when the restore completes.
+   */
+  async unarchiveThread(threadId: string): Promise<{ ok: true }> {
+    await this.setThreadArchiveState(threadId, false);
+    return { ok: true };
   }
 
   /**
@@ -816,6 +845,24 @@ export class ThreadConversationService {
     this.options.emit({ type: "thread.renamed", threadId, name: trimmedName });
   }
 
+  private async setThreadArchiveState(threadId: string, isArchived: boolean): Promise<void> {
+    const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
+
+    if (cachedSnapshot === null || cachedSnapshot.thread.sourceId === null) {
+      throw new Error("Cannot change archive state for a thread without a Codex source.");
+    }
+
+    const client = await this.options.ensureClient(cachedSnapshot.thread.sourceId);
+
+    if (isArchived) {
+      await client.archiveThread(threadId);
+    } else {
+      await client.unarchiveThread(threadId);
+    }
+
+    await this.options.threadCacheService.writeArchiveState(threadId, isArchived);
+  }
+
   /**
    * Loads latest raw turns from Codex into memory.
    *
@@ -1140,7 +1187,7 @@ export class ThreadConversationService {
       projectPath,
       cachedSnapshot?.thread.sourceId ?? null
     );
-    this.emitThreadsUpdated(cachedThreads, projectPath);
+    this.emitThreadsUpdated(cachedThreads, projectPath, false);
   }
 
   /**
@@ -1271,12 +1318,17 @@ export class ThreadConversationService {
    *
    * @returns Nothing.
    */
-  private emitThreadsUpdated(threads: OpenCodexThread[], projectPath: string | null): void {
+  private emitThreadsUpdated(
+    threads: OpenCodexThread[],
+    projectPath: string | null,
+    isArchived: boolean
+  ): void {
     this.options.emit({
       type: "threads.updated",
       threads,
       currentProjectFilterAvailable: projectPath !== null,
-      projectPath
+      projectPath,
+      archived: isArchived
     });
   }
 

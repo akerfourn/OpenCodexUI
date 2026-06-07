@@ -22,6 +22,7 @@ import { CodexProcessError, JsonRpcError } from "./types";
 
 import type { ThreadListParams } from "./generated/v2/ThreadListParams";
 import type { ThreadListResponse } from "./generated/v2/ThreadListResponse";
+import type { ThreadArchiveResponse } from "./generated/v2/ThreadArchiveResponse";
 import type { ThreadReadResponse } from "./generated/v2/ThreadReadResponse";
 import type { ThreadResumeParams } from "./generated/v2/ThreadResumeParams";
 import type { ThreadResumeResponse } from "./generated/v2/ThreadResumeResponse";
@@ -31,6 +32,7 @@ import type { ThreadCompactStartResponse } from "./generated/v2/ThreadCompactSta
 import type { ThreadSetNameResponse } from "./generated/v2/ThreadSetNameResponse";
 import type { ThreadStartParams } from "./generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "./generated/v2/ThreadStartResponse";
+import type { ThreadUnarchiveResponse } from "./generated/v2/ThreadUnarchiveResponse";
 import type { ThreadTurnsItemsListParams } from "./generated/v2/ThreadTurnsItemsListParams";
 import type { ThreadTurnsItemsListResponse } from "./generated/v2/ThreadTurnsItemsListResponse";
 import type { ThreadTurnsListParams } from "./generated/v2/ThreadTurnsListParams";
@@ -283,6 +285,26 @@ export class CodexAppServerClient {
    */
   async listThreads(params: ThreadListParams = {}): Promise<ThreadListResponse> {
     return this.request<ThreadListResponse>("thread/list", params);
+  }
+
+  /**
+   * Archives a Codex thread.
+   *
+   * @param threadId Identifier of the thread to archive.
+   * @returns Empty success response.
+   */
+  async archiveThread(threadId: string): Promise<ThreadArchiveResponse> {
+    return this.request<ThreadArchiveResponse>("thread/archive", { threadId });
+  }
+
+  /**
+   * Restores an archived Codex thread.
+   *
+   * @param threadId Identifier of the thread to restore.
+   * @returns Promise resolved with the restored thread.
+   */
+  async unarchiveThread(threadId: string): Promise<ThreadUnarchiveResponse> {
+    return this.request<ThreadUnarchiveResponse>("thread/unarchive", { threadId });
   }
 
   /**

@@ -27,6 +27,7 @@ export type ThreadListParams = {
   sourceKinds?: ThreadSourceKind[] | null;
   cwd?: string | string[] | null;
   searchTerm?: string | null;
+  archived?: boolean | null;
 };
 
 export const THREAD_SOURCE_KINDS: ThreadSourceKind[] = [
@@ -41,4 +42,3 @@ export const THREAD_SOURCE_KINDS: ThreadSourceKind[] = [
   "subAgentOther",
   "unknown"
 ];
-

@@ -69,6 +69,7 @@ export function mapThread(
     sourceId: null,
     branchName: readNullableString(gitInfo.branch),
     updatedAt: readTimestamp(thread.updatedAt),
+    isArchived: false,
     status: readNullableString(thread.status) ?? undefined
   };
 }

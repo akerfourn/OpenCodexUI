@@ -79,6 +79,36 @@ export async function updateThreadTitle(
 }
 
 /**
+ * Updates the archive marker for a cached thread.
+ *
+ * @param database SQLite database connection.
+ * @param threadId Thread identifier.
+ * @param isArchived Whether the thread is archived.
+ *
+ * @returns Promise resolved when the update completes.
+ */
+export async function updateThreadArchiveState(
+  database: BetterSqliteDatabase,
+  threadId: string,
+  isArchived: boolean
+): Promise<void> {
+  database
+    .prepare(
+      `
+      UPDATE threads SET
+        is_archived = @isArchived,
+        updated_at = @updatedAt
+      WHERE id = @threadId
+      `
+    )
+    .run({
+      threadId,
+      isArchived: isArchived ? 1 : 0,
+      updatedAt: new Date().toISOString()
+    });
+}
+
+/**
  * Updates the Codex-generated title for a thread.
  *
  * @param database SQLite database connection.
@@ -218,6 +248,9 @@ export async function listThreads(
     );
     params.searchTerm = `%${searchTerm}%`;
   }
+
+  clauses.push("threads.is_archived = @isArchived");
+  params.isArchived = query.isArchived === true ? "1" : "0";
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
   const rows = database
@@ -541,6 +574,7 @@ function writeThreadIndex(
       model,
       reasoning_effort,
       status,
+      is_archived,
       updated_at
     )
     VALUES (
@@ -556,6 +590,7 @@ function writeThreadIndex(
       @model,
       @reasoningEffort,
       @status,
+      @isArchived,
       @updatedAt
     )
     ON CONFLICT(id) DO UPDATE SET
@@ -575,6 +610,7 @@ function writeThreadIndex(
       model = COALESCE(excluded.model, threads.model),
       reasoning_effort = COALESCE(excluded.reasoning_effort, threads.reasoning_effort),
       status = excluded.status,
+      is_archived = excluded.is_archived,
       updated_at = excluded.updated_at
     `
   );
@@ -606,6 +642,7 @@ function writeThreadIndex(
         model: thread.model ?? null,
         reasoningEffort: thread.reasoningEffort ?? null,
         status: thread.status ?? null,
+        isArchived: thread.isArchived ? 1 : 0,
         updatedAt: thread.updatedAt ?? null
       });
     }

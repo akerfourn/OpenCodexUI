@@ -653,9 +653,38 @@ export class OpenCodexBackendRuntime {
     scope: "currentProject" | "all",
     projectPath: string | null,
     sourceId: string | null,
-    searchTerm?: string
+    searchTerm?: string,
+    isArchived = false
   ): Promise<OpenCodexThread[]> {
-    return await this.threadConversationService.listThreads(scope, projectPath, sourceId, searchTerm);
+    return await this.threadConversationService.listThreads(
+      scope,
+      projectPath,
+      sourceId,
+      searchTerm,
+      isArchived
+    );
+  }
+
+  /**
+   * Archives a thread through Codex and local cache.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Success result.
+   */
+  async archiveThread(threadId: string): Promise<{ ok: true }> {
+    return await this.threadConversationService.archiveThread(threadId);
+  }
+
+  /**
+   * Restores an archived thread through Codex and local cache.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Success result.
+   */
+  async unarchiveThread(threadId: string): Promise<{ ok: true }> {
+    return await this.threadConversationService.unarchiveThread(threadId);
   }
 
   /**

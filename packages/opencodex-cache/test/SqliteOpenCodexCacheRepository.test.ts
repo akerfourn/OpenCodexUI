@@ -153,7 +153,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
         projectPath: "/tmp/thread-usage-project",
         sourceId: null,
         branchName: "main",
-        updatedAt: "2026-01-01T00:00:00.000Z"
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        isArchived: false
       }
     ]);
 
@@ -277,6 +278,56 @@ describe("SqliteOpenCodexCacheRepository", () => {
         projectName: null
       }
     ]);
+  });
+
+  it("should keep active and archived thread lists separate", async () => {
+    await repository.upsertThreadIndex([
+      {
+        id: "active-thread",
+        codexTitle: "Active",
+        customTitle: null,
+        title: "Active",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "archive-project",
+        projectPath: "/tmp/archive-project",
+        sourceId: null,
+        branchName: null,
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        isArchived: false
+      },
+      {
+        id: "archived-thread",
+        codexTitle: "Archived",
+        customTitle: null,
+        title: "Archived",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "archive-project",
+        projectPath: "/tmp/archive-project",
+        sourceId: null,
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        isArchived: true
+      }
+    ]);
+
+    const activeThreads = await repository.listThreads({
+      scope: "currentProject",
+      currentProjectPath: "/tmp/archive-project",
+      sourceId: null
+    });
+    const archivedThreads = await repository.listThreads({
+      scope: "currentProject",
+      currentProjectPath: "/tmp/archive-project",
+      sourceId: null,
+      isArchived: true
+    });
+
+    expect(activeThreads.map((thread) => thread.id)).toEqual(["active-thread"]);
+    expect(archivedThreads.map((thread) => thread.id)).toEqual(["archived-thread"]);
   });
 
   it("should persist and page application logs", async () => {
@@ -598,7 +649,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
         projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
         sourceId: null,
         branchName: "main",
-        updatedAt: "2026-01-01T00:00:00.000Z"
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        isArchived: false
       }
     ]);
 
@@ -620,7 +672,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
         projectPath: "/home/adrien/Projets/Perso/OpenCodexUI",
         sourceId: null,
         branchName: "main",
-        updatedAt: "2026-01-01T00:00:00.000Z"
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        isArchived: false
       }
     ]);
   });

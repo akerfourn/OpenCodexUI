@@ -35,6 +35,7 @@ export type OpenCodexEvent =
       threads: OpenCodexThread[];
       currentProjectFilterAvailable: boolean;
       projectPath: string | null;
+      archived: boolean;
     }
   | {
       type: "thread.opened";

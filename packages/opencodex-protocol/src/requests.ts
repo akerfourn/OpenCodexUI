@@ -60,12 +60,15 @@ export type OpenCodexRequest =
       projectPath?: string | null;
       sourceId?: string | null;
       searchTerm?: string;
+      archived?: boolean;
     }
   | { type: "threads.open"; threadId: string }
   | { type: "threads.loadOlder"; threadId: string }
   | { type: "threads.recover"; threadId: string }
   | { type: "threads.create"; projectPath?: string | null; sourceId?: string | null }
   | { type: "threads.rename"; threadId: string; name: string }
+  | { type: "threads.archive"; threadId: string }
+  | { type: "threads.unarchive"; threadId: string }
   | {
       type: "threads.updateComposerSettings";
       threadId: string;

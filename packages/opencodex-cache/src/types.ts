@@ -19,6 +19,7 @@ export type CachedThreadSummary = {
   projectHidden?: boolean;
   branchName: string | null;
   updatedAt: string | null;
+  isArchived: boolean;
   status?: string;
 };
 
@@ -198,6 +199,7 @@ export type ThreadListCacheQuery = {
   currentProjectPath: string | null;
   sourceId?: string | null;
   searchTerm?: string | null;
+  isArchived?: boolean;
 };
 
 /**
@@ -430,6 +432,15 @@ export interface OpenCodexCacheRepository {
    * @returns Promise resolved when the update completes.
    */
   updateThreadTitle(threadId: string, title: string): Promise<void>;
+
+  /**
+   * Updates the local archive marker for a cached thread.
+   *
+   * @param threadId Thread identifier.
+   * @param isArchived Whether the thread is archived.
+   * @returns Promise resolved when the update completes.
+   */
+  updateThreadArchiveState(threadId: string, isArchived: boolean): Promise<void>;
 
   /**
    * Updates the Codex-generated title for a thread.

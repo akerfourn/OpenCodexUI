@@ -69,7 +69,8 @@ export function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread 
     projectPath: thread.projectPath,
     sourceId: thread.sourceId,
     branchName: thread.branchName,
-    updatedAt: thread.updatedAt
+    updatedAt: thread.updatedAt,
+    isArchived: thread.isArchived === true
   };
 
   if (thread.status !== undefined) {
@@ -100,7 +101,8 @@ export function toCachedThreadSummary(thread: OpenCodexThreadWithProjectState): 
     projectPath: thread.projectPath,
     projectHidden: thread.projectHidden,
     branchName: thread.branchName,
-    updatedAt: thread.updatedAt
+    updatedAt: thread.updatedAt,
+    isArchived: thread.isArchived
   };
 
   if (thread.status !== undefined) {

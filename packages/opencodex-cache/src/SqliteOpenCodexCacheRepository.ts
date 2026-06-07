@@ -73,6 +73,7 @@ import {
   saveThreadDelta,
   saveThreadTokenUsage,
   saveThreadSnapshot,
+  updateThreadArchiveState,
   updateThreadCodexTitle,
   updateThreadTitle,
   upsertThreadIndex
@@ -415,6 +416,18 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async updateThreadTitle(threadId: string, title: string): Promise<void> {
     await updateThreadTitle(this.database, threadId, title);
+  }
+
+  /**
+   * Updates the local archive marker for a cached thread.
+   *
+   * @param threadId Thread identifier.
+   * @param isArchived Whether the thread is archived.
+   *
+   * @returns Promise resolved when the update completes.
+   */
+  async updateThreadArchiveState(threadId: string, isArchived: boolean): Promise<void> {
+    await updateThreadArchiveState(this.database, threadId, isArchived);
   }
 
   /**

@@ -406,6 +406,7 @@ export type OpenCodexThread = {
   sourceId: string | null;
   branchName: string | null;
   updatedAt: string | null;
+  isArchived: boolean;
   status?: string;
 };
 

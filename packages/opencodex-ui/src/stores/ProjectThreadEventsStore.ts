@@ -40,7 +40,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
   handleEvent(event: OpenCodexEvent): void {
     switch (event.type) {
       case "threads.updated":
-        this.applyThreadsUpdated(event.projectPath, event.threads);
+        this.applyThreadsUpdated(event.projectPath, event.threads, event.archived);
         return;
       case "thread.opened":
       case "thread.created":
@@ -151,10 +151,18 @@ export class ProjectThreadEventsStore implements RootChildStore {
     return true;
   }
 
-  private applyThreadsUpdated(projectPath: string | null, threads: OpenCodexThread[]): void {
+  private applyThreadsUpdated(
+    projectPath: string | null,
+    threads: OpenCodexThread[],
+    isArchived: boolean
+  ): void {
     const projectStore = this.findProjectStoreForThreadUpdate(projectPath, threads);
 
     if (projectStore === null) {
+      return;
+    }
+
+    if (projectStore.threadListStore.isShowingArchivedThreads !== isArchived) {
       return;
     }
 

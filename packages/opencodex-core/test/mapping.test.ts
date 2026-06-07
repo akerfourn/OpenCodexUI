@@ -71,6 +71,7 @@ describe("OpenCodex mapping", () => {
       sourceId: null,
       branchName: "main",
       updatedAt: "1970-01-01T00:00:01.000Z",
+      isArchived: false,
       status: "idle"
     });
   });

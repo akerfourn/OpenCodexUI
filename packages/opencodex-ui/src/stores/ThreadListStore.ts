@@ -15,6 +15,10 @@ export class ThreadListStore {
   isLoadingThreads = false;
   isCreatingThread = false;
   loadingThreadId: string | null = null;
+  isShowingArchivedThreads = false;
+  archivingThreadId: string | null = null;
+  hasArchivedThreads = false;
+  isCheckingArchivedThreads = false;
 
   constructor(
     private readonly projectStore: ProjectStore,
@@ -62,6 +66,23 @@ export class ThreadListStore {
   }
 
   /**
+   * Selects whether the list shows active or archived threads.
+   *
+   * @param value Whether archived threads should be shown.
+   *
+   * @returns Nothing.
+   */
+  setShowingArchivedThreads(value: boolean): void {
+    if (this.isShowingArchivedThreads === value) {
+      return;
+    }
+
+    this.isShowingArchivedThreads = value;
+    this.threads = [];
+    this.refresh();
+  }
+
+  /**
    * Requests a refreshed thread list for this project.
    *
    * @param sourceIdOverride Optional source override used during project opening.
@@ -81,8 +102,13 @@ export class ThreadListStore {
       scope: "currentProject",
       projectPath: this.projectStore.projectPath,
       sourceId,
-      searchTerm: this.searchTerm
+      searchTerm: this.searchTerm,
+      archived: this.isShowingArchivedThreads
     });
+
+    if (!this.isShowingArchivedThreads) {
+      this.refreshArchivedThreadPresence(sourceId);
+    }
   }
 
   /**
@@ -214,6 +240,52 @@ export class ThreadListStore {
   }
 
   /**
+   * Archives a thread and removes it from the active list.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Nothing.
+   */
+  archiveThread(threadId: string): void {
+    if (this.projectStore.isReadOnlyFromCache || this.archivingThreadId !== null) {
+      return;
+    }
+
+    this.archivingThreadId = threadId;
+    void this.root.request({ type: "threads.archive", threadId })
+      .then(() => {
+        this.hasArchivedThreads = true;
+        this.removeThreadFromVisibleList(threadId);
+      })
+      .finally(() => {
+        this.archivingThreadId = null;
+      });
+  }
+
+  /**
+   * Restores an archived thread and removes it from the archived list.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Nothing.
+   */
+  unarchiveThread(threadId: string): void {
+    if (this.projectStore.isReadOnlyFromCache || this.archivingThreadId !== null) {
+      return;
+    }
+
+    this.archivingThreadId = threadId;
+    void this.root.request({ type: "threads.unarchive", threadId })
+      .then(() => {
+        this.removeThreadFromVisibleList(threadId);
+        this.hasArchivedThreads = this.threads.length > 0;
+      })
+      .finally(() => {
+        this.archivingThreadId = null;
+      });
+  }
+
+  /**
    * Clears thread list state when the project tab closes.
    *
    * @returns Nothing.
@@ -224,6 +296,39 @@ export class ThreadListStore {
     this.isLoadingThreads = false;
     this.isCreatingThread = false;
     this.loadingThreadId = null;
+    this.isShowingArchivedThreads = false;
+    this.archivingThreadId = null;
+    this.hasArchivedThreads = false;
+    this.isCheckingArchivedThreads = false;
+  }
+
+  private refreshArchivedThreadPresence(sourceId: string): void {
+    if (this.isCheckingArchivedThreads) {
+      return;
+    }
+
+    this.isCheckingArchivedThreads = true;
+    void this.root.request<OpenCodexThread[]>({
+      type: "threads.list",
+      scope: "currentProject",
+      projectPath: this.projectStore.projectPath,
+      sourceId,
+      archived: true
+    })
+      .then((threads) => {
+        this.hasArchivedThreads = threads.length > 0;
+      })
+      .finally(() => {
+        this.isCheckingArchivedThreads = false;
+      });
+  }
+
+  private removeThreadFromVisibleList(threadId: string): void {
+    this.threads = this.threads.filter((thread) => thread.id !== threadId);
+
+    if (this.projectStore.selectedChatId === threadId) {
+      this.projectStore.selectedChatId = null;
+    }
   }
 
   private mergeThreadMetadata(thread: OpenCodexThread): OpenCodexThread {

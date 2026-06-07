@@ -56,7 +56,8 @@ export class ThreadCacheService {
     scope: "currentProject" | "all",
     projectPath: string | null,
     sourceId?: string | null,
-    searchTerm?: string
+    searchTerm?: string,
+    isArchived = false
   ): Promise<OpenCodexThread[]> {
     const repository = this.options.cacheRepository;
 
@@ -69,7 +70,8 @@ export class ThreadCacheService {
         scope,
         currentProjectPath: projectPath,
         sourceId,
-        searchTerm
+        searchTerm,
+        isArchived
       });
       return threads.map((thread) => toOpenCodexThread(thread));
     } catch (error) {
@@ -293,6 +295,28 @@ export class ThreadCacheService {
       await repository.updateThreadTitle(threadId, title);
     } catch (error) {
       this.log(`thread cache rename write failed: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Writes the local archive marker for a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param isArchived Whether the thread is archived.
+   *
+   * @returns Promise resolved when the write attempt completes.
+   */
+  async writeArchiveState(threadId: string, isArchived: boolean): Promise<void> {
+    const repository = this.options.cacheRepository;
+
+    if (repository === null) {
+      return;
+    }
+
+    try {
+      await repository.updateThreadArchiveState(threadId, isArchived);
+    } catch (error) {
+      this.log(`thread cache archive write failed: ${String(error)}`);
     }
   }
 

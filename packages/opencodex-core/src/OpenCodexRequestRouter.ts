@@ -97,7 +97,8 @@ export class OpenCodexRequestRouter {
           request.scope,
           request.projectPath ?? null,
           request.sourceId ?? null,
-          request.searchTerm
+          request.searchTerm,
+          request.archived === true
         );
       case "threads.open":
         return this.runtime.openThread(request.threadId);
@@ -109,6 +110,10 @@ export class OpenCodexRequestRouter {
         return this.runtime.createThread(request.projectPath ?? null, request.sourceId ?? null);
       case "threads.rename":
         return this.runtime.renameThread(request.threadId, request.name);
+      case "threads.archive":
+        return this.runtime.archiveThread(request.threadId);
+      case "threads.unarchive":
+        return this.runtime.unarchiveThread(request.threadId);
       case "threads.updateComposerSettings":
         await this.runtime.updateThreadComposerSettings(
           request.threadId,

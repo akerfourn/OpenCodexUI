@@ -2,6 +2,7 @@
  * Renders the chat list for one opened project.
  */
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
+import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { Alert, Box, Button, CircularProgress, IconButton, LinearProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
@@ -56,6 +57,23 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
   function handleOpenSources(): void {
     store.openSourcesHome();
   }
+
+  function handleShowActiveThreads(): void {
+    threadListStore.setShowingArchivedThreads(false);
+  }
+
+  function handleShowArchivedThreads(): void {
+    threadListStore.setShowingArchivedThreads(true);
+  }
+
+  const archiveToggleLabel = threadListStore.isShowingArchivedThreads
+    ? t("sidebar.showActiveChats")
+    : t("sidebar.showArchivedChats");
+  const handleArchiveToggle = threadListStore.isShowingArchivedThreads
+    ? handleShowActiveThreads
+    : handleShowArchivedThreads;
+  const shouldShowArchiveToggle = threadListStore.isShowingArchivedThreads ||
+    threadListStore.hasArchivedThreads;
 
   return (
     <aside className="thread-list">
@@ -130,6 +148,19 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
           size="small"
           onChange={handleSearch}
         />
+        {shouldShowArchiveToggle ? (
+          <Button
+            fullWidth
+            size="small"
+            startIcon={threadListStore.isShowingArchivedThreads ? <ArrowBackOutlinedIcon /> : null}
+            variant={threadListStore.isShowingArchivedThreads ? "contained" : "text"}
+            sx={{ mt: 0.75 }}
+            disabled={isReadOnlyProject}
+            onClick={handleArchiveToggle}
+          >
+            {archiveToggleLabel}
+          </Button>
+        ) : null}
       </Box>
 
       {threadListStore.isLoadingThreads ? (
