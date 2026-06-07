@@ -4,6 +4,7 @@
 import type {
   CachedProject,
   CachedProjectCommand,
+  CachedProjectTask,
   CachedSource,
   CachedLogEntry,
   CachedThreadSummary,
@@ -12,7 +13,7 @@ import type {
 } from "../types.js";
 import { parseProjectPreferences } from "./projectPreferences.js";
 import { parseLocalSourceSettings } from "./sourceSettings.js";
-import type { LogRow, ProjectCommandRow, ProjectRow, SourceRow, ThreadRow } from "./rowTypes.js";
+import type { LogRow, ProjectCommandRow, ProjectRow, ProjectTaskRow, SourceRow, ThreadRow } from "./rowTypes.js";
 
 /**
  * Maps a raw SQLite thread row into the public cached thread summary shape.
@@ -118,6 +119,24 @@ export function mapProjectCommandRow(row: ProjectCommandRow): CachedProjectComma
     command: row.command,
     allowParallel: row.allow_parallel === 1,
     persistLogs: row.persist_logs === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/**
+ * Maps a raw SQLite project task row into the public cache shape.
+ *
+ * @param row Task row read from SQLite.
+ * @returns Normalized project task.
+ */
+export function mapProjectTaskRow(row: ProjectTaskRow): CachedProjectTask {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    title: row.title,
+    description: row.description,
+    status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };

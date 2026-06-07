@@ -64,6 +64,16 @@ export type ProjectCommandRow = {
   updated_at: string;
 };
 
+export type ProjectTaskRow = {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string;
+  status: "todo" | "inProgress" | "toValidate" | "done";
+  created_at: string;
+  updated_at: string;
+};
+
 export type SourceRow = {
   id: string;
   kind: "local";

@@ -18,6 +18,9 @@ import type {
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
   CachedProjectCommandUpdateInput,
+  CachedProjectTask,
+  CachedProjectTaskCreateInput,
+  CachedProjectTaskUpdateInput,
   CachedSource,
   CachedSourceCodexDetection,
   CachedSourceLocalSettings,
@@ -45,6 +48,12 @@ import {
   readProjectCommand,
   updateProjectCommand
 } from "./sqlite/projectCommandQueries.js";
+import {
+  createProjectTask,
+  deleteProjectTask,
+  listProjectTasks,
+  updateProjectTask
+} from "./sqlite/projectTaskQueries.js";
 import {
   clearSourceAssociations,
   createSource,
@@ -393,6 +402,54 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async deleteProjectCommand(commandId: string): Promise<void> {
     await deleteProjectCommand(this.database, commandId);
+  }
+
+  /**
+   * Lists local tasks configured for one project.
+   *
+   * @param projectId Project identifier.
+   *
+   * @returns Cached project tasks.
+   */
+  async listProjectTasks(projectId: string): Promise<CachedProjectTask[]> {
+    return await listProjectTasks(this.database, projectId);
+  }
+
+  /**
+   * Creates a local task for a project.
+   *
+   * @param input Task input.
+   *
+   * @returns Created task.
+   */
+  async createProjectTask(input: CachedProjectTaskCreateInput): Promise<CachedProjectTask> {
+    return await createProjectTask(this.database, input);
+  }
+
+  /**
+   * Updates a local project task.
+   *
+   * @param taskId Task identifier.
+   * @param patch Task patch.
+   *
+   * @returns Updated task.
+   */
+  async updateProjectTask(
+    taskId: string,
+    patch: CachedProjectTaskUpdateInput
+  ): Promise<CachedProjectTask> {
+    return await updateProjectTask(this.database, taskId, patch);
+  }
+
+  /**
+   * Deletes a local project task.
+   *
+   * @param taskId Task identifier.
+   *
+   * @returns Promise resolved when deletion completes.
+   */
+  async deleteProjectTask(taskId: string): Promise<void> {
+    await deleteProjectTask(this.database, taskId);
   }
 
   /**

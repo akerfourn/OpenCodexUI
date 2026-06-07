@@ -37,6 +37,8 @@ import type {
   OpenCodexProjectPreferences,
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRun,
+  OpenCodexProjectTask,
+  OpenCodexProjectTaskStatus,
   OpenCodexRequest,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
@@ -1451,6 +1453,88 @@ export class OpenCodexBackendRuntime {
    */
   async stopProjectCommandRun(runId: string): Promise<{ ok: true }> {
     return await this.projectCommandService.stopRun(runId);
+  }
+
+  /**
+   * Lists local tasks configured for a project.
+   *
+   * @param projectId Project identifier.
+   *
+   * @returns Project tasks.
+   */
+  async listProjectTasks(projectId: string): Promise<OpenCodexProjectTask[]> {
+    if (this.cacheRepository === null) {
+      return [];
+    }
+
+    return await this.cacheRepository.listProjectTasks(projectId);
+  }
+
+  /**
+   * Creates a local project task.
+   *
+   * @param projectId Project identifier.
+   * @param title Task title.
+   * @param description Task description.
+   * @param status Task status.
+   *
+   * @returns Created task.
+   */
+  async createProjectTask(
+    projectId: string,
+    title: string,
+    description: string,
+    status: OpenCodexProjectTaskStatus
+  ): Promise<OpenCodexProjectTask> {
+    if (this.cacheRepository === null) {
+      throw new Error("Project tasks require the local cache.");
+    }
+
+    return await this.cacheRepository.createProjectTask({
+      projectId,
+      title,
+      description,
+      status
+    });
+  }
+
+  /**
+   * Updates a local project task.
+   *
+   * @param taskId Task identifier.
+   * @param patch Task patch.
+   *
+   * @returns Updated task.
+   */
+  async updateProjectTask(
+    taskId: string,
+    patch: {
+      title?: string;
+      description?: string;
+      status?: OpenCodexProjectTaskStatus;
+    }
+  ): Promise<OpenCodexProjectTask> {
+    if (this.cacheRepository === null) {
+      throw new Error("Project tasks require the local cache.");
+    }
+
+    return await this.cacheRepository.updateProjectTask(taskId, patch);
+  }
+
+  /**
+   * Deletes a local project task.
+   *
+   * @param taskId Task identifier.
+   *
+   * @returns Success result.
+   */
+  async deleteProjectTask(taskId: string): Promise<{ ok: true }> {
+    if (this.cacheRepository === null) {
+      throw new Error("Project tasks require the local cache.");
+    }
+
+    await this.cacheRepository.deleteProjectTask(taskId);
+    return { ok: true };
   }
 
   /**

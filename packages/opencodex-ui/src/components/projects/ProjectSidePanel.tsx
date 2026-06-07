@@ -2,6 +2,7 @@
  * Renders the right-side project tool panel.
  */
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
+import ChecklistOutlinedIcon from "@mui/icons-material/ChecklistOutlined";
 import FolderCopyOutlinedIcon from "@mui/icons-material/FolderCopyOutlined";
 import TerminalOutlinedIcon from "@mui/icons-material/TerminalOutlined";
 import { Box, Tab, Tabs } from "@mui/material";
@@ -14,8 +15,9 @@ import { ProjectCommandsPanelX } from "./ProjectCommandsPanel";
 import { ProjectContextPanelX } from "./ProjectContextPanel";
 import { ProjectGitPanelX } from "./ProjectGitPanel";
 import { ProjectSidePanelTabLabel } from "./ProjectSidePanelTabLabel";
+import { ProjectTasksPanelX } from "./ProjectTasksPanel";
 
-type ProjectSidePanelTab = "git" | "commands" | "context";
+type ProjectSidePanelTab = "git" | "commands" | "context" | "tasks";
 
 type ProjectSidePanelProps = {
   store: RootStore;
@@ -35,6 +37,7 @@ export function ProjectSidePanel({ store, projectStore }: ProjectSidePanelProps)
   const gitLabel = t("projectTools.git");
   const commandsLabel = t("projectTools.commands");
   const contextLabel = t("projectTools.context");
+  const tasksLabel = t("projectTools.tasks");
 
   function handleTabChange(_event: React.SyntheticEvent, value: ProjectSidePanelTab): void {
     setSelectedTab(value);
@@ -48,6 +51,10 @@ export function ProjectSidePanel({ store, projectStore }: ProjectSidePanelProps)
 
   if (selectedTab === "context") {
     panelContent = <ProjectContextPanelX projectStore={projectStore} />;
+  }
+
+  if (selectedTab === "tasks") {
+    panelContent = <ProjectTasksPanelX projectStore={projectStore} />;
   }
 
   return (
@@ -87,6 +94,16 @@ export function ProjectSidePanel({ store, projectStore }: ProjectSidePanelProps)
               <ProjectSidePanelTabLabel
                 label={contextLabel}
                 icon={<FolderCopyOutlinedIcon fontSize="small" />}
+              />
+            }
+          />
+          <Tab
+            value="tasks"
+            aria-label={tasksLabel}
+            label={
+              <ProjectSidePanelTabLabel
+                label={tasksLabel}
+                icon={<ChecklistOutlinedIcon fontSize="small" />}
               />
             }
           />

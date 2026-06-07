@@ -234,6 +234,44 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(await repository.listProjectCommands(project.id)).toHaveLength(0);
   });
 
+  it("should persist local project tasks", async () => {
+    const project = await repository.upsertProject("/tmp/tasks-project");
+
+    const task = await repository.createProjectTask({
+      projectId: project.id,
+      title: "Write release notes",
+      description: "Draft the markdown release notes before publishing.",
+      status: "todo"
+    });
+
+    expect(await repository.listProjectTasks(project.id)).toMatchObject([
+      {
+        id: task.id,
+        projectId: project.id,
+        title: "Write release notes",
+        description: "Draft the markdown release notes before publishing.",
+        status: "todo"
+      }
+    ]);
+
+    const updatedTask = await repository.updateProjectTask(task.id, {
+      title: "Review release notes",
+      status: "toValidate"
+    });
+
+    expect(updatedTask).toMatchObject({
+      id: task.id,
+      projectId: project.id,
+      title: "Review release notes",
+      description: "Draft the markdown release notes before publishing.",
+      status: "toValidate"
+    });
+
+    await repository.deleteProjectTask(task.id);
+
+    expect(await repository.listProjectTasks(project.id)).toHaveLength(0);
+  });
+
   it("should delete a cached project without deleting its threads", async () => {
     const project = await repository.upsertProject("/tmp/deleted-project");
     await repository.createProjectCommand({
@@ -242,6 +280,12 @@ describe("SqliteOpenCodexCacheRepository", () => {
       command: "npm run dev",
       allowParallel: false,
       persistLogs: false
+    });
+    await repository.createProjectTask({
+      projectId: project.id,
+      title: "Local task",
+      description: "",
+      status: "todo"
     });
     await repository.upsertThreadIndex([
       {
@@ -271,6 +315,7 @@ describe("SqliteOpenCodexCacheRepository", () => {
 
     expect(projects.some((entry) => entry.id === project.id)).toBe(false);
     expect(await repository.listProjectCommands(project.id)).toHaveLength(0);
+    expect(await repository.listProjectTasks(project.id)).toHaveLength(0);
     expect(threads).toMatchObject([
       {
         id: "deleted-project-thread",

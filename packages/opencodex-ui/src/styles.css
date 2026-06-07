@@ -653,6 +653,60 @@ textarea {
   padding: 12px;
 }
 
+.project-tasks-panel {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-tasks-header {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 10px 12px;
+  align-items: center;
+}
+
+.project-task-add-button.MuiIconButton-root {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.project-task-add-button.MuiIconButton-root:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.project-task-add-button.MuiIconButton-root.Mui-disabled {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-disabledForeground);
+}
+
+.project-tasks-controls {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 12px;
+}
+
+.project-tasks-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.project-task-row.MuiListItemButton-root {
+  flex: 0 0 auto;
+  min-height: 40px;
+  max-height: 44px;
+  overflow: hidden;
+}
+
 .project-context-panel {
   flex: 1 1 auto;
   min-height: 0;

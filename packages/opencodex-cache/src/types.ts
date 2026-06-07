@@ -105,6 +105,31 @@ export type CachedProjectCommandUpdateInput = {
   persistLogs?: boolean;
 };
 
+export type CachedProjectTaskStatus = "todo" | "inProgress" | "toValidate" | "done";
+
+export type CachedProjectTask = {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  status: CachedProjectTaskStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CachedProjectTaskCreateInput = {
+  projectId: string;
+  title: string;
+  description: string;
+  status: CachedProjectTaskStatus;
+};
+
+export type CachedProjectTaskUpdateInput = {
+  title?: string;
+  description?: string;
+  status?: CachedProjectTaskStatus;
+};
+
 export type CachedSourceCommandMode = "auto" | "custom";
 
 export type CachedSourceLocalSettings = {
@@ -415,6 +440,42 @@ export interface OpenCodexCacheRepository {
    * @returns Promise resolved when deletion completes.
    */
   deleteProjectCommand(commandId: string): Promise<void>;
+
+  /**
+   * Lists local tasks configured for one project.
+   *
+   * @param projectId Project identifier.
+   * @returns Project tasks ordered for display.
+   */
+  listProjectTasks(projectId: string): Promise<CachedProjectTask[]>;
+
+  /**
+   * Creates a project task.
+   *
+   * @param input Task input.
+   * @returns Created task.
+   */
+  createProjectTask(input: CachedProjectTaskCreateInput): Promise<CachedProjectTask>;
+
+  /**
+   * Updates a project task.
+   *
+   * @param taskId Task identifier.
+   * @param patch Task update.
+   * @returns Updated task.
+   */
+  updateProjectTask(
+    taskId: string,
+    patch: CachedProjectTaskUpdateInput
+  ): Promise<CachedProjectTask>;
+
+  /**
+   * Deletes a project task.
+   *
+   * @param taskId Task identifier.
+   * @returns Promise resolved when deletion completes.
+   */
+  deleteProjectTask(taskId: string): Promise<void>;
 
   /**
    * Inserts or updates thread index summaries.

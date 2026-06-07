@@ -265,6 +265,19 @@ export class OpenCodexRequestRouter {
         );
       case "projectCommands.stop":
         return this.runtime.stopProjectCommandRun(request.runId);
+      case "projectTasks.list":
+        return this.runtime.listProjectTasks(request.projectId);
+      case "projectTasks.create":
+        return this.runtime.createProjectTask(
+          request.projectId,
+          request.title,
+          request.description,
+          request.status
+        );
+      case "projectTasks.update":
+        return this.runtime.updateProjectTask(request.taskId, request.patch);
+      case "projectTasks.delete":
+        return this.runtime.deleteProjectTask(request.taskId);
       case "commitPrompt.get":
         return this.runtime.readCommitPrompt();
       case "commitPrompt.update":

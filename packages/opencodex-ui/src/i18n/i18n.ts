@@ -212,6 +212,34 @@ export const resources = {
         },
         stopRun: "Arrêter l'instance"
       },
+      tasks: {
+        add: "Ajouter une tâche",
+        cancel: "Annuler",
+        close: "Fermer",
+        createTitle: "Nouvelle tâche",
+        delete: "Supprimer",
+        deleteDescription: "Cette tâche locale sera supprimée définitivement.",
+        deleteTitle: "Supprimer la tâche ?",
+        description: "Suivez des tâches locales propres à ce projet.",
+        descriptionLabel: "Description",
+        detailsTitle: "Détail de la tâche",
+        edit: "Éditer",
+        empty: "Aucune tâche.",
+        filter: "Statut",
+        noDescription: "Aucune description.",
+        save: "Enregistrer",
+        search: "Rechercher",
+        statusLabel: "Statut",
+        title: "Tâches",
+        titleLabel: "Titre",
+        status: {
+          all: "Toutes",
+          done: "Terminée",
+          inProgress: "En cours",
+          todo: "À faire",
+          toValidate: "À valider"
+        }
+      },
       closeProject: {
         cancel: "Annuler",
         confirmCheckbox: "Je confirme que je veux fermer ce projet",
@@ -464,6 +492,7 @@ export const resources = {
         commands: "Commandes",
         context: "Dossiers de contexte",
         git: "Git",
+        tasks: "Tâches",
         tabs: "Outils du projet"
       },
       contextFolders: {
@@ -771,6 +800,34 @@ export const resources = {
         },
         stopRun: "Stop instance"
       },
+      tasks: {
+        add: "Add task",
+        cancel: "Cancel",
+        close: "Close",
+        createTitle: "New task",
+        delete: "Delete",
+        deleteDescription: "This local task will be permanently deleted.",
+        deleteTitle: "Delete task?",
+        description: "Track local tasks for this project.",
+        descriptionLabel: "Description",
+        detailsTitle: "Task details",
+        edit: "Edit",
+        empty: "No task.",
+        filter: "Status",
+        noDescription: "No description.",
+        save: "Save",
+        search: "Search",
+        statusLabel: "Status",
+        title: "Tasks",
+        titleLabel: "Title",
+        status: {
+          all: "All",
+          done: "Done",
+          inProgress: "In progress",
+          todo: "To do",
+          toValidate: "To validate"
+        }
+      },
       closeProject: {
         cancel: "Cancel",
         confirmCheckbox: "I confirm I want to close this project",
@@ -1022,6 +1079,7 @@ export const resources = {
         commands: "Commands",
         context: "Context folders",
         git: "Git",
+        tasks: "Tasks",
         tabs: "Project tools"
       },
       contextFolders: {

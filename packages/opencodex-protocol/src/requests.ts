@@ -187,6 +187,24 @@ export type OpenCodexRequest =
       sourceId: string | null;
     }
   | { type: "projectCommands.stop"; runId: string }
+  | { type: "projectTasks.list"; projectId: string }
+  | {
+      type: "projectTasks.create";
+      projectId: string;
+      title: string;
+      description: string;
+      status: "todo" | "inProgress" | "toValidate" | "done";
+    }
+  | {
+      type: "projectTasks.update";
+      taskId: string;
+      patch: {
+        title?: string;
+        description?: string;
+        status?: "todo" | "inProgress" | "toValidate" | "done";
+      };
+    }
+  | { type: "projectTasks.delete"; taskId: string }
   | { type: "commitPrompt.get" }
   | { type: "commitPrompt.update"; prompt: string }
   | { type: "commitPrompt.reset" }

@@ -319,6 +319,18 @@ export type OpenCodexProjectCommandRun = {
   logPath: string | null;
 };
 
+export type OpenCodexProjectTaskStatus = "todo" | "inProgress" | "toValidate" | "done";
+
+export type OpenCodexProjectTask = {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  status: OpenCodexProjectTaskStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type OpenCodexPluginInstallPolicy =
   | "available"
   | "notAvailable"
