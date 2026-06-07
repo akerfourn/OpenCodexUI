@@ -655,4 +655,9 @@ export class CodexAppServerClient {
   }
 }
 
-export { resolveCodexCommand, resolveCodexCommandPath } from "./process";
+export {
+  readCodexCommandCandidates,
+  resolveCodexCommand,
+  resolveCodexCommandPath
+} from "./process";
+export type { ResolvedCodexCommand } from "./process";

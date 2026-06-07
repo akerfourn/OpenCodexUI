@@ -35,6 +35,7 @@ import { useTranslation } from "react-i18next";
 import type { SelectProps } from "@mui/material/Select";
 
 import type {
+  OpenCodexCommandCandidate,
   OpenCodexSource,
   OpenCodexSourceColor,
   OpenCodexSourceCommandMode
@@ -157,6 +158,11 @@ export function HomeSourceBox({
         setCommandModeDraft("custom");
       }
     });
+  }
+
+  function handleUseCommandCandidate(command: string): void {
+    setCommandDraft(command);
+    setCommandModeDraft("custom");
   }
 
   function handleCloseEdit(): void {
@@ -406,6 +412,21 @@ export function HomeSourceBox({
                 label={t("sources.resolvedCommand")}
                 disabled
               />
+              {source.commandCandidates.length > 0 ? (
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2">
+                    {t("sources.detectedCommands")}
+                  </Typography>
+                  {source.commandCandidates.map((candidate) => (
+                    <SourceCommandCandidateRow
+                      key={candidate.command}
+                      candidate={candidate}
+                      selectedCommand={commandModeDraft === "custom" ? commandDraft : source.resolvedCommand}
+                      onSelect={handleUseCommandCandidate}
+                    />
+                  ))}
+                </Stack>
+              ) : null}
               {commandModeDraft === "custom" ? (
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                   <TextField
@@ -526,6 +547,62 @@ export function HomeSourceBox({
 }
 
 export const HomeSourceBoxX = observer(HomeSourceBox);
+
+type SourceCommandCandidateRowProps = {
+  candidate: OpenCodexCommandCandidate;
+  selectedCommand: string;
+  onSelect(command: string): void;
+};
+
+function SourceCommandCandidateRow({
+  candidate,
+  selectedCommand,
+  onSelect
+}: SourceCommandCandidateRowProps) {
+  const { t } = useTranslation();
+  const isSelected = candidate.command === selectedCommand;
+
+  function handleSelect(): void {
+    onSelect(candidate.command);
+  }
+
+  return (
+    <Box
+      sx={{
+        alignItems: "center",
+        border: "1px solid",
+        borderColor: isSelected ? "primary.main" : "divider",
+        borderRadius: 1,
+        display: "flex",
+        gap: 1,
+        minWidth: 0,
+        p: 1
+      }}
+    >
+      <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
+        <Typography variant="body2" noWrap>
+          {candidate.command}
+        </Typography>
+        <Typography
+          variant="caption"
+          color={candidate.codex.status === "ready" ? "success.main" : "warning.main"}
+          noWrap
+        >
+          {getCodexStatusLabel(candidate.codex.status, candidate.codex.version, t)}
+        </Typography>
+      </Box>
+      <Button
+        type="button"
+        size="small"
+        variant={isSelected ? "contained" : "outlined"}
+        onClick={handleSelect}
+        sx={{ flex: "0 0 auto" }}
+      >
+        {isSelected ? t("sources.selectedCommandCandidate") : t("sources.useCommandCandidate")}
+      </Button>
+    </Box>
+  );
+}
 
 function getCodexStatusLabel(
   status: "ready" | "outdated" | "unavailable",

@@ -1,7 +1,7 @@
 /**
  * Resolves and starts the local Codex app-server process.
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -12,6 +12,7 @@ import { CodexProcessError } from "./types";
 export type ResolvedCodexCommand = {
   command: string;
   args: string[];
+  shell: boolean;
 };
 
 /**
@@ -25,6 +26,7 @@ export function defaultProcessFactory(command: string, args: string[]): ProcessL
   const resolvedCommand = resolveCodexCommand(command, args);
 
   return spawn(resolvedCommand.command, resolvedCommand.args, {
+    shell: resolvedCommand.shell,
     stdio: ["pipe", "pipe", "pipe"]
   });
 }
@@ -64,7 +66,7 @@ export function resolveCodexCommandPath(command: string): string {
   }
 
   for (const candidate of readCodexCommandCandidates()) {
-    if (existsSync(candidate)) {
+    if (isExecutablePath(candidate) && existsSync(candidate)) {
       return candidate;
     }
   }
@@ -83,33 +85,43 @@ export function resolveCodexCommand(command: string, args: string[]): ResolvedCo
   const trimmedCommand = command.trim();
 
   if (trimmedCommand.length === 0) {
+    const resolvedCommand = resolveCodexCommandPath("codex");
+
     return {
-      command: resolveCodexCommandPath("codex"),
-      args
+      command: resolvedCommand,
+      args,
+      shell: isWindowsShellScript(resolvedCommand)
     };
   }
 
   if (existsSync(trimmedCommand)) {
     return {
       command: trimmedCommand,
-      args
+      args,
+      shell: isWindowsShellScript(trimmedCommand)
     };
   }
 
   const parts = splitCommandLine(trimmedCommand);
 
   if (parts.length <= 1) {
+    const resolvedCommand = resolveCodexCommandPath(trimmedCommand);
+
     return {
-      command: resolveCodexCommandPath(trimmedCommand),
-      args
+      command: resolvedCommand,
+      args,
+      shell: isWindowsShellScript(resolvedCommand)
     };
   }
 
   const [executable, ...commandArgs] = parts;
 
+  const resolvedExecutable = resolveCodexCommandPath(executable ?? trimmedCommand);
+
   return {
-    command: resolveCodexCommandPath(executable ?? trimmedCommand),
-    args: [...commandArgs, ...args]
+    command: resolvedExecutable,
+    args: [...commandArgs, ...args],
+    shell: isWindowsShellScript(resolvedExecutable)
   };
 }
 
@@ -160,15 +172,18 @@ function splitCommandLine(value: string): string[] {
  *
  * @returns Candidate executable paths ordered from most specific to generic.
  */
-function readCodexCommandCandidates(): string[] {
+export function readCodexCommandCandidates(): string[] {
   const candidates: string[] = [];
+
+  if (process.env.OPENCODEX_CODEX_COMMAND !== undefined) {
+    candidates.push(process.env.OPENCODEX_CODEX_COMMAND);
+  }
 
   if (process.platform === "win32") {
     const localAppData = process.env.LOCALAPPDATA;
     const userProfile = process.env.USERPROFILE;
 
     if (localAppData !== undefined && localAppData.length > 0) {
-      candidates.push(path.join(localAppData, "OpenAI", "Codex", "bin", "codex.exe"));
       candidates.push(path.join(localAppData, "Volta", "bin", "codex.exe"));
       candidates.push(path.join(localAppData, "Volta", "bin", "codex.cmd"));
     }
@@ -178,7 +193,13 @@ function readCodexCommandCandidates(): string[] {
       candidates.push(path.join(userProfile, ".volta", "bin", "codex.cmd"));
     }
 
-    return candidates;
+    candidates.push(...readWindowsPathCandidates());
+
+    if (localAppData !== undefined && localAppData.length > 0) {
+      candidates.push(path.join(localAppData, "OpenAI", "Codex", "bin", "codex.exe"));
+    }
+
+    return uniqueCandidates(candidates);
   }
 
   const home = process.env.HOME;
@@ -187,5 +208,54 @@ function readCodexCommandCandidates(): string[] {
     candidates.push(path.join(home, ".volta", "bin", "codex"));
   }
 
-  return candidates;
+  candidates.push("codex");
+
+  return uniqueCandidates(candidates);
+}
+
+function readWindowsPathCandidates(): string[] {
+  const result = spawnSync("where.exe", ["codex"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+    windowsHide: true
+  });
+
+  if (result.status !== 0 || result.stdout.length === 0) {
+    return [];
+  }
+
+  return result.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function uniqueCandidates(candidates: string[]): string[] {
+  const uniqueCandidates: string[] = [];
+  const seenCandidates = new Set<string>();
+
+  for (const candidate of candidates) {
+    if (isExecutablePath(candidate) && !existsSync(candidate)) {
+      continue;
+    }
+
+    const key = process.platform === "win32" ? candidate.toLowerCase() : candidate;
+
+    if (seenCandidates.has(key)) {
+      continue;
+    }
+
+    seenCandidates.add(key);
+    uniqueCandidates.push(candidate);
+  }
+
+  return uniqueCandidates;
+}
+
+function isExecutablePath(command: string): boolean {
+  return command.includes("/") || command.includes("\\") || path.isAbsolute(command);
+}
+
+function isWindowsShellScript(command: string): boolean {
+  return process.platform === "win32" && /\.(?:cmd|bat)$/i.test(command);
 }

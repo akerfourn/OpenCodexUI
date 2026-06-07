@@ -61,6 +61,11 @@ export type OpenCodexToolVersionStatus = {
   checkedAt: string;
 };
 
+export type OpenCodexCommandCandidate = {
+  command: string;
+  codex: OpenCodexToolVersionStatus;
+};
+
 export type OpenCodexSourceLocalSettings = {
   commandMode: OpenCodexSourceCommandMode;
   command: string | null;
@@ -83,6 +88,7 @@ export type OpenCodexLocalSource = OpenCodexSourceBase & {
   kind: "local";
   settings: OpenCodexSourceLocalSettings;
   resolvedCommand: string;
+  commandCandidates: OpenCodexCommandCandidate[];
 };
 
 export type OpenCodexSource = OpenCodexLocalSource;

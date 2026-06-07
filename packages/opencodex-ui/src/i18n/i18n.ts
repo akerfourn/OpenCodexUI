@@ -531,6 +531,7 @@ export const resources = {
           teal: "Turquoise"
         },
         defaultSource: "Source par defaut",
+        detectedCommands: "Commandes detectees",
         codexDetected: "Codex détecté en version {{version}}",
         codexOutdated: "Codex obsolète en version {{version}}",
         codexUnavailable: "Codex non détecté",
@@ -552,12 +553,14 @@ export const resources = {
         openFolderCommand: "Commande pour ouvrir le projet",
         pickExecutable: "Sélectionner",
         resolvedCommand: "Commande utilisée",
+        selectedCommandCandidate: "Utilisee",
         source: "Source",
         save: "Enregistrer",
         sync: "Resynchroniser",
         syncAll: "Tout resynchroniser",
         title: "Sources Codex",
         unknownVersion: "inconnue",
+        useCommandCandidate: "Utiliser",
         unavailableSources: "Une ou plusieurs sources ne détectent pas l'installation de Codex. Vérifiez leur commande."
       },
       tabs: {
@@ -1086,6 +1089,7 @@ export const resources = {
           teal: "Teal"
         },
         defaultSource: "Default source",
+        detectedCommands: "Detected commands",
         codexDetected: "Codex detected in version {{version}}",
         codexOutdated: "Codex outdated in version {{version}}",
         codexUnavailable: "Codex not detected",
@@ -1107,12 +1111,14 @@ export const resources = {
         openFolderCommand: "Open project command",
         pickExecutable: "Select",
         resolvedCommand: "Command in use",
+        selectedCommandCandidate: "In use",
         source: "Source",
         save: "Save",
         sync: "Resync",
         syncAll: "Resync all",
         title: "Codex sources",
         unknownVersion: "unknown",
+        useCommandCandidate: "Use",
         unavailableSources: "One or more sources cannot detect a Codex installation. Check their command."
       },
       tabs: {

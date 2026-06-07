@@ -3,8 +3,15 @@
  */
 import { spawn } from "node:child_process";
 
-import { resolveCodexCommand } from "@open-codex-ui/codex-rpc";
-import type { OpenCodexToolVersionStatus } from "@open-codex-ui/opencodex-protocol";
+import {
+  readCodexCommandCandidates,
+  resolveCodexCommand,
+  type ResolvedCodexCommand
+} from "@open-codex-ui/codex-rpc";
+import type {
+  OpenCodexCommandCandidate,
+  OpenCodexToolVersionStatus
+} from "@open-codex-ui/opencodex-protocol";
 
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
 import { resolveSourceCommand } from "./sourceMapping.js";
@@ -31,7 +38,7 @@ export async function readCodexVersionStatus(
 ): Promise<OpenCodexToolVersionStatus> {
   const commandLine = resolveSourceCommand(source, fallbackCommand);
   const resolvedCommand = resolveCodexCommand(commandLine, ["--version"]);
-  const status = await readCommandVersionStatus(resolvedCommand.command, resolvedCommand.args, "Codex CLI");
+  const status = await readResolvedCommandVersionStatus(resolvedCommand, "Codex CLI");
 
   if (status.status !== "ready") {
     return status;
@@ -62,18 +69,45 @@ export async function readCodexVersionStatus(
  * @returns Git availability with detected version when available.
  */
 export async function readGitVersionStatus(): Promise<OpenCodexToolVersionStatus> {
-  return await readCommandVersionStatus("git", ["--version"], "Git");
+  return await readCommandVersionStatus("git", ["--version"], false, "Git");
+}
+
+/**
+ * Reads every auto-detected Codex command candidate and its version status.
+ *
+ * @returns Command candidates with per-command availability.
+ */
+export async function readCodexCommandCandidateStatuses(): Promise<OpenCodexCommandCandidate[]> {
+  const candidates = readCodexCommandCandidates();
+  const candidateStatuses = await Promise.all(candidates.map(async (candidate) => {
+    const resolvedCommand = resolveCodexCommand(candidate, ["--version"]);
+
+    return {
+      command: resolvedCommand.command,
+      codex: await readResolvedCommandVersionStatus(resolvedCommand, "Codex CLI")
+    };
+  }));
+
+  return uniqueCommandCandidates(candidateStatuses);
+}
+
+async function readResolvedCommandVersionStatus(
+  command: ResolvedCodexCommand,
+  label: string
+): Promise<OpenCodexToolVersionStatus> {
+  return await readCommandVersionStatus(command.command, command.args, command.shell, label);
 }
 
 async function readCommandVersionStatus(
   command: string,
   args: string[],
+  shell: boolean,
   label: string
 ): Promise<OpenCodexToolVersionStatus> {
   const checkedAt = new Date().toISOString();
 
   try {
-    const result = await runProcess(command, args);
+    const result = await runProcess(command, args, shell);
     const output = [result.stdout, result.stderr].join("\n").trim();
     const version = parseVersion(output);
 
@@ -102,9 +136,10 @@ async function readCommandVersionStatus(
   }
 }
 
-function runProcess(command: string, args: string[]): Promise<ProcessResult> {
+function runProcess(command: string, args: string[], shell: boolean): Promise<ProcessResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
+      shell,
       stdio: ["ignore", "pipe", "pipe"]
     });
     let stdout = "";
@@ -143,6 +178,26 @@ function parseVersion(output: string): string | null {
 
 export function isCodexCliVersionSupported(version: string): boolean {
   return compareVersionNumbers(version, MINIMUM_CODEX_CLI_VERSION) >= 0;
+}
+
+function uniqueCommandCandidates(candidates: OpenCodexCommandCandidate[]): OpenCodexCommandCandidate[] {
+  const uniqueCandidates: OpenCodexCommandCandidate[] = [];
+  const seenCommands = new Set<string>();
+
+  for (const candidate of candidates) {
+    const key = process.platform === "win32"
+      ? candidate.command.toLowerCase()
+      : candidate.command;
+
+    if (seenCommands.has(key)) {
+      continue;
+    }
+
+    seenCommands.add(key);
+    uniqueCandidates.push(candidate);
+  }
+
+  return uniqueCandidates;
 }
 
 function compareVersionNumbers(left: string, right: string): number {

@@ -8,6 +8,7 @@ import type {
 } from "@open-codex-ui/opencodex-cache";
 import { createProjectIdentity, normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
+  OpenCodexCommandCandidate,
   OpenCodexEvent,
   OpenCodexProject,
   OpenCodexProjectPreferences,
@@ -26,7 +27,10 @@ import {
   createDefaultCachedSource,
   toOpenCodexSource
 } from "./sourceMapping.js";
-import { readCodexVersionStatus } from "./toolVersionDetection.js";
+import {
+  readCodexCommandCandidateStatuses,
+  readCodexVersionStatus
+} from "./toolVersionDetection.js";
 import {
   toCachedThreadSummary,
   withSourceId
@@ -91,7 +95,8 @@ export class ProjectSourceService {
       createdSource,
       settings.codexCommand,
       0,
-      await this.readAndStoreCodexVersionStatus(createdSource, settings.codexCommand)
+      await this.readAndStoreCodexVersionStatus(createdSource, settings.codexCommand),
+      await this.readCommandCandidates()
     );
     this.options.emit({
       type: "sources.updated",
@@ -273,7 +278,8 @@ export class ProjectSourceService {
       updatedSource,
       settings.codexCommand,
       await repository.getSourceProjectCount(updatedSource.id),
-      await this.readAndStoreCodexVersionStatus(updatedSource, settings.codexCommand)
+      await this.readAndStoreCodexVersionStatus(updatedSource, settings.codexCommand),
+      await this.readCommandCandidates()
     );
 
     this.options.emit({
@@ -462,26 +468,45 @@ export class ProjectSourceService {
 
     if (repository === null) {
       const defaultSource = createDefaultCachedSource();
+      const commandCandidates = await this.readCommandCandidates();
 
       return [
         toOpenCodexSource(
           defaultSource,
           settings.codexCommand,
           0,
-          await readCodexVersionStatus(defaultSource, settings.codexCommand)
+          await readCodexVersionStatus(defaultSource, settings.codexCommand),
+          commandCandidates
         )
       ];
     }
 
     const sources = await repository.listSources();
+    const commandCandidates = await this.readCommandCandidates();
+
     return Promise.all(sources.map(async (source) => (
       toOpenCodexSource(
         source,
         settings.codexCommand,
         await repository.getSourceProjectCount(source.id),
-        await this.readAndStoreCodexVersionStatus(source, settings.codexCommand)
+        await this.readAndStoreCodexVersionStatus(source, settings.codexCommand),
+        commandCandidates
       )
     )));
+  }
+
+  /**
+   * Reads local Codex command candidates with availability details.
+   *
+   * @returns Detected command candidates.
+   */
+  private async readCommandCandidates(): Promise<OpenCodexCommandCandidate[]> {
+    try {
+      return await readCodexCommandCandidateStatuses();
+    } catch (error) {
+      this.options.backendOptions.logger?.(`codex candidate detection failed: ${String(error)}`);
+      return [];
+    }
   }
 
   private async readAndStoreCodexVersionStatus(
