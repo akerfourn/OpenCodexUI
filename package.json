@@ -1,7 +1,7 @@
 {
   "name": "open-codex-ui",
   "private": true,
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Electron desktop UI for the local Codex app-server.",
   "packageManager": "npm@11.11.0",
   "workspaces": [
