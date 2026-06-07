@@ -32,6 +32,14 @@ export class UsageStore implements RootChildStore {
       return;
     }
 
+    if (event.usage !== null && event.usage.limitId !== "codex") {
+      console.warn("[OpenCodexUI] ignored unknown usage limit", {
+        limitId: event.usage.limitId,
+        limitName: event.usage.limitName
+      });
+      return;
+    }
+
     this.usage = event.usage;
     this.isUnavailable = event.usage === null;
   }
