@@ -3,6 +3,7 @@
  */
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import {
   Box,
   Button,
@@ -100,6 +101,10 @@ export function ProjectTaskDialog({ open, task, tasksStore, onClose }: ProjectTa
     setEditing(true);
   }
 
+  function handleCopyDescription(): void {
+    void navigator.clipboard.writeText(description);
+  }
+
   function handleCancelEdit(): void {
     if (isNewTask) {
       onClose();
@@ -180,6 +185,20 @@ export function ProjectTaskDialog({ open, task, tasksStore, onClose }: ProjectTa
             <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
               {isNewTask ? t("tasks.createTitle") : t("tasks.detailsTitle")}
             </Box>
+            {!isEditing && task !== null ? (
+              <Tooltip title={t("tasks.copyDescription")}>
+                <span>
+                  <IconButton
+                    aria-label={t("tasks.copyDescription")}
+                    size="small"
+                    disabled={description.trim().length === 0}
+                    onClick={handleCopyDescription}
+                  >
+                    <ContentCopyOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : null}
             {!isEditing && task !== null ? (
               <Tooltip title={t("tasks.edit")}>
                 <IconButton aria-label={t("tasks.edit")} size="small" onClick={handleEdit}>
