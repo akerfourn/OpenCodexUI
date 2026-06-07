@@ -4,6 +4,7 @@
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import CallMergeOutlinedIcon from "@mui/icons-material/CallMergeOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
@@ -32,6 +33,7 @@ import { CommitMessageGenerationDialogX } from "./CommitMessageGenerationDialog"
 import { ProjectBranchMergeDialogX } from "./ProjectBranchMergeDialog";
 import { ProjectBranchSwitcherDialogX } from "./ProjectBranchSwitcherDialog";
 import { ProjectGitReferenceTagRowX } from "./ProjectGitReferenceTagRow";
+import { ProjectGitLogDialogX } from "./ProjectGitLogDialog";
 import { ProjectTagSelectorDialogX } from "./ProjectTagSelectorDialog";
 import { ProjectGitFileRow } from "./ProjectGitFileRow";
 import { GitSectionHeader } from "./GitSectionHeader";
@@ -63,6 +65,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const [isBranchDialogOpen, setBranchDialogOpen] = useState(false);
   const [isMergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [isTagDialogOpen, setTagDialogOpen] = useState(false);
+  const [isLogDialogOpen, setLogDialogOpen] = useState(false);
 
   useEffect(() => {
     void gitStore.refresh();
@@ -98,6 +101,14 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   function handleCloseTagDialog(): void {
     setTagDialogOpen(false);
+  }
+
+  function handleOpenLogDialog(): void {
+    setLogDialogOpen(true);
+  }
+
+  function handleCloseLogDialog(): void {
+    setLogDialogOpen(false);
   }
 
   function handleStageSelected(): void {
@@ -223,6 +234,19 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
             </span>
           </Tooltip>
         ) : null}
+        <Tooltip title={t("git.log")}>
+          <span className="git-panel-header-action">
+            <IconButton
+              aria-label={t("git.log")}
+              size="small"
+              disabled={!gitStore.isAvailable || !gitStore.status.isRepository}
+              onClick={handleOpenLogDialog}
+              sx={{ height: 26, width: 26 }}
+            >
+              <HistoryOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
         <Tooltip title={t("git.refresh")}>
           <span className="git-panel-header-action">
             <IconButton
@@ -444,6 +468,11 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         gitStore={gitStore}
         open={isTagDialogOpen}
         onClose={handleCloseTagDialog}
+      />
+      <ProjectGitLogDialogX
+        gitStore={gitStore}
+        open={isLogDialogOpen}
+        onClose={handleCloseLogDialog}
       />
     </section>
   );

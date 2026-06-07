@@ -216,6 +216,10 @@ export class OpenCodexRequestRouter {
           request.sourceId,
           request.tagName
         );
+      case "git.log":
+        return this.runtime.readGitLog(request.projectPath, request.sourceId, request.limit, request.skip);
+      case "git.commit.details":
+        return this.runtime.readGitCommitDetails(request.projectPath, request.sourceId, request.hash);
       case "git.checkout":
         return this.runtime.checkoutGitBranch(
           request.projectPath,

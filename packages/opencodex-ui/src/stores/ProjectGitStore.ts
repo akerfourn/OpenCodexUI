@@ -7,7 +7,10 @@ import type {
   OpenCodexCommitMessageGenerationResult,
   OpenCodexGitBranch,
   OpenCodexGitBranchKind,
+  OpenCodexGitCommitDetails,
   OpenCodexGitCommitResult,
+  OpenCodexGitLogCommit,
+  OpenCodexGitLogPage,
   OpenCodexGitStatus,
   OpenCodexGitTag,
   OpenCodexProject,
@@ -27,6 +30,7 @@ const emptyGitStatus: OpenCodexGitStatus = {
   changedFiles: [],
   stagedFiles: []
 };
+const gitLogPageSize = 50;
 
 /**
  * Stores Git status and actions for a project.
@@ -36,22 +40,29 @@ export class ProjectGitStore {
   commitMessage = "";
   branches: OpenCodexGitBranch[] = [];
   tags: OpenCodexGitTag[] = [];
+  logCommits: OpenCodexGitLogCommit[] = [];
+  commitDetailsByHash = new Map<string, OpenCodexGitCommitDetails>();
   selectedReferenceTagName: string | null = null;
   commitsSinceReferenceTag: number | null = null;
   errorMessage: string | null = null;
   branchErrorMessage: string | null = null;
   tagErrorMessage: string | null = null;
+  logErrorMessage: string | null = null;
   hasLoaded = false;
   hasLoadedBranches = false;
   hasLoadedTags = false;
+  hasLoadedLog = false;
+  hasMoreLogCommits = false;
   isLoading = false;
   isLoadingBranches = false;
   isLoadingTags = false;
+  isLoadingLog = false;
   isFetchingTags = false;
   isCheckingOutBranch = false;
   isMergingBranch = false;
   isCreatingTag = false;
   isLoadingTagReference = false;
+  loadingCommitDetailsHash: string | null = null;
   isCommitting = false;
   isGeneratingCommitMessage = false;
   isInitializingRepository = false;
@@ -152,6 +163,10 @@ export class ProjectGitStore {
     }
 
     this.commitMessage = value;
+  }
+
+  getCommitDetails(hash: string): OpenCodexGitCommitDetails | null {
+    return this.commitDetailsByHash.get(hash) ?? null;
   }
 
   applyProjectPreferences(preferences: OpenCodexProjectPreferences): void {
@@ -319,6 +334,90 @@ export class ProjectGitStore {
       runInAction(() => {
         this.isLoadingTags = false;
         this.hasLoadedTags = true;
+      });
+    }
+  }
+
+  async loadGitLog(reset: boolean): Promise<void> {
+    if (!this.isAvailable || !this.status.isRepository || this.isLoadingLog) {
+      return;
+    }
+
+    const skip = reset ? 0 : this.logCommits.length;
+
+    this.isLoadingLog = true;
+    this.logErrorMessage = null;
+
+    try {
+      const page = await this.root.request<OpenCodexGitLogPage>({
+        type: "git.log",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId,
+        limit: gitLogPageSize,
+        skip
+      });
+
+      runInAction(() => {
+        if (reset) {
+          this.commitDetailsByHash.clear();
+        }
+        this.logCommits = reset ? page.commits : mergeLogCommits(this.logCommits, page.commits);
+        this.hasMoreLogCommits = page.hasMore;
+        this.hasLoadedLog = true;
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.logErrorMessage = readErrorMessage(error);
+        this.hasLoadedLog = true;
+      });
+    } finally {
+      runInAction(() => {
+        this.isLoadingLog = false;
+      });
+    }
+  }
+
+  async loadMoreGitLog(): Promise<void> {
+    if (!this.hasMoreLogCommits) {
+      return;
+    }
+
+    await this.loadGitLog(false);
+  }
+
+  async loadCommitDetails(hash: string): Promise<void> {
+    const normalizedHash = hash.trim();
+
+    if (
+      !this.isAvailable ||
+      !this.status.isRepository ||
+      normalizedHash.length === 0 ||
+      this.commitDetailsByHash.has(normalizedHash)
+    ) {
+      return;
+    }
+
+    this.loadingCommitDetailsHash = normalizedHash;
+    this.logErrorMessage = null;
+
+    try {
+      const details = await this.root.request<OpenCodexGitCommitDetails>({
+        type: "git.commit.details",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId,
+        hash: normalizedHash
+      });
+
+      runInAction(() => {
+        this.commitDetailsByHash.set(normalizedHash, details);
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.logErrorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.loadingCommitDetailsHash = null;
       });
     }
   }
@@ -847,6 +946,16 @@ export class ProjectGitStore {
     this.tagErrorMessage = null;
   }
 
+  clearLog(): void {
+    this.logCommits = [];
+    this.commitDetailsByHash.clear();
+    this.hasLoadedLog = false;
+    this.hasMoreLogCommits = false;
+    this.isLoadingLog = false;
+    this.loadingCommitDetailsHash = null;
+    this.logErrorMessage = null;
+  }
+
   private persistReferenceTagPreference(referenceTagName: string | null): void {
     const preferences: OpenCodexProjectPreferences = {
       ...this.projectStore.project.preferences,
@@ -883,6 +992,15 @@ function togglePath(paths: string[], path: string): string[] {
 function keepExistingPaths(paths: string[], availablePaths: string[]): string[] {
   const availablePathSet = new Set(availablePaths);
   return paths.filter((path) => availablePathSet.has(path));
+}
+
+function mergeLogCommits(
+  currentCommits: OpenCodexGitLogCommit[],
+  nextCommits: OpenCodexGitLogCommit[]
+): OpenCodexGitLogCommit[] {
+  const knownHashes = new Set(currentCommits.map((commit) => commit.hash));
+  const uniqueNextCommits = nextCommits.filter((commit) => !knownHashes.has(commit.hash));
+  return [...currentCommits, ...uniqueNextCommits];
 }
 
 function normalizePaths(paths: string[]): string[] {

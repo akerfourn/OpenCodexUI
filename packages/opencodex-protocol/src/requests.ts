@@ -143,6 +143,8 @@ export type OpenCodexRequest =
   | { type: "git.tags.fetch"; projectPath: string; sourceId: string | null }
   | { type: "git.tag.create"; projectPath: string; sourceId: string | null; tagName: string }
   | { type: "git.tag.commitsSince"; projectPath: string; sourceId: string | null; tagName: string }
+  | { type: "git.log"; projectPath: string; sourceId: string | null; limit: number; skip: number }
+  | { type: "git.commit.details"; projectPath: string; sourceId: string | null; hash: string }
   | {
       type: "git.checkout";
       projectPath: string;

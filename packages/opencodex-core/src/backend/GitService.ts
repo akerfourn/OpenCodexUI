@@ -5,7 +5,11 @@ import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexGitBranch,
   OpenCodexGitBranchKind,
+  OpenCodexGitCommitDetails,
+  OpenCodexGitCommitFileChange,
   OpenCodexGitCommitResult,
+  OpenCodexGitFileState,
+  OpenCodexGitLogPage,
   OpenCodexGitStatus,
   OpenCodexGitTag
 } from "@open-codex-ui/opencodex-protocol";
@@ -34,6 +38,7 @@ export type GitServiceOptions = {
 };
 
 const commitDiffBytesCap = 220_000;
+const gitLogPageSizeMax = 100;
 
 /**
  * Coordinates Git operations through Codex app-server command execution.
@@ -193,6 +198,64 @@ export class GitService {
     }
 
     return count;
+  }
+
+  /**
+   * Reads one bounded page from the Git history.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param limit Page size.
+   * @param skip Number of commits to skip from HEAD.
+   * @returns Commit summaries and pagination state.
+   */
+  async log(
+    projectPath: string,
+    sourceId: string | null,
+    limit: number,
+    skip: number
+  ): Promise<OpenCodexGitLogPage> {
+    const normalizedLimit = normalizeLogLimit(limit);
+    const normalizedSkip = normalizeLogSkip(skip);
+    const response = await this.runGit(projectPath, sourceId, [
+      "log",
+      `--max-count=${normalizedLimit + 1}`,
+      `--skip=${normalizedSkip}`,
+      "--date=iso-strict",
+      "--format=%x1e%H%x09%h%x09%an%x09%ae%x09%aI%x09%s%x09%D"
+    ]);
+    const commits = parseGitLog(response.stdout);
+
+    return {
+      commits: commits.slice(0, normalizedLimit),
+      hasMore: commits.length > normalizedLimit
+    };
+  }
+
+  /**
+   * Reads the message and changed files for one commit.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param hash Commit hash.
+   * @returns Commit details.
+   */
+  async commitDetails(
+    projectPath: string,
+    sourceId: string | null,
+    hash: string
+  ): Promise<OpenCodexGitCommitDetails> {
+    const normalizedHash = normalizeCommitHash(hash);
+    const [messageResponse, filesResponse] = await Promise.all([
+      this.runGit(projectPath, sourceId, ["show", "-s", "--format=%B", normalizedHash]),
+      this.runGit(projectPath, sourceId, ["show", "--format=", "--name-status", normalizedHash])
+    ]);
+
+    return {
+      hash: normalizedHash,
+      message: messageResponse.stdout.trim(),
+      files: parseCommitFileChanges(filesResponse.stdout)
+    };
   }
 
   /**
@@ -731,6 +794,109 @@ function parseGitTagLine(line: string): OpenCodexGitTag | null {
   };
 }
 
+function parseGitLog(output: string): OpenCodexGitLogPage["commits"] {
+  return output
+    .split("\x1e")
+    .map(parseGitLogRecord)
+    .filter((commit): commit is OpenCodexGitLogPage["commits"][number] => commit !== null);
+}
+
+function parseGitLogRecord(record: string): OpenCodexGitLogPage["commits"][number] | null {
+  const trimmedRecord = record.trim();
+
+  if (trimmedRecord.length === 0) {
+    return null;
+  }
+
+  const columns = trimmedRecord.split("\t");
+  const hash = columns[0] ?? "";
+  const shortHash = columns[1] ?? "";
+  const authorName = columns[2] ?? "";
+  const authorEmail = columns[3] ?? "";
+  const authoredAt = columns[4] ?? "";
+  const subject = columns[5] ?? "";
+  const refs = columns[6] ?? "";
+
+  if (hash.length === 0 || shortHash.length === 0) {
+    return null;
+  }
+
+  return {
+    hash,
+    shortHash,
+    authorName,
+    authorEmail,
+    authoredAt: authoredAt.length > 0 ? authoredAt : null,
+    subject,
+    refs: parseGitRefs(refs)
+  };
+}
+
+function parseGitRefs(value: string): string[] {
+  return value
+    .split(",")
+    .map((ref) => ref.trim())
+    .filter((ref) => ref.length > 0);
+}
+
+function parseCommitFileChanges(output: string): OpenCodexGitCommitFileChange[] {
+  return output
+    .split("\n")
+    .map(parseCommitFileChangeLine)
+    .filter((file): file is OpenCodexGitCommitFileChange => file !== null);
+}
+
+function parseCommitFileChangeLine(line: string): OpenCodexGitCommitFileChange | null {
+  const trimmedLine = line.trim();
+
+  if (trimmedLine.length === 0) {
+    return null;
+  }
+
+  const columns = trimmedLine.split("\t");
+  const rawStatus = columns[0] ?? "";
+  const firstPath = columns[1] ?? "";
+  const secondPath = columns[2] ?? "";
+  const status = parseCommitFileStatus(rawStatus);
+
+  if (firstPath.length === 0) {
+    return null;
+  }
+
+  if (status === "renamed" || status === "copied") {
+    return {
+      status,
+      path: secondPath.length > 0 ? secondPath : firstPath,
+      originalPath: firstPath
+    };
+  }
+
+  return {
+    status,
+    path: firstPath,
+    originalPath: null
+  };
+}
+
+function parseCommitFileStatus(value: string): OpenCodexGitFileState {
+  const statusCode = value.charAt(0);
+
+  switch (statusCode) {
+    case "A":
+      return "added";
+    case "M":
+      return "modified";
+    case "D":
+      return "deleted";
+    case "R":
+      return "renamed";
+    case "C":
+      return "copied";
+    default:
+      return "unknown";
+  }
+}
+
 function readBranchKind(fullName: string): OpenCodexGitBranchKind | null {
   if (fullName.startsWith("refs/heads/")) {
     return "local";
@@ -761,6 +927,32 @@ function normalizeTagName(tagName: string): string {
   }
 
   return normalizedTagName;
+}
+
+function normalizeCommitHash(hash: string): string {
+  const normalizedHash = hash.trim();
+
+  if (normalizedHash.length === 0 || normalizedHash.startsWith("-")) {
+    throw new Error("Commit hash is required.");
+  }
+
+  return normalizedHash;
+}
+
+function normalizeLogLimit(limit: number): number {
+  if (!Number.isFinite(limit)) {
+    return 50;
+  }
+
+  return Math.min(Math.max(Math.trunc(limit), 1), gitLogPageSizeMax);
+}
+
+function normalizeLogSkip(skip: number): number {
+  if (!Number.isFinite(skip)) {
+    return 0;
+  }
+
+  return Math.max(Math.trunc(skip), 0);
 }
 
 function normalizePaths(paths: string[]): string[] {

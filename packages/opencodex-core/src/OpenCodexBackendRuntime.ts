@@ -20,8 +20,10 @@ import type {
   OpenCodexFileSearchResult,
   OpenCodexGitBranch,
   OpenCodexGitBranchKind,
+  OpenCodexGitCommitDetails,
   OpenCodexImageAttachment,
   OpenCodexGitCommitResult,
+  OpenCodexGitLogPage,
   OpenCodexGitStatus,
   OpenCodexGitTag,
   OpenCodexLogEntry,
@@ -1184,6 +1186,42 @@ export class OpenCodexBackendRuntime {
     tagName: string
   ): Promise<number> {
     return await this.gitService.commitsSinceTag(projectPath, sourceId, tagName);
+  }
+
+  /**
+   * Reads a page of Git history for a project.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param limit Page size.
+   * @param skip Number of commits to skip from HEAD.
+   *
+   * @returns Git history page.
+   */
+  async readGitLog(
+    projectPath: string,
+    sourceId: string | null,
+    limit: number,
+    skip: number
+  ): Promise<OpenCodexGitLogPage> {
+    return await this.gitService.log(projectPath, sourceId, limit, skip);
+  }
+
+  /**
+   * Reads details for one Git commit.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param hash Commit hash.
+   *
+   * @returns Commit details.
+   */
+  async readGitCommitDetails(
+    projectPath: string,
+    sourceId: string | null,
+    hash: string
+  ): Promise<OpenCodexGitCommitDetails> {
+    return await this.gitService.commitDetails(projectPath, sourceId, hash);
   }
 
   /**

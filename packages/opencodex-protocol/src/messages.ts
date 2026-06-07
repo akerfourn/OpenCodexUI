@@ -202,6 +202,33 @@ export type OpenCodexGitTag = {
   createdAt: string | null;
 };
 
+export type OpenCodexGitLogCommit = {
+  hash: string;
+  shortHash: string;
+  authorName: string;
+  authorEmail: string;
+  authoredAt: string | null;
+  subject: string;
+  refs: string[];
+};
+
+export type OpenCodexGitLogPage = {
+  commits: OpenCodexGitLogCommit[];
+  hasMore: boolean;
+};
+
+export type OpenCodexGitCommitFileChange = {
+  status: OpenCodexGitFileState;
+  path: string;
+  originalPath: string | null;
+};
+
+export type OpenCodexGitCommitDetails = {
+  hash: string;
+  message: string;
+  files: OpenCodexGitCommitFileChange[];
+};
+
 export type OpenCodexGitCommitResult = {
   ok: true;
   output: string;
