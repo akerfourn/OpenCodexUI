@@ -133,6 +133,27 @@ export function ProjectTaskDialog({ open, task, tasksStore, onClose }: ProjectTa
     onClose();
   }
 
+  async function handleQuickStatusChange(event: SelectChangeEvent): Promise<void> {
+    if (task === null || tasksStore.isSaving) {
+      return;
+    }
+
+    const nextStatus = event.target.value as OpenCodexProjectTaskStatus;
+    const previousStatus = status;
+
+    setStatus(nextStatus);
+
+    try {
+      await tasksStore.updateTask(task.id, {
+        title: task.title,
+        description: task.description,
+        status: nextStatus
+      });
+    } catch {
+      setStatus(previousStatus);
+    }
+  }
+
   function handleOpenDeleteDialog(): void {
     setDeleteDialogOpen(true);
   }
@@ -216,11 +237,27 @@ export function ProjectTaskDialog({ open, task, tasksStore, onClose }: ProjectTa
             </Stack>
           ) : (
             <Stack spacing={2}>
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                <Typography variant="h6">{task?.title}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {t(`tasks.status.${task?.status ?? "todo"}`)}
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+                <Typography variant="h6" sx={{ minWidth: 0, flex: "1 1 auto" }}>
+                  {task?.title}
                 </Typography>
+                <FormControl size="small" sx={{ flex: "0 0 auto", minWidth: 126 }}>
+                  <Select
+                    className={`project-task-status-select project-task-status-${status}`}
+                    value={status}
+                    disabled={tasksStore.isSaving}
+                    renderValue={(value) => t(`tasks.status.${value}`)}
+                    onChange={(event) => {
+                      void handleQuickStatusChange(event);
+                    }}
+                  >
+                    {statusOptions.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {t(`tasks.status.${option}`)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Stack>
               <Box
                 sx={{

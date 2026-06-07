@@ -707,6 +707,65 @@ textarea {
   overflow: hidden;
 }
 
+.project-task-row-tooltip {
+  display: block;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.project-task-status-select.MuiInputBase-root {
+  height: 28px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--project-task-status-foreground);
+  background: var(--project-task-status-background);
+}
+
+.project-task-status-select.MuiInputBase-root:hover {
+  filter: brightness(1.06);
+}
+
+.project-task-status-select.Mui-focused {
+  box-shadow: 0 0 0 2px var(--vscode-focusBorder);
+}
+
+.project-task-status-select .MuiOutlinedInput-notchedOutline {
+  border: 0;
+}
+
+.project-task-status-select .MuiSelect-select {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  padding: 3px 30px 3px 12px;
+}
+
+.project-task-status-select .MuiSvgIcon-root {
+  color: var(--project-task-status-foreground);
+  right: 8px;
+}
+
+.project-task-status-todo {
+  --project-task-status-background: color-mix(in srgb, var(--vscode-foreground) 12%, transparent);
+  --project-task-status-foreground: var(--vscode-foreground);
+}
+
+.project-task-status-inProgress {
+  --project-task-status-background: #58a6ff;
+  --project-task-status-foreground: #06111f;
+}
+
+.project-task-status-toValidate {
+  --project-task-status-background: #ffb84d;
+  --project-task-status-foreground: #1c1000;
+}
+
+.project-task-status-done {
+  --project-task-status-background: #56d364;
+  --project-task-status-foreground: #031107;
+}
+
 .project-context-panel {
   flex: 1 1 auto;
   min-height: 0;

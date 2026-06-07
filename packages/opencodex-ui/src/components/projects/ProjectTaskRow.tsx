@@ -1,7 +1,7 @@
 /**
  * Renders one local project task row.
  */
-import { Box, Chip, ListItemButton, Stack, Typography } from "@mui/material";
+import { Box, Chip, ListItemButton, Stack, Tooltip, Typography } from "@mui/material";
 import type { OpenCodexProjectTask } from "@open-codex-ui/opencodex-protocol";
 import { useTranslation } from "react-i18next";
 
@@ -25,25 +25,29 @@ export function ProjectTaskRow({ task, onOpen }: ProjectTaskRowProps) {
   }
 
   return (
-    <ListItemButton
-      className="project-task-row"
-      onClick={handleOpen}
-      sx={{ borderRadius: 1, px: 1, py: 0.75 }}
-    >
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 0, width: "100%" }}>
-        <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-          <Typography variant="body2" noWrap>
-            {task.title}
-          </Typography>
-        </Box>
-        <Chip
-          size="small"
-          color={readStatusColor(task.status)}
-          label={t(`tasks.status.${task.status}`)}
-          sx={{ flex: "0 0 auto" }}
-        />
-      </Stack>
-    </ListItemButton>
+    <Tooltip title={task.title} placement="left">
+      <span className="project-task-row-tooltip">
+        <ListItemButton
+          className="project-task-row"
+          onClick={handleOpen}
+          sx={{ borderRadius: 1, px: 1, py: 0.75 }}
+        >
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 0, width: "100%" }}>
+            <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
+              <Typography variant="body2" noWrap>
+                {task.title}
+              </Typography>
+            </Box>
+            <Chip
+              size="small"
+              color={readStatusColor(task.status)}
+              label={t(`tasks.status.${task.status}`)}
+              sx={{ flex: "0 0 auto" }}
+            />
+          </Stack>
+        </ListItemButton>
+      </span>
+    </Tooltip>
   );
 }
 
