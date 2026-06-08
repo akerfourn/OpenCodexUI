@@ -785,6 +785,7 @@ textarea {
 }
 
 .project-command-card {
+  position: relative;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 8px;
   background: color-mix(in srgb, var(--vscode-sideBar-background) 92%, var(--vscode-focusBorder));
@@ -809,6 +810,23 @@ textarea {
 .project-command-card:hover .project-command-edit,
 .project-command-edit:focus-visible {
   opacity: 1;
+}
+
+.project-command-order-actions {
+  flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.project-command-card:hover .project-command-order-actions,
+.project-command-order-actions:focus-within {
+  opacity: 1;
+}
+
+.project-command-order-actions .MuiIconButton-root {
+  width: 20px;
+  height: 20px;
+  padding: 0;
 }
 
 .project-command-runs {

@@ -119,6 +119,7 @@ export function mapProjectCommandRow(row: ProjectCommandRow): CachedProjectComma
     command: row.command,
     allowParallel: row.allow_parallel === 1,
     persistLogs: row.persist_logs === 1,
+    sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };

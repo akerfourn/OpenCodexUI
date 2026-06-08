@@ -93,12 +93,14 @@ export function ProjectCommandsPanel({ projectStore }: ProjectCommandsPanelProps
           </Typography>
         ) : null}
 
-        {commandsStore.commands.map((command) => (
+        {commandsStore.commands.map((command, index) => (
           <ProjectCommandCardX
             key={command.id}
             command={command}
             commandsStore={commandsStore}
             runs={commandsStore.getRuns(command.id)}
+            canMoveUp={index > 0}
+            canMoveDown={index < commandsStore.commands.length - 1}
             onEdit={handleEdit}
             onOpenLogs={handleOpenLogs}
           />

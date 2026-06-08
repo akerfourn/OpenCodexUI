@@ -204,6 +204,13 @@ describe("SqliteOpenCodexCacheRepository", () => {
       allowParallel: false,
       persistLogs: true
     });
+    const secondCommand = await repository.createProjectCommand({
+      projectId: project.id,
+      name: "Build",
+      command: "npm run build",
+      allowParallel: false,
+      persistLogs: false
+    });
 
     expect(await repository.listProjectCommands(project.id)).toMatchObject([
       {
@@ -212,9 +219,27 @@ describe("SqliteOpenCodexCacheRepository", () => {
         name: "Dev",
         command: "npm run dev",
         allowParallel: false,
-        persistLogs: true
+        persistLogs: true,
+        sortOrder: 0
+      },
+      {
+        id: secondCommand.id,
+        projectId: project.id,
+        name: "Build",
+        command: "npm run build",
+        allowParallel: false,
+        persistLogs: false,
+        sortOrder: 1
       }
     ]);
+
+    const reorderedCommands = await repository.reorderProjectCommands({
+      projectId: project.id,
+      commandIds: [secondCommand.id, command.id]
+    });
+
+    expect(reorderedCommands.map((entry) => entry.id)).toEqual([secondCommand.id, command.id]);
+    expect(reorderedCommands.map((entry) => entry.sortOrder)).toEqual([0, 1]);
 
     const updatedCommand = await repository.updateProjectCommand(command.id, {
       name: "Dev server",
@@ -231,7 +256,12 @@ describe("SqliteOpenCodexCacheRepository", () => {
 
     await repository.deleteProjectCommand(command.id);
 
-    expect(await repository.listProjectCommands(project.id)).toHaveLength(0);
+    expect(await repository.listProjectCommands(project.id)).toMatchObject([
+      {
+        id: secondCommand.id,
+        sortOrder: 0
+      }
+    ]);
   });
 
   it("should persist local project tasks", async () => {

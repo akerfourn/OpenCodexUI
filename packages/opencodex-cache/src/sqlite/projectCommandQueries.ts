@@ -8,6 +8,7 @@ import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 import type {
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
+  CachedProjectCommandReorderInput,
   CachedProjectCommandUpdateInput
 } from "../types.js";
 import { mapProjectCommandRow } from "./mappers.js";
@@ -18,7 +19,7 @@ import type { ProjectCommandRow } from "./rowTypes.js";
  *
  * @param database SQLite database connection.
  * @param projectId Project identifier.
- * @returns Project commands ordered by creation date.
+ * @returns Project commands ordered by user-defined order.
  */
 export async function listProjectCommands(
   database: BetterSqliteDatabase,
@@ -33,11 +34,12 @@ export async function listProjectCommands(
         command,
         allow_parallel,
         persist_logs,
+        sort_order,
         created_at,
         updated_at
       FROM project_commands
       WHERE project_id = @projectId
-      ORDER BY created_at ASC, name ASC
+      ORDER BY sort_order ASC, created_at ASC, name ASC
     `)
     .all({ projectId }) as ProjectCommandRow[];
 
@@ -57,6 +59,7 @@ export async function createProjectCommand(
 ): Promise<CachedProjectCommand> {
   const command = normalizeCommandInput(input);
   const now = new Date().toISOString();
+  const sortOrder = readNextSortOrder(database, command.projectId);
   const row = {
     id: crypto.randomUUID(),
     projectId: command.projectId,
@@ -64,6 +67,7 @@ export async function createProjectCommand(
     command: command.command,
     allowParallel: command.allowParallel ? 1 : 0,
     persistLogs: command.persistLogs ? 1 : 0,
+    sortOrder,
     createdAt: now,
     updatedAt: now
   };
@@ -77,6 +81,7 @@ export async function createProjectCommand(
         command,
         allow_parallel,
         persist_logs,
+        sort_order,
         created_at,
         updated_at
       )
@@ -87,6 +92,7 @@ export async function createProjectCommand(
         @command,
         @allowParallel,
         @persistLogs,
+        @sortOrder,
         @createdAt,
         @updatedAt
       )
@@ -155,6 +161,57 @@ export async function deleteProjectCommand(
 }
 
 /**
+ * Persists a new order for project commands.
+ *
+ * @param database SQLite database connection.
+ * @param input Reorder input.
+ * @returns Commands in their persisted order.
+ */
+export async function reorderProjectCommands(
+  database: BetterSqliteDatabase,
+  input: CachedProjectCommandReorderInput
+): Promise<CachedProjectCommand[]> {
+  const projectId = input.projectId.trim();
+
+  if (projectId.length === 0) {
+    throw new Error("Project id is required.");
+  }
+
+  const existingCommands = await listProjectCommands(database, projectId);
+  const existingIds = new Set(existingCommands.map((command) => command.id));
+  const nextIds = input.commandIds.filter((commandId) => existingIds.has(commandId));
+
+  for (const command of existingCommands) {
+    if (!nextIds.includes(command.id)) {
+      nextIds.push(command.id);
+    }
+  }
+
+  const updateOrders = database.transaction(() => {
+    const statement = database.prepare(`
+      UPDATE project_commands
+      SET sort_order = @sortOrder,
+          updated_at = @updatedAt
+      WHERE project_id = @projectId AND id = @commandId
+    `);
+    const updatedAt = new Date().toISOString();
+
+    nextIds.forEach((commandId, sortOrder) => {
+      statement.run({
+        projectId,
+        commandId,
+        sortOrder,
+        updatedAt
+      });
+    });
+  });
+
+  updateOrders();
+
+  return await listProjectCommands(database, projectId);
+}
+
+/**
  * Reads one project command.
  *
  * @param database SQLite database connection.
@@ -174,6 +231,7 @@ export async function readProjectCommand(
         command,
         allow_parallel,
         persist_logs,
+        sort_order,
         created_at,
         updated_at
       FROM project_commands
@@ -186,6 +244,18 @@ export async function readProjectCommand(
   }
 
   return mapProjectCommandRow(row);
+}
+
+function readNextSortOrder(database: BetterSqliteDatabase, projectId: string): number {
+  const row = database
+    .prepare(`
+      SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort_order
+      FROM project_commands
+      WHERE project_id = @projectId
+    `)
+    .get({ projectId }) as { next_sort_order: number } | undefined;
+
+  return row?.next_sort_order ?? 0;
 }
 
 function normalizeCommandInput(

@@ -298,6 +298,7 @@ export type OpenCodexProjectCommand = {
   command: string;
   allowParallel: boolean;
   persistLogs: boolean;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 };

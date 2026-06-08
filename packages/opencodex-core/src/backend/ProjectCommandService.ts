@@ -83,6 +83,23 @@ export class ProjectCommandService {
   }
 
   /**
+   * Reorders commands configured for one project.
+   *
+   * @param projectId Project identifier.
+   * @param commandIds Command identifiers in display order.
+   * @returns Commands in persisted order.
+   */
+  async reorderCommands(
+    projectId: string,
+    commandIds: string[]
+  ): Promise<OpenCodexProjectCommand[]> {
+    return await this.requireRepository().reorderProjectCommands({
+      projectId,
+      commandIds
+    });
+  }
+
+  /**
    * Deletes a project command.
    *
    * @param commandId Command identifier.

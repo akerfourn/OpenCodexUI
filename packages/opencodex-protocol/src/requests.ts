@@ -180,6 +180,7 @@ export type OpenCodexRequest =
       };
     }
   | { type: "projectCommands.delete"; commandId: string }
+  | { type: "projectCommands.reorder"; projectId: string; commandIds: string[] }
   | {
       type: "projectCommands.run";
       commandId: string;

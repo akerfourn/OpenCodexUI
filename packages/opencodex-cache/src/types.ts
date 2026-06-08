@@ -86,6 +86,7 @@ export type CachedProjectCommand = {
   command: string;
   allowParallel: boolean;
   persistLogs: boolean;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -103,6 +104,11 @@ export type CachedProjectCommandUpdateInput = {
   command?: string;
   allowParallel?: boolean;
   persistLogs?: boolean;
+};
+
+export type CachedProjectCommandReorderInput = {
+  projectId: string;
+  commandIds: string[];
 };
 
 export type CachedProjectTaskStatus = "todo" | "inProgress" | "toValidate" | "done";
@@ -432,6 +438,15 @@ export interface OpenCodexCacheRepository {
     commandId: string,
     patch: CachedProjectCommandUpdateInput
   ): Promise<CachedProjectCommand>;
+
+  /**
+   * Reorders commands configured for one project.
+   *
+   * @param input Reorder input.
+   *
+   * @returns Commands in their persisted order.
+   */
+  reorderProjectCommands(input: CachedProjectCommandReorderInput): Promise<CachedProjectCommand[]>;
 
   /**
    * Deletes a project command.

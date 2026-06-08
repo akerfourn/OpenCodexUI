@@ -2,6 +2,8 @@
  * Renders a project command and its visible runs.
  */
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
+import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
@@ -18,6 +20,8 @@ type ProjectCommandCardProps = {
   command: OpenCodexProjectCommand;
   commandsStore: ProjectCommandsStore;
   runs: ProjectCommandRunView[];
+  canMoveDown: boolean;
+  canMoveUp: boolean;
   onEdit(command: OpenCodexProjectCommand): void;
   onOpenLogs(run: ProjectCommandRunView): void;
 };
@@ -32,6 +36,8 @@ export function ProjectCommandCard({
   command,
   commandsStore,
   runs,
+  canMoveDown,
+  canMoveUp,
   onEdit,
   onOpenLogs
 }: ProjectCommandCardProps) {
@@ -44,6 +50,14 @@ export function ProjectCommandCard({
 
   function handleEdit(): void {
     onEdit(command);
+  }
+
+  function handleMoveUp(): void {
+    void commandsStore.moveCommand(command.id, "up");
+  }
+
+  function handleMoveDown(): void {
+    void commandsStore.moveCommand(command.id, "down");
   }
 
   return (
@@ -74,6 +88,32 @@ export function ProjectCommandCard({
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+        <Stack className="project-command-order-actions" spacing={0.25}>
+          <Tooltip title={t("commands.moveUp")}>
+            <span>
+              <IconButton
+                size="small"
+                disabled={!canMoveUp || commandsStore.isSaving}
+                aria-label={t("commands.moveUp")}
+                onClick={handleMoveUp}
+              >
+                <KeyboardArrowUpOutlinedIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={t("commands.moveDown")}>
+            <span>
+              <IconButton
+                size="small"
+                disabled={!canMoveDown || commandsStore.isSaving}
+                aria-label={t("commands.moveDown")}
+                onClick={handleMoveDown}
+              >
+                <KeyboardArrowDownOutlinedIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Stack>
       </Stack>
       {runs.length > 0 ? (
         <Stack className="project-command-runs" spacing={0.5}>

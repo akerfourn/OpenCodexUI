@@ -257,6 +257,8 @@ export class OpenCodexRequestRouter {
         return this.runtime.updateProjectCommand(request.commandId, request.patch);
       case "projectCommands.delete":
         return this.runtime.deleteProjectCommand(request.commandId);
+      case "projectCommands.reorder":
+        return this.runtime.reorderProjectCommands(request.projectId, request.commandIds);
       case "projectCommands.run":
         return this.runtime.runProjectCommand(
           request.commandId,

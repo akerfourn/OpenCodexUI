@@ -186,6 +186,70 @@ export class ProjectCommandsStore {
   }
 
   /**
+   * Persists the full command order.
+   *
+   * @param commandIds Command identifiers in the desired order.
+   * @returns Promise resolved when the order is persisted.
+   */
+  async reorderCommands(commandIds: string[]): Promise<void> {
+    const nextCommands = orderCommandsByIds(this.commands, commandIds);
+
+    if (haveSameCommandOrder(this.commands, nextCommands)) {
+      return;
+    }
+
+    this.isSaving = true;
+    this.commands = nextCommands;
+
+    try {
+      const commands = await this.root.request<OpenCodexProjectCommand[]>({
+        type: "projectCommands.reorder",
+        projectId: this.projectStore.project.id,
+        commandIds
+      });
+
+      runInAction(() => {
+        this.commands = commands;
+      });
+    } catch (error) {
+      this.reportError(error);
+      void this.loadCommands();
+    } finally {
+      runInAction(() => {
+        this.isSaving = false;
+      });
+    }
+  }
+
+  /**
+   * Moves a command one slot up or down in the configured order.
+   *
+   * @param commandId Command identifier.
+   * @param direction Move direction.
+   * @returns Promise resolved when the order is persisted.
+   */
+  async moveCommand(commandId: string, direction: "up" | "down"): Promise<void> {
+    const commandIds = this.commands.map((command) => command.id);
+    const currentIndex = commandIds.indexOf(commandId);
+
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+    if (nextIndex < 0 || nextIndex >= commandIds.length) {
+      return;
+    }
+
+    const nextCommandIds = [...commandIds];
+    nextCommandIds[currentIndex] = commandIds[nextIndex] ?? commandId;
+    nextCommandIds[nextIndex] = commandId;
+
+    await this.reorderCommands(nextCommandIds);
+  }
+
+  /**
    * Starts a command when local concurrency rules allow it.
    *
    * @param command Command to run.
@@ -425,6 +489,36 @@ export class ProjectCommandsStore {
   private reportError(error: unknown): void {
     this.root.appStore.errorMessage = readErrorMessage(error);
   }
+}
+
+function orderCommandsByIds(
+  commands: OpenCodexProjectCommand[],
+  commandIds: string[]
+): OpenCodexProjectCommand[] {
+  const commandsById = new Map(commands.map((command) => [command.id, command]));
+  const orderedCommands: OpenCodexProjectCommand[] = [];
+
+  for (const commandId of commandIds) {
+    const command = commandsById.get(commandId);
+
+    if (command !== undefined) {
+      orderedCommands.push(command);
+      commandsById.delete(commandId);
+    }
+  }
+
+  return [...orderedCommands, ...commandsById.values()];
+}
+
+function haveSameCommandOrder(
+  currentCommands: OpenCodexProjectCommand[],
+  nextCommands: OpenCodexProjectCommand[]
+): boolean {
+  if (currentCommands.length !== nextCommands.length) {
+    return false;
+  }
+
+  return currentCommands.every((command, index) => command.id === nextCommands[index]?.id);
 }
 
 function normalizeCommandFormInput(input: ProjectCommandFormInput): ProjectCommandFormInput {

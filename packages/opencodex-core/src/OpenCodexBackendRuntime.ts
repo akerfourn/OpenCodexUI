@@ -1416,6 +1416,21 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Reorders project commands.
+   *
+   * @param projectId Project identifier.
+   * @param commandIds Command identifiers in display order.
+   *
+   * @returns Commands in persisted order.
+   */
+  async reorderProjectCommands(
+    projectId: string,
+    commandIds: string[]
+  ): Promise<OpenCodexProjectCommand[]> {
+    return await this.projectCommandService.reorderCommands(projectId, commandIds);
+  }
+
+  /**
    * Deletes a project command.
    *
    * @param commandId Command identifier.

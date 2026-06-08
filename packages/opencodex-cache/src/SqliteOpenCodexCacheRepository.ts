@@ -17,6 +17,7 @@ import type {
   CachedProjectPreferences,
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
+  CachedProjectCommandReorderInput,
   CachedProjectCommandUpdateInput,
   CachedProjectTask,
   CachedProjectTaskCreateInput,
@@ -46,6 +47,7 @@ import {
   deleteProjectCommand,
   listProjectCommands,
   readProjectCommand,
+  reorderProjectCommands,
   updateProjectCommand
 } from "./sqlite/projectCommandQueries.js";
 import {
@@ -391,6 +393,19 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     patch: CachedProjectCommandUpdateInput
   ): Promise<CachedProjectCommand> {
     return await updateProjectCommand(this.database, commandId, patch);
+  }
+
+  /**
+   * Reorders commands configured for one project.
+   *
+   * @param input Reorder input.
+   *
+   * @returns Commands in their persisted order.
+   */
+  async reorderProjectCommands(
+    input: CachedProjectCommandReorderInput
+  ): Promise<CachedProjectCommand[]> {
+    return await reorderProjectCommands(this.database, input);
   }
 
   /**

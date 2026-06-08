@@ -6,6 +6,7 @@ export type {
   CachedProjectPreferences,
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
+  CachedProjectCommandReorderInput,
   CachedProjectCommandUpdateInput,
   CachedProjectTask,
   CachedProjectTaskCreateInput,

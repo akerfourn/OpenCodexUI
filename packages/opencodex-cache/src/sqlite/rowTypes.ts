@@ -60,6 +60,7 @@ export type ProjectCommandRow = {
   command: string;
   allow_parallel: number;
   persist_logs: number;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };
