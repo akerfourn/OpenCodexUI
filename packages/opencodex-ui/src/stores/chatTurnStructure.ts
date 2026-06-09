@@ -4,45 +4,52 @@ export type ChatSubTurn = {
   id: string;
   userMessage: OpenCodexTurnItem | null;
   reasoningItems: OpenCodexTurnItem[];
+  assistantAnswer: OpenCodexTurnItem | null;
 };
 
 export type ChatTurnStructure = {
   subTurns: ChatSubTurn[];
   finalAnswer: OpenCodexTurnItem | null;
+  hasOpenSubTurn: boolean;
 };
 
 export function buildChatTurnStructure(turn: OpenCodexTurn): ChatTurnStructure {
-  const finalAnswer = findFinalAnswerItem(turn.items);
-  const finalAnswerContent = finalAnswer === null ? "" : normalizeContent(finalAnswer.content);
+  const finalAnswerItems = findFinalAnswerItems(turn.items);
+  const finalAnswer = finalAnswerItems[finalAnswerItems.length - 1] ?? null;
+  const finalAnswerContents = new Set(finalAnswerItems.map((item) => normalizeContent(item.content)));
   const subTurns: ChatSubTurn[] = [];
   let currentSubTurn: ChatSubTurn | null = null;
   let orphanIndex = 0;
 
   for (const item of turn.items) {
-    if (item === finalAnswer) {
-      continue;
-    }
-
     if (item.role === "user") {
       currentSubTurn = {
         id: buildSubTurnId(turn.id, item.id, subTurns.length),
         userMessage: item,
-        reasoningItems: []
+        reasoningItems: [],
+        assistantAnswer: null
       };
       subTurns.push(currentSubTurn);
       continue;
     }
 
-    if (!isReasoningItem(item, finalAnswerContent)) {
+    if (isAssistantAnswerItem(item, finalAnswerItems)) {
+      currentSubTurn = ensureSubTurn(turn.id, subTurns, currentSubTurn, orphanIndex);
+
+      if (currentSubTurn.userMessage === null) {
+        orphanIndex += 1;
+      }
+
+      currentSubTurn.assistantAnswer = item;
       continue;
     }
 
-    if (currentSubTurn === null) {
-      currentSubTurn = {
-        id: buildSubTurnId(turn.id, `orphan-${orphanIndex}`, subTurns.length),
-        userMessage: null,
-        reasoningItems: []
-      };
+    if (!isReasoningItem(item, finalAnswerContents)) {
+      continue;
+    }
+
+    if (currentSubTurn === null || currentSubTurn.assistantAnswer !== null) {
+      currentSubTurn = createOrphanSubTurn(turn.id, subTurns.length, orphanIndex);
       orphanIndex += 1;
       subTurns.push(currentSubTurn);
     }
@@ -52,22 +59,25 @@ export function buildChatTurnStructure(turn: OpenCodexTurn): ChatTurnStructure {
 
   return {
     subTurns,
-    finalAnswer
+    finalAnswer,
+    hasOpenSubTurn: subTurns.some((subTurn) => subTurn.assistantAnswer === null)
   };
 }
 
-function findFinalAnswerItem(items: OpenCodexTurnItem[]): OpenCodexTurnItem | null {
-  const explicitFinalAnswer = findLastItem(items, (item) => (
+function findFinalAnswerItems(items: OpenCodexTurnItem[]): OpenCodexTurnItem[] {
+  const explicitFinalAnswers = items.filter((item) => (
     item.role === "assistant" && item.phase === "final_answer"
   ));
 
-  if (explicitFinalAnswer !== null) {
-    return explicitFinalAnswer;
+  if (explicitFinalAnswers.length > 0) {
+    return explicitFinalAnswers;
   }
 
-  return findLastItem(items, (item) => (
+  const legacyFinalAnswer = findLastItem(items, (item) => (
     item.role === "assistant" && item.phase !== "commentary"
   ));
+
+  return legacyFinalAnswer === null ? [] : [legacyFinalAnswer];
 }
 
 function findLastItem(
@@ -85,7 +95,14 @@ function findLastItem(
   return null;
 }
 
-function isReasoningItem(item: OpenCodexTurnItem, finalAnswerContent: string): boolean {
+function isAssistantAnswerItem(
+  item: OpenCodexTurnItem,
+  finalAnswerItems: OpenCodexTurnItem[]
+): boolean {
+  return finalAnswerItems.includes(item);
+}
+
+function isReasoningItem(item: OpenCodexTurnItem, finalAnswerContents: Set<string>): boolean {
   if (item.role === "activity") {
     return !isEmptyReasoningActivity(item);
   }
@@ -100,11 +117,35 @@ function isReasoningItem(item: OpenCodexTurnItem, finalAnswerContent: string): b
 
   const content = normalizeContent(item.content);
 
-  if (item.phase === "commentary" && finalAnswerContent.length > 0) {
-    return content.length === 0 || content !== finalAnswerContent;
+  if (item.phase === "commentary" && finalAnswerContents.size > 0) {
+    return content.length === 0 || !finalAnswerContents.has(content);
   }
 
   return content.length > 0;
+}
+
+function ensureSubTurn(
+  turnId: string,
+  subTurns: ChatSubTurn[],
+  currentSubTurn: ChatSubTurn | null,
+  orphanIndex: number
+): ChatSubTurn {
+  if (currentSubTurn !== null && currentSubTurn.assistantAnswer === null) {
+    return currentSubTurn;
+  }
+
+  const subTurn = createOrphanSubTurn(turnId, subTurns.length, orphanIndex);
+  subTurns.push(subTurn);
+  return subTurn;
+}
+
+function createOrphanSubTurn(turnId: string, subTurnIndex: number, orphanIndex: number): ChatSubTurn {
+  return {
+    id: buildSubTurnId(turnId, `orphan-${orphanIndex}`, subTurnIndex),
+    userMessage: null,
+    reasoningItems: [],
+    assistantAnswer: null
+  };
 }
 
 function buildSubTurnId(turnId: string, itemId: string, index: number): string {

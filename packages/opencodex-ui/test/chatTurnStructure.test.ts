@@ -25,6 +25,7 @@ describe("chat turn structure", () => {
     expect(structure.subTurns[1]?.reasoningItems.map((item) => item.id)).toEqual([
       "commentary-2"
     ]);
+    expect(structure.subTurns[1]?.assistantAnswer?.id).toBe("final-1");
     expect(structure.finalAnswer?.id).toBe("final-1");
   });
 
@@ -40,8 +41,11 @@ describe("chat turn structure", () => {
     expect(orphanStructure.subTurns).toHaveLength(1);
     expect(orphanStructure.subTurns[0]?.userMessage).toBeNull();
     expect(orphanStructure.subTurns[0]?.reasoningItems[0]?.id).toBe("command-1");
+    expect(orphanStructure.subTurns[0]?.assistantAnswer?.id).toBe("final-1");
     expect(orphanStructure.finalAnswer?.id).toBe("final-1");
-    expect(finalOnlyStructure.subTurns).toHaveLength(0);
+    expect(finalOnlyStructure.subTurns).toHaveLength(1);
+    expect(finalOnlyStructure.subTurns[0]?.userMessage).toBeNull();
+    expect(finalOnlyStructure.subTurns[0]?.assistantAnswer?.id).toBe("final-1");
     expect(finalOnlyStructure.finalAnswer?.id).toBe("final-1");
   });
 
@@ -53,6 +57,7 @@ describe("chat turn structure", () => {
 
     expect(structure.subTurns).toHaveLength(1);
     expect(structure.subTurns[0]?.reasoningItems).toHaveLength(0);
+    expect(structure.subTurns[0]?.assistantAnswer?.id).toBe("assistant-1");
     expect(structure.finalAnswer?.id).toBe("assistant-1");
   });
 
@@ -70,7 +75,32 @@ describe("chat turn structure", () => {
 
     expect(structure.subTurns).toHaveLength(1);
     expect(structure.subTurns[0]?.reasoningItems).toHaveLength(0);
+    expect(structure.subTurns[0]?.assistantAnswer?.id).toBe("final-1");
     expect(structure.finalAnswer?.id).toBe("final-1");
+  });
+
+  it("should keep final answers before and after steering in the same turn", () => {
+    const structure = buildChatTurnStructure(createTurn([
+      createItem("user-1", "user", "question"),
+      createItem("commentary-1", "assistant", "thinking", "commentary"),
+      createItem("final-1", "assistant", "first answer", "final_answer"),
+      createItem("steer-1", "user", "extra guidance", null, "steer"),
+      createItem("commentary-2", "assistant", "thinking again", "commentary"),
+      createItem("final-2", "assistant", "second answer", "final_answer")
+    ]));
+
+    expect(structure.subTurns).toHaveLength(2);
+    expect(structure.subTurns[0]?.userMessage?.id).toBe("user-1");
+    expect(structure.subTurns[0]?.reasoningItems.map((item) => item.id)).toEqual([
+      "commentary-1"
+    ]);
+    expect(structure.subTurns[0]?.assistantAnswer?.id).toBe("final-1");
+    expect(structure.subTurns[1]?.userMessage?.id).toBe("steer-1");
+    expect(structure.subTurns[1]?.reasoningItems.map((item) => item.id)).toEqual([
+      "commentary-2"
+    ]);
+    expect(structure.subTurns[1]?.assistantAnswer?.id).toBe("final-2");
+    expect(structure.finalAnswer?.id).toBe("final-2");
   });
 });
 

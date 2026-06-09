@@ -39,16 +39,26 @@ export class ChatTurnStore {
     return this.finalAnswer !== null;
   }
 
+  get hasOpenSubTurn(): boolean {
+    return this.structure.hasOpenSubTurn;
+  }
+
   setTurn(turn: OpenCodexTurn): void {
     this.turn = turn;
   }
 
   isRunning(activeTurnId: string | null, isWorking: boolean): boolean {
-    if (!isWorking || this.hasFinalAnswer) {
+    if (!isWorking) {
       return false;
     }
 
-    return this.id === activeTurnId || this.id.startsWith("pending:");
+    const isActiveTurn = this.id === activeTurnId || this.id.startsWith("pending:");
+
+    if (!isActiveTurn) {
+      return false;
+    }
+
+    return !this.hasFinalAnswer || this.hasOpenSubTurn || this.turn.items.length === 0;
   }
 
   private get structure(): ChatTurnStructure {

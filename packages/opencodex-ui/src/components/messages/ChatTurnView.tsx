@@ -4,12 +4,10 @@
 import { useLayoutEffect, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 
-import type { OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 import type { ChatTurnStore } from "../../stores/ChatTurnStore";
 import type { ChatSubTurn } from "../../stores/chatTurnStructure";
 
 import { ChatSubTurnViewX } from "./ChatSubTurnView";
-import { MessageRowM } from "./MessageRow";
 
 type EditableItemIdentity = {
   turnId: string;
@@ -49,7 +47,6 @@ export function ChatTurnView({
   const turn = turnStore.turn;
   const isRunning = turnStore.isRunning(activeTurnId, isWorking);
   const subTurns = readRenderableSubTurns(turnStore, isRunning);
-  const finalAnswer = turnStore.finalAnswer;
 
   useLayoutEffect(() => {
     if (!isLastTurn) {
@@ -67,28 +64,13 @@ export function ChatTurnView({
           turn={turn}
           subTurn={subTurn}
           isReasoningRunning={isRunning && index === subTurns.length - 1}
-          isLastInTurn={isLastTurn && finalAnswer === null && index === subTurns.length - 1}
+          isLastInTurn={isLastTurn && index === subTurns.length - 1}
           editableItem={editableItem}
           lastMessageRef={lastMessageRef}
           onOpenLink={onOpenLink}
           onStartEdit={onStartEdit}
         />
       ))}
-      {finalAnswer !== null ? (
-        <MessageRowM
-          key={buildFinalAnswerKey(turnStore.id, finalAnswer)}
-          isLast={isLastTurn}
-          lastMessageRef={lastMessageRef}
-          onOpenLink={onOpenLink}
-          role={finalAnswer.role}
-          phase={finalAnswer.phase}
-          kind={finalAnswer.kind}
-          content={finalAnswer.content}
-          createdAt={finalAnswer.createdAt ?? turn.completedAt ?? turn.startedAt}
-          details={finalAnswer.details}
-          attachments={finalAnswer.attachments ?? []}
-        />
-      ) : null}
     </>
   );
 }
@@ -104,11 +86,8 @@ function readRenderableSubTurns(turnStore: ChatTurnStore, isRunning: boolean): C
     {
       id: ["subTurn", turnStore.id, "running-empty"].join(":"),
       userMessage: null,
-      reasoningItems: []
+      reasoningItems: [],
+      assistantAnswer: null
     }
   ];
-}
-
-function buildFinalAnswerKey(turnId: string, item: OpenCodexTurnItem): string {
-  return ["turnFinalAnswer", turnId, item.id].join(":");
 }

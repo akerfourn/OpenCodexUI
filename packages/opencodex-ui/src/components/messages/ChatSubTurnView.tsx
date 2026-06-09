@@ -40,9 +40,12 @@ export function ChatSubTurnView({
   onOpenLink,
   onStartEdit
 }: ChatSubTurnViewProps) {
+  const assistantAnswer = subTurn.assistantAnswer;
   const shouldShowReasoning = subTurn.reasoningItems.length > 0 || isReasoningRunning;
-  const isUserMessageLast = isLastInTurn && !shouldShowReasoning;
-  const isReasoningLast = isLastInTurn && shouldShowReasoning;
+  const shouldShowAnswer = assistantAnswer !== null;
+  const isUserMessageLast = isLastInTurn && !shouldShowReasoning && !shouldShowAnswer;
+  const isReasoningLast = isLastInTurn && shouldShowReasoning && !shouldShowAnswer;
+  const isAnswerLast = isLastInTurn && shouldShowAnswer;
   const canEdit = isEditableUserMessage(turn.id, subTurn.userMessage?.id ?? null, editableItem);
 
   return (
@@ -73,6 +76,21 @@ export function ChatSubTurnView({
           lastMessageRef={lastMessageRef}
           isLast={isReasoningLast}
           onOpenLink={onOpenLink}
+        />
+      ) : null}
+      {assistantAnswer !== null ? (
+        <MessageRowM
+          key={buildSubTurnItemKey(turn.id, assistantAnswer.id)}
+          isLast={isAnswerLast}
+          lastMessageRef={lastMessageRef}
+          onOpenLink={onOpenLink}
+          role={assistantAnswer.role}
+          phase={assistantAnswer.phase}
+          kind={assistantAnswer.kind}
+          content={assistantAnswer.content}
+          createdAt={assistantAnswer.createdAt ?? turn.completedAt ?? turn.startedAt}
+          details={assistantAnswer.details}
+          attachments={assistantAnswer.attachments ?? []}
         />
       ) : null}
     </>
