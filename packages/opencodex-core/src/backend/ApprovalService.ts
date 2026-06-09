@@ -67,12 +67,20 @@ export class ApprovalService {
     const { request } = pendingApproval;
     this.pendingApprovals.delete(approvalId);
 
-    if (request.method === "item/permissions/requestApproval" && decision !== "accept") {
+    if (isDeclinedPermissionRequest(request.method, decision)) {
       client.rejectServerRequest(request.id, "Permission request declined by the user.");
     } else {
-      client.respond(request.id, buildApprovalResponse(request.method, decision));
+      client.respond(request.id, buildApprovalResponse(request.method, decision, request.params));
     }
 
     this.options.emit({ type: "approval.resolved", approvalId });
   }
+}
+
+function isDeclinedPermissionRequest(method: string, decision: OpenCodexApprovalDecision): boolean {
+  if (method !== "item/permissions/requestApproval") {
+    return false;
+  }
+
+  return decision !== "accept" && decision !== "acceptForSession";
 }

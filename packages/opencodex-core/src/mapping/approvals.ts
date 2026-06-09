@@ -53,7 +53,11 @@ export function createApprovalRequest(
  *
  * @returns Codex response payload.
  */
-export function buildApprovalResponse(method: string, decision: OpenCodexApprovalDecision): unknown {
+export function buildApprovalResponse(
+  method: string,
+  decision: OpenCodexApprovalDecision,
+  params?: unknown
+): unknown {
   if (method === "item/commandExecution/requestApproval") {
     return { decision };
   }
@@ -66,7 +70,31 @@ export function buildApprovalResponse(method: string, decision: OpenCodexApprova
     return { decision: mapLegacyDecision(decision) };
   }
 
+  if (method === "item/permissions/requestApproval") {
+    return buildPermissionsApprovalResponse(decision, params);
+  }
+
   return { decision };
+}
+
+/**
+ * Builds the permission response expected by Codex.
+ *
+ * @param decision User decision.
+ * @param params Original permission request params.
+ *
+ * @returns Permission approval response payload.
+ */
+function buildPermissionsApprovalResponse(
+  decision: OpenCodexApprovalDecision,
+  params: unknown
+): unknown {
+  const requestParams = readObject(params);
+
+  return {
+    permissions: readObject(requestParams.permissions),
+    scope: decision === "acceptForSession" ? "session" : "turn"
+  };
 }
 
 /**

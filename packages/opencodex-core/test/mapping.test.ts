@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildApprovalResponse,
   createActivityFromNotification,
   createApprovalRequest,
   mapThread,
@@ -435,6 +436,33 @@ describe("OpenCodex mapping", () => {
       "cancel",
       "decline"
     ]);
+  });
+
+  it("should map permission approval session decisions", () => {
+    const response = buildApprovalResponse(
+      "item/permissions/requestApproval",
+      "acceptForSession",
+      {
+        permissions: {
+          fileSystem: {
+            read: ["/workspace/docs"],
+            write: null
+          },
+          network: null
+        }
+      }
+    );
+
+    expect(response).toEqual({
+      permissions: {
+        fileSystem: {
+          read: ["/workspace/docs"],
+          write: null
+        },
+        network: null
+      },
+      scope: "session"
+    });
   });
 });
 
