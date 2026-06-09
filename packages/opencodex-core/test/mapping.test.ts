@@ -159,6 +159,29 @@ describe("OpenCodex mapping", () => {
     ]);
   });
 
+  it("should preserve steer user-message kind in mapped turns", () => {
+    const turns = mapTurnsToOpenCodexTurns("thread-1", [
+      {
+        id: "turn-1",
+        items: [
+          {
+            type: "userMessage",
+            id: "steer-1",
+            kind: "steer",
+            content: [{ type: "text", text: "extra guidance" }]
+          }
+        ]
+      }
+    ]);
+
+    expect(turns[0]?.items[0]).toMatchObject({
+      id: "steer-1",
+      role: "user",
+      kind: "steer",
+      content: "extra guidance"
+    });
+  });
+
   it("should map reasoning summary strings to turn activities", () => {
     const turns = mapTurnsToOpenCodexTurns("thread-1", [
       {

@@ -209,7 +209,7 @@ function mapUserMessage(
     .map((entry) => readString(entry.text))
     .join("\n\n");
 
-  return {
+  const message: OpenCodexMessage = {
     id: readString(item.id) || createId("user"),
     threadId,
     role: "user",
@@ -221,6 +221,14 @@ function mapUserMessage(
     turnDurationMs,
     itemId: readString(item.id)
   };
+
+  const kind = readUserMessageKind(item.kind);
+
+  if (kind !== null) {
+    message.kind = kind;
+  }
+
+  return message;
 }
 
 /**
@@ -294,7 +302,7 @@ function mapTurnItem(itemValue: unknown, language: OpenCodexLanguage): OpenCodex
 function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
   const message = mapUserMessage("", item, "", null);
 
-  return {
+  const turnItem: OpenCodexTurnItem = {
     id: message.id,
     role: "user",
     content: message.content,
@@ -302,6 +310,28 @@ function mapUserTurnItem(item: Record<string, unknown>): OpenCodexTurnItem {
     createdAt: null,
     attachments: message.attachments
   };
+
+  if (message.kind !== undefined) {
+    turnItem.kind = message.kind;
+  }
+
+  return turnItem;
+}
+
+/**
+ * Reads a supported user-message kind from persisted local metadata.
+ *
+ * @param value Raw kind value.
+ * @returns Supported kind, or `null`.
+ */
+function readUserMessageKind(value: unknown): string | null {
+  const kind = readString(value);
+
+  if (kind === "steer") {
+    return kind;
+  }
+
+  return null;
 }
 
 /**

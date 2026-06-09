@@ -606,6 +606,7 @@ export class ThreadConversationService {
     const result = this.options.threadTurnCache.recordLiveItem(threadId, turnId, {
       type: "userMessage",
       id: createId("steer"),
+      kind: "steer",
       content: input
     });
 

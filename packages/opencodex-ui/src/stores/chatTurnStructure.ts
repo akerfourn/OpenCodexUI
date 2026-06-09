@@ -19,16 +19,20 @@ export function buildChatTurnStructure(turn: OpenCodexTurn): ChatTurnStructure {
   const finalAnswerContents = new Set(finalAnswerItems.map((item) => normalizeContent(item.content)));
   const subTurns: ChatSubTurn[] = [];
   let currentSubTurn: ChatSubTurn | null = null;
+  let hasSeenUserMessage = false;
   let orphanIndex = 0;
 
   for (const item of turn.items) {
     if (item.role === "user") {
+      const userMessage = createUserSubTurnMessage(item, hasSeenUserMessage);
+
       currentSubTurn = {
-        id: buildSubTurnId(turn.id, item.id, subTurns.length),
-        userMessage: item,
+        id: buildSubTurnId(turn.id, userMessage.id, subTurns.length),
+        userMessage,
         reasoningItems: [],
         assistantAnswer: null
       };
+      hasSeenUserMessage = true;
       subTurns.push(currentSubTurn);
       continue;
     }
@@ -145,6 +149,20 @@ function createOrphanSubTurn(turnId: string, subTurnIndex: number, orphanIndex: 
     userMessage: null,
     reasoningItems: [],
     assistantAnswer: null
+  };
+}
+
+function createUserSubTurnMessage(
+  item: OpenCodexTurnItem,
+  isAdditionalUserMessage: boolean
+): OpenCodexTurnItem {
+  if (!isAdditionalUserMessage || item.kind === "steer") {
+    return item;
+  }
+
+  return {
+    ...item,
+    kind: "steer"
   };
 }
 

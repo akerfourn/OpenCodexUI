@@ -102,6 +102,21 @@ describe("chat turn structure", () => {
     expect(structure.subTurns[1]?.assistantAnswer?.id).toBe("final-2");
     expect(structure.finalAnswer?.id).toBe("final-2");
   });
+
+  it("should infer steer kind for additional user messages", () => {
+    const structure = buildChatTurnStructure(createTurn([
+      createItem("user-1", "user", "question"),
+      createItem("final-1", "assistant", "first answer", "final_answer"),
+      createItem("user-2", "user", "extra guidance"),
+      createItem("final-2", "assistant", "second answer", "final_answer")
+    ]));
+
+    expect(structure.subTurns[0]?.userMessage?.kind).toBeUndefined();
+    expect(structure.subTurns[1]?.userMessage).toMatchObject({
+      id: "user-2",
+      kind: "steer"
+    });
+  });
 });
 
 function createTurn(items: OpenCodexTurnItem[]): OpenCodexTurn {
