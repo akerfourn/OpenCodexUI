@@ -1,6 +1,6 @@
 {
   "name": "@open-codex-ui/opencodex-ui",
-  "version": "1.8.0-alpha.4",
+  "version": "1.8.0",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
