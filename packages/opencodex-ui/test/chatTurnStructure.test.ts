@@ -117,6 +117,23 @@ describe("chat turn structure", () => {
       kind: "steer"
     });
   });
+
+  it("should keep post-final activities before the final answer without steering", () => {
+    const structure = buildChatTurnStructure(createTurn([
+      createItem("user-1", "user", "question"),
+      createItem("commentary-1", "assistant", "thinking", "commentary"),
+      createItem("final-1", "assistant", "done", "final_answer"),
+      createItem("diff-1", "activity", "diff --git a/a.ts b/a.ts", null, "fileChange")
+    ]));
+
+    expect(structure.subTurns).toHaveLength(1);
+    expect(structure.subTurns[0]?.reasoningItems.map((item) => item.id)).toEqual([
+      "commentary-1",
+      "diff-1"
+    ]);
+    expect(structure.subTurns[0]?.assistantAnswer?.id).toBe("final-1");
+    expect(structure.hasOpenSubTurn).toBe(false);
+  });
 });
 
 function createTurn(items: OpenCodexTurnItem[]): OpenCodexTurn {

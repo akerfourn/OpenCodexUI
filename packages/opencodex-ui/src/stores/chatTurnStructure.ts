@@ -52,7 +52,7 @@ export function buildChatTurnStructure(turn: OpenCodexTurn): ChatTurnStructure {
       continue;
     }
 
-    if (currentSubTurn === null || currentSubTurn.assistantAnswer !== null) {
+    if (currentSubTurn === null) {
       currentSubTurn = createOrphanSubTurn(turn.id, subTurns.length, orphanIndex);
       orphanIndex += 1;
       subTurns.push(currentSubTurn);
