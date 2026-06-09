@@ -70,7 +70,8 @@ export class ApprovalsStore implements RootChildStore {
    * @returns Nothing.
    */
   resolveApproval(approvalId: string, decision: OpenCodexApprovalDecision): void {
-    void this.root.request({ type: "approval.respond", approvalId, decision });
+    const plainDecision = cloneApprovalDecision(decision);
+    void this.root.request({ type: "approval.respond", approvalId, decision: plainDecision });
   }
 
   /**
@@ -149,4 +150,35 @@ export class ApprovalsStore implements RootChildStore {
 
     return null;
   }
+}
+
+/**
+ * Clones approval decisions before they cross the Electron transport boundary.
+ *
+ * @param decision Decision selected by the user.
+ * @returns Plain structured-clone-compatible decision.
+ */
+export function cloneApprovalDecision(decision: OpenCodexApprovalDecision): OpenCodexApprovalDecision {
+  if (typeof decision === "string") {
+    return decision;
+  }
+
+  if ("acceptWithExecpolicyAmendment" in decision) {
+    return {
+      acceptWithExecpolicyAmendment: {
+        execpolicy_amendment: [
+          ...decision.acceptWithExecpolicyAmendment.execpolicy_amendment
+        ]
+      }
+    };
+  }
+
+  return {
+    applyNetworkPolicyAmendment: {
+      network_policy_amendment: {
+        host: decision.applyNetworkPolicyAmendment.network_policy_amendment.host,
+        action: decision.applyNetworkPolicyAmendment.network_policy_amendment.action
+      }
+    }
+  };
 }
