@@ -46,6 +46,14 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
     appStore.setAllowOutdatedCodex(event.target.checked);
   }
 
+  function handleDeveloperModeChange(event: ChangeEvent<HTMLInputElement>): void {
+    appStore.setDeveloperMode(event.target.checked);
+  }
+
+  function handleOpenDeveloperTools(): void {
+    appStore.openDeveloperTools();
+  }
+
   function handleDiscordRichPresenceChange(event: ChangeEvent<HTMLInputElement>): void {
     appStore.setDiscordRichPresenceEnabled(event.target.checked);
   }
@@ -169,6 +177,41 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           <Alert severity="warning" variant="outlined">
             {t("settings.allowOutdatedCodexWarning")}
           </Alert>
+        ) : null}
+      </Stack>
+      <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
+        <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
+          <FormControlLabel
+            sx={{ alignItems: "flex-start", m: 0 }}
+            control={(
+              <Switch
+                checked={appStore.settings.developerMode}
+                onChange={handleDeveloperModeChange}
+                sx={{ mt: -0.5 }}
+              />
+            )}
+            label={(
+              <Stack spacing={0.25}>
+                <Typography variant="body1">
+                  {t("settings.developerMode")}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                  {t("settings.developerModeDescription")}
+                </Typography>
+              </Stack>
+            )}
+          />
+        </Box>
+        {appStore.settings.developerMode ? (
+          <Button
+            type="button"
+            variant="outlined"
+            size="small"
+            sx={{ flex: "0 0 auto", mt: 0.25 }}
+            onClick={handleOpenDeveloperTools}
+          >
+            {t("settings.openDeveloperTools")}
+          </Button>
         ) : null}
       </Stack>
       <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>

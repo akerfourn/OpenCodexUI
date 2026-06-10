@@ -112,6 +112,9 @@ function createSettings(): OpenCodexSettings {
     colorScheme: "system",
     enterKeyBehavior: "newline",
     versioningVocabulary: "simple",
-    discordRichPresenceEnabled: true
+    discordRichPresenceEnabled: true,
+    onboardingCompleted: true,
+    allowOutdatedCodex: false,
+    developerMode: false
   };
 }

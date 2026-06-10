@@ -31,7 +31,7 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
     icon: options.iconPath ?? undefined,
     webPreferences: {
       contextIsolation: true,
-      devTools: isDevMode,
+      devTools: true,
       nodeIntegration: false,
       preload: options.preloadPath
     }
@@ -43,22 +43,23 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
   });
   window.setTitle(title);
 
-  if (isDevMode) {
-    window.webContents.on("before-input-event", (event, input) => {
-      const isDevToolsShortcut = input.key === "F12" || (
-        input.control &&
-        input.shift &&
-        input.key.toLowerCase() === "i"
-      );
+  window.webContents.on("before-input-event", (event, input) => {
+    const isDevToolsShortcut = input.key === "F12" || (
+      input.control &&
+      input.shift &&
+      input.key.toLowerCase() === "i"
+    );
 
-      if (!isDevToolsShortcut) {
-        return;
-      }
+    if (!isDevToolsShortcut) {
+      return;
+    }
 
-      event.preventDefault();
+    event.preventDefault();
+
+    if (isDevMode) {
       window.webContents.toggleDevTools();
-    });
-  }
+    }
+  });
 
   if (isDevMode) {
     void window.loadURL(devServerUrl);

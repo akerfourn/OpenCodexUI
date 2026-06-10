@@ -39,7 +39,8 @@ export class AppStore implements RootChildStore {
     versioningVocabulary: "simple",
     discordRichPresenceEnabled: true,
     onboardingCompleted: false,
-    allowOutdatedCodex: false
+    allowOutdatedCodex: false,
+    developerMode: false
   };
   launchProjectPath: string | null = null;
   models: OpenCodexModel[] = [];
@@ -357,6 +358,30 @@ export class AppStore implements RootChildStore {
       type: "settings.update",
       patch: { allowOutdatedCodex }
     });
+  }
+
+  /**
+   * Updates whether developer-only actions are visible and available.
+   *
+   * @param developerMode Whether developer mode is enabled.
+   *
+   * @returns Nothing.
+   */
+  setDeveloperMode(developerMode: boolean): void {
+    this.settings = { ...this.settings, developerMode };
+    void this.root.request({
+      type: "settings.update",
+      patch: { developerMode }
+    });
+  }
+
+  /**
+   * Asks the host application to open the renderer developer tools.
+   *
+   * @returns Nothing.
+   */
+  openDeveloperTools(): void {
+    void this.root.request({ type: "app.openDevTools" });
   }
 
   /**

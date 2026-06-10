@@ -41,6 +41,8 @@ export class OpenCodexRequestRouter {
     switch (request.type) {
       case "app.bootstrap":
         return this.runtime.bootstrap();
+      case "app.openDevTools":
+        throw new Error("Developer tools are not available in this runtime.");
       case "projects.list":
         return this.runtime.listProjects();
       case "projects.open":

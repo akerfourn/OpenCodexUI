@@ -95,6 +95,10 @@ export class ElectronBridgeServer {
    */
   register(): void {
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
+      if (request.type === "app.openDevTools") {
+        return this.openDeveloperTools();
+      }
+
       if (request.type === "discord.reconnect") {
         await this.discordPresenceService.reconnect();
         return { ok: true };
@@ -105,6 +109,7 @@ export class ElectronBridgeServer {
       if (request.type === "settings.update" && response !== undefined) {
         const settings = response as OpenCodexSettings;
         this.discordPresenceService.setEnabled(settings.discordRichPresenceEnabled);
+        this.closeDeveloperToolsWhenDisabled(settings);
       }
 
       return response;
@@ -131,6 +136,34 @@ export class ElectronBridgeServer {
   private emit(event: OpenCodexEvent): void {
     this.discordPresenceService.handleEvent(event);
     this.window?.webContents.send("opencodex:event", event);
+  }
+
+  /**
+   * Opens renderer DevTools when developer mode is explicitly enabled.
+   *
+   * @returns Confirmation payload.
+   */
+  private openDeveloperTools(): { ok: true } {
+    if (!this.runtime.getSettings().developerMode) {
+      throw new Error("Developer mode is disabled.");
+    }
+
+    this.window?.webContents.openDevTools({ mode: "detach" });
+    return { ok: true };
+  }
+
+  /**
+   * Closes renderer DevTools when developer mode has been disabled.
+   *
+   * @param settings Effective settings after an update.
+   * @returns Nothing.
+   */
+  private closeDeveloperToolsWhenDisabled(settings: OpenCodexSettings): void {
+    if (settings.developerMode) {
+      return;
+    }
+
+    this.window?.webContents.closeDevTools();
   }
 
   /**

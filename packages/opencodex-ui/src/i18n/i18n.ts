@@ -447,6 +447,8 @@ export const resources = {
         discordRichPresence: "Afficher l'activité dans Discord",
         discordRichPresenceDescription: "Publie uniquement un statut générique dans Discord, sans nom de projet ni contenu de chat.",
         discordReconnect: "Reconnecter Discord",
+        developerMode: "Mode développeur",
+        developerModeDescription: "Active les actions de diagnostic avancées.",
         enterKeyBehavior: "Comportement de la touche Entrée",
         enterKeyBehaviorDescriptions: {
           newline: "Entrée ajoute toujours une nouvelle ligne. Ctrl+Entrée envoie le message.",
@@ -466,7 +468,8 @@ export const resources = {
         versioningVocabularyOptions: {
           simple: "Simplifié",
           technical: "Technique"
-        }
+        },
+        openDeveloperTools: "Ouvrir la console"
       },
       theme: {
         dark: "Sombre",
@@ -1037,6 +1040,8 @@ export const resources = {
         discordRichPresence: "Show activity in Discord",
         discordRichPresenceDescription: "Publishes only a generic Discord status, without project names or chat content.",
         discordReconnect: "Reconnect Discord",
+        developerMode: "Developer mode",
+        developerModeDescription: "Enables advanced diagnostic actions.",
         enterKeyBehavior: "Enter key behavior",
         enterKeyBehaviorDescriptions: {
           newline: "Enter always inserts a new line. Ctrl+Enter sends the message.",
@@ -1056,7 +1061,8 @@ export const resources = {
         versioningVocabularyOptions: {
           simple: "Simplified",
           technical: "Technical"
-        }
+        },
+        openDeveloperTools: "Open console"
       },
       theme: {
         dark: "Dark",

@@ -26,7 +26,8 @@ export const defaultSettings: OpenCodexSettings = {
   versioningVocabulary: "simple",
   discordRichPresenceEnabled: true,
   onboardingCompleted: false,
-  allowOutdatedCodex: false
+  allowOutdatedCodex: false,
+  developerMode: false
 };
 
 /**

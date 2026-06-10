@@ -437,6 +437,7 @@ export type OpenCodexSettings = {
   discordRichPresenceEnabled: boolean;
   onboardingCompleted: boolean;
   allowOutdatedCodex: boolean;
+  developerMode: boolean;
 };
 
 export type OpenCodexThread = {
