@@ -2,6 +2,7 @@
  * Renders one opened project workspace.
  */
 import { observer } from "mobx-react-lite";
+import { useState } from "react";
 
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
@@ -24,6 +25,12 @@ type ProjectViewProps = {
  * @returns Rendered project view.
  */
 export function ProjectView({ store, projectStore }: ProjectViewProps) {
+  const [isSidePanelCollapsed, setIsSidePanelCollapsed] = useState(false);
+
+  function handleSidePanelCollapsedChange(value: boolean): void {
+    setIsSidePanelCollapsed(value);
+  }
+
   return (
     <ResizableSidebarLayout
       className="workspace-shell"
@@ -32,12 +39,20 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
     >
       <ProjectWorkspaceLayout
         defaultPanelWidth={360}
+        isSidePanelCollapsed={isSidePanelCollapsed}
         mainPanel={(
           <section className="main-pane">
             <ChatViewX store={store} projectStore={projectStore} />
           </section>
         )}
-        sidePanel={<ProjectSidePanel store={store} projectStore={projectStore} />}
+        sidePanel={(
+          <ProjectSidePanel
+            store={store}
+            projectStore={projectStore}
+            isCollapsed={isSidePanelCollapsed}
+            onCollapsedChange={handleSidePanelCollapsedChange}
+          />
+        )}
       />
     </ResizableSidebarLayout>
   );

@@ -13,6 +13,7 @@ import {
 
 type ProjectWorkspaceLayoutProps = {
   defaultPanelWidth: number;
+  isSidePanelCollapsed: boolean;
   minPanelWidth?: number;
   maxPanelWidth?: number;
   mainMinWidth?: number;
@@ -29,6 +30,7 @@ type ProjectWorkspaceLayoutProps = {
  */
 export function ProjectWorkspaceLayout({
   defaultPanelWidth,
+  isSidePanelCollapsed,
   minPanelWidth = 280,
   maxPanelWidth = 560,
   mainMinWidth = 520,
@@ -84,14 +86,19 @@ export function ProjectWorkspaceLayout({
     setIsResizing(true);
   }
 
+  const className = isSidePanelCollapsed
+    ? "project-workspace-main is-project-side-panel-collapsed"
+    : "project-workspace-main";
+
   return (
-    <section ref={rootRef} className="project-workspace-main" style={shellStyle}>
+    <section ref={rootRef} className={className} style={shellStyle}>
       {mainPanel}
       <div
         className="project-panel-resizer"
         role="separator"
         aria-orientation="vertical"
         tabIndex={0}
+        aria-hidden={isSidePanelCollapsed}
         onPointerDown={handleResizeStart}
       >
         <DragIndicatorOutlinedIcon fontSize="small" />

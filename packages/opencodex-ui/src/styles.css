@@ -459,18 +459,43 @@ textarea {
   overflow: hidden;
 }
 
+.project-workspace-main.is-project-side-panel-collapsed {
+  grid-template-columns: minmax(0, 1fr) 0 52px;
+}
+
+.project-workspace-main.is-project-side-panel-collapsed .project-panel-resizer {
+  display: none;
+}
+
 .project-side-panel {
+  align-self: stretch;
   display: flex;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   flex-direction: column;
   overflow: hidden;
   background: var(--vscode-sideBar-background);
 }
 
+.project-side-panel.is-collapsed {
+  align-items: center;
+  min-width: 52px;
+  width: 100%;
+  border-left: 1px solid var(--vscode-panel-border);
+  background: var(--vscode-sideBar-background);
+}
+
 .project-side-panel-tabs {
+  display: flex;
+  align-items: center;
   flex: 0 0 auto;
   border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.project-side-panel-tabs .MuiTabs-root {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .project-side-panel-tabs .MuiTabs-root {
@@ -482,6 +507,51 @@ textarea {
   min-height: 30px;
   padding: 3px 8px;
   text-transform: none;
+}
+
+.project-side-panel-collapse-button {
+  flex: 0 0 auto;
+  margin-right: 5px;
+  margin-left: 2px;
+  border-left: 1px solid var(--vscode-panel-border);
+  border-radius: 0;
+  color: var(--vscode-descriptionForeground);
+  padding-left: 8px;
+}
+
+.project-side-panel-collapse-button:hover,
+.project-side-panel-collapse-button:focus-visible {
+  color: var(--vscode-foreground);
+}
+
+.project-side-panel-rail {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: flex-start;
+  padding: 8px 6px;
+}
+
+.project-side-panel-rail .MuiIconButton-root {
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 88%, var(--vscode-focusBorder));
+}
+
+.project-side-panel-rail .MuiIconButton-root:hover,
+.project-side-panel-rail .MuiIconButton-root:focus-visible {
+  border-color: var(--vscode-focusBorder);
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 72%, var(--vscode-focusBorder));
+}
+
+.project-side-panel-expand-icon {
+  transform: rotate(180deg);
 }
 
 .project-side-panel-tab-label {

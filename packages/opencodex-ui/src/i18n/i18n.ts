@@ -495,9 +495,11 @@ export const resources = {
         orphanSource: "Ce projet n'est plus associe a une source Codex. Il est disponible en lecture seule jusqu'a une resynchronisation."
       },
       projectTools: {
+        closePanel: "Réduire le panneau d'outils",
         commands: "Commandes",
         context: "Dossiers de contexte",
         git: "Git",
+        openPanel: "Ouvrir le panneau d'outils",
         tasks: "Tâches",
         tabs: "Outils du projet"
       },
@@ -1088,9 +1090,11 @@ export const resources = {
         orphanSource: "This project is no longer associated with a Codex source. It is read-only until it is resynchronized."
       },
       projectTools: {
+        closePanel: "Collapse tools panel",
         commands: "Commands",
         context: "Context folders",
         git: "Git",
+        openPanel: "Open tools panel",
         tasks: "Tasks",
         tabs: "Project tools"
       },
