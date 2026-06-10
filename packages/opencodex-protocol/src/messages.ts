@@ -510,6 +510,13 @@ export type OpenCodexTurn = {
   items: OpenCodexTurnItem[];
 };
 
+export type OpenCodexThreadRuntimeStatus = {
+  threadId: string;
+  status: "active" | "idle" | "notLoaded" | "systemError" | "unknown";
+  isActive: boolean | null;
+  activeFlags: string[];
+};
+
 export type OpenCodexActivity = {
   id: string;
   threadId: string;

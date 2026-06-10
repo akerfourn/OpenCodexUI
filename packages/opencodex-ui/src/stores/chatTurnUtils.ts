@@ -38,11 +38,11 @@ export function hasActiveRunningTurn(turns: OpenCodexTurn[], activeTurnId: strin
 
   const turn = turns.find((entry) => entry.id === activeTurnId);
 
-  if (turn === undefined || turn.status === "completed") {
+  if (turn === undefined) {
     return false;
   }
 
-  return !turn.items.some((item) => item.role === "assistant" && item.phase === "final_answer");
+  return turn.status !== "completed";
 }
 
 export function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {

@@ -66,6 +66,7 @@ export type OpenCodexRequest =
   | { type: "threads.open"; threadId: string }
   | { type: "threads.loadOlder"; threadId: string }
   | { type: "threads.recover"; threadId: string }
+  | { type: "threads.runtimeStatus.read"; threadId: string }
   | { type: "threads.create"; projectPath?: string | null; sourceId?: string | null }
   | { type: "threads.rename"; threadId: string; name: string }
   | { type: "threads.archive"; threadId: string }

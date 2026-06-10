@@ -108,6 +108,8 @@ export class OpenCodexRequestRouter {
         return this.runtime.loadOlderThreadMessages(request.threadId);
       case "threads.recover":
         return this.runtime.recoverThread(request.threadId);
+      case "threads.runtimeStatus.read":
+        return this.runtime.readThreadRuntimeStatus(request.threadId);
       case "threads.create":
         return this.runtime.createThread(request.projectPath ?? null, request.sourceId ?? null);
       case "threads.rename":

@@ -13,6 +13,7 @@ import type {
   OpenCodexReasoningEffort,
   OpenCodexServiceTier,
   OpenCodexThread,
+  OpenCodexThreadRuntimeStatus,
   OpenCodexThreadTokenUsage,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
@@ -31,6 +32,8 @@ import {
 import {
   hasActiveRunningTurn
 } from "./chatTurnUtils";
+
+const THREAD_RUNTIME_STATUS_POLL_INTERVAL_MS = 30_000;
 
 /**
  * Stores the loaded turns and runtime flags for a single chat.
@@ -63,6 +66,8 @@ export class ChatStore {
   scrollToBottomVersion = 0;
   private hasExplicitModelSelection = false;
   private hasExplicitReasoningEffortSelection = false;
+  private isReadingRuntimeStatus = false;
+  private runtimeStatusPollId: ReturnType<typeof setInterval> | null = null;
   private turnStoresById = new Map<string, ChatTurnStore>();
 
   /**
@@ -85,6 +90,8 @@ export class ChatStore {
       | "turnStoresById"
       | "hasExplicitModelSelection"
       | "hasExplicitReasoningEffortSelection"
+      | "isReadingRuntimeStatus"
+      | "runtimeStatusPollId"
       | "updateComposerThreadMetadata"
     >(this, {
       projectStore: false,
@@ -92,6 +99,8 @@ export class ChatStore {
       turnStoresById: false,
       hasExplicitModelSelection: false,
       hasExplicitReasoningEffortSelection: false,
+      isReadingRuntimeStatus: false,
+      runtimeStatusPollId: false,
       updateComposerThreadMetadata: false
     });
   }
@@ -171,7 +180,11 @@ export class ChatStore {
 
     const lastTurn = this.turns.at(-1);
 
-    if (lastTurn === undefined || lastTurn.id.startsWith("pending:")) {
+    if (
+      lastTurn === undefined ||
+      lastTurn.id.startsWith("pending:") ||
+      lastTurn.status !== "completed"
+    ) {
       return null;
     }
 
@@ -212,7 +225,11 @@ export class ChatStore {
 
     const lastTurn = this.turns.at(-1);
 
-    if (lastTurn === undefined || lastTurn.id.startsWith("pending:")) {
+    if (
+      lastTurn === undefined ||
+      lastTurn.id.startsWith("pending:") ||
+      lastTurn.status !== "completed"
+    ) {
       return null;
     }
 
@@ -398,6 +415,11 @@ export class ChatStore {
    */
   clearLoadedState(): void {
     this.setTurns([]);
+    this.stopRuntimeStatusPolling();
+    this.isWorking = false;
+    this.isStartingTurn = false;
+    this.isEditingLastTurn = false;
+    this.activeTurnId = null;
     this.pendingTurnId = null;
     this.hasUnseenCompletedTurn = false;
     this.hasMoreOlderMessages = false;
@@ -406,6 +428,10 @@ export class ChatStore {
     this.isRefreshing = false;
     this.isRecovering = false;
     this.tokenUsage = null;
+  }
+
+  dispose(): void {
+    this.stopRuntimeStatusPolling();
   }
 
   setTurns(turns: OpenCodexTurn[]): void {
@@ -751,7 +777,11 @@ export class ChatStore {
     if (!hasRecoveredRunningTurn) {
       this.activeTurnId = null;
       this.pendingTurnId = null;
+      this.stopRuntimeStatusPolling();
+      return;
     }
+
+    this.startRuntimeStatusPolling();
   }
 
   applyRename(name: string): void {
@@ -810,9 +840,16 @@ export class ChatStore {
     this.hasUnseenCompletedTurn = false;
     this.activeTurnId = turnId;
     movePendingTurnToStartedTurn(this, turnId);
+    this.startRuntimeStatusPolling();
   }
 
   applyTurnCompleted(turnId: string, durationMs: number | null): void {
+    applyTurnDuration(this, turnId, durationMs);
+
+    if (this.activeTurnId !== null && this.activeTurnId !== turnId) {
+      return;
+    }
+
     const shouldMarkUnseen = !this.isVisibleChat();
 
     this.isWorking = false;
@@ -820,7 +857,7 @@ export class ChatStore {
     this.pendingTurnId = null;
     this.isEditingLastTurn = false;
     this.hasUnseenCompletedTurn = shouldMarkUnseen;
-    applyTurnDuration(this, turnId, durationMs);
+    this.stopRuntimeStatusPolling();
   }
 
   /**
@@ -958,12 +995,93 @@ export class ChatStore {
     this.isWorking = false;
     this.activeTurnId = null;
     this.pendingTurnId = null;
+    this.stopRuntimeStatusPolling();
 
     if (pendingTurnId === null) {
       return;
     }
 
     this.setTurns(this.turns.filter((turn) => turn.id !== pendingTurnId));
+  }
+
+  private startRuntimeStatusPolling(): void {
+    if (this.runtimeStatusPollId !== null) {
+      return;
+    }
+
+    this.runtimeStatusPollId = setInterval(() => {
+      void this.reconcileRuntimeStatus();
+    }, THREAD_RUNTIME_STATUS_POLL_INTERVAL_MS);
+  }
+
+  private stopRuntimeStatusPolling(): void {
+    if (this.runtimeStatusPollId === null) {
+      return;
+    }
+
+    clearInterval(this.runtimeStatusPollId);
+    this.runtimeStatusPollId = null;
+    this.isReadingRuntimeStatus = false;
+  }
+
+  private async reconcileRuntimeStatus(): Promise<void> {
+    if (!this.shouldReadRuntimeStatus()) {
+      return;
+    }
+
+    this.isReadingRuntimeStatus = true;
+
+    try {
+      const status = await this.root.request<OpenCodexThreadRuntimeStatus>({
+        type: "threads.runtimeStatus.read",
+        threadId: this.thread.id
+      });
+
+      runInAction(() => {
+        this.applyRuntimeStatus(status);
+      });
+    } catch {
+      runInAction(() => {
+        this.isReadingRuntimeStatus = false;
+      });
+    }
+  }
+
+  private shouldReadRuntimeStatus(): boolean {
+    return (
+      this.isWorking &&
+      this.activeTurnId !== null &&
+      !this.isReadingRuntimeStatus &&
+      !this.projectStore.isReadOnlyFromCache
+    );
+  }
+
+  private applyRuntimeStatus(status: OpenCodexThreadRuntimeStatus): void {
+    this.isReadingRuntimeStatus = false;
+
+    if (!this.isWorking || this.activeTurnId === null || status.threadId !== this.thread.id) {
+      return;
+    }
+
+    if (status.isActive !== false) {
+      return;
+    }
+
+    this.applyRuntimeIdle();
+  }
+
+  private applyRuntimeIdle(): void {
+    const shouldMarkUnseen = !this.isVisibleChat();
+
+    this.isWorking = false;
+    this.isStartingTurn = false;
+    this.isEditingLastTurn = false;
+    this.activeTurnId = null;
+    this.pendingTurnId = null;
+    this.hasUnseenCompletedTurn = shouldMarkUnseen;
+    this.stopRuntimeStatusPolling();
+    this.isRefreshing = true;
+    this.projectStore.openThread(this.thread.id);
   }
 
   private isVisibleChat(): boolean {

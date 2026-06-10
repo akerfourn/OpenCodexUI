@@ -1,13 +1,18 @@
 /**
- * Covers chat-local composer model settings.
+ * Covers chat-local composer and turn runtime state.
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexThread, OpenCodexTurn } from "@open-codex-ui/opencodex-protocol";
 
 import { ChatStore } from "../src/stores/ChatStore";
+import { hasActiveRunningTurn } from "../src/stores/chatTurnUtils";
 import type { ProjectStore } from "../src/stores/ProjectStore";
 import type { RootStore } from "../src/stores/RootStore";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("ChatStore composer model settings", () => {
   it("should initialize model settings from the thread", () => {
@@ -121,6 +126,97 @@ describe("ChatStore composer model settings", () => {
   });
 });
 
+describe("ChatStore active turn state", () => {
+  it("should keep the active turn running when a stale completed event arrives", () => {
+    const chatStore = createChatStore({});
+    const oldTurn = createTurn("turn-old", "completed");
+    const activeTurn = createTurn("turn-active", "running");
+
+    chatStore.setTurns([oldTurn, activeTurn]);
+    chatStore.isWorking = true;
+    chatStore.activeTurnId = "turn-active";
+
+    chatStore.applyTurnCompleted("turn-old", 1234);
+
+    expect(chatStore.isWorking).toBe(true);
+    expect(chatStore.activeTurnId).toBe("turn-active");
+    expect(chatStore.pendingTurnId).toBeNull();
+    expect(chatStore.turns.find((turn) => turn.id === "turn-old")?.durationMs).toBe(1234);
+  });
+
+  it("should clear the active turn when its completed event arrives", () => {
+    const chatStore = createChatStore({});
+    const activeTurn = createTurn("turn-active", "running");
+
+    chatStore.setTurns([activeTurn]);
+    chatStore.isWorking = true;
+    chatStore.activeTurnId = "turn-active";
+
+    chatStore.applyTurnCompleted("turn-active", 1234);
+
+    expect(chatStore.isWorking).toBe(false);
+    expect(chatStore.activeTurnId).toBeNull();
+    expect(chatStore.turns.find((turn) => turn.id === "turn-active")?.durationMs).toBe(1234);
+  });
+
+  it("should keep a running turn active even when a final answer item exists", () => {
+    const turn = createTurn("turn-active", "running");
+
+    turn.items.push({
+      id: "final-answer",
+      role: "assistant",
+      phase: "final_answer",
+      content: "partial final answer",
+      status: "streaming",
+      createdAt: null
+    });
+
+    expect(hasActiveRunningTurn([turn], "turn-active")).toBe(true);
+  });
+
+  it("should keep the last user message non editable while the last turn is running", () => {
+    const chatStore = createChatStore({});
+    const runningTurn = createTurn("turn-active", "running");
+
+    runningTurn.items.push({
+      id: "user-message",
+      role: "user",
+      content: "hello",
+      status: "completed",
+      createdAt: null,
+      attachments: []
+    });
+    chatStore.setTurns([runningTurn]);
+
+    expect(chatStore.editableLastUserItem).toBeNull();
+  });
+
+  it("should stop working and resync when runtime polling reports an idle thread", async () => {
+    vi.useFakeTimers();
+    const rootStore = createRootStore();
+    const projectStore = createProjectStore();
+    const chatStore = new ChatStore(createThread({}), projectStore, rootStore);
+
+    vi.mocked(rootStore.request).mockResolvedValue({
+      threadId: "thread-1",
+      status: "idle",
+      isActive: false,
+      activeFlags: []
+    });
+
+    chatStore.applyTurnStarted("turn-active");
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(rootStore.request).toHaveBeenCalledWith({
+      type: "threads.runtimeStatus.read",
+      threadId: "thread-1"
+    });
+    expect(chatStore.isWorking).toBe(false);
+    expect(chatStore.activeTurnId).toBeNull();
+    expect(projectStore.openThread).toHaveBeenCalledWith("thread-1");
+  });
+});
+
 function createChatStore(threadPatch: Partial<OpenCodexThread>): ChatStore {
   return new ChatStore(
     createThread(threadPatch),
@@ -147,6 +243,18 @@ function createThread(patch: Partial<OpenCodexThread>): OpenCodexThread {
   };
 }
 
+function createTurn(id: string, status: OpenCodexTurn["status"]): OpenCodexTurn {
+  return {
+    id,
+    threadId: "thread-1",
+    status,
+    startedAt: null,
+    completedAt: null,
+    durationMs: null,
+    items: []
+  };
+}
+
 function createProjectStore(): ProjectStore {
   return {
     project: {
@@ -170,7 +278,8 @@ function createProjectStore(): ProjectStore {
         sourceId
       };
     }),
-    upsertThread: vi.fn((thread: OpenCodexThread) => thread)
+    upsertThread: vi.fn((thread: OpenCodexThread) => thread),
+    openThread: vi.fn()
   } as ProjectStore;
 }
 

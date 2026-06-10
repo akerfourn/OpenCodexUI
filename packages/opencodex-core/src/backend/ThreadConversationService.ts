@@ -10,6 +10,7 @@ import type {
   OpenCodexProject,
   OpenCodexSettings,
   OpenCodexThread,
+  OpenCodexThreadRuntimeStatus,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -169,6 +170,30 @@ export class ThreadConversationService {
   async unarchiveThread(threadId: string): Promise<{ ok: true }> {
     await this.setThreadArchiveState(threadId, false);
     return { ok: true };
+  }
+
+  /**
+   * Reads the current app-server runtime status for a thread without loading turns.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Runtime status reported by Codex app-server.
+   */
+  async readThreadRuntimeStatus(threadId: string): Promise<OpenCodexThreadRuntimeStatus> {
+    const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
+    const sourceId = cachedSnapshot?.thread.sourceId ?? null;
+    const client = await this.options.ensureClient(sourceId);
+    const response = await client.readThread(threadId, false);
+    const responseObject = readObject(response);
+    const thread = readObject(responseObject.thread);
+    const status = readThreadRuntimeStatus(thread.status);
+
+    return {
+      threadId,
+      status,
+      isActive: status === "unknown" ? null : status === "active",
+      activeFlags: readThreadActiveFlags(thread.status)
+    };
   }
 
   /**
@@ -1368,4 +1393,42 @@ function delay(durationMs: number): Promise<void> {
 
 function isUnmaterializedThreadSnapshot(snapshot: CachedThreadSnapshot): boolean {
   return snapshot.turns.length === 0 && !snapshot.syncState.hasLoadedLatest;
+}
+
+function readThreadRuntimeStatus(value: unknown): OpenCodexThreadRuntimeStatus["status"] {
+  const statusObject = readObject(value);
+  const objectStatus = readString(statusObject.type);
+
+  if (isOpenCodexRuntimeStatus(objectStatus)) {
+    return objectStatus;
+  }
+
+  const stringStatus = readString(value);
+
+  if (isOpenCodexRuntimeStatus(stringStatus)) {
+    return stringStatus;
+  }
+
+  return "unknown";
+}
+
+function readThreadActiveFlags(value: unknown): string[] {
+  const statusObject = readObject(value);
+  const flags = statusObject.activeFlags;
+
+  if (!Array.isArray(flags)) {
+    return [];
+  }
+
+  return flags.filter((flag): flag is string => typeof flag === "string");
+}
+
+function isOpenCodexRuntimeStatus(value: string): value is OpenCodexThreadRuntimeStatus["status"] {
+  return (
+    value === "active" ||
+    value === "idle" ||
+    value === "notLoaded" ||
+    value === "systemError" ||
+    value === "unknown"
+  );
 }

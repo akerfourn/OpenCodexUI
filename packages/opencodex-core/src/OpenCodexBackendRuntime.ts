@@ -46,6 +46,7 @@ import type {
   OpenCodexSource,
   OpenCodexSourceLocalSettings,
   OpenCodexThread,
+  OpenCodexThreadRuntimeStatus,
   OpenCodexToolVersionStatus,
   OpenCodexTurn,
   OpenCodexUsageLimits
@@ -872,6 +873,17 @@ export class OpenCodexBackendRuntime {
    */
   async interruptTurn(threadId: string, turnId: string): Promise<void> {
     await this.threadConversationService.interruptTurn(threadId, turnId);
+  }
+
+  /**
+   * Reads the runtime active/idle status for a thread.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Thread runtime status reported by Codex app-server.
+   */
+  async readThreadRuntimeStatus(threadId: string): Promise<OpenCodexThreadRuntimeStatus> {
+    return await this.threadConversationService.readThreadRuntimeStatus(threadId);
   }
 
   /**

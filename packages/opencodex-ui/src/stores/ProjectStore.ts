@@ -492,6 +492,10 @@ export class ProjectStore {
    * @returns Nothing.
    */
   clearMemory(): void {
+    for (const chatStore of this.chatsById.values()) {
+      chatStore.dispose();
+    }
+
     this.chatsById.clear();
     this.threadListStore.clear();
     this.selectedChatId = null;
