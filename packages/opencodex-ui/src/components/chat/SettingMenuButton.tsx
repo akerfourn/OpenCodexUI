@@ -73,6 +73,8 @@ export function SettingMenuButton<TValue extends string>({
       <Menu
         anchorEl={anchorElement}
         open={isOpen}
+        anchorOrigin={{ horizontal: "left", vertical: "top" }}
+        transformOrigin={{ horizontal: "left", vertical: "bottom" }}
         onClose={handleClose}
         slotProps={{ list: { dense: true } }}
       >
