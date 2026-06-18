@@ -12,6 +12,7 @@ import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
 export const defaultSettings: OpenCodexSettings = {
   codexCommand: "codex",
   defaultSourceId: null,
+  defaultUsageLimitId: null,
   defaultModel: null,
   defaultReasoningEffort: "medium",
   commitMessageModel: null,

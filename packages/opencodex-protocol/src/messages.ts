@@ -263,6 +263,11 @@ export type OpenCodexUsageLimits = {
   credits: OpenCodexUsageCredits | null;
 };
 
+export type OpenCodexUsageSnapshot = {
+  limits: OpenCodexUsageLimits[];
+  updatedAt: string;
+};
+
 export type OpenCodexThreadTokenUsageBreakdown = {
   totalTokens: number;
   inputTokens: number;
@@ -422,6 +427,7 @@ export type OpenCodexPluginInstallResult = {
 export type OpenCodexSettings = {
   codexCommand: string;
   defaultSourceId: string | null;
+  defaultUsageLimitId: string | null;
   defaultModel: string | null;
   defaultReasoningEffort: OpenCodexReasoningEffort | null;
   commitMessageModel: string | null;

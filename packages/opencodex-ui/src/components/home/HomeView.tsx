@@ -12,6 +12,7 @@ import { HomeProjectsViewX } from "./HomeProjectsView";
 import { HomeSettingsViewX } from "./HomeSettingsView";
 import { HomeSidebarX } from "./HomeSidebar";
 import { HomeSourcesViewX } from "./HomeSourcesView";
+import { HomeUsageViewX } from "./HomeUsageView";
 
 type HomeViewProps = {
   store: RootStore;
@@ -41,6 +42,10 @@ export function HomeView({ store }: HomeViewProps) {
 
   if (store.homeStore.selectedSection === "plugins") {
     mainContent = <HomePluginsViewX store={store} />;
+  }
+
+  if (store.homeStore.selectedSection === "usage") {
+    mainContent = <HomeUsageViewX store={store} />;
   }
 
   if (store.homeStore.selectedSection === "logs") {

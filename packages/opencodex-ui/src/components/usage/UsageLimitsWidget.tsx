@@ -23,7 +23,7 @@ type UsageLimitsWidgetProps = {
  */
 export function UsageLimitsWidget({ store }: UsageLimitsWidgetProps) {
   const { t } = useTranslation();
-  const usage = store.usage;
+  const usage = store.defaultUsage;
 
   useEffect(() => {
     void store.load();

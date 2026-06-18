@@ -49,7 +49,7 @@ import type {
   OpenCodexThreadRuntimeStatus,
   OpenCodexToolVersionStatus,
   OpenCodexTurn,
-  OpenCodexUsageLimits
+  OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ThreadTurnCache } from "./ThreadTurnCache.js";
@@ -1003,9 +1003,9 @@ export class OpenCodexBackendRuntime {
   /**
    * Reads current Codex account usage limits.
    *
-   * @returns Usage limits, or `null` when unavailable.
+   * @returns Usage limit snapshot, or `null` when unavailable.
    */
-  async readUsageLimits(): Promise<OpenCodexUsageLimits | null> {
+  async readUsageLimits(): Promise<OpenCodexUsageSnapshot | null> {
     const client = await this.ensureClient();
 
     try {

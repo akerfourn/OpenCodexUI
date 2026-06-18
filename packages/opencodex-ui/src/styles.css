@@ -436,6 +436,26 @@ textarea {
   min-width: 0;
 }
 
+.usage-limit-card {
+  padding: 14px;
+}
+
+.usage-limit-card-default {
+  border-color: color-mix(in srgb, var(--vscode-focusBorder) 65%, var(--vscode-panel-border));
+  background: color-mix(in srgb, var(--vscode-focusBorder) 7%, var(--vscode-sideBar-background));
+}
+
+.usage-limit-card-secondary {
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 94%, var(--vscode-descriptionForeground));
+}
+
+.usage-limit-window-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .main-pane,
 .chat-view {
   min-width: 0;

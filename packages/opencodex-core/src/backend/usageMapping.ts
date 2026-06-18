@@ -1,7 +1,11 @@
 /**
  * Maps Codex account rate-limit payloads to OpenCodex usage models.
  */
-import type { OpenCodexUsageLimits, OpenCodexUsageWindow } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexUsageLimits,
+  OpenCodexUsageSnapshot,
+  OpenCodexUsageWindow
+} from "@open-codex-ui/opencodex-protocol";
 
 import { readNullableNumber, readObject, readString } from "../mapping.js";
 
@@ -11,14 +15,28 @@ import { readNullableNumber, readObject, readString } from "../mapping.js";
  * @param response Codex response or notification params.
  * @returns Mapped usage limits, or `null` when unavailable.
  */
-export function mapUsageLimitsResponse(response: unknown): OpenCodexUsageLimits | null {
+export function mapUsageLimitsResponse(response: unknown): OpenCodexUsageSnapshot | null {
   const root = readObject(response);
   const byLimitId = readObject(root.rateLimitsByLimitId);
-  const codexLimits = readObject(byLimitId.codex);
   const fallbackLimits = readObject(root.rateLimits);
-  const limits = Object.keys(codexLimits).length > 0 ? codexLimits : fallbackLimits;
+  const limits = Object.entries(byLimitId)
+    .map(([_limitId, value]) => mapUsageLimits(value))
+    .filter((usage): usage is OpenCodexUsageLimits => usage !== null);
 
-  return mapUsageLimits(limits);
+  if (limits.length === 0) {
+    const fallback = mapUsageLimits(fallbackLimits);
+
+    if (fallback === null) {
+      return null;
+    }
+
+    limits.push(fallback);
+  }
+
+  return {
+    limits,
+    updatedAt: new Date().toISOString()
+  };
 }
 
 /**
@@ -27,8 +45,17 @@ export function mapUsageLimitsResponse(response: unknown): OpenCodexUsageLimits 
  * @param params Notification params.
  * @returns Mapped usage limits, or `null` when unavailable.
  */
-export function mapUsageLimitsNotification(params: unknown): OpenCodexUsageLimits | null {
-  return mapUsageLimits(readObject(params).rateLimits);
+export function mapUsageLimitsNotification(params: unknown): OpenCodexUsageSnapshot | null {
+  const usage = mapUsageLimits(readObject(params).rateLimits);
+
+  if (usage === null) {
+    return null;
+  }
+
+  return {
+    limits: [usage],
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function mapUsageLimits(value: unknown): OpenCodexUsageLimits | null {

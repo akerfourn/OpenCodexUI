@@ -25,6 +25,7 @@ export class AppStore implements RootChildStore {
   settings: OpenCodexSettings = {
     codexCommand: "codex",
     defaultSourceId: null,
+    defaultUsageLimitId: null,
     defaultModel: null,
     defaultReasoningEffort: "medium",
     commitMessageModel: null,
@@ -372,6 +373,21 @@ export class AppStore implements RootChildStore {
     void this.root.request({
       type: "settings.update",
       patch: { developerMode }
+    });
+  }
+
+  /**
+   * Updates the usage limit displayed as the default account usage.
+   *
+   * @param defaultUsageLimitId Usage limit identifier, or `null` to use Codex.
+   *
+   * @returns Nothing.
+   */
+  setDefaultUsageLimitId(defaultUsageLimitId: string | null): void {
+    this.settings = { ...this.settings, defaultUsageLimitId };
+    void this.root.request({
+      type: "settings.update",
+      patch: { defaultUsageLimitId }
     });
   }
 

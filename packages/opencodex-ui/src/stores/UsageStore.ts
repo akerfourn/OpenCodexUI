@@ -5,7 +5,8 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexEvent,
-  OpenCodexUsageLimits
+  OpenCodexUsageLimits,
+  OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootChildStore } from "./RootChildStore";
@@ -15,7 +16,8 @@ import type { RootStore } from "./RootStore";
  * Stores current Codex usage limits.
  */
 export class UsageStore implements RootChildStore {
-  usage: OpenCodexUsageLimits | null = null;
+  usagesByLimitId = new Map<string, OpenCodexUsageLimits>();
+  lastUpdatedAt: string | null = null;
   isLoading = false;
   isUnavailable = false;
 
@@ -32,16 +34,26 @@ export class UsageStore implements RootChildStore {
       return;
     }
 
-    if (event.usage !== null && event.usage.limitId !== "codex") {
-      console.warn("[OpenCodexUI] ignored unknown usage limit", {
-        limitId: event.usage.limitId,
-        limitName: event.usage.limitName
-      });
-      return;
-    }
+    this.applySnapshot(event.usage);
+  }
 
-    this.usage = event.usage;
-    this.isUnavailable = event.usage === null;
+  get defaultUsageLimitId(): string {
+    return this.root.appStore.settings.defaultUsageLimitId ?? "codex";
+  }
+
+  get defaultUsage(): OpenCodexUsageLimits | null {
+    return this.usagesByLimitId.get(this.defaultUsageLimitId)
+      ?? this.usagesByLimitId.get("codex")
+      ?? null;
+  }
+
+  get usages(): OpenCodexUsageLimits[] {
+    return Array.from(this.usagesByLimitId.values()).sort(compareUsageLimits);
+  }
+
+  get otherUsages(): OpenCodexUsageLimits[] {
+    const defaultLimitId = readUsageLimitId(this.defaultUsage);
+    return this.usages.filter((usage) => readUsageLimitId(usage) !== defaultLimitId);
   }
 
   async load(): Promise<void> {
@@ -52,14 +64,12 @@ export class UsageStore implements RootChildStore {
     this.isLoading = true;
 
     try {
-      const usage = await this.root.request<OpenCodexUsageLimits | null>({ type: "usage.read" });
+      const usage = await this.root.request<OpenCodexUsageSnapshot | null>({ type: "usage.read" });
       runInAction(() => {
-        this.usage = usage;
-        this.isUnavailable = usage === null;
+        this.applySnapshot(usage);
       });
     } catch {
       runInAction(() => {
-        this.usage = null;
         this.isUnavailable = true;
       });
     } finally {
@@ -68,4 +78,48 @@ export class UsageStore implements RootChildStore {
       });
     }
   }
+
+  /**
+   * Changes the usage limit used by compact widgets and highlighted summaries.
+   *
+   * @param limitId Usage limit identifier.
+   *
+   * @returns Nothing.
+   */
+  selectDefaultUsageLimit(limitId: string): void {
+    this.root.appStore.setDefaultUsageLimitId(limitId === "codex" ? null : limitId);
+  }
+
+  private applySnapshot(snapshot: OpenCodexUsageSnapshot | null): void {
+    if (snapshot === null) {
+      this.isUnavailable = this.usagesByLimitId.size === 0;
+      return;
+    }
+
+    snapshot.limits.forEach((usage) => {
+      this.usagesByLimitId.set(readUsageLimitId(usage), usage);
+    });
+    this.lastUpdatedAt = snapshot.updatedAt;
+    this.isUnavailable = this.usagesByLimitId.size === 0;
+  }
+}
+
+function compareUsageLimits(left: OpenCodexUsageLimits, right: OpenCodexUsageLimits): number {
+  if (readUsageLimitId(left) === "codex") {
+    return -1;
+  }
+
+  if (readUsageLimitId(right) === "codex") {
+    return 1;
+  }
+
+  return readUsageLabel(left).localeCompare(readUsageLabel(right));
+}
+
+export function readUsageLimitId(usage: OpenCodexUsageLimits | null): string {
+  return usage?.limitId ?? "codex";
+}
+
+export function readUsageLabel(usage: OpenCodexUsageLimits): string {
+  return usage.limitName ?? usage.limitId ?? "codex";
 }

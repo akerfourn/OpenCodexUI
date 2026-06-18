@@ -274,6 +274,7 @@ export const resources = {
         commit: "Commit",
         saveChanges: "Enregistrement",
         plugins: "Plugins",
+        usage: "Consommation",
         recentProjects: "Projets récents",
         refreshProjects: "Synchroniser les projets récents",
         searchProjects: "Rechercher un projet",
@@ -484,6 +485,16 @@ export const resources = {
           usage: "Usage"
         },
         tooltip: "{{label}}: {{usedPercent}} % utilisés, {{remainingPercent}} % restants. Reset: {{reset}}"
+      },
+      usagePage: {
+        default: "Par défaut",
+        description: "Suivez les limites de consommation reçues depuis Codex.",
+        empty: "Aucune consommation disponible pour le moment.",
+        noWindow: "Aucune fenêtre de consommation disponible.",
+        plan: "Plan: {{plan}}",
+        refresh: "Actualiser",
+        setDefault: "Utiliser par défaut",
+        title: "Consommation"
       },
       rename: {
         cancel: "Annuler",
@@ -870,6 +881,7 @@ export const resources = {
         commit: "Commit",
         saveChanges: "Saving",
         plugins: "Plugins",
+        usage: "Usage",
         recentProjects: "Recent projects",
         refreshProjects: "Sync recent projects",
         searchProjects: "Search projects",
@@ -1079,6 +1091,16 @@ export const resources = {
           usage: "Usage"
         },
         tooltip: "{{label}}: {{usedPercent}}% used, {{remainingPercent}}% remaining. Reset: {{reset}}"
+      },
+      usagePage: {
+        default: "Default",
+        description: "Track usage limits received from Codex.",
+        empty: "No usage limits available yet.",
+        noWindow: "No usage window available.",
+        plan: "Plan: {{plan}}",
+        refresh: "Refresh",
+        setDefault: "Use as default",
+        title: "Usage"
       },
       rename: {
         cancel: "Cancel",

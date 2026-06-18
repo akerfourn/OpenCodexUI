@@ -2,6 +2,7 @@
  * Renders the Home vertical navigation.
  */
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import DonutSmallOutlinedIcon from "@mui/icons-material/DonutSmallOutlined";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
@@ -64,6 +65,11 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
     );
   }
 
+  function selectUsage(): void {
+    selectSection("usage");
+    void store.usageStore.load();
+  }
+
   function selectSection(section: HomeSection): void {
     store.homeStore.selectSection(section);
   }
@@ -99,6 +105,12 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
             <ExtensionOutlinedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary={t("home.plugins")} />
+        </ListItemButton>
+        <ListItemButton selected={selectedSection === "usage"} onClick={selectUsage}>
+          <ListItemIcon>
+            <DonutSmallOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("home.usage")} />
         </ListItemButton>
       </List>
       <List dense sx={{ mt: "auto" }}>
