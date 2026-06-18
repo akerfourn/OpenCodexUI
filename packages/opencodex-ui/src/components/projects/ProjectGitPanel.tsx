@@ -7,6 +7,7 @@ import CallMergeOutlinedIcon from "@mui/icons-material/CallMergeOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
+import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import {
@@ -17,13 +18,17 @@ import {
   Divider,
   IconButton,
   LinearProgress,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   TextField,
   Tooltip,
   Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, MouseEvent } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -66,6 +71,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const [isMergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [isTagDialogOpen, setTagDialogOpen] = useState(false);
   const [isLogDialogOpen, setLogDialogOpen] = useState(false);
+  const [gitActionsAnchor, setGitActionsAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     void gitStore.refresh();
@@ -73,6 +79,14 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   function handleRefresh(): void {
     void gitStore.refresh();
+  }
+
+  function handleOpenGitActions(event: MouseEvent<HTMLButtonElement>): void {
+    setGitActionsAnchor(event.currentTarget);
+  }
+
+  function handleCloseGitActions(): void {
+    setGitActionsAnchor(null);
   }
 
   function handleInitializeRepository(): void {
@@ -159,6 +173,26 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     store.openExternalLink(path);
   }
 
+  function handleSelectBranchAction(): void {
+    handleCloseGitActions();
+    handleOpenBranchDialog();
+  }
+
+  function handleSelectMergeAction(): void {
+    handleCloseGitActions();
+    handleOpenMergeDialog();
+  }
+
+  function handleSelectPublishAction(): void {
+    handleCloseGitActions();
+    handlePublishBranch();
+  }
+
+  function handleSelectLogAction(): void {
+    handleCloseGitActions();
+    handleOpenLogDialog();
+  }
+
   const generateTooltip = gitStore.canGenerateCommitMessage
     ? t(`${gitLabelsKey}.generateMessage`)
     : t(`${gitLabelsKey}.generateMessageUnavailable`);
@@ -189,61 +223,16 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
             />
           ) : null}
         </Box>
-        <Tooltip title={t("git.branchSwitcher")}>
+        <Tooltip title={t("git.actions")}>
           <span className="git-panel-header-action">
             <IconButton
-              aria-label={t("git.branchSwitcher")}
-              size="small"
-              disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
-              onClick={handleOpenBranchDialog}
-              sx={{ height: 26, width: 26 }}
-            >
-              <AccountTreeOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title={t("git.mergeBranch")}>
-          <span className="git-panel-header-action">
-            <IconButton
-              aria-label={t("git.mergeBranch")}
-              size="small"
-              disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
-              onClick={handleOpenMergeDialog}
-              sx={{ height: 26, width: 26 }}
-            >
-              <CallMergeOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </span>
-        </Tooltip>
-        {gitStore.status.branchName !== null && gitStore.status.upstreamName === null ? (
-          <Tooltip title={t("git.publishBranchTooltip")}>
-            <span className="git-panel-header-action">
-              <IconButton
-                aria-label={t("git.publishBranch")}
-                size="small"
-                disabled={!gitStore.canPublishBranch}
-                onClick={handlePublishBranch}
-                sx={{ height: 26, width: 26 }}
-              >
-                {gitStore.isPushing ? (
-                  <CircularProgress color="inherit" size={14} />
-                ) : (
-                  <PublishOutlinedIcon sx={{ fontSize: 16 }} />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
-        ) : null}
-        <Tooltip title={t("git.log")}>
-          <span className="git-panel-header-action">
-            <IconButton
-              aria-label={t("git.log")}
+              aria-label={t("git.actions")}
               size="small"
               disabled={!gitStore.isAvailable || !gitStore.status.isRepository}
-              onClick={handleOpenLogDialog}
+              onClick={handleOpenGitActions}
               sx={{ height: 26, width: 26 }}
             >
-              <HistoryOutlinedIcon sx={{ fontSize: 16 }} />
+              <MoreVertOutlinedIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </span>
         </Tooltip>
@@ -261,6 +250,53 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
           </span>
         </Tooltip>
       </Stack>
+      <Menu
+        anchorEl={gitActionsAnchor}
+        open={gitActionsAnchor !== null}
+        onClose={handleCloseGitActions}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+      >
+        <MenuItem
+          disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
+          onClick={handleSelectBranchAction}
+        >
+          <ListItemIcon>
+            <AccountTreeOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("git.branchSwitcher")}</ListItemText>
+        </MenuItem>
+        <MenuItem
+          disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
+          onClick={handleSelectMergeAction}
+        >
+          <ListItemIcon>
+            <CallMergeOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("git.mergeBranch")}</ListItemText>
+        </MenuItem>
+        {gitStore.status.branchName !== null && gitStore.status.upstreamName === null ? (
+          <MenuItem disabled={!gitStore.canPublishBranch} onClick={handleSelectPublishAction}>
+            <ListItemIcon>
+              {gitStore.isPushing ? (
+                <CircularProgress color="inherit" size={18} />
+              ) : (
+                <PublishOutlinedIcon fontSize="small" />
+              )}
+            </ListItemIcon>
+            <ListItemText>{t("git.publishBranchTooltip")}</ListItemText>
+          </MenuItem>
+        ) : null}
+        <MenuItem
+          disabled={!gitStore.isAvailable || !gitStore.status.isRepository}
+          onClick={handleSelectLogAction}
+        >
+          <ListItemIcon>
+            <HistoryOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("git.log")}</ListItemText>
+        </MenuItem>
+      </Menu>
 
       {gitStore.isLoading ? <LinearProgress /> : null}
 

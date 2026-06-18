@@ -86,6 +86,7 @@ export const resources = {
         rename: "Renommer"
       },
       git: {
+        actions: "Actions Git",
         branchSearch: "Rechercher ou créer une branche",
         branchSwitcher: "Changer de branche",
         branchSwitcherTitle: "Changer de branche",
@@ -696,6 +697,7 @@ export const resources = {
         rename: "Rename"
       },
       git: {
+        actions: "Git actions",
         branchSearch: "Search or create a branch",
         branchSwitcher: "Switch branch",
         branchSwitcherTitle: "Switch branch",
