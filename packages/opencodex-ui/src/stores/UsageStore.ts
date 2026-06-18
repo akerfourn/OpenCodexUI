@@ -12,21 +12,26 @@ import type {
 import type { RootChildStore } from "./RootChildStore";
 import type { RootStore } from "./RootStore";
 
+const USAGE_REFRESH_INTERVAL_MS = 60_000;
+
 /**
  * Stores current Codex usage limits.
  */
 export class UsageStore implements RootChildStore {
   usagesByLimitId = new Map<string, OpenCodexUsageLimits>();
   lastUpdatedAt: string | null = null;
+  lastRefreshRequestedAt: string | null = null;
   isLoading = false;
   isUnavailable = false;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly root: RootStore) {
-    makeAutoObservable<UsageStore, "root">(
+    makeAutoObservable<UsageStore, "root" | "refreshTimer">(
       this,
-      { root: false },
+      { root: false, refreshTimer: false },
       { autoBind: true }
     );
+    this.scheduleNextRefresh();
   }
 
   handleEvent(event: OpenCodexEvent): void {
@@ -35,6 +40,7 @@ export class UsageStore implements RootChildStore {
     }
 
     this.applySnapshot(event.usage);
+    this.scheduleNextRefresh();
   }
 
   get defaultUsageLimitId(): string {
@@ -62,6 +68,7 @@ export class UsageStore implements RootChildStore {
     }
 
     this.isLoading = true;
+    this.lastRefreshRequestedAt = new Date().toISOString();
 
     try {
       const usage = await this.root.request<OpenCodexUsageSnapshot | null>({ type: "usage.read" });
@@ -76,6 +83,7 @@ export class UsageStore implements RootChildStore {
       runInAction(() => {
         this.isLoading = false;
       });
+      this.scheduleNextRefresh();
     }
   }
 
@@ -101,6 +109,16 @@ export class UsageStore implements RootChildStore {
     });
     this.lastUpdatedAt = snapshot.updatedAt;
     this.isUnavailable = this.usagesByLimitId.size === 0;
+  }
+
+  private scheduleNextRefresh(): void {
+    if (this.refreshTimer !== null) {
+      clearTimeout(this.refreshTimer);
+    }
+
+    this.refreshTimer = setTimeout(() => {
+      void this.load();
+    }, USAGE_REFRESH_INTERVAL_MS);
   }
 }
 
