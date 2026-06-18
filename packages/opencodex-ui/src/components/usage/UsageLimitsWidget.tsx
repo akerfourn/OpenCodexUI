@@ -10,6 +10,7 @@ import type { OpenCodexUsageWindow } from "@open-codex-ui/opencodex-protocol";
 
 import type { UsageStore } from "../../stores/UsageStore";
 import { UsageWindowBar } from "./UsageWindowBar";
+import { formatUsageReset } from "./usageTimeFormat";
 
 type UsageLimitsWidgetProps = {
   store: UsageStore;
@@ -22,7 +23,7 @@ type UsageLimitsWidgetProps = {
  * @returns Rendered usage widget.
  */
 export function UsageLimitsWidget({ store }: UsageLimitsWidgetProps) {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const usage = store.defaultUsage;
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export function UsageLimitsWidget({ store }: UsageLimitsWidgetProps) {
       label,
       usedPercent: Math.round(window.usedPercent),
       remainingPercent: Math.round(window.remainingPercent),
-      reset: formatReset(window.resetsAt)
+      reset: formatUsageReset(window.resetsAt, i18n.language)
     });
   }).join("\n");
 
@@ -84,12 +85,4 @@ function readWindowSortValue(window: OpenCodexUsageWindow): number {
   }
 
   return 2;
-}
-
-function formatReset(resetsAt: string | null): string {
-  if (resetsAt === null) {
-    return "-";
-  }
-
-  return new Date(resetsAt).toLocaleString();
 }

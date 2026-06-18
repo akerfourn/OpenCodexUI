@@ -25,6 +25,7 @@ import type {
 
 import type { RootStore } from "../../stores/RootStore";
 import { readUsageLabel, readUsageLimitId } from "../../stores/UsageStore";
+import { formatUsageReset } from "../usage/usageTimeFormat";
 
 type HomeUsageViewProps = {
   store: RootStore;
@@ -202,7 +203,7 @@ type UsageWindowRowProps = {
 };
 
 function UsageWindowRow({ window, tone }: UsageWindowRowProps) {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const label = t(`usage.labels.${window.label}`);
   const remainingPercent = Math.round(window.remainingPercent);
   const usedPercent = Math.round(window.usedPercent);
@@ -212,7 +213,7 @@ function UsageWindowRow({ window, tone }: UsageWindowRowProps) {
       label,
       usedPercent,
       remainingPercent,
-      reset: formatReset(window.resetsAt)
+      reset: formatUsageReset(window.resetsAt, i18n.language)
     })}>
       <Box className="usage-limit-window-row">
         <Typography variant="body2" sx={{ minWidth: 72 }}>
@@ -230,12 +231,4 @@ function UsageWindowRow({ window, tone }: UsageWindowRowProps) {
       </Box>
     </Tooltip>
   );
-}
-
-function formatReset(resetsAt: string | null): string {
-  if (resetsAt === null) {
-    return "-";
-  }
-
-  return new Date(resetsAt).toLocaleString();
 }
