@@ -23,21 +23,11 @@ export function UsageWindowBar({ window }: UsageWindowBarProps) {
 
   return (
     <Box className="usage-window-bar">
-      <LinearProgress
-        variant="determinate"
-        value={window.remainingPercent}
-        color={readProgressColor(window.remainingPercent)}
-        sx={{
-          flex: "1 1 auto",
-          height: 10,
-          borderRadius: 999
-        }}
-      />
       <Typography
         variant="caption"
         sx={{
           flex: "0 0 auto",
-          minWidth: 78,
+          minWidth: 32,
           color: "text.secondary",
           fontSize: 10,
           fontWeight: 600,
@@ -45,7 +35,31 @@ export function UsageWindowBar({ window }: UsageWindowBarProps) {
           textAlign: "right"
         }}
       >
-        {label} ({remainingPercent}%)
+        {label}
+      </Typography>
+      <LinearProgress
+        variant="determinate"
+        value={window.remainingPercent}
+        color={readProgressColor(window.remainingPercent)}
+        sx={{
+          flex: "1 1 auto",
+          height: 12,
+          borderRadius: 999
+        }}
+      />
+      <Typography
+        variant="caption"
+        sx={{
+          flex: "0 0 auto",
+          minWidth: 30,
+          color: "text.secondary",
+          fontSize: 10,
+          fontWeight: 600,
+          lineHeight: 1,
+          textAlign: "right"
+        }}
+      >
+        {remainingPercent}%
       </Typography>
     </Box>
   );
