@@ -522,10 +522,16 @@ textarea {
   min-height: 30px;
 }
 
+.project-side-panel-tabs .MuiTabs-list {
+  width: 100%;
+}
+
 .project-side-panel-tabs .MuiTab-root {
-  min-width: 84px;
+  flex: 1 1 54px;
+  max-width: 84px;
+  min-width: 54px;
   min-height: 30px;
-  padding: 3px 8px;
+  padding: 3px 4px;
   text-transform: none;
 }
 
