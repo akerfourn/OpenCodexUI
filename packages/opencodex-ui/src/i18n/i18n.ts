@@ -493,8 +493,11 @@ export const resources = {
         noWindow: "Aucune fenêtre de consommation disponible.",
         plan: "Plan: {{plan}}",
         refresh: "Actualiser",
+        resetDateTooltip: "Le {{reset}}",
+        resetRelative: "(Reset {{reset}})",
         setDefault: "Utiliser par défaut",
-        title: "Consommation"
+        title: "Consommation",
+        usedPercentTooltip: "{{usedPercent}} % consommés"
       },
       rename: {
         cancel: "Annuler",
@@ -1099,8 +1102,11 @@ export const resources = {
         noWindow: "No usage window available.",
         plan: "Plan: {{plan}}",
         refresh: "Refresh",
+        resetDateTooltip: "On {{reset}}",
+        resetRelative: "(Reset {{reset}})",
         setDefault: "Use as default",
-        title: "Usage"
+        title: "Usage",
+        usedPercentTooltip: "{{usedPercent}}% used"
       },
       rename: {
         cancel: "Cancel",

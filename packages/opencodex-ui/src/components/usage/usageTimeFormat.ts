@@ -3,20 +3,53 @@
  */
 
 export function formatUsageReset(resetsAt: string | null, language: string): string {
-  if (resetsAt === null) {
+  const absoluteReset = formatUsageResetDate(resetsAt, language);
+
+  if (absoluteReset === null) {
     return "-";
+  }
+
+  const relativeReset = formatUsageResetRelative(resetsAt, language);
+
+  if (relativeReset === null) {
+    return absoluteReset;
+  }
+
+  return `${absoluteReset} (${relativeReset})`;
+}
+
+export function formatUsageResetDate(resetsAt: string | null, language: string): string | null {
+  if (resetsAt === null) {
+    return null;
   }
 
   const resetDate = new Date(resetsAt);
 
   if (Number.isNaN(resetDate.getTime())) {
-    return "-";
+    return null;
   }
 
-  const absoluteReset = resetDate.toLocaleString();
-  const relativeReset = formatRelativeReset(resetDate, language);
+  return resetDate.toLocaleString(language, {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
 
-  return `${absoluteReset} (${relativeReset})`;
+export function formatUsageResetRelative(resetsAt: string | null, language: string): string | null {
+  if (resetsAt === null) {
+    return null;
+  }
+
+  const resetDate = new Date(resetsAt);
+
+  if (Number.isNaN(resetDate.getTime())) {
+    return null;
+  }
+
+  return formatRelativeReset(resetDate, language);
 }
 
 function formatRelativeReset(resetDate: Date, language: string): string {

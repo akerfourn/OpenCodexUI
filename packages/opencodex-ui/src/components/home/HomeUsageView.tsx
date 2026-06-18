@@ -25,7 +25,7 @@ import type {
 
 import type { RootStore } from "../../stores/RootStore";
 import { readUsageLabel, readUsageLimitId } from "../../stores/UsageStore";
-import { formatUsageReset } from "../usage/usageTimeFormat";
+import { formatUsageResetDate, formatUsageResetRelative } from "../usage/usageTimeFormat";
 
 type HomeUsageViewProps = {
   store: RootStore;
@@ -207,28 +207,32 @@ function UsageWindowRow({ window, tone }: UsageWindowRowProps) {
   const label = t(`usage.labels.${window.label}`);
   const remainingPercent = Math.round(window.remainingPercent);
   const usedPercent = Math.round(window.usedPercent);
+  const relativeReset = formatUsageResetRelative(window.resetsAt, i18n.language);
+  const resetDate = formatUsageResetDate(window.resetsAt, i18n.language);
 
   return (
-    <Tooltip title={t("usage.tooltip", {
-      label,
-      usedPercent,
-      remainingPercent,
-      reset: formatUsageReset(window.resetsAt, i18n.language)
-    })}>
-      <Box className="usage-limit-window-row">
-        <Typography variant="body2" sx={{ minWidth: 72 }}>
-          {label}
-        </Typography>
-        <LinearProgress
-          variant="determinate"
-          value={window.remainingPercent}
-          color={tone === "default" ? "primary" : "secondary"}
-          sx={{ flex: "1 1 auto", height: 10, borderRadius: 999 }}
-        />
+    <Box className="usage-limit-window-row">
+      <Typography variant="body2" sx={{ minWidth: 72 }}>
+        {label}
+      </Typography>
+      <LinearProgress
+        variant="determinate"
+        value={window.remainingPercent}
+        color={tone === "default" ? "primary" : "secondary"}
+        sx={{ flex: "1 1 auto", height: 10, borderRadius: 999 }}
+      />
+      <Tooltip title={t("usagePage.usedPercentTooltip", { usedPercent })}>
         <Typography variant="body2" color="text.secondary" sx={{ minWidth: 42, textAlign: "right" }}>
           {remainingPercent}%
         </Typography>
-      </Box>
-    </Tooltip>
+      </Tooltip>
+      {relativeReset !== null && resetDate !== null ? (
+        <Tooltip title={t("usagePage.resetDateTooltip", { reset: resetDate })}>
+          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 132 }}>
+            {t("usagePage.resetRelative", { reset: relativeReset })}
+          </Typography>
+        </Tooltip>
+      ) : null}
+    </Box>
   );
 }
