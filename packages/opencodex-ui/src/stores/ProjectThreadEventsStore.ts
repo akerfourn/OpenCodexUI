@@ -340,7 +340,14 @@ export class ProjectThreadEventsStore implements RootChildStore {
       return;
     }
 
+    const shouldRefreshGit = chatStore.activeTurnId === turnId;
+
     chatStore.applyTurnCompleted(turnId, durationMs);
+
+    if (shouldRefreshGit) {
+      const projectStore = this.findProjectStoreForThread(threadId);
+      void projectStore?.gitStore.refresh();
+    }
   }
 
   private findProjectStoreForThread(threadId: string): ProjectStore | null {
