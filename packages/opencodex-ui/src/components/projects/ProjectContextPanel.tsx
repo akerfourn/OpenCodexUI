@@ -12,9 +12,11 @@ import {
   Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectStore } from "../../stores/ProjectStore";
+import { ProjectContextFolderAddDialogX } from "./ProjectContextFolderAddDialog";
 import { ProjectContextFolderRowX } from "./ProjectContextFolderRow";
 
 type ProjectContextPanelProps = {
@@ -30,10 +32,15 @@ type ProjectContextPanelProps = {
 export function ProjectContextPanel({ projectStore }: ProjectContextPanelProps) {
   const { t } = useTranslation();
   const contextStore = projectStore.contextStore;
+  const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const isBusy = contextStore.isSaving || contextStore.isPickingFolder || contextStore.isSyncing;
 
-  function handlePickFolder(): void {
-    void contextStore.pickAndAddFolder();
+  function handleOpenAddDialog(): void {
+    setAddDialogOpen(true);
+  }
+
+  function handleCloseAddDialog(): void {
+    setAddDialogOpen(false);
   }
 
   function handleSync(): void {
@@ -53,7 +60,7 @@ export function ProjectContextPanel({ projectStore }: ProjectContextPanelProps) 
                 size="small"
                 disabled={!contextStore.isAvailable || isBusy}
                 aria-label={t("contextFolders.add")}
-                onClick={handlePickFolder}
+                onClick={handleOpenAddDialog}
               >
                 {contextStore.isPickingFolder ? (
                   <CircularProgress size={16} />
@@ -64,6 +71,11 @@ export function ProjectContextPanel({ projectStore }: ProjectContextPanelProps) 
             </span>
           </Tooltip>
         </Stack>
+        <ProjectContextFolderAddDialogX
+          contextStore={contextStore}
+          open={isAddDialogOpen}
+          onClose={handleCloseAddDialog}
+        />
 
         {!contextStore.isAvailable ? (
           <Alert severity="warning">{t("contextFolders.sourceUnavailable")}</Alert>
