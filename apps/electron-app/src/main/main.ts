@@ -107,6 +107,8 @@ async function disposeAndExit(code: number): Promise<void> {
 
   try {
     await bridgeServer?.dispose();
+  } catch (error) {
+    console.error(`[OpenCodexUI] cleanup failed during shutdown: ${String(error)}`);
   } finally {
     isDisposed = true;
     app.exit(code);

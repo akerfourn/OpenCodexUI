@@ -81,6 +81,7 @@ export class CodexAppServerClient {
   private nextId = 1;
   private startPromise: Promise<void> | null = null;
   private isInitialized = false;
+  private isStopping = false;
 
   /**
    * Creates a client with optional command, timeout, and process overrides.
@@ -122,6 +123,7 @@ export class CodexAppServerClient {
    * @returns Promise resolved once local process state has been cleared.
    */
   async stop(): Promise<void> {
+    this.isStopping = true;
     this.rejectPendingRequests(new CodexProcessError("Codex app-server stopped."));
     this.isInitialized = false;
     this.startPromise = null;
@@ -132,8 +134,21 @@ export class CodexAppServerClient {
     const process = this.process;
     this.process = null;
 
-    if (process !== null && !process.killed) {
+    if (process === null) {
+      this.isStopping = false;
+      return;
+    }
+
+    if (process.killed) {
+      this.isStopping = false;
+      return;
+    }
+
+    try {
       process.kill();
+    } catch (error) {
+      this.logger(`Codex app-server shutdown kill failed: ${String(error)}`);
+      this.isStopping = false;
     }
   }
 
@@ -516,6 +531,11 @@ export class CodexAppServerClient {
     });
 
     process.once("error", (error: Error) => {
+      if (this.isStopping) {
+        this.logger(`Codex app-server process error during shutdown: ${error.message}`);
+        return;
+      }
+
       const processError = normalizeProcessError(error, this.command);
       this.events.emit("error", processError);
       this.rejectPendingRequests(processError);
@@ -523,11 +543,16 @@ export class CodexAppServerClient {
     });
 
     process.once("close", (code: number | null, signal: NodeJS.Signals | null) => {
-      this.events.emit("close", { code, signal });
+      const wasStopping = this.isStopping;
+      this.isStopping = false;
       this.isInitialized = false;
       this.startPromise = null;
       this.process = null;
-      this.rejectPendingRequests(new CodexProcessError("Codex app-server process exited."));
+
+      if (!wasStopping) {
+        this.events.emit("close", { code, signal });
+        this.rejectPendingRequests(new CodexProcessError("Codex app-server process exited."));
+      }
     });
 
     await this.initialize();

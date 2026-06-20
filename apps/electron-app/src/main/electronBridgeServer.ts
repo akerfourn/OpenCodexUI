@@ -34,7 +34,9 @@ export class ElectronBridgeServer {
   private readonly runtime: OpenCodexBackendRuntime;
   private readonly requestRouter: OpenCodexRequestRouter;
   private readonly discordPresenceService: DiscordPresenceService;
+  private readonly logger: (message: string) => void;
   private window: BrowserWindow | null = null;
+  private isDisposed = false;
 
   /**
    * Creates the bridge server with the current settings and cache repository.
@@ -44,6 +46,7 @@ export class ElectronBridgeServer {
   constructor(options: ElectronBridgeServerOptions) {
     const cacheRepository = createCacheRepository(options.userDataPath);
     const logger = (message: string) => console.log(`[OpenCodexUI] ${message}`);
+    this.logger = logger;
 
     this.runtime = new OpenCodexBackendRuntime({
       settings: options.settings,
@@ -122,9 +125,23 @@ export class ElectronBridgeServer {
    * @returns Promise resolved once cleanup is complete.
    */
   async dispose(): Promise<void> {
+    if (this.isDisposed) {
+      return;
+    }
+
+    this.isDisposed = true;
     ipcMain.removeHandler("opencodex:request");
-    await this.discordPresenceService.dispose();
-    await this.runtime.dispose();
+    this.window = null;
+    const results = await Promise.allSettled([
+      this.discordPresenceService.dispose(),
+      this.runtime.dispose()
+    ]);
+
+    results.forEach((result) => {
+      if (result.status === "rejected") {
+        this.logger(`cleanup task failed during shutdown: ${String(result.reason)}`);
+      }
+    });
   }
 
   /**
@@ -134,8 +151,18 @@ export class ElectronBridgeServer {
    * @returns Nothing.
    */
   private emit(event: OpenCodexEvent): void {
+    if (this.isDisposed) {
+      return;
+    }
+
     this.discordPresenceService.handleEvent(event);
-    this.window?.webContents.send("opencodex:event", event);
+    const window = this.window;
+
+    if (window === null || window.isDestroyed() || window.webContents.isDestroyed()) {
+      return;
+    }
+
+    window.webContents.send("opencodex:event", event);
   }
 
   /**

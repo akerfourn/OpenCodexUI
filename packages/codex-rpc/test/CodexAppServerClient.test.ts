@@ -147,6 +147,20 @@ describe("CodexAppServerClient", () => {
     expect(fakeProcess.killed).toBe(true);
   });
 
+  it("should not emit a close event when intentionally stopped", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+    const closeSpy = vi.fn();
+
+    respondToInitialize(fakeProcess);
+    client.onClose(closeSpy);
+
+    await client.start();
+    await client.stop();
+
+    expect(closeSpy).not.toHaveBeenCalled();
+  });
+
   it("should reject a request when the response times out", async () => {
     const fakeProcess = new FakeProcess();
     const client = createClient(fakeProcess, 10);
