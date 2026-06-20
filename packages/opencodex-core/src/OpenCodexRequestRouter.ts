@@ -206,6 +206,15 @@ export class OpenCodexRequestRouter {
         return this.runtime.readGitStatus(request.projectPath, request.sourceId);
       case "git.init":
         return this.runtime.initializeGitRepository(request.projectPath, request.sourceId);
+      case "git.remotes":
+        return this.runtime.listGitRemotes(request.projectPath, request.sourceId);
+      case "git.remote.upsert":
+        return this.runtime.upsertGitRemote(
+          request.projectPath,
+          request.sourceId,
+          request.name,
+          request.url
+        );
       case "git.branches":
         return this.runtime.listGitBranches(request.projectPath, request.sourceId);
       case "git.tags":

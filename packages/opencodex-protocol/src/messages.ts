@@ -180,6 +180,12 @@ export type OpenCodexGitFile = {
   unstagedStatus: OpenCodexGitFileState | null;
 };
 
+export type OpenCodexGitRemote = {
+  name: string;
+  fetchUrl: string | null;
+  pushUrl: string | null;
+};
+
 export type OpenCodexGitStatus = {
   isRepository: boolean;
   aheadCount: number;
@@ -187,6 +193,7 @@ export type OpenCodexGitStatus = {
   branchName: string | null;
   upstreamName: string | null;
   pendingCommitMessage: string | null;
+  remotes: OpenCodexGitRemote[];
   changedFiles: OpenCodexGitFile[];
   stagedFiles: OpenCodexGitFile[];
 };

@@ -24,6 +24,7 @@ import type {
   OpenCodexImageAttachment,
   OpenCodexGitCommitResult,
   OpenCodexGitLogPage,
+  OpenCodexGitRemote,
   OpenCodexGitStatus,
   OpenCodexGitTag,
   OpenCodexLogEntry,
@@ -1121,6 +1122,40 @@ export class OpenCodexBackendRuntime {
     sourceId: string | null
   ): Promise<OpenCodexGitStatus> {
     return await this.gitService.init(projectPath, sourceId);
+  }
+
+  /**
+   * Lists configured Git remotes for a project.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Remote collection.
+   */
+  async listGitRemotes(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexGitRemote[]> {
+    return await this.gitService.remotes(projectPath, sourceId);
+  }
+
+  /**
+   * Adds or updates one Git remote.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param name Remote name.
+   * @param url Remote URL.
+   *
+   * @returns Refreshed Git status.
+   */
+  async upsertGitRemote(
+    projectPath: string,
+    sourceId: string | null,
+    name: string,
+    url: string
+  ): Promise<OpenCodexGitStatus> {
+    return await this.gitService.upsertRemote(projectPath, sourceId, name, url);
   }
 
   /**

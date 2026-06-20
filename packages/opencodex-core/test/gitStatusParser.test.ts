@@ -24,6 +24,7 @@ describe("parseGitStatus", () => {
       branchName: "main",
       upstreamName: "origin/main",
       pendingCommitMessage: null,
+      remotes: [],
       changedFiles: [
         {
           path: "changed.ts",

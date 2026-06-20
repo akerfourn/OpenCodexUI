@@ -4,6 +4,7 @@
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import CallMergeOutlinedIcon from "@mui/icons-material/CallMergeOutlined";
+import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
@@ -39,6 +40,7 @@ import { ProjectBranchMergeDialogX } from "./ProjectBranchMergeDialog";
 import { ProjectBranchSwitcherDialogX } from "./ProjectBranchSwitcherDialog";
 import { ProjectGitReferenceTagRowX } from "./ProjectGitReferenceTagRow";
 import { ProjectGitLogDialogX } from "./ProjectGitLogDialog";
+import { ProjectGitRemoteDialogX } from "./ProjectGitRemoteDialog";
 import { ProjectTagSelectorDialogX } from "./ProjectTagSelectorDialog";
 import { ProjectGitFileRow } from "./ProjectGitFileRow";
 import { GitSectionHeader } from "./GitSectionHeader";
@@ -71,6 +73,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const [isMergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [isTagDialogOpen, setTagDialogOpen] = useState(false);
   const [isLogDialogOpen, setLogDialogOpen] = useState(false);
+  const [isRemoteDialogOpen, setRemoteDialogOpen] = useState(false);
   const [gitActionsAnchor, setGitActionsAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -123,6 +126,14 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   function handleCloseLogDialog(): void {
     setLogDialogOpen(false);
+  }
+
+  function handleOpenRemoteDialog(): void {
+    setRemoteDialogOpen(true);
+  }
+
+  function handleCloseRemoteDialog(): void {
+    setRemoteDialogOpen(false);
   }
 
   function handleStageSelected(): void {
@@ -191,6 +202,11 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   function handleSelectLogAction(): void {
     handleCloseGitActions();
     handleOpenLogDialog();
+  }
+
+  function handleSelectRemoteAction(): void {
+    handleCloseGitActions();
+    handleOpenRemoteDialog();
   }
 
   const generateTooltip = gitStore.canGenerateCommitMessage
@@ -274,6 +290,15 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
             <CallMergeOutlinedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>{t("git.mergeBranch")}</ListItemText>
+        </MenuItem>
+        <MenuItem
+          disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
+          onClick={handleSelectRemoteAction}
+        >
+          <ListItemIcon>
+            <CloudOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("git.remoteConfigure")}</ListItemText>
         </MenuItem>
         {gitStore.status.branchName !== null && gitStore.status.upstreamName === null ? (
           <MenuItem disabled={!gitStore.canPublishBranch} onClick={handleSelectPublishAction}>
@@ -504,6 +529,11 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         gitStore={gitStore}
         open={isTagDialogOpen}
         onClose={handleCloseTagDialog}
+      />
+      <ProjectGitRemoteDialogX
+        gitStore={gitStore}
+        open={isRemoteDialogOpen}
+        onClose={handleCloseRemoteDialog}
       />
       <ProjectGitLogDialogX
         gitStore={gitStore}

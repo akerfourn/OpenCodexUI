@@ -11,6 +11,7 @@ import type {
   OpenCodexGitCommitResult,
   OpenCodexGitLogCommit,
   OpenCodexGitLogPage,
+  OpenCodexGitRemote,
   OpenCodexGitStatus,
   OpenCodexGitTag,
   OpenCodexProject,
@@ -27,6 +28,7 @@ const emptyGitStatus: OpenCodexGitStatus = {
   branchName: null,
   upstreamName: null,
   pendingCommitMessage: null,
+  remotes: [],
   changedFiles: [],
   stagedFiles: []
 };
@@ -48,6 +50,7 @@ export class ProjectGitStore {
   branchErrorMessage: string | null = null;
   tagErrorMessage: string | null = null;
   logErrorMessage: string | null = null;
+  remoteErrorMessage: string | null = null;
   hasLoaded = false;
   hasLoadedBranches = false;
   hasLoadedTags = false;
@@ -58,6 +61,7 @@ export class ProjectGitStore {
   isLoadingTags = false;
   isLoadingLog = false;
   isFetchingTags = false;
+  isLoadingRemotes = false;
   isCheckingOutBranch = false;
   isMergingBranch = false;
   isCreatingTag = false;
@@ -66,6 +70,7 @@ export class ProjectGitStore {
   isCommitting = false;
   isGeneratingCommitMessage = false;
   isInitializingRepository = false;
+  isSavingRemote = false;
   isPulling = false;
   isPushing = false;
   selectedChangedPaths: string[] = [];
@@ -142,9 +147,16 @@ export class ProjectGitStore {
       this.status.isRepository &&
       this.status.branchName !== null &&
       this.status.upstreamName === null &&
+      this.status.remotes.length > 0 &&
       !this.isLoading &&
       !this.isPushing
     );
+  }
+
+  get primaryRemote(): OpenCodexGitRemote | null {
+    return this.status.remotes.find((remote) => remote.name === "origin")
+      ?? this.status.remotes[0]
+      ?? null;
   }
 
   get canPull(): boolean {
@@ -295,6 +307,42 @@ export class ProjectGitStore {
       runInAction(() => {
         this.isLoadingBranches = false;
         this.hasLoadedBranches = true;
+      });
+    }
+  }
+
+  async loadRemotes(): Promise<void> {
+    if (!this.isAvailable || !this.status.isRepository) {
+      this.status = {
+        ...this.status,
+        remotes: []
+      };
+      return;
+    }
+
+    this.isLoadingRemotes = true;
+    this.remoteErrorMessage = null;
+
+    try {
+      const remotes = await this.root.request<OpenCodexGitRemote[]>({
+        type: "git.remotes",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      });
+
+      runInAction(() => {
+        this.status = {
+          ...this.status,
+          remotes
+        };
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.remoteErrorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isLoadingRemotes = false;
       });
     }
   }
@@ -620,6 +668,43 @@ export class ProjectGitStore {
     } finally {
       runInAction(() => {
         this.isGeneratingCommitMessage = false;
+      });
+    }
+  }
+
+  async upsertRemote(name: string, url: string): Promise<boolean> {
+    if (!this.isAvailable || !this.status.isRepository || this.isSavingRemote) {
+      return false;
+    }
+
+    this.isSavingRemote = true;
+    this.remoteErrorMessage = null;
+    this.errorMessage = null;
+
+    try {
+      const status = await this.root.request<OpenCodexGitStatus>({
+        type: "git.remote.upsert",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId,
+        name,
+        url
+      });
+
+      runInAction(() => {
+        this.applyStatus(status);
+        if (!status.isRepository) {
+          this.clearTags();
+        }
+      });
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.remoteErrorMessage = readErrorMessage(error);
+      });
+      return false;
+    } finally {
+      runInAction(() => {
+        this.isSavingRemote = false;
       });
     }
   }

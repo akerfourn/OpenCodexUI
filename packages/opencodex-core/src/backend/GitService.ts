@@ -10,6 +10,7 @@ import type {
   OpenCodexGitCommitResult,
   OpenCodexGitFileState,
   OpenCodexGitLogPage,
+  OpenCodexGitRemote,
   OpenCodexGitStatus,
   OpenCodexGitTag
 } from "@open-codex-ui/opencodex-protocol";
@@ -78,10 +79,12 @@ export class GitService {
     const pendingCommitMessage = status.stagedFiles.length > 0
       ? await this.readPendingCommitMessage(projectPath, sourceId)
       : null;
+    const remotes = await this.remotes(projectPath, sourceId);
 
     return {
       ...status,
-      pendingCommitMessage
+      pendingCommitMessage,
+      remotes
     };
   }
 
@@ -94,6 +97,47 @@ export class GitService {
    */
   async init(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
     await this.runGit(projectPath, sourceId, ["init"]);
+    return await this.status(projectPath, sourceId);
+  }
+
+  /**
+   * Lists configured Git remotes.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Configured Git remotes.
+   */
+  async remotes(projectPath: string, sourceId: string | null): Promise<OpenCodexGitRemote[]> {
+    const response = await this.runGit(projectPath, sourceId, ["remote", "-v"]);
+    return parseGitRemotes(response.stdout);
+  }
+
+  /**
+   * Adds or updates one Git remote and returns refreshed status.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param name Remote name.
+   * @param url Remote URL.
+   * @returns Refreshed Git status.
+   */
+  async upsertRemote(
+    projectPath: string,
+    sourceId: string | null,
+    name: string,
+    url: string
+  ): Promise<OpenCodexGitStatus> {
+    const remoteName = normalizeRemoteInput(name, "Remote name is required.");
+    const remoteUrl = normalizeRemoteInput(url, "Remote URL is required.");
+    const remotes = await this.remotes(projectPath, sourceId);
+    const existingRemote = remotes.find((remote) => remote.name === remoteName) ?? null;
+
+    if (existingRemote === null) {
+      await this.runGit(projectPath, sourceId, ["remote", "add", remoteName, remoteUrl]);
+    } else {
+      await this.runGit(projectPath, sourceId, ["remote", "set-url", remoteName, remoteUrl]);
+    }
+
     return await this.status(projectPath, sourceId);
   }
 
@@ -716,9 +760,78 @@ function createEmptyGitStatus(): OpenCodexGitStatus {
     branchName: null,
     upstreamName: null,
     pendingCommitMessage: null,
+    remotes: [],
     changedFiles: [],
     stagedFiles: []
   };
+}
+
+function parseGitRemotes(output: string): OpenCodexGitRemote[] {
+  const remotesByName = new Map<string, OpenCodexGitRemote>();
+
+  output.split("\n").forEach((line) => {
+    const parsedRemote = parseGitRemoteLine(line);
+
+    if (parsedRemote === null) {
+      return;
+    }
+
+    const currentRemote = remotesByName.get(parsedRemote.name) ?? {
+      name: parsedRemote.name,
+      fetchUrl: null,
+      pushUrl: null
+    };
+
+    if (parsedRemote.kind === "fetch") {
+      currentRemote.fetchUrl = parsedRemote.url;
+    }
+
+    if (parsedRemote.kind === "push") {
+      currentRemote.pushUrl = parsedRemote.url;
+    }
+
+    remotesByName.set(parsedRemote.name, currentRemote);
+  });
+
+  return Array.from(remotesByName.values()).sort((left, right) => (
+    left.name.localeCompare(right.name)
+  ));
+}
+
+function parseGitRemoteLine(line: string): {
+  name: string;
+  url: string;
+  kind: "fetch" | "push";
+} | null {
+  const match = /^(\S+)\s+(.+)\s+\((fetch|push)\)$/.exec(line.trim());
+
+  if (match === null) {
+    return null;
+  }
+
+  const [, name, url, rawKind] = match;
+
+  if (name === undefined || url === undefined || rawKind === undefined) {
+    return null;
+  }
+
+  const kind = rawKind === "push" ? "push" : "fetch";
+
+  return {
+    name,
+    url,
+    kind
+  };
+}
+
+function normalizeRemoteInput(value: string, errorMessage: string): string {
+  const normalizedValue = value.trim();
+
+  if (normalizedValue.length === 0) {
+    throw new Error(errorMessage);
+  }
+
+  return normalizedValue;
 }
 
 function parseGitBranches(output: string, currentBranchName: string): OpenCodexGitBranch[] {

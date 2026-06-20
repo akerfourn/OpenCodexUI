@@ -140,6 +140,8 @@ export type OpenCodexRequest =
   | { type: "git.version" }
   | { type: "git.status"; projectPath: string; sourceId: string | null }
   | { type: "git.init"; projectPath: string; sourceId: string | null }
+  | { type: "git.remotes"; projectPath: string; sourceId: string | null }
+  | { type: "git.remote.upsert"; projectPath: string; sourceId: string | null; name: string; url: string }
   | { type: "git.branches"; projectPath: string; sourceId: string | null }
   | { type: "git.tags"; projectPath: string; sourceId: string | null }
   | { type: "git.tags.fetch"; projectPath: string; sourceId: string | null }

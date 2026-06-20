@@ -38,6 +38,7 @@ describe("GitService", () => {
       branchName: null,
       upstreamName: null,
       pendingCommitMessage: null,
+      remotes: [],
       changedFiles: [],
       stagedFiles: []
     });
@@ -50,7 +51,8 @@ describe("GitService", () => {
     const client = new FakeCodexClient([
       { exitCode: 0, stdout: "Initialized empty Git repository", stderr: "" },
       { exitCode: 0, stdout: "true\n", stderr: "" },
-      { exitCode: 0, stdout: "# branch.head main\0", stderr: "" }
+      { exitCode: 0, stdout: "# branch.head main\0", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
       ensureClient: async () => client.asCodexClient()
@@ -63,7 +65,8 @@ describe("GitService", () => {
     expect(client.commands).toEqual([
       ["git", "init"],
       ["git", "rev-parse", "--is-inside-work-tree"],
-      ["git", "status", "--porcelain=v2", "-z", "--branch"]
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"]
     ]);
   });
 
@@ -76,7 +79,8 @@ describe("GitService", () => {
         stderr: ""
       },
       { exitCode: 0, stdout: "/workspace/project/.git/REVERT_HEAD\n", stderr: "" },
-      { exitCode: 0, stdout: "/workspace/project/.git/MERGE_MSG\n", stderr: "" }
+      { exitCode: 0, stdout: "/workspace/project/.git/MERGE_MSG\n", stderr: "" },
+      { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" }
     ]);
     client.metadataByPath.set("/workspace/project/.git/REVERT_HEAD", {
       isDirectory: false,
@@ -102,7 +106,8 @@ describe("GitService", () => {
       ["git", "rev-parse", "--is-inside-work-tree"],
       ["git", "status", "--porcelain=v2", "-z", "--branch"],
       ["git", "rev-parse", "--path-format=absolute", "--git-path", "REVERT_HEAD"],
-      ["git", "rev-parse", "--path-format=absolute", "--git-path", "MERGE_MSG"]
+      ["git", "rev-parse", "--path-format=absolute", "--git-path", "MERGE_MSG"],
+      ["git", "remote", "-v"]
     ]);
   });
 
@@ -166,7 +171,8 @@ describe("GitService", () => {
     const client = new FakeCodexClient([
       { exitCode: 0, stdout: "", stderr: "" },
       { exitCode: 0, stdout: "true\n", stderr: "" },
-      { exitCode: 0, stdout: "# branch.head feature/api\0", stderr: "" }
+      { exitCode: 0, stdout: "# branch.head feature/api\0", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
       ensureClient: async () => client.asCodexClient()
@@ -183,7 +189,8 @@ describe("GitService", () => {
     expect(client.commands).toEqual([
       ["git", "checkout", "feature/api"],
       ["git", "rev-parse", "--is-inside-work-tree"],
-      ["git", "status", "--porcelain=v2", "-z", "--branch"]
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"]
     ]);
   });
 
@@ -192,7 +199,8 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "feature/new\n", stderr: "" },
       { exitCode: 0, stdout: "", stderr: "" },
       { exitCode: 0, stdout: "true\n", stderr: "" },
-      { exitCode: 0, stdout: "# branch.head feature/new\0", stderr: "" }
+      { exitCode: 0, stdout: "# branch.head feature/new\0", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
       ensureClient: async () => client.asCodexClient()
@@ -205,7 +213,8 @@ describe("GitService", () => {
       ["git", "check-ref-format", "--branch", "feature/new"],
       ["git", "checkout", "-b", "feature/new"],
       ["git", "rev-parse", "--is-inside-work-tree"],
-      ["git", "status", "--porcelain=v2", "-z", "--branch"]
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"]
     ]);
   });
 
@@ -213,7 +222,8 @@ describe("GitService", () => {
     const client = new FakeCodexClient([
       { exitCode: 0, stdout: "Already up to date.\n", stderr: "" },
       { exitCode: 0, stdout: "true\n", stderr: "" },
-      { exitCode: 0, stdout: "# branch.head main\0", stderr: "" }
+      { exitCode: 0, stdout: "# branch.head main\0", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
       ensureClient: async () => client.asCodexClient()
@@ -225,7 +235,8 @@ describe("GitService", () => {
     expect(client.commands).toEqual([
       ["git", "merge", "feature/api"],
       ["git", "rev-parse", "--is-inside-work-tree"],
-      ["git", "status", "--porcelain=v2", "-z", "--branch"]
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"]
     ]);
   });
 
@@ -233,6 +244,7 @@ describe("GitService", () => {
     const client = new FakeCodexClient([
       { exitCode: 0, stdout: "true\n", stderr: "" },
       { exitCode: 0, stdout: "# branch.head feature/api\0", stderr: "" },
+      { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" },
       { exitCode: 0, stdout: "backup\norigin\n", stderr: "" },
       { exitCode: 0, stdout: "branch 'feature/api' set up to track 'origin/feature/api'.\n", stderr: "" },
       { exitCode: 0, stdout: "true\n", stderr: "" },
@@ -240,7 +252,8 @@ describe("GitService", () => {
         exitCode: 0,
         stdout: "# branch.head feature/api\0# branch.upstream origin/feature/api\0",
         stderr: ""
-      }
+      },
+      { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" }
     ]);
     const service = new GitService({
       ensureClient: async () => client.asCodexClient()
@@ -253,10 +266,83 @@ describe("GitService", () => {
     expect(client.commands).toEqual([
       ["git", "rev-parse", "--is-inside-work-tree"],
       ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"],
       ["git", "remote"],
       ["git", "push", "--set-upstream", "origin", "feature/api"],
       ["git", "rev-parse", "--is-inside-work-tree"],
-      ["git", "status", "--porcelain=v2", "-z", "--branch"]
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"]
+    ]);
+  });
+
+  it("should list configured remotes with fetch and push URLs", async () => {
+    const client = new FakeCodexClient([
+      {
+        exitCode: 0,
+        stdout: [
+          "origin\tgit@example.com:owner/repo.git (fetch)",
+          "origin\tgit@example.com:owner/repo.git (push)",
+          "backup\tssh://backup.example.com/repo.git (fetch)",
+          ""
+        ].join("\n"),
+        stderr: ""
+      }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const remotes = await service.remotes("/workspace/project", "source-1");
+
+    expect(remotes).toEqual([
+      {
+        name: "backup",
+        fetchUrl: "ssh://backup.example.com/repo.git",
+        pushUrl: null
+      },
+      {
+        name: "origin",
+        fetchUrl: "git@example.com:owner/repo.git",
+        pushUrl: "git@example.com:owner/repo.git"
+      }
+    ]);
+    expect(client.commands).toEqual([
+      ["git", "remote", "-v"]
+    ]);
+  });
+
+  it("should add missing remotes before refreshing status", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" },
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: "# branch.head main\0", stderr: "" },
+      { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" }
+    ]);
+    const service = new GitService({
+      ensureClient: async () => client.asCodexClient()
+    });
+
+    const status = await service.upsertRemote(
+      "/workspace/project",
+      "source-1",
+      "origin",
+      "git@example.com:owner/repo.git"
+    );
+
+    expect(status.remotes).toEqual([
+      {
+        name: "origin",
+        fetchUrl: "git@example.com:owner/repo.git",
+        pushUrl: null
+      }
+    ]);
+    expect(client.commands).toEqual([
+      ["git", "remote", "-v"],
+      ["git", "remote", "add", "origin", "git@example.com:owner/repo.git"],
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"]
     ]);
   });
 

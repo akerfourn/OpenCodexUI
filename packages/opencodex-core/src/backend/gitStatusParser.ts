@@ -70,6 +70,7 @@ export function parseGitStatus(output: string): OpenCodexGitStatus {
     branchName,
     upstreamName,
     pendingCommitMessage: null,
+    remotes: [],
     changedFiles: files.filter((file) => file.unstagedStatus !== null),
     stagedFiles: files.filter((file) => file.stagedStatus !== null)
   };
