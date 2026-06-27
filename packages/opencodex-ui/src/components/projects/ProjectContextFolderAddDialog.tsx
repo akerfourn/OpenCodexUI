@@ -54,8 +54,11 @@ export function ProjectContextFolderAddDialog({
   }
 
   async function handlePickLocalFolder(): Promise<void> {
-    await contextStore.pickAndAddFolder();
-    onClose();
+    const pickedFolderPath = await contextStore.pickFolderPath();
+
+    if (pickedFolderPath !== null) {
+      setFolderPath(pickedFolderPath);
+    }
   }
 
   async function handleAddManualPath(): Promise<void> {

@@ -20,6 +20,7 @@ import type {
 
 import type { ProjectStore } from "./ProjectStore";
 import type { RootStore } from "./RootStore";
+import { cloneProjectPreferences } from "./projectPreferencesDto";
 
 const emptyGitStatus: OpenCodexGitStatus = {
   isRepository: false,
@@ -1042,10 +1043,11 @@ export class ProjectGitStore {
   }
 
   private persistReferenceTagPreference(referenceTagName: string | null): void {
+    const currentPreferences = cloneProjectPreferences(this.projectStore.project.preferences);
     const preferences: OpenCodexProjectPreferences = {
-      ...this.projectStore.project.preferences,
+      ...currentPreferences,
       git: {
-        ...this.projectStore.project.preferences.git,
+        ...currentPreferences.git,
         referenceTagName
       }
     };

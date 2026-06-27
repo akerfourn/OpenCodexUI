@@ -8,6 +8,10 @@ import type {
 
 import type { ProjectStore } from "./ProjectStore";
 import type { RootStore } from "./RootStore";
+import {
+  cloneContextFolders,
+  cloneProjectPreferences
+} from "./projectPreferencesDto";
 
 const defaultPermissionsProfileId = "opencodex-context";
 
@@ -77,25 +81,33 @@ export class ProjectContextStore {
     });
   }
 
-  async pickAndAddFolder(): Promise<void> {
-    if (!this.isAvailable || this.isPickingFolder || this.isSaving) {
-      return;
+  async pickFolderPath(): Promise<string | null> {
+    if (!this.isAvailable || this.isPickingFolder) {
+      return null;
     }
 
     this.isPickingFolder = true;
 
     try {
-      const folderPath = await this.root.request<string | null>({
+      return await this.root.request<string | null>({
         type: "projects.context.pickFolder"
       });
-
-      if (folderPath !== null) {
-        await this.addFolder(folderPath);
-      }
     } finally {
       runInAction(() => {
         this.isPickingFolder = false;
       });
+    }
+  }
+
+  async pickAndAddFolder(): Promise<void> {
+    if (this.isSaving) {
+      return;
+    }
+
+    const folderPath = await this.pickFolderPath();
+
+    if (folderPath !== null) {
+      await this.addFolder(folderPath);
     }
   }
 
@@ -160,11 +172,13 @@ export class ProjectContextStore {
     this.isSaving = true;
 
     try {
+      const currentPreferences = cloneProjectPreferences(this.projectStore.project.preferences);
       const preferences: OpenCodexProjectPreferences = {
-        ...this.projectStore.project.preferences,
+        ...currentPreferences,
         context: {
           permissionsProfileId: this.permissionsProfileId,
-          ...contextPatch
+          ...contextPatch,
+          folders: cloneContextFolders(contextPatch.folders ?? currentPreferences.context?.folders ?? [])
         }
       };
       const project = await this.root.request<OpenCodexProject>({
