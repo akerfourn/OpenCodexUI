@@ -314,6 +314,8 @@ export class OpenCodexRequestRouter {
         return this.runtime.deleteLog(request.logId);
       case "logs.clear":
         return this.runtime.clearLogs(request.mode, request.amount ?? 24, request.unit ?? "hours");
+      case "logs.create":
+        return this.runtime.createLog(request.logType, request.message, request.details ?? null);
       case "settings.get":
         return this.runtime.getSettings();
       case "settings.update":

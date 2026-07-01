@@ -6,6 +6,7 @@ import type {
   OpenCodexCommitMessageLanguage,
   OpenCodexComposerReference,
   OpenCodexImageAttachment,
+  OpenCodexLogType,
   OpenCodexLogRetentionUnit,
   OpenCodexReasoningEffort,
   OpenCodexServiceTier,
@@ -230,5 +231,6 @@ export type OpenCodexRequest =
       amount?: number;
       unit?: OpenCodexLogRetentionUnit;
     }
+  | { type: "logs.create"; logType: OpenCodexLogType; message: string; details?: unknown }
   | { type: "settings.get" }
   | { type: "settings.update"; patch: Partial<OpenCodexSettings> };

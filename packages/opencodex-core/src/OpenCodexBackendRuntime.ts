@@ -474,6 +474,30 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Persists an application log entry.
+   *
+   * @param type Log severity.
+   * @param message User-facing log message.
+   * @param details Optional structured diagnostic details.
+   *
+   * @returns Success result.
+   */
+  async createLog(
+    type: OpenCodexLogEntry["type"],
+    message: string,
+    details: unknown
+  ): Promise<{ ok: true }> {
+    if (this.cacheRepository === null) {
+      return { ok: true };
+    }
+
+    const log = await this.cacheRepository.createLog({ type, message, details });
+    this.emit({ type: "logs.created", log });
+
+    return { ok: true };
+  }
+
+  /**
    * Lists configured sources.
    *
    * @returns Source collection.

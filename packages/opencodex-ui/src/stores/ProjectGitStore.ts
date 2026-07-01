@@ -51,7 +51,6 @@ export class ProjectGitStore {
   errorMessage: string | null = null;
   branchErrorMessage: string | null = null;
   tagErrorMessage: string | null = null;
-  tagWarningMessage: string | null = null;
   logErrorMessage: string | null = null;
   remoteErrorMessage: string | null = null;
   hasLoaded = false;
@@ -361,7 +360,6 @@ export class ProjectGitStore {
 
     this.isLoadingTags = true;
     this.tagErrorMessage = null;
-    this.tagWarningMessage = null;
 
     try {
       await this.refreshLocalTags();
@@ -468,7 +466,6 @@ export class ProjectGitStore {
 
     this.isFetchingTags = true;
     this.tagErrorMessage = null;
-    this.tagWarningMessage = null;
 
     try {
       const result = await this.root.request<OpenCodexGitTagFetchResult>({
@@ -479,9 +476,12 @@ export class ProjectGitStore {
 
       runInAction(() => {
         this.tags = result.tags;
-        this.tagWarningMessage = result.warning;
         this.keepSelectedReferenceTag();
       });
+
+      if (result.warning !== null) {
+        this.reportTagFetchWarning(result.warning);
+      }
 
       if (this.selectedReferenceTagName !== null) {
         await this.loadCommitsSinceReferenceTag(this.selectedReferenceTagName);
@@ -524,7 +524,6 @@ export class ProjectGitStore {
 
     this.isCreatingTag = true;
     this.tagErrorMessage = null;
-    this.tagWarningMessage = null;
 
     try {
       const tags = await this.root.request<OpenCodexGitTag[]>({
@@ -1011,13 +1010,25 @@ export class ProjectGitStore {
 
     runInAction(() => {
       this.tags = tags;
-      this.tagWarningMessage = null;
       this.keepSelectedReferenceTag();
     });
 
     if (this.selectedReferenceTagName !== null) {
       await this.loadCommitsSinceReferenceTag(this.selectedReferenceTagName);
     }
+  }
+
+  private reportTagFetchWarning(message: string): void {
+    this.root.appStore.showWarningMessage(message);
+    void this.root.request({
+      type: "logs.create",
+      logType: "warning",
+      message,
+      details: {
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      }
+    });
   }
 
   private keepSelectedReferenceTag(): void {
@@ -1041,7 +1052,6 @@ export class ProjectGitStore {
     this.commitsSinceReferenceTag = null;
     this.hasLoadedTags = true;
     this.tagErrorMessage = null;
-    this.tagWarningMessage = null;
   }
 
   clearLog(): void {

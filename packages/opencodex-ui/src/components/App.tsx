@@ -28,23 +28,31 @@ type AppProps = {
 export function App({ store }: AppProps) {
   const { t } = useTranslation();
   const errorMessage = store.appStore.errorMessage;
+  const warningMessage = store.appStore.warningMessage;
+  const notificationMessage = errorMessage ?? warningMessage;
   const activeTabId = store.navigationStore.activeTabId;
   const projectTabStores = store.navigationStore.projectTabStores;
 
-  function handleCloseError(): void {
-    store.appStore.clearErrorMessage();
+  function handleCloseNotification(): void {
+    if (errorMessage !== null) {
+      store.appStore.clearErrorMessage();
+      return;
+    }
+
+    store.appStore.clearWarningMessage();
   }
 
   function handleOpenLogs(): void {
     store.openLogsHome();
     store.appStore.clearErrorMessage();
+    store.appStore.clearWarningMessage();
   }
 
   const snackbar = (
     <Snackbar
-      open={errorMessage !== null}
-      message={errorMessage?.split("\n")[0] ?? ""}
-      onClose={handleCloseError}
+      open={notificationMessage !== null}
+      message={notificationMessage?.split("\n")[0] ?? ""}
+      onClose={handleCloseNotification}
       action={(
         <Button color="inherit" size="small" onClick={handleOpenLogs}>
           {t("logs.viewLogs")}

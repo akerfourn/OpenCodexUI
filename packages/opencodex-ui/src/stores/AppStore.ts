@@ -48,6 +48,7 @@ export class AppStore implements RootChildStore {
   selectedModel: string | null = null;
   reasoningEffort: OpenCodexReasoningEffort = "medium";
   errorMessage: string | null = null;
+  warningMessage: string | null = null;
   connectionStatus = "stopped";
   isBootstrapping = false;
   appVersion: string | null = null;
@@ -207,6 +208,26 @@ export class AppStore implements RootChildStore {
    */
   clearErrorMessage(): void {
     this.errorMessage = null;
+  }
+
+  /**
+   * Shows a user-visible warning notification.
+   *
+   * @param message Warning text.
+   *
+   * @returns Nothing.
+   */
+  showWarningMessage(message: string): void {
+    this.warningMessage = message;
+  }
+
+  /**
+   * Clears the current user-visible warning notification.
+   *
+   * @returns Nothing.
+   */
+  clearWarningMessage(): void {
+    this.warningMessage = null;
   }
 
   /**
