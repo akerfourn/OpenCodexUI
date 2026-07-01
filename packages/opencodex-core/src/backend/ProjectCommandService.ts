@@ -143,7 +143,7 @@ export class ProjectCommandService {
 
     try {
       await client.request<v2.ProcessSpawnResponse>("process/spawn", {
-        command: splitCommandLine(command.command),
+        command: createShellCommand(command.command, projectPath),
         processHandle: run.processHandle,
         cwd: projectPath,
         tty: true,
@@ -435,24 +435,22 @@ function toProtocolRun(run: ActiveProjectCommandRun): OpenCodexProjectCommandRun
   };
 }
 
-function splitCommandLine(value: string): string[] {
-  const parts = value.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
-  const command = parts.map((part) => {
-    if (
-      (part.startsWith("\"") && part.endsWith("\"")) ||
-      (part.startsWith("'") && part.endsWith("'"))
-    ) {
-      return part.slice(1, -1);
-    }
+function createShellCommand(command: string, projectPath: string): string[] {
+  const trimmedCommand = command.trim();
 
-    return part;
-  });
-
-  if (command.length === 0) {
+  if (trimmedCommand.length === 0) {
     throw new Error("Command is required.");
   }
 
-  return command;
+  if (isWindowsPath(projectPath)) {
+    return ["cmd.exe", "/d", "/s", "/c", trimmedCommand];
+  }
+
+  return ["sh", "-lc", trimmedCommand];
+}
+
+function isWindowsPath(value: string): boolean {
+  return /^[a-zA-Z]:[\\/]/.test(value) || value.startsWith("\\\\");
 }
 
 function cryptoRandomId(): string {
