@@ -12,7 +12,8 @@ import type {
   OpenCodexGitLogPage,
   OpenCodexGitRemote,
   OpenCodexGitStatus,
-  OpenCodexGitTag
+  OpenCodexGitTag,
+  OpenCodexGitTagFetchResult
 } from "@open-codex-ui/opencodex-protocol";
 
 import { parseGitStatus } from "./gitStatusParser.js";
@@ -187,14 +188,17 @@ export class GitService {
    *
    * @param projectPath Project working directory.
    * @param sourceId Source identifier.
-   * @returns Refreshed tag collection.
+   * @returns Refreshed tag collection and optional fetch warning.
    */
-  async fetchTags(projectPath: string, sourceId: string | null): Promise<OpenCodexGitTag[]> {
-    await this.runGit(projectPath, sourceId, ["fetch", "--tags", "--prune-tags"], {
-      timeoutMs: 120_000
-    });
+  async fetchTags(projectPath: string, sourceId: string | null): Promise<OpenCodexGitTagFetchResult> {
+    let warning: string | null = null;
 
-    return await this.tags(projectPath, sourceId);
+    warning = await this.fetchTagsBestEffort(projectPath, sourceId);
+
+    return {
+      tags: await this.tags(projectPath, sourceId),
+      warning
+    };
   }
 
   /**
@@ -662,6 +666,28 @@ export class GitService {
     }
   }
 
+  private async fetchTagsBestEffort(projectPath: string, sourceId: string | null): Promise<string | null> {
+    try {
+      await this.runGit(projectPath, sourceId, ["fetch", "--tags", "--prune-tags"], {
+        timeoutMs: 120_000
+      });
+      return null;
+    } catch (pruneError) {
+      try {
+        await this.runGit(projectPath, sourceId, ["fetch", "--tags"], {
+          timeoutMs: 120_000
+        });
+
+        return readUnknownErrorMessage(pruneError);
+      } catch (fetchError) {
+        return [
+          readUnknownErrorMessage(pruneError),
+          readUnknownErrorMessage(fetchError)
+        ].join("\n");
+      }
+    }
+  }
+
   private async runGit(
     projectPath: string,
     sourceId: string | null,
@@ -1085,4 +1111,20 @@ function createGitErrorMessage(response: GitProcessResult): string {
     .join("\n");
 
   return message.length > 0 ? message : `Git exited with code ${response.exitCode}.`;
+}
+
+function readUnknownErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+
+    if (typeof message === "string" && message.length > 0) {
+      return message;
+    }
+  }
+
+  return String(error);
 }

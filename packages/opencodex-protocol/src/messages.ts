@@ -215,6 +215,11 @@ export type OpenCodexGitTag = {
   createdAt: string | null;
 };
 
+export type OpenCodexGitTagFetchResult = {
+  tags: OpenCodexGitTag[];
+  warning: string | null;
+};
+
 export type OpenCodexGitLogCommit = {
   hash: string;
   shortHash: string;

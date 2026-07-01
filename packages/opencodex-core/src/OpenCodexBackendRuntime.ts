@@ -27,6 +27,7 @@ import type {
   OpenCodexGitRemote,
   OpenCodexGitStatus,
   OpenCodexGitTag,
+  OpenCodexGitTagFetchResult,
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
@@ -1199,7 +1200,7 @@ export class OpenCodexBackendRuntime {
   async fetchGitTags(
     projectPath: string,
     sourceId: string | null
-  ): Promise<OpenCodexGitTag[]> {
+  ): Promise<OpenCodexGitTagFetchResult> {
     return await this.gitService.fetchTags(projectPath, sourceId);
   }
 

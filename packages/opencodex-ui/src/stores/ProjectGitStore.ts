@@ -14,6 +14,7 @@ import type {
   OpenCodexGitRemote,
   OpenCodexGitStatus,
   OpenCodexGitTag,
+  OpenCodexGitTagFetchResult,
   OpenCodexProject,
   OpenCodexProjectPreferences
 } from "@open-codex-ui/opencodex-protocol";
@@ -50,6 +51,7 @@ export class ProjectGitStore {
   errorMessage: string | null = null;
   branchErrorMessage: string | null = null;
   tagErrorMessage: string | null = null;
+  tagWarningMessage: string | null = null;
   logErrorMessage: string | null = null;
   remoteErrorMessage: string | null = null;
   hasLoaded = false;
@@ -359,22 +361,10 @@ export class ProjectGitStore {
 
     this.isLoadingTags = true;
     this.tagErrorMessage = null;
+    this.tagWarningMessage = null;
 
     try {
-      const tags = await this.root.request<OpenCodexGitTag[]>({
-        type: "git.tags",
-        projectPath: this.projectStore.projectPath,
-        sourceId: this.projectStore.project.sourceId
-      });
-
-      runInAction(() => {
-        this.tags = tags;
-        this.keepSelectedReferenceTag();
-      });
-
-      if (this.selectedReferenceTagName !== null) {
-        await this.loadCommitsSinceReferenceTag(this.selectedReferenceTagName);
-      }
+      await this.refreshLocalTags();
     } catch (error) {
       runInAction(() => {
         this.tagErrorMessage = readErrorMessage(error);
@@ -478,16 +468,18 @@ export class ProjectGitStore {
 
     this.isFetchingTags = true;
     this.tagErrorMessage = null;
+    this.tagWarningMessage = null;
 
     try {
-      const tags = await this.root.request<OpenCodexGitTag[]>({
+      const result = await this.root.request<OpenCodexGitTagFetchResult>({
         type: "git.tags.fetch",
         projectPath: this.projectStore.projectPath,
         sourceId: this.projectStore.project.sourceId
       });
 
       runInAction(() => {
-        this.tags = tags;
+        this.tags = result.tags;
+        this.tagWarningMessage = result.warning;
         this.keepSelectedReferenceTag();
       });
 
@@ -532,6 +524,7 @@ export class ProjectGitStore {
 
     this.isCreatingTag = true;
     this.tagErrorMessage = null;
+    this.tagWarningMessage = null;
 
     try {
       const tags = await this.root.request<OpenCodexGitTag[]>({
@@ -1009,6 +1002,24 @@ export class ProjectGitStore {
     }
   }
 
+  private async refreshLocalTags(): Promise<void> {
+    const tags = await this.root.request<OpenCodexGitTag[]>({
+      type: "git.tags",
+      projectPath: this.projectStore.projectPath,
+      sourceId: this.projectStore.project.sourceId
+    });
+
+    runInAction(() => {
+      this.tags = tags;
+      this.tagWarningMessage = null;
+      this.keepSelectedReferenceTag();
+    });
+
+    if (this.selectedReferenceTagName !== null) {
+      await this.loadCommitsSinceReferenceTag(this.selectedReferenceTagName);
+    }
+  }
+
   private keepSelectedReferenceTag(): void {
     if (this.selectedReferenceTagName === null) {
       this.commitsSinceReferenceTag = null;
@@ -1030,6 +1041,7 @@ export class ProjectGitStore {
     this.commitsSinceReferenceTag = null;
     this.hasLoadedTags = true;
     this.tagErrorMessage = null;
+    this.tagWarningMessage = null;
   }
 
   clearLog(): void {
@@ -1106,6 +1118,14 @@ function normalizeNullableText(value: string | null): string | null {
 function readErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
+  }
+
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+
+    if (typeof message === "string" && message.length > 0) {
+      return message;
+    }
   }
 
   return String(error);

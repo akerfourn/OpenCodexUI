@@ -130,6 +130,10 @@ export function ProjectTagSelectorDialog({
             <Alert severity="error">{gitStore.tagErrorMessage}</Alert>
           ) : null}
 
+          {gitStore.tagWarningMessage !== null ? (
+            <Alert severity="warning">{gitStore.tagWarningMessage}</Alert>
+          ) : null}
+
           {gitStore.isLoadingTags || gitStore.isFetchingTags ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
               <CircularProgress size={24} />

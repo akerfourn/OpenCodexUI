@@ -398,6 +398,10 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
               <Alert severity="error">{gitStore.tagErrorMessage}</Alert>
             ) : null}
 
+            {gitStore.tagWarningMessage !== null ? (
+              <Alert severity="warning">{gitStore.tagWarningMessage}</Alert>
+            ) : null}
+
             <Stack spacing={1}>
               <GitSectionHeader
                 title={t(`${gitLabelsKey}.changed`)}
