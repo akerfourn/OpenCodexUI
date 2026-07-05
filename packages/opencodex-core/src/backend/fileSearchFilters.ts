@@ -4,6 +4,9 @@ const excludedFileSearchSegments = new Set([".git", ".hg", ".svn"]);
 
 /**
  * Keeps project file references out of VCS implementation directories.
+ *
+ * @param path Candidate file path returned by Codex.
+ * @returns True when the path should be searchable.
  */
 export function isSearchableProjectFilePath(path: string): boolean {
   const normalizedPath = path.replace(/\\/g, "/");
@@ -14,6 +17,9 @@ export function isSearchableProjectFilePath(path: string): boolean {
 
 /**
  * Applies OpenCodexUI safety filtering to Codex fuzzy file search results.
+ *
+ * @param files File search results returned by Codex.
+ * @returns File search results safe to show in the composer.
  */
 export function filterSearchableProjectFiles(
   files: OpenCodexFileSearchResult[]

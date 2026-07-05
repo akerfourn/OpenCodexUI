@@ -30,6 +30,11 @@ export type OpenCodexClientPoolOptions = {
 export class OpenCodexClientPool {
   private readonly clientsBySourceId = new Map<string, CodexAppServerClient>();
 
+  /**
+   * Creates a source-scoped Codex client pool.
+   *
+   * @param options Settings, source resolver, event handlers, and logger.
+   */
   constructor(private readonly options: OpenCodexClientPoolOptions) {}
 
   /**

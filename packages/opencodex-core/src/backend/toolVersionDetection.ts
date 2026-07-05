@@ -91,6 +91,13 @@ export async function readCodexCommandCandidateStatuses(): Promise<OpenCodexComm
   return uniqueCommandCandidates(candidateStatuses);
 }
 
+/**
+ * Reads a version status from an already resolved command line.
+ *
+ * @param command Command and arguments resolved for the current OS/source.
+ * @param label Tool label used in diagnostics.
+ * @returns Tool availability status.
+ */
 async function readResolvedCommandVersionStatus(
   command: ResolvedCodexCommand,
   label: string
@@ -98,6 +105,15 @@ async function readResolvedCommandVersionStatus(
   return await readCommandVersionStatus(command.command, command.args, command.shell, label);
 }
 
+/**
+ * Runs one short-lived command and maps its version output.
+ *
+ * @param command Executable or shell command.
+ * @param args Arguments appended to the command.
+ * @param shell Whether Node should launch through a shell.
+ * @param label Tool label used in diagnostics.
+ * @returns Tool availability status.
+ */
 async function readCommandVersionStatus(
   command: string,
   args: string[],
@@ -136,6 +152,14 @@ async function readCommandVersionStatus(
   }
 }
 
+/**
+ * Executes a bounded version-detection process.
+ *
+ * @param command Executable or shell command.
+ * @param args Arguments appended to the command.
+ * @param shell Whether Node should launch through a shell.
+ * @returns Captured exit code and output.
+ */
 function runProcess(command: string, args: string[], shell: boolean): Promise<ProcessResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -170,16 +194,34 @@ function runProcess(command: string, args: string[], shell: boolean): Promise<Pr
   });
 }
 
+/**
+ * Extracts the first semantic version-looking token from command output.
+ *
+ * @param output Combined stdout/stderr output.
+ * @returns Version string, or `null` when absent.
+ */
 function parseVersion(output: string): string | null {
   const match = output.match(/\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?/);
 
   return match?.[0] ?? null;
 }
 
+/**
+ * Checks whether a Codex CLI version satisfies the current app requirement.
+ *
+ * @param version Detected Codex CLI version.
+ * @returns Whether the version is supported.
+ */
 export function isCodexCliVersionSupported(version: string): boolean {
   return compareVersionNumbers(version, MINIMUM_CODEX_CLI_VERSION) >= 0;
 }
 
+/**
+ * Removes duplicate candidate commands while preserving first-seen order.
+ *
+ * @param candidates Versioned command candidates.
+ * @returns Unique candidates by command string.
+ */
 function uniqueCommandCandidates(candidates: OpenCodexCommandCandidate[]): OpenCodexCommandCandidate[] {
   const uniqueCandidates: OpenCodexCommandCandidate[] = [];
   const seenCommands = new Set<string>();
@@ -200,6 +242,13 @@ function uniqueCommandCandidates(candidates: OpenCodexCommandCandidate[]): OpenC
   return uniqueCandidates;
 }
 
+/**
+ * Compares two semantic versions by major/minor/patch.
+ *
+ * @param left Left version.
+ * @param right Right version.
+ * @returns Positive, zero, or negative comparison result.
+ */
 function compareVersionNumbers(left: string, right: string): number {
   const leftParts = parseVersionParts(left);
   const rightParts = parseVersionParts(right);
@@ -216,6 +265,12 @@ function compareVersionNumbers(left: string, right: string): number {
   return 0;
 }
 
+/**
+ * Parses major/minor/patch numbers from a semantic version.
+ *
+ * @param version Version string.
+ * @returns Three numeric version parts, or zeros when parsing fails.
+ */
 function parseVersionParts(version: string): number[] {
   const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
 

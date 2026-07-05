@@ -76,16 +76,34 @@ export function parseGitStatus(output: string): OpenCodexGitStatus {
   };
 }
 
+/**
+ * Parses the current branch name from porcelain v2 metadata.
+ *
+ * @param record Raw `# branch.head` record.
+ * @returns Branch name, or `null` for detached/empty heads.
+ */
 function parseBranchName(record: string): string | null {
   const value = record.slice("# branch.head ".length).trim();
   return value.length === 0 || value === "(detached)" ? null : value;
 }
 
+/**
+ * Parses the upstream branch name from porcelain v2 metadata.
+ *
+ * @param record Raw `# branch.upstream` record.
+ * @returns Upstream branch name, or `null` when missing.
+ */
 function parseBranchUpstream(record: string): string | null {
   const value = record.slice("# branch.upstream ".length).trim();
   return value.length === 0 ? null : value;
 }
 
+/**
+ * Parses ahead/behind counters from porcelain v2 metadata.
+ *
+ * @param record Raw `# branch.ab` record.
+ * @returns Numeric ahead/behind counters.
+ */
 function parseBranchAheadBehind(record: string): { aheadCount: number; behindCount: number } {
   const parts = record.slice("# branch.ab ".length).trim().split(" ");
   const aheadToken = parts.find((part) => part.startsWith("+")) ?? "+0";
@@ -97,6 +115,12 @@ function parseBranchAheadBehind(record: string): { aheadCount: number; behindCou
   };
 }
 
+/**
+ * Parses a normal tracked-file porcelain v2 record.
+ *
+ * @param record Raw `1` record.
+ * @returns Git file status DTO.
+ */
 function parseOrdinaryRecord(record: string): OpenCodexGitFile {
   const parts = record.split(" ");
   const status = parts[1] ?? "..";
@@ -113,6 +137,13 @@ function parseOrdinaryRecord(record: string): OpenCodexGitFile {
   );
 }
 
+/**
+ * Parses a rename/copy porcelain v2 record and its original path.
+ *
+ * @param record Raw `2` record.
+ * @param originalPath Original path record that follows the rename row.
+ * @returns Git file status DTO.
+ */
 function parseRenamedRecord(record: string, originalPath: string | null): OpenCodexGitFile {
   const parts = record.split(" ");
   const status = parts[1] ?? "..";
@@ -129,6 +160,12 @@ function parseRenamedRecord(record: string, originalPath: string | null): OpenCo
   );
 }
 
+/**
+ * Parses a conflicted-file porcelain v2 record.
+ *
+ * @param record Raw `u` record.
+ * @returns Git file status DTO marked as conflicted.
+ */
 function parseConflictedRecord(record: string): OpenCodexGitFile {
   const parts = record.split(" ");
   const path = parts.slice(10).join(" ");
@@ -136,6 +173,16 @@ function parseConflictedRecord(record: string): OpenCodexGitFile {
   return createGitFile(path, null, "conflicted", "conflicted", "conflicted");
 }
 
+/**
+ * Creates a protocol Git file object from parsed status data.
+ *
+ * @param path Current file path.
+ * @param originalPath Original path for renames, when available.
+ * @param status Primary status displayed by the UI.
+ * @param stagedStatus Status in the index.
+ * @param unstagedStatus Status in the worktree.
+ * @returns Git file status DTO.
+ */
 function createGitFile(
   path: string,
   originalPath: string | null,
@@ -152,6 +199,12 @@ function createGitFile(
   };
 }
 
+/**
+ * Maps one porcelain status code to the protocol state enum.
+ *
+ * @param code Single-character Git status code.
+ * @returns File state, or `null` when the side has no change.
+ */
 function mapStatusCode(code: string): OpenCodexGitFileState | null {
   if (code === "." || code === " ") {
     return null;

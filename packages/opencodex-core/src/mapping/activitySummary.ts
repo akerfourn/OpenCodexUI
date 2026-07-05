@@ -238,6 +238,12 @@ export function readReasoningDeltaText(value: unknown): string {
   }
 }
 
+/**
+ * Reads one reasoning segment from either text or nested Codex objects.
+ *
+ * @param value Raw reasoning segment.
+ * @returns Displayable reasoning text, or an empty string.
+ */
 function readReasoningSegment(value: unknown): string {
   if (typeof value === "string") {
     return value;

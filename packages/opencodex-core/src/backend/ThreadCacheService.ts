@@ -40,6 +40,11 @@ export type ThreadCacheServiceOptions = {
  * Reads and writes cached thread metadata and turn snapshots.
  */
 export class ThreadCacheService {
+  /**
+   * Creates a thread cache service.
+   *
+   * @param options Cache repository, turn cache, settings, and event emitter.
+   */
   constructor(private readonly options: ThreadCacheServiceOptions) {}
 
   /**

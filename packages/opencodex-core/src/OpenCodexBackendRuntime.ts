@@ -1973,6 +1973,13 @@ export class OpenCodexBackendRuntime {
 
 }
 
+/**
+ * Calculates the ISO cutoff used when deleting old logs.
+ *
+ * @param amount Retention amount selected by the user.
+ * @param unit Retention unit selected by the user.
+ * @returns ISO timestamp before which logs can be removed.
+ */
 function calculateRetentionCutoff(amount: number, unit: OpenCodexLogRetentionUnit): string {
   const normalizedAmount = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : 24;
   const cutoff = new Date();
@@ -1996,6 +2003,13 @@ function calculateRetentionCutoff(amount: number, unit: OpenCodexLogRetentionUni
   return cutoff.toISOString();
 }
 
+/**
+ * Reads a project-relative path while tolerating mixed path separators.
+ *
+ * @param root Project root path.
+ * @param filePath Absolute or source-local file path.
+ * @returns Relative path suitable for UI display.
+ */
 function readRelativeFilePath(root: string, filePath: string): string {
   const normalizedRoot = root.replaceAll("\\", "/").replace(/\/+$/, "");
   const normalizedPath = filePath.replaceAll("\\", "/");
@@ -2008,6 +2022,13 @@ function readRelativeFilePath(root: string, filePath: string): string {
   return normalizedPath.replace(/^\/+/, "");
 }
 
+/**
+ * Converts directory entries from one root into file-search results.
+ *
+ * @param root Root path that was searched.
+ * @param entries Directory entries returned by Codex.
+ * @returns Search results ordered with directories first.
+ */
 function mapRootDirectorySearchResults(
   root: string,
   entries: v2.FsReadDirectoryEntry[]
@@ -2024,6 +2045,13 @@ function mapRootDirectorySearchResults(
     }));
 }
 
+/**
+ * Orders directory entries for root-level fallback search.
+ *
+ * @param left Left directory entry.
+ * @param right Right directory entry.
+ * @returns Sort order with directories before files.
+ */
 function compareDirectoryEntry(
   left: v2.FsReadDirectoryEntry,
   right: v2.FsReadDirectoryEntry
@@ -2035,6 +2063,13 @@ function compareDirectoryEntry(
   return left.fileName.localeCompare(right.fileName);
 }
 
+/**
+ * Joins a source-local root with one child name.
+ *
+ * @param root Source-local root path.
+ * @param childName Child entry name.
+ * @returns Joined path using the source path style.
+ */
 function joinSourcePath(root: string, childName: string): string {
   if (root.endsWith("/") || root.endsWith("\\")) {
     return `${root}${childName}`;
@@ -2045,6 +2080,14 @@ function joinSourcePath(root: string, childName: string): string {
   return `${root}${separator}${childName}`;
 }
 
+/**
+ * Scores a skill search candidate against a fuzzy query.
+ *
+ * @param name Skill technical name.
+ * @param displayName Optional display name.
+ * @param query User search text.
+ * @returns Positive score for matches, or -1 for no match.
+ */
 function scoreSkillSearchResult(
   name: string,
   displayName: string | undefined,
@@ -2079,6 +2122,13 @@ function scoreSkillSearchResult(
   return -1;
 }
 
+/**
+ * Checks whether all query characters appear in order in a candidate.
+ *
+ * @param candidate Normalized candidate text.
+ * @param query Normalized query text.
+ * @returns Whether the candidate fuzzy-matches the query.
+ */
 function isFuzzyMatch(candidate: string, query: string): boolean {
   let candidateIndex = 0;
 

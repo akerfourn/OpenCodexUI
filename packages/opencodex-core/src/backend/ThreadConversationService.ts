@@ -62,6 +62,11 @@ export type ThreadConversationServiceOptions = {
 export class ThreadConversationService {
   private readonly recoveringThreadIds = new Set<string>();
 
+  /**
+   * Creates a thread conversation service.
+   *
+   * @param options Cache, source, settings, event, and Codex client callbacks.
+   */
   constructor(private readonly options: ThreadConversationServiceOptions) {}
 
   /**
@@ -702,6 +707,12 @@ export class ThreadConversationService {
     return { threadId: rollbackThreadId };
   }
 
+  /**
+   * Checks whether Codex should resume a thread before a new turn starts.
+   *
+   * @param threadId Thread identifier.
+   * @returns Whether the thread should be resumed first.
+   */
   private shouldResumeThreadBeforeTurn(threadId: string): boolean {
     const cacheEntry = this.options.threadTurnCache.get(threadId);
 
@@ -871,6 +882,12 @@ export class ThreadConversationService {
     this.options.emit({ type: "thread.renamed", threadId, name: trimmedName });
   }
 
+  /**
+   * Archives or restores a thread in Codex and cache.
+   *
+   * @param threadId Thread identifier.
+   * @param isArchived Desired archive state.
+   */
   private async setThreadArchiveState(threadId: string, isArchived: boolean): Promise<void> {
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
 
@@ -1299,6 +1316,12 @@ export class ThreadConversationService {
     return fallbackSourceId;
   }
 
+  /**
+   * Persists a recovered source id for an existing cached thread.
+   *
+   * @param threadId Thread identifier.
+   * @param sourceId Source identifier to attach.
+   */
   private async repairThreadSourceId(threadId: string, sourceId: string): Promise<void> {
     const cacheEntry = this.options.threadTurnCache.get(threadId);
 
@@ -1391,10 +1414,22 @@ function delay(durationMs: number): Promise<void> {
   });
 }
 
+/**
+ * Checks whether a cached thread shell has never been materialized by Codex.
+ *
+ * @param snapshot Cached thread snapshot.
+ * @returns Whether the snapshot represents an empty pre-first-message thread.
+ */
 function isUnmaterializedThreadSnapshot(snapshot: CachedThreadSnapshot): boolean {
   return snapshot.turns.length === 0 && !snapshot.syncState.hasLoadedLatest;
 }
 
+/**
+ * Reads a normalized runtime status from Codex thread/read data.
+ *
+ * @param value Raw status payload.
+ * @returns Protocol runtime status.
+ */
 function readThreadRuntimeStatus(value: unknown): OpenCodexThreadRuntimeStatus["status"] {
   const statusObject = readObject(value);
   const objectStatus = readString(statusObject.type);
@@ -1412,6 +1447,12 @@ function readThreadRuntimeStatus(value: unknown): OpenCodexThreadRuntimeStatus["
   return "unknown";
 }
 
+/**
+ * Reads active runtime flags from Codex thread/read data.
+ *
+ * @param value Raw status payload.
+ * @returns Active flag names.
+ */
 function readThreadActiveFlags(value: unknown): string[] {
   const statusObject = readObject(value);
   const flags = statusObject.activeFlags;
@@ -1423,6 +1464,12 @@ function readThreadActiveFlags(value: unknown): string[] {
   return flags.filter((flag): flag is string => typeof flag === "string");
 }
 
+/**
+ * Checks whether a string is a supported runtime status.
+ *
+ * @param value Status candidate.
+ * @returns Whether the status is supported.
+ */
 function isOpenCodexRuntimeStatus(value: string): value is OpenCodexThreadRuntimeStatus["status"] {
   return (
     value === "active" ||

@@ -7,6 +7,13 @@ import type { OpenCodexModel, OpenCodexThread } from "@open-codex-ui/opencodex-p
 import { mapThread, readObject, readString } from "../mapping.js";
 import { THREAD_LIST_MAX_PAGES, type ThreadListParams } from "./constants.js";
 
+/**
+ * Reads all available thread pages until Codex stops returning a cursor.
+ *
+ * @param client Codex app-server client.
+ * @param baseParams Initial thread list parameters.
+ * @returns Aggregated thread DTOs.
+ */
 export async function readThreadPages(
   client: CodexAppServerClient,
   baseParams: ThreadListParams
@@ -28,6 +35,12 @@ export async function readThreadPages(
   return threads;
 }
 
+/**
+ * Reads paginated thread rows from a Codex list response.
+ *
+ * @param response Raw `thread/list` response.
+ * @returns Protocol thread DTOs.
+ */
 export function readThreads(response: unknown): OpenCodexThread[] {
   const data = readObject(response).data;
 
@@ -38,6 +51,12 @@ export function readThreads(response: unknown): OpenCodexThread[] {
   return data.map((thread) => mapThread(thread));
 }
 
+/**
+ * Reads available Codex models from an app-server response.
+ *
+ * @param response Raw `model/list` response.
+ * @returns Models with empty identifiers filtered out.
+ */
 export function readModels(response: unknown): OpenCodexModel[] {
   const data = readObject(response).data;
 
@@ -51,6 +70,12 @@ export function readModels(response: unknown): OpenCodexModel[] {
     .filter((model) => model.id.length > 0);
 }
 
+/**
+ * Normalizes one reasoning effort value from Codex or local cache data.
+ *
+ * @param value Raw effort value.
+ * @returns Supported reasoning effort, or `null` when unknown.
+ */
 export function readReasoningEffort(value: unknown): "low" | "medium" | "high" | "xhigh" | null {
   if (value === "low" || value === "medium" || value === "high" || value === "xhigh") {
     return value;
@@ -59,6 +84,11 @@ export function readReasoningEffort(value: unknown): "low" | "medium" | "high" |
   return null;
 }
 
+/**
+ * Provides a stable model list when the CLI cannot return model metadata.
+ *
+ * @returns Conservative fallback model definitions.
+ */
 export function fallbackModels(): OpenCodexModel[] {
   return ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex"].map((model) => ({
     id: model,
@@ -68,6 +98,12 @@ export function fallbackModels(): OpenCodexModel[] {
   }));
 }
 
+/**
+ * Maps one raw model record to the protocol representation.
+ *
+ * @param value Raw model object.
+ * @returns Model DTO, possibly with an empty id for caller-side filtering.
+ */
 function readModel(value: Record<string, unknown>): OpenCodexModel {
   const id = readString(value.model) || readString(value.id);
   const displayName = readString(value.displayName) || id;
@@ -83,6 +119,12 @@ function readModel(value: Record<string, unknown>): OpenCodexModel {
   };
 }
 
+/**
+ * Maps one raw service-tier record attached to a model.
+ *
+ * @param value Raw service-tier object.
+ * @returns Service-tier DTO.
+ */
 function readModelServiceTier(value: Record<string, unknown>): OpenCodexModel["serviceTiers"][number] {
   const id = readString(value.id);
 

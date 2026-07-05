@@ -14,6 +14,12 @@ type CommitMessageGenerationPromptParams = {
   language: OpenCodexCommitMessageLanguage;
 };
 
+/**
+ * Builds the one-shot prompt sent to Codex for commit message generation.
+ *
+ * @param params Template, user prompt, staged Git context, and output language.
+ * @returns Fully substituted generation prompt.
+ */
 export function buildCommitMessageGenerationPrompt(
   params: CommitMessageGenerationPromptParams
 ): string {
@@ -39,6 +45,14 @@ export function buildCommitMessageGenerationPrompt(
   return prompt.split("##USER_PROMPT##").join(params.prompt);
 }
 
+/**
+ * Reads a packaged prompt file required by the commit generator.
+ *
+ * @param promptPath Absolute prompt path resolved by the app runtime.
+ * @param label Human-readable prompt label used in error messages.
+ * @returns Prompt file content.
+ * @throws When the runtime path is missing or unreadable.
+ */
 export async function readRequiredPromptFile(
   promptPath: string | undefined,
   label: string
@@ -54,6 +68,12 @@ export async function readRequiredPromptFile(
   }
 }
 
+/**
+ * Wraps command output in a Markdown code fence for prompt injection.
+ *
+ * @param value Raw command output.
+ * @returns Fenced text block.
+ */
 function fence(value: string): string {
   return `\`\`\`\n${value.trim()}\n\`\`\``;
 }

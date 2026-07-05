@@ -51,6 +51,11 @@ export type ProjectSourceServiceOptions = {
  * Coordinates project and source persistence with Codex source synchronization.
  */
 export class ProjectSourceService {
+  /**
+   * Creates a project/source service.
+   *
+   * @param options Backend options, cache, settings, event emitter, and client resolver.
+   */
   constructor(private readonly options: ProjectSourceServiceOptions) {}
 
   /**
@@ -675,6 +680,13 @@ export class ProjectSourceService {
 
 type ProjectIdentity = NonNullable<ReturnType<typeof createProjectIdentity>>;
 
+/**
+ * Creates a project DTO when the cache cannot persist it yet.
+ *
+ * @param projectIdentity Normalized project identity.
+ * @param sourceId Source identifier, or `null`.
+ * @returns Ephemeral project DTO.
+ */
 function createUncachedProject(projectIdentity: ProjectIdentity, sourceId: string | null): OpenCodexProject {
   const now = new Date().toISOString();
 

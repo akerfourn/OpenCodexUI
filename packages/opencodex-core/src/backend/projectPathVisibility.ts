@@ -53,6 +53,12 @@ export class ProjectPathVisibilityValidator {
     return result;
   }
 
+  /**
+   * Validates one normalized project path in the appropriate filesystem.
+   *
+   * @param projectPath Normalized source-local project path.
+   * @returns Whether the path should be hidden.
+   */
   private async validateProjectPath(projectPath: string): Promise<boolean> {
     if (shouldValidateProjectPathOnHost(this.source)) {
       return shouldHideHostProjectPath(projectPath);
@@ -62,6 +68,12 @@ export class ProjectPathVisibilityValidator {
   }
 }
 
+/**
+ * Checks whether a host-visible project path is missing or not a directory.
+ *
+ * @param projectPath Host filesystem path.
+ * @returns Whether the project should be hidden.
+ */
 function shouldHideHostProjectPath(projectPath: string): boolean {
   try {
     return !statSync(projectPath).isDirectory();
@@ -70,6 +82,13 @@ function shouldHideHostProjectPath(projectPath: string): boolean {
   }
 }
 
+/**
+ * Checks whether a source-local project path is missing through Codex RPC.
+ *
+ * @param client Codex app-server client for the source.
+ * @param projectPath Source-local project path.
+ * @returns Whether the project should be hidden.
+ */
 async function shouldHideSourceProjectPath(
   client: CodexAppServerClient,
   projectPath: string
@@ -85,6 +104,12 @@ async function shouldHideSourceProjectPath(
   }
 }
 
+/**
+ * Detects whether a Codex filesystem error means the path is missing.
+ *
+ * @param error Error thrown by the source filesystem request.
+ * @returns Whether the error should hide the project.
+ */
 function isMissingProjectPathError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   const normalizedMessage = message.toLowerCase();

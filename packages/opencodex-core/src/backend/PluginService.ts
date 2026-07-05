@@ -22,7 +22,15 @@ type PluginTarget = {
   pluginName: string;
 };
 
+/**
+ * Coordinates plugin marketplace calls through Codex app-server.
+ */
 export class PluginService {
+  /**
+   * Creates a plugin service.
+   *
+   * @param options Codex client resolver.
+   */
   constructor(private readonly options: PluginServiceOptions) {}
 
   /**
@@ -89,6 +97,12 @@ export class PluginService {
   }
 }
 
+/**
+ * Creates the marketplace selector expected by Codex plugin methods.
+ *
+ * @param target Plugin target selected by the UI.
+ * @returns Marketplace params using either local path or remote name.
+ */
 function createMarketplaceParams(target: PluginTarget) {
   if (target.marketplacePath !== null) {
     return {

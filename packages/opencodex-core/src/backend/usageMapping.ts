@@ -58,6 +58,12 @@ export function mapUsageLimitsNotification(params: unknown): OpenCodexUsageSnaps
   };
 }
 
+/**
+ * Maps one Codex rate-limit object into a protocol usage limit.
+ *
+ * @param value Raw rate-limit payload.
+ * @returns Usage limit, or `null` when the payload is empty.
+ */
 function mapUsageLimits(value: unknown): OpenCodexUsageLimits | null {
   const limits = readObject(value);
 
@@ -75,6 +81,12 @@ function mapUsageLimits(value: unknown): OpenCodexUsageLimits | null {
   };
 }
 
+/**
+ * Maps one usage window from a Codex rate-limit payload.
+ *
+ * @param value Raw usage window payload.
+ * @returns Usage window, or `null` when no percentage is available.
+ */
 function mapUsageWindow(value: unknown): OpenCodexUsageWindow | null {
   const window = readObject(value);
   const usedPercent = readNullableNumber(window.usedPercent);
@@ -95,6 +107,12 @@ function mapUsageWindow(value: unknown): OpenCodexUsageWindow | null {
   };
 }
 
+/**
+ * Maps optional account credit information.
+ *
+ * @param value Raw credits payload.
+ * @returns Credit metadata, or `null` when absent.
+ */
 function mapCredits(value: unknown): OpenCodexUsageLimits["credits"] {
   const credits = readObject(value);
 
@@ -109,6 +127,12 @@ function mapCredits(value: unknown): OpenCodexUsageLimits["credits"] {
   };
 }
 
+/**
+ * Derives a compact usage window label from its duration.
+ *
+ * @param durationMins Window duration in minutes.
+ * @returns Display label used by the UI.
+ */
 function readWindowLabel(durationMins: number | null): OpenCodexUsageWindow["label"] {
   if (durationMins !== null && durationMins <= 6 * 60) {
     return "5h";
@@ -121,10 +145,22 @@ function readWindowLabel(durationMins: number | null): OpenCodexUsageWindow["lab
   return "usage";
 }
 
+/**
+ * Clamps a percentage to the UI-safe range.
+ *
+ * @param value Raw percentage.
+ * @returns Percentage between 0 and 100.
+ */
 function clampPercent(value: number): number {
   return Math.min(Math.max(value, 0), 100);
 }
 
+/**
+ * Reads optional non-empty text from an unknown payload value.
+ *
+ * @param value Raw value.
+ * @returns Text, or `null` when blank.
+ */
 function readNullableString(value: unknown): string | null {
   const text = readString(value);
   return text.length === 0 ? null : text;

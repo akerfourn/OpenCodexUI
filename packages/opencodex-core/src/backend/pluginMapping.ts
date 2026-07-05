@@ -12,6 +12,13 @@ import type {
   OpenCodexPluginSummary
 } from "@open-codex-ui/opencodex-protocol";
 
+/**
+ * Maps a Codex plugin list response to the protocol shape consumed by the UI.
+ *
+ * @param response Raw Codex plugin list response.
+ * @param sourceId Source that produced the response.
+ * @returns Plugin list grouped by marketplace.
+ */
 export function mapPluginListResponse(
   response: v2.PluginListResponse,
   sourceId: string | null
@@ -30,6 +37,12 @@ export function mapPluginListResponse(
   };
 }
 
+/**
+ * Maps one plugin detail response to the protocol detail DTO.
+ *
+ * @param plugin Raw Codex plugin detail.
+ * @returns Plugin detail DTO.
+ */
 export function mapPluginDetail(plugin: v2.PluginDetail): OpenCodexPluginDetail {
   const marketplaceDisplayName = plugin.summary.interface?.displayName
     ?? plugin.marketplaceName;
@@ -54,6 +67,12 @@ export function mapPluginDetail(plugin: v2.PluginDetail): OpenCodexPluginDetail 
   };
 }
 
+/**
+ * Maps one plugin app summary to the protocol DTO.
+ *
+ * @param app Raw Codex app summary.
+ * @returns App summary DTO.
+ */
 export function mapPluginApp(app: v2.AppSummary): OpenCodexPluginAppSummary {
   return {
     id: app.id,
@@ -64,6 +83,13 @@ export function mapPluginApp(app: v2.AppSummary): OpenCodexPluginAppSummary {
   };
 }
 
+/**
+ * Maps one marketplace and its plugins to protocol DTOs.
+ *
+ * @param marketplace Raw marketplace entry.
+ * @param featuredPluginIds Plugin ids highlighted by Codex.
+ * @returns Marketplace DTO.
+ */
 function mapPluginMarketplace(
   marketplace: v2.PluginMarketplaceEntry,
   featuredPluginIds: string[]
@@ -80,6 +106,16 @@ function mapPluginMarketplace(
   };
 }
 
+/**
+ * Maps one plugin summary while preserving its marketplace context.
+ *
+ * @param plugin Raw plugin summary.
+ * @param marketplaceName Technical marketplace name.
+ * @param marketplaceDisplayName User-facing marketplace name.
+ * @param marketplacePath Marketplace path from Codex.
+ * @param featuredPluginIds Plugin ids highlighted by Codex.
+ * @returns Plugin summary DTO.
+ */
 function mapPluginSummary(
   plugin: v2.PluginSummary,
   marketplaceName: string,
@@ -114,6 +150,12 @@ function mapPluginSummary(
   };
 }
 
+/**
+ * Maps one skill summary exposed by a plugin.
+ *
+ * @param skill Raw Codex skill summary.
+ * @returns Skill summary DTO.
+ */
 function mapPluginSkill(skill: v2.SkillSummary): OpenCodexPluginSkillSummary {
   return {
     name: skill.name,
@@ -124,6 +166,12 @@ function mapPluginSkill(skill: v2.SkillSummary): OpenCodexPluginSkillSummary {
   };
 }
 
+/**
+ * Maps one hook summary exposed by a plugin.
+ *
+ * @param hook Raw Codex hook summary.
+ * @returns Hook summary DTO.
+ */
 function mapPluginHook(hook: v2.PluginHookSummary): OpenCodexPluginHookSummary {
   return {
     key: hook.key,
@@ -131,6 +179,12 @@ function mapPluginHook(hook: v2.PluginHookSummary): OpenCodexPluginHookSummary {
   };
 }
 
+/**
+ * Extracts sorted non-empty plugin categories from marketplaces.
+ *
+ * @param marketplaces Mapped marketplaces.
+ * @returns Unique category names.
+ */
 function readCategories(marketplaces: OpenCodexPluginMarketplace[]): string[] {
   const categories = new Set<string>();
 
@@ -145,6 +199,12 @@ function readCategories(marketplaces: OpenCodexPluginMarketplace[]): string[] {
   return Array.from(categories).sort((left, right) => left.localeCompare(right));
 }
 
+/**
+ * Maps Codex install policy values to protocol values.
+ *
+ * @param policy Raw install policy.
+ * @returns Protocol install policy.
+ */
 function mapInstallPolicy(policy: v2.PluginInstallPolicy): OpenCodexPluginInstallPolicy {
   switch (policy) {
     case "AVAILABLE":
@@ -158,6 +218,12 @@ function mapInstallPolicy(policy: v2.PluginInstallPolicy): OpenCodexPluginInstal
   }
 }
 
+/**
+ * Maps Codex availability values to protocol values.
+ *
+ * @param availability Raw availability value.
+ * @returns Protocol availability value.
+ */
 function mapAvailability(availability: v2.PluginAvailability): OpenCodexPluginAvailability {
   switch (availability) {
     case "AVAILABLE":
@@ -169,6 +235,12 @@ function mapAvailability(availability: v2.PluginAvailability): OpenCodexPluginAv
   }
 }
 
+/**
+ * Maps the plugin source discriminator to a stable protocol value.
+ *
+ * @param source Raw Codex plugin source.
+ * @returns Protocol source type.
+ */
 function mapPluginSourceType(source: v2.PluginSource): OpenCodexPluginSourceType {
   switch (source.type) {
     case "local":
@@ -180,6 +252,12 @@ function mapPluginSourceType(source: v2.PluginSource): OpenCodexPluginSourceType
   }
 }
 
+/**
+ * Normalizes optional user-facing strings from plugin metadata.
+ *
+ * @param value Raw string.
+ * @returns Trimmed semantic value, or `null` when absent.
+ */
 function normalizeOptionalString(value: string | null | undefined): string | null {
   if (value === undefined || value === null || value.trim().length === 0) {
     return null;
@@ -188,6 +266,12 @@ function normalizeOptionalString(value: string | null | undefined): string | nul
   return value;
 }
 
+/**
+ * Converts unknown path-like metadata to a nullable string.
+ *
+ * @param value Raw path value.
+ * @returns String path, or `null` when missing.
+ */
 function stringifyPath(value: unknown): string | null {
   if (value === null || value === undefined) {
     return null;

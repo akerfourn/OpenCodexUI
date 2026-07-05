@@ -184,6 +184,13 @@ export function appendActivityDeltaToTurn(
   }, field, delta);
 }
 
+/**
+ * Ensures a running placeholder turn exists before live item mutations.
+ *
+ * @param entry Thread cache entry.
+ * @param turnId Turn identifier.
+ * @returns Existing or newly created raw turn record.
+ */
 function ensureTurn(entry: ThreadTurnCacheEntry, turnId: string): Record<string, unknown> {
   const existingTurn = readObject(entry.turnsById.get(turnId));
 
@@ -206,6 +213,13 @@ function ensureTurn(entry: ThreadTurnCacheEntry, turnId: string): Record<string,
   return turn;
 }
 
+/**
+ * Merges an incoming turn while preserving richer cached item details.
+ *
+ * @param existingTurn Previously cached turn.
+ * @param incomingTurn Fresh turn from Codex.
+ * @returns Merged raw turn.
+ */
 function mergeTurnPreservingExistingItems(existingTurn: unknown, incomingTurn: unknown): unknown {
   const existing = readObject(existingTurn);
   const incoming = readObject(incomingTurn);
@@ -227,6 +241,13 @@ function mergeTurnPreservingExistingItems(existingTurn: unknown, incomingTurn: u
   };
 }
 
+/**
+ * Merges turn item arrays by id and semantic identity.
+ *
+ * @param existingItems Cached turn items.
+ * @param incomingItems Fresh turn items from Codex.
+ * @returns Merged item list preserving cached-only details.
+ */
 function mergeTurnItemsPreservingExistingDetails(
   existingItems: unknown[],
   incomingItems: unknown[]
@@ -301,6 +322,13 @@ function mergeTurnItemsPreservingExistingDetails(
   return mergedItems;
 }
 
+/**
+ * Merges records without replacing meaningful values by empty incoming fields.
+ *
+ * @param existing Existing record.
+ * @param incoming Incoming record.
+ * @returns Merged record.
+ */
 function mergeRecordPreservingExistingDetails(
   existing: Record<string, unknown>,
   incoming: Record<string, unknown>
@@ -318,6 +346,13 @@ function mergeRecordPreservingExistingDetails(
   return merged;
 }
 
+/**
+ * Reuses an existing item id when a semantic-only match was merged.
+ *
+ * @param item Merged incoming item.
+ * @param existingItem Existing cached item.
+ * @returns Item with stable cached identity.
+ */
 function preserveExistingItemIdentity(
   item: Record<string, unknown>,
   existingItem: Record<string, unknown>
@@ -337,6 +372,17 @@ function preserveExistingItemIdentity(
   return nextItem;
 }
 
+/**
+ * Appends streamed text to a live item field inside one turn.
+ *
+ * @param entry Thread cache entry.
+ * @param turnId Turn identifier.
+ * @param itemId Item identifier.
+ * @param fallbackItem Item to create when missing.
+ * @param field Text field to append.
+ * @param delta Text delta.
+ * @returns Recorded mutation, or `null` when the item cannot be found.
+ */
 function appendItemTextDelta(
   entry: ThreadTurnCacheEntry,
   turnId: string,
@@ -362,6 +408,13 @@ function appendItemTextDelta(
   return { entry, turn: entry.turnsById.get(turnId) ?? turn };
 }
 
+/**
+ * Appends text to the last segment of an array field.
+ *
+ * @param item Mutable item record.
+ * @param field Field containing text segments.
+ * @param delta Text delta.
+ */
 function appendArrayText(item: Record<string, unknown>, field: string, delta: string): void {
   const segments = Array.isArray(item[field]) ? [...item[field]] : [];
   const lastSegment = segments.at(-1);
@@ -375,10 +428,22 @@ function appendArrayText(item: Record<string, unknown>, field: string, delta: st
   item[field] = segments;
 }
 
+/**
+ * Reads the stable raw item key used by Codex.
+ *
+ * @param item Raw turn item.
+ * @returns Item id or call id.
+ */
 function readTurnItemKey(item: Record<string, unknown>): string {
   return readString(item.id) || readString(item.call_id);
 }
 
+/**
+ * Reads a semantic key for matching items whose ids changed between sources.
+ *
+ * @param item Raw turn item.
+ * @returns Semantic key, or an empty string when unsupported.
+ */
 function readTurnItemSemanticKey(item: Record<string, unknown>): string {
   const type = readString(item.type);
 
@@ -397,6 +462,12 @@ function readTurnItemSemanticKey(item: Record<string, unknown>): string {
   return "";
 }
 
+/**
+ * Reads normalized text from a user-message item.
+ *
+ * @param item Raw user-message item.
+ * @returns Normalized user text.
+ */
 function readUserMessageText(item: Record<string, unknown>): string {
   const content = Array.isArray(item.content) ? item.content : [];
   return normalizeText(
@@ -408,14 +479,32 @@ function readUserMessageText(item: Record<string, unknown>): string {
   );
 }
 
+/**
+ * Normalizes text for semantic comparison.
+ *
+ * @param value Raw text.
+ * @returns Trimmed text with collapsed whitespace.
+ */
 function normalizeText(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
+/**
+ * Reads a mutable copy of a turn item list.
+ *
+ * @param turn Raw turn record.
+ * @returns Turn items, or an empty array.
+ */
 function readTurnItems(turn: Record<string, unknown>): unknown[] {
   return Array.isArray(turn.items) ? [...turn.items] : [];
 }
 
+/**
+ * Checks whether an incoming value should not overwrite existing data.
+ *
+ * @param value Incoming field value.
+ * @returns Whether the value is semantically empty.
+ */
 function isEmptyIncomingValue(value: unknown): boolean {
   if (value === undefined || value === null) {
     return true;
@@ -432,6 +521,15 @@ function isEmptyIncomingValue(value: unknown): boolean {
   return false;
 }
 
+/**
+ * Orders turns by available timestamps, then by id.
+ *
+ * @param left Left raw turn.
+ * @param right Right raw turn.
+ * @param leftId Left turn id.
+ * @param rightId Right turn id.
+ * @returns Sort order.
+ */
 function compareTurns(left: unknown, right: unknown, leftId: string, rightId: string): number {
   const leftTime = readTurnTime(left);
   const rightTime = readTurnTime(right);
@@ -443,11 +541,23 @@ function compareTurns(left: unknown, right: unknown, leftId: string, rightId: st
   return leftId.localeCompare(rightId);
 }
 
+/**
+ * Reads the best timestamp for ordering one turn.
+ *
+ * @param turn Raw turn.
+ * @returns Timestamp in milliseconds, or `null`.
+ */
 function readTurnTime(turn: unknown): number | null {
   const value = readObject(turn);
   return readTimestampValue(value.startedAt) ?? readTimestampValue(value.completedAt);
 }
 
+/**
+ * Reads either a numeric or ISO timestamp as milliseconds.
+ *
+ * @param value Raw timestamp value.
+ * @returns Timestamp in milliseconds, or `null`.
+ */
 function readTimestampValue(value: unknown): number | null {
   const numericValue = readNullableNumber(value);
 

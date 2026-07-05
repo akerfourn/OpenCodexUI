@@ -44,6 +44,11 @@ export class ProjectCommandService {
   private readonly runsByProcessHandle = new Map<string, ActiveProjectCommandRun>();
   private readonly stoppingRunIds = new Set<string>();
 
+  /**
+   * Creates a project command service.
+   *
+   * @param options Cache, user-data path, event emitter, and Codex client resolver.
+   */
   constructor(private readonly options: ProjectCommandServiceOptions) {}
 
   /**
@@ -203,6 +208,12 @@ export class ProjectCommandService {
     }
   }
 
+  /**
+   * Returns the cache repository required for command persistence.
+   *
+   * @returns Cache repository.
+   * @throws When SQLite cache is unavailable.
+   */
   private requireRepository(): OpenCodexCacheRepository {
     if (this.options.cacheRepository === null) {
       throw new Error("Project command persistence is unavailable.");
@@ -211,16 +222,36 @@ export class ProjectCommandService {
     return this.options.cacheRepository;
   }
 
+  /**
+   * Reads a configured command by id.
+   *
+   * @param commandId Command identifier.
+   * @returns Cached command definition.
+   */
   private async readCommand(commandId: string): Promise<CachedProjectCommand> {
     return await this.requireRepository().getProjectCommand(commandId);
   }
 
+  /**
+   * Lists currently running instances for one command.
+   *
+   * @param commandId Command identifier.
+   * @returns Active runs still marked as running.
+   */
   private readRunningRunsForCommand(commandId: string): ActiveProjectCommandRun[] {
     return Array.from(this.runsById.values()).filter((run) => (
       run.commandId === commandId && run.status === "running"
     ));
   }
 
+  /**
+   * Creates in-memory metadata for a new command run.
+   *
+   * @param command Cached command definition.
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Active run metadata.
+   */
   private async createRun(
     command: CachedProjectCommand,
     projectPath: string,
@@ -247,6 +278,14 @@ export class ProjectCommandService {
     };
   }
 
+  /**
+   * Creates the log file path for a persistent command run.
+   *
+   * @param projectId Project identifier.
+   * @param commandId Command identifier.
+   * @param runId Run identifier.
+   * @returns Absolute log file path.
+   */
   private async createLogFilePath(
     projectId: string,
     commandId: string,
@@ -264,6 +303,11 @@ export class ProjectCommandService {
     return path.join(directory, `${sanitizePathSegment(runId)}.log`);
   }
 
+  /**
+   * Applies a process output delta to the matching active run.
+   *
+   * @param params Raw process output notification params.
+   */
   private handleOutputDelta(params: unknown): void {
     const output = readProcessOutputDelta(params);
 
@@ -294,6 +338,11 @@ export class ProjectCommandService {
     });
   }
 
+  /**
+   * Marks a command run as completed from a process exit notification.
+   *
+   * @param params Raw process exit notification params.
+   */
   private handleProcessExited(params: unknown): void {
     const exit = readProcessExited(params);
 
@@ -327,6 +376,12 @@ export class ProjectCommandService {
     });
   }
 
+  /**
+   * Marks a command run as failed when spawning or bookkeeping fails.
+   *
+   * @param run Active run to fail.
+   * @param error Error that caused the failure.
+   */
   private failRun(run: ActiveProjectCommandRun, error: unknown): void {
     run.status = "failed";
     run.exitCode = null;
@@ -346,6 +401,13 @@ export class ProjectCommandService {
     });
   }
 
+  /**
+   * Appends process output to the optional persistent log file.
+   *
+   * @param run Active command run.
+   * @param stream Output stream.
+   * @param delta Sanitized output delta.
+   */
   private appendPersistentOutput(
     run: ActiveProjectCommandRun,
     stream: "stdout" | "stderr",
@@ -368,6 +430,12 @@ export class ProjectCommandService {
   }
 }
 
+/**
+ * Reads a typed process output notification.
+ *
+ * @param value Raw notification params.
+ * @returns Output notification, or `null` when invalid.
+ */
 function readProcessOutputDelta(value: unknown): v2.ProcessOutputDeltaNotification | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return null;
@@ -391,6 +459,12 @@ function readProcessOutputDelta(value: unknown): v2.ProcessOutputDeltaNotificati
   };
 }
 
+/**
+ * Reads a typed process exit notification.
+ *
+ * @param value Raw notification params.
+ * @returns Exit notification, or `null` when invalid.
+ */
 function readProcessExited(value: unknown): v2.ProcessExitedNotification | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return null;
@@ -412,14 +486,32 @@ function readProcessExited(value: unknown): v2.ProcessExitedNotification | null 
   };
 }
 
+/**
+ * Decodes base64 process output from Codex.
+ *
+ * @param value Base64 output.
+ * @returns UTF-8 decoded output.
+ */
 function decodeBase64Output(value: string): string {
   return Buffer.from(value, "base64").toString("utf8");
 }
 
+/**
+ * Maps a process exit code to a command-run status.
+ *
+ * @param exitCode Process exit code.
+ * @returns Successful or failed run status.
+ */
 function readExitedStatus(exitCode: number): "exited" | "failed" {
   return exitCode === 0 ? "exited" : "failed";
 }
 
+/**
+ * Converts an active run to its protocol DTO.
+ *
+ * @param run Active run metadata.
+ * @returns Protocol command-run DTO.
+ */
 function toProtocolRun(run: ActiveProjectCommandRun): OpenCodexProjectCommandRun {
   return {
     id: run.id,
@@ -435,6 +527,13 @@ function toProtocolRun(run: ActiveProjectCommandRun): OpenCodexProjectCommandRun
   };
 }
 
+/**
+ * Creates an OS-appropriate shell command for a configured task.
+ *
+ * @param command User-configured command.
+ * @param projectPath Project working directory.
+ * @returns Executable and arguments.
+ */
 function createShellCommand(command: string, projectPath: string): string[] {
   const trimmedCommand = command.trim();
 
@@ -449,18 +548,42 @@ function createShellCommand(command: string, projectPath: string): string[] {
   return ["sh", "-lc", trimmedCommand];
 }
 
+/**
+ * Detects Windows-style project paths.
+ *
+ * @param value Path candidate.
+ * @returns Whether the path is Windows-style.
+ */
 function isWindowsPath(value: string): boolean {
   return /^[a-zA-Z]:[\\/]/.test(value) || value.startsWith("\\\\");
 }
 
+/**
+ * Creates a random run identifier.
+ *
+ * @returns UUID string.
+ */
 function cryptoRandomId(): string {
   return crypto.randomUUID();
 }
 
+/**
+ * Sanitizes an identifier for safe log-directory usage.
+ *
+ * @param value Raw path segment.
+ * @returns Filesystem-safe segment.
+ */
 function sanitizePathSegment(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
+/**
+ * Prefixes each non-empty line with a stream marker.
+ *
+ * @param value Raw output chunk.
+ * @param prefix Prefix to add.
+ * @returns Prefixed output chunk.
+ */
 function prefixLines(value: string, prefix: string): string {
   if (prefix.length === 0) {
     return value;

@@ -440,6 +440,12 @@ function createActivity(
   };
 }
 
+/**
+ * Summarizes a streamed diff update without embedding the full patch inline.
+ *
+ * @param diff Raw unified diff.
+ * @returns Short activity summary.
+ */
 function summarizeDiffActivity(diff: string): string {
   const changedFileCount = countChangedFiles(diff);
 
@@ -454,11 +460,23 @@ function summarizeDiffActivity(diff: string): string {
   return `Diff mis à jour: ${changedFileCount} fichiers modifiés`;
 }
 
+/**
+ * Counts changed files in a unified diff.
+ *
+ * @param diff Raw unified diff.
+ * @returns Number of `diff --git` file sections.
+ */
 function countChangedFiles(diff: string): number {
   const matches = diff.match(/^diff --git /gm);
   return matches?.length ?? 0;
 }
 
+/**
+ * Resolves a raw activity type to the protocol kind.
+ *
+ * @param type Raw activity type.
+ * @returns Activity kind.
+ */
 function resolveActivityKind(type: string): string {
   return type;
 }

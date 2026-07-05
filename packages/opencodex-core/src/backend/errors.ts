@@ -14,6 +14,13 @@ export type BackendLabels = {
   missingLinkHandler: string;
 };
 
+/**
+ * Converts unknown backend failures into localized user-facing errors.
+ *
+ * @param error Raw failure.
+ * @param labels Localized backend labels.
+ * @returns Error with a user-facing message and optional details.
+ */
 export function normalizeError(
   error: unknown,
   language: OpenCodexSettings["language"] = "fr"
@@ -44,10 +51,22 @@ export function normalizeError(
   return { message: String(error) };
 }
 
+/**
+ * Normalizes an unknown thrown value into an Error instance.
+ *
+ * @param error Raw thrown value.
+ * @returns Error instance preserving the original message when possible.
+ */
 export function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+/**
+ * Reads localized backend labels for a UI language.
+ *
+ * @param language Configured UI language.
+ * @returns Labels used by backend error messages.
+ */
 export function getBackendLabels(language: OpenCodexSettings["language"]): BackendLabels {
   if (language === "en") {
     return {
@@ -66,10 +85,22 @@ export function getBackendLabels(language: OpenCodexSettings["language"]): Backe
   };
 }
 
+/**
+ * Checks whether a failure means a cached thread no longer has a Codex rollout.
+ *
+ * @param error Raw failure.
+ * @returns True when the error can be handled by forgetting the cached thread.
+ */
 export function isMissingRolloutError(error: unknown): boolean {
   return error instanceof JsonRpcError && error.message.includes("no rollout found for thread id");
 }
 
+/**
+ * Checks whether a failure means a thread has not received its first turn yet.
+ *
+ * @param error Raw failure.
+ * @returns True when the thread can be treated as not yet materialized.
+ */
 export function isUnmaterializedThreadError(error: unknown): boolean {
   return (
     error instanceof JsonRpcError &&

@@ -40,6 +40,12 @@ export function mapThreadTokenUsageNotification(
   };
 }
 
+/**
+ * Maps one raw token-usage breakdown object.
+ *
+ * @param value Raw breakdown payload.
+ * @returns Token counts with missing fields defaulted to zero.
+ */
 function mapTokenUsageBreakdown(value: unknown): OpenCodexThreadTokenUsageBreakdown {
   const breakdown = readObject(value);
 
@@ -52,10 +58,23 @@ function mapTokenUsageBreakdown(value: unknown): OpenCodexThreadTokenUsageBreakd
   };
 }
 
+/**
+ * Reads a nullable number with a zero default for token counters.
+ *
+ * @param value Raw numeric value.
+ * @returns Parsed number or zero.
+ */
 function readNumber(value: unknown): number {
   return readNullableNumber(value) ?? 0;
 }
 
+/**
+ * Calculates context-window usage as a bounded percentage.
+ *
+ * @param totalTokens Tokens currently used.
+ * @param modelContextWindow Maximum model context window.
+ * @returns Used percentage, or `null` when the maximum is unknown.
+ */
 function calculateUsedPercent(totalTokens: number, modelContextWindow: number | null): number | null {
   if (modelContextWindow === null || modelContextWindow <= 0) {
     return null;

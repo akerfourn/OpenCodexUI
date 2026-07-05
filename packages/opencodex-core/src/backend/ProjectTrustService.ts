@@ -21,6 +21,11 @@ export class ProjectTrustService {
   private readonly stderrBufferBySourceId = new Map<string, string>();
   private readonly sourceIdByProjectPath = new Map<string, string>();
 
+  /**
+   * Creates a project trust service.
+   *
+   * @param options Backend settings, event emitter, and Codex client resolver.
+   */
   constructor(private readonly options: ProjectTrustServiceOptions) {}
 
   /**

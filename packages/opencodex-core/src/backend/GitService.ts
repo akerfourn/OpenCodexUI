@@ -46,6 +46,11 @@ const gitLogPageSizeMax = 100;
  * Coordinates Git operations through Codex app-server command execution.
  */
 export class GitService {
+  /**
+   * Creates a Git service.
+   *
+   * @param options Codex client resolver used to run Git in the project source.
+   */
   constructor(private readonly options: GitServiceOptions) {}
 
   /**
@@ -666,6 +671,13 @@ export class GitService {
     }
   }
 
+  /**
+   * Fetches tags without failing the main tag-listing workflow.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Warning text when a fallback was needed, or `null`.
+   */
   private async fetchTagsBestEffort(projectPath: string, sourceId: string | null): Promise<string | null> {
     try {
       await this.runGit(projectPath, sourceId, ["fetch", "--tags", "--prune-tags"], {
@@ -688,6 +700,15 @@ export class GitService {
     }
   }
 
+  /**
+   * Runs Git through the Codex app-server process API.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param args Git arguments without the leading `git`.
+   * @param options Failure, timeout, and output options.
+   * @returns Captured Git process result.
+   */
   private async runGit(
     projectPath: string,
     sourceId: string | null,
@@ -714,6 +735,13 @@ export class GitService {
   }
 }
 
+/**
+ * Runs a host process through Codex and waits for its exit notification.
+ *
+ * @param client Codex app-server client.
+ * @param params Process spawn params except the generated handle.
+ * @returns Captured process result.
+ */
 async function runHostProcess(
   client: CodexAppServerClient,
   params: Omit<v2.ProcessSpawnParams, "processHandle">
@@ -752,6 +780,12 @@ async function runHostProcess(
   });
 }
 
+/**
+ * Reads a process exit notification with the fields required by GitService.
+ *
+ * @param value Raw notification params.
+ * @returns Process result, or `null` when the payload is invalid.
+ */
 function readProcessExitedNotification(value: unknown): v2.ProcessExitedNotification | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return null;
@@ -778,6 +812,11 @@ function readProcessExitedNotification(value: unknown): v2.ProcessExitedNotifica
   };
 }
 
+/**
+ * Creates the status returned for paths that are not Git repositories.
+ *
+ * @returns Empty non-repository status DTO.
+ */
 function createEmptyGitStatus(): OpenCodexGitStatus {
   return {
     isRepository: false,
@@ -792,6 +831,12 @@ function createEmptyGitStatus(): OpenCodexGitStatus {
   };
 }
 
+/**
+ * Parses `git remote -v` output.
+ *
+ * @param output Raw command output.
+ * @returns Git remotes grouped by name.
+ */
 function parseGitRemotes(output: string): OpenCodexGitRemote[] {
   const remotesByName = new Map<string, OpenCodexGitRemote>();
 
@@ -824,6 +869,12 @@ function parseGitRemotes(output: string): OpenCodexGitRemote[] {
   ));
 }
 
+/**
+ * Parses one `git remote -v` line.
+ *
+ * @param line Raw remote line.
+ * @returns Parsed remote endpoint, or `null`.
+ */
 function parseGitRemoteLine(line: string): {
   name: string;
   url: string;
@@ -850,6 +901,13 @@ function parseGitRemoteLine(line: string): {
   };
 }
 
+/**
+ * Trims and validates a remote name or URL.
+ *
+ * @param value Raw user input.
+ * @param errorMessage Error message used when empty.
+ * @returns Normalized input.
+ */
 function normalizeRemoteInput(value: string, errorMessage: string): string {
   const normalizedValue = value.trim();
 
@@ -860,6 +918,13 @@ function normalizeRemoteInput(value: string, errorMessage: string): string {
   return normalizedValue;
 }
 
+/**
+ * Parses local and remote branch rows from `git for-each-ref`.
+ *
+ * @param output Raw command output.
+ * @param currentBranchName Current local branch name.
+ * @returns Sorted branch DTOs.
+ */
 function parseGitBranches(output: string, currentBranchName: string): OpenCodexGitBranch[] {
   const branches = output
     .split("\n")
@@ -875,6 +940,13 @@ function parseGitBranches(output: string, currentBranchName: string): OpenCodexG
   });
 }
 
+/**
+ * Parses one branch row from `git for-each-ref`.
+ *
+ * @param line Raw branch row.
+ * @param currentBranchName Current local branch name.
+ * @returns Branch DTO, or `null` when unsupported.
+ */
 function parseGitBranchLine(line: string, currentBranchName: string): OpenCodexGitBranch | null {
   const trimmedLine = line.trim();
 
@@ -901,6 +973,12 @@ function parseGitBranchLine(line: string, currentBranchName: string): OpenCodexG
   };
 }
 
+/**
+ * Parses tag rows from `git for-each-ref`.
+ *
+ * @param output Raw command output.
+ * @returns Tag DTOs.
+ */
 function parseGitTags(output: string): OpenCodexGitTag[] {
   return output
     .split("\n")
@@ -908,6 +986,12 @@ function parseGitTags(output: string): OpenCodexGitTag[] {
     .filter((tag): tag is OpenCodexGitTag => tag !== null);
 }
 
+/**
+ * Parses one tag row from `git for-each-ref`.
+ *
+ * @param line Raw tag row.
+ * @returns Tag DTO, or `null` when invalid.
+ */
 function parseGitTagLine(line: string): OpenCodexGitTag | null {
   const trimmedLine = line.trim();
 
@@ -933,6 +1017,12 @@ function parseGitTagLine(line: string): OpenCodexGitTag | null {
   };
 }
 
+/**
+ * Parses paginated Git log records.
+ *
+ * @param output Raw log output separated by record separators.
+ * @returns Commit summaries.
+ */
 function parseGitLog(output: string): OpenCodexGitLogPage["commits"] {
   return output
     .split("\x1e")
@@ -940,6 +1030,12 @@ function parseGitLog(output: string): OpenCodexGitLogPage["commits"] {
     .filter((commit): commit is OpenCodexGitLogPage["commits"][number] => commit !== null);
 }
 
+/**
+ * Parses one Git log record.
+ *
+ * @param record Raw log record.
+ * @returns Commit summary, or `null` when incomplete.
+ */
 function parseGitLogRecord(record: string): OpenCodexGitLogPage["commits"][number] | null {
   const trimmedRecord = record.trim();
 
@@ -971,6 +1067,12 @@ function parseGitLogRecord(record: string): OpenCodexGitLogPage["commits"][numbe
   };
 }
 
+/**
+ * Parses decorated refs from one log record.
+ *
+ * @param value Raw refs string.
+ * @returns Ref labels.
+ */
 function parseGitRefs(value: string): string[] {
   return value
     .split(",")
@@ -978,6 +1080,12 @@ function parseGitRefs(value: string): string[] {
     .filter((ref) => ref.length > 0);
 }
 
+/**
+ * Parses file changes for one commit.
+ *
+ * @param output Raw `git show --name-status` output.
+ * @returns File changes.
+ */
 function parseCommitFileChanges(output: string): OpenCodexGitCommitFileChange[] {
   return output
     .split("\n")
@@ -985,6 +1093,12 @@ function parseCommitFileChanges(output: string): OpenCodexGitCommitFileChange[] 
     .filter((file): file is OpenCodexGitCommitFileChange => file !== null);
 }
 
+/**
+ * Parses one commit file-change row.
+ *
+ * @param line Raw name-status line.
+ * @returns File change DTO, or `null`.
+ */
 function parseCommitFileChangeLine(line: string): OpenCodexGitCommitFileChange | null {
   const trimmedLine = line.trim();
 
@@ -1017,6 +1131,12 @@ function parseCommitFileChangeLine(line: string): OpenCodexGitCommitFileChange |
   };
 }
 
+/**
+ * Maps a Git name-status code to the protocol file state.
+ *
+ * @param value Raw status token.
+ * @returns File state.
+ */
 function parseCommitFileStatus(value: string): OpenCodexGitFileState {
   const statusCode = value.charAt(0);
 
@@ -1036,6 +1156,12 @@ function parseCommitFileStatus(value: string): OpenCodexGitFileState {
   }
 }
 
+/**
+ * Reads the branch kind from a full ref name.
+ *
+ * @param fullName Full Git ref name.
+ * @returns Branch kind, or `null`.
+ */
 function readBranchKind(fullName: string): OpenCodexGitBranchKind | null {
   if (fullName.startsWith("refs/heads/")) {
     return "local";
@@ -1048,6 +1174,12 @@ function readBranchKind(fullName: string): OpenCodexGitBranchKind | null {
   return null;
 }
 
+/**
+ * Trims and validates a branch name.
+ *
+ * @param branchName Raw branch name.
+ * @returns Normalized branch name.
+ */
 function normalizeBranchName(branchName: string): string {
   const normalizedBranchName = branchName.trim();
 
@@ -1058,6 +1190,12 @@ function normalizeBranchName(branchName: string): string {
   return normalizedBranchName;
 }
 
+/**
+ * Trims and validates a tag name.
+ *
+ * @param tagName Raw tag name.
+ * @returns Normalized tag name.
+ */
 function normalizeTagName(tagName: string): string {
   const normalizedTagName = tagName.trim();
 
@@ -1068,6 +1206,12 @@ function normalizeTagName(tagName: string): string {
   return normalizedTagName;
 }
 
+/**
+ * Trims and validates a commit hash.
+ *
+ * @param hash Raw commit hash.
+ * @returns Normalized commit hash.
+ */
 function normalizeCommitHash(hash: string): string {
   const normalizedHash = hash.trim();
 
@@ -1078,6 +1222,12 @@ function normalizeCommitHash(hash: string): string {
   return normalizedHash;
 }
 
+/**
+ * Normalizes Git log page size.
+ *
+ * @param limit Requested page size.
+ * @returns Page size clamped to supported bounds.
+ */
 function normalizeLogLimit(limit: number): number {
   if (!Number.isFinite(limit)) {
     return 50;
@@ -1086,6 +1236,12 @@ function normalizeLogLimit(limit: number): number {
   return Math.min(Math.max(Math.trunc(limit), 1), gitLogPageSizeMax);
 }
 
+/**
+ * Normalizes Git log skip count.
+ *
+ * @param skip Requested skip count.
+ * @returns Non-negative skip count.
+ */
 function normalizeLogSkip(skip: number): number {
   if (!Number.isFinite(skip)) {
     return 0;
@@ -1094,6 +1250,12 @@ function normalizeLogSkip(skip: number): number {
   return Math.max(Math.trunc(skip), 0);
 }
 
+/**
+ * Trims and validates a list of file paths.
+ *
+ * @param paths Raw path list.
+ * @returns Non-empty normalized path list.
+ */
 function normalizePaths(paths: string[]): string[] {
   const normalizedPaths = paths.map((path) => path.trim()).filter((path) => path.length > 0);
 
@@ -1104,6 +1266,12 @@ function normalizePaths(paths: string[]): string[] {
   return normalizedPaths;
 }
 
+/**
+ * Builds a user-facing error message from a failed Git process.
+ *
+ * @param response Failed process result.
+ * @returns Error message.
+ */
 function createGitErrorMessage(response: GitProcessResult): string {
   const message = [response.stderr, response.stdout]
     .map((entry) => entry.trim())
@@ -1113,6 +1281,12 @@ function createGitErrorMessage(response: GitProcessResult): string {
   return message.length > 0 ? message : `Git exited with code ${response.exitCode}.`;
 }
 
+/**
+ * Reads an error message from unknown thrown values.
+ *
+ * @param error Unknown error.
+ * @returns Human-readable message.
+ */
 function readUnknownErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;

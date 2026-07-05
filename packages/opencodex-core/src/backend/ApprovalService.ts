@@ -26,6 +26,11 @@ export type ApprovalServiceOptions = {
 export class ApprovalService {
   private readonly pendingApprovals = new Map<string, { request: CodexServerRequest; sourceId: string }>();
 
+  /**
+   * Creates an approval service.
+   *
+   * @param options Settings, event emitter, and client lookup callbacks.
+   */
   constructor(private readonly options: ApprovalServiceOptions) {}
 
   /**
@@ -77,6 +82,13 @@ export class ApprovalService {
   }
 }
 
+/**
+ * Checks whether a permission request should be rejected instead of responded to.
+ *
+ * @param method Codex request method.
+ * @param decision User decision.
+ * @returns Whether the request should be rejected.
+ */
 function isDeclinedPermissionRequest(method: string, decision: OpenCodexApprovalDecision): boolean {
   if (method !== "item/permissions/requestApproval") {
     return false;

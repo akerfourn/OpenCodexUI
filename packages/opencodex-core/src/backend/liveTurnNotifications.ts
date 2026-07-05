@@ -142,6 +142,13 @@ export function shouldPersistLiveNotification(method: string): boolean {
     method === "turn/completed";
 }
 
+/**
+ * Converts a live plan update into a cacheable turn item.
+ *
+ * @param turnId Turn that owns the plan.
+ * @param params Raw notification params.
+ * @returns Cache item representing the latest plan.
+ */
 function createPlanTurnItem(turnId: string, params: Record<string, unknown>): Record<string, unknown> {
   const explanation = readString(params.explanation);
   const plan = Array.isArray(params.plan) ? params.plan : [];
@@ -161,6 +168,12 @@ function createPlanTurnItem(turnId: string, params: Record<string, unknown>): Re
   };
 }
 
+/**
+ * Converts raw response items to richer cached activity items when possible.
+ *
+ * @param item Raw response item from Codex.
+ * @returns Cache item, or `null` for raw messages already represented elsewhere.
+ */
 function createCachedRawResponseTurnItem(item: Record<string, unknown>): Record<string, unknown> | null {
   const type = readString(item.type);
 
@@ -203,6 +216,15 @@ function createCachedRawResponseTurnItem(item: Record<string, unknown>): Record<
   return item;
 }
 
+/**
+ * Creates a cache item for a command execution observed in raw responses.
+ *
+ * @param id Stable command item id.
+ * @param command Command text.
+ * @param cwd Working directory reported by Codex.
+ * @param status Raw Codex status.
+ * @returns Cacheable command execution item.
+ */
 function createCommandExecutionItem(
   id: string,
   command: string,

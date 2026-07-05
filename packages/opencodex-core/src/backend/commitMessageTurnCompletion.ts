@@ -12,6 +12,14 @@ type TurnCompletionWaiter = {
 
 const generationTimeoutMs = 120_000;
 
+/**
+ * Creates a waiter that resolves when the generation turn completes.
+ *
+ * @param client Codex app-server client producing notifications.
+ * @param threadId Temporary generation thread id.
+ * @param getTurnId Current generation turn id, once known.
+ * @returns Disposable promise wrapper.
+ */
 export function createCommitMessageTurnCompletionWaiter(
   client: CodexAppServerClient,
   threadId: string,
@@ -54,6 +62,12 @@ export function createCommitMessageTurnCompletionWaiter(
   };
 }
 
+/**
+ * Reads the final assistant text from a completed generation turn.
+ *
+ * @param turn Completed Codex turn.
+ * @returns Final answer text, or `null` when no assistant message exists.
+ */
 export function readFinalAgentTextOrNull(turn: v2.Turn): string | null {
   const agentMessages = turn.items.filter((item) => item.type === "agentMessage");
   const finalMessage = findFinalAgentMessage(agentMessages);
@@ -65,6 +79,14 @@ export function readFinalAgentTextOrNull(turn: v2.Turn): string | null {
   return finalMessage.text;
 }
 
+/**
+ * Extracts the completed turn matching the requested thread and turn.
+ *
+ * @param notification Codex notification.
+ * @param threadId Expected thread id.
+ * @param turnId Optional expected turn id.
+ * @returns Completed turn when the notification matches.
+ */
 function readCompletedTurn(
   notification: CodexNotification,
   threadId: string,
@@ -87,6 +109,12 @@ function readCompletedTurn(
   return params.turn;
 }
 
+/**
+ * Finds the final assistant message, falling back to the latest message.
+ *
+ * @param agentMessages Assistant messages from a completed turn.
+ * @returns Message used as the generation answer.
+ */
 function findFinalAgentMessage(agentMessages: Array<Extract<v2.ThreadItem, { type: "agentMessage" }>>) {
   for (let index = agentMessages.length - 1; index >= 0; index -= 1) {
     const message = agentMessages[index];
@@ -99,6 +127,14 @@ function findFinalAgentMessage(agentMessages: Array<Extract<v2.ThreadItem, { typ
   return agentMessages[agentMessages.length - 1];
 }
 
+/**
+ * Applies live generation notifications to the streamed-message accumulator.
+ *
+ * @param notification Codex notification.
+ * @param threadId Expected thread id.
+ * @param turnId Optional expected turn id.
+ * @param messages Mutable accumulator keyed by item id.
+ */
 function applyStreamingNotification(
   notification: CodexNotification,
   threadId: string,
@@ -127,6 +163,12 @@ function applyStreamingNotification(
   }
 }
 
+/**
+ * Registers a newly started assistant item in the stream accumulator.
+ *
+ * @param params Notification params.
+ * @param messages Mutable accumulator keyed by item id.
+ */
 function applyStartedItem(
   params: Record<string, unknown>,
   messages: Map<string, { phase: string | null; text: string }>
@@ -149,6 +191,12 @@ function applyStartedItem(
   });
 }
 
+/**
+ * Appends one streamed text delta to the matching assistant item.
+ *
+ * @param params Notification params.
+ * @param messages Mutable accumulator keyed by item id.
+ */
 function applyAgentMessageDelta(
   params: Record<string, unknown>,
   messages: Map<string, { phase: string | null; text: string }>
@@ -167,6 +215,12 @@ function applyAgentMessageDelta(
   });
 }
 
+/**
+ * Reads the best final text observed through streaming notifications.
+ *
+ * @param messages Streamed assistant text by item id.
+ * @returns Latest final-answer text, or latest non-empty text as fallback.
+ */
 function readStreamedFinalText(messages: Map<string, { phase: string | null; text: string }>): string | null {
   const entries = Array.from(messages.values());
   const finalEntry = findLastStreamedEntry(entries, "final_answer")
@@ -175,6 +229,13 @@ function readStreamedFinalText(messages: Map<string, { phase: string | null; tex
   return finalEntry?.text ?? null;
 }
 
+/**
+ * Finds the latest non-empty streamed entry matching a phase.
+ *
+ * @param entries Streamed message entries in insertion order.
+ * @param phase Required phase, or `null` for any phase.
+ * @returns Matching entry, or `null`.
+ */
 function findLastStreamedEntry(
   entries: Array<{ phase: string | null; text: string }>,
   phase: string | null
@@ -194,6 +255,12 @@ function findLastStreamedEntry(
   return null;
 }
 
+/**
+ * Safely reads object-like notification params.
+ *
+ * @param value Raw notification value.
+ * @returns Plain record or an empty object.
+ */
 function readNotificationRecord(value: unknown): Record<string, unknown> {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -202,6 +269,12 @@ function readNotificationRecord(value: unknown): Record<string, unknown> {
   return {};
 }
 
+/**
+ * Safely reads a string from notification params.
+ *
+ * @param value Raw notification value.
+ * @returns String value or an empty string.
+ */
 function readNotificationString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }

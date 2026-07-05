@@ -40,6 +40,11 @@ export class NotificationService {
   private readonly assistantMessagePhases = new Map<string, OpenCodexMessagePhase | null>();
   private readonly pendingAssistantDeltas = new Map<string, PendingAssistantDelta>();
 
+  /**
+   * Creates a notification service.
+   *
+   * @param options Settings, event emitter, and cache synchronization callbacks.
+   */
   constructor(private readonly options: NotificationServiceOptions) {}
 
   /**
@@ -248,6 +253,11 @@ export class NotificationService {
     }
   }
 
+  /**
+   * Flushes one pending batched assistant delta.
+   *
+   * @param key Pending delta key.
+   */
   private flushPendingAssistantDelta(key: string): void {
     const pendingDelta = this.pendingAssistantDeltas.get(key);
 
@@ -268,6 +278,16 @@ export class NotificationService {
   }
 }
 
+/**
+ * Builds a collision-resistant key for batching assistant deltas.
+ *
+ * @param sourceId Source that emitted the delta.
+ * @param threadId Thread identifier.
+ * @param turnId Turn identifier.
+ * @param messageId Assistant message item identifier.
+ * @param phase Assistant message phase.
+ * @returns Pending delta map key.
+ */
 function createPendingAssistantDeltaKey(
   sourceId: string,
   threadId: string,

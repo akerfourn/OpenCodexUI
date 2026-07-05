@@ -11,6 +11,16 @@ import type {
 
 import { LEGACY_DEFAULT_SOURCE_ID } from "./constants.js";
 
+/**
+ * Converts a cached source into the protocol source DTO.
+ *
+ * @param source Cached source row.
+ * @param fallbackCommand Default Codex command.
+ * @param associatedProjectCount Number of projects linked to the source.
+ * @param codex Latest Codex CLI detection status.
+ * @param commandCandidates Candidate Codex commands shown in settings.
+ * @returns Protocol source.
+ */
 export function toOpenCodexSource(
   source: CachedSource,
   fallbackCommand: string,
@@ -34,6 +44,13 @@ export function toOpenCodexSource(
   };
 }
 
+/**
+ * Resolves the Codex command configured for a source.
+ *
+ * @param source Cached source row.
+ * @param fallbackCommand Default command used when the source is automatic.
+ * @returns Command string to launch Codex.
+ */
 export function resolveSourceCommand(source: CachedSource, fallbackCommand: string): string {
   if (
     source.settings.commandMode === "custom" &&
@@ -46,6 +63,11 @@ export function resolveSourceCommand(source: CachedSource, fallbackCommand: stri
   return fallbackCommand;
 }
 
+/**
+ * Creates the in-memory fallback source used before SQLite is available.
+ *
+ * @returns Default cached source.
+ */
 export function createDefaultCachedSource(): CachedSource {
   const now = new Date().toISOString();
 

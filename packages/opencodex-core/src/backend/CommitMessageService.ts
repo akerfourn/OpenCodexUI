@@ -46,6 +46,11 @@ type CommitMessageServiceOptions = {
  * Owns the editable prompt file and one-shot commit message generation.
  */
 export class CommitMessageService {
+  /**
+   * Creates a commit message service.
+   *
+   * @param options Prompt paths, Git access, settings, and Codex client callbacks.
+   */
   constructor(private readonly options: CommitMessageServiceOptions) {}
 
   /**
@@ -214,14 +219,30 @@ export class CommitMessageService {
     })}`);
   }
 
+  /**
+   * Reads the packaged default editable prompt.
+   *
+   * @returns Default prompt content.
+   */
   private async readDefaultPrompt(): Promise<string> {
     return await readRequiredPromptFile(this.options.defaultPromptPath, "default commit prompt");
   }
 
+  /**
+   * Reads the packaged generation prompt template.
+   *
+   * @returns Generation prompt template content.
+   */
   private async readGenerationTemplate(): Promise<string> {
     return await readRequiredPromptFile(this.options.generationPromptPath, "commit generation template");
   }
 
+  /**
+   * Resolves the user-editable prompt path in app data.
+   *
+   * @returns Absolute prompt path.
+   * @throws When the runtime has no user-data path.
+   */
   private getUserPromptPath(): string {
     if (this.options.userDataPath === undefined) {
       throw new Error("User data path is required to store the commit prompt.");
@@ -230,6 +251,11 @@ export class CommitMessageService {
     return path.join(this.options.userDataPath, "prompt-commit.user.md");
   }
 
+  /**
+   * Writes the editable user prompt to disk.
+   *
+   * @param prompt Prompt content.
+   */
   private async writeUserPrompt(prompt: string): Promise<void> {
     const promptPath = this.getUserPromptPath();
     await mkdir(path.dirname(promptPath), { recursive: true });
