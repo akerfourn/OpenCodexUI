@@ -2,6 +2,13 @@
  * Formats usage reset timestamps for display.
  */
 
+/**
+ * Formats an absolute reset date with its relative counterpart.
+ *
+ * @param resetsAt ISO reset timestamp.
+ * @param language Locale used for formatting.
+ * @returns Display text, or `-` when unavailable.
+ */
 export function formatUsageReset(resetsAt: string | null, language: string): string {
   const absoluteReset = formatUsageResetDate(resetsAt, language);
 
@@ -18,6 +25,13 @@ export function formatUsageReset(resetsAt: string | null, language: string): str
   return `${absoluteReset} (${relativeReset})`;
 }
 
+/**
+ * Formats an absolute reset timestamp.
+ *
+ * @param resetsAt ISO reset timestamp.
+ * @param language Locale used for formatting.
+ * @returns Localized timestamp, or `null` when unavailable.
+ */
 export function formatUsageResetDate(resetsAt: string | null, language: string): string | null {
   if (resetsAt === null) {
     return null;
@@ -38,6 +52,13 @@ export function formatUsageResetDate(resetsAt: string | null, language: string):
   });
 }
 
+/**
+ * Formats a reset timestamp relative to now.
+ *
+ * @param resetsAt ISO reset timestamp.
+ * @param language Locale used for formatting.
+ * @returns Relative reset text, or `null` when unavailable.
+ */
 export function formatUsageResetRelative(resetsAt: string | null, language: string): string | null {
   if (resetsAt === null) {
     return null;
@@ -52,6 +73,13 @@ export function formatUsageResetRelative(resetsAt: string | null, language: stri
   return formatRelativeReset(resetDate, language);
 }
 
+/**
+ * Formats a valid reset date with coarse relative units.
+ *
+ * @param resetDate Reset date.
+ * @param language Locale used for formatting.
+ * @returns Relative reset text.
+ */
 function formatRelativeReset(resetDate: Date, language: string): string {
   const diffMs = resetDate.getTime() - Date.now();
   const formatter = new Intl.RelativeTimeFormat(language, { numeric: "always" });

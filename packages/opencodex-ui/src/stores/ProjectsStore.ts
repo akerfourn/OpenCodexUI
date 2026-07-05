@@ -17,13 +17,24 @@ import type { RootChildStore } from "./RootChildStore";
  * Stores recent projects and opened project workspaces.
  */
 export class ProjectsStore implements RootChildStore {
+  /** Project metadata shown on Home. */
   projects: OpenCodexProject[] = [];
+  /** Opened project stores keyed by project id. */
   readonly projectStoresById = new Map<string, ProjectStore>();
+  /** Event router for thread-level backend events. */
   readonly threadEventsStore: ProjectThreadEventsStore;
+  /** Store responsible for project trust requests. */
   readonly trustStore: ProjectTrustStore;
+  /** Temporary thread-to-project ownership hints while a thread opens. */
   private readonly pendingThreadProjectIds = new Map<string, string>();
+  /** Source selected when opening a project before the backend responds. */
   private pendingProjectOpenSourceId: string | null = null;
 
+  /**
+   * Creates the projects store and its event sub-stores.
+   *
+   * @param root Root store used for backend requests and navigation.
+   */
   constructor(private readonly root: RootStore) {
     this.threadEventsStore = new ProjectThreadEventsStore(this, root);
     this.trustStore = new ProjectTrustStore(this, root);
@@ -348,6 +359,11 @@ export class ProjectsStore implements RootChildStore {
     return this.threadEventsStore.applyRecoverableThreadError(threadId);
   }
 
+  /**
+   * Applies a project-opened event and starts loading its threads.
+   *
+   * @param project Opened project metadata.
+   */
   private applyProjectOpened(project: OpenCodexProject): void {
     this.root.homeStore.isOpeningProject = false;
     this.openProjectTab(project, true);
@@ -355,6 +371,11 @@ export class ProjectsStore implements RootChildStore {
     this.pendingProjectOpenSourceId = null;
   }
 
+  /**
+   * Reconciles opened project stores with refreshed project metadata.
+   *
+   * @param projects Refreshed project list.
+   */
   private applyProjectMetadata(projects: OpenCodexProject[]): void {
     for (const project of projects) {
       const projectStore = this.projectStoresById.get(project.id)
@@ -375,6 +396,11 @@ export class ProjectsStore implements RootChildStore {
     }
   }
 
+  /**
+   * Resolves the source to use for a new project-open request.
+   *
+   * @returns Source identifier, or `null` when none is configured.
+   */
   private resolveProjectOpenSourceId(): string | null {
     return this.root.homeStore.selectedSourceId
       ?? this.root.settings.defaultSourceId
@@ -383,6 +409,14 @@ export class ProjectsStore implements RootChildStore {
   }
 }
 
+/**
+ * Creates local project metadata when only a path is available.
+ *
+ * @param projectPath Project path.
+ * @param projectName Optional project display name.
+ * @param sourceId Optional source identifier.
+ * @returns Client-side project metadata.
+ */
 function createClientProject(
   projectPath: string,
   projectName: string | null,
@@ -407,6 +441,12 @@ function createClientProject(
   };
 }
 
+/**
+ * Reads the default project name from a filesystem-like path.
+ *
+ * @param projectPath Project path.
+ * @returns Last path segment or the original path.
+ */
 function readProjectName(projectPath: string): string {
   const segments = projectPath.split(/[\\/]/).filter((segment) => segment.length > 0);
   return segments.at(-1) ?? projectPath;

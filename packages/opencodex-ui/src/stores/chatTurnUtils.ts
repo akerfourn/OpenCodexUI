@@ -5,6 +5,13 @@ import type {
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
+/**
+ * Finds the first turn index whose identity or content differs.
+ *
+ * @param currentTurns Current store turns.
+ * @param nextTurns Incoming turns.
+ * @returns First changed index, or `null` when equal.
+ */
 export function findFirstChangedTurnIndex(
   currentTurns: OpenCodexTurn[],
   nextTurns: OpenCodexTurn[]
@@ -31,6 +38,13 @@ export function findFirstChangedTurnIndex(
   return null;
 }
 
+/**
+ * Checks whether the active turn is still running.
+ *
+ * @param turns Current turns.
+ * @param activeTurnId Active turn id tracked by the chat store.
+ * @returns Whether the active turn exists and is not completed.
+ */
 export function hasActiveRunningTurn(turns: OpenCodexTurn[], activeTurnId: string | null): boolean {
   if (activeTurnId === null) {
     return false;
@@ -45,6 +59,12 @@ export function hasActiveRunningTurn(turns: OpenCodexTurn[], activeTurnId: strin
   return turn.status !== "completed";
 }
 
+/**
+ * Converts a flattened message DTO into a structured turn item.
+ *
+ * @param message Message DTO.
+ * @returns Turn item DTO.
+ */
 export function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
   const item: OpenCodexTurnItem = {
     id: message.itemId ?? message.id,
@@ -77,6 +97,12 @@ export function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
   return item;
 }
 
+/**
+ * Maps live activity status to turn item status.
+ *
+ * @param status Activity status.
+ * @returns Turn item status.
+ */
 export function toMessageStatus(status: OpenCodexActivity["status"]): OpenCodexTurnItem["status"] {
   if (status === "running") {
     return "streaming";
@@ -85,6 +111,12 @@ export function toMessageStatus(status: OpenCodexActivity["status"]): OpenCodexT
   return status;
 }
 
+/**
+ * Creates a coarse turn signature used for change detection.
+ *
+ * @param turn Turn DTO.
+ * @returns Serialized turn signature.
+ */
 function getTurnSignature(turn: OpenCodexTurn): string {
   return JSON.stringify(turn);
 }

@@ -7,6 +7,7 @@ import type { ProjectsStore } from "./ProjectsStore";
 import type { RootStore } from "./RootStore";
 import type { RootChildStore } from "./RootChildStore";
 
+/** Project trust request held until the user accepts or dismisses it. */
 export type ProjectTrustRequest = {
   projectPath: string;
   disabledFolders: string[];
@@ -16,8 +17,15 @@ export type ProjectTrustRequest = {
  * Stores project trust requests until they can be shown or attached to a project.
  */
 export class ProjectTrustStore implements RootChildStore {
+  /** Trust request that cannot yet be attached to a project store. */
   pendingTrustRequest: ProjectTrustRequest | null = null;
 
+  /**
+   * Creates the project trust store.
+   *
+   * @param projectsStore Store used to find opened projects.
+   * @param root Root store used for backend requests.
+   */
   constructor(
     private readonly projectsStore: ProjectsStore,
     private readonly root: RootStore
@@ -111,6 +119,11 @@ export class ProjectTrustStore implements RootChildStore {
     this.pendingTrustRequest = null;
   }
 
+  /**
+   * Routes a trust request to its project or keeps it pending.
+   *
+   * @param request Trust request.
+   */
   private addTrustRequest(request: ProjectTrustRequest): void {
     const projectStore = this.findSingleProjectStoreByPath(request.projectPath);
 
@@ -122,6 +135,11 @@ export class ProjectTrustStore implements RootChildStore {
     this.pendingTrustRequest = request;
   }
 
+  /**
+   * Clears trust requests for one project path.
+   *
+   * @param projectPath Project path.
+   */
   private clearTrustRequest(projectPath: string): void {
     if (this.pendingTrustRequest?.projectPath === projectPath) {
       this.pendingTrustRequest = null;
@@ -132,6 +150,12 @@ export class ProjectTrustStore implements RootChildStore {
     }
   }
 
+  /**
+   * Finds a unique opened project store by path.
+   *
+   * @param projectPath Project path.
+   * @returns Matching project store, or `null`.
+   */
   private findSingleProjectStoreByPath(projectPath: string): ProjectStore | null {
     const matches = Array.from(this.projectsStore.projectStoresById.values())
       .filter((projectStore) => projectStore.projectPath === projectPath);
@@ -139,6 +163,11 @@ export class ProjectTrustStore implements RootChildStore {
     return matches.length === 1 ? matches[0] ?? null : null;
   }
 
+  /**
+   * Finds any trust request already attached to a project store.
+   *
+   * @returns Trust request, or `null`.
+   */
   private findAnyProjectTrustRequest(): ProjectTrustRequest | null {
     for (const projectStore of this.projectsStore.projectStoresById.values()) {
       if (projectStore.trustRequest !== null) {

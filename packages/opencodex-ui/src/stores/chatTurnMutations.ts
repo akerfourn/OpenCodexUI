@@ -12,6 +12,15 @@ import {
   toTurnItem
 } from "./chatTurnUtils";
 
+/**
+ * Applies incoming turns while preserving live-only streamed items.
+ *
+ * @param chatStore Chat store to mutate.
+ * @param root Root store used for diagnostics.
+ * @param nextTurns Incoming turns.
+ * @param strategy Replace or incremental merge mode.
+ * @param source Diagnostic source label.
+ */
 export function applyThreadTurns(
   chatStore: ChatStore,
   root: RootStore,
@@ -41,6 +50,12 @@ export function applyThreadTurns(
   root.logStorePopulation(chatStore.thread.id, source, mergedTurns.length, true, firstChangedIndex);
 }
 
+/**
+ * Appends or updates an activity item inside the active turn.
+ *
+ * @param chatStore Chat store to mutate.
+ * @param activity Live activity payload.
+ */
 export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActivity): void {
   if (
     activity.content === undefined ||
@@ -91,6 +106,13 @@ export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActi
   });
 }
 
+/**
+ * Detects empty serialized reasoning activities.
+ *
+ * @param kind Activity kind.
+ * @param content Activity content.
+ * @returns Whether the activity should be ignored.
+ */
 function isEmptyReasoningActivity(kind: string, content: string): boolean {
   if (kind !== "reasoning") {
     return false;
@@ -114,6 +136,12 @@ function isEmptyReasoningActivity(kind: string, content: string): boolean {
   }
 }
 
+/**
+ * Checks whether a parsed reasoning payload has no displayable text.
+ *
+ * @param value Parsed reasoning payload.
+ * @returns Whether summary and content are empty.
+ */
 function isEmptyReasoningPayload(value: unknown): boolean {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
@@ -133,6 +161,12 @@ function isEmptyReasoningPayload(value: unknown): boolean {
     readReasoningText(payload.content).length === 0;
 }
 
+/**
+ * Reads display text from a reasoning segment array.
+ *
+ * @param value Raw summary/content value.
+ * @returns Concatenated reasoning text.
+ */
 function readReasoningText(value: unknown): string {
   if (!Array.isArray(value)) {
     return "";
@@ -141,6 +175,12 @@ function readReasoningText(value: unknown): string {
   return value.map((entry) => readReasoningSegmentText(entry)).join("").trim();
 }
 
+/**
+ * Reads text from one reasoning segment.
+ *
+ * @param value Raw segment.
+ * @returns Segment text.
+ */
 function readReasoningSegmentText(value: unknown): string {
   if (typeof value === "string") {
     return value;
@@ -168,10 +208,23 @@ function readReasoningSegmentText(value: unknown): string {
   return "";
 }
 
+/**
+ * Normalizes activity text before duplicate comparison.
+ *
+ * @param content Raw activity content.
+ * @returns Trimmed content with collapsed whitespace.
+ */
 function normalizeActivityContent(content: string): string {
   return content.trim().replace(/\s+/g, " ");
 }
 
+/**
+ * Applies a completed turn duration to a stored turn.
+ *
+ * @param chatStore Chat store to mutate.
+ * @param turnId Turn identifier.
+ * @param durationMs Duration in milliseconds, or `null`.
+ */
 export function applyTurnDuration(
   chatStore: ChatStore,
   turnId: string,
@@ -188,6 +241,12 @@ export function applyTurnDuration(
   }
 }
 
+/**
+ * Creates or reuses an optimistic pending user turn.
+ *
+ * @param chatStore Chat store to mutate.
+ * @param message Optimistic user message.
+ */
 export function upsertPendingUserTurn(chatStore: ChatStore, message: OpenCodexMessage): void {
   const existingTurn = findPendingUserTurn(chatStore, message.content);
 
@@ -201,6 +260,12 @@ export function upsertPendingUserTurn(chatStore: ChatStore, message: OpenCodexMe
   chatStore.pendingTurnId = turn.id;
 }
 
+/**
+ * Moves an optimistic pending turn to the real Codex turn id.
+ *
+ * @param chatStore Chat store to mutate.
+ * @param turnId Real turn id emitted by Codex.
+ */
 export function movePendingTurnToStartedTurn(chatStore: ChatStore, turnId: string): void {
   const pendingTurn = findPendingTurn(chatStore);
   const existingTurn = chatStore.turns.find((turn) => turn.id === turnId);
@@ -228,6 +293,13 @@ export function movePendingTurnToStartedTurn(chatStore: ChatStore, turnId: strin
   chatStore.syncTurnStores();
 }
 
+/**
+ * Finds a turn or creates an empty one.
+ *
+ * @param chatStore Chat store to mutate.
+ * @param turnId Turn identifier.
+ * @returns Existing or created turn.
+ */
 export function findOrCreateTurn(chatStore: ChatStore, turnId: string): OpenCodexTurn {
   const existing = chatStore.turns.find((turn) => turn.id === turnId);
 
@@ -249,6 +321,12 @@ export function findOrCreateTurn(chatStore: ChatStore, turnId: string): OpenCode
   return created;
 }
 
+/**
+ * Finds the current optimistic pending turn.
+ *
+ * @param chatStore Chat store to inspect.
+ * @returns Pending turn, when present.
+ */
 function findPendingTurn(chatStore: ChatStore): OpenCodexTurn | undefined {
   if (chatStore.pendingTurnId !== null) {
     return chatStore.turns.find((turn) => turn.id === chatStore.pendingTurnId);
@@ -257,6 +335,13 @@ function findPendingTurn(chatStore: ChatStore): OpenCodexTurn | undefined {
   return chatStore.turns.find((turn) => turn.id.startsWith("pending:"));
 }
 
+/**
+ * Finds a pending user turn with the same content.
+ *
+ * @param chatStore Chat store to inspect.
+ * @param content User message content.
+ * @returns Matching pending turn, or `null`.
+ */
 function findPendingUserTurn(chatStore: ChatStore, content: string): OpenCodexTurn | null {
   const pendingTurn = findPendingTurn(chatStore);
 
@@ -273,6 +358,13 @@ function findPendingUserTurn(chatStore: ChatStore, content: string): OpenCodexTu
   return pendingTurn;
 }
 
+/**
+ * Preserves live items that are richer than the latest Codex snapshot.
+ *
+ * @param currentTurns Current store turns.
+ * @param nextTurns Incoming turns.
+ * @returns Merged turns.
+ */
 function preserveLiveTurnItems(
   currentTurns: OpenCodexTurn[],
   nextTurns: OpenCodexTurn[]
@@ -333,6 +425,13 @@ function preserveLiveTurnItems(
   ];
 }
 
+/**
+ * Chooses the item version with the most complete live content.
+ *
+ * @param currentItem Current live item.
+ * @param nextItem Incoming snapshot item.
+ * @returns Item to keep.
+ */
 function chooseMostCompleteLiveItem(
   currentItem: OpenCodexTurn["items"][number],
   nextItem: OpenCodexTurn["items"][number]
@@ -351,6 +450,12 @@ function chooseMostCompleteLiveItem(
   return nextItem;
 }
 
+/**
+ * Checks whether a live item may contain extra information absent from sync.
+ *
+ * @param item Turn item candidate.
+ * @returns Whether the item should be preserved across sync.
+ */
 function shouldPreserveLiveItem(item: OpenCodexTurn["items"][number]): boolean {
   return (
     item.role === "activity" ||

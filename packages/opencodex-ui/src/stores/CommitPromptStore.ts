@@ -15,14 +15,26 @@ import type { RootStore } from "./RootStore";
  * Stores commit prompt content and persistence state.
  */
 export class CommitPromptStore implements RootChildStore {
+  /** Editable prompt currently shown in the settings UI. */
   prompt = "";
+  /** Last prompt value persisted by the backend. */
   savedPrompt = "";
+  /** Built-in prompt used when no user prompt is configured. */
   defaultPrompt = "";
+  /** Whether the persisted prompt matches the built-in default. */
   isDefault = true;
+  /** Whether the prompt is being loaded. */
   isLoading = false;
+  /** Whether a save or reset request is in flight. */
   isSaving = false;
+  /** Last prompt persistence error shown by the UI. */
   errorMessage: string | null = null;
 
+  /**
+   * Creates the commit prompt store.
+   *
+   * @param root Root store used for backend requests.
+   */
   constructor(private readonly root: RootStore) {
     makeAutoObservable<CommitPromptStore, "root">(
       this,
@@ -31,14 +43,23 @@ export class CommitPromptStore implements RootChildStore {
     );
   }
 
+  /** Whether the current prompt differs from the built-in default. */
   get isDirty(): boolean {
     return this.prompt !== this.defaultPrompt && this.prompt.trim().length > 0;
   }
 
+  /**
+   * Updates the editable prompt value.
+   *
+   * @param prompt New prompt text.
+   */
   setPrompt(prompt: string): void {
     this.prompt = prompt;
   }
 
+  /**
+   * Restores the prompt currently persisted by the backend.
+   */
   restoreSavedPrompt(): void {
     this.prompt = this.savedPrompt;
   }
@@ -53,6 +74,11 @@ export class CommitPromptStore implements RootChildStore {
     return;
   }
 
+  /**
+   * Loads the commit prompt configuration.
+   *
+   * @returns Promise resolved when loading completes.
+   */
   async load(): Promise<void> {
     this.isLoading = true;
     this.errorMessage = null;
@@ -73,6 +99,11 @@ export class CommitPromptStore implements RootChildStore {
     }
   }
 
+  /**
+   * Persists the current prompt value.
+   *
+   * @returns Promise resolved when saving completes.
+   */
   async save(): Promise<void> {
     this.isSaving = true;
     this.errorMessage = null;
@@ -96,6 +127,11 @@ export class CommitPromptStore implements RootChildStore {
     }
   }
 
+  /**
+   * Resets the user prompt to the built-in default.
+   *
+   * @returns Promise resolved when reset completes.
+   */
   async reset(): Promise<void> {
     this.isSaving = true;
     this.errorMessage = null;
@@ -116,6 +152,11 @@ export class CommitPromptStore implements RootChildStore {
     }
   }
 
+  /**
+   * Applies prompt data returned by the backend.
+   *
+   * @param prompt Prompt DTO.
+   */
   private applyPrompt(prompt: OpenCodexCommitPrompt): void {
     this.prompt = prompt.prompt;
     this.savedPrompt = prompt.prompt;
@@ -124,6 +165,12 @@ export class CommitPromptStore implements RootChildStore {
   }
 }
 
+/**
+ * Converts unknown errors into displayable prompt error text.
+ *
+ * @param error Unknown caught error.
+ * @returns Error message.
+ */
 function readErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;

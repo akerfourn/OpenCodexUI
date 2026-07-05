@@ -17,19 +17,32 @@ export type ProjectTaskFormInput = {
   status: OpenCodexProjectTaskStatus;
 };
 
+/** Task status filter value used by the task panel. */
 export type ProjectTaskStatusFilter = OpenCodexProjectTaskStatus | "all";
 
 /**
  * Stores local project tasks and UI filters.
  */
 export class ProjectTasksStore {
+  /** Tasks loaded for the owning project. */
   tasks: OpenCodexProjectTask[] = [];
+  /** Search term applied to task titles and descriptions. */
   searchTerm = "";
+  /** Status filter applied to the task list. */
   statusFilter: ProjectTaskStatusFilter = "all";
+  /** Whether tasks are currently loading. */
   isLoading = false;
+  /** Whether a task mutation is currently in flight. */
   isSaving = false;
+  /** Last task operation error shown by the UI. */
   errorMessage: string | null = null;
 
+  /**
+   * Creates the project task store.
+   *
+   * @param projectStore Owning project store.
+   * @param root Root store used for backend requests.
+   */
   constructor(
     private readonly projectStore: ProjectStore,
     private readonly root: RootStore
@@ -70,10 +83,20 @@ export class ProjectTasksStore {
     });
   }
 
+  /**
+   * Updates the task search term.
+   *
+   * @param value Search text.
+   */
   setSearchTerm(value: string): void {
     this.searchTerm = value;
   }
 
+  /**
+   * Updates the task status filter.
+   *
+   * @param value Status filter.
+   */
   setStatusFilter(value: ProjectTaskStatusFilter): void {
     this.statusFilter = value;
   }
@@ -197,6 +220,11 @@ export class ProjectTasksStore {
     }
   }
 
+  /**
+   * Inserts or replaces a task in the local list.
+   *
+   * @param task Task returned by the backend.
+   */
   private upsertTask(task: OpenCodexProjectTask): void {
     const existingIndex = this.tasks.findIndex((entry) => entry.id === task.id);
 
@@ -208,12 +236,23 @@ export class ProjectTasksStore {
     this.tasks = this.tasks.map((entry) => entry.id === task.id ? task : entry);
   }
 
+  /**
+   * Stores and forwards a task operation error.
+   *
+   * @param error Unknown caught error.
+   */
   private reportError(error: unknown): void {
     this.errorMessage = readErrorMessage(error);
     this.root.appStore.errorMessage = this.errorMessage;
   }
 }
 
+/**
+ * Trims task form input before it crosses the backend boundary.
+ *
+ * @param input Raw form input.
+ * @returns Normalized form input.
+ */
 function normalizeTaskFormInput(input: ProjectTaskFormInput): ProjectTaskFormInput {
   return {
     title: input.title.trim(),
@@ -222,6 +261,12 @@ function normalizeTaskFormInput(input: ProjectTaskFormInput): ProjectTaskFormInp
   };
 }
 
+/**
+ * Converts unknown errors into displayable task error text.
+ *
+ * @param error Unknown caught error.
+ * @returns Error message.
+ */
 function readErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;

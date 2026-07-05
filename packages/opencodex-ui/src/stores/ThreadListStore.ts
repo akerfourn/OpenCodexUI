@@ -10,16 +10,31 @@ import type { RootStore } from "./RootStore";
  * Stores the thread list state for a single opened project.
  */
 export class ThreadListStore {
+  /** Threads currently shown for the owning project. */
   threads: OpenCodexThread[] = [];
+  /** Search term applied to thread metadata. */
   searchTerm = "";
+  /** Whether the thread list is currently loading. */
   isLoadingThreads = false;
+  /** Whether a new thread request is in flight. */
   isCreatingThread = false;
+  /** Thread currently being opened. */
   loadingThreadId: string | null = null;
+  /** Whether the list currently shows archived threads. */
   isShowingArchivedThreads = false;
+  /** Thread currently being archived or restored. */
   archivingThreadId: string | null = null;
+  /** Whether the project has archived threads available. */
   hasArchivedThreads = false;
+  /** Whether archived thread presence is being checked. */
   isCheckingArchivedThreads = false;
 
+  /**
+   * Creates the thread list store.
+   *
+   * @param projectStore Owning project store.
+   * @param root Root store used for backend requests.
+   */
   constructor(
     private readonly projectStore: ProjectStore,
     private readonly root: RootStore
@@ -302,6 +317,11 @@ export class ThreadListStore {
     this.isCheckingArchivedThreads = false;
   }
 
+  /**
+   * Checks whether archived threads exist without replacing the visible list.
+   *
+   * @param sourceId Source identifier.
+   */
   private refreshArchivedThreadPresence(sourceId: string): void {
     if (this.isCheckingArchivedThreads) {
       return;
@@ -323,6 +343,11 @@ export class ThreadListStore {
       });
   }
 
+  /**
+   * Removes a thread from the current list and clears selection if needed.
+   *
+   * @param threadId Thread identifier.
+   */
   private removeThreadFromVisibleList(threadId: string): void {
     this.threads = this.threads.filter((thread) => thread.id !== threadId);
 
@@ -331,6 +356,12 @@ export class ThreadListStore {
     }
   }
 
+  /**
+   * Merges backend thread metadata with local title/source information.
+   *
+   * @param thread Thread metadata from the backend.
+   * @returns Thread metadata safe for UI display.
+   */
   private mergeThreadMetadata(thread: OpenCodexThread): OpenCodexThread {
     const resolvedThread = this.projectStore.ensureThreadSource(thread);
     const existingThread = this.findThread(thread.id)
@@ -357,6 +388,14 @@ export class ThreadListStore {
   }
 }
 
+/**
+ * Resolves the thread title with custom title priority.
+ *
+ * @param codexTitle Title provided by Codex.
+ * @param customTitle User-defined OpenCodexUI title.
+ * @param preview Thread preview fallback.
+ * @returns Display title.
+ */
 function resolveThreadTitle(
   codexTitle: string,
   customTitle: string | null,

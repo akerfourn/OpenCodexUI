@@ -1,5 +1,8 @@
 import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
+/**
+ * One user-guidance segment inside a Codex turn.
+ */
 export type ChatSubTurn = {
   id: string;
   userMessage: OpenCodexTurnItem | null;
@@ -7,12 +10,21 @@ export type ChatSubTurn = {
   assistantAnswer: OpenCodexTurnItem | null;
 };
 
+/**
+ * UI-oriented decomposition of a Codex turn.
+ */
 export type ChatTurnStructure = {
   subTurns: ChatSubTurn[];
   finalAnswer: OpenCodexTurnItem | null;
   hasOpenSubTurn: boolean;
 };
 
+/**
+ * Builds the UI structure for one turn from its flat Codex items.
+ *
+ * @param turn Structured turn DTO.
+ * @returns Sub-turns and final answer extracted for rendering.
+ */
 export function buildChatTurnStructure(turn: OpenCodexTurn): ChatTurnStructure {
   const finalAnswerItems = findFinalAnswerItems(turn.items);
   const finalAnswer = finalAnswerItems[finalAnswerItems.length - 1] ?? null;
@@ -68,6 +80,12 @@ export function buildChatTurnStructure(turn: OpenCodexTurn): ChatTurnStructure {
   };
 }
 
+/**
+ * Finds assistant items that represent final answers.
+ *
+ * @param items Flat turn items.
+ * @returns Explicit or legacy final answer items.
+ */
 function findFinalAnswerItems(items: OpenCodexTurnItem[]): OpenCodexTurnItem[] {
   const explicitFinalAnswers = items.filter((item) => (
     item.role === "assistant" && item.phase === "final_answer"
@@ -84,6 +102,13 @@ function findFinalAnswerItems(items: OpenCodexTurnItem[]): OpenCodexTurnItem[] {
   return legacyFinalAnswer === null ? [] : [legacyFinalAnswer];
 }
 
+/**
+ * Finds the last item matching a predicate.
+ *
+ * @param items Items to inspect.
+ * @param predicate Item predicate.
+ * @returns Last matching item, or `null`.
+ */
 function findLastItem(
   items: OpenCodexTurnItem[],
   predicate: (item: OpenCodexTurnItem) => boolean
@@ -99,6 +124,13 @@ function findLastItem(
   return null;
 }
 
+/**
+ * Checks whether an item is part of the final answer set.
+ *
+ * @param item Item to check.
+ * @param finalAnswerItems Final answer item identities.
+ * @returns Whether the item is a final answer.
+ */
 function isAssistantAnswerItem(
   item: OpenCodexTurnItem,
   finalAnswerItems: OpenCodexTurnItem[]
@@ -106,6 +138,13 @@ function isAssistantAnswerItem(
   return finalAnswerItems.includes(item);
 }
 
+/**
+ * Checks whether a turn item should appear in a reasoning block.
+ *
+ * @param item Item to classify.
+ * @param finalAnswerContents Normalized final answer contents used for de-duplication.
+ * @returns Whether the item is reasoning/activity content.
+ */
 function isReasoningItem(item: OpenCodexTurnItem, finalAnswerContents: Set<string>): boolean {
   if (item.role === "activity") {
     return !isEmptyReasoningActivity(item);
@@ -128,6 +167,15 @@ function isReasoningItem(item: OpenCodexTurnItem, finalAnswerContents: Set<strin
   return content.length > 0;
 }
 
+/**
+ * Returns the current open sub-turn or creates an orphan one.
+ *
+ * @param turnId Turn identifier.
+ * @param subTurns Existing sub-turns.
+ * @param currentSubTurn Current candidate.
+ * @param orphanIndex Orphan sub-turn counter.
+ * @returns Sub-turn that can receive more items.
+ */
 function ensureSubTurn(
   turnId: string,
   subTurns: ChatSubTurn[],
@@ -143,6 +191,14 @@ function ensureSubTurn(
   return subTurn;
 }
 
+/**
+ * Creates a sub-turn without a user message for recovered/partial data.
+ *
+ * @param turnId Turn identifier.
+ * @param subTurnIndex Sub-turn index.
+ * @param orphanIndex Orphan counter.
+ * @returns Empty orphan sub-turn.
+ */
 function createOrphanSubTurn(turnId: string, subTurnIndex: number, orphanIndex: number): ChatSubTurn {
   return {
     id: buildSubTurnId(turnId, `orphan-${orphanIndex}`, subTurnIndex),
@@ -152,6 +208,13 @@ function createOrphanSubTurn(turnId: string, subTurnIndex: number, orphanIndex: 
   };
 }
 
+/**
+ * Marks additional user messages as steering messages when Codex did not.
+ *
+ * @param item User turn item.
+ * @param isAdditionalUserMessage Whether another user message already opened the turn.
+ * @returns User item with preserved or inferred kind.
+ */
 function createUserSubTurnMessage(
   item: OpenCodexTurnItem,
   isAdditionalUserMessage: boolean
@@ -166,14 +229,34 @@ function createUserSubTurnMessage(
   };
 }
 
+/**
+ * Builds a stable sub-turn identifier.
+ *
+ * @param turnId Parent turn identifier.
+ * @param itemId Anchor item identifier.
+ * @param index Sub-turn index.
+ * @returns Stable sub-turn id.
+ */
 function buildSubTurnId(turnId: string, itemId: string, index: number): string {
   return ["subTurn", turnId, itemId, index].join(":");
 }
 
+/**
+ * Normalizes text for content-based comparisons.
+ *
+ * @param content Raw content.
+ * @returns Trimmed content with collapsed whitespace.
+ */
 function normalizeContent(content: string): string {
   return content.trim().replace(/\s+/g, " ");
 }
 
+/**
+ * Detects empty serialized reasoning activities.
+ *
+ * @param item Activity turn item.
+ * @returns Whether the activity should be hidden.
+ */
 function isEmptyReasoningActivity(item: OpenCodexTurnItem): boolean {
   if (item.kind !== "reasoning") {
     return false;
@@ -196,6 +279,12 @@ function isEmptyReasoningActivity(item: OpenCodexTurnItem): boolean {
   }
 }
 
+/**
+ * Checks whether a parsed reasoning payload has no displayable text.
+ *
+ * @param value Parsed payload.
+ * @returns Whether summary and content are empty.
+ */
 function isEmptyReasoningPayload(value: unknown): boolean {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
@@ -215,6 +304,12 @@ function isEmptyReasoningPayload(value: unknown): boolean {
     readReasoningText(payload.content).length === 0;
 }
 
+/**
+ * Reads display text from a reasoning segment array.
+ *
+ * @param value Raw summary/content value.
+ * @returns Concatenated reasoning text.
+ */
 function readReasoningText(value: unknown): string {
   if (!Array.isArray(value)) {
     return "";
@@ -223,6 +318,12 @@ function readReasoningText(value: unknown): string {
   return value.map((entry) => readReasoningSegmentText(entry)).join("").trim();
 }
 
+/**
+ * Reads text from one reasoning segment.
+ *
+ * @param value Raw segment.
+ * @returns Segment text.
+ */
 function readReasoningSegmentText(value: unknown): string {
   if (typeof value === "string") {
     return value;

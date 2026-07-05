@@ -14,8 +14,14 @@ import type { RootChildStore } from "./RootChildStore";
  * Stores approval requests that are global or not yet attached to a chat.
  */
 export class ApprovalsStore implements RootChildStore {
+  /** Approvals received before their owning chat store is available. */
   unassignedApprovals: OpenCodexApproval[] = [];
 
+  /**
+   * Creates the global approval store.
+   *
+   * @param root Root store used to route approvals to chat stores.
+   */
   constructor(private readonly root: RootStore) {
     makeAutoObservable<ApprovalsStore, "root">(this, { root: false });
   }
@@ -99,6 +105,11 @@ export class ApprovalsStore implements RootChildStore {
     );
   }
 
+  /**
+   * Routes an approval to its chat or keeps it pending globally.
+   *
+   * @param approval Approval request.
+   */
   private addApproval(approval: OpenCodexApproval): void {
     const chatStore = approval.threadId === undefined
       ? null
@@ -112,6 +123,11 @@ export class ApprovalsStore implements RootChildStore {
     this.upsertUnassignedApproval(approval);
   }
 
+  /**
+   * Removes an approval from every possible storage location.
+   *
+   * @param approvalId Approval identifier.
+   */
   private removeApproval(approvalId: string): void {
     this.unassignedApprovals = this.unassignedApprovals.filter(
       (approval) => approval.id !== approvalId
@@ -124,6 +140,11 @@ export class ApprovalsStore implements RootChildStore {
     }
   }
 
+  /**
+   * Inserts or replaces an approval that cannot be assigned yet.
+   *
+   * @param approval Approval request.
+   */
   private upsertUnassignedApproval(approval: OpenCodexApproval): void {
     const existingIndex = this.unassignedApprovals.findIndex(
       (entry) => entry.id === approval.id
@@ -137,6 +158,11 @@ export class ApprovalsStore implements RootChildStore {
     this.unassignedApprovals.splice(existingIndex, 1, approval);
   }
 
+  /**
+   * Finds the first pending approval already owned by a chat store.
+   *
+   * @returns Pending approval, or `null`.
+   */
   private findAnyChatApproval(): OpenCodexApproval | null {
     for (const projectStore of this.root.projectsStore.projectStoresById.values()) {
       for (const chatStore of projectStore.chatsById.values()) {

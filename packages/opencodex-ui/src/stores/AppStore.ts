@@ -57,6 +57,11 @@ export class AppStore implements RootChildStore {
   forceOnboarding = false;
   forcedOnboardingDismissed = false;
 
+  /**
+   * Creates the application store.
+   *
+   * @param root Root store used for backend requests and cross-store updates.
+   */
   constructor(private readonly root: RootStore) {
     makeAutoObservable<AppStore, "root">(this, { root: false });
   }

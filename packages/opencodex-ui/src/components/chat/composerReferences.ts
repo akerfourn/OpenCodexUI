@@ -22,8 +22,14 @@ export type ComposerReferenceSuggestion =
   | { type: "file"; result: OpenCodexFileSearchResult }
   | { type: "skill"; result: OpenCodexSkillSearchResult };
 
+/**
+ * Composer trigger kind supported by autocomplete.
+ */
 export type ReferenceTriggerKind = "file" | "skill";
 
+/**
+ * Current autocomplete trigger selection inside the Lexical editor.
+ */
 export type ReferenceTriggerState = {
   kind: ReferenceTriggerKind;
   nodeKey: NodeKey;
@@ -32,6 +38,11 @@ export type ReferenceTriggerState = {
   query: string;
 };
 
+/**
+ * Serializes the Lexical composer content to Markdown and protocol references.
+ *
+ * @returns Markdown text and deduplicated structured references.
+ */
 export function serializeComposerContent(): {
   markdown: string;
   references: OpenCodexComposerReference[];
@@ -47,6 +58,11 @@ export function serializeComposerContent(): {
   };
 }
 
+/**
+ * Reads the active file or skill trigger at the collapsed selection.
+ *
+ * @returns Trigger state, or `null` when no reference query is active.
+ */
 export function readReferenceTrigger(): ReferenceTriggerState | null {
   const selection = $getSelection();
 
@@ -93,10 +109,23 @@ export function readReferenceTrigger(): ReferenceTriggerState | null {
   };
 }
 
+/**
+ * Creates a stable key for one autocomplete trigger state.
+ *
+ * @param trigger Trigger state.
+ * @returns Key suitable for effect dependencies and caching.
+ */
 export function createTriggerKey(trigger: ReferenceTriggerState): string {
   return `${trigger.kind}:${trigger.nodeKey}:${trigger.startOffset}:${trigger.query}`;
 }
 
+/**
+ * Replaces the active trigger text with a tokenized reference link.
+ *
+ * @param node Text node containing the trigger.
+ * @param trigger Trigger range to replace.
+ * @param suggestion Selected reference suggestion.
+ */
 export function replaceTriggerWithReferenceLink(
   node: LexicalNode,
   trigger: ReferenceTriggerState,
@@ -126,22 +155,52 @@ export function replaceTriggerWithReferenceLink(
   trailingNode.select(1, 1);
 }
 
+/**
+ * Converts file-search results to composer suggestions.
+ *
+ * @param results File-search results.
+ * @returns Composer suggestions.
+ */
 export function mapFileSuggestions(results: OpenCodexFileSearchResult[]): ComposerReferenceSuggestion[] {
   return results.map((result) => ({ type: "file", result }));
 }
 
+/**
+ * Converts skill-search results to composer suggestions.
+ *
+ * @param results Skill-search results.
+ * @returns Composer suggestions.
+ */
 export function mapSkillSuggestions(results: OpenCodexSkillSearchResult[]): ComposerReferenceSuggestion[] {
   return results.map((result) => ({ type: "skill", result }));
 }
 
+/**
+ * Checks whether a link URL encodes an OpenCodex skill reference.
+ *
+ * @param url Link URL.
+ * @returns Whether the URL is a skill reference URL.
+ */
 export function isSkillUrl(url: string): boolean {
   return url.startsWith("opencodex-skill:");
 }
 
+/**
+ * Reads root children from the active Lexical editor state.
+ *
+ * @returns Root child nodes.
+ */
 function $getRootChildren(): LexicalNode[] {
   return $getRoot().getChildren();
 }
 
+/**
+ * Serializes a Lexical node to Markdown.
+ *
+ * @param node Node to serialize.
+ * @param references Mutable reference accumulator.
+ * @returns Markdown fragment.
+ */
 function serializeNode(node: LexicalNode, references: OpenCodexComposerReference[]): string {
   if ($isLinkNode(node)) {
     const text = node.getChildren().map((child) => serializeNode(child, references)).join("");
@@ -163,6 +222,12 @@ function serializeNode(node: LexicalNode, references: OpenCodexComposerReference
   return node.getTextContent();
 }
 
+/**
+ * Creates a Lexical link node for a file or skill suggestion.
+ *
+ * @param suggestion Selected reference suggestion.
+ * @returns Link node configured for the reference.
+ */
 function createReferenceLinkNode(suggestion: ComposerReferenceSuggestion): ReturnType<typeof $createLinkNode> {
   if (suggestion.type === "skill") {
     return $createLinkNode(createSkillUrl(suggestion.result), {
@@ -176,6 +241,12 @@ function createReferenceLinkNode(suggestion: ComposerReferenceSuggestion): Retur
   });
 }
 
+/**
+ * Reads the inline label displayed for a suggestion.
+ *
+ * @param suggestion Reference suggestion.
+ * @returns Inline token label.
+ */
 function readReferenceLabel(suggestion: ComposerReferenceSuggestion): string {
   if (suggestion.type === "skill") {
     return `$${suggestion.result.name}`;
@@ -184,6 +255,12 @@ function readReferenceLabel(suggestion: ComposerReferenceSuggestion): string {
   return suggestion.result.fileName;
 }
 
+/**
+ * Encodes a skill reference as an internal URL.
+ *
+ * @param skill Skill result.
+ * @returns Internal skill URL.
+ */
 function createSkillUrl(skill: OpenCodexSkillSearchResult): string {
   const params = new URLSearchParams({
     name: skill.name,
@@ -193,6 +270,12 @@ function createSkillUrl(skill: OpenCodexSkillSearchResult): string {
   return `opencodex-skill:${params.toString()}`;
 }
 
+/**
+ * Decodes an internal skill URL to a protocol reference.
+ *
+ * @param url Internal skill URL.
+ * @returns Skill reference, or `null` when invalid.
+ */
 function readSkillReference(url: string): OpenCodexComposerReference | null {
   if (!isSkillUrl(url)) {
     return null;
@@ -213,6 +296,12 @@ function readSkillReference(url: string): OpenCodexComposerReference | null {
   };
 }
 
+/**
+ * Removes duplicate composer references while preserving first-seen order.
+ *
+ * @param references Raw references collected from the editor tree.
+ * @returns Deduplicated references.
+ */
 function deduplicateReferences(
   references: OpenCodexComposerReference[]
 ): OpenCodexComposerReference[] {

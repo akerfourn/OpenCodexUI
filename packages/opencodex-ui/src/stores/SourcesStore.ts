@@ -12,22 +12,43 @@ import type { RootChildStore } from "./RootChildStore";
 const SOURCE_SYNC_MINIMUM_MS = 750;
 const SOURCE_SYNC_MAXIMUM_MS = 10_000;
 
+/**
+ * Stores configured Codex sources and their visible synchronization state.
+ */
 export class SourcesStore implements RootChildStore {
+  /** Configured Codex sources. */
   sources: OpenCodexSource[] = [];
+  /** Source ids currently showing a sync indicator. */
   syncingSourceIds: string[] = [];
+  /** Whether the all-sources sync indicator is active. */
   isSyncingAllSources = false;
+  /** Whether source diagnostics are currently being refreshed. */
   isRefreshingSources = false;
+  /** Start time for the visible all-sources sync indicator. */
   private allSourcesSyncStartedAt: number | null = null;
+  /** Start times for visible per-source sync indicators. */
   private readonly sourceSyncStartedAtById = new Map<string, number>();
 
+  /**
+   * Creates the sources store.
+   *
+   * @param root Root store used for backend requests and settings.
+   */
   constructor(private readonly root: RootStore) {
     makeAutoObservable<SourcesStore, "root">(this, { root: false });
   }
 
+  /** Whether at least one source cannot run Codex actions. */
   get hasUnavailableCodexSources(): boolean {
     return this.sources.some((source) => !this.isSourceReady(source.id));
   }
 
+  /**
+   * Finds a source by id.
+   *
+   * @param sourceId Source identifier.
+   * @returns Matching source, or `null`.
+   */
   findSource(sourceId: string | null): OpenCodexSource | null {
     if (sourceId === null) {
       return null;
@@ -36,6 +57,12 @@ export class SourcesStore implements RootChildStore {
     return this.sources.find((source) => source.id === sourceId) ?? null;
   }
 
+  /**
+   * Checks whether a source can be used for Codex operations.
+   *
+   * @param sourceId Source identifier.
+   * @returns Whether the source is ready or explicitly allowed when outdated.
+   */
   isSourceReady(sourceId: string | null): boolean {
     const status = this.findSource(sourceId)?.codex.status;
 
@@ -46,6 +73,11 @@ export class SourcesStore implements RootChildStore {
     return status === "outdated" && this.root.appStore.settings.allowOutdatedCodex;
   }
 
+  /**
+   * Applies source-related backend events.
+   *
+   * @param event Backend event.
+   */
   handleEvent(event: OpenCodexEvent): void {
     switch (event.type) {
       case "app.bootstrap":
@@ -63,10 +95,21 @@ export class SourcesStore implements RootChildStore {
     }
   }
 
+  /**
+   * Updates the source selected by the Home view.
+   *
+   * @param sourceId Selected source id or an empty string for all sources.
+   */
   setHomeSelectedSource(sourceId: string): void {
     this.root.homeStore.setSelectedSourceId(sourceId.length === 0 ? null : sourceId);
   }
 
+  /**
+   * Persists a partial source update.
+   *
+   * @param sourceId Source identifier.
+   * @param patch Source fields to update.
+   */
   updateSource(
     sourceId: string,
     patch: {
@@ -81,6 +124,11 @@ export class SourcesStore implements RootChildStore {
     });
   }
 
+  /**
+   * Creates a local Codex source with default settings.
+   *
+   * @returns Created source, or `null` when creation fails.
+   */
   async createSource(): Promise<OpenCodexSource | null> {
     try {
       return await this.root.request<OpenCodexSource>({
@@ -92,6 +140,12 @@ export class SourcesStore implements RootChildStore {
     }
   }
 
+  /**
+   * Deletes a configured source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Promise resolved when deletion completes.
+   */
   async deleteSource(sourceId: string): Promise<void> {
     await this.root.request({
       type: "sources.delete",
@@ -125,6 +179,11 @@ export class SourcesStore implements RootChildStore {
     }
   }
 
+  /**
+   * Starts a project/thread sync for one source.
+   *
+   * @param sourceId Source identifier.
+   */
   syncSource(sourceId: string): void {
     if (this.isSourceSyncing(sourceId)) {
       return;
@@ -143,6 +202,9 @@ export class SourcesStore implements RootChildStore {
     schedule(() => this.clearVisibleSourceSync(sourceId), SOURCE_SYNC_MAXIMUM_MS);
   }
 
+  /**
+   * Starts a project/thread sync for all sources.
+   */
   syncAllSources(): void {
     if (this.isSyncingAllSources) {
       return;
@@ -167,10 +229,21 @@ export class SourcesStore implements RootChildStore {
     schedule(() => this.clearVisibleSourceSync(), SOURCE_SYNC_MAXIMUM_MS);
   }
 
+  /**
+   * Checks whether a source should show sync feedback.
+   *
+   * @param sourceId Source identifier.
+   * @returns Whether the source is visually syncing.
+   */
   isSourceSyncing(sourceId: string): boolean {
     return this.isSyncingAllSources || this.syncingSourceIds.includes(sourceId);
   }
 
+  /**
+   * Lets the user select a Codex executable for a source.
+   *
+   * @param sourceId Source identifier.
+   */
   pickSourceExecutable(sourceId: string): void {
     void this.pickSourceExecutablePath().then((path) => {
       if (path === null) {
@@ -186,15 +259,32 @@ export class SourcesStore implements RootChildStore {
     });
   }
 
+  /**
+   * Opens the native executable picker.
+   *
+   * @returns Selected executable path, or `null`.
+   */
   async pickSourceExecutablePath(): Promise<string | null> {
     return await this.root.request<string | null>({ type: "sources.pickExecutable" });
   }
 
+  /**
+   * Applies sources from the initial app bootstrap event.
+   *
+   * @param defaultSourceId Default source id from settings.
+   * @param sources Source list.
+   */
   private applyBootstrap(defaultSourceId: string | null, sources: OpenCodexSource[]): void {
     this.sources = sources;
     this.root.homeStore.setSelectedSourceId(null);
   }
 
+  /**
+   * Applies a source list update from the backend.
+   *
+   * @param defaultSourceId Default source id from settings.
+   * @param sources Source list.
+   */
   private applySourcesUpdated(defaultSourceId: string | null, sources: OpenCodexSource[]): void {
     this.sources = sources;
     this.root.settings = {
@@ -204,6 +294,11 @@ export class SourcesStore implements RootChildStore {
     this.selectFallbackHomeSource(defaultSourceId);
   }
 
+  /**
+   * Keeps the Home source filter valid after source updates.
+   *
+   * @param defaultSourceId Default source id from settings.
+   */
   private selectFallbackHomeSource(defaultSourceId: string | null): void {
     if (this.sources.length === 0) {
       this.root.homeStore.setSelectedSourceId(null);
@@ -219,6 +314,11 @@ export class SourcesStore implements RootChildStore {
     }
   }
 
+  /**
+   * Ends visible sync feedback after the minimum display duration.
+   *
+   * @param sourceId Optional source identifier.
+   */
   private finishVisibleSourceSync(sourceId?: string): void {
     if (sourceId === undefined && this.allSourcesSyncStartedAt === null && this.sourceSyncStartedAtById.size > 0) {
       for (const syncingSourceId of Array.from(this.sourceSyncStartedAtById.keys())) {
@@ -250,6 +350,11 @@ export class SourcesStore implements RootChildStore {
     }, remainingMs);
   }
 
+  /**
+   * Clears sync feedback immediately for one source or all sources.
+   *
+   * @param sourceId Optional source identifier.
+   */
   private clearVisibleSourceSync(sourceId?: string): void {
     if (sourceId === undefined) {
       this.isSyncingAllSources = false;
@@ -269,6 +374,12 @@ export class SourcesStore implements RootChildStore {
   }
 }
 
+/**
+ * Schedules delayed UI state cleanup.
+ *
+ * @param callback Callback to run.
+ * @param durationMs Delay in milliseconds.
+ */
 function schedule(callback: () => void, durationMs: number): void {
   setTimeout(callback, durationMs);
 }

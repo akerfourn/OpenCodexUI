@@ -12,41 +12,65 @@ import {
  * Holds the UI-ready representation of one Codex turn.
  */
 export class ChatTurnStore {
+  /** Raw Codex turn represented by this store. */
   turn: OpenCodexTurn;
 
+  /**
+   * Creates a store for one Codex turn.
+   *
+   * @param turn Raw Codex turn.
+   */
   constructor(turn: OpenCodexTurn) {
     this.turn = turn;
     makeAutoObservable(this);
   }
 
+  /** Turn identifier. */
   get id(): string {
     return this.turn.id;
   }
 
+  /** Owning thread identifier. */
   get threadId(): string {
     return this.turn.threadId;
   }
 
+  /** Structured sub-turns derived from raw turn items. */
   get subTurns(): ChatSubTurn[] {
     return this.structure.subTurns;
   }
 
+  /** Final answer item derived from raw turn items. */
   get finalAnswer(): ChatTurnStructure["finalAnswer"] {
     return this.structure.finalAnswer;
   }
 
+  /** Whether the turn already contains a final answer. */
   get hasFinalAnswer(): boolean {
     return this.finalAnswer !== null;
   }
 
+  /** Whether the turn has a user/reasoning block after its final answer. */
   get hasOpenSubTurn(): boolean {
     return this.structure.hasOpenSubTurn;
   }
 
+  /**
+   * Replaces the raw turn after cache or live updates.
+   *
+   * @param turn Raw Codex turn.
+   */
   setTurn(turn: OpenCodexTurn): void {
     this.turn = turn;
   }
 
+  /**
+   * Checks whether this turn is the currently running turn.
+   *
+   * @param activeTurnId Active turn id tracked by the chat store.
+   * @param isWorking Whether the chat is currently working.
+   * @returns Whether this turn should render as running.
+   */
   isRunning(activeTurnId: string | null, isWorking: boolean): boolean {
     if (!isWorking) {
       return false;
@@ -61,6 +85,7 @@ export class ChatTurnStore {
     return !this.hasFinalAnswer || this.hasOpenSubTurn || this.turn.items.length === 0;
   }
 
+  /** Structured view derived lazily from the raw turn. */
   private get structure(): ChatTurnStructure {
     return buildChatTurnStructure(this.turn);
   }

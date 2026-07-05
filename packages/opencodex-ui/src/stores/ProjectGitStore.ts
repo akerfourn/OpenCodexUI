@@ -40,44 +40,87 @@ const gitLogPageSize = 50;
  * Stores Git status and actions for a project.
  */
 export class ProjectGitStore {
+  /** Last Git status snapshot for the project. */
   status: OpenCodexGitStatus = emptyGitStatus;
+  /** Commit message currently edited in the Git panel. */
   commitMessage = "";
+  /** Local and remote branches loaded for branch actions. */
   branches: OpenCodexGitBranch[] = [];
+  /** Tags loaded for release/reference workflows. */
   tags: OpenCodexGitTag[] = [];
+  /** Git log entries loaded in pages. */
   logCommits: OpenCodexGitLogCommit[] = [];
+  /** Commit details cached by commit hash. */
   commitDetailsByHash = new Map<string, OpenCodexGitCommitDetails>();
+  /** Tag selected as the reference point for commit distance. */
   selectedReferenceTagName: string | null = null;
+  /** Number of commits since the selected reference tag. */
   commitsSinceReferenceTag: number | null = null;
+  /** Last generic Git error shown by the panel. */
   errorMessage: string | null = null;
+  /** Last branch operation error shown by branch modals. */
   branchErrorMessage: string | null = null;
+  /** Last tag operation error shown by tag modals. */
   tagErrorMessage: string | null = null;
+  /** Last Git log loading error. */
   logErrorMessage: string | null = null;
+  /** Last remote configuration error. */
   remoteErrorMessage: string | null = null;
+  /** Whether an initial status request has completed. */
   hasLoaded = false;
+  /** Whether branches have been loaded at least once. */
   hasLoadedBranches = false;
+  /** Whether tags have been loaded at least once. */
   hasLoadedTags = false;
+  /** Whether the Git log has been loaded at least once. */
   hasLoadedLog = false;
+  /** Whether more Git log pages are available. */
   hasMoreLogCommits = false;
+  /** Whether Git status is loading or mutating. */
   isLoading = false;
+  /** Whether branches are loading. */
   isLoadingBranches = false;
+  /** Whether tags are loading. */
   isLoadingTags = false;
+  /** Whether Git log commits are loading. */
   isLoadingLog = false;
+  /** Whether remote tags are being fetched. */
   isFetchingTags = false;
+  /** Whether remotes are loading. */
   isLoadingRemotes = false;
+  /** Whether a checkout or branch creation is in flight. */
   isCheckingOutBranch = false;
+  /** Whether a merge operation is in flight. */
   isMergingBranch = false;
+  /** Whether a tag creation is in flight. */
   isCreatingTag = false;
+  /** Whether commits since the reference tag are loading. */
   isLoadingTagReference = false;
+  /** Commit hash currently loading detailed data. */
   loadingCommitDetailsHash: string | null = null;
+  /** Whether a commit operation is in flight. */
   isCommitting = false;
+  /** Whether the commit message generator is running. */
   isGeneratingCommitMessage = false;
+  /** Whether repository initialization is in flight. */
   isInitializingRepository = false;
+  /** Whether remote configuration is being saved. */
   isSavingRemote = false;
+  /** Whether a pull operation is in flight. */
   isPulling = false;
+  /** Whether a push or branch publication is in flight. */
   isPushing = false;
+  /** Changed file paths selected for staging. */
   selectedChangedPaths: string[] = [];
+  /** Staged file paths selected for unstaging. */
   selectedStagedPaths: string[] = [];
 
+  /**
+   * Creates the Git store for one project.
+   *
+   * @param projectStore Owning project store.
+   * @param root Root store used for backend requests.
+   */
   constructor(
     private readonly projectStore: ProjectStore,
     private readonly root: RootStore
@@ -95,18 +138,22 @@ export class ProjectGitStore {
     this.applyProjectPreferences(projectStore.project.preferences);
   }
 
+  /** Whether Git actions can run for the project source. */
   get isAvailable(): boolean {
     return this.projectStore.isCodexSourceReady;
   }
 
+  /** Number of unstaged changed files. */
   get changedFilesCount(): number {
     return this.status.changedFiles.length;
   }
 
+  /** Number of staged files. */
   get stagedFilesCount(): number {
     return this.status.stagedFiles.length;
   }
 
+  /** Whether the current staged state and message can be committed. */
   get canCommit(): boolean {
     return (
       this.stagedFilesCount > 0 &&
@@ -117,6 +164,7 @@ export class ProjectGitStore {
     );
   }
 
+  /** Whether a commit message can be generated for staged files. */
   get canGenerateCommitMessage(): boolean {
     return (
       this.stagedFilesCount > 0 &&
@@ -126,14 +174,17 @@ export class ProjectGitStore {
     );
   }
 
+  /** Model configured for commit message generation. */
   get commitGenerationModelLabel(): string | null {
     return this.root.appStore.settings.commitMessageModel;
   }
 
+  /** Reasoning effort configured for commit message generation. */
   get commitGenerationReasoningEffortLabel(): string | null {
     return this.root.appStore.settings.commitMessageReasoningEffort;
   }
 
+  /** Whether local commits can be pushed to the configured upstream. */
   get canPush(): boolean {
     return (
       this.status.isRepository &&
@@ -144,6 +195,7 @@ export class ProjectGitStore {
     );
   }
 
+  /** Whether the current branch can be published to a remote. */
   get canPublishBranch(): boolean {
     return (
       this.status.isRepository &&
@@ -155,12 +207,14 @@ export class ProjectGitStore {
     );
   }
 
+  /** Preferred remote used for publication hints. */
   get primaryRemote(): OpenCodexGitRemote | null {
     return this.status.remotes.find((remote) => remote.name === "origin")
       ?? this.status.remotes[0]
       ?? null;
   }
 
+  /** Whether remote commits can be pulled from the configured upstream. */
   get canPull(): boolean {
     return (
       this.status.isRepository &&
@@ -171,6 +225,11 @@ export class ProjectGitStore {
     );
   }
 
+  /**
+   * Updates the editable commit message unless generation is in progress.
+   *
+   * @param value Commit message text.
+   */
   setCommitMessage(value: string): void {
     if (this.isGeneratingCommitMessage) {
       return;
@@ -179,10 +238,21 @@ export class ProjectGitStore {
     this.commitMessage = value;
   }
 
+  /**
+   * Reads cached commit details by hash.
+   *
+   * @param hash Commit hash.
+   * @returns Commit details, or `null`.
+   */
   getCommitDetails(hash: string): OpenCodexGitCommitDetails | null {
     return this.commitDetailsByHash.get(hash) ?? null;
   }
 
+  /**
+   * Applies Git preferences from project metadata.
+   *
+   * @param preferences Project preferences.
+   */
   applyProjectPreferences(preferences: OpenCodexProjectPreferences): void {
     const referenceTagName = normalizeNullableText(preferences.git?.referenceTagName ?? null);
 
@@ -198,14 +268,29 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Toggles one changed path selection.
+   *
+   * @param path File path.
+   */
   toggleChangedPath(path: string): void {
     this.selectedChangedPaths = togglePath(this.selectedChangedPaths, path);
   }
 
+  /**
+   * Toggles one staged path selection.
+   *
+   * @param path File path.
+   */
   toggleStagedPath(path: string): void {
     this.selectedStagedPaths = togglePath(this.selectedStagedPaths, path);
   }
 
+  /**
+   * Refreshes Git status and dependent tag state.
+   *
+   * @returns Promise resolved when refresh completes.
+   */
   async refresh(): Promise<void> {
     if (!this.isAvailable) {
       this.status = emptyGitStatus;
@@ -245,6 +330,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Initializes a Git repository in the project folder.
+   *
+   * @returns Promise resolved when initialization completes.
+   */
   async initializeRepository(): Promise<void> {
     if (!this.isAvailable || this.isInitializingRepository) {
       return;
@@ -281,6 +371,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Loads local and remote branches.
+   *
+   * @returns Promise resolved when branches are loaded.
+   */
   async loadBranches(): Promise<void> {
     if (!this.isAvailable || !this.status.isRepository) {
       this.branches = [];
@@ -313,6 +408,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Loads configured Git remotes.
+   *
+   * @returns Promise resolved when remotes are loaded.
+   */
   async loadRemotes(): Promise<void> {
     if (!this.isAvailable || !this.status.isRepository) {
       this.status = {
@@ -349,6 +449,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Loads local Git tags and updates the selected reference tag.
+   *
+   * @returns Promise resolved when tags are loaded.
+   */
   async loadTags(): Promise<void> {
     if (!this.isAvailable || !this.status.isRepository) {
       this.tags = [];
@@ -375,6 +480,12 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Loads one page of Git log commits.
+   *
+   * @param reset Whether to replace existing log rows.
+   * @returns Promise resolved when the page is loaded.
+   */
   async loadGitLog(reset: boolean): Promise<void> {
     if (!this.isAvailable || !this.status.isRepository || this.isLoadingLog) {
       return;
@@ -414,6 +525,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Loads the next Git log page when available.
+   *
+   * @returns Promise resolved when loading completes.
+   */
   async loadMoreGitLog(): Promise<void> {
     if (!this.hasMoreLogCommits) {
       return;
@@ -422,6 +538,12 @@ export class ProjectGitStore {
     await this.loadGitLog(false);
   }
 
+  /**
+   * Loads details for one commit hash.
+   *
+   * @param hash Commit hash.
+   * @returns Promise resolved when details are loaded.
+   */
   async loadCommitDetails(hash: string): Promise<void> {
     const normalizedHash = hash.trim();
 
@@ -459,6 +581,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Fetches tags from remotes and reloads local tag state.
+   *
+   * @returns Promise resolved when fetch completes.
+   */
   async fetchTags(): Promise<void> {
     if (!this.isAvailable || !this.status.isRepository || this.isFetchingTags) {
       return;
@@ -498,6 +625,12 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Checks out an existing branch.
+   *
+   * @param branch Branch to checkout.
+   * @returns Whether checkout succeeded.
+   */
   async checkoutBranch(branch: OpenCodexGitBranch): Promise<boolean> {
     return await this.applyBranchStatusRequest("git.checkout", {
       branchName: branch.name,
@@ -505,16 +638,34 @@ export class ProjectGitStore {
     });
   }
 
+  /**
+   * Creates and checks out a local branch.
+   *
+   * @param branchName New branch name.
+   * @returns Whether creation succeeded.
+   */
   async createBranch(branchName: string): Promise<boolean> {
     return await this.applyBranchStatusRequest("git.branch.create", {
       branchName: branchName.trim()
     });
   }
 
+  /**
+   * Merges a local branch into the current branch.
+   *
+   * @param branch Branch to merge.
+   * @returns Whether merge succeeded.
+   */
   async mergeBranch(branch: OpenCodexGitBranch): Promise<boolean> {
     return await this.applyMergeStatusRequest(branch.name);
   }
 
+  /**
+   * Creates a lightweight tag and selects it as reference.
+   *
+   * @param tagName Tag name.
+   * @returns Whether creation succeeded.
+   */
   async createTag(tagName: string): Promise<boolean> {
     const normalizedTagName = tagName.trim();
 
@@ -556,6 +707,12 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Selects a tag used as release/reference point.
+   *
+   * @param tagName Tag name.
+   * @returns Whether commit distance could be loaded.
+   */
   async selectReferenceTag(tagName: string): Promise<boolean> {
     const normalizedTagName = tagName.trim();
 
@@ -577,30 +734,57 @@ export class ProjectGitStore {
     return loaded;
   }
 
+  /**
+   * Stages selected changed files.
+   */
   async stageSelected(): Promise<void> {
     await this.stagePaths(this.selectedChangedPaths);
   }
 
+  /**
+   * Stages all changed files.
+   */
   async stageAll(): Promise<void> {
     await this.stagePaths(this.status.changedFiles.map((file) => file.path));
   }
 
+  /**
+   * Stages one changed file path.
+   *
+   * @param path File path.
+   */
   async stagePath(path: string): Promise<void> {
     await this.stagePaths([path]);
   }
 
+  /**
+   * Unstages selected staged files.
+   */
   async unstageSelected(): Promise<void> {
     await this.unstagePaths(this.selectedStagedPaths);
   }
 
+  /**
+   * Unstages all staged files.
+   */
   async unstageAll(): Promise<void> {
     await this.unstagePaths(this.status.stagedFiles.map((file) => file.path));
   }
 
+  /**
+   * Unstages one file path.
+   *
+   * @param path File path.
+   */
   async unstagePath(path: string): Promise<void> {
     await this.unstagePaths([path]);
   }
 
+  /**
+   * Creates a Git commit with the current staged files and message.
+   *
+   * @returns Promise resolved when commit completes.
+   */
   async commit(): Promise<void> {
     if (!this.canCommit) {
       return;
@@ -632,6 +816,12 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Generates a commit message from staged changes.
+   *
+   * @param instruction Optional user instruction.
+   * @returns Promise resolved when generation completes.
+   */
   async generateCommitMessage(instruction: string): Promise<void> {
     if (!this.canGenerateCommitMessage) {
       return;
@@ -665,6 +855,13 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Creates or updates a Git remote.
+   *
+   * @param name Remote name.
+   * @param url Remote URL.
+   * @returns Whether saving succeeded.
+   */
   async upsertRemote(name: string, url: string): Promise<boolean> {
     if (!this.isAvailable || !this.status.isRepository || this.isSavingRemote) {
       return false;
@@ -702,6 +899,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Pushes local commits to the configured upstream.
+   *
+   * @returns Promise resolved when push completes.
+   */
   async push(): Promise<void> {
     if (!this.canPush) {
       return;
@@ -737,6 +939,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Publishes the current branch and configures its upstream.
+   *
+   * @returns Promise resolved when publication completes.
+   */
   async publishBranch(): Promise<void> {
     if (!this.canPublishBranch) {
       return;
@@ -773,6 +980,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Pulls remote commits from the configured upstream.
+   *
+   * @returns Promise resolved when pull completes.
+   */
   async pull(): Promise<void> {
     if (!this.canPull) {
       return;
@@ -808,6 +1020,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Stages normalized file paths.
+   *
+   * @param paths File paths.
+   */
   private async stagePaths(paths: string[]): Promise<void> {
     const normalizedPaths = normalizePaths(paths);
 
@@ -818,6 +1035,11 @@ export class ProjectGitStore {
     await this.applyGitStatusRequest("git.stage", normalizedPaths);
   }
 
+  /**
+   * Unstages normalized file paths.
+   *
+   * @param paths File paths.
+   */
   private async unstagePaths(paths: string[]): Promise<void> {
     const normalizedPaths = normalizePaths(paths);
 
@@ -828,6 +1050,12 @@ export class ProjectGitStore {
     await this.applyGitStatusRequest("git.unstage", normalizedPaths);
   }
 
+  /**
+   * Applies a Git mutation that returns a new status snapshot.
+   *
+   * @param type Git status mutation request type.
+   * @param paths File paths.
+   */
   private async applyGitStatusRequest(type: "git.stage" | "git.unstage", paths: string[]): Promise<void> {
     this.isLoading = true;
     this.errorMessage = null;
@@ -854,6 +1082,13 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Applies a branch mutation that returns a new status snapshot.
+   *
+   * @param type Branch request type.
+   * @param request Branch request payload.
+   * @returns Whether the operation succeeded.
+   */
   private async applyBranchStatusRequest(
     type: "git.checkout",
     request: { branchName: string; branchKind: OpenCodexGitBranchKind }
@@ -914,6 +1149,12 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Applies a branch merge and refreshes branch/tag state.
+   *
+   * @param branchName Branch name to merge.
+   * @returns Whether merge succeeded.
+   */
   private async applyMergeStatusRequest(branchName: string): Promise<boolean> {
     const normalizedBranchName = branchName.trim();
 
@@ -956,6 +1197,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Applies a Git status snapshot and reconciles local selections.
+   *
+   * @param status Git status snapshot.
+   */
   private applyStatus(status: OpenCodexGitStatus): void {
     this.status = status;
 
@@ -973,6 +1219,12 @@ export class ProjectGitStore {
     );
   }
 
+  /**
+   * Loads commit distance from a reference tag to HEAD.
+   *
+   * @param tagName Reference tag name.
+   * @returns Whether the count was loaded.
+   */
   private async loadCommitsSinceReferenceTag(tagName: string): Promise<boolean> {
     this.isLoadingTagReference = true;
     this.tagErrorMessage = null;
@@ -1001,6 +1253,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Reloads local tags without fetching remotes.
+   *
+   * @returns Promise resolved when tags are loaded.
+   */
   private async refreshLocalTags(): Promise<void> {
     const tags = await this.root.request<OpenCodexGitTag[]>({
       type: "git.tags",
@@ -1018,6 +1275,11 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Surfaces a non-fatal tag fetch warning to UI and logs.
+   *
+   * @param message Warning message.
+   */
   private reportTagFetchWarning(message: string): void {
     this.root.appStore.showWarningMessage(message);
     void this.root.request({
@@ -1031,6 +1293,9 @@ export class ProjectGitStore {
     });
   }
 
+  /**
+   * Clears the selected reference tag when it no longer exists locally.
+   */
   private keepSelectedReferenceTag(): void {
     if (this.selectedReferenceTagName === null) {
       this.commitsSinceReferenceTag = null;
@@ -1046,6 +1311,9 @@ export class ProjectGitStore {
     }
   }
 
+  /**
+   * Clears tag state when the project is not a usable repository.
+   */
   private clearTags(): void {
     this.tags = [];
     this.selectedReferenceTagName = null;
@@ -1054,6 +1322,9 @@ export class ProjectGitStore {
     this.tagErrorMessage = null;
   }
 
+  /**
+   * Clears loaded Git log state.
+   */
   clearLog(): void {
     this.logCommits = [];
     this.commitDetailsByHash.clear();
@@ -1064,6 +1335,11 @@ export class ProjectGitStore {
     this.logErrorMessage = null;
   }
 
+  /**
+   * Persists the selected reference tag in project preferences.
+   *
+   * @param referenceTagName Selected tag name.
+   */
   private persistReferenceTagPreference(referenceTagName: string | null): void {
     const currentPreferences = cloneProjectPreferences(this.projectStore.project.preferences);
     const preferences: OpenCodexProjectPreferences = {
@@ -1090,6 +1366,13 @@ export class ProjectGitStore {
   }
 }
 
+/**
+ * Toggles one path in a selected path collection.
+ *
+ * @param paths Current selected paths.
+ * @param path Path to toggle.
+ * @returns Updated selected paths.
+ */
 function togglePath(paths: string[], path: string): string[] {
   if (paths.includes(path)) {
     return paths.filter((entry) => entry !== path);
@@ -1098,11 +1381,25 @@ function togglePath(paths: string[], path: string): string[] {
   return [...paths, path];
 }
 
+/**
+ * Keeps only selected paths still present in the current status.
+ *
+ * @param paths Selected paths.
+ * @param availablePaths Available paths.
+ * @returns Valid selected paths.
+ */
 function keepExistingPaths(paths: string[], availablePaths: string[]): string[] {
   const availablePathSet = new Set(availablePaths);
   return paths.filter((path) => availablePathSet.has(path));
 }
 
+/**
+ * Appends unique Git log commits while preserving loaded history.
+ *
+ * @param currentCommits Existing log commits.
+ * @param nextCommits Newly loaded log commits.
+ * @returns Merged commit list.
+ */
 function mergeLogCommits(
   currentCommits: OpenCodexGitLogCommit[],
   nextCommits: OpenCodexGitLogCommit[]
@@ -1112,10 +1409,22 @@ function mergeLogCommits(
   return [...currentCommits, ...uniqueNextCommits];
 }
 
+/**
+ * Trims paths and removes empty entries before Git mutations.
+ *
+ * @param paths Raw paths.
+ * @returns Normalized paths.
+ */
 function normalizePaths(paths: string[]): string[] {
   return paths.map((path) => path.trim()).filter((path) => path.length > 0);
 }
 
+/**
+ * Trims optional text and converts empty strings to `null`.
+ *
+ * @param value Optional text.
+ * @returns Normalized text.
+ */
 function normalizeNullableText(value: string | null): string | null {
   if (value === null) {
     return null;
@@ -1125,6 +1434,12 @@ function normalizeNullableText(value: string | null): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+/**
+ * Converts unknown errors into displayable Git error text.
+ *
+ * @param error Unknown caught error.
+ * @returns Error message.
+ */
 function readErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;

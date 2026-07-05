@@ -19,14 +19,26 @@ const LOG_PAGE_SIZE = 30;
  * Stores persisted application logs for the Home logs view.
  */
 export class LogsStore implements RootChildStore {
+  /** Log entries currently loaded in newest-first order. */
   logs: OpenCodexLogEntry[] = [];
+  /** Whether older log pages are available. */
   hasMore = false;
+  /** Whether a log page is currently loading. */
   isLoading = false;
+  /** Whether the cleanup confirmation dialog is open. */
   cleanupDialogOpen = false;
+  /** Cleanup mode selected in the cleanup dialog. */
   cleanupMode: "olderThan" | "all" = "olderThan";
+  /** Amount paired with `cleanupUnit` for retention cleanup. */
   cleanupAmount = 24;
+  /** Unit paired with `cleanupAmount` for retention cleanup. */
   cleanupUnit: OpenCodexLogRetentionUnit = "hours";
 
+  /**
+   * Creates the logs store.
+   *
+   * @param root Root store used for backend requests.
+   */
   constructor(private readonly root: RootStore) {
     makeAutoObservable<LogsStore, "root">(this, { root: false });
   }
@@ -144,14 +156,29 @@ export class LogsStore implements RootChildStore {
     this.cleanupDialogOpen = false;
   }
 
+  /**
+   * Changes the cleanup mode.
+   *
+   * @param mode Cleanup mode.
+   */
   setCleanupMode(mode: "olderThan" | "all"): void {
     this.cleanupMode = mode;
   }
 
+  /**
+   * Changes the cleanup retention amount.
+   *
+   * @param amount Retention amount.
+   */
   setCleanupAmount(amount: number): void {
     this.cleanupAmount = amount;
   }
 
+  /**
+   * Changes the cleanup retention unit.
+   *
+   * @param unit Retention unit.
+   */
   setCleanupUnit(unit: OpenCodexLogRetentionUnit): void {
     this.cleanupUnit = unit;
   }
@@ -176,6 +203,11 @@ export class LogsStore implements RootChildStore {
     await this.loadLatest();
   }
 
+  /**
+   * Inserts a newly created log entry without duplicating existing rows.
+   *
+   * @param log Created log entry.
+   */
   private upsertCreatedLog(log: OpenCodexLogEntry): void {
     if (this.logs.some((entry) => entry.id === log.id)) {
       return;

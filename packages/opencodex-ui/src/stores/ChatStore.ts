@@ -39,35 +39,65 @@ const THREAD_RUNTIME_STATUS_POLL_INTERVAL_MS = 30_000;
  * Stores the loaded turns and runtime flags for a single chat.
  */
 export class ChatStore {
+  /** Thread metadata for this chat. */
   thread: OpenCodexThread;
+  /** Raw turns currently loaded in memory. */
   turns: OpenCodexTurn[] = [];
+  /** Per-turn stores derived from `turns` for isolated rendering. */
   turnStores: ChatTurnStore[] = [];
+  /** Approvals attached to this chat. */
   approvals: OpenCodexApproval[] = [];
+  /** Whether older turns are available from the backend/cache. */
   hasMoreOlderMessages = false;
+  /** Whether an older-turn page is loading. */
   isLoadingOlderMessages = false;
+  /** Whether this thread is synchronizing with Codex. */
   isSyncing = false;
+  /** Whether the current thread snapshot is being refreshed. */
   isRefreshing = false;
+  /** Whether the chat is recovering after a recoverable thread error. */
   isRecovering = false;
+  /** Whether Codex currently has an active turn for this chat. */
   isWorking = false;
+  /** Whether a start-turn request is in flight before Codex confirms a turn id. */
   isStartingTurn = false;
+  /** Whether the last turn is being edited and restarted. */
   isEditingLastTurn = false;
+  /** Whether completed work is unseen by the user. */
   hasUnseenCompletedTurn = false;
+  /** Active Codex turn id while a turn is running. */
   activeTurnId: string | null = null;
+  /** Optimistic local turn id waiting for Codex confirmation. */
   pendingTurnId: string | null = null;
+  /** Composer model selected for future turns in this chat. */
   selectedModel: string | null = null;
+  /** Composer reasoning effort selected for future turns in this chat. */
   reasoningEffort: OpenCodexReasoningEffort = "medium";
+  /** Optional service tier selected for future turns in this chat. */
   selectedServiceTier: OpenCodexServiceTier | null = null;
+  /** Plain-text composer draft preserved per chat. */
   composerDraft = "";
+  /** Markdown composer draft with references serialized. */
   composerDraftMarkdown = "";
+  /** Structured references embedded in the composer draft. */
   composerDraftReferences: OpenCodexComposerReference[] = [];
+  /** Image attachments currently staged in the composer. */
   composerAttachments: OpenCodexImageAttachment[] = [];
+  /** Latest token usage snapshot for the thread context. */
   tokenUsage: OpenCodexThreadTokenUsage | null = null;
+  /** Incremented when older messages are prepended so the UI can preserve scroll. */
   olderMessagesPrependVersion = 0;
+  /** Incremented when the UI should scroll this chat to the bottom. */
   scrollToBottomVersion = 0;
+  /** Whether the user explicitly changed the model for this chat. */
   private hasExplicitModelSelection = false;
+  /** Whether the user explicitly changed reasoning effort for this chat. */
   private hasExplicitReasoningEffortSelection = false;
+  /** Whether a runtime status request is in flight. */
   private isReadingRuntimeStatus = false;
+  /** Poll timer used to recover from missed turn-completed notifications. */
   private runtimeStatusPollId: ReturnType<typeof setInterval> | null = null;
+  /** Turn stores keyed by raw turn id. */
   private turnStoresById = new Map<string, ChatTurnStore>();
 
   /**
@@ -105,6 +135,7 @@ export class ChatStore {
     });
   }
 
+  /** Whether the current thread can be manually refreshed. */
   get canRefresh(): boolean {
     return (
       !this.projectStore.isReadOnlyFromCache &&
@@ -139,6 +170,7 @@ export class ChatStore {
     return this.hasUnseenCompletedTurn && !this.hasRunningTurnIndicator;
   }
 
+  /** Whether the user can send steering input into the active turn. */
   get canSteerActiveTurn(): boolean {
     return (
       this.root.appStore.settings.allowTurnSteering &&
@@ -161,6 +193,7 @@ export class ChatStore {
     return this.projectStore.resolveThreadSourceId(this.thread);
   }
 
+  /** Last editable user message payload, when rollback/edit is allowed. */
   get editableLastUserItem(): {
     turnId: string;
     itemId: string;
@@ -208,6 +241,7 @@ export class ChatStore {
     };
   }
 
+  /** Identity of the last editable user item without cloning content. */
   get editableLastUserItemIdentity(): {
     turnId: string;
     itemId: string;
@@ -430,20 +464,36 @@ export class ChatStore {
     this.tokenUsage = null;
   }
 
+  /**
+   * Releases timers owned by this chat store.
+   */
   dispose(): void {
     this.stopRuntimeStatusPolling();
   }
 
+  /**
+   * Replaces raw turns and reconciles per-turn stores.
+   *
+   * @param turns Raw turns.
+   */
   setTurns(turns: OpenCodexTurn[]): void {
     this.turns = turns;
     this.syncTurnStores();
   }
 
+  /**
+   * Appends one raw turn and creates its turn store.
+   *
+   * @param turn Raw turn.
+   */
   appendTurn(turn: OpenCodexTurn): void {
     this.turns.push(turn);
     this.upsertTurnStore(turn);
   }
 
+  /**
+   * Reconciles per-turn stores with the current raw turn list.
+   */
   syncTurnStores(): void {
     const nextStores: ChatTurnStore[] = [];
     const nextStoresById = new Map<string, ChatTurnStore>();
@@ -464,6 +514,11 @@ export class ChatStore {
     this.turnStoresById = nextStoresById;
   }
 
+  /**
+   * Inserts or updates the store for one raw turn.
+   *
+   * @param turn Raw turn.
+   */
   private upsertTurnStore(turn: OpenCodexTurn): void {
     const existingStore = this.turnStoresById.get(turn.id);
 
@@ -477,6 +532,9 @@ export class ChatStore {
     this.turnStores.push(turnStore);
   }
 
+  /**
+   * Requests a fresh snapshot for this thread.
+   */
   refresh(): void {
     if (!this.canRefresh) {
       return;
@@ -486,6 +544,9 @@ export class ChatStore {
     this.projectStore.openThread(this.thread.id);
   }
 
+  /**
+   * Starts recovery for a thread after a recoverable backend error.
+   */
   recover(): void {
     if (this.isRecovering || this.projectStore.isReadOnlyFromCache) {
       return;
@@ -499,6 +560,9 @@ export class ChatStore {
     });
   }
 
+  /**
+   * Starts a Codex review action for the thread.
+   */
   startReview(): void {
     if (!this.canRunAdvancedAction) {
       return;
@@ -517,6 +581,9 @@ export class ChatStore {
     });
   }
 
+  /**
+   * Starts Codex context compaction for the thread.
+   */
   compactThread(): void {
     if (!this.canRunAdvancedAction) {
       return;
@@ -535,6 +602,9 @@ export class ChatStore {
     });
   }
 
+  /**
+   * Requests the next page of older turns.
+   */
   loadOlderMessages(): void {
     if (
       this.isLoadingOlderMessages ||
@@ -620,6 +690,9 @@ export class ChatStore {
     return Promise.resolve(true);
   }
 
+  /**
+   * Requests interruption of the active Codex turn.
+   */
   interruptTurn(): void {
     if (this.activeTurnId === null) {
       return;
@@ -705,6 +778,11 @@ export class ChatStore {
     return true;
   }
 
+  /**
+   * Renames the thread locally and in Codex.
+   *
+   * @param name New thread title.
+   */
   rename(name: string): void {
     const trimmedName = name.trim();
 
@@ -740,6 +818,12 @@ export class ChatStore {
     this.markSeen();
   }
 
+  /**
+   * Applies older turns loaded before the current first turn.
+   *
+   * @param turns Older turns.
+   * @param hasMoreOlderMessages Whether more older turns remain.
+   */
   applyTurnsPrepended(turns: OpenCodexTurn[], hasMoreOlderMessages: boolean): void {
     this.isLoadingOlderMessages = false;
     this.hasMoreOlderMessages = hasMoreOlderMessages;
@@ -747,11 +831,22 @@ export class ChatStore {
     this.olderMessagesPrependVersion += 1;
   }
 
+  /**
+   * Applies a background turn sync.
+   *
+   * @param turns Synced turns.
+   * @param hasMoreOlderMessages Whether more older turns remain.
+   */
   applyTurnsSynced(turns: OpenCodexTurn[], hasMoreOlderMessages: boolean): void {
     applyThreadTurns(this, this.root, turns, "merge", "thread.turns.synced");
     this.hasMoreOlderMessages = hasMoreOlderMessages;
   }
 
+  /**
+   * Updates the synchronization flag.
+   *
+   * @param isSyncing Whether sync is active.
+   */
   setSyncing(isSyncing: boolean): void {
     this.isSyncing = isSyncing;
 
@@ -760,6 +855,11 @@ export class ChatStore {
     }
   }
 
+  /**
+   * Updates recovery flags while a thread is being recovered.
+   *
+   * @param isRecovering Whether recovery is active.
+   */
   setRecovering(isRecovering: boolean): void {
     this.isRecovering = isRecovering;
     this.isSyncing = isRecovering;
@@ -767,6 +867,9 @@ export class ChatStore {
     this.projectStore.loadingThreadId = null;
   }
 
+  /**
+   * Completes recovery and restores running state when a turn is still active.
+   */
   completeRecovery(): void {
     const hasRecoveredRunningTurn = hasActiveRunningTurn(this.turns, this.activeTurnId);
     this.isRecovering = false;
@@ -784,15 +887,30 @@ export class ChatStore {
     this.startRuntimeStatusPolling();
   }
 
+  /**
+   * Applies a backend-confirmed thread rename.
+   *
+   * @param name New thread title.
+   */
   applyRename(name: string): void {
     this.projectStore.renameThread(this.thread.id, name);
     this.setThread({ ...this.thread, customTitle: name, title: name });
   }
 
+  /**
+   * Applies token usage for this thread.
+   *
+   * @param usage Token usage snapshot.
+   */
   applyTokenUsage(usage: OpenCodexThreadTokenUsage | null): void {
     this.tokenUsage = usage;
   }
 
+  /**
+   * Applies a message-started notification.
+   *
+   * @param message Started message item.
+   */
   applyMessageStarted(message: OpenCodexMessage): void {
     this.isStartingTurn = false;
     upsertPendingUserTurn(this, message);
@@ -829,10 +947,20 @@ export class ChatStore {
     });
   }
 
+  /**
+   * Applies a reasoning/activity update.
+   *
+   * @param activity Activity item.
+   */
   applyActivityUpdated(activity: OpenCodexActivity): void {
     appendActivityItem(this, activity);
   }
 
+  /**
+   * Applies a turn-started notification from Codex.
+   *
+   * @param turnId Started turn identifier.
+   */
   applyTurnStarted(turnId: string): void {
     this.isStartingTurn = false;
     this.isEditingLastTurn = false;
@@ -843,6 +971,12 @@ export class ChatStore {
     this.startRuntimeStatusPolling();
   }
 
+  /**
+   * Applies a turn-completed notification when it matches the active turn.
+   *
+   * @param turnId Completed turn identifier.
+   * @param durationMs Optional turn duration.
+   */
   applyTurnCompleted(turnId: string, durationMs: number | null): void {
     applyTurnDuration(this, turnId, durationMs);
 
@@ -898,6 +1032,12 @@ export class ChatStore {
     this.approvals = this.approvals.filter((approval) => approval.id !== approvalId);
   }
 
+  /**
+   * Creates a temporary user turn before Codex returns the real turn id.
+   *
+   * @param content User message content.
+   * @param attachments Image attachments.
+   */
   private createOptimisticUserTurn(
     content: string,
     attachments: OpenCodexImageAttachment[]
@@ -928,6 +1068,14 @@ export class ChatStore {
     this.scrollToBottomVersion += 1;
   }
 
+  /**
+   * Sends a steering message into the active turn with optimistic UI.
+   *
+   * @param content Steering message content.
+   * @param attachments Image attachments.
+   * @param references Composer references.
+   * @returns Promise resolved with whether steering succeeded.
+   */
   private steerActiveTurn(
     content: string,
     attachments: OpenCodexImageAttachment[],
@@ -956,6 +1104,14 @@ export class ChatStore {
     });
   }
 
+  /**
+   * Adds an optimistic steering item to the active turn.
+   *
+   * @param turnId Active turn identifier.
+   * @param content Steering message content.
+   * @param attachments Image attachments.
+   * @returns Optimistic item identifier.
+   */
   private createOptimisticSteerItem(
     turnId: string,
     content: string,
@@ -978,6 +1134,12 @@ export class ChatStore {
     return itemId;
   }
 
+  /**
+   * Removes one item from a turn after an optimistic failure.
+   *
+   * @param turnId Turn identifier.
+   * @param itemId Item identifier.
+   */
   private removeTurnItem(turnId: string, itemId: string): void {
     const turn = this.turns.find((entry) => entry.id === turnId);
 
@@ -988,6 +1150,9 @@ export class ChatStore {
     turn.items = turn.items.filter((item) => item.id !== itemId);
   }
 
+  /**
+   * Clears optimistic turn state after a failed start-turn request.
+   */
   private clearPendingTurnAfterStartFailure(): void {
     const pendingTurnId = this.pendingTurnId;
 
@@ -1004,6 +1169,9 @@ export class ChatStore {
     this.setTurns(this.turns.filter((turn) => turn.id !== pendingTurnId));
   }
 
+  /**
+   * Starts polling runtime status as a fallback for missed completion events.
+   */
   private startRuntimeStatusPolling(): void {
     if (this.runtimeStatusPollId !== null) {
       return;
@@ -1014,6 +1182,9 @@ export class ChatStore {
     }, THREAD_RUNTIME_STATUS_POLL_INTERVAL_MS);
   }
 
+  /**
+   * Stops runtime status polling and clears its in-flight flag.
+   */
   private stopRuntimeStatusPolling(): void {
     if (this.runtimeStatusPollId === null) {
       return;
@@ -1024,6 +1195,11 @@ export class ChatStore {
     this.isReadingRuntimeStatus = false;
   }
 
+  /**
+   * Reads runtime status and reconciles stale local working state.
+   *
+   * @returns Promise resolved when reconciliation completes.
+   */
   private async reconcileRuntimeStatus(): Promise<void> {
     if (!this.shouldReadRuntimeStatus()) {
       return;
@@ -1047,6 +1223,11 @@ export class ChatStore {
     }
   }
 
+  /**
+   * Checks whether runtime status polling should issue a request.
+   *
+   * @returns Whether runtime status should be read.
+   */
   private shouldReadRuntimeStatus(): boolean {
     return (
       this.isWorking &&
@@ -1056,6 +1237,11 @@ export class ChatStore {
     );
   }
 
+  /**
+   * Applies a runtime status response for this thread.
+   *
+   * @param status Runtime status response.
+   */
   private applyRuntimeStatus(status: OpenCodexThreadRuntimeStatus): void {
     this.isReadingRuntimeStatus = false;
 
@@ -1070,6 +1256,9 @@ export class ChatStore {
     this.applyRuntimeIdle();
   }
 
+  /**
+   * Marks the chat idle after runtime status says no turn is active.
+   */
   private applyRuntimeIdle(): void {
     const shouldMarkUnseen = !this.isVisibleChat();
 
@@ -1084,6 +1273,11 @@ export class ChatStore {
     this.projectStore.openThread(this.thread.id);
   }
 
+  /**
+   * Checks whether this chat is currently visible to the user.
+   *
+   * @returns Whether the chat is active in the selected project tab.
+   */
   private isVisibleChat(): boolean {
     return (
       this.root.navigationStore.activeProjectStore?.project.id === this.projectStore.project.id &&
@@ -1091,6 +1285,7 @@ export class ChatStore {
     );
   }
 
+  /** Whether advanced Codex actions can start a new turn now. */
   private get canRunAdvancedAction(): boolean {
     return (
       !this.projectStore.isReadOnlyFromCache &&
@@ -1103,6 +1298,12 @@ export class ChatStore {
 
 }
 
+/**
+ * Clones composer references before crossing request boundaries.
+ *
+ * @param references Composer references.
+ * @returns Plain cloned references.
+ */
 function cloneComposerReferences(references: OpenCodexComposerReference[]): OpenCodexComposerReference[] {
   return references.map((reference) => ({
     type: reference.type,
@@ -1111,6 +1312,12 @@ function cloneComposerReferences(references: OpenCodexComposerReference[]): Open
   }));
 }
 
+/**
+ * Clones image attachments before crossing request boundaries.
+ *
+ * @param attachments Image attachments.
+ * @returns Plain cloned attachments.
+ */
 function cloneImageAttachments(attachments: OpenCodexImageAttachment[]): OpenCodexImageAttachment[] {
   return attachments.map((attachment) => ({
     id: attachment.id,
@@ -1122,6 +1329,12 @@ function cloneImageAttachments(attachments: OpenCodexImageAttachment[]): OpenCod
   }));
 }
 
+/**
+ * Converts unknown errors into displayable chat error text.
+ *
+ * @param error Unknown caught error.
+ * @returns Error message.
+ */
 function readErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
@@ -1130,6 +1343,13 @@ function readErrorMessage(error: unknown): string {
   return String(error);
 }
 
+/**
+ * Resolves the initial model for a chat composer.
+ *
+ * @param thread Thread metadata.
+ * @param root Root store.
+ * @returns Model identifier, or `null`.
+ */
 function resolveInitialSelectedModel(thread: OpenCodexThread, root: RootStore): string | null {
   if (thread.model !== null) {
     return thread.model;
@@ -1138,6 +1358,13 @@ function resolveInitialSelectedModel(thread: OpenCodexThread, root: RootStore): 
   return root.appStore.models[0]?.model ?? root.appStore.selectedModel ?? root.appStore.settings.defaultModel;
 }
 
+/**
+ * Resolves the initial reasoning effort for a chat composer.
+ *
+ * @param thread Thread metadata.
+ * @param root Root store.
+ * @returns Reasoning effort.
+ */
 function resolveInitialReasoningEffort(
   thread: OpenCodexThread,
   root: RootStore
@@ -1145,6 +1372,14 @@ function resolveInitialReasoningEffort(
   return thread.reasoningEffort ?? root.appStore.settings.defaultReasoningEffort ?? "medium";
 }
 
+/**
+ * Keeps a selected service tier only when available for the selected model.
+ *
+ * @param model Model identifier.
+ * @param serviceTier Selected service tier.
+ * @param root Root store.
+ * @returns Available service tier, or `null`.
+ */
 function resolveAvailableServiceTier(
   model: string | null,
   serviceTier: OpenCodexServiceTier | null,
@@ -1160,6 +1395,12 @@ function resolveAvailableServiceTier(
   return isAvailable ? serviceTier : null;
 }
 
+/**
+ * Reads the load-older response defensively.
+ *
+ * @param value Unknown backend response.
+ * @returns Normalized load-older result.
+ */
 function readLoadOlderResult(value: unknown): {
   turns: OpenCodexTurn[];
   hasMoreOlderMessages: boolean;

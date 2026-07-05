@@ -147,6 +147,11 @@ export class RootStore {
     this.threadSelectionStartedAt = Date.now();
   }
 
+  /**
+   * Opens the native image picker for composer attachments.
+   *
+   * @returns Selected image attachments.
+   */
   async pickImageAttachments(): Promise<OpenCodexImageAttachment[]> {
     return this.transport.request<OpenCodexImageAttachment[]>({ type: "attachments.pickImages" });
   }

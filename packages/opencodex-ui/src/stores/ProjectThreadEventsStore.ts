@@ -20,6 +20,12 @@ import type { RootChildStore } from "./RootChildStore";
  * Applies thread and chat runtime events to their owning project stores.
  */
 export class ProjectThreadEventsStore implements RootChildStore {
+  /**
+   * Creates the thread event router.
+   *
+   * @param projectsStore Projects store that owns project/chat stores.
+   * @param root Root store used for cross-store services.
+   */
   constructor(
     private readonly projectsStore: ProjectsStore,
     private readonly root: RootStore
@@ -151,6 +157,13 @@ export class ProjectThreadEventsStore implements RootChildStore {
     return true;
   }
 
+  /**
+   * Applies a thread list update to the matching project.
+   *
+   * @param projectPath Project path from the backend.
+   * @param threads Thread metadata list.
+   * @param isArchived Whether the update is for archived threads.
+   */
   private applyThreadsUpdated(
     projectPath: string | null,
     threads: OpenCodexThread[],
@@ -170,6 +183,15 @@ export class ProjectThreadEventsStore implements RootChildStore {
     projectStore.threadListStore.setThreads(threads);
   }
 
+  /**
+   * Applies a thread-opened or thread-created snapshot.
+   *
+   * @param thread Opened thread metadata.
+   * @param turns Turns included in the snapshot.
+   * @param source Snapshot event source.
+   * @param hasMoreOlderMessages Whether older turns can be loaded.
+   * @param tokenUsage Optional token usage snapshot.
+   */
   private applyThreadOpened(
     thread: OpenCodexThread,
     turns: OpenCodexTurn[],
@@ -190,6 +212,11 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.applyTokenUsage(tokenUsage);
   }
 
+  /**
+   * Applies refreshed metadata for a single thread.
+   *
+   * @param thread Thread metadata.
+   */
   private applyThreadMetadata(thread: OpenCodexThread): void {
     const projectStore = this.findProjectStoreForThread(thread.id)
       ?? this.projectsStore.ensureProjectStoreForThread(thread);
@@ -202,6 +229,13 @@ export class ProjectThreadEventsStore implements RootChildStore {
 
   }
 
+  /**
+   * Prepends older turns into a loaded chat.
+   *
+   * @param threadId Thread identifier.
+   * @param turns Older turns.
+   * @param hasMoreOlderMessages Whether more older turns remain.
+   */
   private applyTurnsPrepended(
     threadId: string,
     turns: OpenCodexTurn[],
@@ -216,6 +250,13 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.applyTurnsPrepended(turns, hasMoreOlderMessages);
   }
 
+  /**
+   * Applies an incremental turn sync to a loaded chat.
+   *
+   * @param threadId Thread identifier.
+   * @param turns Synced turns.
+   * @param hasMoreOlderMessages Whether more older turns remain.
+   */
   private applyTurnsSynced(
     threadId: string,
     turns: OpenCodexTurn[],
@@ -230,6 +271,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.applyTurnsSynced(turns, hasMoreOlderMessages);
   }
 
+  /**
+   * Updates chat sync state.
+   *
+   * @param threadId Thread identifier.
+   * @param isSyncing Whether sync is active.
+   */
   private updateThreadSyncState(threadId: string, isSyncing: boolean): void {
     const chatStore = this.findChatStore(threadId);
 
@@ -240,6 +287,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.setSyncing(isSyncing);
   }
 
+  /**
+   * Updates chat recovery state.
+   *
+   * @param threadId Thread identifier.
+   * @param isRecovering Whether recovery is active.
+   */
   private updateThreadRecoveryState(threadId: string, isRecovering: boolean): void {
     const chatStore = this.findChatStore(threadId);
 
@@ -250,6 +303,11 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.setRecovering(isRecovering);
   }
 
+  /**
+   * Marks recovery as completed for one chat.
+   *
+   * @param threadId Thread identifier.
+   */
   private completeThreadRecovery(threadId: string): void {
     const chatStore = this.findChatStore(threadId);
 
@@ -260,6 +318,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.completeRecovery();
   }
 
+  /**
+   * Applies a thread rename to chat or list state.
+   *
+   * @param threadId Thread identifier.
+   * @param name New title.
+   */
   private applyThreadRename(threadId: string, name: string): void {
     const projectStore = this.findProjectStoreForThread(threadId);
 
@@ -277,6 +341,11 @@ export class ProjectThreadEventsStore implements RootChildStore {
     projectStore.renameThread(threadId, name);
   }
 
+  /**
+   * Applies token usage to the owning chat.
+   *
+   * @param usage Token usage payload.
+   */
   private applyThreadTokenUsage(usage: OpenCodexThreadTokenUsage): void {
     const chatStore = this.findChatStore(usage.threadId);
 
@@ -287,6 +356,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.applyTokenUsage(usage);
   }
 
+  /**
+   * Applies a newly started message item.
+   *
+   * @param threadId Thread identifier.
+   * @param message Started message item.
+   */
   private applyMessageStarted(threadId: string, message: OpenCodexMessage): void {
     const chatStore = this.findChatStore(threadId);
 
@@ -297,6 +372,15 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.applyMessageStarted(message);
   }
 
+  /**
+   * Appends streamed assistant text to a message item.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @param itemId Message item identifier.
+   * @param delta Text delta.
+   * @param phase Optional assistant phase.
+   */
   private appendAssistantDelta(
     threadId: string,
     turnId: string,
@@ -313,6 +397,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.appendAssistantDelta(turnId, itemId, delta, phase);
   }
 
+  /**
+   * Applies a reasoning/activity item update.
+   *
+   * @param threadId Thread identifier.
+   * @param activity Activity item.
+   */
   private applyActivityUpdated(threadId: string, activity: OpenCodexActivity): void {
     const chatStore = this.findChatStore(threadId);
 
@@ -323,6 +413,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.applyActivityUpdated(activity);
   }
 
+  /**
+   * Marks a turn as started in the owning chat.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   */
   private applyTurnStarted(threadId: string, turnId: string): void {
     const chatStore = this.findChatStore(threadId);
 
@@ -333,6 +429,13 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.applyTurnStarted(turnId);
   }
 
+  /**
+   * Marks a turn as completed and refreshes Git when it was active.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @param durationMs Optional duration in milliseconds.
+   */
   private applyTurnCompleted(threadId: string, turnId: string, durationMs: number | null): void {
     const chatStore = this.findChatStore(threadId);
 
@@ -350,6 +453,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
     }
   }
 
+  /**
+   * Finds the project store that owns a thread.
+   *
+   * @param threadId Thread identifier.
+   * @returns Project store, or `null`.
+   */
   private findProjectStoreForThread(threadId: string): ProjectStore | null {
     for (const projectStore of this.projectsStore.projectStoresById.values()) {
       if (projectStore.findThread(threadId) !== null || projectStore.chatsById.has(threadId)) {
@@ -360,10 +469,23 @@ export class ProjectThreadEventsStore implements RootChildStore {
     return null;
   }
 
+  /**
+   * Finds a loaded chat store by thread id.
+   *
+   * @param threadId Thread identifier.
+   * @returns Chat store, or `null`.
+   */
   private findChatStore(threadId: string): ChatStore | null {
     return this.findProjectStoreForThread(threadId)?.chatsById.get(threadId) ?? null;
   }
 
+  /**
+   * Finds the project targeted by a thread-list update.
+   *
+   * @param projectPath Project path from the backend.
+   * @param threads Thread list payload.
+   * @returns Project store, or `null`.
+   */
   private findProjectStoreForThreadUpdate(
     projectPath: string | null,
     threads: OpenCodexThread[]

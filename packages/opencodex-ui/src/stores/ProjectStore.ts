@@ -501,6 +501,9 @@ export class ProjectStore {
     this.selectedChatId = null;
   }
 
+  /**
+   * Repairs loaded thread metadata when a project source becomes known later.
+   */
   private repairStoredThreadSources(): void {
     if (this.project.sourceId === null) {
       return;

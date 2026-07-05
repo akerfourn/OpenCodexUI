@@ -5,6 +5,7 @@ import type { RootStore } from "./RootStore";
 
 export const HOME_TAB_ID = "home";
 
+/** Tab descriptor used by the project workspace shell. */
 export type OpenCodexAppTab =
   | { id: typeof HOME_TAB_ID; type: "home" }
   | { id: string; type: "project"; projectId: string };
@@ -13,10 +14,18 @@ export type OpenCodexAppTab =
  * Stores UI navigation state for home and opened project tabs.
  */
 export class NavigationStore {
+  /** Open tabs in display order. */
   tabs: OpenCodexAppTab[] = [{ id: HOME_TAB_ID, type: "home" }];
+  /** Identifier of the selected tab. */
   activeTabId = HOME_TAB_ID;
+  /** Project currently waiting for close confirmation. */
   projectCloseRequest: ProjectStore | null = null;
 
+  /**
+   * Creates the navigation store.
+   *
+   * @param root Root store used to resolve project stores.
+   */
   constructor(private readonly root: RootStore) {
     makeAutoObservable<NavigationStore, "root">(this, { root: false });
   }
@@ -158,6 +167,12 @@ export class NavigationStore {
     }
   }
 
+  /**
+   * Checks whether a project has work that should block closing.
+   *
+   * @param projectId Project identifier.
+   * @returns Whether any chat is active or recovering.
+   */
   private hasRunningTurnInProject(projectId: string): boolean {
     const projectStore = this.root.projectsStore.projectStoresById.get(projectId) ?? null;
 
@@ -174,6 +189,9 @@ export class NavigationStore {
     return false;
   }
 
+  /**
+   * Marks the active project's selected chat as seen after navigation.
+   */
   private markActiveProjectChatSeen(): void {
     this.activeProjectStore?.markSelectedChatSeen();
   }
