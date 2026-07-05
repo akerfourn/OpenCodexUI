@@ -25,6 +25,16 @@ This file applies to the whole repository.
 - Avoid imports that bypass those boundaries. Shared contracts should go
   through `opencodex-protocol`.
 
+## Code documentation
+
+- Add concise docstrings for class methods and properties, including private
+  ones.
+- Add concise docstrings for module-local helper functions, even when they are
+  not exported.
+- Keep docstrings useful and focused on intent, inputs, outputs, side effects,
+  and constraints. Avoid restating implementation details already obvious from
+  the signature.
+
 ## MobX and transport boundaries
 
 - Keep MobX observable objects inside UI state and rendering code.

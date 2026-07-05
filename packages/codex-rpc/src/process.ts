@@ -10,8 +10,11 @@ import type { ProcessLike } from "./types";
 import { CodexProcessError } from "./types";
 
 export type ResolvedCodexCommand = {
+  /** Executable path or command name passed to Node's process spawner. */
   command: string;
+  /** Arguments passed after command resolution and command-string splitting. */
   args: string[];
+  /** Whether Node should spawn the command through a shell. */
   shell: boolean;
 };
 
@@ -213,6 +216,11 @@ export function readCodexCommandCandidates(): string[] {
   return uniqueCandidates(candidates);
 }
 
+/**
+ * Reads Codex executable candidates from the Windows PATH.
+ *
+ * @returns Executable paths reported by `where.exe`, or an empty list on failure.
+ */
 function readWindowsPathCandidates(): string[] {
   const result = spawnSync("where.exe", ["codex"], {
     encoding: "utf8",
@@ -230,6 +238,12 @@ function readWindowsPathCandidates(): string[] {
     .filter((line) => line.length > 0);
 }
 
+/**
+ * Removes duplicate command candidates while dropping missing explicit paths.
+ *
+ * @param candidates Candidate command names or executable paths.
+ * @returns Unique candidates preserving the original priority order.
+ */
 function uniqueCandidates(candidates: string[]): string[] {
   const uniqueCandidates: string[] = [];
   const seenCandidates = new Set<string>();
@@ -252,10 +266,22 @@ function uniqueCandidates(candidates: string[]): string[] {
   return uniqueCandidates;
 }
 
+/**
+ * Checks whether a command string is an explicit filesystem path.
+ *
+ * @param command Command name or executable path.
+ * @returns True when the command contains path separators or is absolute.
+ */
 function isExecutablePath(command: string): boolean {
   return command.includes("/") || command.includes("\\") || path.isAbsolute(command);
 }
 
+/**
+ * Checks whether a resolved Windows command must be spawned through a shell.
+ *
+ * @param command Resolved command name or executable path.
+ * @returns True for Windows batch and command scripts.
+ */
 function isWindowsShellScript(command: string): boolean {
   return process.platform === "win32" && /\.(?:cmd|bat)$/i.test(command);
 }
