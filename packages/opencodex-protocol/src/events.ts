@@ -18,6 +18,12 @@ import type {
   OpenCodexUsageSnapshot
 } from "./messages";
 
+/**
+ * Event union emitted by the backend to update UI stores.
+ *
+ * Events are append-only protocol contracts: prefer adding variants or optional
+ * fields over changing an existing payload in incompatible ways.
+ */
 export type OpenCodexEvent =
   | { type: "connection.status"; status: "starting" | "ready" | "stopped" | "error"; message?: string }
   | {

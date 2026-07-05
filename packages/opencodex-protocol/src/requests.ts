@@ -17,6 +17,12 @@ import type {
   OpenCodexThreadScope
 } from "./messages";
 
+/**
+ * Request union sent by the renderer to the OpenCodex backend.
+ *
+ * Each variant is intentionally structured-clone-compatible so it can be
+ * transported over Electron IPC today and other transports later.
+ */
 export type OpenCodexRequest =
   | { type: "app.bootstrap" }
   | { type: "app.openDevTools" }

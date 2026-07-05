@@ -1,22 +1,62 @@
 /**
  * Declares the shared protocol types exchanged between the UI, backend, and transport layers.
  */
+/**
+ * Reasoning effort values accepted by Codex and displayed in composer controls.
+ */
 export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
+
+/**
+ * Assistant message phase emitted by Codex for reasoning-like and final content.
+ */
 export type OpenCodexMessagePhase = "commentary" | "final_answer";
+
+/**
+ * Color scheme preference stored in app settings.
+ */
 export type OpenCodexColorScheme = "light" | "dark" | "system";
+
+/**
+ * Composer behavior for a plain Enter key press.
+ */
 export type OpenCodexEnterKeyBehavior = "newline" | "send" | "smart";
+
+/**
+ * Output language used for generated commit messages.
+ */
 export type OpenCodexCommitMessageLanguage = "en" | "fr";
+
+/**
+ * Vocabulary level used by Git UI labels.
+ */
 export type OpenCodexVersioningVocabulary = "simple" | "technical";
+
+/**
+ * Log entry severity persisted by OpenCodexUI.
+ */
 export type OpenCodexLogType = "error" | "warning" | "info";
+
+/**
+ * Retention unit available when clearing old logs.
+ */
 export type OpenCodexLogRetentionUnit = "hours" | "days" | "weeks" | "months";
 
+/**
+ * Codex exec-policy amendment accepted by permission approvals.
+ */
 export type OpenCodexExecPolicyAmendment = string[];
 
+/**
+ * Codex network-policy amendment accepted by permission approvals.
+ */
 export type OpenCodexNetworkPolicyAmendment = {
   host: string;
   action: "allow" | "deny";
 };
 
+/**
+ * UI approval decisions and structured policy amendments sent back to Codex.
+ */
 export type OpenCodexApprovalDecision =
   | "accept"
   | "acceptForSession"
@@ -33,20 +73,53 @@ export type OpenCodexApprovalDecision =
       };
     };
 
+/**
+ * Thread list scopes supported by the backend.
+ */
 export type OpenCodexThreadScope = "currentProject" | "all";
+
+/**
+ * UI language preference.
+ */
 export type OpenCodexLanguage = "system" | "fr" | "en";
+
+/**
+ * Source kind supported by the current app version.
+ */
 export type OpenCodexSourceKind = "local";
+
+/**
+ * Source command resolution mode.
+ */
 export type OpenCodexSourceCommandMode = "auto" | "custom";
+
+/**
+ * Source accent color used in source/project UI.
+ */
 export type OpenCodexSourceColor = "blue" | "indigo" | "purple" | "pink" | "red" | "orange" | "amber" | "teal";
+
+/**
+ * Availability state for host tools such as Git and Codex CLI.
+ */
 export type OpenCodexToolAvailabilityStatus = "ready" | "outdated" | "unavailable";
+
+/**
+ * Codex service-tier identifier selected for a turn.
+ */
 export type OpenCodexServiceTier = string;
 
+/**
+ * One service tier supported by a Codex model.
+ */
 export type OpenCodexModelServiceTier = {
   id: OpenCodexServiceTier;
   name: string;
   description: string;
 };
 
+/**
+ * Model metadata returned by Codex or local fallback detection.
+ */
 export type OpenCodexModel = {
   id: string;
   model: string;
@@ -54,6 +127,9 @@ export type OpenCodexModel = {
   serviceTiers: OpenCodexModelServiceTier[];
 };
 
+/**
+ * Detected version and availability for a command-line tool.
+ */
 export type OpenCodexToolVersionStatus = {
   status: OpenCodexToolAvailabilityStatus;
   version: string | null;
@@ -61,11 +137,17 @@ export type OpenCodexToolVersionStatus = {
   checkedAt: string;
 };
 
+/**
+ * Candidate Codex command discovered for source configuration.
+ */
 export type OpenCodexCommandCandidate = {
   command: string;
   codex: OpenCodexToolVersionStatus;
 };
 
+/**
+ * Local-source specific settings.
+ */
 export type OpenCodexSourceLocalSettings = {
   commandMode: OpenCodexSourceCommandMode;
   command: string | null;
@@ -74,6 +156,9 @@ export type OpenCodexSourceLocalSettings = {
   openFileCommand: string | null;
 };
 
+/**
+ * Common metadata shared by every source kind.
+ */
 export type OpenCodexSourceBase = {
   id: string;
   kind: OpenCodexSourceKind;
@@ -84,6 +169,9 @@ export type OpenCodexSourceBase = {
   updatedAt: string;
 };
 
+/**
+ * Local Codex source running on the Electron host or a configured command.
+ */
 export type OpenCodexLocalSource = OpenCodexSourceBase & {
   kind: "local";
   settings: OpenCodexSourceLocalSettings;
@@ -91,8 +179,14 @@ export type OpenCodexLocalSource = OpenCodexSourceBase & {
   commandCandidates: OpenCodexCommandCandidate[];
 };
 
+/**
+ * Discriminated source union exposed to the UI.
+ */
 export type OpenCodexSource = OpenCodexLocalSource;
 
+/**
+ * Cached project known by OpenCodexUI.
+ */
 export type OpenCodexProject = {
   id: string;
   sourceId: string | null;
@@ -107,6 +201,9 @@ export type OpenCodexProject = {
   editedAt: string;
 };
 
+/**
+ * User-editable project preferences stored in SQLite.
+ */
 export type OpenCodexProjectPreferences = {
   git?: {
     referenceTagName?: string | null;
@@ -118,6 +215,9 @@ export type OpenCodexProjectPreferences = {
   };
 };
 
+/**
+ * External context folder configured for one project.
+ */
 export type OpenCodexProjectContextFolder = {
   id: string;
   path: string;
@@ -125,6 +225,9 @@ export type OpenCodexProjectContextFolder = {
   enabled: boolean;
 };
 
+/**
+ * File or directory search result for composer references.
+ */
 export type OpenCodexFileSearchResult = {
   root: string;
   path: string;
@@ -133,6 +236,9 @@ export type OpenCodexFileSearchResult = {
   matchType: "file" | "directory";
 };
 
+/**
+ * Skill search result for composer references.
+ */
 export type OpenCodexSkillSearchResult = {
   name: string;
   displayName: string;
@@ -142,6 +248,9 @@ export type OpenCodexSkillSearchResult = {
   scope: string;
 };
 
+/**
+ * Structured composer reference embedded in a turn request.
+ */
 export type OpenCodexComposerReference =
   | {
       type: "skill";
@@ -149,6 +258,9 @@ export type OpenCodexComposerReference =
       path: string;
     };
 
+/**
+ * Persisted application log entry.
+ */
 export type OpenCodexLogEntry = {
   id: string;
   type: OpenCodexLogType;
@@ -157,11 +269,17 @@ export type OpenCodexLogEntry = {
   createdAt: string;
 };
 
+/**
+ * Paginated log result.
+ */
 export type OpenCodexLogPage = {
   logs: OpenCodexLogEntry[];
   hasMore: boolean;
 };
 
+/**
+ * Normalized Git file status.
+ */
 export type OpenCodexGitFileState =
   | "added"
   | "modified"
@@ -172,6 +290,9 @@ export type OpenCodexGitFileState =
   | "conflicted"
   | "unknown";
 
+/**
+ * Git status entry for one changed file.
+ */
 export type OpenCodexGitFile = {
   path: string;
   originalPath: string | null;
@@ -180,12 +301,18 @@ export type OpenCodexGitFile = {
   unstagedStatus: OpenCodexGitFileState | null;
 };
 
+/**
+ * Git remote endpoints grouped by remote name.
+ */
 export type OpenCodexGitRemote = {
   name: string;
   fetchUrl: string | null;
   pushUrl: string | null;
 };
 
+/**
+ * Current Git repository status for a project.
+ */
 export type OpenCodexGitStatus = {
   isRepository: boolean;
   aheadCount: number;
@@ -198,8 +325,14 @@ export type OpenCodexGitStatus = {
   stagedFiles: OpenCodexGitFile[];
 };
 
+/**
+ * Git branch source kind.
+ */
 export type OpenCodexGitBranchKind = "local" | "remote";
 
+/**
+ * Git branch displayed by branch switcher and merge UI.
+ */
 export type OpenCodexGitBranch = {
   name: string;
   fullName: string;
@@ -208,6 +341,9 @@ export type OpenCodexGitBranch = {
   isCurrent: boolean;
 };
 
+/**
+ * Lightweight Git tag metadata.
+ */
 export type OpenCodexGitTag = {
   name: string;
   fullName: string;
@@ -215,11 +351,17 @@ export type OpenCodexGitTag = {
   createdAt: string | null;
 };
 
+/**
+ * Tag listing result with optional fetch warning.
+ */
 export type OpenCodexGitTagFetchResult = {
   tags: OpenCodexGitTag[];
   warning: string | null;
 };
 
+/**
+ * Compact Git commit metadata shown in the log modal.
+ */
 export type OpenCodexGitLogCommit = {
   hash: string;
   shortHash: string;
@@ -230,28 +372,43 @@ export type OpenCodexGitLogCommit = {
   refs: string[];
 };
 
+/**
+ * Paginated Git log result.
+ */
 export type OpenCodexGitLogPage = {
   commits: OpenCodexGitLogCommit[];
   hasMore: boolean;
 };
 
+/**
+ * File-level change included in one Git commit.
+ */
 export type OpenCodexGitCommitFileChange = {
   status: OpenCodexGitFileState;
   path: string;
   originalPath: string | null;
 };
 
+/**
+ * Full Git commit details loaded on demand.
+ */
 export type OpenCodexGitCommitDetails = {
   hash: string;
   message: string;
   files: OpenCodexGitCommitFileChange[];
 };
 
+/**
+ * Successful Git commit response.
+ */
 export type OpenCodexGitCommitResult = {
   ok: true;
   output: string;
 };
 
+/**
+ * One quota window reported by Codex account usage.
+ */
 export type OpenCodexUsageWindow = {
   label: "5h" | "weekly" | "usage";
   usedPercent: number;
@@ -260,12 +417,18 @@ export type OpenCodexUsageWindow = {
   resetsAt: string | null;
 };
 
+/**
+ * Optional credit metadata returned with account usage.
+ */
 export type OpenCodexUsageCredits = {
   hasCredits: boolean;
   unlimited: boolean;
   balance: string | null;
 };
 
+/**
+ * Usage limits for one Codex account limit id.
+ */
 export type OpenCodexUsageLimits = {
   limitId: string | null;
   limitName: string | null;
@@ -275,11 +438,17 @@ export type OpenCodexUsageLimits = {
   credits: OpenCodexUsageCredits | null;
 };
 
+/**
+ * Usage snapshot emitted to the UI.
+ */
 export type OpenCodexUsageSnapshot = {
   limits: OpenCodexUsageLimits[];
   updatedAt: string;
 };
 
+/**
+ * Token counts grouped by category.
+ */
 export type OpenCodexThreadTokenUsageBreakdown = {
   totalTokens: number;
   inputTokens: number;
@@ -288,6 +457,9 @@ export type OpenCodexThreadTokenUsageBreakdown = {
   reasoningOutputTokens: number;
 };
 
+/**
+ * Context-window usage for one thread/turn.
+ */
 export type OpenCodexThreadTokenUsage = {
   threadId: string;
   turnId: string;
@@ -298,16 +470,25 @@ export type OpenCodexThreadTokenUsage = {
   usedPercent: number | null;
 };
 
+/**
+ * Editable commit-generation prompt state.
+ */
 export type OpenCodexCommitPrompt = {
   prompt: string;
   defaultPrompt: string;
   isDefault: boolean;
 };
 
+/**
+ * Generated commit message returned by the backend.
+ */
 export type OpenCodexCommitMessageGenerationResult = {
   message: string;
 };
 
+/**
+ * User-configured project command definition.
+ */
 export type OpenCodexProjectCommand = {
   id: string;
   projectId: string;
@@ -320,10 +501,19 @@ export type OpenCodexProjectCommand = {
   updatedAt: string;
 };
 
+/**
+ * Lifecycle status for one project command run.
+ */
 export type OpenCodexProjectCommandRunStatus = "running" | "exited" | "failed" | "killed";
 
+/**
+ * Process output stream name for project command logs.
+ */
 export type OpenCodexProjectCommandOutputStream = "stdout" | "stderr";
 
+/**
+ * Live or completed execution of one project command.
+ */
 export type OpenCodexProjectCommandRun = {
   id: string;
   projectId: string;
@@ -337,8 +527,14 @@ export type OpenCodexProjectCommandRun = {
   logPath: string | null;
 };
 
+/**
+ * Workflow status for local project tasks.
+ */
 export type OpenCodexProjectTaskStatus = "todo" | "inProgress" | "toValidate" | "done";
 
+/**
+ * Local task stored for one project.
+ */
 export type OpenCodexProjectTask = {
   id: string;
   projectId: string;
@@ -349,16 +545,28 @@ export type OpenCodexProjectTask = {
   updatedAt: string;
 };
 
+/**
+ * Plugin installation policy reported by Codex.
+ */
 export type OpenCodexPluginInstallPolicy =
   | "available"
   | "notAvailable"
   | "installedByDefault"
   | "unknown";
 
+/**
+ * Plugin availability reported by Codex.
+ */
 export type OpenCodexPluginAvailability = "available" | "disabledByAdmin" | "unknown";
 
+/**
+ * Plugin source kind reported by Codex.
+ */
 export type OpenCodexPluginSourceType = "local" | "git" | "remote" | "unknown";
 
+/**
+ * Plugin marketplace containing installable plugin summaries.
+ */
 export type OpenCodexPluginMarketplace = {
   name: string;
   displayName: string;
@@ -366,6 +574,9 @@ export type OpenCodexPluginMarketplace = {
   plugins: OpenCodexPluginSummary[];
 };
 
+/**
+ * Plugin summary displayed in the plugin store.
+ */
 export type OpenCodexPluginSummary = {
   id: string;
   name: string;
@@ -390,6 +601,9 @@ export type OpenCodexPluginSummary = {
   isFeatured: boolean;
 };
 
+/**
+ * Skill provided by a plugin.
+ */
 export type OpenCodexPluginSkillSummary = {
   name: string;
   displayName: string;
@@ -398,6 +612,9 @@ export type OpenCodexPluginSkillSummary = {
   enabled: boolean;
 };
 
+/**
+ * App connector provided by a plugin.
+ */
 export type OpenCodexPluginAppSummary = {
   id: string;
   name: string;
@@ -406,11 +623,17 @@ export type OpenCodexPluginAppSummary = {
   needsAuth: boolean;
 };
 
+/**
+ * Hook provided by a plugin.
+ */
 export type OpenCodexPluginHookSummary = {
   key: string;
   eventName: string;
 };
 
+/**
+ * Detailed plugin metadata loaded on demand.
+ */
 export type OpenCodexPluginDetail = {
   marketplaceName: string;
   marketplacePath: string | null;
@@ -422,6 +645,9 @@ export type OpenCodexPluginDetail = {
   mcpServers: string[];
 };
 
+/**
+ * Full plugin list grouped by marketplace.
+ */
 export type OpenCodexPluginListResult = {
   sourceId: string | null;
   marketplaces: OpenCodexPluginMarketplace[];
@@ -430,12 +656,18 @@ export type OpenCodexPluginListResult = {
   loadErrors: string[];
 };
 
+/**
+ * Result returned after installing a plugin.
+ */
 export type OpenCodexPluginInstallResult = {
   ok: true;
   authPolicy: string | null;
   appsNeedingAuth: OpenCodexPluginAppSummary[];
 };
 
+/**
+ * Persisted application settings shared by backend and UI.
+ */
 export type OpenCodexSettings = {
   codexCommand: string;
   defaultSourceId: string | null;
@@ -458,6 +690,9 @@ export type OpenCodexSettings = {
   developerMode: boolean;
 };
 
+/**
+ * Thread metadata shown in project chat lists.
+ */
 export type OpenCodexThread = {
   id: string;
   codexTitle: string;
@@ -475,10 +710,19 @@ export type OpenCodexThread = {
   status?: string;
 };
 
+/**
+ * Message role used by flattened message and turn item DTOs.
+ */
 export type OpenCodexMessageRole = "user" | "assistant" | "system" | "activity";
 
+/**
+ * Message lifecycle status used by streaming UI.
+ */
 export type OpenCodexMessageStatus = "streaming" | "completed" | "error";
 
+/**
+ * Image attachment sent with a user message.
+ */
 export type OpenCodexImageAttachment = {
   id: string;
   kind: "image";
@@ -488,6 +732,9 @@ export type OpenCodexImageAttachment = {
   previewUrl?: string | null;
 };
 
+/**
+ * Legacy flattened message DTO kept for compatibility with UI flows.
+ */
 export type OpenCodexMessage = {
   id: string;
   threadId: string;
@@ -505,6 +752,9 @@ export type OpenCodexMessage = {
   attachments?: OpenCodexImageAttachment[];
 };
 
+/**
+ * Structured item inside an OpenCodex turn.
+ */
 export type OpenCodexTurnItem = {
   id: string;
   role: OpenCodexMessageRole;
@@ -518,6 +768,9 @@ export type OpenCodexTurnItem = {
   attachments?: OpenCodexImageAttachment[];
 };
 
+/**
+ * Structured turn shown by the chat UI.
+ */
 export type OpenCodexTurn = {
   id: string;
   threadId: string;
@@ -528,6 +781,9 @@ export type OpenCodexTurn = {
   items: OpenCodexTurnItem[];
 };
 
+/**
+ * Runtime activity state for one Codex thread.
+ */
 export type OpenCodexThreadRuntimeStatus = {
   threadId: string;
   status: "active" | "idle" | "notLoaded" | "systemError" | "unknown";
@@ -535,6 +791,9 @@ export type OpenCodexThreadRuntimeStatus = {
   activeFlags: string[];
 };
 
+/**
+ * Live or historical activity item displayed in reasoning blocks.
+ */
 export type OpenCodexActivity = {
   id: string;
   threadId: string;
@@ -546,6 +805,9 @@ export type OpenCodexActivity = {
   status: "running" | "completed" | "error";
 };
 
+/**
+ * Approval request displayed to the user.
+ */
 export type OpenCodexApproval = {
   id: string;
   threadId?: string;
