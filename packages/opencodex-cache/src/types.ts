@@ -5,6 +5,9 @@ export type CachedThreadScope = "currentProject" | "all";
 export type CachedSourceColor = "blue" | "indigo" | "purple" | "pink" | "red" | "orange" | "amber" | "teal";
 export type CachedLogType = "error" | "warning" | "info";
 
+/**
+ * Cached summary row used to list and identify Codex threads.
+ */
 export type CachedThreadSummary = {
   id: string;
   sourceId: string | null;
@@ -23,6 +26,9 @@ export type CachedThreadSummary = {
   status?: string;
 };
 
+/**
+ * Cached project row derived from a source-reported working directory.
+ */
 export type CachedProject = {
   id: string;
   sourceId: string | null;
@@ -37,6 +43,9 @@ export type CachedProject = {
   editedAt: string;
 };
 
+/**
+ * User-editable and generated preferences attached to one cached project.
+ */
 export type CachedProjectPreferences = {
   git?: {
     referenceTagName?: string | null;
@@ -48,6 +57,9 @@ export type CachedProjectPreferences = {
   };
 };
 
+/**
+ * External folder that should be exposed as read-only project context.
+ */
 export type CachedProjectContextFolder = {
   id: string;
   path: string;
@@ -55,6 +67,9 @@ export type CachedProjectContextFolder = {
   enabled: boolean;
 };
 
+/**
+ * Persisted application log entry.
+ */
 export type CachedLogEntry = {
   id: string;
   type: CachedLogType;
@@ -63,22 +78,34 @@ export type CachedLogEntry = {
   createdAt: string;
 };
 
+/**
+ * Pagination query for reading application logs.
+ */
 export type CachedLogListQuery = {
   beforeCreatedAt?: string | null;
   limit: number;
 };
 
+/**
+ * Page of application logs.
+ */
 export type CachedLogPage = {
   logs: CachedLogEntry[];
   hasMore: boolean;
 };
 
+/**
+ * Input payload used to create an application log entry.
+ */
 export type CachedLogCreateInput = {
   type: CachedLogType;
   message: string;
   details?: unknown;
 };
 
+/**
+ * Project-local command configured by the user.
+ */
 export type CachedProjectCommand = {
   id: string;
   projectId: string;
@@ -91,6 +118,9 @@ export type CachedProjectCommand = {
   updatedAt: string;
 };
 
+/**
+ * Input payload used to create a project command.
+ */
 export type CachedProjectCommandCreateInput = {
   projectId: string;
   name: string;
@@ -99,6 +129,9 @@ export type CachedProjectCommandCreateInput = {
   persistLogs: boolean;
 };
 
+/**
+ * Partial update payload for a project command.
+ */
 export type CachedProjectCommandUpdateInput = {
   name?: string;
   command?: string;
@@ -106,6 +139,9 @@ export type CachedProjectCommandUpdateInput = {
   persistLogs?: boolean;
 };
 
+/**
+ * Persisted order payload for one project's command list.
+ */
 export type CachedProjectCommandReorderInput = {
   projectId: string;
   commandIds: string[];
@@ -113,6 +149,9 @@ export type CachedProjectCommandReorderInput = {
 
 export type CachedProjectTaskStatus = "todo" | "inProgress" | "toValidate" | "done";
 
+/**
+ * Project-local task stored only in the OpenCodexUI cache.
+ */
 export type CachedProjectTask = {
   id: string;
   projectId: string;
@@ -123,6 +162,9 @@ export type CachedProjectTask = {
   updatedAt: string;
 };
 
+/**
+ * Input payload used to create a project-local task.
+ */
 export type CachedProjectTaskCreateInput = {
   projectId: string;
   title: string;
@@ -130,6 +172,9 @@ export type CachedProjectTaskCreateInput = {
   status: CachedProjectTaskStatus;
 };
 
+/**
+ * Partial update payload for a project-local task.
+ */
 export type CachedProjectTaskUpdateInput = {
   title?: string;
   description?: string;
@@ -138,6 +183,9 @@ export type CachedProjectTaskUpdateInput = {
 
 export type CachedSourceCommandMode = "auto" | "custom";
 
+/**
+ * Settings for a local Codex source.
+ */
 export type CachedSourceLocalSettings = {
   commandMode: CachedSourceCommandMode;
   command: string | null;
@@ -146,6 +194,9 @@ export type CachedSourceLocalSettings = {
   openFileCommand: string | null;
 };
 
+/**
+ * Common metadata shared by all source kinds.
+ */
 export type CachedSourceBase = {
   id: string;
   name: string;
@@ -156,12 +207,18 @@ export type CachedSourceBase = {
   updatedAt: string;
 };
 
+/**
+ * Latest Codex CLI detection result stored for one source.
+ */
 export type CachedSourceCodexDetection = {
   version: string | null;
   checkedAt: string;
   error: string | null;
 };
 
+/**
+ * Local source definition backed by a command on the current machine.
+ */
 export type CachedLocalSource = CachedSourceBase & {
   kind: "local";
   settings: CachedSourceLocalSettings;
@@ -169,6 +226,9 @@ export type CachedLocalSource = CachedSourceBase & {
 
 export type CachedSource = CachedLocalSource;
 
+/**
+ * Synchronization metadata for incremental thread cache loading.
+ */
 export type CachedThreadSyncState = {
   threadId: string;
   newestTurnId: string | null;
@@ -179,6 +239,9 @@ export type CachedThreadSyncState = {
   lastSyncedAt: string | null;
 };
 
+/**
+ * Token usage numbers for a single usage bucket.
+ */
 export type CachedThreadTokenUsageBreakdown = {
   totalTokens: number;
   inputTokens: number;
@@ -187,6 +250,9 @@ export type CachedThreadTokenUsageBreakdown = {
   reasoningOutputTokens: number;
 };
 
+/**
+ * Latest known token usage snapshot for a cached thread.
+ */
 export type CachedThreadTokenUsage = {
   threadId: string;
   turnId: string;
@@ -197,6 +263,9 @@ export type CachedThreadTokenUsage = {
   usedPercent: number | null;
 };
 
+/**
+ * Full cached thread payload returned to the backend.
+ */
 export type CachedThreadSnapshot = {
   thread: CachedThreadSummary;
   turns: unknown[];
@@ -204,27 +273,42 @@ export type CachedThreadSnapshot = {
   tokenUsage: CachedThreadTokenUsage | null;
 };
 
+/**
+ * Options controlling cached thread reads.
+ */
 export type CachedThreadReadOptions = {
   latestTurnLimit?: number | null;
 };
 
+/**
+ * Query for reading cached turns older than a known cursor turn.
+ */
 export type CachedOlderTurnsQuery = {
   threadId: string;
   beforeTurnId: string;
   limit: number;
 };
 
+/**
+ * Page of older cached turns.
+ */
 export type CachedOlderTurnsResult = {
   turns: unknown[];
   hasMoreOlderTurns: boolean;
 };
 
+/**
+ * Incremental thread update persisted after live or background sync.
+ */
 export type CachedThreadDelta = {
   threadId: string;
   turns: unknown[];
   syncState: CachedThreadSyncState;
 };
 
+/**
+ * Query used to list cached thread summaries.
+ */
 export type ThreadListCacheQuery = {
   scope: CachedThreadScope;
   currentProjectPath: string | null;

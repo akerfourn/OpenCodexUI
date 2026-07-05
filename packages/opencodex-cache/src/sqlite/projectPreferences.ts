@@ -63,6 +63,12 @@ export function normalizeProjectPreferences(value: unknown): CachedProjectPrefer
   return { git, context };
 }
 
+/**
+ * Normalizes the Git-specific project preference section.
+ *
+ * @param value Unknown Git preference payload.
+ * @returns Normalized Git preferences, or `undefined` when empty.
+ */
 function normalizeGitPreferences(value: unknown): CachedProjectPreferences["git"] | undefined {
   if (!isRecord(value)) {
     return undefined;
@@ -77,6 +83,12 @@ function normalizeGitPreferences(value: unknown): CachedProjectPreferences["git"
   return { referenceTagName };
 }
 
+/**
+ * Normalizes external context folder preferences.
+ *
+ * @param value Unknown context preference payload.
+ * @returns Normalized context preferences, or `undefined` when empty.
+ */
 function normalizeContextPreferences(value: unknown): CachedProjectPreferences["context"] | undefined {
   if (!isRecord(value)) {
     return undefined;
@@ -97,6 +109,12 @@ function normalizeContextPreferences(value: unknown): CachedProjectPreferences["
   };
 }
 
+/**
+ * Normalizes a list of external context folders.
+ *
+ * @param value Unknown folder list payload.
+ * @returns Valid context folders.
+ */
 function normalizeContextFolders(value: unknown): NormalizedContextFolder[] {
   if (!Array.isArray(value)) {
     return [];
@@ -115,6 +133,12 @@ function normalizeContextFolders(value: unknown): NormalizedContextFolder[] {
   return folders;
 }
 
+/**
+ * Normalizes one external context folder entry.
+ *
+ * @param value Unknown folder payload.
+ * @returns Valid folder entry, or `null` when required fields are missing.
+ */
 function normalizeContextFolder(
   value: unknown
 ): NormalizedContextFolder | null {
@@ -137,6 +161,12 @@ function normalizeContextFolder(
   };
 }
 
+/**
+ * Reads required trimmed text from an unknown value.
+ *
+ * @param value Unknown value.
+ * @returns Trimmed non-empty text, or `null`.
+ */
 function normalizeRequiredText(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -146,6 +176,12 @@ function normalizeRequiredText(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+/**
+ * Reads optional nullable trimmed text from an unknown value.
+ *
+ * @param value Unknown value.
+ * @returns Trimmed text, `null` for explicit blank/null, or `undefined` when absent.
+ */
 function normalizeNullableText(value: unknown): string | null | undefined {
   if (value === null) {
     return null;
@@ -159,6 +195,12 @@ function normalizeNullableText(value: unknown): string | null | undefined {
   return normalized.length > 0 ? normalized : null;
 }
 
+/**
+ * Checks whether a value is a non-array object.
+ *
+ * @param value Unknown value.
+ * @returns True when the value can be read as a record.
+ */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

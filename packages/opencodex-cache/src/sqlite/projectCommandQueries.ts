@@ -246,6 +246,13 @@ export async function readProjectCommand(
   return mapProjectCommandRow(row);
 }
 
+/**
+ * Reads the next append sort order for a project's command list.
+ *
+ * @param database SQLite database connection.
+ * @param projectId Project identifier.
+ * @returns Sort order to assign to a newly created command.
+ */
 function readNextSortOrder(database: BetterSqliteDatabase, projectId: string): number {
   const row = database
     .prepare(`
@@ -258,6 +265,12 @@ function readNextSortOrder(database: BetterSqliteDatabase, projectId: string): n
   return row?.next_sort_order ?? 0;
 }
 
+/**
+ * Normalizes and validates user-editable command fields.
+ *
+ * @param input Command input or merged command update payload.
+ * @returns Trimmed command input.
+ */
 function normalizeCommandInput(
   input: CachedProjectCommandCreateInput
 ): CachedProjectCommandCreateInput {

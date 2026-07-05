@@ -192,6 +192,13 @@ export async function deleteProject(
     .run({ projectId });
 }
 
+/**
+ * Reads one cached project by identifier.
+ *
+ * @param database SQLite database connection.
+ * @param projectId Project identifier.
+ * @returns Cached project, or `null` when missing.
+ */
 function readProjectById(database: BetterSqliteDatabase, projectId: string): CachedProject | null {
   const row = database
     .prepare(

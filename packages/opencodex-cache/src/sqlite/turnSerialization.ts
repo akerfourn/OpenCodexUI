@@ -67,6 +67,12 @@ function parseTurn(value: string): unknown | null {
   }
 }
 
+/**
+ * Normalizes a raw turn payload before it is persisted or returned.
+ *
+ * @param turn Raw turn payload.
+ * @returns Normalized turn payload, or `null`.
+ */
 export function normalizeTurn(turn: unknown | null): unknown | null {
   if (turn === null) {
     return null;
@@ -85,6 +91,12 @@ export function normalizeTurn(turn: unknown | null): unknown | null {
   };
 }
 
+/**
+ * Removes semantically duplicated turn items while preserving order.
+ *
+ * @param items Raw turn item payloads.
+ * @returns Deduplicated turn item payloads.
+ */
 function dedupeTurnItems(items: unknown[]): unknown[] {
   const seenSemanticKeys = new Set<string>();
   const dedupedItems: unknown[] = [];
@@ -107,6 +119,12 @@ function dedupeTurnItems(items: unknown[]): unknown[] {
   return dedupedItems;
 }
 
+/**
+ * Builds a semantic identity key for duplicate-prone turn items.
+ *
+ * @param item Raw turn item object.
+ * @returns Semantic key, or an empty string when the item should not be deduped.
+ */
 function readTurnItemSemanticKey(item: Record<string, unknown>): string {
   const type = readString(item.type);
 
@@ -125,6 +143,12 @@ function readTurnItemSemanticKey(item: Record<string, unknown>): string {
   return "";
 }
 
+/**
+ * Extracts normalized text content from a user-message item.
+ *
+ * @param item Raw user-message item.
+ * @returns Normalized user text.
+ */
 function readUserMessageText(item: Record<string, unknown>): string {
   const content = Array.isArray(item.content) ? item.content : [];
   return normalizeText(
@@ -136,6 +160,12 @@ function readUserMessageText(item: Record<string, unknown>): string {
   );
 }
 
+/**
+ * Normalizes text for semantic comparison.
+ *
+ * @param value Text value.
+ * @returns Trimmed text with collapsed whitespace.
+ */
 function normalizeText(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }

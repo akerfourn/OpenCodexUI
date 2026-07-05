@@ -164,6 +164,13 @@ export async function deleteProjectTask(
   database.prepare("DELETE FROM project_tasks WHERE id = @taskId").run({ taskId });
 }
 
+/**
+ * Reads one local project task by identifier.
+ *
+ * @param database SQLite database connection.
+ * @param taskId Task identifier.
+ * @returns Project task.
+ */
 async function readProjectTask(
   database: BetterSqliteDatabase,
   taskId: string
@@ -190,6 +197,12 @@ async function readProjectTask(
   return mapProjectTaskRow(row);
 }
 
+/**
+ * Normalizes and validates task fields before persistence.
+ *
+ * @param input Task input or merged task update payload.
+ * @returns Trimmed task input.
+ */
 function normalizeTaskInput(input: CachedProjectTaskCreateInput): CachedProjectTaskCreateInput {
   const projectId = input.projectId.trim();
   const title = input.title.trim();

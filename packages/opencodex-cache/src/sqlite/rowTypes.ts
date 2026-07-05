@@ -1,6 +1,9 @@
 /**
  * Internal SQLite row shapes used by cache queries and mappers.
  */
+/**
+ * Joined SQLite row used to map cached thread summaries and sync state.
+ */
 export type ThreadRow = {
   id: string;
   source_id: string | null;
@@ -26,11 +29,17 @@ export type ThreadRow = {
   is_archived: number;
 };
 
+/**
+ * SQLite row containing one serialized raw Codex turn.
+ */
 export type TurnRow = {
   id: string;
   raw_json: string;
 };
 
+/**
+ * Joined SQLite row used to map cached projects.
+ */
 export type ProjectRow = {
   id: string;
   source_id: string | null;
@@ -45,6 +54,9 @@ export type ProjectRow = {
   edited_at: string;
 };
 
+/**
+ * SQLite row used to map application logs.
+ */
 export type LogRow = {
   id: string;
   type: "error" | "warning" | "info";
@@ -53,6 +65,9 @@ export type LogRow = {
   created_at: string;
 };
 
+/**
+ * SQLite row used to map project-local commands.
+ */
 export type ProjectCommandRow = {
   id: string;
   project_id: string;
@@ -65,6 +80,9 @@ export type ProjectCommandRow = {
   updated_at: string;
 };
 
+/**
+ * SQLite row used to map project-local tasks.
+ */
 export type ProjectTaskRow = {
   id: string;
   project_id: string;
@@ -75,6 +93,9 @@ export type ProjectTaskRow = {
   updated_at: string;
 };
 
+/**
+ * SQLite row used to map Codex sources.
+ */
 export type SourceRow = {
   id: string;
   kind: "local";

@@ -139,6 +139,12 @@ export async function clearLogsOlderThan(
     .run({ createdBefore });
 }
 
+/**
+ * Clamps a requested log page size to the supported range.
+ *
+ * @param limit Requested page size.
+ * @returns Safe log page size.
+ */
 function normalizeLimit(limit: number): number {
   if (!Number.isFinite(limit) || limit <= 0) {
     return DEFAULT_LOG_LIMIT;
@@ -147,6 +153,12 @@ function normalizeLimit(limit: number): number {
   return Math.min(Math.floor(limit), MAX_LOG_LIMIT);
 }
 
+/**
+ * Serializes optional structured log details for SQLite storage.
+ *
+ * @param details Details payload associated with the log.
+ * @returns JSON payload, string fallback payload, or `null` when absent.
+ */
 function stringifyLogDetails(details: unknown): string | null {
   if (details === undefined || details === null) {
     return null;
@@ -159,6 +171,11 @@ function stringifyLogDetails(details: unknown): string | null {
   }
 }
 
+/**
+ * Creates a monotonic ISO timestamp for log ordering.
+ *
+ * @returns ISO timestamp that is strictly increasing within the process.
+ */
 function createLogTimestamp(): string {
   const now = Date.now();
   lastLogTimestampMs = now <= lastLogTimestampMs ? lastLogTimestampMs + 1 : now;

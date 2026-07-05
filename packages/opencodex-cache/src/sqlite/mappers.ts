@@ -224,6 +224,12 @@ function resolveCachedThreadTitle(
   return preview;
 }
 
+/**
+ * Parses structured log details from their SQLite representation.
+ *
+ * @param value Serialized details payload.
+ * @returns Parsed details, raw text when parsing fails, or `null`.
+ */
 function parseLogDetails(value: string | null): unknown {
   if (value === null || value.length === 0) {
     return null;
