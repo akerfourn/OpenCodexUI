@@ -20,7 +20,7 @@ export function mapUsageLimitsResponse(response: unknown): OpenCodexUsageSnapsho
   const byLimitId = readObject(root.rateLimitsByLimitId);
   const fallbackLimits = readObject(root.rateLimits);
   const limits = Object.entries(byLimitId)
-    .map(([_limitId, value]) => mapUsageLimits(value))
+    .map(([limitId, value]) => mapUsageLimits(value, limitId))
     .filter((usage): usage is OpenCodexUsageLimits => usage !== null);
 
   if (limits.length === 0) {
@@ -48,7 +48,7 @@ export function mapUsageLimitsResponse(response: unknown): OpenCodexUsageSnapsho
 export function mapUsageLimitsNotification(params: unknown): OpenCodexUsageSnapshot | null {
   const usage = mapUsageLimits(readObject(params).rateLimits);
 
-  if (usage === null) {
+  if (usage === null || usage.limitId === null) {
     return null;
   }
 
@@ -64,7 +64,7 @@ export function mapUsageLimitsNotification(params: unknown): OpenCodexUsageSnaps
  * @param value Raw rate-limit payload.
  * @returns Usage limit, or `null` when the payload is empty.
  */
-function mapUsageLimits(value: unknown): OpenCodexUsageLimits | null {
+function mapUsageLimits(value: unknown, fallbackLimitId: string | null = null): OpenCodexUsageLimits | null {
   const limits = readObject(value);
 
   if (Object.keys(limits).length === 0) {
@@ -72,7 +72,7 @@ function mapUsageLimits(value: unknown): OpenCodexUsageLimits | null {
   }
 
   return {
-    limitId: readNullableString(limits.limitId),
+    limitId: readNullableString(limits.limitId) ?? fallbackLimitId,
     limitName: readNullableString(limits.limitName),
     planType: readNullableString(limits.planType),
     primary: mapUsageWindow(limits.primary),

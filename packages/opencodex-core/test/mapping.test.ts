@@ -13,9 +13,53 @@ import {
   mapTurnsToOpenCodexTurns
 } from "../src/mapping";
 import { mapThreadTokenUsageNotification } from "../src/backend/threadTokenUsageMapping";
+import {
+  mapUsageLimitsNotification,
+  mapUsageLimitsResponse
+} from "../src/backend/usageMapping";
 import { readReasoningDeltaText, readReasoningSegments } from "../src/mapping/activitySummary";
 
 describe("OpenCodex mapping", () => {
+  it("should preserve usage limit ids from rate-limit response keys", () => {
+    const usage = mapUsageLimitsResponse({
+      rateLimitsByLimitId: {
+        codex: {
+          primary: {
+            usedPercent: 25,
+            windowDurationMins: 300,
+            resetsAt: 1_000
+          }
+        },
+        spark: {
+          primary: {
+            usedPercent: 75,
+            windowDurationMins: 300,
+            resetsAt: 2_000
+          }
+        }
+      }
+    });
+
+    expect(usage?.limits).toEqual([
+      expect.objectContaining({ limitId: "codex" }),
+      expect.objectContaining({ limitId: "spark" })
+    ]);
+  });
+
+  it("should ignore ambiguous usage notifications without a limit id", () => {
+    const usage = mapUsageLimitsNotification({
+      rateLimits: {
+        primary: {
+          usedPercent: 80,
+          windowDurationMins: 300,
+          resetsAt: 1_000
+        }
+      }
+    });
+
+    expect(usage).toBeNull();
+  });
+
   it("should use the latest turn usage for context-window pressure", () => {
     const usage = mapThreadTokenUsageNotification({
       threadId: "thread-1",
