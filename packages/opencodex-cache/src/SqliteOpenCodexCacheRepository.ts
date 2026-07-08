@@ -24,7 +24,7 @@ import type {
   CachedProjectTaskUpdateInput,
   CachedSource,
   CachedSourceCodexDetection,
-  CachedSourceLocalSettings,
+  CachedSourceSettingsPatch,
   CachedThreadDelta,
   CachedThreadReadOptions,
   CachedThreadSnapshot,
@@ -190,7 +190,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
   async updateSource(
     sourceId: string,
     patch: Partial<Pick<CachedSource, "name">> & {
-      settings?: Partial<CachedSourceLocalSettings>;
+      settings?: CachedSourceSettingsPatch;
     }
   ): Promise<CachedSource> {
     return await updateSource(this.database, sourceId, patch);

@@ -12,7 +12,7 @@ import type {
   OpenCodexServiceTier,
   OpenCodexGitBranchKind,
   OpenCodexProjectPreferences,
-  OpenCodexSourceLocalSettings,
+  OpenCodexSourceSettingsPatch,
   OpenCodexSettings,
   OpenCodexThreadScope
 } from "./messages";
@@ -44,7 +44,7 @@ export type OpenCodexRequest =
       sourceId: string;
       patch: {
         name?: string;
-        settings?: Partial<OpenCodexSourceLocalSettings>;
+        settings?: OpenCodexSourceSettingsPatch;
       };
     }
   | { type: "sources.pickExecutable" }

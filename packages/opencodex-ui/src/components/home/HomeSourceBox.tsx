@@ -70,13 +70,14 @@ export function HomeSourceBox({
   const { t } = useTranslation();
   const [nameDraft, setNameDraft] = useState(source.name);
   const [colorDraft, setColorDraft] = useState(source.settings.color);
-  const [commandModeDraft, setCommandModeDraft] = useState(source.settings.commandMode);
-  const [commandDraft, setCommandDraft] = useState(source.settings.command ?? "");
+  const [commandModeDraft, setCommandModeDraft] = useState(readCommandMode(source));
+  const [commandDraft, setCommandDraft] = useState(readCommand(source) ?? "");
+  const [hasLocalAccessDraft, setHasLocalAccessDraft] = useState(sourceHasLocalAccess(source));
   const [openFolderCommandDraft, setOpenFolderCommandDraft] = useState(
-    source.settings.openFolderCommand ?? ""
+    readOpenFolderCommand(source) ?? ""
   );
   const [openFileCommandDraft, setOpenFileCommandDraft] = useState(
-    source.settings.openFileCommand ?? ""
+    readOpenFileCommand(source) ?? ""
   );
   const [presetMenuAnchor, setPresetMenuAnchor] = useState<HTMLElement | null>(null);
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
@@ -88,16 +89,14 @@ export function HomeSourceBox({
   useEffect(() => {
     setNameDraft(source.name);
     setColorDraft(source.settings.color);
-    setCommandModeDraft(source.settings.commandMode);
-    setCommandDraft(source.settings.command ?? "");
-    setOpenFolderCommandDraft(source.settings.openFolderCommand ?? "");
-    setOpenFileCommandDraft(source.settings.openFileCommand ?? "");
+    setCommandModeDraft(readCommandMode(source));
+    setCommandDraft(readCommand(source) ?? "");
+    setHasLocalAccessDraft(sourceHasLocalAccess(source));
+    setOpenFolderCommandDraft(readOpenFolderCommand(source) ?? "");
+    setOpenFileCommandDraft(readOpenFileCommand(source) ?? "");
   }, [
     source.settings.color,
-    source.settings.command,
-    source.settings.commandMode,
-    source.settings.openFileCommand,
-    source.settings.openFolderCommand,
+    source.settings,
     source.name
   ]);
 
@@ -118,7 +117,12 @@ export function HomeSourceBox({
   }
 
   function handleModeChange(event: ChangeEvent<HTMLInputElement>): void {
-    setCommandModeDraft(event.target.value as OpenCodexSourceCommandMode);
+    const nextCommandMode = event.target.value as OpenCodexSourceCommandMode;
+    setCommandModeDraft(nextCommandMode);
+
+    if (nextCommandMode === "auto") {
+      setHasLocalAccessDraft(true);
+    }
   }
 
   function handleCommandChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
@@ -135,6 +139,10 @@ export function HomeSourceBox({
     event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ): void {
     setOpenFileCommandDraft(event.target.value);
+  }
+
+  function handleHasLocalAccessToggle(): void {
+    setHasLocalAccessDraft((current) => !current);
   }
 
   function handlePresetMenuOpen(event: MouseEvent<HTMLButtonElement>): void {
@@ -172,15 +180,26 @@ export function HomeSourceBox({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
+    const settings = commandModeDraft === "custom"
+      ? {
+          color: colorDraft,
+          commandMode: commandModeDraft,
+          command: commandDraft,
+          hasLocalAccess: hasLocalAccessDraft,
+          openFolderCommand: openFolderCommandDraft,
+          openFileCommand: openFileCommandDraft
+        }
+      : {
+          color: colorDraft,
+          commandMode: commandModeDraft,
+          command: null,
+          openFolderCommand: openFolderCommandDraft,
+          openFileCommand: openFileCommandDraft
+        };
+
     sourcesStore.updateSource(source.id, {
       name: nameDraft,
-      settings: {
-        color: colorDraft,
-        commandMode: commandModeDraft,
-        command: commandDraft,
-        openFolderCommand: openFolderCommandDraft,
-        openFileCommand: openFileCommandDraft
-      }
+      settings
     });
     onCloseEdit();
   }
@@ -428,26 +447,40 @@ export function HomeSourceBox({
                 </Stack>
               ) : null}
               {commandModeDraft === "custom" ? (
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    value={commandDraft}
-                    label={t("sources.command")}
-                    onChange={handleCommandChange}
+                <Stack spacing={1}>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={commandDraft}
+                      label={t("sources.command")}
+                      onChange={handleCommandChange}
+                    />
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      startIcon={<FolderOpenOutlinedIcon />}
+                      onClick={handlePickExecutable}
+                      sx={{ flex: "0 0 auto" }}
+                    >
+                      {t("sources.pickExecutable")}
+                    </Button>
+                  </Stack>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={hasLocalAccessDraft}
+                        onChange={handleHasLocalAccessToggle}
+                      />
+                    }
+                    label={t("sources.customHasLocalAccess")}
                   />
-                  <Button
-                    type="button"
-                    variant="outlined"
-                    startIcon={<FolderOpenOutlinedIcon />}
-                    onClick={handlePickExecutable}
-                    sx={{ flex: "0 0 auto" }}
-                  >
-                    {t("sources.pickExecutable")}
-                  </Button>
+                  <Typography variant="caption" color="text.secondary">
+                    {t("sources.customHasLocalAccessHelp")}
+                  </Typography>
                 </Stack>
               ) : null}
-              <Stack spacing={1}>
+              <Stack spacing={1} sx={{ opacity: hasLocalAccessDraft ? 1 : 0.55 }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                   <Typography variant="subtitle2">
                     {t("sources.openers")}
@@ -480,6 +513,7 @@ export function HomeSourceBox({
                   value={openFolderCommandDraft}
                   label={t("sources.openFolderCommand")}
                   placeholder="code %D"
+                  disabled={!hasLocalAccessDraft}
                   onChange={handleOpenFolderCommandChange}
                 />
                 <TextField
@@ -488,6 +522,7 @@ export function HomeSourceBox({
                   value={openFileCommandDraft}
                   label={t("sources.openFileCommand")}
                   placeholder="code -g %F:%L:%C"
+                  disabled={!hasLocalAccessDraft}
                   onChange={handleOpenFileCommandChange}
                 />
               </Stack>
@@ -602,6 +637,72 @@ function SourceCommandCandidateRow({
       </Button>
     </Box>
   );
+}
+
+/**
+ * Reads the source command mode shown by the local/custom editor.
+ *
+ * @param source Source DTO.
+ * @returns Editable command mode.
+ */
+function readCommandMode(source: OpenCodexSource): OpenCodexSourceCommandMode {
+  return source.kind === "custom" ? "custom" : "auto";
+}
+
+/**
+ * Reads the custom command from a source.
+ *
+ * @param source Source DTO.
+ * @returns Custom command, or `null`.
+ */
+function readCommand(source: OpenCodexSource): string | null {
+  return source.kind === "custom" ? source.settings.command : null;
+}
+
+/**
+ * Checks whether a source exposes host-local paths to the UI.
+ *
+ * @param source Source DTO.
+ * @returns Whether local openers and pickers are usable.
+ */
+function sourceHasLocalAccess(source: OpenCodexSource): boolean {
+  if (source.kind === "local") {
+    return true;
+  }
+
+  return source.kind === "custom" && source.settings.hasLocalAccess;
+}
+
+/**
+ * Reads the source folder opener command when local access is available.
+ *
+ * @param source Source DTO.
+ * @returns Folder opener command, or `null`.
+ */
+function readOpenFolderCommand(source: OpenCodexSource): string | null {
+  if (!sourceHasLocalAccess(source)) {
+    return null;
+  }
+
+  return source.kind === "local" || source.kind === "custom"
+    ? source.settings.openFolderCommand
+    : null;
+}
+
+/**
+ * Reads the source file opener command when local access is available.
+ *
+ * @param source Source DTO.
+ * @returns File opener command, or `null`.
+ */
+function readOpenFileCommand(source: OpenCodexSource): string | null {
+  if (!sourceHasLocalAccess(source)) {
+    return null;
+  }
+
+  return source.kind === "local" || source.kind === "custom"
+    ? source.settings.openFileCommand
+    : null;
 }
 
 function getCodexStatusLabel(

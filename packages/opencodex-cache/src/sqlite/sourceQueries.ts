@@ -8,13 +8,15 @@ import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 import type {
   CachedSource,
   CachedSourceCodexDetection,
-  CachedSourceLocalSettings
+  CachedSourceSettings,
+  CachedSourceSettingsPatch
 } from "../types.js";
 import { DEFAULT_SOURCE_NAME } from "./constants.js";
 import { mapSourceRow } from "./mappers.js";
 import type { SourceRow } from "./rowTypes.js";
 import {
   createDefaultLocalSourceSettings,
+  createDefaultCustomSourceSettings,
   normalizeNullableText,
   normalizeSourceColor,
   serializeSourceSettings
@@ -200,7 +202,7 @@ export async function updateSource(
   database: BetterSqliteDatabase,
   sourceId: string,
   patch: Partial<Pick<CachedSource, "name">> & {
-    settings?: Partial<CachedSourceLocalSettings>;
+    settings?: CachedSourceSettingsPatch;
   }
 ): Promise<CachedSource> {
   const source = await getSource(database, sourceId);
@@ -209,32 +211,29 @@ export async function updateSource(
     throw new Error(`Source not found: ${sourceId}`);
   }
 
+  const nextKind = patch.settings !== undefined &&
+    "commandMode" in patch.settings &&
+    patch.settings.commandMode === "custom"
+    ? "custom"
+    : patch.settings !== undefined &&
+        "commandMode" in patch.settings &&
+        patch.settings.commandMode === "auto"
+      ? "local"
+      : source.kind;
   const nextSource: CachedSource = {
     ...source,
+    kind: nextKind,
     name: patch.name?.trim() || source.name,
-    settings: {
-      commandMode: patch.settings?.commandMode ?? source.settings.commandMode,
-      command: patch.settings?.command !== undefined
-        ? normalizeNullableText(patch.settings.command)
-        : source.settings.command,
-      color: patch.settings?.color !== undefined
-        ? normalizeSourceColor(patch.settings.color)
-        : source.settings.color,
-      openFolderCommand: patch.settings?.openFolderCommand !== undefined
-        ? normalizeNullableText(patch.settings.openFolderCommand)
-        : source.settings.openFolderCommand,
-      openFileCommand: patch.settings?.openFileCommand !== undefined
-        ? normalizeNullableText(patch.settings.openFileCommand)
-        : source.settings.openFileCommand
-    },
+    settings: mergeSourceSettings(source, nextKind, patch.settings),
     updatedAt: new Date().toISOString()
-  };
+  } as CachedSource;
 
   database
     .prepare(
       `
       UPDATE sources SET
         name = @name,
+        kind = @kind,
         settings = @settingsJson,
         updated_at = @updatedAt
       WHERE id = @id
@@ -243,6 +242,94 @@ export async function updateSource(
     .run({ ...nextSource, settingsJson: serializeSourceSettings(nextSource.settings) });
 
   return nextSource;
+}
+
+/**
+ * Merges an incoming settings patch into the source settings for a target kind.
+ *
+ * @param source Existing source.
+ * @param kind Target source kind after the patch.
+ * @param patch Settings patch.
+ * @returns Normalized settings for the target kind.
+ */
+function mergeSourceSettings(
+  source: CachedSource,
+  kind: CachedSource["kind"],
+  patch: CachedSourceSettingsPatch | undefined
+): CachedSourceSettings {
+  if (kind === "custom") {
+    const previousCustom = source.kind === "custom"
+      ? source.settings
+      : createDefaultCustomSourceSettings("command" in source.settings ? source.settings.command : null);
+
+    return {
+      commandMode: "custom",
+      command: patch !== undefined && "command" in patch
+        ? normalizeNullableText(patch.command ?? null)
+        : previousCustom.command,
+      hasLocalAccess: patch !== undefined && "hasLocalAccess" in patch
+        ? patch.hasLocalAccess === true
+        : previousCustom.hasLocalAccess,
+      color: patch?.color !== undefined ? normalizeSourceColor(patch.color) : previousCustom.color,
+      openFolderCommand: patch !== undefined && "openFolderCommand" in patch
+        ? normalizeNullableText(patch.openFolderCommand ?? null)
+        : previousCustom.openFolderCommand,
+      openFileCommand: patch !== undefined && "openFileCommand" in patch
+        ? normalizeNullableText(patch.openFileCommand ?? null)
+        : previousCustom.openFileCommand
+    };
+  }
+
+  if (kind === "wsl") {
+    const previousWsl = source.kind === "wsl"
+      ? source.settings
+      : { distro: null, codexCommand: "codex", color: source.settings.color };
+
+    return {
+      distro: patch !== undefined && "distro" in patch ? normalizeNullableText(patch.distro ?? null) : previousWsl.distro,
+      codexCommand: patch !== undefined && "codexCommand" in patch && typeof patch.codexCommand === "string"
+        ? patch.codexCommand
+        : previousWsl.codexCommand,
+      color: patch?.color !== undefined ? normalizeSourceColor(patch.color) : previousWsl.color
+    };
+  }
+
+  if (kind === "ssh") {
+    const previousSsh = source.kind === "ssh"
+      ? source.settings
+      : { host: "", user: null, port: null, identityFile: null, codexCommand: "codex", color: source.settings.color };
+
+    return {
+      host: patch !== undefined && "host" in patch && typeof patch.host === "string"
+        ? patch.host.trim()
+        : previousSsh.host,
+      user: patch !== undefined && "user" in patch ? normalizeNullableText(patch.user ?? null) : previousSsh.user,
+      port: patch !== undefined && "port" in patch && typeof patch.port === "number" ? patch.port : previousSsh.port,
+      identityFile: patch !== undefined && "identityFile" in patch
+        ? normalizeNullableText(patch.identityFile ?? null)
+        : previousSsh.identityFile,
+      codexCommand: patch !== undefined && "codexCommand" in patch && typeof patch.codexCommand === "string"
+        ? patch.codexCommand
+        : previousSsh.codexCommand,
+      color: patch?.color !== undefined ? normalizeSourceColor(patch.color) : previousSsh.color
+    };
+  }
+
+  const previousLocal = source.kind === "local"
+    ? source.settings
+    : createDefaultLocalSourceSettings();
+
+  return {
+    commandMode: "auto",
+    command: null,
+    color: patch?.color !== undefined ? normalizeSourceColor(patch.color) : previousLocal.color,
+    openFolderCommand: patch !== undefined && "openFolderCommand" in patch
+      ? normalizeNullableText(patch.openFolderCommand ?? null)
+      : previousLocal.openFolderCommand,
+    openFileCommand: patch !== undefined && "openFileCommand" in patch
+      ? normalizeNullableText(patch.openFileCommand ?? null)
+      : previousLocal.openFileCommand
+  };
 }
 
 /**

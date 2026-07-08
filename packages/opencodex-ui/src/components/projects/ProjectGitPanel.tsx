@@ -63,8 +63,10 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const projectPath = projectStore.projectPath;
   const sourceId = projectStore.project.sourceId;
   const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
-  const canOpenFiles = source?.settings.openFileCommand !== null &&
-    source?.settings.openFileCommand !== undefined;
+  const canOpenFiles = source !== undefined &&
+    store.sourcesStore.hasLocalAccess(source.id) &&
+    "openFileCommand" in source.settings &&
+    source.settings.openFileCommand !== null;
   const gitLabelsKey = store.appStore.settings.versioningVocabulary === "technical"
     ? "git.technical"
     : "git.simple";

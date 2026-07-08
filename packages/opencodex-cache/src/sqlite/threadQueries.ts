@@ -529,6 +529,7 @@ function writeThreadIndex(
     INSERT INTO projects (
       id,
       source_id,
+      source_key,
       path,
       default_name,
       display_name,
@@ -540,6 +541,7 @@ function writeThreadIndex(
     VALUES (
       @id,
       @sourceId,
+      @sourceKey,
       @path,
       @defaultName,
       NULL,
@@ -548,7 +550,7 @@ function writeThreadIndex(
       @now,
       @now
     )
-    ON CONFLICT(path) DO UPDATE SET
+    ON CONFLICT(source_key, path) DO UPDATE SET
       source_id = COALESCE(excluded.source_id, projects.source_id),
       default_name = excluded.default_name,
       is_hidden = CASE
@@ -617,8 +619,8 @@ function writeThreadIndex(
 
   const writeIndex = database.transaction(() => {
     for (const thread of threads) {
-      const project = createProjectIdentity(thread.projectPath ?? "");
       const sourceId = thread.sourceId;
+      const project = createProjectIdentity(thread.projectPath ?? "", sourceId);
 
       if (project !== null) {
         upsertProject.run({

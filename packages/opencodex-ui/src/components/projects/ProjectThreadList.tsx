@@ -32,8 +32,10 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
   const threadListStore = projectStore.threadListStore;
   const source = store.sourcesStore.sources.find((entry) => entry.id === projectStore.project.sourceId);
   const isReadOnlyProject = projectStore.isReadOnlyFromCache;
-  const canOpenProject = source?.settings.openFolderCommand !== null &&
-    source?.settings.openFolderCommand !== undefined;
+  const canOpenProject = source !== undefined &&
+    store.sourcesStore.hasLocalAccess(source.id) &&
+    "openFolderCommand" in source.settings &&
+    source.settings.openFolderCommand !== null;
   const sourceWarning = projectStore.isOrphan
     ? t("project.orphanSource")
     : t("project.codexSourceUnavailable");

@@ -20,4 +20,18 @@ describe("project identity", () => {
     });
   });
 
+  it("should scope the project id by source", () => {
+    const localProject = createProjectIdentity("/workspace/project", "source-local");
+    const remoteProject = createProjectIdentity("/workspace/project", "source-ssh");
+
+    expect(localProject?.id).not.toBe(remoteProject?.id);
+    expect(localProject).toMatchObject({
+      sourceKey: "source-local",
+      path: "/workspace/project"
+    });
+    expect(remoteProject).toMatchObject({
+      sourceKey: "source-ssh",
+      path: "/workspace/project"
+    });
+  });
 });

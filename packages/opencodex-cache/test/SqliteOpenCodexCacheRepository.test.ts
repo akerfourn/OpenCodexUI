@@ -47,6 +47,22 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should persist projects with the same path per source", async () => {
+    const localProject = await repository.upsertProject("/tmp/shared-project", "source-local");
+    const remoteProject = await repository.upsertProject("/tmp/shared-project", "source-ssh");
+
+    expect(localProject.id).not.toBe(remoteProject.id);
+
+    const projects = await repository.listProjects();
+    const matchingProjects = projects.filter((project) => project.path === "/tmp/shared-project");
+
+    expect(matchingProjects).toHaveLength(2);
+    expect(matchingProjects.map((project) => project.sourceId).sort()).toEqual([
+      "source-local",
+      "source-ssh"
+    ]);
+  });
+
   it("should update project visibility", async () => {
     const project = await repository.upsertProject("/tmp/hidden-project");
 
@@ -514,7 +530,7 @@ describe("SqliteOpenCodexCacheRepository", () => {
 
     expect(updatedSource).toMatchObject({
       id: source.id,
-      kind: "local",
+      kind: "custom",
       settings: {
         commandMode: "custom",
         command: "wsl.exe codex"
@@ -612,7 +628,7 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(projects[1]?.editedAt).toBe("2026-01-01T00:00:00.000Z");
   });
 
-  it("should preserve source associations when caching an orphan project", async () => {
+  it("should keep orphan and source-scoped projects separate for the same path", async () => {
     const source = await repository.ensureDefaultSource();
 
     await repository.upsertThreadIndex([
@@ -635,9 +651,13 @@ describe("SqliteOpenCodexCacheRepository", () => {
     await repository.upsertProject("/tmp/source-project", null);
 
     const projects = await repository.listProjects();
-    const project = projects.find((entry) => entry.path === "/tmp/source-project");
+    const matchingProjects = projects.filter((entry) => entry.path === "/tmp/source-project");
 
-    expect(project?.sourceId).toBe(source.id);
+    expect(matchingProjects).toHaveLength(2);
+    expect(matchingProjects.map((project) => project.sourceId).sort()).toEqual([
+      source.id,
+      null
+    ].sort());
   });
 
   it("should clear source associations explicitly", async () => {

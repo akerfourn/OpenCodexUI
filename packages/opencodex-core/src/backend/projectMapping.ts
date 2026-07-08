@@ -33,5 +33,5 @@ export function toOpenCodexProject(project: CachedProject): OpenCodexProject {
  * @returns True when source paths live on the host filesystem.
  */
 export function shouldValidateProjectPathOnHost(source: CachedSource): boolean {
-  return source.settings.commandMode === "auto";
+  return source.kind === "local";
 }

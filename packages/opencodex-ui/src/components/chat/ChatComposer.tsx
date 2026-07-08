@@ -339,5 +339,8 @@ function canOpenProjectFileLinks(store: RootStore, sourceId: string | null): boo
 
   const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
 
-  return source?.settings.openFileCommand !== null && source?.settings.openFileCommand !== undefined;
+  return source !== undefined &&
+    store.sourcesStore.hasLocalAccess(source.id) &&
+    "openFileCommand" in source.settings &&
+    source.settings.openFileCommand !== null;
 }

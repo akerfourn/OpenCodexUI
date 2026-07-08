@@ -1,6 +1,8 @@
 /**
  * Internal SQLite row shapes used by cache queries and mappers.
  */
+import type { CachedSourceKind } from "../types.js";
+
 /**
  * Joined SQLite row used to map cached thread summaries and sync state.
  */
@@ -43,6 +45,7 @@ export type TurnRow = {
 export type ProjectRow = {
   id: string;
   source_id: string | null;
+  source_key: string;
   path: string;
   default_name: string;
   display_name: string | null;
@@ -98,7 +101,7 @@ export type ProjectTaskRow = {
  */
 export type SourceRow = {
   id: string;
-  kind: "local";
+  kind: CachedSourceKind;
   name: string;
   settings: string;
   last_detected_codex_version: string | null;

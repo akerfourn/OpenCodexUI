@@ -29,19 +29,27 @@ export function toOpenCodexSource(
   commandCandidates: OpenCodexCommandCandidate[]
 ): OpenCodexSource {
   const command = resolveSourceCommand(source, fallbackCommand);
-
-  return {
+  const base = {
     id: source.id,
-    kind: source.kind,
     name: source.name,
     associatedProjectCount,
     codex,
-    settings: source.settings,
     resolvedCommand: resolveCodexCommandPath(command),
     commandCandidates,
     createdAt: source.createdAt,
     updatedAt: source.updatedAt
   };
+
+  switch (source.kind) {
+    case "custom":
+      return { ...base, kind: "custom", settings: source.settings };
+    case "wsl":
+      return { ...base, kind: "wsl", settings: source.settings };
+    case "ssh":
+      return { ...base, kind: "ssh", settings: source.settings };
+    default:
+      return { ...base, kind: "local", settings: source.settings };
+  }
 }
 
 /**
@@ -52,12 +60,16 @@ export function toOpenCodexSource(
  * @returns Command string to launch Codex.
  */
 export function resolveSourceCommand(source: CachedSource, fallbackCommand: string): string {
-  if (
-    source.settings.commandMode === "custom" &&
-    source.settings.command !== null &&
-    source.settings.command.length > 0
-  ) {
-    return source.settings.command;
+  if (source.kind === "custom") {
+    return source.settings.command ?? fallbackCommand;
+  }
+
+  if (source.kind === "wsl") {
+    return resolveWslCommand(source.settings.distro, source.settings.codexCommand);
+  }
+
+  if (source.kind === "ssh") {
+    return resolveSshCommand(source.settings);
   }
 
   return fallbackCommand;
@@ -88,4 +100,55 @@ export function createDefaultCachedSource(): CachedSource {
     createdAt: now,
     updatedAt: now
   };
+}
+
+/**
+ * Builds a WSL command string for a source.
+ *
+ * @param distro Optional WSL distribution.
+ * @param codexCommand Codex command inside WSL.
+ * @returns Host command that starts Codex through WSL.
+ */
+function resolveWslCommand(distro: string | null, codexCommand: string): string {
+  const command = codexCommand.trim().length > 0 ? codexCommand.trim() : "codex";
+
+  if (distro === null) {
+    return `wsl.exe ${command}`;
+  }
+
+  return `wsl.exe --distribution ${quoteShellToken(distro)} ${command}`;
+}
+
+/**
+ * Builds an SSH command string for a source.
+ *
+ * @param settings SSH source settings.
+ * @returns Host command that starts Codex on the remote host.
+ */
+function resolveSshCommand(settings: Extract<CachedSource, { kind: "ssh" }>["settings"]): string {
+  const parts = ["ssh", "-T"];
+
+  if (settings.port !== null) {
+    parts.push("-p", String(settings.port));
+  }
+
+  if (settings.identityFile !== null) {
+    parts.push("-i", quoteShellToken(settings.identityFile));
+  }
+
+  const remoteTarget = settings.user === null ? settings.host : `${settings.user}@${settings.host}`;
+  parts.push(quoteShellToken(remoteTarget));
+  parts.push(settings.codexCommand.trim().length > 0 ? settings.codexCommand.trim() : "codex");
+
+  return parts.join(" ");
+}
+
+/**
+ * Quotes one shell token for generated command strings.
+ *
+ * @param value Raw token.
+ * @returns POSIX-safe shell token.
+ */
+function quoteShellToken(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }

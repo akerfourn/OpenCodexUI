@@ -182,17 +182,81 @@ export type CachedProjectTaskUpdateInput = {
 };
 
 export type CachedSourceCommandMode = "auto" | "custom";
+export type CachedSourceKind = "local" | "custom" | "wsl" | "ssh";
 
 /**
- * Settings for a local Codex source.
+ * Visual settings shared by every Codex source kind.
  */
-export type CachedSourceLocalSettings = {
-  commandMode: CachedSourceCommandMode;
-  command: string | null;
+export type CachedSourceCommonSettings = {
   color: CachedSourceColor;
+};
+
+/**
+ * Host-local opener commands available only when the host can see source files.
+ */
+export type CachedSourceLocalAccessSettings = {
   openFolderCommand: string | null;
   openFileCommand: string | null;
 };
+
+/**
+ * Settings for the automatically detected local Codex source.
+ */
+export type CachedSourceLocalSettings = CachedSourceCommonSettings &
+  CachedSourceLocalAccessSettings & {
+    commandMode: "auto";
+    command: null;
+  };
+
+/**
+ * Settings for an arbitrary user-provided Codex command.
+ */
+export type CachedSourceCustomSettings = CachedSourceCommonSettings &
+  CachedSourceLocalAccessSettings & {
+    commandMode: "custom";
+    command: string | null;
+    hasLocalAccess: boolean;
+  };
+
+/**
+ * Settings for a future Windows Subsystem for Linux Codex source.
+ */
+export type CachedSourceWslSettings = CachedSourceCommonSettings & {
+  distro: string | null;
+  codexCommand: string;
+};
+
+/**
+ * Settings for a future SSH-backed Codex source.
+ */
+export type CachedSourceSshSettings = CachedSourceCommonSettings & {
+  host: string;
+  user: string | null;
+  port: number | null;
+  identityFile: string | null;
+  codexCommand: string;
+};
+
+export type CachedSourceSettings =
+  | CachedSourceLocalSettings
+  | CachedSourceCustomSettings
+  | CachedSourceWslSettings
+  | CachedSourceSshSettings;
+
+export type CachedSourceSettingsPatch = Partial<
+  CachedSourceCommonSettings &
+    CachedSourceLocalAccessSettings & {
+      commandMode: CachedSourceCommandMode;
+      command: string | null;
+      hasLocalAccess: boolean;
+      distro: string | null;
+      codexCommand: string;
+      host: string;
+      user: string | null;
+      port: number | null;
+      identityFile: string | null;
+    }
+>;
 
 /**
  * Common metadata shared by all source kinds.
@@ -224,7 +288,22 @@ export type CachedLocalSource = CachedSourceBase & {
   settings: CachedSourceLocalSettings;
 };
 
-export type CachedSource = CachedLocalSource;
+export type CachedCustomSource = CachedSourceBase & {
+  kind: "custom";
+  settings: CachedSourceCustomSettings;
+};
+
+export type CachedWslSource = CachedSourceBase & {
+  kind: "wsl";
+  settings: CachedSourceWslSettings;
+};
+
+export type CachedSshSource = CachedSourceBase & {
+  kind: "ssh";
+  settings: CachedSourceSshSettings;
+};
+
+export type CachedSource = CachedLocalSource | CachedCustomSource | CachedWslSource | CachedSshSource;
 
 /**
  * Synchronization metadata for incremental thread cache loading.
@@ -369,7 +448,7 @@ export interface OpenCodexCacheRepository {
   updateSource(
     sourceId: string,
     patch: Partial<Pick<CachedSource, "name">> & {
-      settings?: Partial<CachedSourceLocalSettings>;
+      settings?: CachedSourceSettingsPatch;
     }
   ): Promise<CachedSource>;
 

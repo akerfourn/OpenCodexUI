@@ -68,16 +68,22 @@ describe("ProjectPathVisibilityValidator", () => {
   });
 });
 
-function createSource(commandMode: CachedSource["settings"]["commandMode"]): CachedSource {
+function createSource(commandMode: "custom"): CachedSource {
   return {
     id: "source-1",
-    kind: "local",
+    kind: "custom",
     name: "Source",
     settings: {
       commandMode,
       command: null,
-      color: "blue"
+      hasLocalAccess: false,
+      color: "blue",
+      openFolderCommand: null,
+      openFileCommand: null
     },
+    lastDetectedCodexVersion: null,
+    lastDetectedCodexAt: null,
+    lastDetectionError: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z"
   };

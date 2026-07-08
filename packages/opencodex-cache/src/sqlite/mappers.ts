@@ -12,7 +12,7 @@ import type {
   CachedThreadTokenUsage
 } from "../types.js";
 import { parseProjectPreferences } from "./projectPreferences.js";
-import { parseLocalSourceSettings } from "./sourceSettings.js";
+import { parseSourceSettings } from "./sourceSettings.js";
 import type { LogRow, ProjectCommandRow, ProjectRow, ProjectTaskRow, SourceRow, ThreadRow } from "./rowTypes.js";
 
 /**
@@ -76,17 +76,27 @@ export function mapProjectRow(row: ProjectRow): CachedProject {
  * @returns Normalized cached source entry.
  */
 export function mapSourceRow(row: SourceRow): CachedSource {
-  return {
+  const base = {
     id: row.id,
-    kind: row.kind,
     name: row.name,
-    settings: parseLocalSourceSettings(row.settings),
     lastDetectedCodexVersion: row.last_detected_codex_version,
     lastDetectedCodexAt: row.last_detected_codex_at,
     lastDetectionError: row.last_detection_error,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
+  const settings = parseSourceSettings(row.kind, row.settings);
+
+  switch (row.kind) {
+    case "custom":
+      return { ...base, kind: "custom", settings: settings as Extract<CachedSource, { kind: "custom" }>["settings"] };
+    case "wsl":
+      return { ...base, kind: "wsl", settings: settings as Extract<CachedSource, { kind: "wsl" }>["settings"] };
+    case "ssh":
+      return { ...base, kind: "ssh", settings: settings as Extract<CachedSource, { kind: "ssh" }>["settings"] };
+    default:
+      return { ...base, kind: "local", settings: settings as Extract<CachedSource, { kind: "local" }>["settings"] };
+  }
 }
 
 /**

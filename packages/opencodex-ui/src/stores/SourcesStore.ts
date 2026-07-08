@@ -3,7 +3,7 @@ import { makeAutoObservable, runInAction } from "mobx";
 import type {
   OpenCodexEvent,
   OpenCodexSource,
-  OpenCodexSourceLocalSettings
+  OpenCodexSourceSettingsPatch
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "./RootStore";
@@ -114,7 +114,7 @@ export class SourcesStore implements RootChildStore {
     sourceId: string,
     patch: {
       name?: string;
-      settings?: Partial<OpenCodexSourceLocalSettings>;
+      settings?: OpenCodexSourceSettingsPatch;
     }
   ): void {
     void this.root.request({
@@ -237,6 +237,22 @@ export class SourcesStore implements RootChildStore {
    */
   isSourceSyncing(sourceId: string): boolean {
     return this.isSyncingAllSources || this.syncingSourceIds.includes(sourceId);
+  }
+
+  /**
+   * Checks whether a source can use host-local file operations.
+   *
+   * @param sourceId Source identifier.
+   * @returns Whether host-local file/folder actions are allowed.
+   */
+  hasLocalAccess(sourceId: string | null): boolean {
+    const source = this.findSource(sourceId);
+
+    if (source === null) {
+      return false;
+    }
+
+    return sourceHasLocalAccess(source);
   }
 
   /**
@@ -382,4 +398,18 @@ export class SourcesStore implements RootChildStore {
  */
 function schedule(callback: () => void, durationMs: number): void {
   setTimeout(callback, durationMs);
+}
+
+/**
+ * Checks whether a source points to paths visible from the Electron host.
+ *
+ * @param source Source DTO.
+ * @returns Whether local file pickers and openers can be used.
+ */
+function sourceHasLocalAccess(source: OpenCodexSource): boolean {
+  if (source.kind === "local") {
+    return true;
+  }
+
+  return source.kind === "custom" && source.settings.hasLocalAccess;
 }

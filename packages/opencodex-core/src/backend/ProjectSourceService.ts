@@ -14,7 +14,7 @@ import type {
   OpenCodexProjectPreferences,
   OpenCodexSettings,
   OpenCodexSource,
-  OpenCodexSourceLocalSettings,
+  OpenCodexSourceSettingsPatch,
   OpenCodexToolVersionStatus
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -263,17 +263,14 @@ export class ProjectSourceService {
   async updateSource(
     sourceId: string,
     patch: Partial<Pick<OpenCodexSource, "name">> & {
-      settings?: Partial<OpenCodexSourceLocalSettings>;
+      settings?: OpenCodexSourceSettingsPatch;
     }
   ): Promise<OpenCodexSource> {
     const repository = this.requireCacheRepository("Source storage is unavailable.");
     const previousSource = await this.resolveSource(sourceId);
     const updatedSource = await repository.updateSource(sourceId, patch);
 
-    if (
-      previousSource.settings.commandMode !== updatedSource.settings.commandMode ||
-      previousSource.settings.command !== updatedSource.settings.command
-    ) {
+    if (hasSourceLaunchCommandChanged(previousSource, updatedSource)) {
       await repository.clearSourceAssociations(sourceId);
       await this.options.restartSourceClient(sourceId);
     }
@@ -703,4 +700,31 @@ function createUncachedProject(projectIdentity: ProjectIdentity, sourceId: strin
     lastSeenAt: now,
     editedAt: now
   };
+}
+
+/**
+ * Checks whether a source update changes the command used to start Codex.
+ *
+ * @param previousSource Source before the update.
+ * @param updatedSource Source after the update.
+ * @returns Whether the associated app-server client must be restarted.
+ */
+function hasSourceLaunchCommandChanged(
+  previousSource: CachedSource,
+  updatedSource: CachedSource
+): boolean {
+  if (previousSource.kind !== updatedSource.kind) {
+    return true;
+  }
+
+  if ("commandMode" in previousSource.settings && "commandMode" in updatedSource.settings) {
+    return previousSource.settings.commandMode !== updatedSource.settings.commandMode ||
+      previousSource.settings.command !== updatedSource.settings.command;
+  }
+
+  if ("codexCommand" in previousSource.settings && "codexCommand" in updatedSource.settings) {
+    return previousSource.settings.codexCommand !== updatedSource.settings.codexCommand;
+  }
+
+  return false;
 }

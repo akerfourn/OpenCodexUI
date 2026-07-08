@@ -46,7 +46,7 @@ import type {
   OpenCodexSettings,
   OpenCodexSkillSearchResult,
   OpenCodexSource,
-  OpenCodexSourceLocalSettings,
+  OpenCodexSourceSettingsPatch,
   OpenCodexThread,
   OpenCodexThreadRuntimeStatus,
   OpenCodexToolVersionStatus,
@@ -599,7 +599,7 @@ export class OpenCodexBackendRuntime {
   async updateSource(
     sourceId: string,
     patch: Partial<Pick<OpenCodexSource, "name">> & {
-      settings?: Partial<OpenCodexSourceLocalSettings>;
+      settings?: OpenCodexSourceSettingsPatch;
     }
   ): Promise<OpenCodexSource> {
     return await this.projectSourceService.updateSource(sourceId, patch);
@@ -970,7 +970,7 @@ export class OpenCodexBackendRuntime {
     }
 
     const source = sourceId === null ? null : await this.resolveSource(sourceId);
-    const openerCommand = source?.settings.openFileCommand ?? null;
+    const openerCommand = readOpenFileCommand(source);
 
     await this.options.openExternalLink(
       target,
@@ -994,7 +994,7 @@ export class OpenCodexBackendRuntime {
     }
 
     const source = await this.resolveSource(sourceId);
-    const openerCommand = source.settings.openFolderCommand;
+    const openerCommand = readOpenFolderCommand(source);
 
     if (openerCommand === null || this.options.openExternalLink === undefined) {
       return { ok: true };
@@ -1971,6 +1971,52 @@ export class OpenCodexBackendRuntime {
     });
   }
 
+}
+
+/**
+ * Reads the host-local file opener command from a source.
+ *
+ * @param source Source DTO, or `null`.
+ * @returns File opener command, or `null` when host-local access is unavailable.
+ */
+function readOpenFileCommand(source: CachedSource | null): string | null {
+  if (source === null || !sourceHasLocalAccess(source)) {
+    return null;
+  }
+
+  return source.kind === "local" || source.kind === "custom"
+    ? source.settings.openFileCommand
+    : null;
+}
+
+/**
+ * Reads the host-local folder opener command from a source.
+ *
+ * @param source Source DTO.
+ * @returns Folder opener command, or `null` when host-local access is unavailable.
+ */
+function readOpenFolderCommand(source: CachedSource): string | null {
+  if (!sourceHasLocalAccess(source)) {
+    return null;
+  }
+
+  return source.kind === "local" || source.kind === "custom"
+    ? source.settings.openFolderCommand
+    : null;
+}
+
+/**
+ * Checks whether a source can access paths on the Electron host filesystem.
+ *
+ * @param source Source DTO.
+ * @returns Whether local file openers may be used.
+ */
+function sourceHasLocalAccess(source: CachedSource): boolean {
+  if (source.kind === "local") {
+    return true;
+  }
+
+  return source.kind === "custom" && source.settings.hasLocalAccess;
 }
 
 /**

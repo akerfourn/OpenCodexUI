@@ -23,7 +23,7 @@ export async function upsertProject(
   projectPath: string,
   sourceId: string | null = null
 ): Promise<CachedProject> {
-  const project = createProjectIdentity(projectPath);
+  const project = createProjectIdentity(projectPath, sourceId);
 
   if (project === null) {
     throw new Error("Project path is required.");
@@ -36,6 +36,7 @@ export async function upsertProject(
       INSERT INTO projects (
         id,
         source_id,
+        source_key,
         path,
         default_name,
         display_name,
@@ -47,6 +48,7 @@ export async function upsertProject(
       VALUES (
         @id,
         @sourceId,
+        @sourceKey,
         @path,
         @defaultName,
         NULL,
@@ -55,7 +57,7 @@ export async function upsertProject(
         @now,
         @now
       )
-      ON CONFLICT(path) DO UPDATE SET
+      ON CONFLICT(source_key, path) DO UPDATE SET
         source_id = COALESCE(excluded.source_id, projects.source_id),
         default_name = excluded.default_name,
         updated_at = excluded.updated_at,
@@ -72,11 +74,11 @@ export async function upsertProject(
         COALESCE(MAX(threads.updated_at), projects.created_at) AS edited_at
       FROM projects
       LEFT JOIN threads ON threads.project_id = projects.id
-      WHERE path = @path
+      WHERE projects.source_key = @sourceKey AND projects.path = @path
       GROUP BY projects.id
       `
     )
-    .get({ path: project.path }) as ProjectRow | undefined;
+    .get({ sourceKey: project.sourceKey, path: project.path }) as ProjectRow | undefined;
 
   if (row === undefined) {
     throw new Error("Project could not be read after being cached.");

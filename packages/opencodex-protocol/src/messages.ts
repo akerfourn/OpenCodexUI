@@ -86,7 +86,7 @@ export type OpenCodexLanguage = "system" | "fr" | "en";
 /**
  * Source kind supported by the current app version.
  */
-export type OpenCodexSourceKind = "local";
+export type OpenCodexSourceKind = "local" | "custom" | "wsl" | "ssh";
 
 /**
  * Source command resolution mode.
@@ -146,15 +146,78 @@ export type OpenCodexCommandCandidate = {
 };
 
 /**
- * Local-source specific settings.
+ * Visual settings shared by every Codex source kind.
  */
-export type OpenCodexSourceLocalSettings = {
-  commandMode: OpenCodexSourceCommandMode;
-  command: string | null;
+export type OpenCodexSourceCommonSettings = {
   color: OpenCodexSourceColor;
+};
+
+/**
+ * Host-local opener commands available when source files are visible locally.
+ */
+export type OpenCodexSourceLocalAccessSettings = {
   openFolderCommand: string | null;
   openFileCommand: string | null;
 };
+
+/**
+ * Local-source specific settings.
+ */
+export type OpenCodexSourceLocalSettings = OpenCodexSourceCommonSettings &
+  OpenCodexSourceLocalAccessSettings & {
+    commandMode: "auto";
+    command: null;
+  };
+
+/**
+ * Custom command source settings.
+ */
+export type OpenCodexSourceCustomSettings = OpenCodexSourceCommonSettings &
+  OpenCodexSourceLocalAccessSettings & {
+    commandMode: "custom";
+    command: string | null;
+    hasLocalAccess: boolean;
+  };
+
+/**
+ * WSL source settings.
+ */
+export type OpenCodexSourceWslSettings = OpenCodexSourceCommonSettings & {
+  distro: string | null;
+  codexCommand: string;
+};
+
+/**
+ * SSH source settings.
+ */
+export type OpenCodexSourceSshSettings = OpenCodexSourceCommonSettings & {
+  host: string;
+  user: string | null;
+  port: number | null;
+  identityFile: string | null;
+  codexCommand: string;
+};
+
+export type OpenCodexSourceSettings =
+  | OpenCodexSourceLocalSettings
+  | OpenCodexSourceCustomSettings
+  | OpenCodexSourceWslSettings
+  | OpenCodexSourceSshSettings;
+
+export type OpenCodexSourceSettingsPatch = Partial<
+  OpenCodexSourceCommonSettings &
+    OpenCodexSourceLocalAccessSettings & {
+      commandMode: OpenCodexSourceCommandMode;
+      command: string | null;
+      hasLocalAccess: boolean;
+      distro: string | null;
+      codexCommand: string;
+      host: string;
+      user: string | null;
+      port: number | null;
+      identityFile: string | null;
+    }
+>;
 
 /**
  * Common metadata shared by every source kind.
@@ -180,9 +243,39 @@ export type OpenCodexLocalSource = OpenCodexSourceBase & {
 };
 
 /**
+ * Custom command source.
+ */
+export type OpenCodexCustomSource = OpenCodexSourceBase & {
+  kind: "custom";
+  settings: OpenCodexSourceCustomSettings;
+  resolvedCommand: string;
+  commandCandidates: OpenCodexCommandCandidate[];
+};
+
+/**
+ * WSL source running through a Windows host bridge.
+ */
+export type OpenCodexWslSource = OpenCodexSourceBase & {
+  kind: "wsl";
+  settings: OpenCodexSourceWslSettings;
+  resolvedCommand: string;
+  commandCandidates: OpenCodexCommandCandidate[];
+};
+
+/**
+ * SSH source running Codex app-server on a remote machine.
+ */
+export type OpenCodexSshSource = OpenCodexSourceBase & {
+  kind: "ssh";
+  settings: OpenCodexSourceSshSettings;
+  resolvedCommand: string;
+  commandCandidates: OpenCodexCommandCandidate[];
+};
+
+/**
  * Discriminated source union exposed to the UI.
  */
-export type OpenCodexSource = OpenCodexLocalSource;
+export type OpenCodexSource = OpenCodexLocalSource | OpenCodexCustomSource | OpenCodexWslSource | OpenCodexSshSource;
 
 /**
  * Cached project known by OpenCodexUI.
