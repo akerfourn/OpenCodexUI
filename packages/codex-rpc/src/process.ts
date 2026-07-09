@@ -209,6 +209,9 @@ export function readCodexCommandCandidates(): string[] {
 
   if (home !== undefined && home.length > 0) {
     candidates.push(path.join(home, ".volta", "bin", "codex"));
+    candidates.push(path.join(home, ".local", "bin", "codex"));
+    candidates.push(path.join(home, ".codex", "packages", "standalone", "current", "bin", "codex"));
+    candidates.push(path.join(home, ".codex", "packages", "standalone", "current", "codex"));
   }
 
   candidates.push("codex");

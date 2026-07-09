@@ -2,6 +2,7 @@
  * Checks and applies standalone Codex CLI updates.
  */
 import { spawn } from "node:child_process";
+import { realpathSync } from "node:fs";
 
 import {
   resolveCodexCommand,
@@ -286,9 +287,34 @@ function isStandaloneSourceLike(
     ? resolveCodexCommandPath("codex")
     : resolvedCommand.command;
   const pathForCheck = source.resolvedCommand !== "codex" ? source.resolvedCommand : resolvedPath;
+  const realPathForCheck = readRealPath(pathForCheck);
 
-  return pathForCheck.includes("/.codex/packages/standalone/") ||
-    pathForCheck.includes("\\.codex\\packages\\standalone\\");
+  return isStandalonePath(pathForCheck) || isStandalonePath(realPathForCheck);
+}
+
+/**
+ * Resolves symlinks when possible while preserving command names.
+ *
+ * @param value Path or command to inspect.
+ * @returns Real filesystem path, or the original value when it cannot be resolved.
+ */
+function readRealPath(value: string): string {
+  try {
+    return realpathSync(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Checks whether a path points inside the managed standalone install.
+ *
+ * @param value Path to inspect.
+ * @returns Whether the path is a standalone Codex executable path.
+ */
+function isStandalonePath(value: string): boolean {
+  return value.includes("/.codex/packages/standalone/") ||
+    value.includes("\\.codex\\packages\\standalone\\");
 }
 
 /**
