@@ -74,6 +74,10 @@ export class OpenCodexRequestRouter {
         return this.runtime.createSource(request.name);
       case "sources.sync":
         return this.runtime.syncSources(request.sourceId ?? null);
+      case "sources.codexRelease.check":
+        return this.runtime.checkCodexRelease(request.force === true);
+      case "sources.codexUpdate.apply":
+        return this.runtime.updateCodexSource(request.sourceId);
       case "sources.delete":
         return this.runtime.deleteSource(request.sourceId);
       case "sources.update":

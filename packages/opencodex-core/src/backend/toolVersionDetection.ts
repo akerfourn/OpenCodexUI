@@ -249,7 +249,7 @@ function uniqueCommandCandidates(candidates: OpenCodexCommandCandidate[]): OpenC
  * @param right Right version.
  * @returns Positive, zero, or negative comparison result.
  */
-function compareVersionNumbers(left: string, right: string): number {
+export function compareVersionNumbers(left: string, right: string): number {
   const leftParts = parseVersionParts(left);
   const rightParts = parseVersionParts(right);
 

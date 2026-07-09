@@ -3,6 +3,7 @@
  */
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
+import UpdateOutlinedIcon from "@mui/icons-material/UpdateOutlined";
 import { Alert, Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
@@ -37,6 +38,10 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
 
   function handleSyncAllSources(): void {
     sourcesStore.syncAllSources();
+  }
+
+  function handleRefreshCodexRelease(): void {
+    void sourcesStore.refreshCodexReleaseCheck();
   }
 
   function handleCloseEditor(): void {
@@ -87,6 +92,18 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
                   }
                 }}
               />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title={t("sources.checkCodexUpdates")}>
+          <span>
+            <IconButton
+              type="button"
+              aria-label={t("sources.checkCodexUpdates")}
+              disabled={sourcesStore.isRefreshingSources}
+              onClick={handleRefreshCodexRelease}
+            >
+              <UpdateOutlinedIcon />
             </IconButton>
           </span>
         </Tooltip>

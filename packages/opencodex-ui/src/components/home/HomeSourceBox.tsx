@@ -9,6 +9,7 @@ import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
+import UpdateOutlinedIcon from "@mui/icons-material/UpdateOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import {
   Box,
@@ -83,6 +84,7 @@ export function HomeSourceBox({
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
   const [isDeleteConfirmed, setIsDeleteConfirmed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingCodex, setIsUpdatingCodex] = useState(false);
   const sourcesStore = store.sourcesStore;
   const isSyncing = sourcesStore.isSourceSyncing(source.id);
 
@@ -106,6 +108,17 @@ export function HomeSourceBox({
 
   function handleSyncSource(): void {
     sourcesStore.syncSource(source.id);
+  }
+
+  function handleUpdateCodex(): void {
+    if (!source.codexUpdate.updateAvailable || isUpdatingCodex) {
+      return;
+    }
+
+    setIsUpdatingCodex(true);
+    void sourcesStore.updateCodexSource(source.id).finally(() => {
+      setIsUpdatingCodex(false);
+    });
   }
 
   function handleNameChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
@@ -342,6 +355,34 @@ export function HomeSourceBox({
                 {getCodexStatusLabel(source.codex.status, source.codex.version, t)}
               </Typography>
             </Box>
+            {source.codexUpdate.supported ? (
+              <Box
+                sx={{
+                  alignItems: "center",
+                  color: source.codexUpdate.updateAvailable ? "info.main" : "text.secondary",
+                  display: "flex",
+                  gap: 0.5,
+                  mt: 0.25
+                }}
+              >
+                <Typography variant="caption" noWrap>
+                  {getCodexUpdateLabel(source, t)}
+                </Typography>
+                {source.codexUpdate.updateAvailable ? (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="text"
+                    disabled={isUpdatingCodex || isSyncing}
+                    startIcon={<UpdateOutlinedIcon fontSize="small" />}
+                    onClick={handleUpdateCodex}
+                    sx={{ minWidth: 0, py: 0 }}
+                  >
+                    {t("sources.updateCodex")}
+                  </Button>
+                ) : null}
+              </Box>
+            ) : null}
           </Box>
         </Box>
         <Tooltip title={t("sources.edit")}>
@@ -723,4 +764,28 @@ function getCodexStatusLabel(
   }
 
   return translate("sources.codexUnavailable");
+}
+
+/**
+ * Formats update availability for a Codex source.
+ *
+ * @param source Source DTO.
+ * @param translate Translation function.
+ * @returns User-visible update status.
+ */
+function getCodexUpdateLabel(
+  source: OpenCodexSource,
+  translate: ReturnType<typeof useTranslation>["t"]
+): string {
+  if (source.codexUpdate.updateAvailable) {
+    return translate("sources.codexUpdateAvailable", {
+      version: source.codexUpdate.latestVersion ?? translate("sources.unknownVersion")
+    });
+  }
+
+  if (source.codexUpdate.message !== null && source.codexUpdate.latestVersion === null) {
+    return translate("sources.codexUpdateUnknown");
+  }
+
+  return translate("sources.codexUpdateCurrent");
 }

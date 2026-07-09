@@ -4,6 +4,7 @@
 import { resolveCodexCommandPath } from "@open-codex-ui/codex-rpc";
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
 import type {
+  OpenCodexCodexUpdateStatus,
   OpenCodexCommandCandidate,
   OpenCodexSource,
   OpenCodexToolVersionStatus
@@ -26,6 +27,7 @@ export function toOpenCodexSource(
   fallbackCommand: string,
   associatedProjectCount: number,
   codex: OpenCodexToolVersionStatus,
+  codexUpdate: OpenCodexCodexUpdateStatus,
   commandCandidates: OpenCodexCommandCandidate[]
 ): OpenCodexSource {
   const command = resolveSourceCommand(source, fallbackCommand);
@@ -34,6 +36,7 @@ export function toOpenCodexSource(
     name: source.name,
     associatedProjectCount,
     codex,
+    codexUpdate,
     resolvedCommand: resolveCodexCommandPath(command),
     commandCandidates,
     createdAt: source.createdAt,

@@ -12,6 +12,7 @@ import type {
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexApprovalDecision,
+  OpenCodexCodexReleaseCheck,
   OpenCodexCommitMessageGenerationResult,
   OpenCodexCommitMessageLanguage,
   OpenCodexComposerReference,
@@ -77,6 +78,7 @@ import { CommitMessageService } from "./backend/CommitMessageService.js";
 import { ProjectCommandService } from "./backend/ProjectCommandService.js";
 import { PluginService } from "./backend/PluginService.js";
 import { ProjectContextService } from "./backend/ProjectContextService.js";
+import { CodexUpdateService } from "./backend/CodexUpdateService.js";
 import { filterSearchableProjectFiles } from "./backend/fileSearchFilters.js";
 import { readGitVersionStatus } from "./backend/toolVersionDetection.js";
 import { readObject, readString } from "./mapping.js";
@@ -105,7 +107,9 @@ export class OpenCodexBackendRuntime {
   private readonly projectCommandService: ProjectCommandService;
   private readonly pluginService: PluginService;
   private readonly projectContextService: ProjectContextService;
+  private readonly codexUpdateService: CodexUpdateService;
   private readonly ignoredNotificationThreadIds = new Set<string>();
+  private readonly activeTurnIdsBySourceId = new Map<string, Set<string>>();
 
   /**
    * Creates a backend runtime and wires its internal services.
@@ -138,6 +142,17 @@ export class OpenCodexBackendRuntime {
       applyCodexThreadTitle: (threadId, title) => this.applyCodexThreadTitle(threadId, title),
       syncCompletedTurn: (threadId) => this.syncCompletedTurn(threadId)
     });
+    this.codexUpdateService = new CodexUpdateService({
+      getSettings: () => this.settings,
+      setSettings: (settings) => {
+        this.settings = settings;
+      },
+      saveSettings: async (settings) => {
+        await this.options.saveSettings?.(settings);
+      },
+      refreshSources: async () => this.listSources(),
+      logger: options.logger
+    });
     this.projectSourceService = new ProjectSourceService({
       backendOptions: options,
       cacheRepository: this.cacheRepository,
@@ -147,7 +162,10 @@ export class OpenCodexBackendRuntime {
       },
       emit: (event) => this.emit(event),
       ensureClient: (sourceId) => this.ensureClient(sourceId),
-      restartSourceClient: (sourceId) => this.restartSourceClient(sourceId)
+      restartSourceClient: (sourceId) => this.restartSourceClient(sourceId),
+      getCodexUpdateStatus: (source, fallbackCommand) => (
+        this.codexUpdateService.getSourceUpdateStatus(source, fallbackCommand)
+      )
     });
     this.projectTrustService = new ProjectTrustService({
       backendOptions: options,
@@ -224,6 +242,7 @@ export class OpenCodexBackendRuntime {
    */
   async bootstrap(): Promise<{ ok: true }> {
     await this.projectSourceService.ensureSourcesInitialized();
+    await this.codexUpdateService.checkLatestRelease(false);
     this.emit({
       type: "app.bootstrap",
       settings: this.settings,
@@ -526,6 +545,47 @@ export class OpenCodexBackendRuntime {
    */
   async syncSources(sourceId: string | null): Promise<OpenCodexProject[]> {
     return await this.projectSourceService.syncSources(sourceId);
+  }
+
+  /**
+   * Refreshes the cached latest Codex release metadata.
+   *
+   * @param force Whether to bypass the hourly cache.
+   *
+   * @returns Latest release check state.
+   */
+  async checkCodexRelease(force: boolean): Promise<OpenCodexCodexReleaseCheck> {
+    const releaseCheck = await this.codexUpdateService.checkLatestRelease(force);
+    this.emit({
+      type: "sources.updated",
+      sources: await this.projectSourceService.listOpenCodexSources(),
+      defaultSourceId: this.settings.defaultSourceId
+    });
+    return releaseCheck;
+  }
+
+  /**
+   * Applies a standalone Codex CLI update for one source.
+   *
+   * @param sourceId Source identifier.
+   *
+   * @returns Refreshed source list.
+   */
+  async updateCodexSource(sourceId: string): Promise<OpenCodexSource[]> {
+    if (this.hasActiveTurnForSource(sourceId)) {
+      throw new Error("Codex update cannot start while this source has an active turn.");
+    }
+
+    const source = (await this.projectSourceService.listOpenCodexSources())
+      .find((candidate) => candidate.id === sourceId);
+
+    if (source === undefined) {
+      throw new Error(`Source not found: ${sourceId}`);
+    }
+
+    const sources = await this.codexUpdateService.updateSource(source, this.settings.codexCommand);
+    await this.restartSourceClient(sourceId);
+    return sources;
   }
 
   /**
@@ -1708,6 +1768,7 @@ export class OpenCodexBackendRuntime {
     }
 
     this.threadConversationService.recordNotification(notification);
+    this.trackActiveTurnNotification(notification, sourceId);
     this.projectCommandService.handleNotification(notification);
     this.notificationService.handleNotification(notification, sourceId);
 
@@ -1736,6 +1797,81 @@ export class OpenCodexBackendRuntime {
     if (notification.method === "turn/completed") {
       void this.readUsageLimits();
     }
+  }
+
+  /**
+   * Tracks active Codex turns by source for source-level maintenance guards.
+   *
+   * @param notification Codex notification.
+   * @param sourceId Source that produced the notification.
+   *
+   * @returns Nothing.
+   */
+  private trackActiveTurnNotification(notification: CodexNotification, sourceId: string): void {
+    const params = readObject(notification.params);
+
+    if (notification.method === "turn/started") {
+      const turnId = readString(readObject(params.turn).id);
+
+      if (turnId.length > 0) {
+        this.addActiveTurn(sourceId, turnId);
+      }
+      return;
+    }
+
+    if (notification.method === "turn/completed") {
+      const turnId = readString(readObject(params.turn).id);
+
+      if (turnId.length > 0) {
+        this.removeActiveTurn(sourceId, turnId);
+      }
+    }
+  }
+
+  /**
+   * Records one active turn for a source.
+   *
+   * @param sourceId Source identifier.
+   * @param turnId Turn identifier.
+   *
+   * @returns Nothing.
+   */
+  private addActiveTurn(sourceId: string, turnId: string): void {
+    const activeTurnIds = this.activeTurnIdsBySourceId.get(sourceId) ?? new Set<string>();
+    activeTurnIds.add(turnId);
+    this.activeTurnIdsBySourceId.set(sourceId, activeTurnIds);
+  }
+
+  /**
+   * Removes one active turn from a source.
+   *
+   * @param sourceId Source identifier.
+   * @param turnId Turn identifier.
+   *
+   * @returns Nothing.
+   */
+  private removeActiveTurn(sourceId: string, turnId: string): void {
+    const activeTurnIds = this.activeTurnIdsBySourceId.get(sourceId);
+
+    if (activeTurnIds === undefined) {
+      return;
+    }
+
+    activeTurnIds.delete(turnId);
+
+    if (activeTurnIds.size === 0) {
+      this.activeTurnIdsBySourceId.delete(sourceId);
+    }
+  }
+
+  /**
+   * Checks whether a source currently owns an active turn.
+   *
+   * @param sourceId Source identifier.
+   * @returns Whether update/restart operations should be blocked.
+   */
+  private hasActiveTurnForSource(sourceId: string): boolean {
+    return (this.activeTurnIdsBySourceId.get(sourceId)?.size ?? 0) > 0;
   }
 
   /**
@@ -1818,6 +1954,7 @@ export class OpenCodexBackendRuntime {
    */
   private handleClientClose(sourceId: string): void {
     this.clientPool.deleteClient(sourceId);
+    this.activeTurnIdsBySourceId.delete(sourceId);
 
     if (!this.clientPool.hasClients()) {
       this.emit({ type: "connection.status", status: "stopped" });

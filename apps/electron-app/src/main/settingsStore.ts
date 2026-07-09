@@ -11,6 +11,11 @@ import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
  */
 export const defaultSettings: OpenCodexSettings = {
   codexCommand: "codex",
+  codexReleaseCheck: {
+    latestVersion: null,
+    checkedAt: null,
+    error: null
+  },
   defaultSourceId: null,
   defaultUsageLimitId: null,
   defaultModel: null,
@@ -55,7 +60,14 @@ export class SettingsStore {
     try {
       const content = await readFile(this.settingsPath, "utf8");
       const parsed = JSON.parse(content) as Partial<OpenCodexSettings>;
-      return { ...defaultSettings, ...parsed };
+      return {
+        ...defaultSettings,
+        ...parsed,
+        codexReleaseCheck: {
+          ...defaultSettings.codexReleaseCheck,
+          ...parsed.codexReleaseCheck
+        }
+      };
     } catch {
       return defaultSettings;
     }

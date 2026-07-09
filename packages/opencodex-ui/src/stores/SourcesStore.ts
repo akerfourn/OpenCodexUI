@@ -180,6 +180,54 @@ export class SourcesStore implements RootChildStore {
   }
 
   /**
+   * Forces a latest Codex release check, then refreshes source diagnostics.
+   *
+   * @returns Promise resolved after the visible source list is updated.
+   */
+  async refreshCodexReleaseCheck(): Promise<void> {
+    if (this.isRefreshingSources) {
+      return;
+    }
+
+    this.isRefreshingSources = true;
+
+    try {
+      await this.root.request({
+        type: "sources.codexRelease.check",
+        force: true
+      });
+    } finally {
+      runInAction(() => {
+        this.isRefreshingSources = false;
+      });
+    }
+  }
+
+  /**
+   * Applies a standalone Codex update for one source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Promise resolved when the backend update request completes.
+   */
+  async updateCodexSource(sourceId: string): Promise<void> {
+    if (this.isSourceSyncing(sourceId)) {
+      return;
+    }
+
+    this.syncingSourceIds = [...this.syncingSourceIds, sourceId];
+    this.sourceSyncStartedAtById.set(sourceId, Date.now());
+
+    try {
+      await this.root.request({
+        type: "sources.codexUpdate.apply",
+        sourceId
+      });
+    } finally {
+      this.finishVisibleSourceSync(sourceId);
+    }
+  }
+
+  /**
    * Starts a project/thread sync for one source.
    *
    * @param sourceId Source identifier.

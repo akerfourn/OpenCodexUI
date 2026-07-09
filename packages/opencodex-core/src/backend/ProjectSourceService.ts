@@ -15,6 +15,7 @@ import type {
   OpenCodexSettings,
   OpenCodexSource,
   OpenCodexSourceSettingsPatch,
+  OpenCodexCodexUpdateStatus,
   OpenCodexToolVersionStatus
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -45,6 +46,7 @@ export type ProjectSourceServiceOptions = {
   emit(event: OpenCodexEvent): void;
   ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
   restartSourceClient(sourceId: string): Promise<void>;
+  getCodexUpdateStatus(source: OpenCodexSource, fallbackCommand: string): OpenCodexCodexUpdateStatus;
 };
 
 /**
@@ -96,13 +98,14 @@ export class ProjectSourceService {
     const repository = this.requireCacheRepository("Source storage is unavailable.");
     const createdSource = await repository.createSource(name);
     const settings = this.options.getSettings();
-    const source = toOpenCodexSource(
+    const source = this.withCodexUpdateStatus(toOpenCodexSource(
       createdSource,
       settings.codexCommand,
       0,
       await this.readAndStoreCodexVersionStatus(createdSource, settings.codexCommand),
+      this.createCodexUpdateStatusPlaceholder(),
       await this.readCommandCandidates()
-    );
+    ));
     this.options.emit({
       type: "sources.updated",
       sources: await this.listOpenCodexSources(),
@@ -276,13 +279,14 @@ export class ProjectSourceService {
     }
 
     const settings = this.options.getSettings();
-    const source = toOpenCodexSource(
+    const source = this.withCodexUpdateStatus(toOpenCodexSource(
       updatedSource,
       settings.codexCommand,
       await repository.getSourceProjectCount(updatedSource.id),
       await this.readAndStoreCodexVersionStatus(updatedSource, settings.codexCommand),
+      this.createCodexUpdateStatusPlaceholder(),
       await this.readCommandCandidates()
-    );
+    ));
 
     this.options.emit({
       type: "sources.updated",
@@ -473,28 +477,60 @@ export class ProjectSourceService {
       const commandCandidates = await this.readCommandCandidates();
 
       return [
-        toOpenCodexSource(
+        this.withCodexUpdateStatus(toOpenCodexSource(
           defaultSource,
           settings.codexCommand,
           0,
           await readCodexVersionStatus(defaultSource, settings.codexCommand),
+          this.createCodexUpdateStatusPlaceholder(),
           commandCandidates
-        )
+        ))
       ];
     }
 
     const sources = await repository.listSources();
     const commandCandidates = await this.readCommandCandidates();
 
-    return Promise.all(sources.map(async (source) => (
-      toOpenCodexSource(
+    return Promise.all(sources.map(async (source) => {
+      const protocolSource = toOpenCodexSource(
         source,
         settings.codexCommand,
         await repository.getSourceProjectCount(source.id),
         await this.readAndStoreCodexVersionStatus(source, settings.codexCommand),
+        this.createCodexUpdateStatusPlaceholder(),
         commandCandidates
-      )
-    )));
+      );
+
+      return this.withCodexUpdateStatus(protocolSource);
+    }));
+  }
+
+  /**
+   * Adds computed update availability to a source DTO.
+   *
+   * @param source Source DTO without final update state.
+   * @returns Source DTO with update state.
+   */
+  private withCodexUpdateStatus(source: OpenCodexSource): OpenCodexSource {
+    return {
+      ...source,
+      codexUpdate: this.options.getCodexUpdateStatus(source, this.options.getSettings().codexCommand)
+    };
+  }
+
+  /**
+   * Creates a temporary update status used before the final source DTO exists.
+   *
+   * @returns Neutral update status.
+   */
+  private createCodexUpdateStatusPlaceholder(): OpenCodexCodexUpdateStatus {
+    return {
+      supported: false,
+      updateAvailable: false,
+      latestVersion: this.options.getSettings().codexReleaseCheck.latestVersion,
+      checkedAt: this.options.getSettings().codexReleaseCheck.checkedAt,
+      message: null
+    };
   }
 
   /**

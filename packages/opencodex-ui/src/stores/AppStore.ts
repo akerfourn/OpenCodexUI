@@ -24,6 +24,11 @@ import type { RootChildStore } from "./RootChildStore";
 export class AppStore implements RootChildStore {
   settings: OpenCodexSettings = {
     codexCommand: "codex",
+    codexReleaseCheck: {
+      latestVersion: null,
+      checkedAt: null,
+      error: null
+    },
     defaultSourceId: null,
     defaultUsageLimitId: null,
     defaultModel: null,

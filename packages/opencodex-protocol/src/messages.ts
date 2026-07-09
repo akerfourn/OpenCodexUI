@@ -138,6 +138,26 @@ export type OpenCodexToolVersionStatus = {
 };
 
 /**
+ * Last global Codex release metadata check persisted in app settings.
+ */
+export type OpenCodexCodexReleaseCheck = {
+  latestVersion: string | null;
+  checkedAt: string | null;
+  error: string | null;
+};
+
+/**
+ * Per-source update status derived from local detection and global release metadata.
+ */
+export type OpenCodexCodexUpdateStatus = {
+  supported: boolean;
+  updateAvailable: boolean;
+  latestVersion: string | null;
+  checkedAt: string | null;
+  message: string | null;
+};
+
+/**
  * Candidate Codex command discovered for source configuration.
  */
 export type OpenCodexCommandCandidate = {
@@ -228,6 +248,7 @@ export type OpenCodexSourceBase = {
   name: string;
   associatedProjectCount: number;
   codex: OpenCodexToolVersionStatus;
+  codexUpdate: OpenCodexCodexUpdateStatus;
   createdAt: string;
   updatedAt: string;
 };
@@ -763,6 +784,7 @@ export type OpenCodexPluginInstallResult = {
  */
 export type OpenCodexSettings = {
   codexCommand: string;
+  codexReleaseCheck: OpenCodexCodexReleaseCheck;
   defaultSourceId: string | null;
   defaultUsageLimitId: string | null;
   defaultModel: string | null;

@@ -38,6 +38,8 @@ export type OpenCodexRequest =
   | { type: "sources.list" }
   | { type: "sources.create"; name?: string }
   | { type: "sources.sync"; sourceId?: string | null }
+  | { type: "sources.codexRelease.check"; force?: boolean }
+  | { type: "sources.codexUpdate.apply"; sourceId: string }
   | { type: "sources.delete"; sourceId: string }
   | {
       type: "sources.update";
