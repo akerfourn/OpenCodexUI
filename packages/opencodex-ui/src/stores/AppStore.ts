@@ -2,6 +2,7 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexColorScheme,
+  OpenCodexCodexReleaseCheck,
   OpenCodexCommitMessageLanguage,
   OpenCodexEnterKeyBehavior,
   OpenCodexEvent,
@@ -494,6 +495,18 @@ export class AppStore implements RootChildStore {
       type: "settings.update",
       patch: { commitMessageLanguage }
     });
+  }
+
+  /**
+   * Stores the latest Codex release check returned by the backend.
+   *
+   * @param codexReleaseCheck Latest release check metadata.
+   */
+  setCodexReleaseCheck(codexReleaseCheck: OpenCodexCodexReleaseCheck): void {
+    this.settings = {
+      ...this.settings,
+      codexReleaseCheck
+    };
   }
 
   private applyBootstrap(

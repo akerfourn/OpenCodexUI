@@ -5,6 +5,8 @@ import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
 import UpdateOutlinedIcon from "@mui/icons-material/UpdateOutlined";
 import { Alert, Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import type { OpenCodexCodexReleaseCheck } from "@open-codex-ui/opencodex-protocol";
+import type { TFunction } from "i18next";
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -63,6 +65,11 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
 
     return firstSource.createdAt.localeCompare(secondSource.createdAt);
   });
+  const codexReleaseBanner = createCodexReleaseBanner(
+    appStore.settings.codexReleaseCheck,
+    sourcesStore.isRefreshingCodexRelease,
+    t
+  );
 
   return (
     <Stack className="home-content-panel" spacing={2}>
@@ -100,7 +107,7 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
             <IconButton
               type="button"
               aria-label={t("sources.checkCodexUpdates")}
-              disabled={sourcesStore.isRefreshingSources}
+              disabled={sourcesStore.isRefreshingCodexRelease}
               onClick={handleRefreshCodexRelease}
             >
               <UpdateOutlinedIcon />
@@ -124,6 +131,10 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
         </Alert>
       ) : null}
 
+      <Alert severity={codexReleaseBanner.severity}>
+        {codexReleaseBanner.message}
+      </Alert>
+
       {sortedSources.map((source) => (
         <HomeSourceBoxX
           key={source.id}
@@ -140,6 +151,53 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
 }
 
 export const HomeSourcesViewX = observer(HomeSourcesView);
+
+type CodexReleaseBanner = {
+  severity: "info" | "warning";
+  message: string;
+};
+
+/**
+ * Creates the visible Codex release check status.
+ *
+ * @param releaseCheck Last persisted release check.
+ * @param isRefreshing Whether a check is currently running.
+ * @param translate i18n translation function.
+ * @returns Banner metadata.
+ */
+function createCodexReleaseBanner(
+  releaseCheck: OpenCodexCodexReleaseCheck,
+  isRefreshing: boolean,
+  translate: TFunction
+): CodexReleaseBanner {
+  if (isRefreshing) {
+    return {
+      severity: "info",
+      message: translate("sources.codexReleaseChecking")
+    };
+  }
+
+  if (releaseCheck.latestVersion !== null) {
+    return {
+      severity: "info",
+      message: translate("sources.codexReleaseLatest", {
+        version: releaseCheck.latestVersion
+      })
+    };
+  }
+
+  if (releaseCheck.error !== null) {
+    return {
+      severity: "warning",
+      message: translate("sources.codexReleaseUnavailable")
+    };
+  }
+
+  return {
+    severity: "info",
+    message: translate("sources.codexReleaseNeverChecked")
+  };
+}
 
 /**
  * Checks whether a source is the protected default source.

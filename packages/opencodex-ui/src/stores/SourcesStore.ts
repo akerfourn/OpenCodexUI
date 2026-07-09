@@ -2,6 +2,7 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexEvent,
+  OpenCodexCodexReleaseCheck,
   OpenCodexSource,
   OpenCodexSourceSettingsPatch
 } from "@open-codex-ui/opencodex-protocol";
@@ -24,6 +25,8 @@ export class SourcesStore implements RootChildStore {
   isSyncingAllSources = false;
   /** Whether source diagnostics are currently being refreshed. */
   isRefreshingSources = false;
+  /** Whether the latest Codex release metadata is currently being refreshed. */
+  isRefreshingCodexRelease = false;
   /** Start time for the visible all-sources sync indicator. */
   private allSourcesSyncStartedAt: number | null = null;
   /** Start times for visible per-source sync indicators. */
@@ -185,20 +188,23 @@ export class SourcesStore implements RootChildStore {
    * @returns Promise resolved after the visible source list is updated.
    */
   async refreshCodexReleaseCheck(): Promise<void> {
-    if (this.isRefreshingSources) {
+    if (this.isRefreshingCodexRelease) {
       return;
     }
 
-    this.isRefreshingSources = true;
+    this.isRefreshingCodexRelease = true;
 
     try {
-      await this.root.request({
+      const releaseCheck = await this.root.request<OpenCodexCodexReleaseCheck>({
         type: "sources.codexRelease.check",
         force: true
       });
+      runInAction(() => {
+        this.root.appStore.setCodexReleaseCheck(releaseCheck);
+      });
     } finally {
       runInAction(() => {
-        this.isRefreshingSources = false;
+        this.isRefreshingCodexRelease = false;
       });
     }
   }
