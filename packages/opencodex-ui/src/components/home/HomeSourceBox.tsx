@@ -3,11 +3,12 @@
  */
 import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
-import StarRoundedIcon from "@mui/icons-material/StarRounded";
+import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
 import UpdateOutlinedIcon from "@mui/icons-material/UpdateOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
@@ -15,6 +16,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -119,6 +121,10 @@ export function HomeSourceBox({
     void sourcesStore.updateCodexSource(source.id).finally(() => {
       setIsUpdatingCodex(false);
     });
+  }
+
+  function handleSetDefaultSource(): void {
+    store.appStore.setDefaultSourceId(source.id);
   }
 
   function handleNameChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
@@ -306,7 +312,7 @@ export function HomeSourceBox({
       }}
     >
       <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flex: "1 1 auto" }}>
+        <Box sx={{ display: "flex", gap: 1, minWidth: 0, flex: "1 1 auto" }}>
           <Box
             component="span"
             aria-hidden="true"
@@ -316,27 +322,44 @@ export function HomeSourceBox({
                 borderRadius: 999,
                 flex: "0 0 auto",
                 height: 12,
+                mt: 0.85,
                 width: 12
               }
             ]}
           />
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              variant="subtitle1"
-              component="h3"
-              noWrap
-              sx={{ alignItems: "center", display: "flex", gap: 0.5 }}
+          <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "center", minWidth: 0 }}
             >
+              <Typography variant="subtitle1" component="h3" noWrap>
+                {source.name}
+              </Typography>
               {isDefault ? (
-                <Tooltip title={t("sources.defaultSource")}>
-                  <StarRoundedIcon color="warning" fontSize="small" />
-                </Tooltip>
+                <Chip
+                  size="small"
+                  color="primary"
+                  icon={<CheckCircleOutlinedIcon />}
+                  label={t("sources.default")}
+                />
               ) : null}
-              {source.name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" noWrap>
-              {source.resolvedCommand}
-            </Typography>
+            </Stack>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "center", minWidth: 0 }}
+            >
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t(getSourceKindLabelKey(source.kind))}
+                sx={{ flex: "0 0 auto", height: 22 }}
+              />
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {source.resolvedCommand}
+              </Typography>
+            </Stack>
             <Box
               sx={{
                 alignItems: "center",
@@ -383,8 +406,20 @@ export function HomeSourceBox({
                 ) : null}
               </Box>
             ) : null}
-          </Box>
+          </Stack>
         </Box>
+        {!isDefault ? (
+          <Tooltip title={t("sources.setDefault")}>
+            <Button
+              size="small"
+              startIcon={<StarBorderOutlinedIcon />}
+              onClick={handleSetDefaultSource}
+              sx={{ flex: "0 0 auto" }}
+            >
+              {t("sources.setDefault")}
+            </Button>
+          </Tooltip>
+        ) : null}
         <Tooltip title={t("sources.edit")}>
           <IconButton
             className="source-edit-action"
@@ -746,6 +781,33 @@ function readOpenFileCommand(source: OpenCodexSource): string | null {
     : null;
 }
 
+/**
+ * Maps a source kind to the localized short label used in source cards.
+ *
+ * @param kind Source kind.
+ * @returns i18n key.
+ */
+function getSourceKindLabelKey(kind: OpenCodexSource["kind"]): string {
+  switch (kind) {
+    case "custom":
+      return "sources.kindCustom";
+    case "ssh":
+      return "sources.kindSsh";
+    case "wsl":
+      return "sources.kindWsl";
+    default:
+      return "sources.kindLocal";
+  }
+}
+
+/**
+ * Formats the detected Codex availability status.
+ *
+ * @param status Codex availability status.
+ * @param version Detected Codex version.
+ * @param translate Translation function.
+ * @returns User-visible status text.
+ */
 function getCodexStatusLabel(
   status: "ready" | "outdated" | "unavailable",
   version: string | null,

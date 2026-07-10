@@ -424,6 +424,21 @@ export class AppStore implements RootChildStore {
   }
 
   /**
+   * Updates the default Codex source used when a request omits a source id.
+   *
+   * @param defaultSourceId Source identifier.
+   *
+   * @returns Nothing.
+   */
+  setDefaultSourceId(defaultSourceId: string): void {
+    this.settings = { ...this.settings, defaultSourceId };
+    void this.root.request({
+      type: "settings.update",
+      patch: { defaultSourceId }
+    });
+  }
+
+  /**
    * Asks the host application to open the renderer developer tools.
    *
    * @returns Nothing.
