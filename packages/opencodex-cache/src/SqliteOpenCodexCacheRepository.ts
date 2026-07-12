@@ -71,6 +71,7 @@ import {
   deleteProject,
   listProjects,
   setProjectHidden,
+  updateProjectDisplayName,
   updateProjectPreferences,
   upsertProject
 } from "./sqlite/projectQueries.js";
@@ -264,6 +265,21 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<void> {
     await setProjectHidden(this.database, projectId, isHidden);
+  }
+
+  /**
+   * Updates a project display name.
+   *
+   * @param projectId Project identifier.
+   * @param displayName Display name, or `null` to reset.
+   *
+   * @returns Updated project, or `null` when missing.
+   */
+  async updateProjectDisplayName(
+    projectId: string,
+    displayName: string | null
+  ): Promise<CachedProject | null> {
+    return await updateProjectDisplayName(this.database, projectId, displayName);
   }
 
   /**

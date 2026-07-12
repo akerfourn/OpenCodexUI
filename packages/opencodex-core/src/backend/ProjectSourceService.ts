@@ -168,6 +168,30 @@ export class ProjectSourceService {
   }
 
   /**
+   * Updates a project display name.
+   *
+   * @param projectId Project identifier.
+   * @param displayName Display name, or `null` to reset.
+   *
+   * @returns Updated project.
+   */
+  async updateProjectDisplayName(
+    projectId: string,
+    displayName: string | null
+  ): Promise<OpenCodexProject> {
+    const repository = this.requireCacheRepository("Project display name storage is unavailable.");
+    const updatedProject = await repository.updateProjectDisplayName(projectId, displayName);
+
+    if (updatedProject === null) {
+      throw new Error(`Project not found: ${projectId}`);
+    }
+
+    const project = toOpenCodexProject(updatedProject);
+    this.options.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
+    return project;
+  }
+
+  /**
    * Updates project preferences.
    *
    * @param projectId Project identifier.

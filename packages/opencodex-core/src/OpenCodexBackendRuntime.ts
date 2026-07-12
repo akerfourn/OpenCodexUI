@@ -601,6 +601,21 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Updates a cached project display name.
+   *
+   * @param projectId Project identifier.
+   * @param displayName Display name, or `null` to reset.
+   *
+   * @returns Updated project.
+   */
+  async updateProjectDisplayName(
+    projectId: string,
+    displayName: string | null
+  ): Promise<OpenCodexProject> {
+    return await this.projectSourceService.updateProjectDisplayName(projectId, displayName);
+  }
+
+  /**
    * Updates project preferences.
    *
    * @param projectId Project identifier.

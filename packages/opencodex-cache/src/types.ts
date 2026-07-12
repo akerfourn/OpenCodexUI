@@ -499,6 +499,18 @@ export interface OpenCodexCacheRepository {
   setProjectHidden(projectId: string, isHidden: boolean): Promise<void>;
 
   /**
+   * Updates the user-defined display name for a cached project.
+   *
+   * @param projectId Project identifier.
+   * @param displayName Display name, or `null` to fall back to the default name.
+   * @returns Updated cached project, or `null` when the project no longer exists.
+   */
+  updateProjectDisplayName(
+    projectId: string,
+    displayName: string | null
+  ): Promise<CachedProject | null>;
+
+  /**
    * Updates project-level preferences.
    *
    * @param projectId Project identifier.

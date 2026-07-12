@@ -3,11 +3,27 @@
  */
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
-import { Alert, Box, Button, CircularProgress, IconButton, LinearProgress, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  LinearProgress,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography
+} from "@mui/material";
 import { observer } from "mobx-react-lite";
-import type { ChangeEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
@@ -29,6 +45,9 @@ type ProjectThreadListProps = {
  */
 export function ProjectThreadList({ store, projectStore }: ProjectThreadListProps) {
   const { t } = useTranslation();
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [displayNameDraft, setDisplayNameDraft] = useState(projectStore.displayName);
+  const [isSavingDisplayName, setIsSavingDisplayName] = useState(false);
   const threadListStore = projectStore.threadListStore;
   const source = store.sourcesStore.sources.find((entry) => entry.id === projectStore.project.sourceId);
   const isReadOnlyProject = projectStore.isReadOnlyFromCache;
@@ -54,6 +73,44 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
 
   function handleOpenProject(): void {
     store.openProjectInIde(projectStore.projectPath, projectStore.project.sourceId);
+  }
+
+  function handleOpenRenameDialog(): void {
+    setDisplayNameDraft(projectStore.displayName);
+    setIsRenameDialogOpen(true);
+  }
+
+  function handleCloseRenameDialog(): void {
+    if (isSavingDisplayName) {
+      return;
+    }
+
+    setIsRenameDialogOpen(false);
+  }
+
+  function handleDisplayNameChange(event: ChangeEvent<HTMLInputElement>): void {
+    setDisplayNameDraft(event.target.value);
+  }
+
+  function handleResetDisplayName(): void {
+    void saveProjectDisplayName(null);
+  }
+
+  function handleSubmitDisplayName(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    const nextDisplayName = displayNameDraft.trim();
+    void saveProjectDisplayName(nextDisplayName.length === 0 ? null : nextDisplayName);
+  }
+
+  async function saveProjectDisplayName(displayName: string | null): Promise<void> {
+    setIsSavingDisplayName(true);
+
+    try {
+      await store.projectsStore.updateProjectDisplayName(projectStore.project.id, displayName);
+      setIsRenameDialogOpen(false);
+    } finally {
+      setIsSavingDisplayName(false);
+    }
   }
 
   function handleOpenSources(): void {
@@ -86,6 +143,15 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
               {projectStore.displayName}
             </Typography>
             <Stack className="project-sidebar-hover-actions" direction="row" spacing={0.5}>
+              <IconButton
+                className="project-sidebar-hover-action"
+                aria-label={t("sidebar.editProjectName")}
+                title={t("sidebar.editProjectName")}
+                size="small"
+                onClick={handleOpenRenameDialog}
+              >
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
               <IconButton
                 className="project-sidebar-hover-action"
                 aria-label={t("sidebar.openProject")}
@@ -126,6 +192,45 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
           </Typography>
         </Box>
       </header>
+
+      <Dialog open={isRenameDialogOpen} fullWidth maxWidth="xs" onClose={handleCloseRenameDialog}>
+        <Box component="form" onSubmit={handleSubmitDisplayName}>
+          <DialogTitle>{t("sidebar.editProjectNameTitle")}</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={1.5}>
+              <TextField
+                autoFocus
+                fullWidth
+                size="small"
+                label={t("sidebar.projectName")}
+                value={displayNameDraft}
+                disabled={isSavingDisplayName}
+                onChange={handleDisplayNameChange}
+              />
+              <Typography variant="caption" color="text.secondary">
+                {projectStore.project.defaultName}
+              </Typography>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              type="button"
+              color="inherit"
+              disabled={isSavingDisplayName}
+              onClick={handleResetDisplayName}
+            >
+              {t("sidebar.resetProjectName")}
+            </Button>
+            <Box sx={{ flex: "1 1 auto" }} />
+            <Button type="button" disabled={isSavingDisplayName} onClick={handleCloseRenameDialog}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" variant="contained" disabled={isSavingDisplayName}>
+              {t("sidebar.saveProjectName")}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
 
       {isReadOnlyProject ? (
         <Alert

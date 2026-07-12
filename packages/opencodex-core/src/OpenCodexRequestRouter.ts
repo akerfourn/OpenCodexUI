@@ -58,6 +58,8 @@ export class OpenCodexRequestRouter {
         );
       case "projects.setHidden":
         return this.runtime.setProjectHidden(request.projectId, request.isHidden);
+      case "projects.displayName.update":
+        return this.runtime.updateProjectDisplayName(request.projectId, request.displayName);
       case "projects.preferences.update":
         return this.runtime.updateProjectPreferences(request.projectId, request.patch);
       case "projects.context.sync":

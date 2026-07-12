@@ -143,6 +143,40 @@ export async function setProjectHidden(
 }
 
 /**
+ * Updates the optional display name for one cached project.
+ *
+ * @param database SQLite database connection.
+ * @param projectId Project identifier.
+ * @param displayName User-defined display name, or `null` to reset.
+ *
+ * @returns Updated project, or `null` when no project matches.
+ */
+export async function updateProjectDisplayName(
+  database: BetterSqliteDatabase,
+  projectId: string,
+  displayName: string | null
+): Promise<CachedProject | null> {
+  const normalizedDisplayName = displayName?.trim() || null;
+
+  database
+    .prepare(
+      `
+      UPDATE projects SET
+        display_name = @displayName,
+        updated_at = @updatedAt
+      WHERE id = @projectId
+      `
+    )
+    .run({
+      projectId,
+      displayName: normalizedDisplayName,
+      updatedAt: new Date().toISOString()
+    });
+
+  return readProjectById(database, projectId);
+}
+
+/**
  * Updates the stored preferences for one cached project.
  *
  * @param database SQLite database connection.

@@ -208,6 +208,28 @@ export class ProjectsStore implements RootChildStore {
   }
 
   /**
+   * Persists a user-defined project display name.
+   *
+   * @param projectId Project identifier.
+   * @param displayName Display name, or `null` to reset to the default name.
+   *
+   * @returns Promise resolved with the updated project.
+   */
+  async updateProjectDisplayName(
+    projectId: string,
+    displayName: string | null
+  ): Promise<OpenCodexProject> {
+    const project = await this.root.request<OpenCodexProject>({
+      type: "projects.displayName.update",
+      projectId,
+      displayName
+    });
+
+    this.openProjectTab(project, false);
+    return project;
+  }
+
+  /**
    * Opens or updates a project tab.
    *
    * @param project Project metadata.

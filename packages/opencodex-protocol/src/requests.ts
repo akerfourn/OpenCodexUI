@@ -30,6 +30,7 @@ export type OpenCodexRequest =
   | { type: "projects.open"; projectPath: string; sourceId?: string | null; createIfMissing?: boolean }
   | { type: "projects.pickDirectory"; mode: "open" | "create"; sourceId?: string | null }
   | { type: "projects.setHidden"; projectId: string; isHidden: boolean }
+  | { type: "projects.displayName.update"; projectId: string; displayName: string | null }
   | { type: "projects.preferences.update"; projectId: string; patch: Partial<OpenCodexProjectPreferences> }
   | { type: "projects.context.sync"; projectId: string }
   | { type: "projects.context.pickFolder" }
