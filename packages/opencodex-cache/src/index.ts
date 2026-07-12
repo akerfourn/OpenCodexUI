@@ -17,6 +17,7 @@ export type {
   CachedLogListQuery,
   CachedLogPage,
   CachedLogType,
+  CachedModelCatalog,
   CachedSource,
   CachedSourceBase,
   CachedSourceCodexDetection,

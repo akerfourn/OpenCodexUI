@@ -38,7 +38,10 @@ export function CommitMessageGenerationDialog({
   const { t } = useTranslation();
   const [instruction, setInstruction] = useState("");
   const modelLabel = gitStore.commitGenerationModelLabel ?? t("commitPrompt.defaultModel");
-  const reasoningLabel = gitStore.commitGenerationReasoningEffortLabel ?? t("commitPrompt.defaultReasoning");
+  const reasoningEffort = gitStore.commitGenerationReasoningEffortLabel;
+  const reasoningLabel = reasoningEffort === null
+    ? t("commitPrompt.defaultReasoning")
+    : t(`reasoningEffort.${reasoningEffort}`, { defaultValue: reasoningEffort });
 
   useEffect(() => {
     if (open) {

@@ -8,6 +8,7 @@ import type {
   OpenCodexImageAttachment,
   OpenCodexMessage,
   OpenCodexProject,
+  OpenCodexReasoningEffort,
   OpenCodexSettings,
   OpenCodexThread,
   OpenCodexThreadRuntimeStatus,
@@ -639,7 +640,7 @@ export class ThreadConversationService {
     attachments: OpenCodexImageAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
-    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
+    reasoningEffort: OpenCodexReasoningEffort | null,
     serviceTier: string | null,
     shouldResumeExistingThread = true
   ): Promise<{ threadId: string; turnId: string }> {
@@ -788,7 +789,7 @@ export class ThreadConversationService {
     _attachments: OpenCodexImageAttachment[],
     _references: OpenCodexComposerReference[],
     model: string | null,
-    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
+    reasoningEffort: OpenCodexReasoningEffort | null,
     _serviceTier: string | null
   ): Promise<{ threadId: string }> {
     const targetSourceId = await this.resolveThreadSourceId(threadId) ?? sourceId;

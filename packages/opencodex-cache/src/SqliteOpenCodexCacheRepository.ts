@@ -12,6 +12,7 @@ import type {
   CachedLogEntry,
   CachedLogListQuery,
   CachedLogPage,
+  CachedModelCatalog,
   CachedOlderTurnsResult,
   CachedProject,
   CachedProjectPreferences,
@@ -42,6 +43,10 @@ import {
   deleteLog,
   listLogs
 } from "./sqlite/logQueries.js";
+import {
+  getModelCatalog,
+  saveModelCatalog
+} from "./sqlite/modelCatalogQueries.js";
 import {
   createProjectCommand,
   deleteProjectCommand,
@@ -232,6 +237,27 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async clearSourceAssociations(sourceId: string): Promise<void> {
     await clearSourceAssociations(this.database, sourceId);
+  }
+
+  /**
+   * Reads the latest cached model catalog for one source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Cached catalog, or `null` when no catalog is stored.
+   */
+  async getModelCatalog(sourceId: string): Promise<CachedModelCatalog | null> {
+    return getModelCatalog(this.database, sourceId);
+  }
+
+  /**
+   * Stores the latest serialized model catalog for one source.
+   *
+   * @param sourceId Source identifier.
+   * @param modelsJson Serialized model metadata.
+   * @returns Promise resolved when the catalog is stored.
+   */
+  async saveModelCatalog(sourceId: string, modelsJson: string): Promise<void> {
+    saveModelCatalog(this.database, sourceId, modelsJson);
   }
 
   /**

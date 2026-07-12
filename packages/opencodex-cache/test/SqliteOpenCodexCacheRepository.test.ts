@@ -47,6 +47,31 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should persist model catalogs per source", async () => {
+    const source = await repository.ensureDefaultSource();
+
+    await repository.saveModelCatalog(
+      source.id,
+      JSON.stringify([
+        {
+          model: "gpt-5.6-terra",
+          supportedReasoningEfforts: ["low", "medium", "high", "xhigh", "max"]
+        }
+      ])
+    );
+
+    const catalog = await repository.getModelCatalog(source.id);
+
+    expect(catalog?.sourceId).toBe(source.id);
+    expect(JSON.parse(catalog?.modelsJson ?? "null")).toEqual([
+      {
+        model: "gpt-5.6-terra",
+        supportedReasoningEfforts: ["low", "medium", "high", "xhigh", "max"]
+      }
+    ]);
+    expect(catalog?.updatedAt).toEqual(expect.any(String));
+  });
+
   it("should persist projects with the same path per source", async () => {
     const localProject = await repository.upsertProject("/tmp/shared-project", "source-local");
     const remoteProject = await repository.upsertProject("/tmp/shared-project", "source-ssh");

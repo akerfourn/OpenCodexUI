@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 
 import type {
   OpenCodexModelServiceTier,
+  OpenCodexReasoningEffortOption,
   OpenCodexReasoningEffort,
   OpenCodexServiceTier
 } from "@open-codex-ui/opencodex-protocol";
@@ -18,6 +19,7 @@ import { SettingMenuButton } from "./SettingMenuButton";
 type ModelSettingsFieldsProps = {
   selectedModel: string | null;
   reasoningEffort: OpenCodexReasoningEffort;
+  reasoningEfforts: OpenCodexReasoningEffortOption[];
   selectedServiceTier: OpenCodexServiceTier | null;
   modelOptions: string[];
   serviceTierOptions: OpenCodexModelServiceTier[];
@@ -36,6 +38,7 @@ type ModelSettingsFieldsProps = {
 export function ModelSettingsFields({
   selectedModel,
   reasoningEffort,
+  reasoningEfforts,
   selectedServiceTier,
   modelOptions,
   serviceTierOptions,
@@ -68,12 +71,12 @@ export function ModelSettingsFields({
         icon={<PsychologyOutlinedIcon fontSize="small" />}
         label={t("composer.reasoning")}
         value={reasoningEffort}
-        options={[
-          { value: "low", label: "low" },
-          { value: "medium", label: "medium" },
-          { value: "high", label: "high" },
-          { value: "xhigh", label: "xhigh" }
-        ]}
+        options={reasoningEfforts.map((option) => ({
+          value: option.reasoningEffort,
+          label: t(`reasoningEffort.${option.reasoningEffort}`, {
+            defaultValue: option.reasoningEffort
+          })
+        }))}
         onChange={onReasoningEffortChange}
       />
       <SettingMenuButton

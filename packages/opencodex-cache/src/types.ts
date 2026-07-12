@@ -6,6 +6,15 @@ export type CachedSourceColor = "blue" | "indigo" | "purple" | "pink" | "red" | 
 export type CachedLogType = "error" | "warning" | "info";
 
 /**
+ * Serialized model metadata cached for one Codex source.
+ */
+export type CachedModelCatalog = {
+  sourceId: string;
+  modelsJson: string;
+  updatedAt: string;
+};
+
+/**
  * Cached summary row used to list and identify Codex threads.
  */
 export type CachedThreadSummary = {
@@ -18,7 +27,7 @@ export type CachedThreadSummary = {
   title: string;
   preview: string;
   model: string | null;
-  reasoningEffort: "low" | "medium" | "high" | "xhigh" | null;
+  reasoningEffort: string | null;
   projectName: string | null;
   projectPath: string | null;
   projectHidden?: boolean;
@@ -484,6 +493,23 @@ export interface OpenCodexCacheRepository {
    * @returns Promise resolved when associations are cleared.
    */
   clearSourceAssociations(sourceId: string): Promise<void>;
+
+  /**
+   * Reads the latest cached model catalog for one source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Cached catalog, or `null` when no catalog is stored.
+   */
+  getModelCatalog(sourceId: string): Promise<CachedModelCatalog | null>;
+
+  /**
+   * Stores the latest serialized model catalog for one source.
+   *
+   * @param sourceId Source identifier.
+   * @param modelsJson Serialized model metadata.
+   * @returns Promise resolved when the catalog is stored.
+   */
+  saveModelCatalog(sourceId: string, modelsJson: string): Promise<void>;
 
   /**
    * Inserts or refreshes a cached project.

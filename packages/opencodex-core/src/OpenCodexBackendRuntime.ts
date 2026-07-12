@@ -919,7 +919,7 @@ export class OpenCodexBackendRuntime {
     attachments: OpenCodexImageAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
-    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
+    reasoningEffort: OpenCodexReasoningEffort | null,
     serviceTier: string | null
   ): Promise<{ threadId: string; turnId: string }> {
     return await this.threadConversationService.startTurn(
@@ -982,7 +982,7 @@ export class OpenCodexBackendRuntime {
     attachments: OpenCodexImageAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
-    reasoningEffort: "low" | "medium" | "high" | "xhigh" | null,
+    reasoningEffort: OpenCodexReasoningEffort | null,
     serviceTier: string | null
   ): Promise<{ threadId: string }> {
     return await this.threadConversationService.editLastTurn(
@@ -1119,19 +1119,41 @@ export class OpenCodexBackendRuntime {
    * @returns Model identifiers.
    */
   async listModels(): Promise<OpenCodexModel[]> {
-    const client = await this.ensureClient();
+    const source = await this.resolveSource(this.settings.defaultSourceId);
+    const cachedModels = await this.readCachedModels(source.id);
+
+    if (cachedModels.length > 0) {
+      this.emit({ type: "models.updated", models: cachedModels });
+    }
 
     try {
+      const client = await this.ensureClient(source.id);
       const response = await client.request("model/list", { limit: 100 });
       const models = readModels(response);
-      const resolvedModels = models.length > 0 ? models : fallbackModels();
-      this.emit({ type: "models.updated", models: resolvedModels });
-      return resolvedModels;
+
+      if (models.length > 0) {
+        await this.saveModelCatalog(source.id, models);
+        this.emit({ type: "models.updated", models });
+        return models;
+      }
+
+      if (cachedModels.length > 0) {
+        return cachedModels;
+      }
+
+      const modelsFallback = fallbackModels();
+      this.emit({ type: "models.updated", models: modelsFallback });
+      return modelsFallback;
     } catch (error) {
       this.options.logger?.(`model/list unavailable: ${String(error)}`);
-      const models = fallbackModels();
-      this.emit({ type: "models.updated", models });
-      return models;
+
+      if (cachedModels.length > 0) {
+        return cachedModels;
+      }
+
+      const modelsFallback = fallbackModels();
+      this.emit({ type: "models.updated", models: modelsFallback });
+      return modelsFallback;
     }
   }
 
@@ -2168,6 +2190,51 @@ export class OpenCodexBackendRuntime {
     void this.threadConversationService.syncCompletedTurn(threadId).catch((error: unknown) => {
       this.handleClientError(toError(error));
     });
+  }
+
+  /**
+   * Reads and validates the cached model catalog for one source.
+   *
+   * @param sourceId Source identifier.
+   * @returns Cached models, or an empty list when unavailable or invalid.
+   */
+  private async readCachedModels(sourceId: string): Promise<OpenCodexModel[]> {
+    if (this.cacheRepository === null) {
+      return [];
+    }
+
+    try {
+      const catalog = await this.cacheRepository.getModelCatalog(sourceId);
+
+      if (catalog === null) {
+        return [];
+      }
+
+      const models = JSON.parse(catalog.modelsJson) as unknown;
+      return readModels({ data: models });
+    } catch (error) {
+      this.options.logger?.(`model catalog cache unavailable: ${String(error)}`);
+      return [];
+    }
+  }
+
+  /**
+   * Persists a fresh model catalog without making cache failures visible to the UI.
+   *
+   * @param sourceId Source identifier.
+   * @param models Fresh model metadata.
+   * @returns Promise resolved after the best-effort write.
+   */
+  private async saveModelCatalog(sourceId: string, models: OpenCodexModel[]): Promise<void> {
+    if (this.cacheRepository === null) {
+      return;
+    }
+
+    try {
+      await this.cacheRepository.saveModelCatalog(sourceId, JSON.stringify(models));
+    } catch (error) {
+      this.options.logger?.(`model catalog cache write unavailable: ${String(error)}`);
+    }
   }
 
 }

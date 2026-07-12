@@ -29,7 +29,6 @@ type HomeCommitViewProps = {
 
 const defaultModelValue = "__default__";
 const defaultReasoningValue = "__default__";
-const reasoningEfforts: OpenCodexReasoningEffort[] = ["low", "medium", "high", "xhigh"];
 
 /**
  * Renders the Home commit configuration page.
@@ -46,6 +45,7 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
     : "commitPrompt.simple";
   const modelValue = appStore.settings.commitMessageModel ?? defaultModelValue;
   const reasoningValue = appStore.settings.commitMessageReasoningEffort ?? defaultReasoningValue;
+  const reasoningEfforts = appStore.getReasoningEffortOptions(appStore.settings.commitMessageModel);
   const [isEditingPrompt, setEditingPrompt] = useState(false);
 
   useEffect(() => {
@@ -245,9 +245,11 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
                 onChange={handleReasoningChange}
               >
                 <MenuItem value={defaultReasoningValue}>{t("commitPrompt.defaultReasoning")}</MenuItem>
-                {reasoningEfforts.map((effort) => (
-                  <MenuItem key={effort} value={effort}>
-                    {effort}
+                {reasoningEfforts.map((option) => (
+                  <MenuItem key={option.reasoningEffort} value={option.reasoningEffort}>
+                    {t(`reasoningEffort.${option.reasoningEffort}`, {
+                      defaultValue: option.reasoningEffort
+                    })}
                   </MenuItem>
                 ))}
               </TextField>

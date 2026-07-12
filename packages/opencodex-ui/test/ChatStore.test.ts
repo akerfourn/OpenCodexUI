@@ -291,12 +291,25 @@ function createRootStore(): RootStore {
           id: "gpt-5.5",
           model: "gpt-5.5",
           displayName: "GPT-5.5",
+          supportedReasoningEfforts: [
+            { reasoningEffort: "low", description: "" },
+            { reasoningEffort: "medium", description: "" },
+            { reasoningEffort: "high", description: "" },
+            { reasoningEffort: "xhigh", description: "" }
+          ],
+          defaultReasoningEffort: "medium",
           serviceTiers: []
         },
         {
           id: "gpt-5.4-mini",
           model: "gpt-5.4-mini",
           displayName: "GPT-5.4 Mini",
+          supportedReasoningEfforts: [
+            { reasoningEffort: "low", description: "" },
+            { reasoningEffort: "medium", description: "" },
+            { reasoningEffort: "high", description: "" }
+          ],
+          defaultReasoningEffort: "medium",
           serviceTiers: []
         }
       ],
@@ -304,7 +317,9 @@ function createRootStore(): RootStore {
       settings: {
         defaultModel: null,
         defaultReasoningEffort: "medium"
-      }
+      },
+      getReasoningEffortOptions: vi.fn(() => []),
+      resolveReasoningEffort: vi.fn((_model: string | null, effort: string) => effort)
     },
     navigationStore: {
       activeProjectStore: null

@@ -435,6 +435,7 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
             <ModelSettingsFields
               selectedModel={chatStore.selectedModel}
               reasoningEffort={chatStore.reasoningEffort}
+              reasoningEfforts={store.appStore.getReasoningEffortOptions(chatStore.selectedModel)}
               selectedServiceTier={chatStore.selectedServiceTier}
               modelOptions={store.appStore.modelOptions}
               serviceTierOptions={store.appStore.getServiceTierOptions(chatStore.selectedModel)}

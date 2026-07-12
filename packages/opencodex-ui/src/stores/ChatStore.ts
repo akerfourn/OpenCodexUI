@@ -323,6 +323,7 @@ export class ChatStore {
   setSelectedModel(value: string | null): void {
     this.selectedModel = value;
     this.selectedServiceTier = resolveAvailableServiceTier(value, this.selectedServiceTier, this.root);
+    this.reasoningEffort = this.root.appStore.resolveReasoningEffort(value, this.reasoningEffort);
     this.hasExplicitModelSelection = true;
     this.updateComposerThreadMetadata(value, this.reasoningEffort);
   }
@@ -338,6 +339,25 @@ export class ChatStore {
     this.reasoningEffort = value;
     this.hasExplicitReasoningEffortSelection = true;
     this.updateComposerThreadMetadata(this.selectedModel, value);
+  }
+
+  /**
+   * Reconciles the current effort after a model catalog refresh.
+   *
+   * @returns Nothing.
+   */
+  reconcileReasoningEffort(): void {
+    const nextReasoningEffort = this.root.appStore.resolveReasoningEffort(
+      this.selectedModel,
+      this.reasoningEffort
+    );
+
+    if (nextReasoningEffort === this.reasoningEffort) {
+      return;
+    }
+
+    this.reasoningEffort = nextReasoningEffort;
+    this.updateComposerThreadMetadata(this.selectedModel, nextReasoningEffort);
   }
 
   /**
@@ -1369,7 +1389,9 @@ function resolveInitialReasoningEffort(
   thread: OpenCodexThread,
   root: RootStore
 ): OpenCodexReasoningEffort {
-  return thread.reasoningEffort ?? root.appStore.settings.defaultReasoningEffort ?? "medium";
+  const selectedModel = resolveInitialSelectedModel(thread, root);
+  const configuredEffort = thread.reasoningEffort ?? root.appStore.settings.defaultReasoningEffort ?? "medium";
+  return root.appStore.resolveReasoningEffort(selectedModel, configuredEffort);
 }
 
 /**

@@ -4,7 +4,25 @@
 /**
  * Reasoning effort values accepted by Codex and displayed in composer controls.
  */
-export type OpenCodexReasoningEffort = "low" | "medium" | "high" | "xhigh";
+export type OpenCodexReasoningEffort = string;
+
+/**
+ * Reasoning effort option advertised by one Codex model.
+ */
+export type OpenCodexReasoningEffortOption = {
+  reasoningEffort: OpenCodexReasoningEffort;
+  description: string;
+};
+
+/**
+ * Conservative reasoning levels used when Codex cannot provide model metadata.
+ */
+export const DEFAULT_OPEN_CODEX_REASONING_EFFORTS: OpenCodexReasoningEffort[] = [
+  "low",
+  "medium",
+  "high",
+  "xhigh"
+];
 
 /**
  * Assistant message phase emitted by Codex for reasoning-like and final content.
@@ -124,6 +142,8 @@ export type OpenCodexModel = {
   id: string;
   model: string;
   displayName: string;
+  supportedReasoningEfforts: OpenCodexReasoningEffortOption[];
+  defaultReasoningEffort: OpenCodexReasoningEffort | null;
   serviceTiers: OpenCodexModelServiceTier[];
 };
 

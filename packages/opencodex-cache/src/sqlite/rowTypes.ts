@@ -20,7 +20,7 @@ export type ThreadRow = {
   title: string;
   preview: string | null;
   model: string | null;
-  reasoning_effort: "low" | "medium" | "high" | "xhigh" | null;
+  reasoning_effort: string | null;
   status: string | null;
   updated_at: string | null;
   newest_turn_id: string | null;
@@ -71,6 +71,15 @@ export type LogRow = {
   message: string;
   details_json: string | null;
   created_at: string;
+};
+
+/**
+ * SQLite row containing one source-scoped model catalog.
+ */
+export type ModelCatalogRow = {
+  source_id: string;
+  models_json: string;
+  updated_at: string;
 };
 
 /**

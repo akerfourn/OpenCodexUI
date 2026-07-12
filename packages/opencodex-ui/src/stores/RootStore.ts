@@ -100,6 +100,9 @@ export class RootStore {
    */
   handleEvent(event: OpenCodexEvent): void {
     this.appStore.handleEvent(event);
+    if (event.type === "models.updated") {
+      this.projectsStore.reconcileReasoningEfforts();
+    }
     this.approvalsStore.handleEvent(event);
     this.logsStore.handleEvent(event);
     this.projectsStore.handleEvent(event);

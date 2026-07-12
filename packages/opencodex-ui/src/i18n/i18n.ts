@@ -76,6 +76,13 @@ export const resources = {
         send: "Envoyer",
         steer: "Guider"
       },
+      reasoningEffort: {
+        low: "Faible",
+        medium: "Moyen",
+        high: "Élevé",
+        xhigh: "Très élevé",
+        max: "Maximum"
+      },
       header: {
         contextUsageTooltip:
           "Contexte courant: {{used}} / {{max}} tokens utilisés ({{percent}} %). Total du thread: {{total}} tokens.",
@@ -732,6 +739,13 @@ export const resources = {
         serviceTierDefault: "Auto",
         send: "Send",
         steer: "Steer"
+      },
+      reasoningEffort: {
+        low: "Low",
+        medium: "Medium",
+        high: "High",
+        xhigh: "Extra high",
+        max: "Maximum"
       },
       header: {
         contextUsageTooltip:

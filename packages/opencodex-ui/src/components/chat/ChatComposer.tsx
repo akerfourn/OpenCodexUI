@@ -58,6 +58,7 @@ export function ChatComposer({
   const canShowSubmit = !isWorking || canSteer;
   const canAttachImages = !isWorking || canSteer;
   const sourceId = chatStore.sourceId;
+  const reasoningEfforts = store.appStore.getReasoningEffortOptions(chatStore.selectedModel);
   const serviceTierOptions = store.appStore.getServiceTierOptions(chatStore.selectedModel);
   const areAdvancedActionsDisabled = (
     isWorking ||
@@ -234,6 +235,7 @@ export function ChatComposer({
         <ModelSettingsFields
           selectedModel={chatStore.selectedModel}
           reasoningEffort={chatStore.reasoningEffort}
+          reasoningEfforts={reasoningEfforts}
           selectedServiceTier={chatStore.selectedServiceTier}
           modelOptions={modelOptions}
           serviceTierOptions={serviceTierOptions}

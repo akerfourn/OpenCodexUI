@@ -71,6 +71,19 @@ export class ProjectsStore implements RootChildStore {
   }
 
   /**
+   * Reconciles chat efforts after the backend publishes fresh model metadata.
+   *
+   * @returns Nothing.
+   */
+  reconcileReasoningEfforts(): void {
+    for (const projectStore of this.projectStoresById.values()) {
+      for (const chatStore of projectStore.chatsById.values()) {
+        chatStore.reconcileReasoningEffort();
+      }
+    }
+  }
+
+  /**
    * Opens a project path, creating it when requested.
    *
    * @param projectPath Project path to open.

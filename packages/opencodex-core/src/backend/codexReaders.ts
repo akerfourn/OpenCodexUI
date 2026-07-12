@@ -2,7 +2,13 @@
  * Reads typed values from Codex app-server responses.
  */
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
-import type { OpenCodexModel, OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
+import {
+  DEFAULT_OPEN_CODEX_REASONING_EFFORTS,
+  type OpenCodexModel,
+  type OpenCodexReasoningEffort,
+  type OpenCodexReasoningEffortOption,
+  type OpenCodexThread
+} from "@open-codex-ui/opencodex-protocol";
 
 import { mapThread, readObject, readString } from "../mapping.js";
 import { THREAD_LIST_MAX_PAGES, type ThreadListParams } from "./constants.js";
@@ -76,12 +82,12 @@ export function readModels(response: unknown): OpenCodexModel[] {
  * @param value Raw effort value.
  * @returns Supported reasoning effort, or `null` when unknown.
  */
-export function readReasoningEffort(value: unknown): "low" | "medium" | "high" | "xhigh" | null {
-  if (value === "low" || value === "medium" || value === "high" || value === "xhigh") {
-    return value;
+export function readReasoningEffort(value: unknown): OpenCodexReasoningEffort | null {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
   }
 
-  return null;
+  return value;
 }
 
 /**
@@ -94,6 +100,11 @@ export function fallbackModels(): OpenCodexModel[] {
     id: model,
     model,
     displayName: model,
+    supportedReasoningEfforts: DEFAULT_OPEN_CODEX_REASONING_EFFORTS.map((reasoningEffort) => ({
+      reasoningEffort,
+      description: ""
+    })),
+    defaultReasoningEffort: "medium",
     serviceTiers: []
   }));
 }
@@ -107,6 +118,9 @@ export function fallbackModels(): OpenCodexModel[] {
 function readModel(value: Record<string, unknown>): OpenCodexModel {
   const id = readString(value.model) || readString(value.id);
   const displayName = readString(value.displayName) || id;
+  const supportedReasoningEfforts = readReasoningEfforts(
+    value.supportedReasoningEfforts ?? value.supportedReasoningLevels
+  );
   const serviceTiers = Array.isArray(value.serviceTiers)
     ? value.serviceTiers.map((tier) => readModelServiceTier(readObject(tier)))
     : [];
@@ -115,8 +129,46 @@ function readModel(value: Record<string, unknown>): OpenCodexModel {
     id,
     model: id,
     displayName,
+    supportedReasoningEfforts,
+    defaultReasoningEffort: readReasoningEffort(
+      value.defaultReasoningEffort ?? value.defaultReasoningLevel
+    ),
     serviceTiers: serviceTiers.filter((tier) => tier.id.length > 0)
   };
+}
+
+/**
+ * Reads the reasoning levels advertised by one model.
+ *
+ * @param value Raw supported-effort collection.
+ * @returns Unique supported reasoning options.
+ */
+function readReasoningEfforts(value: unknown): OpenCodexReasoningEffortOption[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const options: OpenCodexReasoningEffortOption[] = [];
+  const seenEfforts = new Set<OpenCodexReasoningEffort>();
+
+  for (const entry of value) {
+    const record = readObject(entry);
+    const reasoningEffort = readReasoningEffort(
+      typeof entry === "string" ? entry : record.reasoningEffort ?? record.effort
+    );
+
+    if (reasoningEffort === null || seenEfforts.has(reasoningEffort)) {
+      continue;
+    }
+
+    seenEfforts.add(reasoningEffort);
+    options.push({
+      reasoningEffort,
+      description: readString(record.description)
+    });
+  }
+
+  return options;
 }
 
 /**

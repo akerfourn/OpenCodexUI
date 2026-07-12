@@ -1,5 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
+import { DEFAULT_OPEN_CODEX_REASONING_EFFORTS } from "@open-codex-ui/opencodex-protocol";
+
 import type {
   OpenCodexColorScheme,
   OpenCodexCodexReleaseCheck,
@@ -9,6 +11,7 @@ import type {
   OpenCodexLanguage,
   OpenCodexModel,
   OpenCodexModelServiceTier,
+  OpenCodexReasoningEffortOption,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
   OpenCodexToolVersionStatus,
@@ -279,6 +282,56 @@ export class AppStore implements RootChildStore {
   }
 
   /**
+   * Returns reasoning efforts supported by the selected model.
+   *
+   * @param model Model identifier, or `null` for the current default.
+   * @returns Model-specific efforts, or conservative fallback efforts.
+   */
+  getReasoningEffortOptions(model: string | null): OpenCodexReasoningEffortOption[] {
+    const modelEntry = this.findModel(model);
+
+    if (modelEntry !== undefined && modelEntry.supportedReasoningEfforts.length > 0) {
+      return modelEntry.supportedReasoningEfforts;
+    }
+
+    return DEFAULT_OPEN_CODEX_REASONING_EFFORTS.map((reasoningEffort) => ({
+      reasoningEffort,
+      description: ""
+    }));
+  }
+
+  /**
+   * Keeps a reasoning effort valid when the selected model changes.
+   *
+   * @param model Model identifier, or `null` for the current default.
+   * @param reasoningEffort Current effort.
+   * @returns Current effort when supported, otherwise the model default.
+   */
+  resolveReasoningEffort(
+    model: string | null,
+    reasoningEffort: OpenCodexReasoningEffort
+  ): OpenCodexReasoningEffort {
+    const options = this.getReasoningEffortOptions(model);
+
+    if (options.some((option) => option.reasoningEffort === reasoningEffort)) {
+      return reasoningEffort;
+    }
+
+    const modelEntry = this.findModel(model);
+    const defaultReasoningEffort = modelEntry?.defaultReasoningEffort;
+
+    if (
+      defaultReasoningEffort !== null &&
+      defaultReasoningEffort !== undefined &&
+      options.some((option) => option.reasoningEffort === defaultReasoningEffort)
+    ) {
+      return defaultReasoningEffort;
+    }
+
+    return options[0]?.reasoningEffort ?? "medium";
+  }
+
+  /**
    * Updates the UI language and persists it through the backend.
    *
    * @param language Language setting to apply.
@@ -473,10 +526,18 @@ export class AppStore implements RootChildStore {
    * @returns Nothing.
    */
   setCommitMessageModel(commitMessageModel: string | null): void {
-    this.settings = { ...this.settings, commitMessageModel };
+    const currentEffort = this.settings.commitMessageReasoningEffort;
+    const commitMessageReasoningEffort = currentEffort === null
+      ? null
+      : this.resolveReasoningEffort(commitMessageModel, currentEffort);
+    this.settings = {
+      ...this.settings,
+      commitMessageModel,
+      commitMessageReasoningEffort
+    };
     void this.root.request({
       type: "settings.update",
-      patch: { commitMessageModel }
+      patch: { commitMessageModel, commitMessageReasoningEffort }
     });
   }
 
@@ -538,5 +599,25 @@ export class AppStore implements RootChildStore {
     this.reasoningEffort = settings.defaultReasoningEffort ?? "medium";
     this.appVersion = appVersion;
     applyOpenCodexLanguage(settings.language);
+  }
+
+  /**
+   * Finds a model using the explicit selection or the current default.
+   *
+   * @param model Model identifier, or `null` for the current default.
+   * @returns Matching model metadata, or `undefined`.
+   */
+  private findModel(model: string | null): OpenCodexModel | undefined {
+    const modelId = model
+      ?? this.selectedModel
+      ?? this.settings.defaultModel
+      ?? this.models[0]?.model
+      ?? null;
+
+    if (modelId === null) {
+      return undefined;
+    }
+
+    return this.models.find((entry) => entry.model === modelId || entry.id === modelId);
   }
 }
