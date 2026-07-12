@@ -10,6 +10,8 @@ export type CachedLogType = "error" | "warning" | "info";
  */
 export type CachedThreadSummary = {
   id: string;
+  sessionId: string | null;
+  parentThreadId: string | null;
   sourceId: string | null;
   codexTitle: string;
   customTitle: string | null;
@@ -23,6 +25,9 @@ export type CachedThreadSummary = {
   branchName: string | null;
   updatedAt: string | null;
   isArchived: boolean;
+  threadSource: string | null;
+  agentNickname: string | null;
+  agentRole: string | null;
   status?: string;
 };
 

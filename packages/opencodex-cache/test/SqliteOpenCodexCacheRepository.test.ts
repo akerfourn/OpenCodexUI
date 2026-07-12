@@ -734,6 +734,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
     await repository.upsertThreadIndex([
       {
         id: "thread-1",
+        sessionId: null,
+        parentThreadId: null,
         codexTitle: "OpenCodexUI",
         customTitle: null,
         title: "OpenCodexUI",
@@ -757,6 +759,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
     expect(threads).toEqual([
       {
         id: "thread-1",
+        sessionId: null,
+        parentThreadId: null,
         codexTitle: "OpenCodexUI",
         customTitle: null,
         title: "OpenCodexUI",
@@ -768,7 +772,10 @@ describe("SqliteOpenCodexCacheRepository", () => {
         sourceId: null,
         branchName: "main",
         updatedAt: "2026-01-01T00:00:00.000Z",
-        isArchived: false
+        isArchived: false,
+        threadSource: null,
+        agentNickname: null,
+        agentRole: null
       }
     ]);
   });

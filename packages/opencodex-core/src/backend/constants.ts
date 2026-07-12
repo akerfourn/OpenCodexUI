@@ -28,6 +28,8 @@ export type ThreadListParams = {
   cwd?: string | string[] | null;
   searchTerm?: string | null;
   archived?: boolean | null;
+  parentThreadId?: string | null;
+  ancestorThreadId?: string | null;
 };
 
 export const THREAD_SOURCE_KINDS: ThreadSourceKind[] = [
@@ -41,4 +43,20 @@ export const THREAD_SOURCE_KINDS: ThreadSourceKind[] = [
   "subAgentThreadSpawn",
   "subAgentOther",
   "unknown"
+];
+
+export const THREAD_MAIN_SOURCE_KINDS: ThreadSourceKind[] = [
+  "cli",
+  "vscode",
+  "exec",
+  "appServer",
+  "unknown"
+];
+
+export const THREAD_SUB_AGENT_SOURCE_KINDS: ThreadSourceKind[] = [
+  "subAgent",
+  "subAgentReview",
+  "subAgentCompact",
+  "subAgentThreadSpawn",
+  "subAgentOther"
 ];

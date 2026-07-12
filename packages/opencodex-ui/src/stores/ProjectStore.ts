@@ -82,6 +82,17 @@ export class ProjectStore {
   }
 
   /**
+   * Opens a link through the root transport.
+   *
+   * @param href Link target.
+   *
+   * @returns Nothing.
+   */
+  openExternalLink(href: string): void {
+    this.root.openExternalLink(href);
+  }
+
+  /**
    * Resolves the Codex source that owns one thread.
    *
    * @param thread Thread metadata.

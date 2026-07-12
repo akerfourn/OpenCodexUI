@@ -58,6 +58,8 @@ export function mapThread(
 
   return {
     id: readString(thread.id),
+    sessionId: readNullableString(thread.sessionId),
+    parentThreadId: readNullableString(thread.parentThreadId),
     codexTitle,
     customTitle: null,
     title,
@@ -70,6 +72,9 @@ export function mapThread(
     branchName: readNullableString(gitInfo.branch),
     updatedAt: readTimestamp(thread.updatedAt),
     isArchived: false,
+    threadSource: readNullableString(thread.threadSource),
+    agentNickname: readNullableString(thread.agentNickname),
+    agentRole: readNullableString(thread.agentRole),
     status: readNullableString(thread.status) ?? undefined
   };
 }

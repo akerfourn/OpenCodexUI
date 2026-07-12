@@ -105,6 +105,8 @@ describe("OpenCodex mapping", () => {
       })
     ).toEqual({
       id: "thread-1",
+      sessionId: null,
+      parentThreadId: null,
       codexTitle: "Title",
       customTitle: null,
       title: "Title",
@@ -117,6 +119,9 @@ describe("OpenCodex mapping", () => {
       branchName: "main",
       updatedAt: "1970-01-01T00:00:01.000Z",
       isArchived: false,
+      threadSource: null,
+      agentNickname: null,
+      agentRole: null,
       status: "idle"
     });
   });

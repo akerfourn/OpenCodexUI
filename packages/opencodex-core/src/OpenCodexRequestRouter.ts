@@ -110,6 +110,10 @@ export class OpenCodexRequestRouter {
         );
       case "threads.open":
         return this.runtime.openThread(request.threadId);
+      case "threads.subAgents.list":
+        return this.runtime.listSubAgentThreads(request.parentThreadId);
+      case "threads.readReadonly":
+        return this.runtime.readThreadReadonly(request.threadId);
       case "threads.loadOlder":
         return this.runtime.loadOlderThreadMessages(request.threadId);
       case "threads.recover":

@@ -588,6 +588,10 @@ export const resources = {
         search: "Rechercher",
         showActiveChats: "Retour aux chats actifs",
         showArchivedChats: "Voir les chats archivés",
+        subAgentThreadNoMessages: "Aucun message chargé pour ce sous-agent.",
+        subAgentThreads: "Voir les chats des sous-agents",
+        subAgentThreadsEmpty: "Aucun chat de sous-agent trouvé pour cette conversation.",
+        subAgentThreadsTitle: "Chats des sous-agents",
         threadActions: "Actions de conversation",
         unarchiveThread: "Désarchiver"
       },
@@ -1240,6 +1244,10 @@ export const resources = {
         search: "Search",
         showActiveChats: "Back to active chats",
         showArchivedChats: "Show archived chats",
+        subAgentThreadNoMessages: "No message loaded for this sub-agent.",
+        subAgentThreads: "View sub-agent chats",
+        subAgentThreadsEmpty: "No sub-agent chat found for this conversation.",
+        subAgentThreadsTitle: "Sub-agent chats",
         threadActions: "Conversation actions",
         unarchiveThread: "Unarchive"
       },

@@ -26,6 +26,8 @@ export function mapThreadRow(row: ThreadRow): CachedThreadSummary {
   const title = resolveCachedThreadTitle(row.codex_title, row.custom_title, row.preview ?? "");
   const thread: CachedThreadSummary = {
     id: row.id,
+    sessionId: row.session_id,
+    parentThreadId: row.parent_thread_id,
     sourceId: row.source_id,
     codexTitle: row.codex_title,
     customTitle: row.custom_title,
@@ -37,7 +39,10 @@ export function mapThreadRow(row: ThreadRow): CachedThreadSummary {
     projectPath: row.cwd,
     branchName: row.branch_name,
     updatedAt: row.updated_at,
-    isArchived: row.is_archived === 1
+    isArchived: row.is_archived === 1,
+    threadSource: row.thread_source,
+    agentNickname: row.agent_nickname,
+    agentRole: row.agent_role
   };
 
   if (row.status !== null) {

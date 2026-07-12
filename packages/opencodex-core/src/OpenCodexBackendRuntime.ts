@@ -817,6 +817,28 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Lists sub-agent threads spawned by a parent thread.
+   *
+   * @param parentThreadId Parent thread identifier.
+   *
+   * @returns Sub-agent threads.
+   */
+  async listSubAgentThreads(parentThreadId: string): Promise<OpenCodexThread[]> {
+    return await this.threadConversationService.listSubAgentThreads(parentThreadId);
+  }
+
+  /**
+   * Reads a secondary thread without changing the selected chat.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Thread and loaded turns.
+   */
+  async readThreadReadonly(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+    return await this.threadConversationService.readThreadReadonly(threadId);
+  }
+
+  /**
    * Loads older messages for a thread.
    *
    * @param threadId Thread identifier.

@@ -199,7 +199,7 @@ describe("CodexAppServerClient", () => {
       turnId: "turn-1",
       sortDirection: "asc"
     })).resolves.toEqual({
-      method: "thread/turns/items/list",
+      method: "thread/items/list",
       params: {
         threadId: "thread-1",
         turnId: "turn-1",

@@ -1,7 +1,7 @@
 import Fuse from "fuse.js";
 import { makeAutoObservable } from "mobx";
 
-import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexThread, OpenCodexTurn } from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectStore } from "./ProjectStore";
 import type { RootStore } from "./RootStore";
@@ -238,6 +238,32 @@ export class ThreadListStore {
    */
   findThread(threadId: string): OpenCodexThread | null {
     return this.threads.find((thread) => thread.id === threadId) ?? null;
+  }
+
+  /**
+   * Lists readonly sub-agent threads spawned from a parent thread.
+   *
+   * @param parentThreadId Parent thread identifier.
+   * @returns Sub-agent thread metadata.
+   */
+  async listSubAgentThreads(parentThreadId: string): Promise<OpenCodexThread[]> {
+    return await this.root.request<OpenCodexThread[]>({
+      type: "threads.subAgents.list",
+      parentThreadId
+    });
+  }
+
+  /**
+   * Reads a secondary thread without changing the selected chat.
+   *
+   * @param threadId Thread identifier.
+   * @returns Thread metadata and turns.
+   */
+  async readThreadReadonly(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+    return await this.root.request<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }>({
+      type: "threads.readReadonly",
+      threadId
+    });
   }
 
   /**

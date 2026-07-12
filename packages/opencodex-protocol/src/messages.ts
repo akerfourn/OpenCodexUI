@@ -810,6 +810,8 @@ export type OpenCodexSettings = {
  */
 export type OpenCodexThread = {
   id: string;
+  sessionId: string | null;
+  parentThreadId: string | null;
   codexTitle: string;
   customTitle: string | null;
   title: string;
@@ -822,6 +824,9 @@ export type OpenCodexThread = {
   branchName: string | null;
   updatedAt: string | null;
   isArchived: boolean;
+  threadSource: string | null;
+  agentNickname: string | null;
+  agentRole: string | null;
   status?: string;
 };
 

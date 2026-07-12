@@ -24,6 +24,8 @@ import { ThreadTurnCache, type ThreadTurnCacheEntry } from "../ThreadTurnCache.j
 import type { OpenCodexBackendOptions } from "../types.js";
 import {
   THREAD_LIST_PAGE_SIZE,
+  THREAD_MAIN_SOURCE_KINDS,
+  THREAD_SUB_AGENT_SOURCE_KINDS,
   THREAD_SOURCE_KINDS,
   THREAD_TURNS_PAGE_SIZE,
   type ThreadListParams
@@ -103,7 +105,7 @@ export class ThreadConversationService {
       sourceId,
       searchTerm,
       isArchived
-    );
+    ).then(filterMainThreads);
 
     if (cachedThreads.length > 0) {
       this.emitThreadsUpdated(cachedThreads, currentProjectPath, isArchived);
@@ -119,7 +121,7 @@ export class ThreadConversationService {
       limit: THREAD_LIST_PAGE_SIZE,
       sortKey: "updated_at",
       sortDirection: "desc",
-      sourceKinds: THREAD_SOURCE_KINDS,
+      sourceKinds: THREAD_MAIN_SOURCE_KINDS,
       archived: isArchived
     };
     const trimmedSearchTerm = searchTerm?.trim() ?? "";
@@ -132,11 +134,13 @@ export class ThreadConversationService {
       params.cwd = currentProjectPath;
     }
 
-    const threads = (await readThreadPages(client, params)).map((thread) => ({
-      ...thread,
-      isArchived,
-      sourceId: resolvedSource.id
-    }));
+    const threads = filterMainThreads(
+      (await readThreadPages(client, params)).map((thread) => ({
+        ...thread,
+        isArchived,
+        sourceId: resolvedSource.id
+      }))
+    );
     await this.options.threadCacheService.writeIndex(threads);
 
     const mergedThreads = await this.options.threadCacheService.readThreads(
@@ -492,6 +496,88 @@ export class ThreadConversationService {
     this.options.emit({ type: "thread.created", thread, turns });
     await this.options.threadCacheService.writeIndex([thread]);
     return { thread, turns };
+  }
+
+  /**
+   * Lists sub-agent threads spawned from a parent thread.
+   *
+   * @param parentThreadId Parent thread identifier.
+   *
+   * @returns Sub-agent thread metadata.
+   */
+  async listSubAgentThreads(parentThreadId: string): Promise<OpenCodexThread[]> {
+    const sourceId = await this.resolveThreadSourceId(parentThreadId);
+
+    if (sourceId === null) {
+      return [];
+    }
+
+    const client = await this.options.ensureClient(sourceId);
+    const threads = (await readThreadPages(client, {
+      limit: THREAD_LIST_PAGE_SIZE,
+      sortKey: "updated_at",
+      sortDirection: "desc",
+      sourceKinds: THREAD_SUB_AGENT_SOURCE_KINDS,
+      ancestorThreadId: parentThreadId
+    })).map((thread) => ({
+      ...thread,
+      sourceId
+    }));
+
+    await this.options.threadCacheService.writeIndex(threads);
+    return threads;
+  }
+
+  /**
+   * Reads a thread for secondary readonly display without emitting UI selection events.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Thread and loaded turns.
+   */
+  async readThreadReadonly(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+    const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
+
+    if (cachedSnapshot !== null && cachedSnapshot.turns.length > 0) {
+      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+      return {
+        thread: cacheEntry.thread,
+        turns: this.options.threadCacheService.readTurns(cacheEntry)
+      };
+    }
+
+    if (cachedSnapshot !== null && cachedSnapshot.thread.sourceId === null) {
+      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+      return {
+        thread: cacheEntry.thread,
+        turns: this.options.threadCacheService.readTurns(cacheEntry)
+      };
+    }
+
+    const sourceId = cachedSnapshot?.thread.sourceId ?? await this.resolveThreadSourceId(threadId);
+
+    if (sourceId === null) {
+      throw new Error("Cannot read a sub-agent thread without a Codex source.");
+    }
+
+    const client = await this.options.ensureClient(sourceId);
+    const thread = await this.readThreadMetadata(
+      client,
+      threadId,
+      sourceId,
+      cachedSnapshot?.thread.model ?? null,
+      cachedSnapshot?.thread.reasoningEffort ?? null
+    );
+    const cacheEntry = this.options.threadTurnCache.getOrCreate(thread);
+    const latestTurns = await this.loadLatestTurns(client, cacheEntry);
+
+    await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+    await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
+
+    return {
+      thread: cacheEntry.thread,
+      turns: this.options.threadCacheService.readTurns(cacheEntry)
+    };
   }
 
   /**
@@ -1495,6 +1581,31 @@ function readThreadActiveFlags(value: unknown): string[] {
   }
 
   return flags.filter((flag): flag is string => typeof flag === "string");
+}
+
+/**
+ * Keeps only user-facing top-level threads.
+ *
+ * @param threads Thread metadata to filter.
+ * @returns Threads that are not spawned sub-agent threads.
+ */
+function filterMainThreads<T extends OpenCodexThread>(threads: T[]): T[] {
+  return threads.filter((thread) => !isSubAgentThread(thread));
+}
+
+/**
+ * Checks whether a thread belongs to a spawned sub-agent.
+ *
+ * @param thread Thread metadata.
+ * @returns Whether the thread is a sub-agent child.
+ */
+function isSubAgentThread(thread: OpenCodexThread): boolean {
+  if (thread.parentThreadId !== null) {
+    return true;
+  }
+
+  const threadSource = thread.threadSource ?? "";
+  return threadSource.startsWith("subAgent");
 }
 
 /**

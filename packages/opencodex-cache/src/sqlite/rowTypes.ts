@@ -8,6 +8,8 @@ import type { CachedSourceKind } from "../types.js";
  */
 export type ThreadRow = {
   id: string;
+  session_id: string | null;
+  parent_thread_id: string | null;
   source_id: string | null;
   cwd: string | null;
   project_default_name: string | null;
@@ -29,6 +31,9 @@ export type ThreadRow = {
   last_synced_at: string | null;
   token_usage_json: string | null;
   is_archived: number;
+  thread_source: string | null;
+  agent_nickname: string | null;
+  agent_role: string | null;
 };
 
 /**

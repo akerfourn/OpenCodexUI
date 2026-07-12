@@ -71,6 +71,8 @@ function hashString(value: string): number {
 export function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread {
   const mappedThread: OpenCodexThread = {
     id: thread.id,
+    sessionId: thread.sessionId,
+    parentThreadId: thread.parentThreadId,
     codexTitle: thread.codexTitle,
     customTitle: thread.customTitle,
     title: thread.title,
@@ -82,7 +84,10 @@ export function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread 
     sourceId: thread.sourceId,
     branchName: thread.branchName,
     updatedAt: thread.updatedAt,
-    isArchived: thread.isArchived === true
+    isArchived: thread.isArchived === true,
+    threadSource: thread.threadSource,
+    agentNickname: thread.agentNickname,
+    agentRole: thread.agentRole
   };
 
   if (thread.status !== undefined) {
@@ -115,6 +120,8 @@ export function withSourceId<T extends OpenCodexThread>(thread: T, sourceId: str
 export function toCachedThreadSummary(thread: OpenCodexThreadWithProjectState): CachedThreadSummary {
   const cachedThread: CachedThreadSummary = {
     id: thread.id,
+    sessionId: thread.sessionId,
+    parentThreadId: thread.parentThreadId,
     sourceId: thread.sourceId,
     codexTitle: thread.codexTitle,
     customTitle: thread.customTitle,
@@ -127,7 +134,10 @@ export function toCachedThreadSummary(thread: OpenCodexThreadWithProjectState): 
     projectHidden: thread.projectHidden,
     branchName: thread.branchName,
     updatedAt: thread.updatedAt,
-    isArchived: thread.isArchived
+    isArchived: thread.isArchived,
+    threadSource: thread.threadSource,
+    agentNickname: thread.agentNickname,
+    agentRole: thread.agentRole
   };
 
   if (thread.status !== undefined) {

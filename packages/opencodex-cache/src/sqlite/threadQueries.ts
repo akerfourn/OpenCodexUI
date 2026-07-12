@@ -565,6 +565,8 @@ function writeThreadIndex(
     `
     INSERT INTO threads (
       id,
+      session_id,
+      parent_thread_id,
       source_id,
       project_id,
       cwd,
@@ -577,10 +579,15 @@ function writeThreadIndex(
       reasoning_effort,
       status,
       is_archived,
+      thread_source,
+      agent_nickname,
+      agent_role,
       updated_at
     )
     VALUES (
       @id,
+      @sessionId,
+      @parentThreadId,
       @sourceId,
       @projectId,
       @cwd,
@@ -593,9 +600,14 @@ function writeThreadIndex(
       @reasoningEffort,
       @status,
       @isArchived,
+      @threadSource,
+      @agentNickname,
+      @agentRole,
       @updatedAt
     )
     ON CONFLICT(id) DO UPDATE SET
+      session_id = COALESCE(excluded.session_id, threads.session_id),
+      parent_thread_id = excluded.parent_thread_id,
       source_id = COALESCE(excluded.source_id, threads.source_id),
       project_id = excluded.project_id,
       cwd = excluded.cwd,
@@ -613,6 +625,9 @@ function writeThreadIndex(
       reasoning_effort = COALESCE(excluded.reasoning_effort, threads.reasoning_effort),
       status = excluded.status,
       is_archived = excluded.is_archived,
+      thread_source = excluded.thread_source,
+      agent_nickname = excluded.agent_nickname,
+      agent_role = excluded.agent_role,
       updated_at = excluded.updated_at
     `
   );
@@ -633,6 +648,8 @@ function writeThreadIndex(
 
       upsertThread.run({
         id: thread.id,
+        sessionId: thread.sessionId,
+        parentThreadId: thread.parentThreadId,
         sourceId,
         projectId: project?.id ?? null,
         cwd: project?.path ?? null,
@@ -645,6 +662,9 @@ function writeThreadIndex(
         reasoningEffort: thread.reasoningEffort ?? null,
         status: thread.status ?? null,
         isArchived: thread.isArchived ? 1 : 0,
+        threadSource: thread.threadSource,
+        agentNickname: thread.agentNickname,
+        agentRole: thread.agentRole,
         updatedAt: thread.updatedAt ?? null
       });
     }
