@@ -487,6 +487,24 @@ export class ProjectStore {
   }
 
   /**
+   * Removes a deleted thread from list state and loaded chat memory.
+   *
+   * @param threadId Deleted thread identifier.
+   *
+   * @returns Nothing.
+   */
+  removeThread(threadId: string): void {
+    const chatStore = this.chatsById.get(threadId);
+
+    if (chatStore !== undefined) {
+      chatStore.dispose();
+      this.chatsById.delete(threadId);
+    }
+
+    this.threadListStore.removeThread(threadId);
+  }
+
+  /**
    * Clears loaded chat stores before the project tab is closed.
    *
    * @returns Nothing.

@@ -18,6 +18,7 @@ export type NotificationServiceOptions = {
   getSettings(): OpenCodexSettings;
   emit(event: OpenCodexEvent): void;
   applyCodexThreadTitle(threadId: string, title: string): void;
+  applyCodexThreadDeleted(threadId: string): void;
   syncCompletedTurn(threadId: string): void;
 };
 
@@ -90,6 +91,14 @@ export class NotificationService {
 
       if (threadId.length > 0) {
         this.options.applyCodexThreadTitle(threadId, name);
+      }
+    }
+
+    if (notification.method === "thread/deleted") {
+      const threadId = readString(params.threadId);
+
+      if (threadId.length > 0) {
+        this.options.applyCodexThreadDeleted(threadId);
       }
     }
   }

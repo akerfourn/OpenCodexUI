@@ -140,6 +140,7 @@ export class OpenCodexBackendRuntime {
       getSettings: () => this.settings,
       emit: (event) => this.emit(event),
       applyCodexThreadTitle: (threadId, title) => this.applyCodexThreadTitle(threadId, title),
+      applyCodexThreadDeleted: (threadId) => this.applyCodexThreadDeleted(threadId),
       syncCompletedTurn: (threadId) => this.syncCompletedTurn(threadId)
     });
     this.codexUpdateService = new CodexUpdateService({
@@ -780,6 +781,17 @@ export class OpenCodexBackendRuntime {
    */
   async archiveThread(threadId: string): Promise<{ ok: true }> {
     return await this.threadConversationService.archiveThread(threadId);
+  }
+
+  /**
+   * Permanently deletes a thread through Codex and local cache.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Success result.
+   */
+  async deleteThread(threadId: string): Promise<{ ok: true }> {
+    return await this.threadConversationService.deleteThread(threadId);
   }
 
   /**
@@ -2108,6 +2120,19 @@ export class OpenCodexBackendRuntime {
     }
 
     void this.threadCacheService.writeCodexTitle(threadId, title);
+  }
+
+  /**
+   * Applies a Codex-generated thread deletion to memory, cache, and UI.
+   *
+   * @param threadId Deleted thread identifier.
+   *
+   * @returns Nothing.
+   */
+  private applyCodexThreadDeleted(threadId: string): void {
+    void this.threadConversationService.forgetDeletedThread(threadId).catch((error: unknown) => {
+      this.handleClientError(toError(error));
+    });
   }
 
   /**

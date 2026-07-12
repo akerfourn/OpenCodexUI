@@ -270,7 +270,7 @@ export class ThreadListStore {
     void this.root.request({ type: "threads.archive", threadId })
       .then(() => {
         this.hasArchivedThreads = true;
-        this.removeThreadFromVisibleList(threadId);
+        this.removeThread(threadId);
       })
       .finally(() => {
         this.archivingThreadId = null;
@@ -292,9 +292,28 @@ export class ThreadListStore {
     this.archivingThreadId = threadId;
     void this.root.request({ type: "threads.unarchive", threadId })
       .then(() => {
-        this.removeThreadFromVisibleList(threadId);
+        this.removeThread(threadId);
         this.hasArchivedThreads = this.threads.length > 0;
       })
+      .finally(() => {
+        this.archivingThreadId = null;
+      });
+  }
+
+  /**
+   * Deletes a thread in Codex and removes it from local UI state.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Nothing.
+   */
+  deleteThread(threadId: string): void {
+    if (this.projectStore.isReadOnlyFromCache || this.archivingThreadId !== null) {
+      return;
+    }
+
+    this.archivingThreadId = threadId;
+    void this.root.request({ type: "threads.delete", threadId })
       .finally(() => {
         this.archivingThreadId = null;
       });
@@ -348,7 +367,7 @@ export class ThreadListStore {
    *
    * @param threadId Thread identifier.
    */
-  private removeThreadFromVisibleList(threadId: string): void {
+  removeThread(threadId: string): void {
     this.threads = this.threads.filter((thread) => thread.id !== threadId);
 
     if (this.projectStore.selectedChatId === threadId) {

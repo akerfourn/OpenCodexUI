@@ -23,6 +23,7 @@ import { CodexProcessError, JsonRpcError } from "./types";
 import type { ThreadListParams } from "./generated/v2/ThreadListParams";
 import type { ThreadListResponse } from "./generated/v2/ThreadListResponse";
 import type { ThreadArchiveResponse } from "./generated/v2/ThreadArchiveResponse";
+import type { ThreadDeleteResponse } from "./generated/v2/ThreadDeleteResponse";
 import type { ThreadReadResponse } from "./generated/v2/ThreadReadResponse";
 import type { ThreadResumeParams } from "./generated/v2/ThreadResumeParams";
 import type { ThreadResumeResponse } from "./generated/v2/ThreadResumeResponse";
@@ -33,8 +34,8 @@ import type { ThreadSetNameResponse } from "./generated/v2/ThreadSetNameResponse
 import type { ThreadStartParams } from "./generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "./generated/v2/ThreadStartResponse";
 import type { ThreadUnarchiveResponse } from "./generated/v2/ThreadUnarchiveResponse";
-import type { ThreadTurnsItemsListParams } from "./generated/v2/ThreadTurnsItemsListParams";
-import type { ThreadTurnsItemsListResponse } from "./generated/v2/ThreadTurnsItemsListResponse";
+import type { ThreadItemsListParams } from "./generated/v2/ThreadItemsListParams";
+import type { ThreadItemsListResponse } from "./generated/v2/ThreadItemsListResponse";
 import type { ThreadTurnsListParams } from "./generated/v2/ThreadTurnsListParams";
 import type { ThreadTurnsListResponse } from "./generated/v2/ThreadTurnsListResponse";
 import type { FsCreateDirectoryResponse } from "./generated/v2/FsCreateDirectoryResponse";
@@ -313,6 +314,16 @@ export class CodexAppServerClient {
   }
 
   /**
+   * Permanently deletes a Codex thread.
+   *
+   * @param threadId Identifier of the thread to delete.
+   * @returns Empty success response.
+   */
+  async deleteThread(threadId: string): Promise<ThreadDeleteResponse> {
+    return this.request<ThreadDeleteResponse>("thread/delete", { threadId });
+  }
+
+  /**
    * Restores an archived Codex thread.
    *
    * @param threadId Identifier of the thread to restore.
@@ -458,9 +469,9 @@ export class CodexAppServerClient {
    * @returns Promise resolved with the turn items list response.
    */
   async listThreadTurnItems(
-    params: ThreadTurnsItemsListParams
-  ): Promise<ThreadTurnsItemsListResponse> {
-    return this.request<ThreadTurnsItemsListResponse>("thread/turns/items/list", params);
+    params: ThreadItemsListParams
+  ): Promise<ThreadItemsListResponse> {
+    return this.request<ThreadItemsListResponse>("thread/items/list", params);
   }
 
   /**

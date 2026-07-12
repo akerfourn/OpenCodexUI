@@ -59,6 +59,7 @@ export type OpenCodexEvent =
   | { type: "thread.recovery.started"; threadId: string }
   | { type: "thread.recovery.completed"; threadId: string }
   | { type: "thread.renamed"; threadId: string; name: string }
+  | { type: "thread.deleted"; threadId: string }
   | { type: "thread.tokenUsage.updated"; usage: OpenCodexThreadTokenUsage }
   | { type: "message.started"; threadId: string; message: OpenCodexMessage }
   | { type: "message.delta"; threadId: string; messageId: string; turnId: string; delta: string; phase?: OpenCodexMessage["phase"] }

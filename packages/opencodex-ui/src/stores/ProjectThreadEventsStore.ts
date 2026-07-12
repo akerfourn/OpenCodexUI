@@ -82,6 +82,9 @@ export class ProjectThreadEventsStore implements RootChildStore {
       case "thread.renamed":
         this.applyThreadRename(event.threadId, event.name);
         return;
+      case "thread.deleted":
+        this.applyThreadDeleted(event.threadId);
+        return;
       case "thread.tokenUsage.updated":
         this.applyThreadTokenUsage(event.usage);
         return;
@@ -339,6 +342,17 @@ export class ProjectThreadEventsStore implements RootChildStore {
     }
 
     projectStore.renameThread(threadId, name);
+  }
+
+  /**
+   * Removes a deleted thread from every loaded project store.
+   *
+   * @param threadId Deleted thread identifier.
+   */
+  private applyThreadDeleted(threadId: string): void {
+    for (const projectStore of this.projectsStore.projectStoresById.values()) {
+      projectStore.removeThread(threadId);
+    }
   }
 
   /**

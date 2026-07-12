@@ -3,9 +3,26 @@
  */
 import { observer } from "mobx-react-lite";
 import { useState, type MouseEvent } from "react";
-import { Box, CircularProgress, IconButton, ListItemButton, ListItemIcon, Menu, MenuItem, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton,
+  ListItemButton,
+  ListItemIcon,
+  Menu,
+  MenuItem,
+  Stack,
+  Typography
+} from "@mui/material";
 import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { useTranslation } from "react-i18next";
@@ -29,8 +46,10 @@ type ThreadButtonProps = {
 export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
   const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const threadListStore = projectStore.threadListStore;
   const isMenuOpen = menuAnchor !== null;
+  const threadTitle = getThreadTitle(thread, t("chat.untitled"));
 
   function handleOpenThread(): void {
     if (threadListStore.isShowingArchivedThreads) {
@@ -57,6 +76,24 @@ export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
   function handleUnarchiveThread(): void {
     handleCloseMenu();
     threadListStore.unarchiveThread(thread.id);
+  }
+
+  function handleOpenDeleteDialog(): void {
+    handleCloseMenu();
+    setIsDeleteDialogOpen(true);
+  }
+
+  function handleCloseDeleteDialog(): void {
+    if (isArchiving) {
+      return;
+    }
+
+    setIsDeleteDialogOpen(false);
+  }
+
+  function handleConfirmDeleteThread(): void {
+    setIsDeleteDialogOpen(false);
+    threadListStore.deleteThread(thread.id);
   }
 
   const isActive = projectStore.selectedChatId === thread.id;
@@ -102,7 +139,7 @@ export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
       <Stack direction="row" spacing={0.5} sx={{ minWidth: 0, flex: 1, alignItems: "flex-start" }}>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="body2" noWrap>
-            {getThreadTitle(thread, t("chat.untitled"))}
+            {threadTitle}
           </Typography>
           {metadata !== null ? (
             <Typography variant="caption" component="div" color="text.secondary" noWrap>
@@ -128,7 +165,29 @@ export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
         {archiveAction}
+        <MenuItem onClick={handleOpenDeleteDialog}>
+          <ListItemIcon sx={{ minWidth: 32 }}>
+            <DeleteOutlineOutlinedIcon color="error" fontSize="small" />
+          </ListItemIcon>
+          {t("sidebar.deleteThread")}
+        </MenuItem>
       </Menu>
+      <Dialog open={isDeleteDialogOpen} onClose={handleCloseDeleteDialog}>
+        <DialogTitle>{t("sidebar.deleteThreadTitle")}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {t("sidebar.deleteThreadDescription", { thread: threadTitle })}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={isArchiving} onClick={handleCloseDeleteDialog}>
+            {t("sidebar.deleteThreadCancel")}
+          </Button>
+          <Button color="error" disabled={isArchiving} variant="contained" onClick={handleConfirmDeleteThread}>
+            {t("sidebar.deleteThreadConfirm")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ListItemButton>
   );
 }

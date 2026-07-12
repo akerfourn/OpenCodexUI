@@ -166,6 +166,27 @@ export class ThreadConversationService {
   }
 
   /**
+   * Permanently deletes a Codex thread and removes its local cache entry.
+   *
+   * @param threadId Thread identifier.
+   *
+   * @returns Promise resolved when the deletion completes.
+   */
+  async deleteThread(threadId: string): Promise<{ ok: true }> {
+    const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
+
+    if (cachedSnapshot === null || cachedSnapshot.thread.sourceId === null) {
+      throw new Error("Cannot delete a thread without a Codex source.");
+    }
+
+    const client = await this.options.ensureClient(cachedSnapshot.thread.sourceId);
+    await client.deleteThread(threadId);
+    await this.forgetDeletedThread(threadId);
+
+    return { ok: true };
+  }
+
+  /**
    * Restores an archived Codex thread and updates the local cache marker.
    *
    * @param threadId Thread identifier.
@@ -175,6 +196,18 @@ export class ThreadConversationService {
   async unarchiveThread(threadId: string): Promise<{ ok: true }> {
     await this.setThreadArchiveState(threadId, false);
     return { ok: true };
+  }
+
+  /**
+   * Removes a deleted thread from local memory, cache, and visible UI lists.
+   *
+   * @param threadId Deleted thread identifier.
+   *
+   * @returns Promise resolved when local cleanup completes.
+   */
+  async forgetDeletedThread(threadId: string): Promise<void> {
+    await this.forgetCachedThread(threadId);
+    this.options.emit({ type: "thread.deleted", threadId });
   }
 
   /**

@@ -80,6 +80,7 @@ export type OpenCodexRequest =
   | { type: "threads.create"; projectPath?: string | null; sourceId?: string | null }
   | { type: "threads.rename"; threadId: string; name: string }
   | { type: "threads.archive"; threadId: string }
+  | { type: "threads.delete"; threadId: string }
   | { type: "threads.unarchive"; threadId: string }
   | {
       type: "threads.updateComposerSettings";

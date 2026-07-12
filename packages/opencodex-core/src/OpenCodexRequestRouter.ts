@@ -122,6 +122,8 @@ export class OpenCodexRequestRouter {
         return this.runtime.renameThread(request.threadId, request.name);
       case "threads.archive":
         return this.runtime.archiveThread(request.threadId);
+      case "threads.delete":
+        return this.runtime.deleteThread(request.threadId);
       case "threads.unarchive":
         return this.runtime.unarchiveThread(request.threadId);
       case "threads.updateComposerSettings":

@@ -79,7 +79,7 @@ export function mapPluginApp(app: v2.AppSummary): OpenCodexPluginAppSummary {
     name: app.name,
     description: app.description,
     installUrl: app.installUrl,
-    needsAuth: app.needsAuth
+    needsAuth: false
   };
 }
 
