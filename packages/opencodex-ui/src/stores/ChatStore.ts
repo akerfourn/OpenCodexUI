@@ -833,7 +833,11 @@ export class ChatStore {
     this.pendingTurnId = null;
     this.hasMoreOlderMessages = source === "thread.opened" ? hasMoreOlderMessages : false;
     applyThreadTurns(this, this.root, turns, shouldMergeTurns ? "merge" : "replace", source);
-    this.scrollToBottomVersion += 1;
+
+    if (!shouldMergeTurns) {
+      this.scrollToBottomVersion += 1;
+    }
+
     this.root.appStore.errorMessage = null;
     this.markSeen();
   }

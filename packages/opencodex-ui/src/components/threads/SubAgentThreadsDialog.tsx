@@ -231,7 +231,6 @@ function renderDialogContent(
                 lastMessageRef={{ current: null }}
                 onOpenLink={onOpenLink}
                 onStartEdit={onIgnoredEdit}
-                onContentLayoutChange={onIgnoredEdit}
               />
             ))}
             {turnStores.length === 0 ? (

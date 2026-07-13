@@ -55,14 +55,13 @@ type ChatMessageListProps = {
 export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const lastMessageRef = useRef<HTMLElement | null>(null);
   const previousScrollStateRef = useRef<{ height: number; top: number } | null>(null);
   const shouldStickToBottomRef = useRef(true);
-  const previousOlderMessagesPrependVersionRef = useRef(chatStore.olderMessagesPrependVersion);
   const previousOlderMessagesRevealVersionRef = useRef(chatStore.olderMessagesPrependVersion);
-  const previousThreadIdRef = useRef(chatStore.thread.id);
   const previousTurnCountRef = useRef(chatStore.turns.length);
-  const stickToBottomFrameRef = useRef<number | null>(null);
+  const resizeFrameRef = useRef<number | null>(null);
   const currentThread = chatStore.thread;
   const editableItem = chatStore.editableLastUserItemIdentity;
   const [editedMessage, setEditedMessage] = useState<string | null>(null);
@@ -74,29 +73,6 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const handleOpenLink = useCallback((href: string) => {
     store.openExternalLink(href);
   }, [store]);
-  const handleLastTurnLayoutChange = useCallback(() => {
-    const container = containerRef.current;
-
-    if (container === null || !shouldStickToBottomRef.current) {
-      return;
-    }
-
-    scrollToBottom(container);
-
-    if (stickToBottomFrameRef.current !== null) {
-      return;
-    }
-
-    stickToBottomFrameRef.current = requestAnimationFrame(() => {
-      stickToBottomFrameRef.current = null;
-
-      if (containerRef.current === null || !shouldStickToBottomRef.current) {
-        return;
-      }
-
-      scrollToBottom(containerRef.current);
-    });
-  }, []);
 
   useEffect(() => {
     setEditedMessage(null);
@@ -104,13 +80,52 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
     previousTurnCountRef.current = chatStore.turns.length;
   }, [chatStore.thread.id]);
 
-  useEffect(() => () => {
-    if (stickToBottomFrameRef.current === null) {
-      return;
+  useEffect(() => {
+    const container = containerRef.current;
+    const content = contentRef.current;
+
+    if (container === null || content === null || typeof ResizeObserver === "undefined") {
+      return undefined;
     }
 
-    cancelAnimationFrame(stickToBottomFrameRef.current);
-    stickToBottomFrameRef.current = null;
+    const resizeObserver = new ResizeObserver(() => {
+      if (
+        !shouldStickToBottomRef.current ||
+        previousScrollStateRef.current !== null ||
+        resizeFrameRef.current !== null
+      ) {
+        return;
+      }
+
+      resizeFrameRef.current = requestAnimationFrame(() => {
+        resizeFrameRef.current = null;
+        const currentContainer = containerRef.current;
+
+        if (
+          currentContainer === null ||
+          !shouldStickToBottomRef.current ||
+          previousScrollStateRef.current !== null
+        ) {
+          return;
+        }
+
+        scrollToBottom(currentContainer);
+      });
+    });
+
+    resizeObserver.observe(container);
+    resizeObserver.observe(content);
+
+    return () => {
+      resizeObserver.disconnect();
+
+      if (resizeFrameRef.current === null) {
+        return;
+      }
+
+      cancelAnimationFrame(resizeFrameRef.current);
+      resizeFrameRef.current = null;
+    };
   }, []);
 
   function handleStartEdit(content: string): void {
@@ -249,28 +264,6 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
     ));
   }, [chatStore.olderMessagesPrependVersion, chatStore.turns.length]);
 
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-
-    if (container === null) {
-      return;
-    }
-
-    const didChangeThread = previousThreadIdRef.current !== currentThread.id;
-    const didPrependOlderMessages = (
-      previousOlderMessagesPrependVersionRef.current !== chatStore.olderMessagesPrependVersion
-    );
-
-    previousThreadIdRef.current = currentThread.id;
-    previousOlderMessagesPrependVersionRef.current = chatStore.olderMessagesPrependVersion;
-
-    if (didChangeThread || didPrependOlderMessages || !shouldStickToBottomRef.current) {
-      return;
-    }
-
-    scrollToBottom(container);
-  });
-
   function handleScroll(event: UIEvent<HTMLDivElement>): void {
     const container = event.currentTarget;
     const isPinnedToBottom = isAtBottom(container);
@@ -332,41 +325,52 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
           maxWidth: "100%",
           overflowX: "hidden",
           overflowY: "auto",
-          gap: 1.25,
           px: 2,
           py: 2.25
         }}
       >
-        {chatStore.isLoadingOlderMessages ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
-            <CircularProgress size={18} thickness={5} />
-          </Box>
-        ) : null}
-        {visibleTurnStores.map((turnStore, index) => (
-          <ChatTurnViewX
-            key={turnStore.id}
-            turnStore={turnStore}
-            activeTurnId={chatStore.activeTurnId}
-            isWorking={isWorking}
-            isLastTurn={index === visibleTurnStores.length - 1}
-            editableItem={editableItem}
-            lastMessageRef={lastMessageRef}
-            onOpenLink={handleOpenLink}
-            onStartEdit={handleStartEdit}
-            onContentLayoutChange={handleLastTurnLayoutChange}
-          />
-        ))}
         <Box
-          aria-hidden="true"
+          ref={contentRef}
           sx={{
-            width: 1,
-            height: "1px",
-            mt: "-1px",
+            display: "flex",
             flex: "0 0 auto",
-            overflow: "hidden",
-            pointerEvents: "none"
+            flexDirection: "column",
+            alignItems: "stretch",
+            gap: 1.25,
+            minWidth: 0,
+            width: "100%"
           }}
-        />
+        >
+          {chatStore.isLoadingOlderMessages ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+              <CircularProgress size={18} thickness={5} />
+            </Box>
+          ) : null}
+          {visibleTurnStores.map((turnStore, index) => (
+            <ChatTurnViewX
+              key={turnStore.id}
+              turnStore={turnStore}
+              activeTurnId={chatStore.activeTurnId}
+              isWorking={isWorking}
+              isLastTurn={index === visibleTurnStores.length - 1}
+              editableItem={editableItem}
+              lastMessageRef={lastMessageRef}
+              onOpenLink={handleOpenLink}
+              onStartEdit={handleStartEdit}
+            />
+          ))}
+          <Box
+            aria-hidden="true"
+            sx={{
+              width: 1,
+              height: "1px",
+              mt: "-1px",
+              flex: "0 0 auto",
+              overflow: "hidden",
+              pointerEvents: "none"
+            }}
+          />
+        </Box>
       </Box>
       <Tooltip title={t("chat.scrollToBottom")}>
         <Box

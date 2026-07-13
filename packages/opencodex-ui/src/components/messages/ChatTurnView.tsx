@@ -1,7 +1,7 @@
 /**
  * Renders one chat turn and keeps turn-level observable reads local.
  */
-import { useLayoutEffect, type RefObject } from "react";
+import type { RefObject } from "react";
 import { observer } from "mobx-react-lite";
 
 import type { ChatTurnStore } from "../../stores/ChatTurnStore";
@@ -23,7 +23,6 @@ type ChatTurnViewProps = {
   lastMessageRef: RefObject<HTMLElement>;
   onOpenLink(href: string): void;
   onStartEdit(content: string): void;
-  onContentLayoutChange(): void;
 };
 
 /**
@@ -41,20 +40,11 @@ export function ChatTurnView({
   editableItem,
   lastMessageRef,
   onOpenLink,
-  onStartEdit,
-  onContentLayoutChange
+  onStartEdit
 }: ChatTurnViewProps) {
   const turn = turnStore.turn;
   const isRunning = turnStore.isRunning(activeTurnId, isWorking);
   const subTurns = readRenderableSubTurns(turnStore, isRunning);
-
-  useLayoutEffect(() => {
-    if (!isLastTurn) {
-      return;
-    }
-
-    onContentLayoutChange();
-  });
 
   return (
     <>
