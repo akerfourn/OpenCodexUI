@@ -17,7 +17,7 @@ import {
   type LexicalEditor
 } from "lexical";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent, UIEvent } from "react";
 
 import type {
   OpenCodexComposerReference,
@@ -71,6 +71,8 @@ export function ComposerPlainTextInput({
 }: ComposerPlainTextInputProps) {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const lexicalEditorRef = useRef<LexicalEditor | null>(null);
+  const previousMarkdownRef = useRef<string | null>(null);
+  const shouldStickToBottomRef = useRef(true);
   const activeTriggerRef = useRef<ReferenceTriggerState | null>(null);
   const [activeTrigger, setActiveTrigger] = useState<ReferenceTriggerState | null>(null);
   const [cancelledTriggerKey, setCancelledTriggerKey] = useState<string | null>(null);
@@ -121,13 +123,35 @@ export function ComposerPlainTextInput({
   }, [activeTrigger, onSearchFiles, onSearchSkills]);
 
   function handleChange(editorState: EditorState): void {
+    let didChangeContent = false;
+
     editorState.read(() => {
       const serialized = serializeComposerContent();
-      onChange($getRoot().getTextContent(), serialized.markdown, serialized.references);
+      didChangeContent = previousMarkdownRef.current !== serialized.markdown;
+      previousMarkdownRef.current = serialized.markdown;
+
+      if (didChangeContent) {
+        onChange($getRoot().getTextContent(), serialized.markdown, serialized.references);
+      }
+
       updateReferenceTrigger();
     });
 
-    requestAnimationFrame(scrollEditorToBottom);
+    if (!didChangeContent || !shouldStickToBottomRef.current) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      if (!shouldStickToBottomRef.current) {
+        return;
+      }
+
+      scrollEditorToBottom();
+    });
+  }
+
+  function handleEditorScroll(event: UIEvent<HTMLDivElement>): void {
+    shouldStickToBottomRef.current = isEditorAtBottom(event.currentTarget);
   }
 
   function scrollEditorToBottom(): void {
@@ -138,6 +162,7 @@ export function ComposerPlainTextInput({
     }
 
     editorElement.scrollTop = editorElement.scrollHeight;
+    shouldStickToBottomRef.current = true;
   }
 
   function handleEditorKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -287,6 +312,7 @@ export function ComposerPlainTextInput({
                 spellCheck
                 onClick={handleEditorClick}
                 onKeyDown={handleEditorKeyDown}
+                onScroll={handleEditorScroll}
               />
             )}
             placeholder={placeholderContent}
@@ -333,3 +359,19 @@ export function ComposerPlainTextInput({
 function isSkillLink(link: HTMLAnchorElement): boolean {
   return link.relList.contains("opencodex-skill") || isSkillUrl(link.getAttribute("href") ?? "");
 }
+
+/**
+ * Checks whether the composer is close enough to its bottom edge to keep following new content.
+ *
+ * @param editorElement Composer content-editable element.
+ * @returns `true` when the bottom of the current content is visible.
+ */
+function isEditorAtBottom(editorElement: HTMLDivElement): boolean {
+  const remainingScroll = (
+    editorElement.scrollHeight - editorElement.scrollTop - editorElement.clientHeight
+  );
+
+  return remainingScroll <= COMPOSER_BOTTOM_SCROLL_THRESHOLD_PX;
+}
+
+const COMPOSER_BOTTOM_SCROLL_THRESHOLD_PX = 4;
