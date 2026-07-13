@@ -193,7 +193,13 @@ export class OpenCodexRequestRouter {
       case "models.list":
         return this.runtime.listModels();
       case "usage.read":
-        return this.runtime.readUsageLimits();
+        return this.runtime.readUsageLimits(request.sourceId ?? null);
+      case "usage.reset.consume":
+        return this.runtime.consumeUsageReset(
+          request.sourceId,
+          request.creditId,
+          request.idempotencyKey
+        );
       case "plugins.list":
         return this.runtime.listPlugins(request.sourceId);
       case "plugins.read":

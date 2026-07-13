@@ -3,6 +3,8 @@
  */
 import type {
   OpenCodexUsageLimits,
+  OpenCodexUsageResetCredit,
+  OpenCodexUsageResetCredits,
   OpenCodexUsageSnapshot,
   OpenCodexUsageWindow
 } from "@open-codex-ui/opencodex-protocol";
@@ -13,12 +15,17 @@ import { readNullableNumber, readObject, readString } from "../mapping.js";
  * Reads the preferred usage snapshot from an account rate-limit response.
  *
  * @param response Codex response or notification params.
+ * @param sourceId Source identifier owning the account payload.
  * @returns Mapped usage limits, or `null` when unavailable.
  */
-export function mapUsageLimitsResponse(response: unknown): OpenCodexUsageSnapshot | null {
+export function mapUsageLimitsResponse(
+  response: unknown,
+  sourceId: string
+): OpenCodexUsageSnapshot | null {
   const root = readObject(response);
   const byLimitId = readObject(root.rateLimitsByLimitId);
   const fallbackLimits = readObject(root.rateLimits);
+  const rateLimitResetCredits = mapUsageResetCredits(root.rateLimitResetCredits);
   const limits = Object.entries(byLimitId)
     .map(([limitId, value]) => mapUsageLimits(value, limitId))
     .filter((usage): usage is OpenCodexUsageLimits => usage !== null);
@@ -26,15 +33,19 @@ export function mapUsageLimitsResponse(response: unknown): OpenCodexUsageSnapsho
   if (limits.length === 0) {
     const fallback = mapUsageLimits(fallbackLimits);
 
-    if (fallback === null) {
+    if (fallback === null && rateLimitResetCredits === null) {
       return null;
     }
 
-    limits.push(fallback);
+    if (fallback !== null) {
+      limits.push(fallback);
+    }
   }
 
   return {
+    sourceId,
     limits,
+    rateLimitResetCredits,
     updatedAt: new Date().toISOString()
   };
 }
@@ -43,9 +54,13 @@ export function mapUsageLimitsResponse(response: unknown): OpenCodexUsageSnapsho
  * Reads the usage snapshot from an account rate-limit notification.
  *
  * @param params Notification params.
+ * @param sourceId Source identifier owning the notification.
  * @returns Mapped usage limits, or `null` when unavailable.
  */
-export function mapUsageLimitsNotification(params: unknown): OpenCodexUsageSnapshot | null {
+export function mapUsageLimitsNotification(
+  params: unknown,
+  sourceId: string
+): OpenCodexUsageSnapshot | null {
   const usage = mapUsageLimits(readObject(params).rateLimits);
 
   if (usage === null || usage.limitId === null) {
@@ -53,9 +68,122 @@ export function mapUsageLimitsNotification(params: unknown): OpenCodexUsageSnaps
   }
 
   return {
+    sourceId,
     limits: [usage],
     updatedAt: new Date().toISOString()
   };
+}
+
+/**
+ * Maps the optional banked reset summary from a rate-limit response.
+ *
+ * @param value Raw reset summary.
+ * @returns Reset summary, or `null` when Codex did not provide it.
+ */
+function mapUsageResetCredits(value: unknown): OpenCodexUsageResetCredits | null {
+  const summary = readObject(value);
+
+  if (Object.keys(summary).length === 0) {
+    return null;
+  }
+
+  const availableCount = readResetCreditCount(summary.availableCount);
+
+  if (availableCount === null) {
+    return null;
+  }
+
+  return {
+    availableCount,
+    credits: Array.isArray(summary.credits)
+      ? summary.credits
+        .map((credit) => mapUsageResetCredit(credit))
+        .filter((credit): credit is OpenCodexUsageResetCredit => credit !== null)
+      : null
+  };
+}
+
+/**
+ * Maps one banked reset detail row.
+ *
+ * @param value Raw reset detail.
+ * @returns Reset detail, or `null` when its identifier is missing.
+ */
+function mapUsageResetCredit(value: unknown): OpenCodexUsageResetCredit | null {
+  const credit = readObject(value);
+  const id = readString(credit.id);
+
+  if (id.length === 0) {
+    return null;
+  }
+
+  return {
+    id,
+    resetType: readString(credit.resetType) || "unknown",
+    status: readResetCreditStatus(credit.status),
+    grantedAt: mapUnixTimestamp(credit.grantedAt),
+    expiresAt: mapUnixTimestamp(credit.expiresAt),
+    title: readNullableString(credit.title),
+    description: readNullableString(credit.description)
+  };
+}
+
+/**
+ * Reads a reset count from JSON numbers or generated bigint values.
+ *
+ * @param value Raw count.
+ * @returns Safe numeric count, or `null` when invalid.
+ */
+function readResetCreditCount(value: unknown): number | null {
+  if (typeof value === "bigint") {
+    if (value < 0n || value > BigInt(Number.MAX_SAFE_INTEGER)) {
+      return null;
+    }
+
+    return Number(value);
+  }
+
+  const count = readNullableNumber(value);
+
+  if (count === null || !Number.isSafeInteger(count) || count < 0) {
+    return null;
+  }
+
+  return count;
+}
+
+/**
+ * Maps a Unix timestamp to the protocol ISO representation.
+ *
+ * @param value Raw timestamp in seconds.
+ * @returns ISO timestamp, or `null` when absent or invalid.
+ */
+function mapUnixTimestamp(value: unknown): string | null {
+  const timestamp = readNullableNumber(value);
+
+  if (timestamp === null) {
+    return null;
+  }
+
+  const date = new Date(timestamp * 1000);
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+/**
+ * Maps an unknown reset status without losing forward compatibility.
+ *
+ * @param value Raw reset status.
+ * @returns Known status or `unknown`.
+ */
+function readResetCreditStatus(value: unknown): OpenCodexUsageResetCredit["status"] {
+  const status = readString(value);
+
+  if (status === "available" || status === "redeeming" || status === "redeemed") {
+    return status;
+  }
+
+  return "unknown";
 }
 
 /**

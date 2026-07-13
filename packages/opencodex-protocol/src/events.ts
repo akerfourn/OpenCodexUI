@@ -74,7 +74,7 @@ export type OpenCodexEvent =
   | { type: "turn.started"; threadId: string; turnId: string }
   | { type: "turn.completed"; threadId: string; turnId: string; durationMs: number | null }
   | { type: "models.updated"; models: OpenCodexModel[] }
-  | { type: "usage.updated"; usage: OpenCodexUsageSnapshot | null }
+  | { type: "usage.updated"; sourceId: string; usage: OpenCodexUsageSnapshot | null }
   | { type: "logs.created"; log: OpenCodexLogEntry }
   | { type: "logs.deleted"; logId: string }
   | { type: "logs.cleared" }

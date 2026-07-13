@@ -561,6 +561,43 @@ export type OpenCodexUsageCredits = {
 };
 
 /**
+ * Status of one banked rate-limit reset credit.
+ */
+export type OpenCodexUsageResetCreditStatus =
+  | "available"
+  | "redeeming"
+  | "redeemed"
+  | "unknown";
+
+/**
+ * One banked rate-limit reset credit returned by Codex.
+ */
+export type OpenCodexUsageResetCredit = {
+  id: string;
+  resetType: string;
+  status: OpenCodexUsageResetCreditStatus;
+  grantedAt: string | null;
+  expiresAt: string | null;
+  title: string | null;
+  description: string | null;
+};
+
+/**
+ * Summary of banked rate-limit resets for one Codex account.
+ */
+export type OpenCodexUsageResetCredits = {
+  availableCount: number;
+  credits: OpenCodexUsageResetCredit[] | null;
+};
+
+/**
+ * Result returned after attempting to consume one banked reset credit.
+ */
+export type OpenCodexUsageResetConsumeResult = {
+  outcome: "reset" | "nothingToReset" | "noCredit" | "alreadyRedeemed";
+};
+
+/**
  * Usage limits for one Codex account limit id.
  */
 export type OpenCodexUsageLimits = {
@@ -576,7 +613,10 @@ export type OpenCodexUsageLimits = {
  * Usage snapshot emitted to the UI.
  */
 export type OpenCodexUsageSnapshot = {
+  sourceId: string;
   limits: OpenCodexUsageLimits[];
+  /** Omitted by sparse rate-limit notifications, which do not contain reset data. */
+  rateLimitResetCredits?: OpenCodexUsageResetCredits | null;
   updatedAt: string;
 };
 

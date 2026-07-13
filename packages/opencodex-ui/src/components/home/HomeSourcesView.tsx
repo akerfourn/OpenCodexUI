@@ -8,7 +8,7 @@ import { Alert, Box, IconButton, Stack, Tooltip, Typography } from "@mui/materia
 import type { OpenCodexCodexReleaseCheck } from "@open-codex-ui/opencodex-protocol";
 import type { TFunction } from "i18next";
 import { observer } from "mobx-react-lite";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
@@ -29,6 +29,13 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const appStore = store.appStore;
   const sourcesStore = store.sourcesStore;
+  const sourceIdsKey = sourcesStore.sources.map((source) => source.id).join("|");
+
+  useEffect(() => {
+    sourcesStore.sources.forEach((source) => {
+      void store.usageStore.load(source.id);
+    });
+  }, [sourceIdsKey, store, sourcesStore]);
 
   function handleCreateSource(): void {
     void sourcesStore.createSource().then((source) => {

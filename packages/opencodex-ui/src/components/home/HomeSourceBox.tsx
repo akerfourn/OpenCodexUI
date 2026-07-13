@@ -2,6 +2,8 @@
  * Renders one Codex source card and its edit dialog.
  */
 import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import AutorenewOutlinedIcon from "@mui/icons-material/AutorenewOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
@@ -25,6 +27,7 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Paper,
   Radio,
   RadioGroup,
   Stack,
@@ -46,6 +49,7 @@ import type {
 
 import type { RootStore } from "../../stores/RootStore";
 import { SOURCE_COLOR_OPTIONS, getSourceBadgeSx, getSourceColorOption } from "./sourceColor";
+import { UsageResetCreditsDialogX } from "./UsageResetCreditsDialog";
 
 type HomeSourceBoxProps = {
   source: OpenCodexSource;
@@ -87,7 +91,10 @@ export function HomeSourceBox({
   const [isDeleteConfirmed, setIsDeleteConfirmed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingCodex, setIsUpdatingCodex] = useState(false);
+  const [isResetCreditsDialogOpen, setIsResetCreditsDialogOpen] = useState(false);
   const sourcesStore = store.sourcesStore;
+  const usageState = store.usageStore.getSourceUsage(source.id);
+  const resetCredits = usageState?.rateLimitResetCredits;
   const isSyncing = sourcesStore.isSourceSyncing(source.id);
 
   useEffect(() => {
@@ -125,6 +132,22 @@ export function HomeSourceBox({
 
   function handleSetDefaultSource(): void {
     store.appStore.setDefaultSourceId(source.id);
+  }
+
+  function handleOpenResetCredits(): void {
+    if (resetCredits === undefined || resetCredits === null || resetCredits.availableCount <= 0) {
+      return;
+    }
+
+    setIsResetCreditsDialogOpen(true);
+  }
+
+  function handleCloseResetCredits(): void {
+    setIsResetCreditsDialogOpen(false);
+  }
+
+  function handleRefreshResetCredits(): void {
+    void store.usageStore.load(source.id);
   }
 
   function handleNameChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
@@ -296,6 +319,9 @@ export function HomeSourceBox({
     );
   };
 
+  const shouldShowResetCreditsPanel = (usageState?.isLoading && resetCredits === undefined)
+    || (resetCredits !== undefined && resetCredits !== null && resetCredits.availableCount > 0);
+
   return (
     <Box
       sx={{
@@ -312,7 +338,19 @@ export function HomeSourceBox({
       }}
     >
       <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
-        <Box sx={{ display: "flex", gap: 1, minWidth: 0, flex: "1 1 auto" }}>
+        <Box
+          sx={{
+            alignItems: "flex-start",
+            display: "grid",
+            flex: "1 1 auto",
+            gap: 2,
+            gridTemplateColumns: shouldShowResetCreditsPanel
+              ? { xs: "minmax(0, 1fr)", md: "minmax(0, 1.15fr) minmax(220px, 0.85fr)" }
+              : "minmax(0, 1fr)",
+            minWidth: 0
+          }}
+        >
+        <Box sx={{ display: "flex", gap: 1, minWidth: 0 }}>
           <Box
             component="span"
             aria-hidden="true"
@@ -408,6 +446,64 @@ export function HomeSourceBox({
             ) : null}
           </Stack>
         </Box>
+        {shouldShowResetCreditsPanel ? (
+          <Box sx={{ minWidth: 0 }}>
+            {usageState?.isLoading && resetCredits === undefined ? (
+              <Typography variant="caption" color="text.secondary">
+                {t("sources.resetCredits.loading")}
+              </Typography>
+            ) : null}
+            {resetCredits !== undefined && resetCredits !== null && resetCredits.availableCount > 0 ? (
+              <Paper
+                component="section"
+                variant="outlined"
+                aria-label={
+                  resetCredits.availableCount === 1
+                    ? t("sources.resetCredits.availableOne")
+                    : t("sources.resetCredits.availableOther", {
+                        count: resetCredits.availableCount
+                      })
+                }
+                sx={{
+                  borderColor: "divider",
+                  borderLeft: "2px solid",
+                  borderLeftColor: "primary.main",
+                  backgroundColor: "transparent"
+                }}
+              >
+                <Stack spacing={1.25} sx={{ p: 1.25 }}>
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
+                    <AutorenewOutlinedIcon sx={{ color: "primary.main", fontSize: 19 }} />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      {t("sources.resetCredits.panelTitle")}
+                    </Typography>
+                  </Stack>
+                  <Stack direction="row" spacing={0.75} sx={{ alignItems: "baseline" }}>
+                    <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1 }}>
+                      {resetCredits.availableCount}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {resetCredits.availableCount === 1
+                        ? t("sources.resetCredits.availableLabelOne")
+                        : t("sources.resetCredits.availableLabelOther")}
+                    </Typography>
+                  </Stack>
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="outlined"
+                    fullWidth
+                    endIcon={<ArrowForwardRoundedIcon fontSize="small" />}
+                    onClick={handleOpenResetCredits}
+                  >
+                    {t("sources.resetCredits.viewDetails")}
+                  </Button>
+                </Stack>
+              </Paper>
+            ) : null}
+          </Box>
+        ) : null}
+        </Box>
         {!isDefault ? (
           <Tooltip title={t("sources.setDefault")}>
             <Button
@@ -420,38 +516,47 @@ export function HomeSourceBox({
             </Button>
           </Tooltip>
         ) : null}
-        <Tooltip title={t("sources.edit")}>
-          <IconButton
-            className="source-edit-action"
-            size="small"
-            aria-label={t("sources.edit")}
-            onClick={handleEdit}
-            sx={{ opacity: 0, transition: "opacity 120ms ease" }}
-          >
-            <EditOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={t("sources.sync")}>
-          <span>
+        <Stack
+          direction={{ xs: "row", sm: "column" }}
+          spacing={0.25}
+          sx={{
+            alignItems: "center",
+            flex: "0 0 auto"
+          }}
+        >
+          <Tooltip title={t("sources.sync")}>
+            <span>
+              <IconButton
+                size="small"
+                aria-label={t("sources.sync")}
+                disabled={isSyncing}
+                onClick={handleSyncSource}
+              >
+                <SyncOutlinedIcon
+                  fontSize="small"
+                  sx={{
+                    animation: isSyncing ? "source-sync-spin 1s linear infinite" : "none",
+                    "@keyframes source-sync-spin": {
+                      from: { transform: "rotate(0deg)" },
+                      to: { transform: "rotate(-360deg)" }
+                    }
+                  }}
+                />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={t("sources.edit")}>
             <IconButton
+              className="source-edit-action"
               size="small"
-              aria-label={t("sources.sync")}
-              disabled={isSyncing}
-              onClick={handleSyncSource}
+              aria-label={t("sources.edit")}
+              onClick={handleEdit}
+              sx={{ opacity: 0, transition: "opacity 120ms ease" }}
             >
-              <SyncOutlinedIcon
-                fontSize="small"
-                sx={{
-                  animation: isSyncing ? "source-sync-spin 1s linear infinite" : "none",
-                  "@keyframes source-sync-spin": {
-                    from: { transform: "rotate(0deg)" },
-                    to: { transform: "rotate(-360deg)" }
-                  }
-                }}
-              />
+              <EditOutlinedIcon fontSize="small" />
             </IconButton>
-          </span>
-        </Tooltip>
+          </Tooltip>
+        </Stack>
       </Box>
 
       <Dialog open={isEditing} fullWidth maxWidth="sm" onClose={handleCloseEdit}>
@@ -653,6 +758,20 @@ export function HomeSourceBox({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {resetCredits !== undefined && resetCredits !== null ? (
+        <UsageResetCreditsDialogX
+          open={isResetCreditsDialogOpen}
+          sourceName={source.name}
+          summary={resetCredits}
+          isRefreshing={usageState?.isLoading ?? false}
+          isConsuming={usageState?.isConsumingReset ?? false}
+          error={usageState?.error ?? null}
+          onClose={handleCloseResetCredits}
+          onRefresh={handleRefreshResetCredits}
+          onConsume={(creditId) => store.usageStore.consumeReset(source.id, creditId)}
+        />
+      ) : null}
     </Box>
   );
 }

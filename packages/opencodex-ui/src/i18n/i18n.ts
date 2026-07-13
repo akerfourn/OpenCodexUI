@@ -666,7 +666,38 @@ export const resources = {
         updateCodex: "Mettre à jour",
         unknownVersion: "inconnue",
         useCommandCandidate: "Utiliser",
-        unavailableSources: "Une ou plusieurs sources ne détectent pas l'installation de Codex. Vérifiez leur commande."
+        unavailableSources: "Une ou plusieurs sources ne détectent pas l'installation de Codex. Vérifiez leur commande.",
+        resetCredits: {
+          actionUnavailable: "Les réinitialisations ne peuvent pas être appliquées tant que leur détail complet n'est pas disponible.",
+          apply: "Appliquer",
+          applying: "Application...",
+          availableOne: "Vous avez 1 réinitialisation disponible.",
+          availableOther: "Vous avez {{count}} réinitialisations disponibles.",
+          back: "Retour",
+          confirmCheckbox: "Je comprends que cette réinitialisation sera consommée et ne pourra pas être annulée.",
+          confirmTitle: "Confirmer la réinitialisation",
+          confirmWarning: "Cette action consomme définitivement cette réinitialisation pour cette source.",
+          defaultTitle: "Réinitialisation des limites",
+          detailsUnavailable: "Codex n'a pas fourni le détail complet des réinitialisations. Il n'est donc pas possible d'en appliquer une avec cette interface pour le moment.",
+          expiration: "Expiration : {{expiration}}",
+          expiresAt: "le {{date}}{{relative}}",
+          loading: "Chargement des réinitialisations...",
+          panelTitle: "Crédits de réinitialisation",
+          availableLabelOne: "réinitialisation disponible",
+          availableLabelOther: "réinitialisations disponibles",
+          noDetailsAvailable: "Aucun détail de réinitialisation n'est disponible.",
+          noExpiration: "aucune date d'expiration",
+          refresh: "Actualiser la liste",
+          refreshing: "Actualisation...",
+          status: {
+            available: "Disponible",
+            redeeming: "En cours d'application",
+            redeemed: "Déjà appliquée",
+            unknown: "État inconnu"
+          },
+          title: "Réinitialisations de {{source}}",
+          viewDetails: "Voir les réinitialisations"
+        }
       },
       tabs: {
         closeProject: "Fermer {{project}}",
@@ -1329,7 +1360,38 @@ export const resources = {
         updateCodex: "Update",
         unknownVersion: "unknown",
         useCommandCandidate: "Use",
-        unavailableSources: "One or more sources cannot detect a Codex installation. Check their command."
+        unavailableSources: "One or more sources cannot detect a Codex installation. Check their command.",
+        resetCredits: {
+          actionUnavailable: "Resets cannot be applied until their complete details are available.",
+          apply: "Apply",
+          applying: "Applying...",
+          availableOne: "You have 1 reset available.",
+          availableOther: "You have {{count}} resets available.",
+          back: "Back",
+          confirmCheckbox: "I understand that this reset will be consumed and cannot be undone.",
+          confirmTitle: "Confirm reset",
+          confirmWarning: "This action permanently consumes this reset for this source.",
+          defaultTitle: "Rate-limit reset",
+          detailsUnavailable: "Codex did not provide the complete reset details. This interface cannot apply a reset until those details are available.",
+          expiration: "Expiration: {{expiration}}",
+          expiresAt: "on {{date}}{{relative}}",
+          loading: "Loading resets...",
+          panelTitle: "Reset credits",
+          availableLabelOne: "reset available",
+          availableLabelOther: "resets available",
+          noDetailsAvailable: "No reset details are available.",
+          noExpiration: "no expiration date",
+          refresh: "Refresh list",
+          refreshing: "Refreshing...",
+          status: {
+            available: "Available",
+            redeeming: "Being applied",
+            redeemed: "Already applied",
+            unknown: "Unknown status"
+          },
+          title: "Resets for {{source}}",
+          viewDetails: "View resets"
+        }
       },
       tabs: {
         closeProject: "Close {{project}}",

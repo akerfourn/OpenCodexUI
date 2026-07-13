@@ -132,7 +132,13 @@ export type OpenCodexRequest =
   | { type: "project.trust"; projectPath: string }
   | { type: "project.trust.dismiss"; projectPath: string }
   | { type: "models.list" }
-  | { type: "usage.read" }
+  | { type: "usage.read"; sourceId?: string | null }
+  | {
+      type: "usage.reset.consume";
+      sourceId: string;
+      creditId: string;
+      idempotencyKey: string;
+    }
   | { type: "discord.reconnect" }
   | { type: "plugins.list"; sourceId: string | null }
   | {

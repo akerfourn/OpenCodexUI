@@ -52,6 +52,7 @@ import type {
   OpenCodexThreadRuntimeStatus,
   OpenCodexToolVersionStatus,
   OpenCodexTurn,
+  OpenCodexUsageResetConsumeResult,
   OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -253,7 +254,7 @@ export class OpenCodexBackendRuntime {
     });
     await this.listProjects();
     await this.listModels();
-    await this.readUsageLimits();
+    await this.readUsageLimits(this.settings.defaultSourceId);
     return { ok: true };
   }
 
@@ -429,6 +430,22 @@ export class OpenCodexBackendRuntime {
    */
   private async ensureClient(sourceId: string | null = this.settings.defaultSourceId) {
     return await this.clientPool.ensureClient(sourceId);
+  }
+
+  /**
+   * Resolves a requested source without silently falling back to another source.
+   *
+   * @param sourceId Requested source identifier, or `null` for the configured default.
+   * @returns Resolved source.
+   */
+  private async resolveRequestedSource(sourceId: string | null): Promise<CachedSource> {
+    const source = await this.resolveSource(sourceId);
+
+    if (sourceId !== null && source.id !== sourceId) {
+      throw new Error(`Codex source not found: ${sourceId}`);
+    }
+
+    return source;
   }
 
   /**
@@ -1160,21 +1177,71 @@ export class OpenCodexBackendRuntime {
   /**
    * Reads current Codex account usage limits.
    *
+   * @param sourceId Source identifier, or `null` for the configured default.
    * @returns Usage limit snapshot, or `null` when unavailable.
    */
-  async readUsageLimits(): Promise<OpenCodexUsageSnapshot | null> {
-    const client = await this.ensureClient();
+  async readUsageLimits(sourceId: string | null = null): Promise<OpenCodexUsageSnapshot | null> {
+    let resolvedSource: CachedSource | null = null;
 
     try {
-      const response = await client.request("account/rateLimits/read", undefined);
-      const usage = mapUsageLimitsResponse(response);
-      this.emit({ type: "usage.updated", usage });
+      resolvedSource = await this.resolveRequestedSource(sourceId);
+      const client = await this.ensureClient(resolvedSource.id);
+      const response = await client.request<v2.GetAccountRateLimitsResponse>(
+        "account/rateLimits/read",
+        undefined
+      );
+      const usage = mapUsageLimitsResponse(response, resolvedSource.id);
+      this.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage });
       return usage;
     } catch (error) {
       this.options.logger?.(`account/rateLimits/read unavailable: ${String(error)}`);
-      this.emit({ type: "usage.updated", usage: null });
+
+      if (resolvedSource !== null) {
+        this.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage: null });
+      }
+
       return null;
     }
+  }
+
+  /**
+   * Consumes one source-scoped banked rate-limit reset.
+   *
+   * @param sourceId Source identifier owning the account reset.
+   * @param creditId Reset-credit identifier selected by the user.
+   * @param idempotencyKey Stable key for this logical consume attempt.
+   * @returns Codex consume outcome after refreshing the source usage snapshot.
+   */
+  async consumeUsageReset(
+    sourceId: string,
+    creditId: string,
+    idempotencyKey: string
+  ): Promise<OpenCodexUsageResetConsumeResult> {
+    if (sourceId.trim().length === 0) {
+      throw new Error("A source is required to consume a rate-limit reset.");
+    }
+
+    if (creditId.trim().length === 0) {
+      throw new Error("A reset-credit identifier is required.");
+    }
+
+    if (idempotencyKey.trim().length === 0) {
+      throw new Error("An idempotency key is required to consume a reset.");
+    }
+
+    const source = await this.resolveRequestedSource(sourceId);
+    const client = await this.ensureClient(source.id);
+    const response = await client.request<v2.ConsumeAccountRateLimitResetCreditResponse>(
+      "account/rateLimitResetCredit/consume",
+      {
+        idempotencyKey,
+        creditId
+      }
+    );
+
+    await this.readUsageLimits(source.id);
+
+    return { outcome: response.outcome };
   }
 
   /**
@@ -1844,10 +1911,11 @@ export class OpenCodexBackendRuntime {
     this.notificationService.handleNotification(notification, sourceId);
 
     if (notification.method === "account/rateLimits/updated") {
-      this.emit({
-        type: "usage.updated",
-        usage: mapUsageLimitsNotification(notification.params)
-      });
+      const usage = mapUsageLimitsNotification(notification.params, sourceId);
+
+      if (usage !== null) {
+        this.emit({ type: "usage.updated", sourceId, usage });
+      }
     }
 
     if (notification.method === "thread/tokenUsage/updated") {
@@ -1866,7 +1934,7 @@ export class OpenCodexBackendRuntime {
     }
 
     if (notification.method === "turn/completed") {
-      void this.readUsageLimits();
+      void this.readUsageLimits(sourceId);
     }
   }
 
