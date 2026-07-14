@@ -41,8 +41,18 @@ describe("live turn cache", () => {
     expect(readItems(updatedTurn)).toBe(originalItems);
     expect(readItems(updatedTurn)).toMatchObject([{
       id: "assistant-1",
+      text: "Hello"
+    }]);
+    expect(
+      entry.liveTextBuffers.get("turn-1")?.get("assistant-1")?.get("text")?.chunks
+    ).toEqual([" world", "!"]);
+
+    cache.toTurns(entry);
+    expect(readItems(updatedTurn)).toMatchObject([{
+      id: "assistant-1",
       text: "Hello world!"
     }]);
+    expect(entry.liveTextBuffers.size).toBe(0);
   });
 
   it("should keep the direct item index current after lifecycle updates", () => {
@@ -52,13 +62,6 @@ describe("live turn cache", () => {
       type: "commandExecution",
       aggregatedOutput: "first"
     });
-    cache.recordLiveItem("thread-1", "turn-1", {
-      id: "command-1",
-      type: "commandExecution",
-      status: "completed",
-      aggregatedOutput: ""
-    });
-
     cache.appendActivityDelta(
       "thread-1",
       "turn-1",
@@ -67,6 +70,16 @@ describe("live turn cache", () => {
       "aggregatedOutput",
       " second"
     );
+    expect(readTurnItems(entry, "turn-1")).toMatchObject([{
+      id: "command-1",
+      aggregatedOutput: "first"
+    }]);
+    cache.recordLiveItem("thread-1", "turn-1", {
+      id: "command-1",
+      type: "commandExecution",
+      status: "completed",
+      aggregatedOutput: ""
+    });
 
     expect(readTurnItems(entry, "turn-1")).toMatchObject([{
       id: "command-1",
@@ -92,6 +105,15 @@ describe("live turn cache", () => {
       "aggregatedOutput",
       "-updated"
     );
+    cache.mergeLatestTurns(entry, [{
+      id: "turn-1",
+      startedAt: 1,
+      items: [{
+        id: "item-99",
+        type: "commandExecution",
+        aggregatedOutput: ""
+      }]
+    }], null);
 
     const updatedItems = readTurnItems(entry, "turn-1");
     expect(updatedItems).toHaveLength(100);
@@ -122,10 +144,36 @@ describe("live turn cache", () => {
     });
 
     expect(entry.orderedTurnIds).toEqual(["turn-1", "turn-2", "turn-3"]);
+    expect(entry.liveTextBuffers.size).toBe(0);
     expect(readTurnItems(entry, "turn-2")).toMatchObject([{
       id: "reasoning-1",
       summary: ["Working"]
     }]);
+  });
+
+  it("should materialize only turns crossing an incremental boundary", () => {
+    const { cache, entry } = createCacheEntry();
+    cache.appendAgentMessageDelta(
+      "thread-1",
+      "turn-1",
+      "assistant-1",
+      "first",
+      "final_answer"
+    );
+    cache.appendAgentMessageDelta(
+      "thread-1",
+      "turn-2",
+      "assistant-2",
+      "second",
+      "final_answer"
+    );
+
+    cache.materializeTurnText(entry, [entry.turnsById.get("turn-1")]);
+
+    expect(readTurnItems(entry, "turn-1")).toMatchObject([{ text: "first" }]);
+    expect(readTurnItems(entry, "turn-2")).toMatchObject([{ text: "" }]);
+    expect(entry.liveTextBuffers.has("turn-1")).toBe(false);
+    expect(entry.liveTextBuffers.has("turn-2")).toBe(true);
   });
 });
 

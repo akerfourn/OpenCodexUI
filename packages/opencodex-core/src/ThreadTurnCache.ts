@@ -7,6 +7,11 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import type { CachedThreadSnapshot, CachedThreadSyncState } from "@open-codex-ui/opencodex-cache";
 
+import {
+  materializeAllLiveText,
+  materializeLiveTurnText,
+  type LiveTurnTextBuffers
+} from "./liveTurnTextBuffer.js";
 import { readObject, readString } from "./mapping.js";
 import {
   appendActivityDeltaToTurn,
@@ -21,6 +26,7 @@ export type ThreadTurnCacheEntry = {
   thread: OpenCodexThread;
   turnsById: Map<string, unknown>;
   turnItemsById: Map<string, Map<string, Record<string, unknown>>>;
+  liveTextBuffers: Map<string, LiveTurnTextBuffers>;
   orderedTurnIds: string[];
   newestTurnId: string | null;
   oldestTurnId: string | null;
@@ -67,6 +73,7 @@ export class ThreadTurnCache {
       thread,
       turnsById: new Map(),
       turnItemsById: new Map(),
+      liveTextBuffers: new Map(),
       orderedTurnIds: [],
       newestTurnId: null,
       oldestTurnId: null,
@@ -320,6 +327,7 @@ export class ThreadTurnCache {
     const entry = this.getOrCreate(snapshot.thread);
     entry.turnsById.clear();
     entry.turnItemsById.clear();
+    entry.liveTextBuffers.clear();
     entry.orderedTurnIds = [];
     mergeTurns(entry, snapshot.turns);
     applySyncState(entry, snapshot.syncState);
@@ -339,6 +347,7 @@ export class ThreadTurnCache {
     const entry = this.getOrCreate(thread);
     entry.turnsById.clear();
     entry.turnItemsById.clear();
+    entry.liveTextBuffers.clear();
     entry.orderedTurnIds = [];
     mergeTurns(entry, turns);
     entry.hasLoadedLatest = true;
@@ -354,9 +363,35 @@ export class ThreadTurnCache {
    * @returns Requested values.
    */
   toTurns(entry: ThreadTurnCacheEntry): unknown[] {
+    materializeAllLiveText(entry);
     return entry.orderedTurnIds
       .map((turnId) => entry.turnsById.get(turnId))
       .filter((turn): turn is unknown => turn !== undefined);
+  }
+
+  /**
+   * Materializes buffered live text before an external cache boundary.
+   *
+   * @param entry Thread cache entry to materialize.
+   */
+  materializeLiveText(entry: ThreadTurnCacheEntry): void {
+    materializeAllLiveText(entry);
+  }
+
+  /**
+   * Materializes buffered text only for turns crossing a delta boundary.
+   *
+   * @param entry Thread cache entry to materialize.
+   * @param turns Raw turns about to cross the boundary.
+   */
+  materializeTurnText(entry: ThreadTurnCacheEntry, turns: unknown[]): void {
+    for (const turnValue of turns) {
+      const turnId = readString(readObject(turnValue).id);
+
+      if (turnId.length > 0) {
+        materializeLiveTurnText(entry, turnId);
+      }
+    }
   }
 }
 

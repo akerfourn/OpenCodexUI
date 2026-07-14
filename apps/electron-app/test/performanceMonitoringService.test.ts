@@ -12,6 +12,7 @@ describe("PerformanceMonitoringService", () => {
     const service = createService(defaultSettings, () => now, createLog);
 
     service.recordCodexNotification("item/reasoning/textDelta", 42, 3);
+    service.recordLiveCacheNotification("item/reasoning/textDelta", 2);
     service.recordBackendEvent({
       type: "message.delta",
       threadId: "thread-1",
@@ -33,6 +34,7 @@ describe("PerformanceMonitoringService", () => {
     });
     expect(snapshot?.notificationCounts).toBeUndefined();
     expect(snapshot?.eventCounts).toBeUndefined();
+    expect(snapshot?.liveCacheNotificationCount).toBeUndefined();
     expect(createLog).not.toHaveBeenCalled();
     service.dispose();
   });
@@ -47,6 +49,7 @@ describe("PerformanceMonitoringService", () => {
     const service = createService(settings, () => now, vi.fn());
 
     service.recordCodexNotification("turn/diff/updated", 128, 4);
+    service.recordLiveCacheNotification("turn/diff/updated", 1.5);
     service.recordBackendEvent({ type: "turn.started", threadId: "thread-1", turnId: "turn-1" });
     now += 1_000;
 
@@ -55,6 +58,11 @@ describe("PerformanceMonitoringService", () => {
     expect(snapshot?.mode).toBe("advanced");
     expect(snapshot?.notificationCounts).toEqual({ "turn/diff/updated": 1 });
     expect(snapshot?.eventCounts).toEqual({ "turn.started": 1 });
+    expect(snapshot?.liveCacheNotificationCount).toBe(1);
+    expect(snapshot?.liveCacheDurationMs).toBe(1.5);
+    expect(snapshot?.averageLiveCacheDurationMs).toBe(1.5);
+    expect(snapshot?.maxLiveCacheDurationMs).toBe(1.5);
+    expect(snapshot?.liveCacheNotificationCounts).toEqual({ "turn/diff/updated": 1 });
     service.dispose();
   });
 

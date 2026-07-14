@@ -86,5 +86,12 @@ export type OpenCodexBackendOptions = {
     estimatedBytes: number,
     durationMs: number
   ): void;
+  /**
+   * Reports advanced timing for the live-turn cache portion of a notification.
+   *
+   * @param method Codex notification method.
+   * @param durationMs Synchronous live-cache processing duration.
+   */
+  onLiveCacheNotificationProcessed?(method: string, durationMs: number): void;
   logger?: (message: string) => void;
 };

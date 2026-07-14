@@ -86,6 +86,12 @@ export class ElectronBridgeServer {
           durationMs
         );
       },
+      onLiveCacheNotificationProcessed: (method, durationMs) => {
+        this.performanceMonitoringService?.recordLiveCacheNotification(
+          method,
+          durationMs
+        );
+      },
       logger,
       emit: (event) => this.emit(event)
     });

@@ -253,6 +253,7 @@ export class ThreadCacheService {
     }
 
     try {
+      this.options.threadTurnCache.materializeLiveText(cacheEntry);
       await repository.saveThreadSnapshot(toCachedThreadSnapshot(cacheEntry));
     } catch (error) {
       this.log(`thread cache snapshot write failed: ${String(error)}`);
@@ -275,6 +276,7 @@ export class ThreadCacheService {
     }
 
     try {
+      this.options.threadTurnCache.materializeTurnText(cacheEntry, turns);
       await repository.saveThreadDelta(toCachedThreadDelta(cacheEntry, turns));
     } catch (error) {
       this.log(`thread cache delta write failed: ${String(error)}`);

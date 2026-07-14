@@ -2042,7 +2042,7 @@ export class OpenCodexBackendRuntime {
    * @param sourceId Source that produced the notification.
    */
   private processNotification(notification: CodexNotification, sourceId: string): void {
-    this.threadConversationService.recordNotification(notification);
+    this.recordLiveCacheNotification(notification);
     this.trackActiveTurnNotification(notification, sourceId);
     this.projectCommandService.handleNotification(notification);
     this.notificationService.handleNotification(notification, sourceId);
@@ -2073,6 +2073,28 @@ export class OpenCodexBackendRuntime {
     if (notification.method === "turn/completed") {
       void this.readUsageLimits(sourceId);
     }
+  }
+
+  /**
+   * Records a live cache notification with optional advanced timing.
+   *
+   * @param notification Notification ready for cache processing.
+   */
+  private recordLiveCacheNotification(notification: CodexNotification): void {
+    const shouldMeasure = this.settings.developerMode &&
+      this.settings.advancedPerformanceMonitoringEnabled;
+
+    if (!shouldMeasure) {
+      this.threadConversationService.recordNotification(notification);
+      return;
+    }
+
+    const startedAt = performance.now();
+    this.threadConversationService.recordNotification(notification);
+    this.options.onLiveCacheNotificationProcessed?.(
+      notification.method,
+      performance.now() - startedAt
+    );
   }
 
   /**

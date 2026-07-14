@@ -3,6 +3,11 @@
  */
 import { readMessagePhase, readNullableNumber, readObject, readString } from "./mapping.js";
 import type { ThreadTurnCacheEntry } from "./ThreadTurnCache.js";
+import {
+  bufferLiveTextDelta,
+  materializeLiveItemText,
+  materializeLiveTurnText
+} from "./liveTurnTextBuffer.js";
 
 export type RecordedTurnMutation = {
   entry: ThreadTurnCacheEntry;
@@ -25,6 +30,7 @@ export function mergeTurns(entry: ThreadTurnCacheEntry, turns: unknown[]): void 
       continue;
     }
 
+    materializeLiveTurnText(entry, turnId);
     const existingTurn = entry.turnsById.get(turnId);
     const nextTurn = existingTurn === undefined
       ? turn
@@ -66,6 +72,7 @@ export function recordLiveItemInTurn(
     return { entry, turn };
   }
 
+  materializeLiveItemText(entry, turnId, itemId);
   const items = readMutableTurnItems(turn);
   const itemsById = getOrCreateTurnItemIndex(entry, turnId, turn);
   const indexedItem = itemsById.get(itemId);
@@ -157,7 +164,7 @@ export function appendReasoningDeltaToTurn(
     return null;
   }
 
-  appendArrayText(liveItem.item, field, delta);
+  bufferLiveTextDelta(entry, turnId, itemId, field, "array", delta);
   return { entry, turn: liveItem.turn };
 }
 
@@ -404,7 +411,7 @@ function appendItemTextDelta(
     return null;
   }
 
-  liveItem.item[field] = `${readString(liveItem.item[field])}${delta}`;
+  bufferLiveTextDelta(entry, turnId, itemId, field, "text", delta);
   return { entry, turn: liveItem.turn };
 }
 
@@ -490,26 +497,6 @@ function indexTurnItems(
 
   entry.turnItemsById.set(turnId, itemsById);
   return itemsById;
-}
-
-/**
- * Appends text to the last segment of an array field.
- *
- * @param item Mutable item record.
- * @param field Field containing text segments.
- * @param delta Text delta.
- */
-function appendArrayText(item: Record<string, unknown>, field: string, delta: string): void {
-  const segments = Array.isArray(item[field]) ? item[field] : [];
-  const lastSegment = segments.at(-1);
-
-  if (typeof lastSegment === "string") {
-    segments[segments.length - 1] = `${lastSegment}${delta}`;
-  } else {
-    segments.push(delta);
-  }
-
-  item[field] = segments;
 }
 
 /**

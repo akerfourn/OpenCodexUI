@@ -31,6 +31,11 @@ export type PerformanceMonitoringSnapshot = {
   eventBytes: number;
   notificationCounts?: Record<string, number>;
   eventCounts?: Record<string, number>;
+  liveCacheNotificationCount?: number;
+  liveCacheDurationMs?: number;
+  averageLiveCacheDurationMs?: number;
+  maxLiveCacheDurationMs?: number;
+  liveCacheNotificationCounts?: Record<string, number>;
   renderer: OpenCodexRendererPerformanceSample | null;
   processes: OpenCodexProcessPerformanceMetric[] | null;
 };
@@ -50,6 +55,10 @@ type MonitoringCounters = {
   eventBytes: number;
   notificationCounts: Record<string, number>;
   eventCounts: Record<string, number>;
+  liveCacheNotificationCount: number;
+  liveCacheDurationMs: number;
+  maxLiveCacheDurationMs: number;
+  liveCacheNotificationCounts: Record<string, number>;
 };
 
 /**
@@ -122,6 +131,26 @@ export class PerformanceMonitoringService {
     if (this.isAdvancedMode()) {
       incrementCount(this.counters.notificationCounts, method);
     }
+  }
+
+  /**
+   * Records advanced timing for the live-turn cache processing stage.
+   *
+   * @param method Codex notification method.
+   * @param durationMs Synchronous live-cache duration.
+   */
+  recordLiveCacheNotification(method: string, durationMs: number): void {
+    if (!this.isAdvancedMode()) {
+      return;
+    }
+
+    this.counters.liveCacheNotificationCount += 1;
+    this.counters.liveCacheDurationMs += durationMs;
+    this.counters.maxLiveCacheDurationMs = Math.max(
+      this.counters.maxLiveCacheDurationMs,
+      durationMs
+    );
+    incrementCount(this.counters.liveCacheNotificationCounts, method);
   }
 
   /**
@@ -207,6 +236,16 @@ export class PerformanceMonitoringService {
     if (isAdvanced) {
       snapshot.notificationCounts = { ...this.counters.notificationCounts };
       snapshot.eventCounts = { ...this.counters.eventCounts };
+      snapshot.liveCacheNotificationCount = this.counters.liveCacheNotificationCount;
+      snapshot.liveCacheDurationMs = this.counters.liveCacheDurationMs;
+      snapshot.averageLiveCacheDurationMs = readAverageDuration(
+        this.counters.liveCacheDurationMs,
+        this.counters.liveCacheNotificationCount
+      );
+      snapshot.maxLiveCacheDurationMs = this.counters.maxLiveCacheDurationMs;
+      snapshot.liveCacheNotificationCounts = {
+        ...this.counters.liveCacheNotificationCounts
+      };
     }
 
     this.counters = createCounters();
@@ -330,7 +369,11 @@ function createCounters(): MonitoringCounters {
     eventCount: 0,
     eventBytes: 0,
     notificationCounts: {},
-    eventCounts: {}
+    eventCounts: {},
+    liveCacheNotificationCount: 0,
+    liveCacheDurationMs: 0,
+    maxLiveCacheDurationMs: 0,
+    liveCacheNotificationCounts: {}
   };
 }
 
@@ -368,6 +411,17 @@ function readNotificationCategory(method: string): string {
 /** Increments one count without allocating per event. */
 function incrementCount(counts: Record<string, number>, key: string): void {
   counts[key] = (counts[key] ?? 0) + 1;
+}
+
+/**
+ * Returns a stable average duration for one sampled interval.
+ *
+ * @param totalDurationMs Accumulated duration.
+ * @param count Number of timed operations.
+ * @returns Average duration, or zero when no operation was timed.
+ */
+function readAverageDuration(totalDurationMs: number, count: number): number {
+  return count > 0 ? totalDurationMs / count : 0;
 }
 
 /** Estimates user-independent event payload volume from known string fields. */
