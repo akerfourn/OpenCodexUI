@@ -20,6 +20,7 @@ import {
 export type ThreadTurnCacheEntry = {
   thread: OpenCodexThread;
   turnsById: Map<string, unknown>;
+  turnItemsById: Map<string, Map<string, Record<string, unknown>>>;
   orderedTurnIds: string[];
   newestTurnId: string | null;
   oldestTurnId: string | null;
@@ -65,6 +66,7 @@ export class ThreadTurnCache {
     const created: ThreadTurnCacheEntry = {
       thread,
       turnsById: new Map(),
+      turnItemsById: new Map(),
       orderedTurnIds: [],
       newestTurnId: null,
       oldestTurnId: null,
@@ -317,6 +319,7 @@ export class ThreadTurnCache {
   replaceFromSnapshot(snapshot: CachedThreadSnapshot): ThreadTurnCacheEntry {
     const entry = this.getOrCreate(snapshot.thread);
     entry.turnsById.clear();
+    entry.turnItemsById.clear();
     entry.orderedTurnIds = [];
     mergeTurns(entry, snapshot.turns);
     applySyncState(entry, snapshot.syncState);
@@ -335,6 +338,7 @@ export class ThreadTurnCache {
   replaceThreadTurns(thread: OpenCodexThread, turns: unknown[]): ThreadTurnCacheEntry {
     const entry = this.getOrCreate(thread);
     entry.turnsById.clear();
+    entry.turnItemsById.clear();
     entry.orderedTurnIds = [];
     mergeTurns(entry, turns);
     entry.hasLoadedLatest = true;

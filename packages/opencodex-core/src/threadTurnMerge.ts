@@ -31,6 +31,10 @@ export function mergeTurns(entry: ThreadTurnCacheEntry, turns: unknown[]): void 
       : mergeTurnPreservingExistingItems(existingTurn, turn);
 
     entry.turnsById.set(turnId, nextTurn);
+
+    if (entry.turnItemsById.has(turnId)) {
+      indexTurnItems(entry, turnId, nextTurn);
+    }
   }
 
   entry.orderedTurnIds = Array.from(entry.turnsById.entries())
@@ -62,21 +66,31 @@ export function recordLiveItemInTurn(
     return { entry, turn };
   }
 
-  const items = readTurnItems(turn);
-  const existingIndex = items.findIndex((entryItem) => readTurnItemKey(readObject(entryItem)) === itemId);
+  const items = readMutableTurnItems(turn);
+  const itemsById = getOrCreateTurnItemIndex(entry, turnId, turn);
+  const indexedItem = itemsById.get(itemId);
 
-  if (existingIndex >= 0) {
-    items[existingIndex] = mergeRecordPreservingExistingDetails(
-      readObject(items[existingIndex]),
+  if (indexedItem !== undefined) {
+    const existingIndex = items.indexOf(indexedItem);
+    const mergedItem = mergeRecordPreservingExistingDetails(
+      indexedItem,
       item
     );
+
+    if (existingIndex >= 0) {
+      items[existingIndex] = mergedItem;
+    } else {
+      items.push(mergedItem);
+    }
+
+    itemsById.set(itemId, mergedItem);
   } else {
     items.push(item);
+    itemsById.set(itemId, item);
   }
 
   turn.items = items;
-  mergeTurns(entry, [turn]);
-  return { entry, turn: entry.turnsById.get(turnId) ?? turn };
+  return { entry, turn };
 }
 
 /**
@@ -132,26 +146,19 @@ export function appendReasoningDeltaToTurn(
     return null;
   }
 
-  const existing = recordLiveItemInTurn(entry, turnId, {
+  const liveItem = ensureLiveTurnItem(entry, turnId, itemId, {
     type: "reasoning",
     id: itemId,
     summary: [],
     content: []
   });
-  const turn = readObject(existing.turn);
-  const items = readTurnItems(turn);
-  const item = items
-    .map((itemValue) => readObject(itemValue))
-    .find((itemValue) => readTurnItemKey(itemValue) === itemId);
 
-  if (item === undefined) {
+  if (liveItem === null) {
     return null;
   }
 
-  appendArrayText(item, field, delta);
-  turn.items = items;
-  mergeTurns(entry, [turn]);
-  return { entry, turn: entry.turnsById.get(turnId) ?? turn };
+  appendArrayText(liveItem.item, field, delta);
+  return { entry, turn: liveItem.turn };
 }
 
 /**
@@ -391,21 +398,98 @@ function appendItemTextDelta(
   field: string,
   delta: string
 ): RecordedTurnMutation | null {
-  const existing = recordLiveItemInTurn(entry, turnId, fallbackItem);
-  const turn = readObject(existing.turn);
-  const items = readTurnItems(turn);
-  const item = items
-    .map((itemValue) => readObject(itemValue))
-    .find((itemValue) => readTurnItemKey(itemValue) === itemId);
+  const liveItem = ensureLiveTurnItem(entry, turnId, itemId, fallbackItem);
+
+  if (liveItem === null) {
+    return null;
+  }
+
+  liveItem.item[field] = `${readString(liveItem.item[field])}${delta}`;
+  return { entry, turn: liveItem.turn };
+}
+
+/**
+ * Returns an indexed live item, creating its fallback record when absent.
+ *
+ * @param entry Thread cache entry.
+ * @param turnId Turn identifier.
+ * @param itemId Item identifier.
+ * @param fallbackItem Item created when the live item is not known yet.
+ * @returns Indexed item and owning turn, or `null` when creation failed.
+ */
+function ensureLiveTurnItem(
+  entry: ThreadTurnCacheEntry,
+  turnId: string,
+  itemId: string,
+  fallbackItem: Record<string, unknown>
+): { turn: Record<string, unknown>; item: Record<string, unknown> } | null {
+  const turn = ensureTurn(entry, turnId);
+  const itemsById = getOrCreateTurnItemIndex(entry, turnId, turn);
+  const existingItem = itemsById.get(itemId);
+
+  if (existingItem !== undefined) {
+    return { turn, item: existingItem };
+  }
+
+  const recorded = recordLiveItemInTurn(entry, turnId, fallbackItem);
+  const item = itemsById.get(itemId);
 
   if (item === undefined) {
     return null;
   }
 
-  item[field] = `${readString(item[field])}${delta}`;
-  turn.items = items;
-  mergeTurns(entry, [turn]);
-  return { entry, turn: entry.turnsById.get(turnId) ?? turn };
+  return { turn: readObject(recorded.turn), item };
+}
+
+/**
+ * Returns the direct item index for one live turn, building it on demand.
+ *
+ * @param entry Thread cache entry.
+ * @param turnId Turn identifier.
+ * @param turn Raw live turn.
+ * @returns Direct item lookup map.
+ */
+function getOrCreateTurnItemIndex(
+  entry: ThreadTurnCacheEntry,
+  turnId: string,
+  turn: Record<string, unknown>
+): Map<string, Record<string, unknown>> {
+  let itemsById = entry.turnItemsById.get(turnId);
+
+  if (itemsById === undefined) {
+    itemsById = indexTurnItems(entry, turnId, turn);
+  }
+
+  return itemsById;
+}
+
+/**
+ * Rebuilds direct item lookups after a defensive full-turn merge.
+ *
+ * @param entry Thread cache entry.
+ * @param turnId Turn identifier.
+ * @param turn Raw merged turn.
+ * @returns Rebuilt item lookup map.
+ */
+function indexTurnItems(
+  entry: ThreadTurnCacheEntry,
+  turnId: string,
+  turn: unknown
+): Map<string, Record<string, unknown>> {
+  const itemsById = new Map<string, Record<string, unknown>>();
+  const items = readTurnItems(readObject(turn));
+
+  for (const itemValue of items) {
+    const item = readObject(itemValue);
+    const itemId = readTurnItemKey(item);
+
+    if (itemId.length > 0) {
+      itemsById.set(itemId, item);
+    }
+  }
+
+  entry.turnItemsById.set(turnId, itemsById);
+  return itemsById;
 }
 
 /**
@@ -416,7 +500,7 @@ function appendItemTextDelta(
  * @param delta Text delta.
  */
 function appendArrayText(item: Record<string, unknown>, field: string, delta: string): void {
-  const segments = Array.isArray(item[field]) ? [...item[field]] : [];
+  const segments = Array.isArray(item[field]) ? item[field] : [];
   const lastSegment = segments.at(-1);
 
   if (typeof lastSegment === "string") {
@@ -497,6 +581,22 @@ function normalizeText(value: string): string {
  */
 function readTurnItems(turn: Record<string, unknown>): unknown[] {
   return Array.isArray(turn.items) ? [...turn.items] : [];
+}
+
+/**
+ * Reads the mutable item list owned by a live cached turn.
+ *
+ * @param turn Raw live turn record.
+ * @returns Existing mutable items, or a newly attached empty array.
+ */
+function readMutableTurnItems(turn: Record<string, unknown>): unknown[] {
+  if (Array.isArray(turn.items)) {
+    return turn.items;
+  }
+
+  const items: unknown[] = [];
+  turn.items = items;
+  return items;
 }
 
 /**
