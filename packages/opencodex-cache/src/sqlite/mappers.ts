@@ -4,6 +4,8 @@
 import type {
   CachedProject,
   CachedProjectCommand,
+  CachedProjectCommandRule,
+  CachedProjectCommandRuleFileState,
   CachedProjectTask,
   CachedSource,
   CachedLogEntry,
@@ -13,7 +15,16 @@ import type {
 } from "../types.js";
 import { parseProjectPreferences } from "./projectPreferences.js";
 import { parseSourceSettings } from "./sourceSettings.js";
-import type { LogRow, ProjectCommandRow, ProjectRow, ProjectTaskRow, SourceRow, ThreadRow } from "./rowTypes.js";
+import type {
+  LogRow,
+  ProjectCommandRow,
+  ProjectCommandRuleFileStateRow,
+  ProjectCommandRuleRow,
+  ProjectRow,
+  ProjectTaskRow,
+  SourceRow,
+  ThreadRow
+} from "./rowTypes.js";
 
 /**
  * Maps a raw SQLite thread row into the public cached thread summary shape.
@@ -141,6 +152,45 @@ export function mapProjectCommandRow(row: ProjectCommandRow): CachedProjectComma
 }
 
 /**
+ * Maps a raw SQLite project rule row into the public cached rule shape.
+ *
+ * @param row Rule row read from SQLite.
+ * @returns Normalized cached rule.
+ */
+export function mapProjectCommandRuleRow(row: ProjectCommandRuleRow): CachedProjectCommandRule {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    name: row.name,
+    pattern: parseStringArray(row.pattern_json),
+    decision: row.decision,
+    justification: row.justification,
+    matchExamples: parseStringArray(row.match_examples_json),
+    notMatchExamples: parseStringArray(row.not_match_examples_json),
+    enabled: row.enabled === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/**
+ * Maps generated-file synchronization metadata into the cache shape.
+ *
+ * @param row File-state row read from SQLite.
+ * @returns Normalized generated-file state.
+ */
+export function mapProjectCommandRuleFileStateRow(
+  row: ProjectCommandRuleFileStateRow
+): CachedProjectCommandRuleFileState {
+  return {
+    projectId: row.project_id,
+    generatedHash: row.generated_hash,
+    generatedPath: row.generated_path,
+    updatedAt: row.updated_at
+  };
+}
+
+/**
  * Maps a raw SQLite project task row into the public cache shape.
  *
  * @param row Task row read from SQLite.
@@ -254,5 +304,26 @@ function parseLogDetails(value: string | null): unknown {
     return JSON.parse(value) as unknown;
   } catch {
     return value;
+  }
+}
+
+/**
+ * Parses a serialized string array without allowing malformed cache data to
+ * escape into the public repository contract.
+ *
+ * @param value Serialized string array.
+ * @returns Parsed strings, or an empty array when invalid.
+ */
+function parseStringArray(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+
+    if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === "string")) {
+      return [];
+    }
+
+    return parsed;
+  } catch {
+    return [];
   }
 }

@@ -298,6 +298,29 @@ export class OpenCodexRequestRouter {
         );
       case "projectCommands.stop":
         return this.runtime.stopProjectCommandRun(request.runId);
+      case "projectRules.list":
+        return this.runtime.listProjectRules(request.projectId);
+      case "projectRules.create":
+        return this.runtime.createProjectRule({
+          projectId: request.projectId,
+          name: request.name,
+          pattern: request.pattern,
+          decision: request.decision,
+          justification: request.justification,
+          matchExamples: request.matchExamples,
+          notMatchExamples: request.notMatchExamples,
+          enabled: request.enabled
+        });
+      case "projectRules.update":
+        return this.runtime.updateProjectRule(request.ruleId, request.patch);
+      case "projectRules.delete":
+        return this.runtime.deleteProjectRule(request.ruleId);
+      case "projectRules.apply":
+        return this.runtime.applyProjectRules(request.projectId, request.force === true);
+      case "projectRules.test":
+        return this.runtime.testProjectRules(request.projectId, request.command);
+      case "projectRules.restart":
+        return this.runtime.restartProjectRules(request.projectId);
       case "projectTasks.list":
         return this.runtime.listProjectTasks(request.projectId);
       case "projectTasks.create":

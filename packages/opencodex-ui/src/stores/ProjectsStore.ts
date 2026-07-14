@@ -64,6 +64,9 @@ export class ProjectsStore implements RootChildStore {
       case "projectCommand.exited":
         this.projectStoresById.get(event.projectId)?.commandsStore.handleEvent(event);
         return;
+      case "projectRules.updated":
+        this.projectStoresById.get(event.projectId)?.rulesStore.handleEvent(event);
+        return;
       default:
         this.threadEventsStore.handleEvent(event);
         return;

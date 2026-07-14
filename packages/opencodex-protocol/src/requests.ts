@@ -11,6 +11,7 @@ import type {
   OpenCodexReasoningEffort,
   OpenCodexServiceTier,
   OpenCodexGitBranchKind,
+  OpenCodexCommandRuleDecision,
   OpenCodexProjectPreferences,
   OpenCodexSourceSettingsPatch,
   OpenCodexSettings,
@@ -211,6 +212,35 @@ export type OpenCodexRequest =
       sourceId: string | null;
     }
   | { type: "projectCommands.stop"; runId: string }
+  | { type: "projectRules.list"; projectId: string }
+  | {
+      type: "projectRules.create";
+      projectId: string;
+      name: string;
+      pattern: string[];
+      decision: OpenCodexCommandRuleDecision;
+      justification: string | null;
+      matchExamples: string[];
+      notMatchExamples: string[];
+      enabled: boolean;
+    }
+  | {
+      type: "projectRules.update";
+      ruleId: string;
+      patch: {
+        name?: string;
+        pattern?: string[];
+        decision?: OpenCodexCommandRuleDecision;
+        justification?: string | null;
+        matchExamples?: string[];
+        notMatchExamples?: string[];
+        enabled?: boolean;
+      };
+    }
+  | { type: "projectRules.delete"; ruleId: string }
+  | { type: "projectRules.apply"; projectId: string; force?: boolean }
+  | { type: "projectRules.test"; projectId: string; command: string }
+  | { type: "projectRules.restart"; projectId: string }
   | { type: "projectTasks.list"; projectId: string }
   | {
       type: "projectTasks.create";

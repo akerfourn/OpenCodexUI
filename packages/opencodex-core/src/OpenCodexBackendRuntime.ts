@@ -6,6 +6,8 @@ import {
   type CodexServerRequest
 } from "@open-codex-ui/codex-rpc";
 import type {
+  CachedProjectCommandRuleCreateInput,
+  CachedProjectCommandRuleUpdateInput,
   CachedSource,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
@@ -39,6 +41,10 @@ import type {
   OpenCodexProject,
   OpenCodexProjectPreferences,
   OpenCodexProjectCommand,
+  OpenCodexProjectCommandRule,
+  OpenCodexProjectCommandRuleApplyResult,
+  OpenCodexProjectCommandRulesSnapshot,
+  OpenCodexProjectCommandRuleTestResult,
   OpenCodexProjectCommandRun,
   OpenCodexProjectTask,
   OpenCodexProjectTaskStatus,
@@ -77,6 +83,7 @@ import { ThreadCacheService } from "./backend/ThreadCacheService.js";
 import { GitService } from "./backend/GitService.js";
 import { CommitMessageService } from "./backend/CommitMessageService.js";
 import { ProjectCommandService } from "./backend/ProjectCommandService.js";
+import { ProjectCommandRuleService } from "./backend/ProjectCommandRuleService.js";
 import { PluginService } from "./backend/PluginService.js";
 import { ProjectContextService } from "./backend/ProjectContextService.js";
 import { CodexUpdateService } from "./backend/CodexUpdateService.js";
@@ -106,6 +113,7 @@ export class OpenCodexBackendRuntime {
   private readonly gitService: GitService;
   private readonly commitMessageService: CommitMessageService;
   private readonly projectCommandService: ProjectCommandService;
+  private readonly projectCommandRuleService: ProjectCommandRuleService;
   private readonly pluginService: PluginService;
   private readonly projectContextService: ProjectContextService;
   private readonly codexUpdateService: CodexUpdateService;
@@ -217,6 +225,15 @@ export class OpenCodexBackendRuntime {
       userDataPath: options.userDataPath,
       emit: (event) => this.emit(event),
       ensureClient: (sourceId) => this.ensureClient(sourceId)
+    });
+    this.projectCommandRuleService = new ProjectCommandRuleService({
+      cacheRepository: this.cacheRepository,
+      getSettings: () => this.settings,
+      ensureClient: (sourceId) => this.ensureClient(sourceId),
+      resolveSource: (sourceId) => this.resolveSource(sourceId),
+      hasActiveTurn: (sourceId) => this.hasActiveTurnForSource(sourceId),
+      restartSourceClient: (sourceId) => this.restartSourceClient(sourceId),
+      emit: (event) => this.emit(event)
     });
     this.pluginService = new PluginService({
       ensureClient: (sourceId) => this.ensureClient(sourceId)
@@ -1738,6 +1755,90 @@ export class OpenCodexBackendRuntime {
    */
   async stopProjectCommandRun(runId: string): Promise<{ ok: true }> {
     return await this.projectCommandService.stopRun(runId);
+  }
+
+  /**
+   * Lists managed command rules and synchronization state for one project.
+   *
+   * @param projectId Project identifier.
+   * @returns Project rule snapshot.
+   */
+  async listProjectRules(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
+    return await this.projectCommandRuleService.readSnapshot(projectId);
+  }
+
+  /**
+   * Creates a managed project command rule.
+   *
+   * @param input Rule input.
+   * @returns Created rule.
+   */
+  async createProjectRule(
+    input: CachedProjectCommandRuleCreateInput
+  ): Promise<OpenCodexProjectCommandRule> {
+    return await this.projectCommandRuleService.createRule(input);
+  }
+
+  /**
+   * Updates a managed project command rule.
+   *
+   * @param ruleId Rule identifier.
+   * @param patch Rule update.
+   * @returns Updated rule.
+   */
+  async updateProjectRule(
+    ruleId: string,
+    patch: CachedProjectCommandRuleUpdateInput
+  ): Promise<OpenCodexProjectCommandRule> {
+    return await this.projectCommandRuleService.updateRule(ruleId, patch);
+  }
+
+  /**
+   * Deletes a managed project command rule.
+   *
+   * @param ruleId Rule identifier.
+   * @returns Success result.
+   */
+  async deleteProjectRule(ruleId: string): Promise<{ ok: true }> {
+    return await this.projectCommandRuleService.deleteRule(ruleId);
+  }
+
+  /**
+   * Generates the managed project rules file.
+   *
+   * @param projectId Project identifier.
+   * @param force Whether an external file change may be overwritten.
+   * @returns Apply result.
+   */
+  async applyProjectRules(
+    projectId: string,
+    force = false
+  ): Promise<OpenCodexProjectCommandRuleApplyResult> {
+    return await this.projectCommandRuleService.applyRules(projectId, force);
+  }
+
+  /**
+   * Tests a command against the generated project rules file.
+   *
+   * @param projectId Project identifier.
+   * @param command Command line.
+   * @returns Policy test result.
+   */
+  async testProjectRules(
+    projectId: string,
+    command: string
+  ): Promise<OpenCodexProjectCommandRuleTestResult> {
+    return await this.projectCommandRuleService.testRules(projectId, command);
+  }
+
+  /**
+   * Restarts the project's source runtime to load generated rules.
+   *
+   * @param projectId Project identifier.
+   * @returns Refreshed project rule snapshot.
+   */
+  async restartProjectRules(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
+    return await this.projectCommandRuleService.restartRules(projectId);
   }
 
   /**

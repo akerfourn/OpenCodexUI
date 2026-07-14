@@ -749,6 +749,107 @@ textarea {
   padding: 12px;
 }
 
+.project-rules-panel {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-rules-header {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 10px 12px;
+  align-items: center;
+}
+
+.project-rule-add-button.MuiIconButton-root,
+.project-rule-apply-button.MuiIconButton-root {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.project-rule-add-button.MuiIconButton-root:hover,
+.project-rule-apply-button.MuiIconButton-root:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.project-rule-add-button.MuiIconButton-root.Mui-disabled,
+.project-rule-apply-button.MuiIconButton-root.Mui-disabled {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-disabledForeground);
+}
+
+.project-rules-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.project-rules-file-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-rule-card {
+  min-width: 0;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 92%, var(--vscode-focusBorder));
+}
+
+.project-rule-card.is-disabled {
+  opacity: 0.62;
+}
+
+.project-rule-card-header {
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+}
+
+.project-rule-enabled-toggle {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.project-rule-enabled-toggle .MuiFormControlLabel-label {
+  font-size: 0.72rem;
+}
+
+.project-rule-pattern {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-rule-justification {
+  display: block;
+  border-top: 1px solid var(--vscode-panel-border);
+  padding: 6px 8px 8px;
+}
+
+.project-rules-test {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 94%, var(--vscode-focusBorder));
+}
+
+.project-rules-test-result {
+  margin-top: 10px;
+}
+
 .project-tasks-panel {
   display: flex;
   min-height: 0;

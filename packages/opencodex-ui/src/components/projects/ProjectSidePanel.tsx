@@ -5,6 +5,7 @@ import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import ChecklistOutlinedIcon from "@mui/icons-material/ChecklistOutlined";
 import FolderCopyOutlinedIcon from "@mui/icons-material/FolderCopyOutlined";
 import KeyboardTabOutlinedIcon from "@mui/icons-material/KeyboardTabOutlined";
+import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
 import TerminalOutlinedIcon from "@mui/icons-material/TerminalOutlined";
 import { Box, IconButton, Tab, Tabs, Tooltip } from "@mui/material";
 import { useState, type ReactElement } from "react";
@@ -15,10 +16,11 @@ import type { ProjectStore } from "../../stores/ProjectStore";
 import { ProjectCommandsPanelX } from "./ProjectCommandsPanel";
 import { ProjectContextPanelX } from "./ProjectContextPanel";
 import { ProjectGitPanelX } from "./ProjectGitPanel";
+import { ProjectRulesPanelX } from "./ProjectRulesPanel";
 import { ProjectSidePanelTabLabel } from "./ProjectSidePanelTabLabel";
 import { ProjectTasksPanelX } from "./ProjectTasksPanel";
 
-type ProjectSidePanelTab = "git" | "commands" | "context" | "tasks";
+type ProjectSidePanelTab = "git" | "commands" | "rules" | "context" | "tasks";
 
 type ProjectSidePanelProps = {
   store: RootStore;
@@ -44,6 +46,7 @@ export function ProjectSidePanel({
   const [selectedTab, setSelectedTab] = useState<ProjectSidePanelTab>("git");
   const gitLabel = t("projectTools.git");
   const commandsLabel = t("projectTools.commands");
+  const rulesLabel = t("projectTools.rules");
   const contextLabel = t("projectTools.context");
   const tasksLabel = t("projectTools.tasks");
   const tabs = [
@@ -56,6 +59,11 @@ export function ProjectSidePanel({
       value: "commands" as const,
       label: commandsLabel,
       icon: <TerminalOutlinedIcon fontSize="small" />
+    },
+    {
+      value: "rules" as const,
+      label: rulesLabel,
+      icon: <RuleOutlinedIcon fontSize="small" />
     },
     {
       value: "context" as const,
@@ -94,6 +102,10 @@ export function ProjectSidePanel({
 
   if (selectedTab === "context") {
     panelContent = <ProjectContextPanelX projectStore={projectStore} />;
+  }
+
+  if (selectedTab === "rules") {
+    panelContent = <ProjectRulesPanelX projectStore={projectStore} />;
   }
 
   if (selectedTab === "tasks") {

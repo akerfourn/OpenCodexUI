@@ -10,6 +10,7 @@ import type {
   OpenCodexProject,
   OpenCodexProjectCommandRun,
   OpenCodexProjectCommandOutputStream,
+  OpenCodexProjectCommandRulesSnapshot,
   OpenCodexSettings,
   OpenCodexSource,
   OpenCodexThread,
@@ -96,4 +97,5 @@ export type OpenCodexEvent =
       exitCode: number | null;
       exitedAt: string;
     }
+  | { type: "projectRules.updated"; projectId: string; snapshot: OpenCodexProjectCommandRulesSnapshot }
   | { type: "error"; message: string; details?: unknown; recoverable?: boolean; threadId?: string };

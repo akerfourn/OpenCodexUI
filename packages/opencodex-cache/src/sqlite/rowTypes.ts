@@ -1,7 +1,7 @@
 /**
  * Internal SQLite row shapes used by cache queries and mappers.
  */
-import type { CachedSourceKind } from "../types.js";
+import type { CachedCommandRuleDecision, CachedSourceKind } from "../types.js";
 
 /**
  * Joined SQLite row used to map cached thread summaries and sync state.
@@ -94,6 +94,33 @@ export type ProjectCommandRow = {
   persist_logs: number;
   sort_order: number;
   created_at: string;
+  updated_at: string;
+};
+
+/**
+ * SQLite row used to map a project command authorization rule.
+ */
+export type ProjectCommandRuleRow = {
+  id: string;
+  project_id: string;
+  name: string;
+  pattern_json: string;
+  decision: CachedCommandRuleDecision;
+  justification: string | null;
+  match_examples_json: string;
+  not_match_examples_json: string;
+  enabled: number;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * SQLite row used to persist generated project rule file metadata.
+ */
+export type ProjectCommandRuleFileStateRow = {
+  project_id: string;
+  generated_hash: string | null;
+  generated_path: string | null;
   updated_at: string;
 };
 

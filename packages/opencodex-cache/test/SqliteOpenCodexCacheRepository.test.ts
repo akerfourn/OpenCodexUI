@@ -305,6 +305,64 @@ describe("SqliteOpenCodexCacheRepository", () => {
     ]);
   });
 
+  it("should persist project command rules and generated file state", async () => {
+    const project = await repository.upsertProject("/tmp/rules-project");
+
+    const rule = await repository.createProjectCommandRule({
+      projectId: project.id,
+      name: "Project tests",
+      pattern: ["uv", "run", "pytest"],
+      decision: "allow",
+      justification: "Project tests are safe.",
+      matchExamples: ["uv run pytest tests -q"],
+      notMatchExamples: ["uv run"],
+      enabled: true
+    });
+
+    expect(await repository.listProjectCommandRules(project.id)).toMatchObject([
+      {
+        id: rule.id,
+        projectId: project.id,
+        name: "Project tests",
+        pattern: ["uv", "run", "pytest"],
+        decision: "allow",
+        justification: "Project tests are safe.",
+        matchExamples: ["uv run pytest tests -q"],
+        notMatchExamples: ["uv run"],
+        enabled: true
+      }
+    ]);
+
+    const updatedRule = await repository.updateProjectCommandRule(rule.id, {
+      enabled: false,
+      decision: "prompt"
+    });
+
+    expect(updatedRule).toMatchObject({
+      id: rule.id,
+      enabled: false,
+      decision: "prompt"
+    });
+
+    await repository.saveProjectCommandRuleFileState({
+      projectId: project.id,
+      generatedHash: "hash-1",
+      generatedPath: "/tmp/rules-project/.codex/rules/opencodex-ui.rules",
+      updatedAt: "2026-07-13T00:00:00.000Z"
+    });
+
+    expect(await repository.getProjectCommandRuleFileState(project.id)).toEqual({
+      projectId: project.id,
+      generatedHash: "hash-1",
+      generatedPath: "/tmp/rules-project/.codex/rules/opencodex-ui.rules",
+      updatedAt: "2026-07-13T00:00:00.000Z"
+    });
+
+    await repository.deleteProjectCommandRule(rule.id);
+
+    expect(await repository.listProjectCommandRules(project.id)).toHaveLength(0);
+  });
+
   it("should persist local project tasks", async () => {
     const project = await repository.upsertProject("/tmp/tasks-project");
 

@@ -153,6 +153,62 @@ export type CachedProjectCommandUpdateInput = {
   persistLogs?: boolean;
 };
 
+export type CachedCommandRuleDecision = "allow" | "prompt" | "forbidden";
+
+/**
+ * Project-local command authorization rule persisted by OpenCodexUI.
+ */
+export type CachedProjectCommandRule = {
+  id: string;
+  projectId: string;
+  name: string;
+  pattern: string[];
+  decision: CachedCommandRuleDecision;
+  justification: string | null;
+  matchExamples: string[];
+  notMatchExamples: string[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Input used to create a project command authorization rule.
+ */
+export type CachedProjectCommandRuleCreateInput = {
+  projectId: string;
+  name: string;
+  pattern: string[];
+  decision: CachedCommandRuleDecision;
+  justification: string | null;
+  matchExamples: string[];
+  notMatchExamples: string[];
+  enabled: boolean;
+};
+
+/**
+ * Partial update applied to a project command authorization rule.
+ */
+export type CachedProjectCommandRuleUpdateInput = {
+  name?: string;
+  pattern?: string[];
+  decision?: CachedCommandRuleDecision;
+  justification?: string | null;
+  matchExamples?: string[];
+  notMatchExamples?: string[];
+  enabled?: boolean;
+};
+
+/**
+ * Persisted synchronization metadata for one generated rules file.
+ */
+export type CachedProjectCommandRuleFileState = {
+  projectId: string;
+  generatedHash: string | null;
+  generatedPath: string | null;
+  updatedAt: string;
+};
+
 /**
  * Persisted order payload for one project's command list.
  */
@@ -661,6 +717,66 @@ export interface OpenCodexCacheRepository {
    * @returns Promise resolved when deletion completes.
    */
   deleteProjectCommand(commandId: string): Promise<void>;
+
+  /**
+   * Lists command authorization rules configured for one project.
+   *
+   * @param projectId Project identifier.
+   * @returns Project rules ordered by creation date.
+   */
+  listProjectCommandRules(projectId: string): Promise<CachedProjectCommandRule[]>;
+
+  /**
+   * Creates a project command authorization rule.
+   *
+   * @param input Rule input.
+   * @returns Created rule.
+   */
+  createProjectCommandRule(input: CachedProjectCommandRuleCreateInput): Promise<CachedProjectCommandRule>;
+
+  /**
+   * Reads one project command authorization rule.
+   *
+   * @param ruleId Rule identifier.
+   * @returns Matching rule.
+   */
+  getProjectCommandRule(ruleId: string): Promise<CachedProjectCommandRule>;
+
+  /**
+   * Updates one project command authorization rule.
+   *
+   * @param ruleId Rule identifier.
+   * @param patch Rule update.
+   * @returns Updated rule.
+   */
+  updateProjectCommandRule(
+    ruleId: string,
+    patch: CachedProjectCommandRuleUpdateInput
+  ): Promise<CachedProjectCommandRule>;
+
+  /**
+   * Deletes one project command authorization rule.
+   *
+   * @param ruleId Rule identifier.
+   * @returns Promise resolved when deletion completes.
+   */
+  deleteProjectCommandRule(ruleId: string): Promise<void>;
+
+  /**
+   * Reads generated-file synchronization metadata for one project.
+   *
+   * @param projectId Project identifier.
+   * @returns File state, or `null` when no file was generated yet.
+   */
+  getProjectCommandRuleFileState(projectId: string): Promise<CachedProjectCommandRuleFileState | null>;
+
+  /**
+   * Stores generated-file synchronization metadata for one project.
+   *
+   * @param state New generated-file state.
+   * @returns Promise resolved when the state is stored.
+   */
+  saveProjectCommandRuleFileState(state: CachedProjectCommandRuleFileState): Promise<void>;
 
   /**
    * Lists local tasks configured for one project.

@@ -18,6 +18,10 @@ import type {
   CachedProjectPreferences,
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
+  CachedProjectCommandRule,
+  CachedProjectCommandRuleCreateInput,
+  CachedProjectCommandRuleFileState,
+  CachedProjectCommandRuleUpdateInput,
   CachedProjectCommandReorderInput,
   CachedProjectCommandUpdateInput,
   CachedProjectTask,
@@ -55,6 +59,15 @@ import {
   reorderProjectCommands,
   updateProjectCommand
 } from "./sqlite/projectCommandQueries.js";
+import {
+  createProjectCommandRule,
+  deleteProjectCommandRule,
+  getProjectCommandRuleFileState,
+  listProjectCommandRules,
+  readProjectCommandRule,
+  saveProjectCommandRuleFileState,
+  updateProjectCommandRule
+} from "./sqlite/projectCommandRuleQueries.js";
 import {
   createProjectTask,
   deleteProjectTask,
@@ -459,6 +472,86 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async deleteProjectCommand(commandId: string): Promise<void> {
     await deleteProjectCommand(this.database, commandId);
+  }
+
+  /**
+   * Lists command authorization rules configured for one project.
+   *
+   * @param projectId Project identifier.
+   * @returns Cached project rules.
+   */
+  async listProjectCommandRules(projectId: string): Promise<CachedProjectCommandRule[]> {
+    return await listProjectCommandRules(this.database, projectId);
+  }
+
+  /**
+   * Creates a project command authorization rule.
+   *
+   * @param input Rule input.
+   * @returns Created rule.
+   */
+  async createProjectCommandRule(
+    input: CachedProjectCommandRuleCreateInput
+  ): Promise<CachedProjectCommandRule> {
+    return await createProjectCommandRule(this.database, input);
+  }
+
+  /**
+   * Reads one project command authorization rule.
+   *
+   * @param ruleId Rule identifier.
+   * @returns Matching rule.
+   */
+  async getProjectCommandRule(ruleId: string): Promise<CachedProjectCommandRule> {
+    return await readProjectCommandRule(this.database, ruleId);
+  }
+
+  /**
+   * Updates one project command authorization rule.
+   *
+   * @param ruleId Rule identifier.
+   * @param patch Rule update.
+   * @returns Updated rule.
+   */
+  async updateProjectCommandRule(
+    ruleId: string,
+    patch: CachedProjectCommandRuleUpdateInput
+  ): Promise<CachedProjectCommandRule> {
+    return await updateProjectCommandRule(this.database, ruleId, patch);
+  }
+
+  /**
+   * Deletes one project command authorization rule.
+   *
+   * @param ruleId Rule identifier.
+   * @returns Promise resolved when deletion completes.
+   */
+  async deleteProjectCommandRule(ruleId: string): Promise<void> {
+    await deleteProjectCommandRule(this.database, ruleId);
+  }
+
+  /**
+   * Reads generated-file synchronization metadata for one project.
+   *
+   * @param projectId Project identifier.
+   * @returns File state, or `null` when no state exists.
+   */
+  async getProjectCommandRuleFileState(
+    projectId: string
+  ): Promise<CachedProjectCommandRuleFileState | null> {
+    return await getProjectCommandRuleFileState(this.database, projectId);
+  }
+
+  /**
+   * Stores generated-file synchronization metadata for one project.
+   *
+   * @param state New generated-file state.
+   * @returns Promise resolved when the state is stored.
+   */
+  async saveProjectCommandRuleFileState(
+    state: CachedProjectCommandRuleFileState
+  ): Promise<void> {
+    await saveProjectCommandRuleFileState(this.database, state);
   }
 
   /**

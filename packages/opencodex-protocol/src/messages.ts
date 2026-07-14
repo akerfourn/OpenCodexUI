@@ -336,6 +336,102 @@ export type OpenCodexProject = {
 };
 
 /**
+ * Decision written to a Codex command authorization rule.
+ */
+export type OpenCodexCommandRuleDecision = "allow" | "prompt" | "forbidden";
+
+/**
+ * Project-local command rule managed by OpenCodexUI.
+ */
+export type OpenCodexProjectCommandRule = {
+  id: string;
+  projectId: string;
+  name: string;
+  pattern: string[];
+  decision: OpenCodexCommandRuleDecision;
+  justification: string | null;
+  matchExamples: string[];
+  notMatchExamples: string[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * State of the generated project-local rules file.
+ */
+export type OpenCodexProjectCommandRuleFileStatus =
+  | "unsupported"
+  | "notGenerated"
+  | "synchronized"
+  | "pending"
+  | "external";
+
+/**
+ * Runtime state relevant to project rule changes.
+ */
+export type OpenCodexProjectCommandRuleRuntimeState =
+  | "ready"
+  | "restartPending"
+  | "restarting"
+  | "error";
+
+/**
+ * Synchronization and runtime status for one project's managed rules file.
+ */
+export type OpenCodexProjectCommandRuleStatus = {
+  projectId: string;
+  sourceId: string | null;
+  filePath: string | null;
+  fileStatus: OpenCodexProjectCommandRuleFileStatus;
+  generatedHash: string | null;
+  currentHash: string | null;
+  desiredHash: string | null;
+  isSupported: boolean;
+  runtimeState: OpenCodexProjectCommandRuleRuntimeState;
+  runtimeMessage: string | null;
+};
+
+/**
+ * Complete project rule state returned to the UI.
+ */
+export type OpenCodexProjectCommandRulesSnapshot = {
+  rules: OpenCodexProjectCommandRule[];
+  status: OpenCodexProjectCommandRuleStatus;
+};
+
+/**
+ * One rule match returned by `codex execpolicy check`.
+ */
+export type OpenCodexProjectCommandRuleMatch = {
+  matchedPrefix: string[];
+  decision: OpenCodexCommandRuleDecision;
+  justification: string | null;
+};
+
+/**
+ * Result of testing a command against the generated project rules file.
+ */
+export type OpenCodexProjectCommandRuleTestResult = {
+  command: string[];
+  decision: OpenCodexCommandRuleDecision | null;
+  matchedRules: OpenCodexProjectCommandRuleMatch[];
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  parseError: string | null;
+};
+
+/**
+ * Result of applying the generated project rules file.
+ */
+export type OpenCodexProjectCommandRuleApplyResult = {
+  applied: boolean;
+  requiresConfirmation: boolean;
+  snapshot: OpenCodexProjectCommandRulesSnapshot;
+};
+
+/**
  * User-editable project preferences stored in SQLite.
  */
 export type OpenCodexProjectPreferences = {
