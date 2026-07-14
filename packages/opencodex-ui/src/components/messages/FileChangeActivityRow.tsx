@@ -76,16 +76,19 @@ export function FileChangeActivityRow({ content, details, icon }: FileChangeActi
           </Tooltip>
         ) : null}
       </Box>
-      <Dialog open={isDialogOpen} fullWidth maxWidth="lg" onClose={handleCloseDetails}>
-        <DialogTitle>{t("message.fileChangeDetails")}</DialogTitle>
-        <DialogContent dividers sx={{ maxHeight: "75vh", overflow: "auto" }}>
-          <CommandDetailBlock
-            label={t("message.fileChangeDiff")}
-            value={details ?? ""}
-            emptyLabel={t("message.fileChangeDiffUnavailable")}
-          />
-        </DialogContent>
-      </Dialog>
+      {isDialogOpen ? (
+        <Dialog open fullWidth maxWidth="lg" onClose={handleCloseDetails}>
+          <DialogTitle>{t("message.fileChangeDetails")}</DialogTitle>
+          <DialogContent dividers sx={{ maxHeight: "75vh", overflow: "auto" }}>
+            <CommandDetailBlock
+              label={t("message.fileChangeDiff")}
+              value={details ?? ""}
+              emptyLabel={t("message.fileChangeDiffUnavailable")}
+              previewStrategy="head-tail"
+            />
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </>
   );
 }

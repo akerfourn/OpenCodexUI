@@ -13,6 +13,7 @@ import type {
 
 import type { ProjectStore } from "./ProjectStore";
 import type { RootStore } from "./RootStore";
+import { consumeProjectCommandOutput } from "./projectCommandOutputBuffer";
 
 export type ProjectCommandLogLine = {
   id: string;
@@ -506,13 +507,16 @@ export class ProjectCommandsStore {
     delta: string
   ): ProjectCommandLogLine[] {
     const key = createPendingOutputKey(runId, stream);
-    const text = `${this.pendingTextByRunAndStream.get(key) ?? ""}${delta.replace(/\r/g, "\n")}`;
-    const lines = text.split("\n");
-    const completedTexts = lines.slice(0, -1);
+    const result = consumeProjectCommandOutput(
+      this.pendingTextByRunAndStream.get(key) ?? "",
+      delta
+    );
 
-    this.pendingTextByRunAndStream.set(key, lines.at(-1) ?? "");
+    this.pendingTextByRunAndStream.set(key, result.pendingText);
 
-    return completedTexts.map((line) => this.createLogLine(stream, line));
+    return result.completedTexts
+      .slice(-maxRunLines)
+      .map((line) => this.createLogLine(stream, line));
   }
 
   /**

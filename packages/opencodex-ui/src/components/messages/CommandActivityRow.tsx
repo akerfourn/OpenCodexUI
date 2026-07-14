@@ -7,7 +7,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTranslation } from "react-i18next";
 
 import { CommandActivityDetailsDialog } from "./CommandActivityDetailsDialog";
-import { readCommandActivityDetails } from "./commandActivityDetails";
+import { readCommandFromContent } from "./commandActivityDetails";
 
 type CommandActivityRowProps = {
   content: string;
@@ -25,10 +25,7 @@ type CommandActivityRowProps = {
 export function CommandActivityRow({ content, details, icon }: CommandActivityRowProps) {
   const { t } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const commandDetails = readCommandActivityDetails(content, details);
-  const commandLabel = commandDetails.command.length > 0
-    ? commandDetails.command
-    : content;
+  const commandLabel = readCommandFromContent(content) || content;
 
   function handleOpenDetails(): void {
     setIsDialogOpen(true);
@@ -80,7 +77,8 @@ export function CommandActivityRow({ content, details, icon }: CommandActivityRo
       </Box>
       <CommandActivityDetailsDialog
         open={isDialogOpen}
-        details={commandDetails}
+        content={content}
+        rawDetails={details}
         onClose={handleCloseDetails}
       />
     </>

@@ -6,11 +6,12 @@ import { useTranslation } from "react-i18next";
 
 import { CommandDetailBlock } from "./CommandDetailBlock";
 import { CommandMetadataRow } from "./CommandMetadataRow";
-import type { CommandActivityDetails } from "./commandActivityDetails";
+import { readCommandActivityDetails } from "./commandActivityDetails";
 
 type CommandActivityDetailsDialogProps = {
   open: boolean;
-  details: CommandActivityDetails;
+  content: string;
+  rawDetails?: string | null;
   /**
    * Handles dialog close.
    *
@@ -28,10 +29,17 @@ type CommandActivityDetailsDialogProps = {
  */
 export function CommandActivityDetailsDialog({
   open,
-  details,
+  content,
+  rawDetails,
   onClose
 }: CommandActivityDetailsDialogProps) {
   const { t } = useTranslation();
+
+  if (!open) {
+    return null;
+  }
+
+  const details = readCommandActivityDetails(content, rawDetails);
   const hasMetadata = (
     details.cwd !== null ||
     details.status !== null ||
@@ -54,6 +62,7 @@ export function CommandActivityDetailsDialog({
             label={t("message.command")}
             value={details.command}
             emptyLabel={t("message.commandUnavailable")}
+            previewStrategy="head-tail"
           />
 
           {hasMetadata ? (
@@ -76,6 +85,7 @@ export function CommandActivityDetailsDialog({
             label={t("message.commandOutput")}
             value={details.output ?? ""}
             emptyLabel={t("message.commandOutputUnavailable")}
+            previewStrategy="tail"
           />
         </Stack>
       </DialogContent>

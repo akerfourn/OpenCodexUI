@@ -78,7 +78,7 @@ function parseDetails(details: string | null | undefined): Record<string, unknow
  * @param content Rendered activity content.
  * @returns Command text.
  */
-function readCommandFromContent(content: string): string {
+export function readCommandFromContent(content: string): string {
   return content
     .replace(/^\s*(Commande|Command)\s*:\s*/i, "")
     .trim();
