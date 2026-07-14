@@ -113,7 +113,10 @@ export class ApprovalsStore implements RootChildStore {
   private addApproval(approval: OpenCodexApproval): void {
     const chatStore = approval.threadId === undefined
       ? null
-      : this.root.projectsStore.findChatStoreByThreadId(approval.threadId);
+      : this.root.projectsStore.findChatStoreByThreadId(
+        approval.threadId,
+        approval.sourceId
+      );
 
     if (chatStore !== null) {
       chatStore.addApproval(approval);

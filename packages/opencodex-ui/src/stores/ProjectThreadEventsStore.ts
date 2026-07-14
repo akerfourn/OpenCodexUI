@@ -62,46 +62,63 @@ export class ProjectThreadEventsStore implements RootChildStore {
         this.applyThreadMetadata(event.thread);
         return;
       case "thread.turns.prepended":
-        this.applyTurnsPrepended(event.threadId, event.turns, event.hasMoreOlderMessages);
+        this.applyTurnsPrepended(
+          event.threadId,
+          event.turns,
+          event.hasMoreOlderMessages,
+          event.sourceId
+        );
         return;
       case "thread.turns.synced":
-        this.applyTurnsSynced(event.threadId, event.turns, event.hasMoreOlderMessages);
+        this.applyTurnsSynced(
+          event.threadId,
+          event.turns,
+          event.hasMoreOlderMessages,
+          event.sourceId
+        );
         return;
       case "thread.sync.started":
-        this.updateThreadSyncState(event.threadId, true);
+        this.updateThreadSyncState(event.threadId, true, event.sourceId);
         return;
       case "thread.sync.completed":
-        this.updateThreadSyncState(event.threadId, false);
+        this.updateThreadSyncState(event.threadId, false, event.sourceId);
         return;
       case "thread.recovery.started":
-        this.updateThreadRecoveryState(event.threadId, true);
+        this.updateThreadRecoveryState(event.threadId, true, event.sourceId);
         return;
       case "thread.recovery.completed":
-        this.completeThreadRecovery(event.threadId);
+        this.completeThreadRecovery(event.threadId, event.sourceId);
         return;
       case "thread.renamed":
-        this.applyThreadRename(event.threadId, event.name);
+        this.applyThreadRename(event.threadId, event.name, event.sourceId);
         return;
       case "thread.deleted":
-        this.applyThreadDeleted(event.threadId);
+        this.applyThreadDeleted(event.threadId, event.sourceId);
         return;
       case "thread.tokenUsage.updated":
-        this.applyThreadTokenUsage(event.usage);
+        this.applyThreadTokenUsage(event.usage, event.sourceId);
         return;
       case "message.started":
-        this.applyMessageStarted(event.threadId, event.message);
+        this.applyMessageStarted(event.threadId, event.message, event.sourceId);
         return;
       case "message.delta":
-        this.appendAssistantDelta(event.threadId, event.turnId, event.messageId, event.delta, event.phase ?? null);
+        this.appendAssistantDelta(
+          event.threadId,
+          event.turnId,
+          event.messageId,
+          event.delta,
+          event.phase ?? null,
+          event.sourceId
+        );
         return;
       case "activity.updated":
-        this.applyActivityUpdated(event.threadId, event.activity);
+        this.applyActivityUpdated(event.threadId, event.activity, event.sourceId);
         return;
       case "turn.started":
-        this.applyTurnStarted(event.threadId, event.turnId);
+        this.applyTurnStarted(event.threadId, event.turnId, event.sourceId);
         return;
       case "turn.completed":
-        this.applyTurnCompleted(event.threadId, event.turnId, event.durationMs);
+        this.applyTurnCompleted(event.threadId, event.turnId, event.durationMs, event.sourceId);
         return;
       default:
         return;
@@ -221,7 +238,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * @param thread Thread metadata.
    */
   private applyThreadMetadata(thread: OpenCodexThread): void {
-    const projectStore = this.findProjectStoreForThread(thread.id)
+    const projectStore = this.findProjectStoreForThread(thread.id, thread.sourceId)
       ?? this.projectsStore.ensureProjectStoreForThread(thread);
     const updatedThread = projectStore.upsertThread(thread);
     const chatStore = projectStore.chatsById.get(updatedThread.id);
@@ -229,7 +246,6 @@ export class ProjectThreadEventsStore implements RootChildStore {
     if (chatStore !== undefined) {
       chatStore.setThread(updatedThread);
     }
-
   }
 
   /**
@@ -238,13 +254,15 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * @param threadId Thread identifier.
    * @param turns Older turns.
    * @param hasMoreOlderMessages Whether more older turns remain.
+   * @param sourceId Optional source carried by the event.
    */
   private applyTurnsPrepended(
     threadId: string,
     turns: OpenCodexTurn[],
-    hasMoreOlderMessages: boolean
+    hasMoreOlderMessages: boolean,
+    sourceId?: string | null
   ): void {
-    const chatStore = this.findChatStore(threadId);
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -259,13 +277,15 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * @param threadId Thread identifier.
    * @param turns Synced turns.
    * @param hasMoreOlderMessages Whether more older turns remain.
+   * @param sourceId Optional source carried by the event.
    */
   private applyTurnsSynced(
     threadId: string,
     turns: OpenCodexTurn[],
-    hasMoreOlderMessages: boolean
+    hasMoreOlderMessages: boolean,
+    sourceId?: string | null
   ): void {
-    const chatStore = this.findChatStore(threadId);
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -279,9 +299,14 @@ export class ProjectThreadEventsStore implements RootChildStore {
    *
    * @param threadId Thread identifier.
    * @param isSyncing Whether sync is active.
+   * @param sourceId Optional source carried by the event.
    */
-  private updateThreadSyncState(threadId: string, isSyncing: boolean): void {
-    const chatStore = this.findChatStore(threadId);
+  private updateThreadSyncState(
+    threadId: string,
+    isSyncing: boolean,
+    sourceId?: string | null
+  ): void {
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -295,9 +320,14 @@ export class ProjectThreadEventsStore implements RootChildStore {
    *
    * @param threadId Thread identifier.
    * @param isRecovering Whether recovery is active.
+   * @param sourceId Optional source carried by the event.
    */
-  private updateThreadRecoveryState(threadId: string, isRecovering: boolean): void {
-    const chatStore = this.findChatStore(threadId);
+  private updateThreadRecoveryState(
+    threadId: string,
+    isRecovering: boolean,
+    sourceId?: string | null
+  ): void {
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -310,9 +340,10 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * Marks recovery as completed for one chat.
    *
    * @param threadId Thread identifier.
+   * @param sourceId Optional source carried by the event.
    */
-  private completeThreadRecovery(threadId: string): void {
-    const chatStore = this.findChatStore(threadId);
+  private completeThreadRecovery(threadId: string, sourceId?: string | null): void {
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -326,9 +357,14 @@ export class ProjectThreadEventsStore implements RootChildStore {
    *
    * @param threadId Thread identifier.
    * @param name New title.
+   * @param sourceId Optional source carried by the event.
    */
-  private applyThreadRename(threadId: string, name: string): void {
-    const projectStore = this.findProjectStoreForThread(threadId);
+  private applyThreadRename(
+    threadId: string,
+    name: string,
+    sourceId?: string | null
+  ): void {
+    const projectStore = this.findProjectStoreForThread(threadId, sourceId);
 
     if (projectStore === null) {
       return;
@@ -348,8 +384,14 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * Removes a deleted thread from every loaded project store.
    *
    * @param threadId Deleted thread identifier.
+   * @param sourceId Optional source carried by the event.
    */
-  private applyThreadDeleted(threadId: string): void {
+  private applyThreadDeleted(threadId: string, sourceId?: string | null): void {
+    if (sourceId !== undefined && sourceId !== null) {
+      this.findProjectStoreForThread(threadId, sourceId)?.removeThread(threadId);
+      return;
+    }
+
     for (const projectStore of this.projectsStore.projectStoresById.values()) {
       projectStore.removeThread(threadId);
     }
@@ -359,9 +401,13 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * Applies token usage to the owning chat.
    *
    * @param usage Token usage payload.
+   * @param sourceId Optional source carried by the event.
    */
-  private applyThreadTokenUsage(usage: OpenCodexThreadTokenUsage): void {
-    const chatStore = this.findChatStore(usage.threadId);
+  private applyThreadTokenUsage(
+    usage: OpenCodexThreadTokenUsage,
+    sourceId?: string | null
+  ): void {
+    const chatStore = this.findChatStore(usage.threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -375,9 +421,14 @@ export class ProjectThreadEventsStore implements RootChildStore {
    *
    * @param threadId Thread identifier.
    * @param message Started message item.
+   * @param sourceId Optional source carried by the event.
    */
-  private applyMessageStarted(threadId: string, message: OpenCodexMessage): void {
-    const chatStore = this.findChatStore(threadId);
+  private applyMessageStarted(
+    threadId: string,
+    message: OpenCodexMessage,
+    sourceId?: string | null
+  ): void {
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -394,15 +445,17 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * @param itemId Message item identifier.
    * @param delta Text delta.
    * @param phase Optional assistant phase.
+   * @param sourceId Optional source carried by the event.
    */
   private appendAssistantDelta(
     threadId: string,
     turnId: string,
     itemId: string,
     delta: string,
-    phase: OpenCodexMessagePhase | null
+    phase: OpenCodexMessagePhase | null,
+    sourceId?: string | null
   ): void {
-    const chatStore = this.findChatStore(threadId);
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -416,9 +469,14 @@ export class ProjectThreadEventsStore implements RootChildStore {
    *
    * @param threadId Thread identifier.
    * @param activity Activity item.
+   * @param sourceId Optional source carried by the event.
    */
-  private applyActivityUpdated(threadId: string, activity: OpenCodexActivity): void {
-    const chatStore = this.findChatStore(threadId);
+  private applyActivityUpdated(
+    threadId: string,
+    activity: OpenCodexActivity,
+    sourceId?: string | null
+  ): void {
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -432,9 +490,14 @@ export class ProjectThreadEventsStore implements RootChildStore {
    *
    * @param threadId Thread identifier.
    * @param turnId Turn identifier.
+   * @param sourceId Optional source carried by the event.
    */
-  private applyTurnStarted(threadId: string, turnId: string): void {
-    const chatStore = this.findChatStore(threadId);
+  private applyTurnStarted(
+    threadId: string,
+    turnId: string,
+    sourceId?: string | null
+  ): void {
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -449,9 +512,15 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * @param threadId Thread identifier.
    * @param turnId Turn identifier.
    * @param durationMs Optional duration in milliseconds.
+   * @param sourceId Optional source carried by the event.
    */
-  private applyTurnCompleted(threadId: string, turnId: string, durationMs: number | null): void {
-    const chatStore = this.findChatStore(threadId);
+  private applyTurnCompleted(
+    threadId: string,
+    turnId: string,
+    durationMs: number | null,
+    sourceId?: string | null
+  ): void {
+    const chatStore = this.findChatStore(threadId, sourceId);
 
     if (chatStore === null) {
       return;
@@ -462,7 +531,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
     chatStore.applyTurnCompleted(turnId, durationMs);
 
     if (shouldRefreshGit) {
-      const projectStore = this.findProjectStoreForThread(threadId);
+      const projectStore = this.findProjectStoreForThread(threadId, sourceId);
       void projectStore?.gitStore.refresh();
     }
   }
@@ -471,26 +540,25 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * Finds the project store that owns a thread.
    *
    * @param threadId Thread identifier.
+   * @param sourceId Optional source carried by the event.
    * @returns Project store, or `null`.
    */
-  private findProjectStoreForThread(threadId: string): ProjectStore | null {
-    for (const projectStore of this.projectsStore.projectStoresById.values()) {
-      if (projectStore.findThread(threadId) !== null || projectStore.chatsById.has(threadId)) {
-        return projectStore;
-      }
-    }
-
-    return null;
+  private findProjectStoreForThread(
+    threadId: string,
+    sourceId?: string | null
+  ): ProjectStore | null {
+    return this.projectsStore.findProjectStoreForThread(threadId, sourceId);
   }
 
   /**
    * Finds a loaded chat store by thread id.
    *
    * @param threadId Thread identifier.
+   * @param sourceId Optional source carried by the event.
    * @returns Chat store, or `null`.
    */
-  private findChatStore(threadId: string): ChatStore | null {
-    return this.findProjectStoreForThread(threadId)?.chatsById.get(threadId) ?? null;
+  private findChatStore(threadId: string, sourceId?: string | null): ChatStore | null {
+    return this.projectsStore.findChatStoreByThreadId(threadId, sourceId);
   }
 
   /**

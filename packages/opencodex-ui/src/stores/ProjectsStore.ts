@@ -13,6 +13,13 @@ import { ProjectTrustStore } from "./ProjectTrustStore";
 import type { RootStore } from "./RootStore";
 import type { RootChildStore } from "./RootChildStore";
 
+type LoadedChatRoute = {
+  sourceId: string;
+  threadId: string;
+  projectStore: ProjectStore;
+  chatStore: ChatStore;
+};
+
 /**
  * Stores recent projects and opened project workspaces.
  */
@@ -27,6 +34,13 @@ export class ProjectsStore implements RootChildStore {
   readonly trustStore: ProjectTrustStore;
   /** Temporary thread-to-project ownership hints while a thread opens. */
   private readonly pendingThreadProjectIds = new Map<string, string>();
+  /** Loaded chat routes grouped by source and thread identifiers. */
+  private readonly loadedChatRoutesBySourceId = new Map<
+    string,
+    Map<string, LoadedChatRoute>
+  >();
+  /** Registered route metadata keyed by loaded chat instance. */
+  private readonly loadedChatRouteByStore = new WeakMap<ChatStore, LoadedChatRoute>();
   /** Source selected when opening a project before the backend responds. */
   private pendingProjectOpenSourceId: string | null = null;
 
@@ -38,7 +52,14 @@ export class ProjectsStore implements RootChildStore {
   constructor(private readonly root: RootStore) {
     this.threadEventsStore = new ProjectThreadEventsStore(this, root);
     this.trustStore = new ProjectTrustStore(this, root);
-    makeAutoObservable<ProjectsStore, "root">(this, { root: false });
+    makeAutoObservable<
+      ProjectsStore,
+      "root" | "loadedChatRoutesBySourceId" | "loadedChatRouteByStore"
+    >(this, {
+      root: false,
+      loadedChatRoutesBySourceId: false,
+      loadedChatRouteByStore: false
+    });
   }
 
   /**
@@ -298,12 +319,34 @@ export class ProjectsStore implements RootChildStore {
    * Finds the opened project that owns a thread.
    *
    * @param threadId Thread identifier.
+   * @param sourceId Optional source carried by the event.
    *
    * @returns Matching project store, or `null`.
    */
-  findProjectStoreForThread(threadId: string): ProjectStore | null {
+  findProjectStoreForThread(
+    threadId: string,
+    sourceId?: string | null
+  ): ProjectStore | null {
+    const indexedRoute = this.findLoadedChatRoute(threadId, sourceId);
+
+    if (indexedRoute !== null) {
+      return indexedRoute.projectStore;
+    }
+
     for (const projectStore of this.projectStoresById.values()) {
-      if (projectStore.findThread(threadId) !== null || projectStore.chatsById.has(threadId)) {
+      const chatStore = projectStore.chatsById.get(threadId);
+
+      if (chatStore !== undefined && matchesSource(chatStore.sourceId, sourceId)) {
+        this.registerLoadedChat(projectStore, chatStore);
+        return projectStore;
+      }
+
+      const thread = projectStore.findThread(threadId);
+
+      if (
+        thread !== null &&
+        matchesSource(projectStore.resolveThreadSourceId(thread), sourceId)
+      ) {
         return projectStore;
       }
     }
@@ -315,11 +358,100 @@ export class ProjectsStore implements RootChildStore {
    * Finds a loaded chat store by thread identifier.
    *
    * @param threadId Thread identifier.
+   * @param sourceId Optional source carried by the event.
    *
    * @returns Matching chat store, or `null`.
    */
-  findChatStoreByThreadId(threadId: string): ChatStore | null {
-    return this.findProjectStoreForThread(threadId)?.chatsById.get(threadId) ?? null;
+  findChatStoreByThreadId(threadId: string, sourceId?: string | null): ChatStore | null {
+    const indexedRoute = this.findLoadedChatRoute(threadId, sourceId);
+
+    if (indexedRoute !== null) {
+      return indexedRoute.chatStore;
+    }
+
+    for (const projectStore of this.projectStoresById.values()) {
+      const chatStore = projectStore.chatsById.get(threadId);
+
+      if (chatStore === undefined || !matchesSource(chatStore.sourceId, sourceId)) {
+        continue;
+      }
+
+      this.registerLoadedChat(projectStore, chatStore);
+      return chatStore;
+    }
+
+    return null;
+  }
+
+  /**
+   * Registers or refreshes the direct route for one loaded chat.
+   *
+   * @param projectStore Project that owns the chat.
+   * @param chatStore Loaded chat instance.
+   */
+  registerLoadedChat(projectStore: ProjectStore, chatStore: ChatStore): void {
+    this.unregisterLoadedChat(chatStore);
+
+    const sourceId = chatStore.sourceId;
+
+    if (sourceId === null) {
+      return;
+    }
+
+    const route: LoadedChatRoute = {
+      sourceId,
+      threadId: chatStore.thread.id,
+      projectStore,
+      chatStore
+    };
+    const sourceRoutes = this.loadedChatRoutesBySourceId.get(sourceId)
+      ?? new Map<string, LoadedChatRoute>();
+
+    sourceRoutes.set(route.threadId, route);
+    this.loadedChatRoutesBySourceId.set(sourceId, sourceRoutes);
+    this.loadedChatRouteByStore.set(chatStore, route);
+  }
+
+  /**
+   * Removes the direct route owned by one loaded chat.
+   *
+   * @param chatStore Chat being disposed or detached.
+   */
+  unregisterLoadedChat(chatStore: ChatStore): void {
+    const route = this.loadedChatRouteByStore.get(chatStore);
+
+    if (route === undefined) {
+      return;
+    }
+
+    this.loadedChatRouteByStore.delete(chatStore);
+    const sourceRoutes = this.loadedChatRoutesBySourceId.get(route.sourceId);
+
+    if (sourceRoutes?.get(route.threadId) === route) {
+      sourceRoutes.delete(route.threadId);
+    }
+
+    if (sourceRoutes !== undefined && sourceRoutes.size === 0) {
+      this.loadedChatRoutesBySourceId.delete(route.sourceId);
+    }
+  }
+
+  /**
+   * Finds a loaded-chat route when an event carries its source.
+   *
+   * @param threadId Thread identifier.
+   * @param sourceId Optional source identifier from the event channel.
+   * @returns Loaded route, or `null` when absent.
+   */
+  private findLoadedChatRoute(
+    threadId: string,
+    sourceId?: string | null
+  ): LoadedChatRoute | null {
+    if (sourceId === undefined || sourceId === null) {
+      return null;
+    }
+
+    return this.loadedChatRoutesBySourceId.get(sourceId)?.get(threadId) ?? null;
   }
 
   /**
@@ -477,6 +609,22 @@ function createClientProject(
     lastSeenAt: now,
     editedAt: now
   };
+}
+
+/**
+ * Matches a resolved owner source against an optional event source.
+ *
+ * Missing or null event sources retain the legacy thread-only fallback.
+ *
+ * @param ownerSourceId Source resolved from loaded state.
+ * @param eventSourceId Optional source carried by the event.
+ * @returns Whether the loaded owner may handle the event.
+ */
+function matchesSource(
+  ownerSourceId: string | null,
+  eventSourceId?: string | null
+): boolean {
+  return eventSourceId === undefined || eventSourceId === null || ownerSourceId === eventSourceId;
 }
 
 /**

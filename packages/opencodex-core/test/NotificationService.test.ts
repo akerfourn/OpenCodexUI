@@ -27,6 +27,7 @@ describe("NotificationService", () => {
     expect(emit).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith({
       type: "message.delta",
+      sourceId: "source-1",
       threadId: "thread-1",
       turnId: "turn-1",
       messageId: "message-1",
@@ -59,6 +60,7 @@ describe("NotificationService", () => {
     });
     expect(emit.mock.calls[1]?.[0]).toEqual({
       type: "turn.completed",
+      sourceId: "source-1",
       threadId: "thread-1",
       turnId: "turn-1",
       durationMs: 1200
@@ -71,6 +73,7 @@ function createService(emit: (event: OpenCodexEvent) => void): NotificationServi
     getSettings: () => ({}) as OpenCodexSettings,
     emit,
     applyCodexThreadTitle: vi.fn(),
+    applyCodexThreadDeleted: vi.fn(),
     syncCompletedTurn: vi.fn()
   });
 }

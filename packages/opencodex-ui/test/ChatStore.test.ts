@@ -343,6 +343,7 @@ function createProjectStore(): ProjectStore {
         sourceId
       };
     }),
+    registerChatRoute: vi.fn(),
     upsertThread: vi.fn((thread: OpenCodexThread) => thread),
     openThread: vi.fn()
   } as ProjectStore;

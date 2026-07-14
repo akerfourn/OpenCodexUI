@@ -188,6 +188,7 @@ export class PerformanceMonitoringService {
 
     const {
       eventTypeCounts: _eventTypeCounts,
+      eventTypeMaxDurationMs: _eventTypeMaxDurationMs,
       markdown: _markdown,
       ...standardSample
     } = sample;

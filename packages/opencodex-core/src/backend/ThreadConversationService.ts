@@ -186,7 +186,7 @@ export class ThreadConversationService {
 
     const client = await this.options.ensureClient(cachedSnapshot.thread.sourceId);
     await client.deleteThread(threadId);
-    await this.forgetDeletedThread(threadId);
+    await this.forgetDeletedThread(threadId, cachedSnapshot.thread.sourceId);
 
     return { ok: true };
   }
@@ -207,18 +207,20 @@ export class ThreadConversationService {
    * Removes a deleted thread from local memory, cache, and visible UI lists.
    *
    * @param threadId Deleted thread identifier.
+   * @param sourceId Source identifier when deletion came from a live channel.
    *
    * @returns Promise resolved when local cleanup completes.
    */
-  async forgetDeletedThread(threadId: string): Promise<void> {
+  async forgetDeletedThread(threadId: string, sourceId: string | null = null): Promise<void> {
     await this.forgetCachedThread(threadId);
-    this.options.emit({ type: "thread.deleted", threadId });
+    this.options.emit({ type: "thread.deleted", sourceId, threadId });
   }
 
   /**
    * Reads the current app-server runtime status for a thread without loading turns.
    *
    * @param threadId Thread identifier.
+   * @param sourceIdOverride Source known by the live notification channel.
    *
    * @returns Runtime status reported by Codex app-server.
    */
@@ -419,6 +421,7 @@ export class ThreadConversationService {
     if (turns.length > 0) {
       this.options.emit({
         type: "thread.turns.prepended",
+        sourceId: cacheEntry.thread.sourceId,
         threadId,
         turns,
         hasMoreOlderMessages
@@ -440,8 +443,9 @@ export class ThreadConversationService {
       return { ok: true };
     }
 
+    const sourceId = await this.resolveThreadSourceId(threadId);
     this.recoveringThreadIds.add(threadId);
-    this.options.emit({ type: "thread.recovery.started", threadId });
+    this.options.emit({ type: "thread.recovery.started", sourceId, threadId });
 
     try {
       const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
@@ -454,7 +458,7 @@ export class ThreadConversationService {
         await this.openThread(threadId);
       }
 
-      this.options.emit({ type: "thread.recovery.completed", threadId });
+      this.options.emit({ type: "thread.recovery.completed", sourceId, threadId });
       return { ok: true };
     } finally {
       this.recoveringThreadIds.delete(threadId);
@@ -683,7 +687,12 @@ export class ThreadConversationService {
       attachments
     };
 
-    this.options.emit({ type: "message.started", threadId: targetThreadId, message });
+    this.options.emit({
+      type: "message.started",
+      sourceId: resolvedSource.id,
+      threadId: targetThreadId,
+      message
+    });
 
     const turnResponse = await client.startTurn({
       threadId: targetThreadId,
@@ -696,7 +705,12 @@ export class ThreadConversationService {
     const turnId = readString(turn.id);
 
     if (turnId.length > 0) {
-      this.options.emit({ type: "turn.started", threadId: targetThreadId, turnId });
+      this.options.emit({
+        type: "turn.started",
+        sourceId: resolvedSource.id,
+        threadId: targetThreadId,
+        turnId
+      });
     }
 
     return { threadId: targetThreadId, turnId };
@@ -906,7 +920,7 @@ export class ThreadConversationService {
     const turnId = readString(turn.id);
 
     if (turnId.length > 0) {
-      this.options.emit({ type: "turn.started", threadId, turnId });
+      this.options.emit({ type: "turn.started", sourceId, threadId, turnId });
     }
 
     return { ok: true };
@@ -940,9 +954,9 @@ export class ThreadConversationService {
    *
    * @returns Promise resolved when synchronization completes.
    */
-  async syncCompletedTurn(threadId: string): Promise<void> {
+  async syncCompletedTurn(threadId: string, sourceIdOverride: string | null = null): Promise<void> {
     await delay(500);
-    const sourceId = await this.resolveThreadSourceId(threadId);
+    const sourceId = sourceIdOverride ?? await this.resolveThreadSourceId(threadId);
 
     if (sourceId === null) {
       return;
@@ -999,7 +1013,12 @@ export class ThreadConversationService {
     await client.renameThread(threadId, trimmedName);
     await this.options.threadCacheService.writeTitle(threadId, trimmedName);
     this.options.threadTurnCache.renameThread(threadId, trimmedName);
-    this.options.emit({ type: "thread.renamed", threadId, name: trimmedName });
+    this.options.emit({
+      type: "thread.renamed",
+      sourceId: cachedSnapshot.thread.sourceId,
+      threadId,
+      name: trimmedName
+    });
   }
 
   /**
@@ -1073,7 +1092,11 @@ export class ThreadConversationService {
     const syncStartedAt = existingStartedAt ?? Date.now();
 
     if (existingStartedAt === null) {
-      this.options.emit({ type: "thread.sync.started", threadId: cacheEntry.thread.id });
+      this.options.emit({
+        type: "thread.sync.started",
+        sourceId: cacheEntry.thread.sourceId,
+        threadId: cacheEntry.thread.id
+      });
     }
 
     try {
@@ -1102,6 +1125,7 @@ export class ThreadConversationService {
       await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
       this.options.emit({
         type: "thread.turns.synced",
+        sourceId: cacheEntry.thread.sourceId,
         threadId: cacheEntry.thread.id,
         turns: this.options.threadCacheService.readTurns(cacheEntry),
         hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns
@@ -1114,7 +1138,11 @@ export class ThreadConversationService {
         turnCount: cacheEntry.orderedTurnIds.length,
         mode: "background-sync"
       });
-      this.options.emit({ type: "thread.sync.completed", threadId: cacheEntry.thread.id });
+      this.options.emit({
+        type: "thread.sync.completed",
+        sourceId: cacheEntry.thread.sourceId,
+        threadId: cacheEntry.thread.id
+      });
     }
   }
 
@@ -1127,12 +1155,14 @@ export class ThreadConversationService {
    */
   private async syncCachedThread(threadId: string): Promise<void> {
     const syncStartedAt = Date.now();
-    this.options.emit({ type: "thread.sync.started", threadId });
 
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
     if (cachedSnapshot === null || cachedSnapshot.thread.sourceId === null) {
       throw new Error("Cannot synchronize a thread without a Codex source.");
     }
+
+    const sourceId = cachedSnapshot.thread.sourceId;
+    this.options.emit({ type: "thread.sync.started", sourceId, threadId });
 
     if (isUnmaterializedThreadSnapshot(cachedSnapshot)) {
       this.logThreadTiming("codex load finished", {
@@ -1141,11 +1171,10 @@ export class ThreadConversationService {
         turnCount: 0,
         mode: "unmaterialized-thread"
       });
-      this.options.emit({ type: "thread.sync.completed", threadId });
+      this.options.emit({ type: "thread.sync.completed", sourceId, threadId });
       return;
     }
 
-    const sourceId = cachedSnapshot.thread.sourceId;
     const client = await this.options.ensureClient(sourceId);
     const cacheEntry = this.options.threadTurnCache.get(threadId)
       ?? this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);

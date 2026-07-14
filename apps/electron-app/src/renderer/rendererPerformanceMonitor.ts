@@ -23,6 +23,7 @@ export class RendererPerformanceMonitor {
   private estimatedEventBytes = 0;
   private maxEventHandlingDurationMs = 0;
   private eventTypeCounts: Record<string, number> = {};
+  private eventTypeMaxDurationMs: Record<string, number> = {};
   private plainMarkdownRenderCount = 0;
   private plainMarkdownRenderDurationMs = 0;
   private maxPlainMarkdownRenderDurationMs = 0;
@@ -66,6 +67,10 @@ export class RendererPerformanceMonitor {
 
     if (settings.developerMode && settings.advancedPerformanceMonitoringEnabled) {
       this.eventTypeCounts[event.type] = (this.eventTypeCounts[event.type] ?? 0) + 1;
+      this.eventTypeMaxDurationMs[event.type] = Math.max(
+        this.eventTypeMaxDurationMs[event.type] ?? 0,
+        durationMs
+      );
     }
   }
 
@@ -179,6 +184,7 @@ export class RendererPerformanceMonitor {
 
     if (isAdvanced) {
       sample.eventTypeCounts = { ...this.eventTypeCounts };
+      sample.eventTypeMaxDurationMs = { ...this.eventTypeMaxDurationMs };
       sample.markdown = {
         plainRenderCount: this.plainMarkdownRenderCount,
         plainRenderDurationMs: this.plainMarkdownRenderDurationMs,
@@ -230,6 +236,7 @@ export class RendererPerformanceMonitor {
     this.estimatedEventBytes = 0;
     this.maxEventHandlingDurationMs = 0;
     this.eventTypeCounts = {};
+    this.eventTypeMaxDurationMs = {};
     this.plainMarkdownRenderCount = 0;
     this.plainMarkdownRenderDurationMs = 0;
     this.maxPlainMarkdownRenderDurationMs = 0;

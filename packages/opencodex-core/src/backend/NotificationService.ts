@@ -17,9 +17,9 @@ import { createAssistantMessagePhaseKey } from "./turnInput.js";
 export type NotificationServiceOptions = {
   getSettings(): OpenCodexSettings;
   emit(event: OpenCodexEvent): void;
-  applyCodexThreadTitle(threadId: string, title: string): void;
-  applyCodexThreadDeleted(threadId: string): void;
-  syncCompletedTurn(threadId: string): void;
+  applyCodexThreadTitle(threadId: string, title: string, sourceId: string): void;
+  applyCodexThreadDeleted(threadId: string, sourceId: string): void;
+  syncCompletedTurn(threadId: string, sourceId: string): void;
 };
 
 const ASSISTANT_DELTA_BATCH_MS = 20;
@@ -60,7 +60,12 @@ export class NotificationService {
     const activity = createActivityFromNotification(notification);
 
     if (activity !== null) {
-      this.options.emit({ type: "activity.updated", threadId: activity.threadId, activity });
+      this.options.emit({
+        type: "activity.updated",
+        sourceId,
+        threadId: activity.threadId,
+        activity
+      });
     }
 
     const params = readObject(notification.params);
@@ -78,11 +83,11 @@ export class NotificationService {
     }
 
     if (notification.method === "turn/started") {
-      this.handleTurnStarted(params);
+      this.handleTurnStarted(params, sourceId);
     }
 
     if (notification.method === "turn/completed") {
-      this.handleTurnCompleted(params);
+      this.handleTurnCompleted(params, sourceId);
     }
 
     if (notification.method === "thread/name/updated") {
@@ -90,7 +95,7 @@ export class NotificationService {
       const name = readString(params.name);
 
       if (threadId.length > 0) {
-        this.options.applyCodexThreadTitle(threadId, name);
+        this.options.applyCodexThreadTitle(threadId, name, sourceId);
       }
     }
 
@@ -98,7 +103,7 @@ export class NotificationService {
       const threadId = readString(params.threadId);
 
       if (threadId.length > 0) {
-        this.options.applyCodexThreadDeleted(threadId);
+        this.options.applyCodexThreadDeleted(threadId, sourceId);
       }
     }
   }
@@ -107,6 +112,7 @@ export class NotificationService {
    * Emits assistant text deltas for streaming agent messages.
    *
    * @param params Notification parameters.
+   * @param sourceId Source that produced the notification.
    * @param sourceId Source that produced the notification.
    *
    * @returns Nothing.
@@ -203,7 +209,9 @@ export class NotificationService {
 
     if (threadId.length > 0 && messageId.length > 0) {
       this.flushPendingAssistantDeltas(sourceId, threadId, turnId, messageId);
-      this.assistantMessagePhases.delete(createAssistantMessagePhaseKey(sourceId, threadId, messageId));
+      this.assistantMessagePhases.delete(
+        createAssistantMessagePhaseKey(sourceId, threadId, messageId)
+      );
     }
   }
 
@@ -211,15 +219,16 @@ export class NotificationService {
    * Emits a turn-started event.
    *
    * @param params Notification parameters.
+   * @param sourceId Source that produced the notification.
    *
    * @returns Nothing.
    */
-  private handleTurnStarted(params: Record<string, unknown>): void {
+  private handleTurnStarted(params: Record<string, unknown>, sourceId: string): void {
     const threadId = readString(params.threadId);
     const turnId = readString(readObject(params.turn).id);
 
     if (threadId.length > 0 && turnId.length > 0) {
-      this.options.emit({ type: "turn.started", threadId, turnId });
+      this.options.emit({ type: "turn.started", sourceId, threadId, turnId });
     }
   }
 
@@ -227,18 +236,19 @@ export class NotificationService {
    * Emits a turn-completed event.
    *
    * @param params Notification parameters.
+   * @param sourceId Source that produced the notification.
    *
    * @returns Nothing.
    */
-  private handleTurnCompleted(params: Record<string, unknown>): void {
+  private handleTurnCompleted(params: Record<string, unknown>, sourceId: string): void {
     const threadId = readString(params.threadId);
     const turnId = readString(readObject(params.turn).id);
     const durationMs = readNullableNumber(readObject(params.turn).durationMs);
 
     if (threadId.length > 0 && turnId.length > 0) {
-      this.flushPendingAssistantDeltas(null, threadId, turnId, null);
-      this.options.emit({ type: "turn.completed", threadId, turnId, durationMs });
-      this.options.syncCompletedTurn(threadId);
+      this.flushPendingAssistantDeltas(sourceId, threadId, turnId, null);
+      this.options.emit({ type: "turn.completed", sourceId, threadId, turnId, durationMs });
+      this.options.syncCompletedTurn(threadId, sourceId);
     }
   }
 
@@ -278,6 +288,7 @@ export class NotificationService {
     this.pendingAssistantDeltas.delete(key);
     this.options.emit({
       type: "message.delta",
+      sourceId: pendingDelta.sourceId,
       threadId: pendingDelta.threadId,
       turnId: pendingDelta.turnId,
       messageId: pendingDelta.messageId,

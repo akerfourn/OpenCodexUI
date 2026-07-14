@@ -53,27 +53,72 @@ export type OpenCodexEvent =
     }
   | { type: "thread.created"; thread: OpenCodexThread; turns: OpenCodexTurn[] }
   | { type: "thread.metadata.updated"; thread: OpenCodexThread }
-  | { type: "thread.turns.prepended"; threadId: string; turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }
-  | { type: "thread.turns.synced"; threadId: string; turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }
-  | { type: "thread.sync.started"; threadId: string }
-  | { type: "thread.sync.completed"; threadId: string }
-  | { type: "thread.recovery.started"; threadId: string }
-  | { type: "thread.recovery.completed"; threadId: string }
-  | { type: "thread.renamed"; threadId: string; name: string }
-  | { type: "thread.deleted"; threadId: string }
-  | { type: "thread.tokenUsage.updated"; usage: OpenCodexThreadTokenUsage }
-  | { type: "message.started"; threadId: string; message: OpenCodexMessage }
-  | { type: "message.delta"; threadId: string; messageId: string; turnId: string; delta: string; phase?: OpenCodexMessage["phase"] }
-  | { type: "message.completed"; threadId: string; messageId: string }
-  | { type: "activity.started"; threadId: string; activity: OpenCodexActivity }
-  | { type: "activity.updated"; threadId: string; activity: OpenCodexActivity }
-  | { type: "activity.completed"; threadId: string; activityId: string }
+  | {
+      type: "thread.turns.prepended";
+      sourceId?: string | null;
+      threadId: string;
+      turns: OpenCodexTurn[];
+      hasMoreOlderMessages: boolean;
+    }
+  | {
+      type: "thread.turns.synced";
+      sourceId?: string | null;
+      threadId: string;
+      turns: OpenCodexTurn[];
+      hasMoreOlderMessages: boolean;
+    }
+  | { type: "thread.sync.started"; sourceId?: string | null; threadId: string }
+  | { type: "thread.sync.completed"; sourceId?: string | null; threadId: string }
+  | { type: "thread.recovery.started"; sourceId?: string | null; threadId: string }
+  | { type: "thread.recovery.completed"; sourceId?: string | null; threadId: string }
+  | { type: "thread.renamed"; sourceId?: string | null; threadId: string; name: string }
+  | { type: "thread.deleted"; sourceId?: string | null; threadId: string }
+  | {
+      type: "thread.tokenUsage.updated";
+      sourceId?: string | null;
+      usage: OpenCodexThreadTokenUsage;
+    }
+  | {
+      type: "message.started";
+      sourceId?: string | null;
+      threadId: string;
+      message: OpenCodexMessage;
+    }
+  | {
+      type: "message.delta";
+      sourceId?: string | null;
+      threadId: string;
+      messageId: string;
+      turnId: string;
+      delta: string;
+      phase?: OpenCodexMessage["phase"];
+    }
+  | { type: "message.completed"; sourceId?: string | null; threadId: string; messageId: string }
+  | {
+      type: "activity.started";
+      sourceId?: string | null;
+      threadId: string;
+      activity: OpenCodexActivity;
+    }
+  | {
+      type: "activity.updated";
+      sourceId?: string | null;
+      threadId: string;
+      activity: OpenCodexActivity;
+    }
+  | { type: "activity.completed"; sourceId?: string | null; threadId: string; activityId: string }
   | { type: "approval.requested"; approval: OpenCodexApproval }
   | { type: "approval.resolved"; approvalId: string }
   | { type: "project.trust.required"; projectPath: string; disabledFolders: string[] }
   | { type: "project.trust.completed"; projectPath: string }
-  | { type: "turn.started"; threadId: string; turnId: string }
-  | { type: "turn.completed"; threadId: string; turnId: string; durationMs: number | null }
+  | { type: "turn.started"; sourceId?: string | null; threadId: string; turnId: string }
+  | {
+      type: "turn.completed";
+      sourceId?: string | null;
+      threadId: string;
+      turnId: string;
+      durationMs: number | null;
+    }
   | { type: "models.updated"; models: OpenCodexModel[] }
   | { type: "usage.updated"; sourceId: string; usage: OpenCodexUsageSnapshot | null }
   | { type: "logs.created"; log: OpenCodexLogEntry }

@@ -787,10 +787,16 @@ function readRendererPerformanceSample(
     isDocumentVisible,
     ...numbers
   };
-  const eventTypeCounts = readBoundedCountRecord(sample.eventTypeCounts);
+  const eventTypeCounts = readBoundedNumberRecord(sample.eventTypeCounts);
 
   if (eventTypeCounts !== null) {
     result.eventTypeCounts = eventTypeCounts;
+  }
+
+  const eventTypeMaxDurationMs = readBoundedNumberRecord(sample.eventTypeMaxDurationMs);
+
+  if (eventTypeMaxDurationMs !== null) {
+    result.eventTypeMaxDurationMs = eventTypeMaxDurationMs;
   }
 
   const markdown = readRendererMarkdownPerformanceSample(sample.markdown);
@@ -847,10 +853,10 @@ function readRendererMarkdownPerformanceSample(
 /**
  * Reads a bounded map of event counters from an IPC payload.
  *
- * @param value Candidate counter map.
- * @returns Safe counters, or `null` when omitted or invalid.
+ * @param value Candidate numeric metric map.
+ * @returns Safe numeric values, or `null` when omitted or invalid.
  */
-function readBoundedCountRecord(value: unknown): Record<string, number> | null {
+function readBoundedNumberRecord(value: unknown): Record<string, number> | null {
   if (value === undefined) {
     return null;
   }
@@ -859,15 +865,19 @@ function readBoundedCountRecord(value: unknown): Record<string, number> | null {
     return null;
   }
 
-  const counts: Record<string, number> = {};
+  const numbers: Record<string, number> = {};
 
-  for (const [key, count] of Object.entries(value).slice(0, 100)) {
-    if (typeof count !== "number" || !Number.isFinite(count) || count < 0) {
+  for (const [key, numberValue] of Object.entries(value).slice(0, 100)) {
+    if (
+      typeof numberValue !== "number" ||
+      !Number.isFinite(numberValue) ||
+      numberValue < 0
+    ) {
       continue;
     }
 
-    counts[key.slice(0, 100)] = Math.min(count, 1_000_000_000);
+    numbers[key.slice(0, 100)] = Math.min(numberValue, 1_000_000_000);
   }
 
-  return counts;
+  return numbers;
 }

@@ -421,7 +421,17 @@ export class ProjectStore {
 
     const createdChat = new ChatStore(thread, this, this.root);
     this.chatsById.set(thread.id, createdChat);
+    this.registerChatRoute(createdChat);
     return createdChat;
+  }
+
+  /**
+   * Registers or refreshes the source-aware route for a loaded chat.
+   *
+   * @param chatStore Chat owned by this project.
+   */
+  registerChatRoute(chatStore: ChatStore): void {
+    this.root.projectsStore.registerLoadedChat(this, chatStore);
   }
 
   /**
@@ -550,6 +560,7 @@ export class ProjectStore {
     const chatStore = this.chatsById.get(threadId);
 
     if (chatStore !== undefined) {
+      this.root.projectsStore.unregisterLoadedChat(chatStore);
       chatStore.dispose();
       this.chatsById.delete(threadId);
     }
@@ -564,6 +575,7 @@ export class ProjectStore {
    */
   clearMemory(): void {
     for (const chatStore of this.chatsById.values()) {
+      this.root.projectsStore.unregisterLoadedChat(chatStore);
       chatStore.dispose();
     }
 

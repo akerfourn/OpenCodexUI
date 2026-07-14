@@ -31,5 +31,6 @@ export type OpenCodexRendererPerformanceSample = {
   estimatedEventBytes: number;
   maxEventHandlingDurationMs: number;
   eventTypeCounts?: Record<string, number>;
+  eventTypeMaxDurationMs?: Record<string, number>;
   markdown?: OpenCodexRendererMarkdownPerformanceSample;
 };

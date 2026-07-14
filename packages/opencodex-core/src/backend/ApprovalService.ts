@@ -42,7 +42,10 @@ export class ApprovalService {
    * @returns Nothing.
    */
   handleServerRequest(request: CodexServerRequest, sourceId: string): void {
-    const approval = createApprovalRequest(request, this.options.getSettings().language);
+    const approval = {
+      ...createApprovalRequest(request, this.options.getSettings().language),
+      sourceId
+    };
     this.pendingApprovals.set(approval.id, { request, sourceId });
     this.options.emit({ type: "approval.requested", approval });
   }

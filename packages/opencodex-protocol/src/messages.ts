@@ -1090,6 +1090,7 @@ export type OpenCodexActivity = {
  */
 export type OpenCodexApproval = {
   id: string;
+  sourceId?: string | null;
   threadId?: string;
   title: string;
   kind: "command" | "fileChange" | "permissions" | "other";

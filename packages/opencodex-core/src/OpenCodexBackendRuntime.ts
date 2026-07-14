@@ -150,9 +150,13 @@ export class OpenCodexBackendRuntime {
     this.notificationService = new NotificationService({
       getSettings: () => this.settings,
       emit: (event) => this.emit(event),
-      applyCodexThreadTitle: (threadId, title) => this.applyCodexThreadTitle(threadId, title),
-      applyCodexThreadDeleted: (threadId) => this.applyCodexThreadDeleted(threadId),
-      syncCompletedTurn: (threadId) => this.syncCompletedTurn(threadId)
+      applyCodexThreadTitle: (threadId, title, sourceId) => (
+        this.applyCodexThreadTitle(threadId, title, sourceId)
+      ),
+      applyCodexThreadDeleted: (threadId, sourceId) => (
+        this.applyCodexThreadDeleted(threadId, sourceId)
+      ),
+      syncCompletedTurn: (threadId, sourceId) => this.syncCompletedTurn(threadId, sourceId)
     });
     this.streamingNotificationBatcher = new StreamingNotificationBatcher({
       process: (notification, sourceId) => this.processNotification(notification, sourceId)
@@ -2066,7 +2070,7 @@ export class OpenCodexBackendRuntime {
         }
 
         void this.threadCacheService.writeTokenUsage(usage);
-        this.emit({ type: "thread.tokenUsage.updated", usage });
+        this.emit({ type: "thread.tokenUsage.updated", sourceId, usage });
       }
     }
 
@@ -2381,10 +2385,11 @@ export class OpenCodexBackendRuntime {
    *
    * @param threadId Thread identifier.
    * @param title Codex-generated title.
+   * @param sourceId Source that produced the notification.
    *
    * @returns Nothing.
    */
-  private applyCodexThreadTitle(threadId: string, title: string): void {
+  private applyCodexThreadTitle(threadId: string, title: string, sourceId: string): void {
     const cacheEntry = this.threadTurnCache.updateCodexThreadTitle(threadId, title);
 
     if (cacheEntry !== null) {
@@ -2398,24 +2403,28 @@ export class OpenCodexBackendRuntime {
    * Applies a Codex-generated thread deletion to memory, cache, and UI.
    *
    * @param threadId Deleted thread identifier.
+   * @param sourceId Source that produced the notification.
    *
    * @returns Nothing.
    */
-  private applyCodexThreadDeleted(threadId: string): void {
-    void this.threadConversationService.forgetDeletedThread(threadId).catch((error: unknown) => {
-      this.handleClientError(toError(error));
-    });
+  private applyCodexThreadDeleted(threadId: string, sourceId: string): void {
+    void this.threadConversationService
+      .forgetDeletedThread(threadId, sourceId)
+      .catch((error: unknown) => {
+        this.handleClientError(toError(error));
+      });
   }
 
   /**
    * Refreshes a completed turn after Codex has had time to persist its items.
    *
    * @param threadId Thread identifier.
+   * @param sourceId Source that produced the notification.
    *
    * @returns Nothing.
    */
-  private syncCompletedTurn(threadId: string): void {
-    void this.threadConversationService.syncCompletedTurn(threadId).catch((error: unknown) => {
+  private syncCompletedTurn(threadId: string, sourceId: string): void {
+    void this.threadConversationService.syncCompletedTurn(threadId, sourceId).catch((error: unknown) => {
       this.handleClientError(toError(error));
     });
   }

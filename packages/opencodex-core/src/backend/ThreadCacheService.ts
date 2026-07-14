@@ -205,6 +205,7 @@ export class ThreadCacheService {
 
       this.options.emit({
         type: "thread.turns.prepended",
+        sourceId: cacheEntry.thread.sourceId,
         threadId: cacheEntry.thread.id,
         turns,
         hasMoreOlderMessages

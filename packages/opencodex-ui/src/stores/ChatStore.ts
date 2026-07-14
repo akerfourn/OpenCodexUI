@@ -313,6 +313,7 @@ export class ChatStore {
    */
   setThread(thread: OpenCodexThread): void {
     this.thread = this.projectStore.ensureThreadSource(thread);
+    this.projectStore.registerChatRoute(this);
 
     if (!this.hasExplicitModelSelection && this.thread.model !== null) {
       this.selectedModel = this.thread.model;
