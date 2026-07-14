@@ -390,7 +390,6 @@ function createRootStore(): RootStore {
     navigationStore: {
       activeProjectStore: null
     },
-    logStorePopulation: vi.fn(),
     request: vi.fn(() => Promise.resolve({ ok: true }))
   } as RootStore;
 }

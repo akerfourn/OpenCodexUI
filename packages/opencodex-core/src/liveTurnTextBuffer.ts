@@ -10,6 +10,9 @@ export interface LiveTextBuffer {
   chunks: string[];
 }
 
+/** Maximum number of string segments retained for one pending live field. */
+export const MAX_LIVE_TEXT_BUFFER_CHUNKS = 128;
+
 /** Pending text grouped by item and field inside one turn. */
 export type LiveTurnTextBuffers = Map<string, Map<string, LiveTextBuffer>>;
 
@@ -48,7 +51,7 @@ export function bufferLiveTextDelta(
   const existing = itemBuffers.get(field);
 
   if (existing !== undefined && existing.mode === mode) {
-    existing.chunks.push(delta);
+    appendCompactedChunk(existing.chunks, delta);
     return;
   }
 
@@ -59,6 +62,65 @@ export function bufferLiveTextDelta(
   }
 
   itemBuffers.set(field, { mode, chunks: [delta] });
+}
+
+/**
+ * Appends text while keeping the retained string-segment count bounded.
+ *
+ * Adjacent similarly sized tail segments are merged first so repeated tiny
+ * deltas form a shallow rope instead of repeatedly copying the complete text.
+ * A smallest-adjacent-pair fallback enforces the hard segment limit for
+ * irregular payload sizes while preserving source order.
+ *
+ * @param chunks Ordered pending string segments.
+ * @param delta New text to append.
+ */
+function appendCompactedChunk(chunks: string[], delta: string): void {
+  chunks.push(delta);
+
+  while (chunks.length >= 2) {
+    const right = chunks.at(-1) ?? "";
+    const left = chunks.at(-2) ?? "";
+
+    if (left.length > right.length) {
+      break;
+    }
+
+    chunks.splice(chunks.length - 2, 2, `${left}${right}`);
+  }
+
+  if (chunks.length <= MAX_LIVE_TEXT_BUFFER_CHUNKS) {
+    return;
+  }
+
+  const mergeIndex = findSmallestAdjacentPair(chunks);
+  chunks.splice(
+    mergeIndex,
+    2,
+    `${chunks[mergeIndex] ?? ""}${chunks[mergeIndex + 1] ?? ""}`
+  );
+}
+
+/**
+ * Finds the adjacent pair requiring the smallest fallback copy.
+ *
+ * @param chunks Ordered pending string segments above the hard limit.
+ * @returns Index of the first segment in the selected pair.
+ */
+function findSmallestAdjacentPair(chunks: string[]): number {
+  let selectedIndex = 0;
+  let selectedSize = Number.POSITIVE_INFINITY;
+
+  for (let index = 0; index < chunks.length - 1; index += 1) {
+    const combinedSize = (chunks[index]?.length ?? 0) + (chunks[index + 1]?.length ?? 0);
+
+    if (combinedSize < selectedSize) {
+      selectedIndex = index;
+      selectedSize = combinedSize;
+    }
+  }
+
+  return selectedIndex;
 }
 
 /**

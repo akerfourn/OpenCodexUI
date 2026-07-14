@@ -158,8 +158,6 @@ export class ThreadListStore {
       return;
     }
 
-    this.root.startThreadSelectionTiming(threadId);
-
     const thread = this.findThread(threadId);
     const chatStore = thread === null ? null : this.projectStore.getOrCreateChat(thread);
     const isChangingThread = this.projectStore.selectedChatId !== threadId;

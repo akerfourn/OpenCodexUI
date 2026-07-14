@@ -79,12 +79,14 @@ export class ElectronBridgeServer {
       ensureProjectDirectory: async (projectPath, createIfMissing) => {
         return ensureProjectDirectory(projectPath, createIfMissing);
       },
-      onCodexNotificationProcessed: (method, estimatedBytes, durationMs) => {
+      onCodexNotificationReceived: (method, estimatedBytes) => {
         this.performanceMonitoringService?.recordCodexNotification(
           method,
-          estimatedBytes,
-          durationMs
+          estimatedBytes
         );
+      },
+      onCodexNotificationProcessed: (_method, durationMs) => {
+        this.performanceMonitoringService?.recordCodexNotificationProcessing(durationMs);
       },
       onLiveCacheNotificationProcessed: (method, durationMs) => {
         this.performanceMonitoringService?.recordLiveCacheNotification(

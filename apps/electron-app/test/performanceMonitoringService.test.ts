@@ -14,7 +14,8 @@ describe("PerformanceMonitoringService", () => {
     const createLog = vi.fn();
     const service = createService(defaultSettings, () => now, createLog);
 
-    service.recordCodexNotification("item/reasoning/textDelta", 42, 3);
+    service.recordCodexNotification("item/reasoning/textDelta", 42);
+    service.recordCodexNotificationProcessing(3);
     service.recordLiveCacheNotification("item/reasoning/textDelta", 2);
     service.recordBackendEvent({
       type: "message.delta",
@@ -40,6 +41,7 @@ describe("PerformanceMonitoringService", () => {
       mode: "standard",
       notificationCount: 1,
       notificationBytes: 42,
+      maxNotificationDurationMs: 3,
       notificationCategories: { reasoningDelta: 1 },
       eventCount: 1,
       eventBytes: 5
@@ -61,7 +63,8 @@ describe("PerformanceMonitoringService", () => {
     };
     const service = createService(settings, () => now, vi.fn());
 
-    service.recordCodexNotification("turn/diff/updated", 128, 4);
+    service.recordCodexNotification("turn/diff/updated", 128);
+    service.recordCodexNotificationProcessing(4);
     service.recordLiveCacheNotification("turn/diff/updated", 1.5);
     service.recordBackendEvent({ type: "turn.started", threadId: "thread-1", turnId: "turn-1" });
     service.recordRendererSample(createRendererSample(now, {

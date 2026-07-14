@@ -580,6 +580,7 @@ export class ProjectStore {
     }
 
     this.chatsById.clear();
+    this.commandsStore.dispose();
     this.threadListStore.clear();
     this.selectedChatId = null;
   }

@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache, type ThreadTurnCacheEntry } from "../src/ThreadTurnCache";
+import { MAX_LIVE_TEXT_BUFFER_CHUNKS } from "../src/liveTurnTextBuffer";
 
 describe("live turn cache", () => {
   it("should append repeated deltas without rebuilding the owning turn", () => {
@@ -174,6 +175,36 @@ describe("live turn cache", () => {
     expect(readTurnItems(entry, "turn-2")).toMatchObject([{ text: "" }]);
     expect(entry.liveTextBuffers.has("turn-1")).toBe(false);
     expect(entry.liveTextBuffers.has("turn-2")).toBe(true);
+  });
+
+  it("should compact long-lived text buffers without changing content", () => {
+    const { cache, entry } = createCacheEntry();
+    const fragments = Array.from({ length: 10_000 }, (_, index) => `${index % 10}`);
+
+    for (const fragment of fragments) {
+      cache.appendReasoningDelta(
+        "thread-1",
+        "turn-1",
+        "reasoning-1",
+        "summary",
+        fragment
+      );
+    }
+
+    const chunks = entry.liveTextBuffers
+      .get("turn-1")
+      ?.get("reasoning-1")
+      ?.get("summary")
+      ?.chunks ?? [];
+
+    expect(chunks.length).toBeLessThanOrEqual(MAX_LIVE_TEXT_BUFFER_CHUNKS);
+
+    cache.toTurns(entry);
+
+    expect(readTurnItems(entry, "turn-1")).toMatchObject([{
+      id: "reasoning-1",
+      summary: [fragments.join("")]
+    }]);
   });
 });
 

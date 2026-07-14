@@ -859,7 +859,7 @@ export class ChatStore {
     this.isEditingLastTurn = false;
     this.pendingTurnId = null;
     this.hasMoreOlderMessages = source === "thread.opened" ? hasMoreOlderMessages : false;
-    applyThreadTurns(this, this.root, turns, shouldMergeTurns ? "merge" : "replace", source);
+    applyThreadTurns(this, turns, shouldMergeTurns ? "merge" : "replace");
 
     if (!shouldMergeTurns) {
       this.scrollToBottomVersion += 1;
@@ -889,7 +889,7 @@ export class ChatStore {
    * @param hasMoreOlderMessages Whether more older turns remain.
    */
   applyTurnsSynced(turns: OpenCodexTurn[], hasMoreOlderMessages: boolean): void {
-    applyThreadTurns(this, this.root, turns, "merge", "thread.turns.synced");
+    applyThreadTurns(this, turns, "merge");
     this.hasMoreOlderMessages = hasMoreOlderMessages;
   }
 

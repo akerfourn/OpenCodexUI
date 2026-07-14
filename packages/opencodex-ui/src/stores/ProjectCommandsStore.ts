@@ -188,6 +188,10 @@ export class ProjectCommandsStore {
       });
 
       runInAction(() => {
+        for (const run of this.getRuns(commandId)) {
+          this.clearPendingLines(run.id);
+        }
+
         this.commands = this.commands.filter((command) => command.id !== commandId);
         this.runsByCommandId.delete(commandId);
       });
@@ -320,7 +324,13 @@ export class ProjectCommandsStore {
    */
   closeRun(commandId: string, runId: string): void {
     const runs = this.runsByCommandId.get(commandId) ?? [];
+    this.clearPendingLines(runId);
     this.runsByCommandId.set(commandId, runs.filter((run) => run.id !== runId));
+  }
+
+  /** Clears transient output retained by this project store. */
+  dispose(): void {
+    this.pendingTextByRunAndStream.clear();
   }
 
   /**
@@ -539,6 +549,17 @@ export class ProjectCommandsStore {
     }
 
     return lines;
+  }
+
+  /**
+   * Discards partial stdout and stderr fragments for one removed run.
+   *
+   * @param runId Removed command run identifier.
+   */
+  private clearPendingLines(runId: string): void {
+    for (const stream of ["stdout", "stderr"] as const) {
+      this.pendingTextByRunAndStream.delete(createPendingOutputKey(runId, stream));
+    }
   }
 
   /**

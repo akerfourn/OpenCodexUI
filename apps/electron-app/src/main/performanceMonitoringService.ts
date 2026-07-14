@@ -109,28 +109,39 @@ export class PerformanceMonitoringService {
   }
 
   /**
-   * Records one processed Codex notification without retaining its content.
+   * Records throughput metadata for one raw Codex notification.
    *
    * @param method Codex notification method.
    * @param estimatedBytes Approximate string payload size.
-   * @param durationMs Synchronous backend processing duration.
    */
-  recordCodexNotification(method: string, estimatedBytes: number, durationMs: number): void {
+  recordCodexNotification(method: string, estimatedBytes: number): void {
     if (!this.settings.performanceMonitoringEnabled) {
       return;
     }
 
     this.counters.notificationCount += 1;
     this.counters.notificationBytes += estimatedBytes;
-    this.counters.maxNotificationDurationMs = Math.max(
-      this.counters.maxNotificationDurationMs,
-      durationMs
-    );
     incrementCount(this.counters.notificationCategories, readNotificationCategory(method));
 
     if (this.isAdvancedMode()) {
       incrementCount(this.counters.notificationCounts, method);
     }
+  }
+
+  /**
+   * Records the real synchronous processing cost of one normalized notification.
+   *
+   * @param durationMs Processing duration after any streaming batch delay.
+   */
+  recordCodexNotificationProcessing(durationMs: number): void {
+    if (!this.settings.performanceMonitoringEnabled) {
+      return;
+    }
+
+    this.counters.maxNotificationDurationMs = Math.max(
+      this.counters.maxNotificationDurationMs,
+      durationMs
+    );
   }
 
   /**

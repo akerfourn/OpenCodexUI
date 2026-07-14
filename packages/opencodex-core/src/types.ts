@@ -75,17 +75,22 @@ export type OpenCodexBackendOptions = {
    */
   ensureProjectDirectory?(projectPath: string, createIfMissing: boolean): Promise<string> | string;
   /**
-   * Reports content-free performance metadata for a processed Codex notification.
+   * Reports content-free throughput metadata for a raw Codex notification.
    *
    * @param method Codex notification method.
    * @param estimatedBytes Approximate size of known streamed string fields.
+   */
+  onCodexNotificationReceived?(method: string, estimatedBytes: number): void;
+  /**
+   * Reports the synchronous cost of a normalized Codex notification.
+   *
+   * Batched notifications invoke this callback when their deferred payload is
+   * actually processed, rather than when the raw fragment is enqueued.
+   *
+   * @param method Codex notification method.
    * @param durationMs Synchronous notification processing duration.
    */
-  onCodexNotificationProcessed?(
-    method: string,
-    estimatedBytes: number,
-    durationMs: number
-  ): void;
+  onCodexNotificationProcessed?(method: string, durationMs: number): void;
   /**
    * Reports advanced timing for the live-turn cache portion of a notification.
    *

@@ -2016,27 +2016,21 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   private handleNotification(notification: CodexNotification, sourceId: string): void {
-    const startedAt = performance.now();
+    this.options.onCodexNotificationReceived?.(
+      notification.method,
+      estimateNotificationBytes(notification.params)
+    );
+    const threadId = readString(readObject(notification.params).threadId);
 
-    try {
-      const threadId = readString(readObject(notification.params).threadId);
-
-      if (threadId.length > 0 && this.ignoredNotificationThreadIds.has(threadId)) {
-        return;
-      }
-
-      if (this.streamingNotificationBatcher.handleNotification(notification, sourceId)) {
-        return;
-      }
-
-      this.processNotification(notification, sourceId);
-    } finally {
-      this.options.onCodexNotificationProcessed?.(
-        notification.method,
-        estimateNotificationBytes(notification.params),
-        performance.now() - startedAt
-      );
+    if (threadId.length > 0 && this.ignoredNotificationThreadIds.has(threadId)) {
+      return;
     }
+
+    if (this.streamingNotificationBatcher.handleNotification(notification, sourceId)) {
+      return;
+    }
+
+    this.processNotification(notification, sourceId);
   }
 
   /**
@@ -2046,36 +2040,45 @@ export class OpenCodexBackendRuntime {
    * @param sourceId Source that produced the notification.
    */
   private processNotification(notification: CodexNotification, sourceId: string): void {
-    this.recordLiveCacheNotification(notification);
-    this.trackActiveTurnNotification(notification, sourceId);
-    this.projectCommandService.handleNotification(notification);
-    this.notificationService.handleNotification(notification, sourceId);
+    const startedAt = performance.now();
 
-    if (notification.method === "account/rateLimits/updated") {
-      const usage = mapUsageLimitsNotification(notification.params, sourceId);
+    try {
+      this.recordLiveCacheNotification(notification);
+      this.trackActiveTurnNotification(notification, sourceId);
+      this.projectCommandService.handleNotification(notification);
+      this.notificationService.handleNotification(notification, sourceId);
 
-      if (usage !== null) {
-        this.emit({ type: "usage.updated", sourceId, usage });
-      }
-    }
+      if (notification.method === "account/rateLimits/updated") {
+        const usage = mapUsageLimitsNotification(notification.params, sourceId);
 
-    if (notification.method === "thread/tokenUsage/updated") {
-      const usage = mapThreadTokenUsageNotification(notification.params);
-
-      if (usage !== null) {
-        const cacheEntry = this.threadTurnCache.get(usage.threadId);
-
-        if (cacheEntry !== null) {
-          cacheEntry.tokenUsage = usage;
+        if (usage !== null) {
+          this.emit({ type: "usage.updated", sourceId, usage });
         }
-
-        void this.threadCacheService.writeTokenUsage(usage);
-        this.emit({ type: "thread.tokenUsage.updated", sourceId, usage });
       }
-    }
 
-    if (notification.method === "turn/completed") {
-      void this.readUsageLimits(sourceId);
+      if (notification.method === "thread/tokenUsage/updated") {
+        const usage = mapThreadTokenUsageNotification(notification.params);
+
+        if (usage !== null) {
+          const cacheEntry = this.threadTurnCache.get(usage.threadId);
+
+          if (cacheEntry !== null) {
+            cacheEntry.tokenUsage = usage;
+          }
+
+          void this.threadCacheService.writeTokenUsage(usage);
+          this.emit({ type: "thread.tokenUsage.updated", sourceId, usage });
+        }
+      }
+
+      if (notification.method === "turn/completed") {
+        void this.readUsageLimits(sourceId);
+      }
+    } finally {
+      this.options.onCodexNotificationProcessed?.(
+        notification.method,
+        performance.now() - startedAt
+      );
     }
   }
 

@@ -5,7 +5,6 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ChatStore } from "./ChatStore";
-import type { RootStore } from "./RootStore";
 import {
   findFirstChangedTurnIndex,
   toMessageStatus,
@@ -16,30 +15,24 @@ import {
  * Applies incoming turns while preserving live-only streamed items.
  *
  * @param chatStore Chat store to mutate.
- * @param root Root store used for diagnostics.
  * @param nextTurns Incoming turns.
  * @param strategy Replace or incremental merge mode.
- * @param source Diagnostic source label.
  */
 export function applyThreadTurns(
   chatStore: ChatStore,
-  root: RootStore,
   nextTurns: OpenCodexTurn[],
-  strategy: "replace" | "merge",
-  source: string
+  strategy: "replace" | "merge"
 ): void {
   const mergedTurns = preserveLiveTurnItems(chatStore.turns, nextTurns);
 
   if (strategy === "replace" || chatStore.turns.length === 0) {
     chatStore.setTurns(mergedTurns);
-    root.logStorePopulation(chatStore.thread.id, source, mergedTurns.length, true, 0);
     return;
   }
 
   const firstChangedIndex = findFirstChangedTurnIndex(chatStore.turns, mergedTurns);
 
   if (firstChangedIndex === null) {
-    root.logStorePopulation(chatStore.thread.id, source, mergedTurns.length, false, null);
     return;
   }
 
@@ -47,7 +40,6 @@ export function applyThreadTurns(
     ...chatStore.turns.slice(0, firstChangedIndex),
     ...mergedTurns.slice(firstChangedIndex)
   ]);
-  root.logStorePopulation(chatStore.thread.id, source, mergedTurns.length, true, firstChangedIndex);
 }
 
 /**

@@ -40,8 +40,6 @@ export class RootStore {
   readonly projectsStore = new ProjectsStore(this);
   readonly sourcesStore = new SourcesStore(this);
   readonly usageStore = new UsageStore(this);
-  private threadSelectionStartedAt: number | null = null;
-
   /**
    * Creates a root store instance.
    *
@@ -136,21 +134,6 @@ export class RootStore {
   }
 
   /**
-   * Starts timing instrumentation for thread selection.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Nothing.
-   */
-  startThreadSelectionTiming(threadId: string): void {
-    console.info("[OpenCodexUI timing] thread selected", {
-      timestamp: new Date().toISOString(),
-      threadId
-    });
-    this.threadSelectionStartedAt = Date.now();
-  }
-
-  /**
    * Opens the native image picker for composer attachments.
    *
    * @returns Selected image attachments.
@@ -220,37 +203,6 @@ export class RootStore {
     this.appStore.isBootstrapping = false;
     this.homeStore.isOpeningProject = false;
     this.projectsStore.resetPendingProjectStates();
-  }
-
-  /**
-   * Logs store population timings for a thread update.
-   *
-   * @param threadId Thread identifier.
-   * @param source Source label used for logging.
-   * @param turnCount Turn count.
-   * @param changed Changed.
-   * @param firstChangedIndex First changed index.
-   *
-   * @returns Nothing.
-   */
-  logStorePopulation(
-    threadId: string,
-    source: string,
-    turnCount: number,
-    changed: boolean,
-    firstChangedIndex: number | null
-  ): void {
-    console.info("[OpenCodexUI timing] store populated", {
-      timestamp: new Date().toISOString(),
-      durationSinceSelectionMs: this.threadSelectionStartedAt === null
-        ? null
-        : Date.now() - this.threadSelectionStartedAt,
-      threadId,
-      source,
-      turnCount,
-      changed,
-      firstChangedIndex
-    });
   }
 
 }

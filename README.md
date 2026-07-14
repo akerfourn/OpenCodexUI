@@ -179,6 +179,9 @@ Important boundaries:
 - `opencodex-ui` does not import Electron directly.
 - `apps/electron-app` provides the Electron transport and native integration.
 
+The streaming and renderer performance invariants are documented in
+[docs/performance.md](docs/performance.md).
+
 ## Local Data
 
 OpenCodexUI stores local application data in Electron's `userData` directory.

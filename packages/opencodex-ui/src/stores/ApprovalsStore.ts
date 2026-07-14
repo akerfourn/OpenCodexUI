@@ -89,7 +89,7 @@ export class ApprovalsStore implements RootChildStore {
    */
   attachPendingApprovalsToChat(chatStore: ChatStore): void {
     const chatApprovals = this.unassignedApprovals.filter(
-      (approval) => approval.threadId === chatStore.thread.id
+      (approval) => doesApprovalBelongToChat(approval, chatStore)
     );
 
     if (chatApprovals.length === 0) {
@@ -101,7 +101,7 @@ export class ApprovalsStore implements RootChildStore {
     }
 
     this.unassignedApprovals = this.unassignedApprovals.filter(
-      (approval) => approval.threadId !== chatStore.thread.id
+      (approval) => !doesApprovalBelongToChat(approval, chatStore)
     );
   }
 
@@ -179,6 +179,29 @@ export class ApprovalsStore implements RootChildStore {
 
     return null;
   }
+}
+
+/**
+ * Checks whether a pending approval belongs to one loaded chat.
+ *
+ * Source-less approvals retain legacy thread-only routing, while approvals
+ * emitted by a known Codex channel must match both source and thread.
+ *
+ * @param approval Pending approval to inspect.
+ * @param chatStore Candidate loaded chat.
+ * @returns Whether the approval can be attached to the chat.
+ */
+function doesApprovalBelongToChat(
+  approval: OpenCodexApproval,
+  chatStore: ChatStore
+): boolean {
+  if (approval.threadId !== chatStore.thread.id) {
+    return false;
+  }
+
+  return approval.sourceId === undefined ||
+    approval.sourceId === null ||
+    approval.sourceId === chatStore.sourceId;
 }
 
 /**
