@@ -34,11 +34,19 @@ import type {
   OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ChatStore } from "../../stores/ChatStore";
+import type {
+  ChatStore,
+  ChatTimelineViewState
+} from "../../stores/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
-import type { ChatTurnStore } from "../../stores/ChatTurnStore";
 import { ModelSettingsFields } from "../chat/ModelSettingsFields";
 import { ChatTurnViewX } from "./ChatTurnView";
+import {
+  getVisibleTurns,
+  INITIAL_VISIBLE_TURN_COUNT,
+  resolveRestoredVisibleTurnCount,
+  TURN_WINDOW_INCREMENT
+} from "./chatTimelineWindow";
 
 type ChatMessageListProps = {
   store: RootStore;
@@ -62,12 +70,16 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const previousOlderMessagesRevealVersionRef = useRef(chatStore.olderMessagesPrependVersion);
   const previousTurnCountRef = useRef(chatStore.turns.length);
   const resizeFrameRef = useRef<number | null>(null);
+  const restorationFrameRef = useRef<number | null>(null);
+  const pendingTimelineRestorationRef = useRef<ChatTimelineViewState | null>(null);
+  const visibleTurnCountRef = useRef(INITIAL_VISIBLE_TURN_COUNT);
   const currentThread = chatStore.thread;
   const editableItem = chatStore.editableLastUserItemIdentity;
   const [editedMessage, setEditedMessage] = useState<string | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [visibleTurnCount, setVisibleTurnCount] = useState(INITIAL_VISIBLE_TURN_COUNT);
-  const visibleTurnStores = getVisibleTurnStores(chatStore.turnStores, visibleTurnCount);
+  visibleTurnCountRef.current = visibleTurnCount;
+  const visibleTurnStores = getVisibleTurns(chatStore.turnStores, visibleTurnCount);
   const hiddenOlderTurnCount = Math.max(chatStore.turnStores.length - visibleTurnCount, 0);
   const isWorking = chatStore.isWorking || chatStore.isStartingTurn;
   const handleOpenLink = useCallback((href: string) => {
@@ -76,9 +88,77 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
 
   useEffect(() => {
     setEditedMessage(null);
-    setVisibleTurnCount(INITIAL_VISIBLE_TURN_COUNT);
     previousTurnCountRef.current = chatStore.turns.length;
-  }, [chatStore.thread.id]);
+    const savedViewState = chatStore.timelineViewState;
+
+    if (savedViewState === null) {
+      setVisibleTurnCount(INITIAL_VISIBLE_TURN_COUNT);
+      return undefined;
+    }
+
+    pendingTimelineRestorationRef.current = savedViewState;
+    restorationFrameRef.current = requestAnimationFrame(() => {
+      restorationFrameRef.current = requestAnimationFrame(() => {
+        restorationFrameRef.current = null;
+        const pendingState = pendingTimelineRestorationRef.current;
+
+        if (pendingState === null) {
+          return;
+        }
+
+        const restoredVisibleTurnCount = resolveRestoredVisibleTurnCount(
+          pendingState.visibleTurnCount,
+          pendingState.turnCount,
+          chatStore.turnStores.length
+        );
+
+        if (restoredVisibleTurnCount !== visibleTurnCountRef.current) {
+          setVisibleTurnCount(restoredVisibleTurnCount);
+          return;
+        }
+
+        const container = containerRef.current;
+
+        if (container === null) {
+          return;
+        }
+
+        pendingTimelineRestorationRef.current = null;
+        const isPinnedToBottom = restoreTimelinePosition(container, pendingState);
+        shouldStickToBottomRef.current = isPinnedToBottom;
+        setShowScrollToBottom(!isPinnedToBottom);
+      });
+    });
+
+    return () => {
+      if (restorationFrameRef.current === null) {
+        return;
+      }
+
+      cancelAnimationFrame(restorationFrameRef.current);
+      restorationFrameRef.current = null;
+    };
+  }, [chatStore, chatStore.thread.id]);
+
+  useLayoutEffect(() => {
+    return () => {
+      const container = containerRef.current;
+
+      if (
+        container === null ||
+        pendingTimelineRestorationRef.current !== null
+      ) {
+        return;
+      }
+
+      chatStore.setTimelineViewState({
+        visibleTurnCount: visibleTurnCountRef.current,
+        turnCount: chatStore.turnStores.length,
+        scrollTop: container.scrollTop,
+        isPinnedToBottom: shouldStickToBottomRef.current
+      });
+    };
+  }, [chatStore]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -227,6 +307,16 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
 
   useLayoutEffect(() => {
     const container = containerRef.current;
+    const pendingRestoration = pendingTimelineRestorationRef.current;
+
+    if (container !== null && pendingRestoration !== null) {
+      pendingTimelineRestorationRef.current = null;
+      const isPinnedToBottom = restoreTimelinePosition(container, pendingRestoration);
+      shouldStickToBottomRef.current = isPinnedToBottom;
+      setShowScrollToBottom(!isPinnedToBottom);
+      return;
+    }
+
     const previousState = previousScrollStateRef.current;
 
     if (container === null || previousState === null) {
@@ -465,8 +555,6 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
 export const ChatMessageListX = observer(ChatMessageList);
 
 const BOTTOM_SCROLL_THRESHOLD_PX = 4;
-const INITIAL_VISIBLE_TURN_COUNT = 10;
-const TURN_WINDOW_INCREMENT = 10;
 
 /**
  * Scrolls a message container to its bottom edge.
@@ -492,20 +580,21 @@ function isAtBottom(container: HTMLDivElement): boolean {
 }
 
 /**
- * Returns the bounded turn window rendered by the timeline.
+ * Restores a retained timeline position after its bounded first frame.
  *
- * @param turns Loaded chat turns.
- * @param visibleTurnCount Maximum number of recent turns to render.
- *
- * @returns Visible turn window.
+ * @param container Message scroll container.
+ * @param state Previously retained reading state.
+ * @returns Whether the restored position is pinned to the bottom.
  */
-function getVisibleTurnStores(
-  turnStores: ChatTurnStore[],
-  visibleTurnCount: number
-): ChatTurnStore[] {
-  if (turnStores.length <= visibleTurnCount) {
-    return turnStores;
+function restoreTimelinePosition(
+  container: HTMLDivElement,
+  state: ChatTimelineViewState
+): boolean {
+  if (state.isPinnedToBottom) {
+    scrollToBottom(container);
+    return true;
   }
 
-  return turnStores.slice(-visibleTurnCount);
+  container.scrollTop = Math.max(state.scrollTop, 0);
+  return isAtBottom(container);
 }

@@ -31,7 +31,7 @@ export function App({ store }: AppProps) {
   const warningMessage = store.appStore.warningMessage;
   const notificationMessage = errorMessage ?? warningMessage;
   const activeTabId = store.navigationStore.activeTabId;
-  const projectTabStores = store.navigationStore.projectTabStores;
+  const activeProjectStore = store.navigationStore.activeProjectStore;
 
   function handleCloseNotification(): void {
     if (errorMessage !== null) {
@@ -60,6 +60,21 @@ export function App({ store }: AppProps) {
       )}
     />
   );
+  let activeView = null;
+
+  if (activeTabId === HOME_TAB_ID) {
+    activeView = (
+      <div className="app-view">
+        <HomeViewX store={store} />
+      </div>
+    );
+  } else if (activeProjectStore !== null) {
+    activeView = (
+      <div key={activeProjectStore.project.id} className="app-view">
+        <ProjectViewX store={store} projectStore={activeProjectStore} />
+      </div>
+    );
+  }
 
   if (store.appStore.shouldShowOnboarding) {
     return (
@@ -74,27 +89,7 @@ export function App({ store }: AppProps) {
     <Box component="main" className="app-shell">
       <AppTabsX store={store} />
       <section className="app-content">
-        <div
-          className={activeTabId === HOME_TAB_ID ? "app-view app-view-active" : "app-view app-view-hidden"}
-          aria-hidden={activeTabId === HOME_TAB_ID ? undefined : true}
-          tabIndex={activeTabId === HOME_TAB_ID ? undefined : -1}
-        >
-          <HomeViewX store={store} />
-        </div>
-        {projectTabStores.map((projectStore) => {
-          const isActive = activeTabId === projectStore.project.id;
-
-          return (
-            <div
-              key={projectStore.project.id}
-              className={isActive ? "app-view app-view-active" : "app-view app-view-hidden"}
-              aria-hidden={isActive ? undefined : true}
-              tabIndex={isActive ? undefined : -1}
-            >
-              <ProjectViewX store={store} projectStore={projectStore} />
-            </div>
-          );
-        })}
+        {activeView}
       </section>
       <ApprovalDialogX store={store.approvalsStore} />
       <ProjectTrustDialogX store={store.projectsStore.trustStore} />

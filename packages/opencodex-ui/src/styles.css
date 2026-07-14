@@ -218,21 +218,6 @@ textarea {
   overflow: hidden;
 }
 
-.app-view-active {
-  position: relative;
-  z-index: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-.app-view-hidden {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
 .resizable-sidebar-shell {
   display: grid;
   grid-template-columns: minmax(240px, var(--sidebar-width, 320px)) 8px minmax(0, 1fr);

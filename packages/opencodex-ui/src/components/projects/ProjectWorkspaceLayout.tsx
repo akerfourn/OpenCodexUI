@@ -13,6 +13,8 @@ import {
 
 type ProjectWorkspaceLayoutProps = {
   defaultPanelWidth: number;
+  panelWidth?: number;
+  onPanelWidthChange?: (value: number) => void;
   isSidePanelCollapsed: boolean;
   minPanelWidth?: number;
   maxPanelWidth?: number;
@@ -30,6 +32,8 @@ type ProjectWorkspaceLayoutProps = {
  */
 export function ProjectWorkspaceLayout({
   defaultPanelWidth,
+  panelWidth: controlledPanelWidth,
+  onPanelWidthChange,
   isSidePanelCollapsed,
   minPanelWidth = 280,
   maxPanelWidth = 560,
@@ -38,8 +42,9 @@ export function ProjectWorkspaceLayout({
   sidePanel
 }: ProjectWorkspaceLayoutProps) {
   const rootRef = useRef<HTMLElement | null>(null);
-  const [panelWidth, setPanelWidth] = useState(defaultPanelWidth);
+  const [internalPanelWidth, setInternalPanelWidth] = useState(defaultPanelWidth);
   const [isResizing, setIsResizing] = useState(false);
+  const panelWidth = controlledPanelWidth ?? internalPanelWidth;
   const shellStyle = {
     "--project-side-panel-width": `${panelWidth}px`
   } as CSSProperties;
@@ -50,7 +55,7 @@ export function ProjectWorkspaceLayout({
     }
 
     function handlePointerMove(event: PointerEvent): void {
-      setPanelWidth(readBoundedPanelWidth(
+      updatePanelWidth(readBoundedPanelWidth(
         rootRef.current,
         event.clientX,
         minPanelWidth,
@@ -74,9 +79,24 @@ export function ProjectWorkspaceLayout({
     };
   }, [isResizing, mainMinWidth, maxPanelWidth, minPanelWidth]);
 
+  /**
+   * Applies a resized width to local state and the optional owner.
+   *
+   * @param value Bounded panel width in pixels.
+   *
+   * @returns Nothing.
+   */
+  function updatePanelWidth(value: number): void {
+    if (controlledPanelWidth === undefined) {
+      setInternalPanelWidth(value);
+    }
+
+    onPanelWidthChange?.(value);
+  }
+
   function handleResizeStart(event: ReactPointerEvent<HTMLDivElement>): void {
     event.preventDefault();
-    setPanelWidth(readBoundedPanelWidth(
+    updatePanelWidth(readBoundedPanelWidth(
       rootRef.current,
       event.clientX,
       minPanelWidth,

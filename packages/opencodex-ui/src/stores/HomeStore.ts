@@ -22,6 +22,8 @@ export class HomeStore {
   selectedSourceId: string | null = null;
   isOpeningProject = false;
   showHiddenProjects = false;
+  /** Width of the Home navigation sidebar in pixels. */
+  sidebarWidth = 300;
 
   /**
    * Creates the Home store.
@@ -83,5 +85,16 @@ export class HomeStore {
    */
   setShowHiddenProjects(value: boolean): void {
     this.showHiddenProjects = value;
+  }
+
+  /**
+   * Updates the width of the Home navigation sidebar.
+   *
+   * @param value Sidebar width in pixels.
+   *
+   * @returns Nothing.
+   */
+  setSidebarWidth(value: number): void {
+    this.sidebarWidth = value;
   }
 }

@@ -15,6 +15,46 @@ afterEach(() => {
 });
 
 describe("ChatStore composer model settings", () => {
+  it("should preserve draft and attachments in the chat store", () => {
+    const chatStore = createChatStore({});
+
+    chatStore.setComposerDraft("draft", "**draft**", []);
+    chatStore.addComposerAttachments([{
+      id: "image-1",
+      kind: "image",
+      source: "localPath",
+      value: "/tmp/image.png",
+      name: "image.png"
+    }]);
+
+    expect(chatStore.composerDraft).toBe("draft");
+    expect(chatStore.composerDraftMarkdown).toBe("**draft**");
+    expect(chatStore.composerAttachments).toEqual([expect.objectContaining({
+      id: "image-1",
+      value: "/tmp/image.png"
+    })]);
+  });
+
+  it("should preserve an isolated timeline reading state", () => {
+    const chatStore = createChatStore({});
+    const state = {
+      visibleTurnCount: 20,
+      turnCount: 25,
+      scrollTop: 480,
+      isPinnedToBottom: false
+    };
+
+    chatStore.setTimelineViewState(state);
+    state.scrollTop = 0;
+
+    expect(chatStore.timelineViewState).toEqual({
+      visibleTurnCount: 20,
+      turnCount: 25,
+      scrollTop: 480,
+      isPinnedToBottom: false
+    });
+  });
+
   it("should initialize model settings from the thread", () => {
     const chatStore = createChatStore({
       model: "gpt-5.5",

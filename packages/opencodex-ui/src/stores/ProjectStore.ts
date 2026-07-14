@@ -27,6 +27,12 @@ export class ProjectStore {
   project: OpenCodexProject;
   selectedChatId: string | null = null;
   trustRequest: ProjectTrustRequest | null = null;
+  /** Width of the project thread sidebar in pixels. */
+  workspaceSidebarWidth = 320;
+  /** Width of the project contextual side panel in pixels. */
+  sidePanelWidth = 360;
+  /** Whether the project contextual side panel is collapsed. */
+  isSidePanelCollapsed = false;
   readonly threadListStore: ThreadListStore;
   readonly gitStore: ProjectGitStore;
   readonly commandsStore: ProjectCommandsStore;
@@ -146,6 +152,39 @@ export class ProjectStore {
     }
 
     return this.chatsById.get(this.selectedChatId) ?? null;
+  }
+
+  /**
+   * Updates the width of the project thread sidebar.
+   *
+   * @param value Sidebar width in pixels.
+   *
+   * @returns Nothing.
+   */
+  setWorkspaceSidebarWidth(value: number): void {
+    this.workspaceSidebarWidth = value;
+  }
+
+  /**
+   * Updates the width of the project contextual side panel.
+   *
+   * @param value Side panel width in pixels.
+   *
+   * @returns Nothing.
+   */
+  setSidePanelWidth(value: number): void {
+    this.sidePanelWidth = value;
+  }
+
+  /**
+   * Updates whether the project contextual side panel is collapsed.
+   *
+   * @param value Whether the side panel is collapsed.
+   *
+   * @returns Nothing.
+   */
+  setSidePanelCollapsed(value: boolean): void {
+    this.isSidePanelCollapsed = value;
   }
 
   /**

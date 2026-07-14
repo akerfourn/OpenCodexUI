@@ -56,6 +56,8 @@ export function HomeView({ store }: HomeViewProps) {
     <ResizableSidebarLayout
       className="home-shell"
       defaultSidebarWidth={300}
+      sidebarWidth={store.homeStore.sidebarWidth}
+      onSidebarWidthChange={(value) => store.homeStore.setSidebarWidth(value)}
       sidebar={<HomeSidebarX store={store} />}
     >
       <main className="home-main">

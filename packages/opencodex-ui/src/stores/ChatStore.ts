@@ -35,6 +35,14 @@ import {
 
 const THREAD_RUNTIME_STATUS_POLL_INTERVAL_MS = 30_000;
 
+/** Reading state retained while a chat timeline is not mounted. */
+export interface ChatTimelineViewState {
+  visibleTurnCount: number;
+  turnCount: number;
+  scrollTop: number;
+  isPinnedToBottom: boolean;
+}
+
 /**
  * Stores the loaded turns and runtime flags for a single chat.
  */
@@ -89,6 +97,8 @@ export class ChatStore {
   olderMessagesPrependVersion = 0;
   /** Incremented when the UI should scroll this chat to the bottom. */
   scrollToBottomVersion = 0;
+  /** Timeline reading state retained while this chat view is unmounted. */
+  timelineViewState: ChatTimelineViewState | null = null;
   /** Whether the user explicitly changed the model for this chat. */
   private hasExplicitModelSelection = false;
   /** Whether the user explicitly changed reasoning effort for this chat. */
@@ -427,6 +437,22 @@ export class ChatStore {
     this.composerDraftMarkdown = "";
     this.composerDraftReferences = [];
     this.composerAttachments = [];
+  }
+
+  /**
+   * Retains the timeline window and scroll position across view remounts.
+   *
+   * @param state Current timeline reading state.
+   *
+   * @returns Nothing.
+   */
+  setTimelineViewState(state: ChatTimelineViewState): void {
+    this.timelineViewState = {
+      visibleTurnCount: state.visibleTurnCount,
+      turnCount: state.turnCount,
+      scrollTop: state.scrollTop,
+      isPinnedToBottom: state.isPinnedToBottom
+    };
   }
 
   /**

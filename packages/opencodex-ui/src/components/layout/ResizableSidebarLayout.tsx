@@ -7,6 +7,8 @@ import { useEffect, useState, type CSSProperties, type PointerEvent as ReactPoin
 type ResizableSidebarLayoutProps = {
   className: string;
   defaultSidebarWidth: number;
+  sidebarWidth?: number;
+  onSidebarWidthChange?: (value: number) => void;
   minSidebarWidth?: number;
   maxSidebarWidth?: number;
   mainMinWidth?: number;
@@ -24,14 +26,17 @@ type ResizableSidebarLayoutProps = {
 export function ResizableSidebarLayout({
   className,
   defaultSidebarWidth,
+  sidebarWidth: controlledSidebarWidth,
+  onSidebarWidthChange,
   minSidebarWidth = 240,
   maxSidebarWidth = 560,
   mainMinWidth = 520,
   sidebar,
   children
 }: ResizableSidebarLayoutProps) {
-  const [sidebarWidth, setSidebarWidth] = useState(defaultSidebarWidth);
+  const [internalSidebarWidth, setInternalSidebarWidth] = useState(defaultSidebarWidth);
   const [isResizing, setIsResizing] = useState(false);
+  const sidebarWidth = controlledSidebarWidth ?? internalSidebarWidth;
   const shellStyle = {
     "--sidebar-width": `${sidebarWidth}px`
   } as CSSProperties;
@@ -42,7 +47,7 @@ export function ResizableSidebarLayout({
     }
 
     function handlePointerMove(event: PointerEvent): void {
-      setSidebarWidth(readBoundedSidebarWidth(
+      updateSidebarWidth(readBoundedSidebarWidth(
         event.clientX,
         minSidebarWidth,
         maxSidebarWidth,
@@ -65,9 +70,24 @@ export function ResizableSidebarLayout({
     };
   }, [isResizing, mainMinWidth, maxSidebarWidth, minSidebarWidth]);
 
+  /**
+   * Applies a resized width to local state and the optional owner.
+   *
+   * @param value Bounded sidebar width in pixels.
+   *
+   * @returns Nothing.
+   */
+  function updateSidebarWidth(value: number): void {
+    if (controlledSidebarWidth === undefined) {
+      setInternalSidebarWidth(value);
+    }
+
+    onSidebarWidthChange?.(value);
+  }
+
   function handleResizeStart(event: ReactPointerEvent<HTMLDivElement>): void {
     event.preventDefault();
-    setSidebarWidth(readBoundedSidebarWidth(
+    updateSidebarWidth(readBoundedSidebarWidth(
       event.clientX,
       minSidebarWidth,
       maxSidebarWidth,
