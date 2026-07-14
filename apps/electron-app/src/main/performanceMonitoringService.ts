@@ -345,7 +345,8 @@ function readNotificationCategory(method: string): string {
   }
 
   if (method === "command/exec/outputDelta" ||
-    method === "item/commandExecution/outputDelta") {
+    method === "item/commandExecution/outputDelta" ||
+    method === "process/outputDelta") {
     return "commandOutputDelta";
   }
 

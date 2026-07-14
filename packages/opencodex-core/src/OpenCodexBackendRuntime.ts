@@ -67,7 +67,7 @@ import type { OpenCodexBackendOptions } from "./types.js";
 import { ApprovalService } from "./backend/ApprovalService.js";
 import { OpenCodexClientPool } from "./backend/OpenCodexClientPool.js";
 import { NotificationService } from "./backend/NotificationService.js";
-import { ReasoningDeltaBatcher } from "./backend/ReasoningDeltaBatcher.js";
+import { StreamingNotificationBatcher } from "./backend/StreamingNotificationBatcher.js";
 import { ProjectSourceService } from "./backend/ProjectSourceService.js";
 import { ProjectTrustService } from "./backend/ProjectTrustService.js";
 import {
@@ -107,7 +107,7 @@ export class OpenCodexBackendRuntime {
   private readonly approvalService: ApprovalService;
   private readonly clientPool: OpenCodexClientPool;
   private readonly notificationService: NotificationService;
-  private readonly reasoningDeltaBatcher: ReasoningDeltaBatcher;
+  private readonly streamingNotificationBatcher: StreamingNotificationBatcher;
   private readonly projectSourceService: ProjectSourceService;
   private readonly projectTrustService: ProjectTrustService;
   private readonly threadCacheService: ThreadCacheService;
@@ -154,7 +154,7 @@ export class OpenCodexBackendRuntime {
       applyCodexThreadDeleted: (threadId) => this.applyCodexThreadDeleted(threadId),
       syncCompletedTurn: (threadId) => this.syncCompletedTurn(threadId)
     });
-    this.reasoningDeltaBatcher = new ReasoningDeltaBatcher({
+    this.streamingNotificationBatcher = new StreamingNotificationBatcher({
       process: (notification, sourceId) => this.processNotification(notification, sourceId)
     });
     this.codexUpdateService = new CodexUpdateService({
@@ -255,7 +255,7 @@ export class OpenCodexBackendRuntime {
    * @returns Promise resolved when resources are disposed.
    */
   async dispose(): Promise<void> {
-    this.reasoningDeltaBatcher.flushAll();
+    this.streamingNotificationBatcher.flushAll();
     await this.clientPool.dispose();
     await this.cacheRepository?.close();
   }
@@ -2021,7 +2021,7 @@ export class OpenCodexBackendRuntime {
         return;
       }
 
-      if (this.reasoningDeltaBatcher.handleNotification(notification, sourceId)) {
+      if (this.streamingNotificationBatcher.handleNotification(notification, sourceId)) {
         return;
       }
 
@@ -2229,7 +2229,7 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   private handleClientClose(sourceId: string): void {
-    this.reasoningDeltaBatcher.flushSource(sourceId);
+    this.streamingNotificationBatcher.flushSource(sourceId);
     this.clientPool.deleteClient(sourceId);
     this.activeTurnIdsBySourceId.delete(sourceId);
 
