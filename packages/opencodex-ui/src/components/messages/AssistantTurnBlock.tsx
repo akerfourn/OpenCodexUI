@@ -9,6 +9,7 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
+  Button,
   CircularProgress,
   Stack,
   Typography
@@ -18,6 +19,10 @@ import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 
 import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
+import {
+  ACTIVE_REASONING_ITEM_LIMIT,
+  selectActiveReasoningItems
+} from "./activeReasoningHistory";
 import { MessageRowM } from "./MessageRow";
 
 type AssistantTurnBlockProps = {
@@ -46,6 +51,7 @@ export function AssistantTurnBlock({
 }: AssistantTurnBlockProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const [isFullActiveHistoryVisible, setIsFullActiveHistoryVisible] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const blockRef = isLast ? lastMessageRef : undefined;
   const runningStartedAt = turn.startedAt ?? readFirstCreatedAt(preludeItems);
@@ -56,12 +62,32 @@ export function AssistantTurnBlock({
     ? t("reasoningBlock.active", { duration: formatDuration(displayedDurationMs) ?? "0 s" })
     : formatBlockLabel(getBlockKind(preludeItems), turn.durationMs, t);
   const isExpanded = isRunning || expanded;
+  const hasLimitedActiveHistory = isRunning
+    && preludeItems.length > ACTIVE_REASONING_ITEM_LIMIT;
+  const visiblePreludeItems = isRunning
+    ? selectActiveReasoningItems(preludeItems, isFullActiveHistoryVisible)
+    : preludeItems;
+  const visiblePreludeStartIndex = preludeItems.length - visiblePreludeItems.length;
+  const historyToggleLabel = isFullActiveHistoryVisible
+    ? t("reasoningBlock.limitHistory")
+    : t("reasoningBlock.showFullHistory", { count: preludeItems.length });
+  const historyToggle = hasLimitedActiveHistory ? (
+    <Button
+      size="small"
+      variant="text"
+      onClick={handleToggleActiveHistory}
+      sx={{ alignSelf: "flex-start" }}
+    >
+      {historyToggleLabel}
+    </Button>
+  ) : null;
   const detailsContent = isExpanded ? (
     <AccordionDetails sx={{ pt: 0, pb: 1.25, px: 1.25, minWidth: 0, maxWidth: "100%" }}>
       <Stack spacing={1} sx={{ minWidth: 0, maxWidth: "100%" }}>
-        {preludeItems.map((item, index) => (
+        {historyToggle}
+        {visiblePreludeItems.map((item, index) => (
           <MessageRowM
-            key={buildMessageKey(item, index)}
+            key={buildMessageKey(item, visiblePreludeStartIndex + index)}
             isLast={false}
             lastMessageRef={lastMessageRef}
             onOpenLink={onOpenLink}
@@ -81,6 +107,7 @@ export function AssistantTurnBlock({
   useEffect(() => {
     if (!isRunning) {
       setExpanded(false);
+      setIsFullActiveHistoryVisible(false);
       return undefined;
     }
 
@@ -93,6 +120,11 @@ export function AssistantTurnBlock({
       window.clearInterval(interval);
     };
   }, [isRunning]);
+
+  /** Toggles the complete history for the active reasoning block. */
+  function handleToggleActiveHistory(): void {
+    setIsFullActiveHistoryVisible((isVisible) => !isVisible);
+  }
 
   return (
     <Box

@@ -518,8 +518,10 @@ export const resources = {
       reasoningBlock: {
         active: "Réflexion en cours ({{duration}})",
         activity: "Activités",
+        limitHistory: "Limiter l’historique",
         mixed: "Réflexion et activités",
-        reasoning: "Réflexion"
+        reasoning: "Réflexion",
+        showFullHistory: "Afficher tout l’historique ({{count}})"
       },
       settings: {
         advancedPerformanceMonitoring: "Surveillance avancée des performances",
@@ -1284,8 +1286,10 @@ export const resources = {
       reasoningBlock: {
         active: "Thinking ({{duration}})",
         activity: "Activities",
+        limitHistory: "Limit history",
         mixed: "Thinking and activities",
-        reasoning: "Thinking"
+        reasoning: "Thinking",
+        showFullHistory: "Show full history ({{count}})"
       },
       settings: {
         advancedPerformanceMonitoring: "Advanced performance monitoring",
