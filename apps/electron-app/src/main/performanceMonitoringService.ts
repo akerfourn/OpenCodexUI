@@ -186,7 +186,11 @@ export class PerformanceMonitoringService {
       return;
     }
 
-    const { eventTypeCounts: _eventTypeCounts, ...standardSample } = sample;
+    const {
+      eventTypeCounts: _eventTypeCounts,
+      markdown: _markdown,
+      ...standardSample
+    } = sample;
     this.latestRendererSample = standardSample;
   }
 

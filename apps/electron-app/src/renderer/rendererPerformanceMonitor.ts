@@ -3,6 +3,7 @@
  */
 import type {
   OpenCodexEvent,
+  OpenCodexMarkdownRenderPerformanceMetric,
   OpenCodexRendererPerformanceSample,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
@@ -22,6 +23,13 @@ export class RendererPerformanceMonitor {
   private estimatedEventBytes = 0;
   private maxEventHandlingDurationMs = 0;
   private eventTypeCounts: Record<string, number> = {};
+  private plainMarkdownRenderCount = 0;
+  private plainMarkdownRenderDurationMs = 0;
+  private maxPlainMarkdownRenderDurationMs = 0;
+  private highlightedMarkdownRenderCount = 0;
+  private highlightedMarkdownRenderDurationMs = 0;
+  private maxHighlightedMarkdownRenderDurationMs = 0;
+  private maxMarkdownLength = 0;
   private readonly timer: ReturnType<typeof setInterval>;
   private readonly longTaskObserver: PerformanceObserver | null;
   private isLongTaskObserverActive = false;
@@ -59,6 +67,52 @@ export class RendererPerformanceMonitor {
     if (settings.developerMode && settings.advancedPerformanceMonitoringEnabled) {
       this.eventTypeCounts[event.type] = (this.eventTypeCounts[event.type] ?? 0) + 1;
     }
+  }
+
+  /**
+   * Returns whether advanced Markdown timing should capture render timestamps.
+   *
+   * @returns Whether advanced renderer diagnostics are active.
+   */
+  isMarkdownRenderPerformanceRecordingEnabled(): boolean {
+    const settings = this.getSettings();
+
+    return settings.performanceMonitoringEnabled &&
+      settings.developerMode &&
+      settings.advancedPerformanceMonitoringEnabled;
+  }
+
+  /**
+   * Records one Markdown subtree render in advanced developer mode.
+   *
+   * @param metric Content-free Markdown render timing.
+   * @returns Nothing.
+   */
+  recordMarkdownRender(metric: OpenCodexMarkdownRenderPerformanceMetric): void {
+    if (!this.isMarkdownRenderPerformanceRecordingEnabled()) {
+      return;
+    }
+
+    const durationMs = readBoundedMetric(metric.durationMs);
+    const markdownLength = readBoundedMetric(metric.markdownLength);
+    this.maxMarkdownLength = Math.max(this.maxMarkdownLength, markdownLength);
+
+    if (metric.isSyntaxHighlighted) {
+      this.highlightedMarkdownRenderCount += 1;
+      this.highlightedMarkdownRenderDurationMs += durationMs;
+      this.maxHighlightedMarkdownRenderDurationMs = Math.max(
+        this.maxHighlightedMarkdownRenderDurationMs,
+        durationMs
+      );
+      return;
+    }
+
+    this.plainMarkdownRenderCount += 1;
+    this.plainMarkdownRenderDurationMs += durationMs;
+    this.maxPlainMarkdownRenderDurationMs = Math.max(
+      this.maxPlainMarkdownRenderDurationMs,
+      durationMs
+    );
   }
 
   /** Releases timers and observers owned by the monitor. */
@@ -125,6 +179,15 @@ export class RendererPerformanceMonitor {
 
     if (isAdvanced) {
       sample.eventTypeCounts = { ...this.eventTypeCounts };
+      sample.markdown = {
+        plainRenderCount: this.plainMarkdownRenderCount,
+        plainRenderDurationMs: this.plainMarkdownRenderDurationMs,
+        maxPlainRenderDurationMs: this.maxPlainMarkdownRenderDurationMs,
+        highlightedRenderCount: this.highlightedMarkdownRenderCount,
+        highlightedRenderDurationMs: this.highlightedMarkdownRenderDurationMs,
+        maxHighlightedRenderDurationMs: this.maxHighlightedMarkdownRenderDurationMs,
+        maxMarkdownLength: this.maxMarkdownLength
+      };
     }
 
     window.openCodexUI.reportPerformanceSample(sample);
@@ -167,7 +230,23 @@ export class RendererPerformanceMonitor {
     this.estimatedEventBytes = 0;
     this.maxEventHandlingDurationMs = 0;
     this.eventTypeCounts = {};
+    this.plainMarkdownRenderCount = 0;
+    this.plainMarkdownRenderDurationMs = 0;
+    this.maxPlainMarkdownRenderDurationMs = 0;
+    this.highlightedMarkdownRenderCount = 0;
+    this.highlightedMarkdownRenderDurationMs = 0;
+    this.maxHighlightedMarkdownRenderDurationMs = 0;
+    this.maxMarkdownLength = 0;
   }
+}
+
+/** Returns a finite, non-negative metric bounded for aggregation. */
+function readBoundedMetric(value: number): number {
+  if (!Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+
+  return Math.min(value, 1_000_000_000);
 }
 
 /** Estimates known string payloads without serializing complete events. */

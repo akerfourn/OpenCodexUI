@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexRendererPerformanceSample,
+  OpenCodexSettings
+} from "@open-codex-ui/opencodex-protocol";
 
 import { defaultSettings } from "../src/main/settingsStore";
 import { PerformanceMonitoringService } from "../src/main/performanceMonitoringService";
@@ -20,6 +23,15 @@ describe("PerformanceMonitoringService", () => {
       messageId: "message-1",
       delta: "hello"
     });
+    service.recordRendererSample(createRendererSample(now, {
+      plainRenderCount: 1,
+      plainRenderDurationMs: 4,
+      maxPlainRenderDurationMs: 4,
+      highlightedRenderCount: 1,
+      highlightedRenderDurationMs: 12,
+      maxHighlightedRenderDurationMs: 12,
+      maxMarkdownLength: 1_024
+    }));
     now += 1_000;
 
     const snapshot = service.collectSnapshot();
@@ -35,6 +47,7 @@ describe("PerformanceMonitoringService", () => {
     expect(snapshot?.notificationCounts).toBeUndefined();
     expect(snapshot?.eventCounts).toBeUndefined();
     expect(snapshot?.liveCacheNotificationCount).toBeUndefined();
+    expect(snapshot?.renderer?.markdown).toBeUndefined();
     expect(createLog).not.toHaveBeenCalled();
     service.dispose();
   });
@@ -51,6 +64,15 @@ describe("PerformanceMonitoringService", () => {
     service.recordCodexNotification("turn/diff/updated", 128, 4);
     service.recordLiveCacheNotification("turn/diff/updated", 1.5);
     service.recordBackendEvent({ type: "turn.started", threadId: "thread-1", turnId: "turn-1" });
+    service.recordRendererSample(createRendererSample(now, {
+      plainRenderCount: 2,
+      plainRenderDurationMs: 8,
+      maxPlainRenderDurationMs: 5,
+      highlightedRenderCount: 1,
+      highlightedRenderDurationMs: 20,
+      maxHighlightedRenderDurationMs: 20,
+      maxMarkdownLength: 2_048
+    }));
     now += 1_000;
 
     const snapshot = service.collectSnapshot();
@@ -63,6 +85,15 @@ describe("PerformanceMonitoringService", () => {
     expect(snapshot?.averageLiveCacheDurationMs).toBe(1.5);
     expect(snapshot?.maxLiveCacheDurationMs).toBe(1.5);
     expect(snapshot?.liveCacheNotificationCounts).toEqual({ "turn/diff/updated": 1 });
+    expect(snapshot?.renderer?.markdown).toEqual({
+      plainRenderCount: 2,
+      plainRenderDurationMs: 8,
+      maxPlainRenderDurationMs: 5,
+      highlightedRenderCount: 1,
+      highlightedRenderDurationMs: 20,
+      maxHighlightedRenderDurationMs: 20,
+      maxMarkdownLength: 2_048
+    });
     service.dispose();
   });
 
@@ -159,4 +190,24 @@ function createService(
       workingSetSizeKb: 1_024
     }]
   });
+}
+
+/** Creates one renderer sample with optional Markdown timing aggregates. */
+function createRendererSample(
+  capturedAt: number,
+  markdown: NonNullable<OpenCodexRendererPerformanceSample["markdown"]>
+): OpenCodexRendererPerformanceSample {
+  return {
+    capturedAt: new Date(capturedAt).toISOString(),
+    intervalMs: 1_000,
+    isDocumentVisible: true,
+    eventLoopDelayMs: 0,
+    longTaskCount: 0,
+    longTaskDurationMs: 0,
+    maxLongTaskDurationMs: 0,
+    processedEventCount: 0,
+    estimatedEventBytes: 0,
+    maxEventHandlingDurationMs: 0,
+    markdown
+  };
 }

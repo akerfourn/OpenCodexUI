@@ -793,6 +793,54 @@ function readRendererPerformanceSample(
     result.eventTypeCounts = eventTypeCounts;
   }
 
+  const markdown = readRendererMarkdownPerformanceSample(sample.markdown);
+
+  if (markdown !== null) {
+    result.markdown = markdown;
+  }
+
+  return result;
+}
+
+/**
+ * Validates content-free Markdown timing aggregates received from the renderer.
+ *
+ * @param value Candidate Markdown timing sample.
+ * @returns Safe timing sample, or `null` when omitted or invalid.
+ */
+function readRendererMarkdownPerformanceSample(
+  value: unknown
+): OpenCodexRendererPerformanceSample["markdown"] | null {
+  if (value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const sample = value as Record<string, unknown>;
+  const fields = [
+    "plainRenderCount",
+    "plainRenderDurationMs",
+    "maxPlainRenderDurationMs",
+    "highlightedRenderCount",
+    "highlightedRenderDurationMs",
+    "maxHighlightedRenderDurationMs",
+    "maxMarkdownLength"
+  ] as const;
+  const result = {} as NonNullable<OpenCodexRendererPerformanceSample["markdown"]>;
+
+  for (const field of fields) {
+    const fieldValue = sample[field];
+
+    if (typeof fieldValue !== "number" || !Number.isFinite(fieldValue) || fieldValue < 0) {
+      return null;
+    }
+
+    result[field] = Math.min(fieldValue, 1_000_000_000);
+  }
+
   return result;
 }
 

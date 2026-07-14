@@ -2,11 +2,23 @@
  * Renders the markdown message component for the OpenCodex UI.
  */
 import { Box } from "@mui/material";
-import { memo, startTransition, useEffect, useRef, useState } from "react";
+import {
+  memo,
+  startTransition,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject
+} from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 
+import {
+  isMarkdownRenderPerformanceRecordingEnabled,
+  recordMarkdownRenderPerformance
+} from "../../performance/rendererPerformanceRecorder";
 import { InlineCode } from "./InlineCode";
 import { MarkdownLink } from "./MarkdownLink";
 import { PreBlock } from "./PreBlock";
@@ -25,6 +37,7 @@ type MarkdownMessageProps = {
 type RenderedMarkdownProps = {
   markdown: string;
   shouldHighlightSyntax: boolean;
+  containerRef: RefObject<HTMLDivElement>;
   /** Opens one link rendered from the Markdown content. */
   onOpenLink(href: string): void;
 };
@@ -45,13 +58,15 @@ export function MarkdownMessage({
   isStreaming = false,
   onOpenLink
 }: MarkdownMessageProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const renderedMarkdown = useStreamingMarkdown(markdown, isStreaming);
-  const shouldHighlightSyntax = useDeferredSyntaxHighlighting(isStreaming);
+  const shouldHighlightSyntax = useDeferredSyntaxHighlighting(isStreaming, containerRef);
 
   return (
     <RenderedMarkdownM
       markdown={renderedMarkdown}
       shouldHighlightSyntax={shouldHighlightSyntax}
+      containerRef={containerRef}
       onOpenLink={onOpenLink}
     />
   );
@@ -68,14 +83,19 @@ export const MarkdownMessageM = memo(MarkdownMessage);
 function RenderedMarkdown({
   markdown,
   shouldHighlightSyntax,
+  containerRef,
   onOpenLink
 }: RenderedMarkdownProps) {
   const rehypePlugins = shouldHighlightSyntax
     ? highlightedRehypePlugins
     : plainRehypePlugins;
+  const renderStartedAt = isMarkdownRenderPerformanceRecordingEnabled()
+    ? performance.now()
+    : null;
 
   return (
     <Box
+      ref={containerRef}
       sx={{
         minWidth: 0,
         lineHeight: 1.45,
@@ -126,11 +146,46 @@ function RenderedMarkdown({
       >
         {markdown}
       </ReactMarkdown>
+      {renderStartedAt !== null ? (
+        <MarkdownRenderTiming
+          startedAt={renderStartedAt}
+          markdownLength={markdown.length}
+          isSyntaxHighlighted={shouldHighlightSyntax}
+        />
+      ) : null}
     </Box>
   );
 }
 
 const RenderedMarkdownM = memo(RenderedMarkdown);
+
+type MarkdownRenderTimingProps = {
+  startedAt: number;
+  markdownLength: number;
+  isSyntaxHighlighted: boolean;
+};
+
+/**
+ * Reports one advanced Markdown commit latency without rendering UI content.
+ *
+ * @param props Content-free timing metadata.
+ * @returns No rendered content.
+ */
+function MarkdownRenderTiming({
+  startedAt,
+  markdownLength,
+  isSyntaxHighlighted
+}: MarkdownRenderTimingProps) {
+  useLayoutEffect(() => {
+    recordMarkdownRenderPerformance({
+      durationMs: performance.now() - startedAt,
+      markdownLength,
+      isSyntaxHighlighted
+    });
+  });
+
+  return null;
+}
 
 /**
  * Returns a cadence-limited Markdown snapshot while content is streaming.
@@ -182,9 +237,13 @@ function useStreamingMarkdown(markdown: string, isStreaming: boolean): string {
  * enables highlighting during an idle low-priority React update.
  *
  * @param isStreaming Whether the content is still receiving deltas.
+ * @param containerRef Rendered Markdown container used to protect selections.
  * @returns Whether the expensive syntax-highlighting plugin should run.
  */
-function useDeferredSyntaxHighlighting(isStreaming: boolean): boolean {
+function useDeferredSyntaxHighlighting(
+  isStreaming: boolean,
+  containerRef: RefObject<HTMLDivElement>
+): boolean {
   const [shouldHighlight, setShouldHighlight] = useState(!isStreaming);
   const hasStreamedRef = useRef(isStreaming);
 
@@ -200,15 +259,72 @@ function useDeferredSyntaxHighlighting(isStreaming: boolean): boolean {
       return undefined;
     }
 
-    return scheduleHighlightingAfterPaint(() => {
+    let removeSelectionListener: (() => void) | null = null;
+
+    /** Enables highlighting in a low-priority React transition. */
+    function enableHighlighting(): void {
       hasStreamedRef.current = false;
       startTransition(() => {
         setShouldHighlight(true);
       });
+    }
+
+    const cancelScheduledHighlighting = scheduleHighlightingAfterPaint(() => {
+      if (!hasActiveSelectionWithin(containerRef.current)) {
+        enableHighlighting();
+        return;
+      }
+
+      /** Enables highlighting once the user leaves the rendered block selection. */
+      function handleSelectionChange(): void {
+        if (hasActiveSelectionWithin(containerRef.current)) {
+          return;
+        }
+
+        removeSelectionListener?.();
+        removeSelectionListener = null;
+        enableHighlighting();
+      }
+
+      document.addEventListener("selectionchange", handleSelectionChange);
+      removeSelectionListener = () => {
+        document.removeEventListener("selectionchange", handleSelectionChange);
+      };
     });
-  }, [isStreaming]);
+
+    return () => {
+      cancelScheduledHighlighting();
+      removeSelectionListener?.();
+    };
+  }, [containerRef, isStreaming]);
 
   return !isStreaming && shouldHighlight;
+}
+
+/**
+ * Checks whether the current document selection intersects a Markdown block.
+ *
+ * @param container Rendered Markdown container.
+ * @returns Whether an active selection starts or ends inside the container.
+ */
+export function hasActiveSelectionWithin(container: HTMLElement | null): boolean {
+  if (container === null || typeof window.getSelection !== "function") {
+    return false;
+  }
+
+  const selection = window.getSelection();
+
+  if (selection === null || selection.isCollapsed) {
+    return false;
+  }
+
+  const anchorNode = selection.anchorNode;
+  const focusNode = selection.focusNode;
+
+  return (
+    (anchorNode !== null && container.contains(anchorNode)) ||
+    (focusNode !== null && container.contains(focusNode))
+  );
 }
 
 /**

@@ -1,3 +1,21 @@
+/** Aggregated Markdown renderer timings retained only in advanced mode. */
+export type OpenCodexRendererMarkdownPerformanceSample = {
+  plainRenderCount: number;
+  plainRenderDurationMs: number;
+  maxPlainRenderDurationMs: number;
+  highlightedRenderCount: number;
+  highlightedRenderDurationMs: number;
+  maxHighlightedRenderDurationMs: number;
+  maxMarkdownLength: number;
+};
+
+/** One content-free Markdown render timing recorded by the UI. */
+export type OpenCodexMarkdownRenderPerformanceMetric = {
+  durationMs: number;
+  markdownLength: number;
+  isSyntaxHighlighted: boolean;
+};
+
 /**
  * Aggregated renderer performance data sent to the Electron host.
  */
@@ -13,4 +31,5 @@ export type OpenCodexRendererPerformanceSample = {
   estimatedEventBytes: number;
   maxEventHandlingDurationMs: number;
   eventTypeCounts?: Record<string, number>;
+  markdown?: OpenCodexRendererMarkdownPerformanceSample;
 };

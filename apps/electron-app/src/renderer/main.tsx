@@ -8,7 +8,8 @@ import {
   AppX,
   OpenCodexThemeProviderX,
   RootStore,
-  initializeOpenCodexI18n
+  initializeOpenCodexI18n,
+  setRendererPerformanceRecorder
 } from "@open-codex-ui/opencodex-ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -22,6 +23,7 @@ const transport = new ElectronOpenCodexTransport();
 const store = new RootStore(transport);
 const performanceMonitor = new RendererPerformanceMonitor(() => store.settings);
 transport.setPerformanceMonitor(performanceMonitor);
+setRendererPerformanceRecorder(performanceMonitor);
 store.appStore.setForceOnboarding(import.meta.env.DEV);
 
 const rootElement = document.getElementById("root");

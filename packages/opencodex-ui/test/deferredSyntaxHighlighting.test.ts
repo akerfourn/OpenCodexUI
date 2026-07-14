@@ -4,6 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  hasActiveSelectionWithin,
   scheduleHighlightingAfterPaint
 } from "../src/components/messages/MarkdownMessage";
 
@@ -49,6 +50,35 @@ describe("deferred syntax highlighting", () => {
 
     expect(windowScheduler.cancelAnimationFrame).toHaveBeenCalledWith(1);
     expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("should detect an active selection inside the Markdown container", () => {
+    const anchorNode = {} as Node;
+    const container = {
+      contains: vi.fn((node: Node) => node === anchorNode)
+    } as unknown as HTMLElement;
+
+    vi.stubGlobal("window", {
+      getSelection: () => ({
+        isCollapsed: false,
+        anchorNode,
+        focusNode: null
+      })
+    });
+
+    expect(hasActiveSelectionWithin(container)).toBe(true);
+  });
+
+  it("should ignore a collapsed selection", () => {
+    vi.stubGlobal("window", {
+      getSelection: () => ({
+        isCollapsed: true,
+        anchorNode: null,
+        focusNode: null
+      })
+    });
+
+    expect(hasActiveSelectionWithin({ contains: vi.fn() } as unknown as HTMLElement)).toBe(false);
   });
 });
 

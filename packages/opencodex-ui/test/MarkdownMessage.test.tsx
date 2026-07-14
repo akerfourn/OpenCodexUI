@@ -45,6 +45,7 @@ describe("MarkdownMessage", () => {
       />
     );
 
+    expect(markup).toContain("<pre");
     expect(markup).toContain("<code");
     expect(markup).toContain("partial");
     expect(markup).not.toContain("hljs-keyword");
