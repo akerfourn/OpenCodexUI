@@ -74,5 +74,17 @@ export type OpenCodexBackendOptions = {
    * @returns Normalized project path.
    */
   ensureProjectDirectory?(projectPath: string, createIfMissing: boolean): Promise<string> | string;
+  /**
+   * Reports content-free performance metadata for a processed Codex notification.
+   *
+   * @param method Codex notification method.
+   * @param estimatedBytes Approximate size of known streamed string fields.
+   * @param durationMs Synchronous notification processing duration.
+   */
+  onCodexNotificationProcessed?(
+    method: string,
+    estimatedBytes: number,
+    durationMs: number
+  ): void;
   logger?: (message: string) => void;
 };

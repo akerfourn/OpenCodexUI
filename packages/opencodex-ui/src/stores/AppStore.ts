@@ -50,7 +50,9 @@ export class AppStore implements RootChildStore {
     discordRichPresenceEnabled: true,
     onboardingCompleted: false,
     allowOutdatedCodex: false,
-    developerMode: false
+    developerMode: false,
+    performanceMonitoringEnabled: true,
+    advancedPerformanceMonitoringEnabled: false
   };
   launchProjectPath: string | null = null;
   models: OpenCodexModel[] = [];
@@ -454,10 +456,56 @@ export class AppStore implements RootChildStore {
    * @returns Nothing.
    */
   setDeveloperMode(developerMode: boolean): void {
-    this.settings = { ...this.settings, developerMode };
+    const advancedPerformanceMonitoringEnabled = developerMode
+      ? this.settings.advancedPerformanceMonitoringEnabled
+      : false;
+    this.settings = {
+      ...this.settings,
+      developerMode,
+      advancedPerformanceMonitoringEnabled
+    };
     void this.root.request({
       type: "settings.update",
-      patch: { developerMode }
+      patch: { developerMode, advancedPerformanceMonitoringEnabled }
+    });
+  }
+
+  /**
+   * Enables or disables lightweight automatic performance monitoring.
+   *
+   * @param performanceMonitoringEnabled Whether monitoring is enabled.
+   */
+  setPerformanceMonitoringEnabled(performanceMonitoringEnabled: boolean): void {
+    const advancedPerformanceMonitoringEnabled = performanceMonitoringEnabled
+      ? this.settings.advancedPerformanceMonitoringEnabled
+      : false;
+    this.settings = {
+      ...this.settings,
+      performanceMonitoringEnabled,
+      advancedPerformanceMonitoringEnabled
+    };
+    void this.root.request({
+      type: "settings.update",
+      patch: { performanceMonitoringEnabled, advancedPerformanceMonitoringEnabled }
+    });
+  }
+
+  /**
+   * Enables detailed monitoring while developer mode is active.
+   *
+   * @param advancedPerformanceMonitoringEnabled Whether advanced monitoring is enabled.
+   */
+  setAdvancedPerformanceMonitoringEnabled(
+    advancedPerformanceMonitoringEnabled: boolean
+  ): void {
+    if (!this.settings.developerMode || !this.settings.performanceMonitoringEnabled) {
+      return;
+    }
+
+    this.settings = { ...this.settings, advancedPerformanceMonitoringEnabled };
+    void this.root.request({
+      type: "settings.update",
+      patch: { advancedPerformanceMonitoringEnabled }
     });
   }
 

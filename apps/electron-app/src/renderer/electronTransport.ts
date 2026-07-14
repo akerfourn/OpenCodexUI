@@ -7,10 +7,23 @@ import type {
   OpenCodexRequest
 } from "@open-codex-ui/opencodex-protocol";
 
+import type { RendererPerformanceMonitor } from "./rendererPerformanceMonitor";
+
 /**
  * Implements the UI transport using the Electron preload bridge.
  */
 export class ElectronOpenCodexTransport implements OpenCodexClientTransport {
+  private performanceMonitor: RendererPerformanceMonitor | null = null;
+
+  /**
+   * Attaches the optional renderer performance monitor.
+   *
+   * @param performanceMonitor Monitor receiving event processing durations.
+   */
+  setPerformanceMonitor(performanceMonitor: RendererPerformanceMonitor): void {
+    this.performanceMonitor = performanceMonitor;
+  }
+
   /**
    * Sends a request to the Electron main process.
    *
@@ -28,6 +41,14 @@ export class ElectronOpenCodexTransport implements OpenCodexClientTransport {
    * @returns Cleanup function that removes the event subscription.
    */
   onEvent(listener: (event: OpenCodexEvent) => void): () => void {
-    return window.openCodexUI.onEvent(listener);
+    return window.openCodexUI.onEvent((event) => {
+      const startedAt = performance.now();
+
+      try {
+        listener(event);
+      } finally {
+        this.performanceMonitor?.recordEvent(event, performance.now() - startedAt);
+      }
+    });
   }
 }

@@ -33,7 +33,9 @@ export const defaultSettings: OpenCodexSettings = {
   discordRichPresenceEnabled: true,
   onboardingCompleted: false,
   allowOutdatedCodex: false,
-  developerMode: false
+  developerMode: false,
+  performanceMonitoringEnabled: true,
+  advancedPerformanceMonitoringEnabled: false
 };
 
 /**
@@ -60,7 +62,7 @@ export class SettingsStore {
     try {
       const content = await readFile(this.settingsPath, "utf8");
       const parsed = JSON.parse(content) as Partial<OpenCodexSettings>;
-      return {
+      const settings = {
         ...defaultSettings,
         ...parsed,
         codexReleaseCheck: {
@@ -68,6 +70,12 @@ export class SettingsStore {
           ...parsed.codexReleaseCheck
         }
       };
+
+      if (!settings.developerMode || !settings.performanceMonitoringEnabled) {
+        settings.advancedPerformanceMonitoringEnabled = false;
+      }
+
+      return settings;
     } catch {
       return defaultSettings;
     }

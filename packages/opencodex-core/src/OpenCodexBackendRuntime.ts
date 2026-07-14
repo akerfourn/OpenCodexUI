@@ -292,7 +292,13 @@ export class OpenCodexBackendRuntime {
    * @returns Updated settings.
    */
   async updateSettings(patch: Partial<OpenCodexSettings>): Promise<OpenCodexSettings> {
-    this.settings = { ...this.settings, ...patch };
+    const nextSettings = { ...this.settings, ...patch };
+
+    if (!nextSettings.developerMode || !nextSettings.performanceMonitoringEnabled) {
+      nextSettings.advancedPerformanceMonitoringEnabled = false;
+    }
+
+    this.settings = nextSettings;
     await this.options.saveSettings?.(this.settings);
     return this.settings;
   }
@@ -2000,42 +2006,52 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   private handleNotification(notification: CodexNotification, sourceId: string): void {
-    const threadId = readString(readObject(notification.params).threadId);
+    const startedAt = performance.now();
 
-    if (threadId.length > 0 && this.ignoredNotificationThreadIds.has(threadId)) {
-      return;
-    }
+    try {
+      const threadId = readString(readObject(notification.params).threadId);
 
-    this.threadConversationService.recordNotification(notification);
-    this.trackActiveTurnNotification(notification, sourceId);
-    this.projectCommandService.handleNotification(notification);
-    this.notificationService.handleNotification(notification, sourceId);
-
-    if (notification.method === "account/rateLimits/updated") {
-      const usage = mapUsageLimitsNotification(notification.params, sourceId);
-
-      if (usage !== null) {
-        this.emit({ type: "usage.updated", sourceId, usage });
+      if (threadId.length > 0 && this.ignoredNotificationThreadIds.has(threadId)) {
+        return;
       }
-    }
 
-    if (notification.method === "thread/tokenUsage/updated") {
-      const usage = mapThreadTokenUsageNotification(notification.params);
+      this.threadConversationService.recordNotification(notification);
+      this.trackActiveTurnNotification(notification, sourceId);
+      this.projectCommandService.handleNotification(notification);
+      this.notificationService.handleNotification(notification, sourceId);
 
-      if (usage !== null) {
-        const cacheEntry = this.threadTurnCache.get(usage.threadId);
+      if (notification.method === "account/rateLimits/updated") {
+        const usage = mapUsageLimitsNotification(notification.params, sourceId);
 
-        if (cacheEntry !== null) {
-          cacheEntry.tokenUsage = usage;
+        if (usage !== null) {
+          this.emit({ type: "usage.updated", sourceId, usage });
         }
-
-        void this.threadCacheService.writeTokenUsage(usage);
-        this.emit({ type: "thread.tokenUsage.updated", usage });
       }
-    }
 
-    if (notification.method === "turn/completed") {
-      void this.readUsageLimits(sourceId);
+      if (notification.method === "thread/tokenUsage/updated") {
+        const usage = mapThreadTokenUsageNotification(notification.params);
+
+        if (usage !== null) {
+          const cacheEntry = this.threadTurnCache.get(usage.threadId);
+
+          if (cacheEntry !== null) {
+            cacheEntry.tokenUsage = usage;
+          }
+
+          void this.threadCacheService.writeTokenUsage(usage);
+          this.emit({ type: "thread.tokenUsage.updated", usage });
+        }
+      }
+
+      if (notification.method === "turn/completed") {
+        void this.readUsageLimits(sourceId);
+      }
+    } finally {
+      this.options.onCodexNotificationProcessed?.(
+        notification.method,
+        estimateNotificationBytes(notification.params),
+        performance.now() - startedAt
+      );
     }
   }
 
@@ -2624,4 +2640,26 @@ function isFuzzyMatch(candidate: string, query: string): boolean {
   }
 
   return true;
+}
+
+/**
+ * Estimates streamed notification volume without serializing or retaining content.
+ *
+ * @param value Raw notification parameters.
+ * @returns Total length of known high-volume string fields.
+ */
+function estimateNotificationBytes(value: unknown): number {
+  const params = readObject(value);
+  const fieldNames = ["delta", "deltaBase64", "diff", "message", "output"];
+  let estimatedBytes = 0;
+
+  for (const fieldName of fieldNames) {
+    const fieldValue = params[fieldName];
+
+    if (typeof fieldValue === "string") {
+      estimatedBytes += fieldValue.length;
+    }
+  }
+
+  return estimatedBytes;
 }

@@ -515,6 +515,8 @@ export const resources = {
         reasoning: "Réflexion"
       },
       settings: {
+        advancedPerformanceMonitoring: "Surveillance avancée des performances",
+        advancedPerformanceMonitoringDescription: "Ajoute des détails par type d'événement aux diagnostics automatiques. Disponible uniquement en mode développeur.",
         allowOutdatedCodex: "Autoriser les versions obsolètes de Codex",
         allowOutdatedCodexDescription: "Permet d'utiliser une source Codex détectée mais plus ancienne que la version minimale supportée.",
         allowOutdatedCodexWarning: "Ce mode peut provoquer des erreurs pendant les actions Codex si l'API locale ne fournit pas les fonctionnalités attendues.",
@@ -545,7 +547,9 @@ export const resources = {
           simple: "Simplifié",
           technical: "Technique"
         },
-        openDeveloperTools: "Ouvrir la console"
+        openDeveloperTools: "Ouvrir la console",
+        performanceMonitoring: "Surveiller les ralentissements",
+        performanceMonitoringDescription: "Détecte automatiquement les ralentissements et crée un diagnostic local sans enregistrer le contenu des chats."
       },
       theme: {
         dark: "Sombre",
@@ -1270,6 +1274,8 @@ export const resources = {
         reasoning: "Thinking"
       },
       settings: {
+        advancedPerformanceMonitoring: "Advanced performance monitoring",
+        advancedPerformanceMonitoringDescription: "Adds per-event-type details to automatic diagnostics. Available only in developer mode.",
         allowOutdatedCodex: "Allow outdated Codex versions",
         allowOutdatedCodexDescription: "Allows using a Codex source that is detected but older than the minimum supported version.",
         allowOutdatedCodexWarning: "This mode may produce errors during Codex actions if the local API does not provide expected features.",
@@ -1300,7 +1306,9 @@ export const resources = {
           simple: "Simplified",
           technical: "Technical"
         },
-        openDeveloperTools: "Open console"
+        openDeveloperTools: "Open console",
+        performanceMonitoring: "Monitor performance slowdowns",
+        performanceMonitoringDescription: "Automatically detects slowdowns and creates a local diagnostic without recording chat content."
       },
       theme: {
         dark: "Dark",

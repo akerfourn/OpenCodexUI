@@ -14,10 +14,14 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { ElectronOpenCodexTransport } from "./electronTransport";
+import { RendererPerformanceMonitor } from "./rendererPerformanceMonitor";
 
 initializeOpenCodexI18n();
 
-const store = new RootStore(new ElectronOpenCodexTransport());
+const transport = new ElectronOpenCodexTransport();
+const store = new RootStore(transport);
+const performanceMonitor = new RendererPerformanceMonitor(() => store.settings);
+transport.setPerformanceMonitor(performanceMonitor);
 store.appStore.setForceOnboarding(import.meta.env.DEV);
 
 const rootElement = document.getElementById("root");

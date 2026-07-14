@@ -50,6 +50,16 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
     appStore.setDeveloperMode(event.target.checked);
   }
 
+  function handlePerformanceMonitoringChange(event: ChangeEvent<HTMLInputElement>): void {
+    appStore.setPerformanceMonitoringEnabled(event.target.checked);
+  }
+
+  function handleAdvancedPerformanceMonitoringChange(
+    event: ChangeEvent<HTMLInputElement>
+  ): void {
+    appStore.setAdvancedPerformanceMonitoringEnabled(event.target.checked);
+  }
+
   function handleOpenDeveloperTools(): void {
     appStore.openDeveloperTools();
   }
@@ -212,6 +222,54 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           >
             {t("settings.openDeveloperTools")}
           </Button>
+        ) : null}
+      </Stack>
+      <Stack spacing={1}>
+        <FormControlLabel
+          sx={{ alignItems: "flex-start", m: 0 }}
+          control={(
+            <Switch
+              checked={appStore.settings.performanceMonitoringEnabled}
+              onChange={handlePerformanceMonitoringChange}
+              sx={{ mt: -0.5 }}
+            />
+          )}
+          label={(
+            <Stack spacing={0.25}>
+              <Typography variant="body1">
+                {t("settings.performanceMonitoring")}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                {t("settings.performanceMonitoringDescription")}
+              </Typography>
+            </Stack>
+          )}
+        />
+        {appStore.settings.developerMode && appStore.settings.performanceMonitoringEnabled ? (
+          <FormControlLabel
+            sx={{ alignItems: "flex-start", ml: 4, mr: 0 }}
+            control={(
+              <Switch
+                checked={appStore.settings.advancedPerformanceMonitoringEnabled}
+                onChange={handleAdvancedPerformanceMonitoringChange}
+                sx={{ mt: -0.5 }}
+              />
+            )}
+            label={(
+              <Stack spacing={0.25}>
+                <Typography variant="body1">
+                  {t("settings.advancedPerformanceMonitoring")}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ fontStyle: "italic" }}
+                >
+                  {t("settings.advancedPerformanceMonitoringDescription")}
+                </Typography>
+              </Stack>
+            )}
+          />
         ) : null}
       </Stack>
       <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>

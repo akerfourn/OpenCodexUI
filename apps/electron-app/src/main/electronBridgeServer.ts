@@ -1,7 +1,8 @@
 /**
  * Hosts the Electron-side bridge between renderer IPC requests and the backend.
  */
-import { BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import type { IpcMainEvent } from "electron";
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
@@ -13,11 +14,16 @@ import { OpenCodexBackendRuntime, OpenCodexRequestRouter } from "@open-codex-ui/
 import type {
   OpenCodexEvent,
   OpenCodexImageAttachment,
+  OpenCodexRendererPerformanceSample,
   OpenCodexRequest,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
 
 import { DiscordPresenceService } from "./discordPresenceService.js";
+import {
+  PerformanceMonitoringService,
+  type OpenCodexProcessPerformanceMetric
+} from "./performanceMonitoringService.js";
 
 type ElectronBridgeServerOptions = {
   settings: OpenCodexSettings;
@@ -34,6 +40,7 @@ export class ElectronBridgeServer {
   private readonly runtime: OpenCodexBackendRuntime;
   private readonly requestRouter: OpenCodexRequestRouter;
   private readonly discordPresenceService: DiscordPresenceService;
+  private readonly performanceMonitoringService: PerformanceMonitoringService;
   private readonly logger: (message: string) => void;
   private window: BrowserWindow | null = null;
   private isDisposed = false;
@@ -72,10 +79,23 @@ export class ElectronBridgeServer {
       ensureProjectDirectory: async (projectPath, createIfMissing) => {
         return ensureProjectDirectory(projectPath, createIfMissing);
       },
+      onCodexNotificationProcessed: (method, estimatedBytes, durationMs) => {
+        this.performanceMonitoringService?.recordCodexNotification(
+          method,
+          estimatedBytes,
+          durationMs
+        );
+      },
       logger,
       emit: (event) => this.emit(event)
     });
     this.requestRouter = new OpenCodexRequestRouter(this.runtime);
+    this.performanceMonitoringService = new PerformanceMonitoringService(options.settings, {
+      createLog: async (message, details) => {
+        await this.runtime.createLog("warning", message, details);
+      },
+      readProcessMetrics
+    });
     this.discordPresenceService = new DiscordPresenceService(
       options.settings.discordRichPresenceEnabled,
       logger
@@ -97,6 +117,7 @@ export class ElectronBridgeServer {
    * @returns Nothing.
    */
   register(): void {
+    ipcMain.on("opencodex:performance-sample", this.handlePerformanceSample);
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
       if (request.type === "app.openDevTools") {
         return this.openDeveloperTools();
@@ -112,6 +133,7 @@ export class ElectronBridgeServer {
       if (request.type === "settings.update" && response !== undefined) {
         const settings = response as OpenCodexSettings;
         this.discordPresenceService.setEnabled(settings.discordRichPresenceEnabled);
+        this.performanceMonitoringService.setSettings(settings);
         this.closeDeveloperToolsWhenDisabled(settings);
       }
 
@@ -131,7 +153,9 @@ export class ElectronBridgeServer {
 
     this.isDisposed = true;
     ipcMain.removeHandler("opencodex:request");
+    ipcMain.off("opencodex:performance-sample", this.handlePerformanceSample);
     this.window = null;
+    this.performanceMonitoringService.dispose();
     const results = await Promise.allSettled([
       this.discordPresenceService.dispose(),
       this.runtime.dispose()
@@ -156,6 +180,7 @@ export class ElectronBridgeServer {
     }
 
     this.discordPresenceService.handleEvent(event);
+    this.performanceMonitoringService?.recordBackendEvent(event);
     const window = this.window;
 
     if (window === null || window.isDestroyed() || window.webContents.isDestroyed()) {
@@ -164,6 +189,26 @@ export class ElectronBridgeServer {
 
     window.webContents.send("opencodex:event", event);
   }
+
+  /**
+   * Accepts validated aggregate renderer metrics from the attached window.
+   *
+   * @param event Electron IPC event carrying the sample.
+   * @param value Untrusted renderer payload.
+   */
+  private readonly handlePerformanceSample = (event: IpcMainEvent, value: unknown): void => {
+    const window = this.window;
+
+    if (window === null || event.sender.id !== window.webContents.id) {
+      return;
+    }
+
+    const sample = readRendererPerformanceSample(value);
+
+    if (sample !== null) {
+      this.performanceMonitoringService.recordRendererSample(sample);
+    }
+  };
 
   /**
    * Opens renderer DevTools when developer mode is explicitly enabled.
@@ -659,4 +704,116 @@ function readLocation(value: string): { path: string; line: string | null; colum
   }
 
   return { path: value, line: null, column: null };
+}
+
+/**
+ * Reads process metrics at a low frequency for diagnostic snapshots.
+ *
+ * @returns Content-free CPU and working-set metrics by Electron process type.
+ */
+function readProcessMetrics(): OpenCodexProcessPerformanceMetric[] {
+  return app.getAppMetrics().map((metric) => ({
+    type: metric.type,
+    cpuPercent: metric.cpu.percentCPUUsage,
+    workingSetSizeKb: metric.memory.workingSetSize
+  }));
+}
+
+/**
+ * Validates and bounds a renderer performance sample received through IPC.
+ *
+ * @param value Untrusted renderer payload.
+ * @returns Safe sample, or `null` when the payload is invalid.
+ */
+function readRendererPerformanceSample(
+  value: unknown
+): OpenCodexRendererPerformanceSample | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const sample = value as Record<string, unknown>;
+  const capturedAt = typeof sample.capturedAt === "string" ? sample.capturedAt : null;
+  const isDocumentVisible = sample.isDocumentVisible;
+
+  if (
+    capturedAt === null ||
+    capturedAt.length > 50 ||
+    Number.isNaN(Date.parse(capturedAt)) ||
+    typeof isDocumentVisible !== "boolean"
+  ) {
+    return null;
+  }
+
+  const numericFields = [
+    "intervalMs",
+    "eventLoopDelayMs",
+    "longTaskCount",
+    "longTaskDurationMs",
+    "maxLongTaskDurationMs",
+    "processedEventCount",
+    "estimatedEventBytes",
+    "maxEventHandlingDurationMs"
+  ] as const;
+  const numbers: Record<(typeof numericFields)[number], number> = {
+    intervalMs: 0,
+    eventLoopDelayMs: 0,
+    longTaskCount: 0,
+    longTaskDurationMs: 0,
+    maxLongTaskDurationMs: 0,
+    processedEventCount: 0,
+    estimatedEventBytes: 0,
+    maxEventHandlingDurationMs: 0
+  };
+
+  for (const field of numericFields) {
+    const fieldValue = sample[field];
+
+    if (typeof fieldValue !== "number" || !Number.isFinite(fieldValue) || fieldValue < 0) {
+      return null;
+    }
+
+    numbers[field] = Math.min(fieldValue, 1_000_000_000);
+  }
+
+  const result: OpenCodexRendererPerformanceSample = {
+    capturedAt,
+    isDocumentVisible,
+    ...numbers
+  };
+  const eventTypeCounts = readBoundedCountRecord(sample.eventTypeCounts);
+
+  if (eventTypeCounts !== null) {
+    result.eventTypeCounts = eventTypeCounts;
+  }
+
+  return result;
+}
+
+/**
+ * Reads a bounded map of event counters from an IPC payload.
+ *
+ * @param value Candidate counter map.
+ * @returns Safe counters, or `null` when omitted or invalid.
+ */
+function readBoundedCountRecord(value: unknown): Record<string, number> | null {
+  if (value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const counts: Record<string, number> = {};
+
+  for (const [key, count] of Object.entries(value).slice(0, 100)) {
+    if (typeof count !== "number" || !Number.isFinite(count) || count < 0) {
+      continue;
+    }
+
+    counts[key.slice(0, 100)] = Math.min(count, 1_000_000_000);
+  }
+
+  return counts;
 }

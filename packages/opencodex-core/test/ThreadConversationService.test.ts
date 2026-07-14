@@ -115,6 +115,8 @@ function createSettings(): OpenCodexSettings {
     discordRichPresenceEnabled: true,
     onboardingCompleted: true,
     allowOutdatedCodex: false,
-    developerMode: false
+    developerMode: false,
+    performanceMonitoringEnabled: true,
+    advancedPerformanceMonitoringEnabled: false
   };
 }

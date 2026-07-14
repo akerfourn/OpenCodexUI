@@ -3,7 +3,11 @@
  */
 import { contextBridge, ipcRenderer } from "electron";
 
-import type { OpenCodexEvent, OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexEvent,
+  OpenCodexRendererPerformanceSample,
+  OpenCodexRequest
+} from "@open-codex-ui/opencodex-protocol";
 
 contextBridge.exposeInMainWorld("openCodexUI", {
   /**
@@ -14,6 +18,14 @@ contextBridge.exposeInMainWorld("openCodexUI", {
    */
   request<TResponse = unknown>(request: OpenCodexRequest): Promise<TResponse> {
     return ipcRenderer.invoke("opencodex:request", request) as Promise<TResponse>;
+  },
+  /**
+   * Reports one content-free renderer performance aggregate.
+   *
+   * @param sample Aggregated metrics for the latest interval.
+   */
+  reportPerformanceSample(sample: OpenCodexRendererPerformanceSample): void {
+    ipcRenderer.send("opencodex:performance-sample", sample);
   },
   /**
    * Subscribes to backend events emitted by the main process.

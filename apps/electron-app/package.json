@@ -20,6 +20,7 @@
     "dist": "npm run build && node scripts/dist.mjs",
     "dist:dir": "npm run build && node scripts/dist.mjs --dir",
     "rebuild:sqlite:electron": "electron-rebuild -f -w better-sqlite3 -v 32.3.3 -m ../..",
+    "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check": "npm run typecheck"
   },

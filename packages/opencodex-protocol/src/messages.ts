@@ -959,6 +959,8 @@ export type OpenCodexSettings = {
   onboardingCompleted: boolean;
   allowOutdatedCodex: boolean;
   developerMode: boolean;
+  performanceMonitoringEnabled: boolean;
+  advancedPerformanceMonitoringEnabled: boolean;
 };
 
 /**
