@@ -67,6 +67,7 @@ import type { OpenCodexBackendOptions } from "./types.js";
 import { ApprovalService } from "./backend/ApprovalService.js";
 import { OpenCodexClientPool } from "./backend/OpenCodexClientPool.js";
 import { NotificationService } from "./backend/NotificationService.js";
+import { ReasoningDeltaBatcher } from "./backend/ReasoningDeltaBatcher.js";
 import { ProjectSourceService } from "./backend/ProjectSourceService.js";
 import { ProjectTrustService } from "./backend/ProjectTrustService.js";
 import {
@@ -106,6 +107,7 @@ export class OpenCodexBackendRuntime {
   private readonly approvalService: ApprovalService;
   private readonly clientPool: OpenCodexClientPool;
   private readonly notificationService: NotificationService;
+  private readonly reasoningDeltaBatcher: ReasoningDeltaBatcher;
   private readonly projectSourceService: ProjectSourceService;
   private readonly projectTrustService: ProjectTrustService;
   private readonly threadCacheService: ThreadCacheService;
@@ -151,6 +153,9 @@ export class OpenCodexBackendRuntime {
       applyCodexThreadTitle: (threadId, title) => this.applyCodexThreadTitle(threadId, title),
       applyCodexThreadDeleted: (threadId) => this.applyCodexThreadDeleted(threadId),
       syncCompletedTurn: (threadId) => this.syncCompletedTurn(threadId)
+    });
+    this.reasoningDeltaBatcher = new ReasoningDeltaBatcher({
+      process: (notification, sourceId) => this.processNotification(notification, sourceId)
     });
     this.codexUpdateService = new CodexUpdateService({
       getSettings: () => this.settings,
@@ -250,6 +255,7 @@ export class OpenCodexBackendRuntime {
    * @returns Promise resolved when resources are disposed.
    */
   async dispose(): Promise<void> {
+    this.reasoningDeltaBatcher.flushAll();
     await this.clientPool.dispose();
     await this.cacheRepository?.close();
   }
@@ -2015,43 +2021,57 @@ export class OpenCodexBackendRuntime {
         return;
       }
 
-      this.threadConversationService.recordNotification(notification);
-      this.trackActiveTurnNotification(notification, sourceId);
-      this.projectCommandService.handleNotification(notification);
-      this.notificationService.handleNotification(notification, sourceId);
-
-      if (notification.method === "account/rateLimits/updated") {
-        const usage = mapUsageLimitsNotification(notification.params, sourceId);
-
-        if (usage !== null) {
-          this.emit({ type: "usage.updated", sourceId, usage });
-        }
+      if (this.reasoningDeltaBatcher.handleNotification(notification, sourceId)) {
+        return;
       }
 
-      if (notification.method === "thread/tokenUsage/updated") {
-        const usage = mapThreadTokenUsageNotification(notification.params);
-
-        if (usage !== null) {
-          const cacheEntry = this.threadTurnCache.get(usage.threadId);
-
-          if (cacheEntry !== null) {
-            cacheEntry.tokenUsage = usage;
-          }
-
-          void this.threadCacheService.writeTokenUsage(usage);
-          this.emit({ type: "thread.tokenUsage.updated", usage });
-        }
-      }
-
-      if (notification.method === "turn/completed") {
-        void this.readUsageLimits(sourceId);
-      }
+      this.processNotification(notification, sourceId);
     } finally {
       this.options.onCodexNotificationProcessed?.(
         notification.method,
         estimateNotificationBytes(notification.params),
         performance.now() - startedAt
       );
+    }
+  }
+
+  /**
+   * Processes an immediate or already-batched Codex notification.
+   *
+   * @param notification Notification ready for backend processing.
+   * @param sourceId Source that produced the notification.
+   */
+  private processNotification(notification: CodexNotification, sourceId: string): void {
+    this.threadConversationService.recordNotification(notification);
+    this.trackActiveTurnNotification(notification, sourceId);
+    this.projectCommandService.handleNotification(notification);
+    this.notificationService.handleNotification(notification, sourceId);
+
+    if (notification.method === "account/rateLimits/updated") {
+      const usage = mapUsageLimitsNotification(notification.params, sourceId);
+
+      if (usage !== null) {
+        this.emit({ type: "usage.updated", sourceId, usage });
+      }
+    }
+
+    if (notification.method === "thread/tokenUsage/updated") {
+      const usage = mapThreadTokenUsageNotification(notification.params);
+
+      if (usage !== null) {
+        const cacheEntry = this.threadTurnCache.get(usage.threadId);
+
+        if (cacheEntry !== null) {
+          cacheEntry.tokenUsage = usage;
+        }
+
+        void this.threadCacheService.writeTokenUsage(usage);
+        this.emit({ type: "thread.tokenUsage.updated", usage });
+      }
+    }
+
+    if (notification.method === "turn/completed") {
+      void this.readUsageLimits(sourceId);
     }
   }
 
@@ -2209,6 +2229,7 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   private handleClientClose(sourceId: string): void {
+    this.reasoningDeltaBatcher.flushSource(sourceId);
     this.clientPool.deleteClient(sourceId);
     this.activeTurnIdsBySourceId.delete(sourceId);
 
