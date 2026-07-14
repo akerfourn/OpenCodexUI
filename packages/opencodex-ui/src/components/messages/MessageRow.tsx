@@ -44,6 +44,7 @@ type MessageRowProps = {
   phase?: OpenCodexMessage["phase"];
   kind?: string;
   content: string;
+  isStreaming?: boolean;
   createdAt: string | null;
   details?: string | null;
   attachments: OpenCodexImageAttachment[];
@@ -71,6 +72,7 @@ export function MessageRow({
   phase,
   kind,
   content,
+  isStreaming = false,
   createdAt,
   details,
   attachments,
@@ -236,12 +238,20 @@ export function MessageRow({
         >
           {isCommentary ? <PsychologyOutlinedIcon fontSize="small" /> : renderActivityKindIcon(kind)}
           <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-            <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
+            <MarkdownMessageM
+              markdown={content}
+              isStreaming={isStreaming}
+              onOpenLink={onOpenLink}
+            />
           </Box>
         </Box>
       ) : (
         <>
-          <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
+          <MarkdownMessageM
+            markdown={content}
+            isStreaming={isStreaming}
+            onOpenLink={onOpenLink}
+          />
           {attachments.length > 0 ? <ImageAttachmentPreviewGrid attachments={attachments} /> : null}
           <Box
             className="assistant-message-actions"

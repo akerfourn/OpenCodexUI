@@ -95,6 +95,7 @@ export function AssistantTurnBlock({
             phase={item.phase}
             kind={item.kind}
             content={item.content}
+            isStreaming={isRunning && item.status === "streaming"}
             createdAt={item.createdAt}
             details={item.details}
             attachments={item.attachments ?? []}

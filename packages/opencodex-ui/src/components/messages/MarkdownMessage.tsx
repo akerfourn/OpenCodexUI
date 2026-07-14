@@ -2,7 +2,7 @@
  * Renders the markdown message component for the OpenCodex UI.
  */
 import { Box } from "@mui/material";
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
@@ -10,17 +10,22 @@ import remarkGfm from "remark-gfm";
 import { InlineCode } from "./InlineCode";
 import { MarkdownLink } from "./MarkdownLink";
 import { PreBlock } from "./PreBlock";
+import {
+  createStreamingMarkdownScheduler,
+  type StreamingMarkdownScheduler
+} from "./streamingMarkdownScheduler";
 
 type MarkdownMessageProps = {
   markdown: string;
-/**
- * Handles on open link.
- *
- * @param href Link target to open.
- *
- * @returns Nothing.
- */
-onOpenLink(href: string): void;
+  isStreaming?: boolean;
+  /** Opens one link rendered from the Markdown content. */
+  onOpenLink(href: string): void;
+};
+
+type RenderedMarkdownProps = {
+  markdown: string;
+  /** Opens one link rendered from the Markdown content. */
+  onOpenLink(href: string): void;
 };
 
 /**
@@ -30,7 +35,27 @@ onOpenLink(href: string): void;
  *
  * @returns Nothing.
  */
-export function MarkdownMessage({ markdown, onOpenLink }: MarkdownMessageProps) {
+export function MarkdownMessage({
+  markdown,
+  isStreaming = false,
+  onOpenLink
+}: MarkdownMessageProps) {
+  const renderedMarkdown = useStreamingMarkdown(markdown, isStreaming);
+
+  return (
+    <RenderedMarkdownM markdown={renderedMarkdown} onOpenLink={onOpenLink} />
+  );
+}
+
+export const MarkdownMessageM = memo(MarkdownMessage);
+
+/**
+ * Renders the expensive Markdown parser and syntax-highlighting subtree.
+ *
+ * @param props Component props.
+ * @returns Rendered Markdown content.
+ */
+function RenderedMarkdown({ markdown, onOpenLink }: RenderedMarkdownProps) {
   return (
     <Box
       sx={{
@@ -87,4 +112,46 @@ export function MarkdownMessage({ markdown, onOpenLink }: MarkdownMessageProps) 
   );
 }
 
-export const MarkdownMessageM = memo(MarkdownMessage);
+const RenderedMarkdownM = memo(RenderedMarkdown);
+
+/**
+ * Returns a cadence-limited Markdown snapshot while content is streaming.
+ *
+ * Completed and historical content bypasses the scheduler so its final value
+ * is rendered during the same React update that marks it as complete.
+ *
+ * @param markdown Latest Markdown content.
+ * @param isStreaming Whether the content is still receiving deltas.
+ * @returns Markdown snapshot passed to the expensive rendering subtree.
+ */
+function useStreamingMarkdown(markdown: string, isStreaming: boolean): string {
+  const [streamedMarkdown, setStreamedMarkdown] = useState(markdown);
+  const schedulerRef = useRef<StreamingMarkdownScheduler | null>(null);
+
+  if (schedulerRef.current === null) {
+    schedulerRef.current = createStreamingMarkdownScheduler(markdown, setStreamedMarkdown);
+  }
+
+  useEffect(() => {
+    const scheduler = schedulerRef.current;
+
+    if (scheduler === null) {
+      return;
+    }
+
+    if (isStreaming) {
+      scheduler.schedule(markdown);
+      return;
+    }
+
+    scheduler.flush(markdown);
+  }, [isStreaming, markdown]);
+
+  useEffect(() => {
+    return () => {
+      schedulerRef.current?.cancel();
+    };
+  }, []);
+
+  return isStreaming ? streamedMarkdown : markdown;
+}

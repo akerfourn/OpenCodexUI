@@ -88,6 +88,7 @@ export function ChatSubTurnView({
           phase={assistantAnswer.phase}
           kind={assistantAnswer.kind}
           content={assistantAnswer.content}
+          isStreaming={isReasoningRunning && assistantAnswer.status === "streaming"}
           createdAt={assistantAnswer.createdAt ?? turn.completedAt ?? turn.startedAt}
           details={assistantAnswer.details}
           attachments={assistantAnswer.attachments ?? []}
