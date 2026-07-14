@@ -239,8 +239,17 @@ export class OpenCodexRequestRouter {
         return this.runtime.listGitTags(request.projectPath, request.sourceId);
       case "git.tags.fetch":
         return this.runtime.fetchGitTags(request.projectPath, request.sourceId);
+      case "git.tags.push":
+        return this.runtime.pushGitTags(request.projectPath, request.sourceId);
       case "git.tag.create":
         return this.runtime.createGitTag(request.projectPath, request.sourceId, request.tagName);
+      case "git.tag.push":
+        return this.runtime.pushGitTag(
+          request.projectPath,
+          request.sourceId,
+          request.tagName,
+          request.force
+        );
       case "git.tag.commitsSince":
         return this.runtime.countGitCommitsSinceTag(
           request.projectPath,

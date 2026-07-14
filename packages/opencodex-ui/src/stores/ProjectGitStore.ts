@@ -16,6 +16,7 @@ import type {
   OpenCodexGitStatus,
   OpenCodexGitTag,
   OpenCodexGitTagFetchResult,
+  OpenCodexGitTagListResult,
   OpenCodexProject,
   OpenCodexProjectPreferences
 } from "@open-codex-ui/opencodex-protocol";
@@ -57,6 +58,8 @@ export class ProjectGitStore {
   branches: OpenCodexGitBranch[] = [];
   /** Tags loaded for release/reference workflows. */
   tags: OpenCodexGitTag[] = [];
+  /** Remote used to compare and publish the loaded tags. */
+  tagsRemoteName: string | null = null;
   /** Git log entries loaded in pages. */
   logCommits: OpenCodexGitLogCommit[] = [];
   /** Commit details cached by commit hash. */
@@ -73,6 +76,8 @@ export class ProjectGitStore {
   branchErrorMessage: string | null = null;
   /** Last tag operation error shown by tag modals. */
   tagErrorMessage: string | null = null;
+  /** Last remote tag synchronization error. */
+  tagSyncErrorMessage: string | null = null;
   /** Last Git log loading error. */
   logErrorMessage: string | null = null;
   /** Last remote configuration error. */
@@ -105,6 +110,10 @@ export class ProjectGitStore {
   isMergingBranch = false;
   /** Whether a tag creation is in flight. */
   isCreatingTag = false;
+  /** Tag currently being pushed, or `null` when no individual push is active. */
+  pushingTagName: string | null = null;
+  /** Whether all local tags are being pushed. */
+  isPushingAllTags = false;
   /** Whether commits since the reference tag are loading. */
   isLoadingTagReference = false;
   /** Commit hash currently loading detailed data. */
@@ -238,6 +247,46 @@ export class ProjectGitStore {
       !this.isLoading &&
       !this.isPushing
     );
+  }
+
+  /** Whether at least one local tag can be pushed without force. */
+  get canPushTags(): boolean {
+    return (
+      this.status.isRepository &&
+      this.tagsRemoteName !== null &&
+      this.tags.some((tag) => tag.syncStatus === "local-only" || tag.syncStatus === "diverged") &&
+      this.pushingTagName === null &&
+      !this.isPushingAllTags &&
+      !this.isFetchingTags &&
+      !this.isLoadingTags
+    );
+  }
+
+  /**
+   * Checks whether one tag can be pushed without force.
+   *
+   * @param tag Tag to inspect.
+   * @returns Whether the tag has a known remote and needs publication.
+   */
+  canPushTag(tag: OpenCodexGitTag): boolean {
+    return (
+      this.tagsRemoteName !== null &&
+      (tag.syncStatus === "local-only" || tag.syncStatus === "diverged") &&
+      this.pushingTagName === null &&
+      !this.isPushingAllTags &&
+      !this.isFetchingTags &&
+      !this.isLoadingTags
+    );
+  }
+
+  /**
+   * Checks whether a tag operation is currently active for one tag.
+   *
+   * @param tagName Tag name.
+   * @returns Whether the tag is being pushed.
+   */
+  isPushingTag(tagName: string): boolean {
+    return this.pushingTagName === tagName;
   }
 
   /** Preferred remote used for publication hints. */
@@ -565,6 +614,8 @@ export class ProjectGitStore {
   async loadTags(): Promise<void> {
     if (!this.isAvailable || !this.status.isRepository) {
       this.tags = [];
+      this.tagsRemoteName = null;
+      this.tagSyncErrorMessage = null;
       this.selectedReferenceTagName = null;
       this.commitsSinceReferenceTag = null;
       this.hasLoadedTags = true;
@@ -573,6 +624,7 @@ export class ProjectGitStore {
 
     this.isLoadingTags = true;
     this.tagErrorMessage = null;
+    this.tagSyncErrorMessage = null;
 
     try {
       await this.refreshLocalTags();
@@ -695,12 +747,19 @@ export class ProjectGitStore {
    * @returns Promise resolved when fetch completes.
    */
   async fetchTags(): Promise<void> {
-    if (!this.isAvailable || !this.status.isRepository || this.isFetchingTags) {
+    if (
+      !this.isAvailable ||
+      !this.status.isRepository ||
+      this.isFetchingTags ||
+      this.pushingTagName !== null ||
+      this.isPushingAllTags
+    ) {
       return;
     }
 
     this.isFetchingTags = true;
     this.tagErrorMessage = null;
+    this.tagSyncErrorMessage = null;
 
     try {
       const result = await this.root.request<OpenCodexGitTagFetchResult>({
@@ -710,8 +769,7 @@ export class ProjectGitStore {
       });
 
       runInAction(() => {
-        this.tags = result.tags;
-        this.keepSelectedReferenceTag();
+        this.applyTagListResult(result);
       });
 
       if (result.warning !== null) {
@@ -785,7 +843,7 @@ export class ProjectGitStore {
     this.tagErrorMessage = null;
 
     try {
-      const tags = await this.root.request<OpenCodexGitTag[]>({
+      const result = await this.root.request<OpenCodexGitTagListResult>({
         type: "git.tag.create",
         projectPath: this.projectStore.projectPath,
         sourceId: this.projectStore.project.sourceId,
@@ -793,7 +851,7 @@ export class ProjectGitStore {
       });
 
       runInAction(() => {
-        this.tags = tags;
+        this.applyTagListResult(result);
         this.selectedReferenceTagName = normalizedTagName;
       });
       const loaded = await this.loadCommitsSinceReferenceTag(normalizedTagName);
@@ -811,6 +869,92 @@ export class ProjectGitStore {
     } finally {
       runInAction(() => {
         this.isCreatingTag = false;
+      });
+    }
+  }
+
+  /**
+   * Pushes one local tag to the configured remote.
+   *
+   * @param tagName Tag name.
+   * @param force Whether an existing remote tag may be replaced.
+   * @returns Whether the push succeeded.
+   */
+  async pushTag(tagName: string, force = false): Promise<boolean> {
+    const normalizedTagName = tagName.trim();
+
+    if (
+      !this.isAvailable ||
+      !this.status.isRepository ||
+      normalizedTagName.length === 0 ||
+      this.pushingTagName !== null ||
+      this.isPushingAllTags ||
+      this.isFetchingTags ||
+      this.isLoadingTags
+    ) {
+      return false;
+    }
+
+    this.pushingTagName = normalizedTagName;
+    this.tagErrorMessage = null;
+
+    try {
+      const result = await this.root.request<OpenCodexGitTagListResult>({
+        type: "git.tag.push",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId,
+        tagName: normalizedTagName,
+        force
+      });
+
+      runInAction(() => {
+        this.applyTagListResult(result);
+      });
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.tagErrorMessage = readErrorMessage(error);
+      });
+      return false;
+    } finally {
+      runInAction(() => {
+        this.pushingTagName = null;
+      });
+    }
+  }
+
+  /**
+   * Pushes all local tags to the configured remote without force.
+   *
+   * @returns Whether the push succeeded.
+   */
+  async pushTags(): Promise<boolean> {
+    if (!this.canPushTags) {
+      return false;
+    }
+
+    this.isPushingAllTags = true;
+    this.tagErrorMessage = null;
+
+    try {
+      const result = await this.root.request<OpenCodexGitTagListResult>({
+        type: "git.tags.push",
+        projectPath: this.projectStore.projectPath,
+        sourceId: this.projectStore.project.sourceId
+      });
+
+      runInAction(() => {
+        this.applyTagListResult(result);
+      });
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.tagErrorMessage = readErrorMessage(error);
+      });
+      return false;
+    } finally {
+      runInAction(() => {
+        this.isPushingAllTags = false;
       });
     }
   }
@@ -1432,20 +1576,31 @@ export class ProjectGitStore {
    * @returns Promise resolved when tags are loaded.
    */
   private async refreshLocalTags(): Promise<void> {
-    const tags = await this.root.request<OpenCodexGitTag[]>({
+    const result = await this.root.request<OpenCodexGitTagListResult>({
       type: "git.tags",
       projectPath: this.projectStore.projectPath,
       sourceId: this.projectStore.project.sourceId
     });
 
     runInAction(() => {
-      this.tags = tags;
-      this.keepSelectedReferenceTag();
+      this.applyTagListResult(result);
     });
 
     if (this.selectedReferenceTagName !== null) {
       await this.loadCommitsSinceReferenceTag(this.selectedReferenceTagName);
     }
+  }
+
+  /**
+   * Applies a tag listing and keeps the selected reference consistent.
+   *
+   * @param result Tag listing returned by the backend.
+   */
+  private applyTagListResult(result: OpenCodexGitTagListResult): void {
+    this.tags = result.tags;
+    this.tagsRemoteName = result.remoteName;
+    this.tagSyncErrorMessage = result.remoteError;
+    this.keepSelectedReferenceTag();
   }
 
   /**
@@ -1489,10 +1644,12 @@ export class ProjectGitStore {
    */
   private clearTags(): void {
     this.tags = [];
+    this.tagsRemoteName = null;
     this.selectedReferenceTagName = null;
     this.commitsSinceReferenceTag = null;
     this.hasLoadedTags = true;
     this.tagErrorMessage = null;
+    this.tagSyncErrorMessage = null;
   }
 
   /**

@@ -574,20 +574,35 @@ export type OpenCodexGitBranch = {
 };
 
 /**
- * Lightweight Git tag metadata.
+ * Synchronization state for a local Git tag and its configured remote.
+ */
+export type OpenCodexGitTagSyncStatus = "synced" | "local-only" | "diverged" | "unknown";
+
+/**
+ * Lightweight Git tag metadata and remote synchronization state.
  */
 export type OpenCodexGitTag = {
   name: string;
   fullName: string;
   targetHash: string | null;
   createdAt: string | null;
+  remoteTargetHash: string | null;
+  syncStatus: OpenCodexGitTagSyncStatus;
+};
+
+/**
+ * Git tag listing with the remote used for synchronization checks.
+ */
+export type OpenCodexGitTagListResult = {
+  tags: OpenCodexGitTag[];
+  remoteName: string | null;
+  remoteError: string | null;
 };
 
 /**
  * Tag listing result with optional fetch warning.
  */
-export type OpenCodexGitTagFetchResult = {
-  tags: OpenCodexGitTag[];
+export type OpenCodexGitTagFetchResult = OpenCodexGitTagListResult & {
   warning: string | null;
 };
 

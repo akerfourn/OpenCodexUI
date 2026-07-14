@@ -13,7 +13,8 @@ import type {
   OpenCodexGitRemote,
   OpenCodexGitStatus,
   OpenCodexGitTag,
-  OpenCodexGitTagFetchResult
+  OpenCodexGitTagFetchResult,
+  OpenCodexGitTagListResult
 } from "@open-codex-ui/opencodex-protocol";
 
 import { parseGitStatus } from "./gitStatusParser.js";
@@ -26,6 +27,12 @@ type GitProcessResult = Pick<
 type PendingCommitMessageSource = {
   markerPath: string;
   messagePath: string;
+};
+
+type RemoteTagSnapshot = {
+  remoteName: string | null;
+  tags: Map<string, string>;
+  error: string | null;
 };
 
 export type OpenCodexStagedCommitContext = {
@@ -177,15 +184,21 @@ export class GitService {
    * @param sourceId Source identifier.
    * @returns Existing tags, newest first when Git can provide a date.
    */
-  async tags(projectPath: string, sourceId: string | null): Promise<OpenCodexGitTag[]> {
+  async tags(projectPath: string, sourceId: string | null): Promise<OpenCodexGitTagListResult> {
     const response = await this.runGit(projectPath, sourceId, [
       "for-each-ref",
       "--sort=-creatordate",
-      "--format=%(refname)%09%(refname:short)%09%(objectname:short)%09%(creatordate:iso-strict)",
+      "--format=%(refname)%09%(refname:short)%09%(objectname)%09%(creatordate:iso-strict)",
       "refs/tags"
     ]);
+    const localTags = parseGitTags(response.stdout);
+    const remoteSnapshot = await this.readRemoteTags(projectPath, sourceId);
 
-    return parseGitTags(response.stdout);
+    return {
+      tags: mergeTagSynchronization(localTags, remoteSnapshot),
+      remoteName: remoteSnapshot.remoteName,
+      remoteError: remoteSnapshot.error
+    };
   }
 
   /**
@@ -196,12 +209,11 @@ export class GitService {
    * @returns Refreshed tag collection and optional fetch warning.
    */
   async fetchTags(projectPath: string, sourceId: string | null): Promise<OpenCodexGitTagFetchResult> {
-    let warning: string | null = null;
-
-    warning = await this.fetchTagsBestEffort(projectPath, sourceId);
+    const warning = await this.fetchTagsBestEffort(projectPath, sourceId);
+    const result = await this.tags(projectPath, sourceId);
 
     return {
-      tags: await this.tags(projectPath, sourceId),
+      ...result,
       warning
     };
   }
@@ -218,10 +230,57 @@ export class GitService {
     projectPath: string,
     sourceId: string | null,
     tagName: string
-  ): Promise<OpenCodexGitTag[]> {
+  ): Promise<OpenCodexGitTagListResult> {
     const normalizedTagName = normalizeTagName(tagName);
     await this.validateTagName(projectPath, sourceId, normalizedTagName);
     await this.runGit(projectPath, sourceId, ["tag", normalizedTagName]);
+    return await this.tags(projectPath, sourceId);
+  }
+
+  /**
+   * Pushes one local tag to the configured remote.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param tagName Tag name.
+   * @param force Whether an existing remote tag may be replaced.
+   * @returns Refreshed tag listing.
+   */
+  async pushTag(
+    projectPath: string,
+    sourceId: string | null,
+    tagName: string,
+    force: boolean
+  ): Promise<OpenCodexGitTagListResult> {
+    const normalizedTagName = normalizeTagName(tagName);
+    await this.validateTagName(projectPath, sourceId, normalizedTagName);
+    const remoteName = await this.resolveDefaultRemoteName(projectPath, sourceId);
+    const refspec = `refs/tags/${normalizedTagName}`;
+    const args = force
+      ? ["push", "--force", remoteName, refspec]
+      : ["push", remoteName, refspec];
+
+    await this.runGit(projectPath, sourceId, args, { timeoutMs: 120_000 });
+
+    return await this.tags(projectPath, sourceId);
+  }
+
+  /**
+   * Pushes all local tags to the configured remote.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Refreshed tag listing.
+   */
+  async pushTags(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexGitTagListResult> {
+    const remoteName = await this.resolveDefaultRemoteName(projectPath, sourceId);
+    await this.runGit(projectPath, sourceId, ["push", remoteName, "--tags"], {
+      timeoutMs: 120_000
+    });
+
     return await this.tags(projectPath, sourceId);
   }
 
@@ -672,6 +731,61 @@ export class GitService {
   }
 
   /**
+   * Reads tags directly from the configured remote without changing local refs.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Remote tag snapshot and an optional read error.
+   */
+  private async readRemoteTags(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<RemoteTagSnapshot> {
+    let remoteName: string;
+
+    try {
+      remoteName = await this.resolveDefaultRemoteName(projectPath, sourceId);
+    } catch (error) {
+      const message = readUnknownErrorMessage(error);
+
+      if (message === "No Git remote is configured for this repository.") {
+        return {
+          remoteName: null,
+          tags: new Map<string, string>(),
+          error: null
+        };
+      }
+
+      return {
+        remoteName: null,
+        tags: new Map<string, string>(),
+        error: message
+      };
+    }
+
+    const response = await this.runGit(
+      projectPath,
+      sourceId,
+      ["ls-remote", "--tags", "--refs", remoteName],
+      { allowFailure: true, timeoutMs: 120_000 }
+    );
+
+    if (response.exitCode !== 0) {
+      return {
+        remoteName,
+        tags: new Map<string, string>(),
+        error: createGitErrorMessage(response)
+      };
+    }
+
+    return {
+      remoteName,
+      tags: parseRemoteTags(response.stdout),
+      error: null
+    };
+  }
+
+  /**
    * Fetches tags without failing the main tag-listing workflow.
    *
    * @param projectPath Project working directory.
@@ -1013,8 +1127,81 @@ function parseGitTagLine(line: string): OpenCodexGitTag | null {
     name: shortName,
     fullName,
     targetHash: targetHash.length > 0 ? targetHash : null,
-    createdAt: createdAt.length > 0 ? createdAt : null
+    createdAt: createdAt.length > 0 ? createdAt : null,
+    remoteTargetHash: null,
+    syncStatus: "unknown"
   };
+}
+
+/**
+ * Parses `git ls-remote --tags --refs` output.
+ *
+ * @param output Raw remote tag output.
+ * @returns Remote tag hashes indexed by tag name.
+ */
+function parseRemoteTags(output: string): Map<string, string> {
+  const remoteTags = new Map<string, string>();
+
+  output.split("\n").forEach((line) => {
+    const columns = line.trim().split("\t");
+    const targetHash = columns[0] ?? "";
+    const fullName = columns[1] ?? "";
+
+    if (!fullName.startsWith("refs/tags/") || targetHash.length === 0) {
+      return;
+    }
+
+    remoteTags.set(fullName.slice("refs/tags/".length), targetHash);
+  });
+
+  return remoteTags;
+}
+
+/**
+ * Combines local tags with the latest remote tag snapshot.
+ *
+ * @param localTags Local tag rows.
+ * @param remoteSnapshot Remote tag snapshot.
+ * @returns Local tags annotated with synchronization state.
+ */
+function mergeTagSynchronization(
+  localTags: OpenCodexGitTag[],
+  remoteSnapshot: RemoteTagSnapshot
+): OpenCodexGitTag[] {
+  return localTags.map((tag) => {
+    const remoteTargetHash = remoteSnapshot.tags.get(tag.name) ?? null;
+    const syncStatus = readTagSyncStatus(tag.targetHash, remoteTargetHash, remoteSnapshot);
+
+    return {
+      ...tag,
+      remoteTargetHash,
+      syncStatus
+    };
+  });
+}
+
+/**
+ * Determines the synchronization state for one local tag.
+ *
+ * @param localTargetHash Local tag object hash.
+ * @param remoteTargetHash Remote tag object hash.
+ * @param remoteSnapshot Remote read state.
+ * @returns Tag synchronization status.
+ */
+function readTagSyncStatus(
+  localTargetHash: string | null,
+  remoteTargetHash: string | null,
+  remoteSnapshot: RemoteTagSnapshot
+): OpenCodexGitTag["syncStatus"] {
+  if (remoteSnapshot.remoteName === null || remoteSnapshot.error !== null) {
+    return "unknown";
+  }
+
+  if (localTargetHash === null || remoteTargetHash === null) {
+    return "local-only";
+  }
+
+  return localTargetHash === remoteTargetHash ? "synced" : "diverged";
 }
 
 /**

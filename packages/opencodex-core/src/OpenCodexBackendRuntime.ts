@@ -29,8 +29,8 @@ import type {
   OpenCodexGitLogPage,
   OpenCodexGitRemote,
   OpenCodexGitStatus,
-  OpenCodexGitTag,
   OpenCodexGitTagFetchResult,
+  OpenCodexGitTagListResult,
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
@@ -1440,7 +1440,7 @@ export class OpenCodexBackendRuntime {
   async listGitTags(
     projectPath: string,
     sourceId: string | null
-  ): Promise<OpenCodexGitTag[]> {
+  ): Promise<OpenCodexGitTagListResult> {
     return await this.gitService.tags(projectPath, sourceId);
   }
 
@@ -1472,8 +1472,40 @@ export class OpenCodexBackendRuntime {
     projectPath: string,
     sourceId: string | null,
     tagName: string
-  ): Promise<OpenCodexGitTag[]> {
+  ): Promise<OpenCodexGitTagListResult> {
     return await this.gitService.createTag(projectPath, sourceId, tagName);
+  }
+
+  /**
+   * Pushes one Git tag to the configured remote.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @param tagName Tag name.
+   * @param force Whether an existing remote tag may be replaced.
+   * @returns Refreshed tag listing.
+   */
+  async pushGitTag(
+    projectPath: string,
+    sourceId: string | null,
+    tagName: string,
+    force: boolean
+  ): Promise<OpenCodexGitTagListResult> {
+    return await this.gitService.pushTag(projectPath, sourceId, tagName, force);
+  }
+
+  /**
+   * Pushes all local Git tags to the configured remote.
+   *
+   * @param projectPath Project path.
+   * @param sourceId Source identifier.
+   * @returns Refreshed tag listing.
+   */
+  async pushGitTags(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexGitTagListResult> {
+    return await this.gitService.pushTags(projectPath, sourceId);
   }
 
   /**
