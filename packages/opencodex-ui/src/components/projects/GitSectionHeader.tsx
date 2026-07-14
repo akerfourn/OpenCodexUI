@@ -9,9 +9,12 @@ type GitSectionHeaderProps = {
   primaryActionLabel: string;
   secondaryActionDisabled: boolean;
   secondaryActionLabel: string;
+  tertiaryActionDisabled?: boolean;
+  tertiaryActionLabel?: string;
   title: string;
   onPrimaryAction(): void;
   onSecondaryAction(): void;
+  onTertiaryAction?(): void;
 };
 
 /**
@@ -27,9 +30,12 @@ export function GitSectionHeader({
   primaryActionLabel,
   secondaryActionDisabled,
   secondaryActionLabel,
+  tertiaryActionDisabled = false,
+  tertiaryActionLabel,
   title,
   onPrimaryAction,
-  onSecondaryAction
+  onSecondaryAction,
+  onTertiaryAction
 }: GitSectionHeaderProps) {
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
@@ -42,6 +48,11 @@ export function GitSectionHeader({
       <Button size="small" disabled={secondaryActionDisabled} onClick={onSecondaryAction}>
         {secondaryActionLabel}
       </Button>
+      {tertiaryActionLabel !== undefined && onTertiaryAction !== undefined ? (
+        <Button size="small" disabled={tertiaryActionDisabled} onClick={onTertiaryAction}>
+          {tertiaryActionLabel}
+        </Button>
+      ) : null}
     </Stack>
   );
 }

@@ -623,6 +623,13 @@ textarea {
   min-width: 0;
 }
 
+.git-deferred-section {
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 80%, var(--vscode-focusBorder));
+  border-radius: 8px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 94%, var(--vscode-focusBorder));
+}
+
 .git-file-row {
   min-width: 0;
   border-radius: 6px;

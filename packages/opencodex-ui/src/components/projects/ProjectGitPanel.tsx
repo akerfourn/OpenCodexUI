@@ -11,6 +11,7 @@ import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutl
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import {
   Alert,
   Box,
@@ -144,6 +145,22 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   function handleStageAll(): void {
     void gitStore.stageAll();
+  }
+
+  function handleDeferSelected(): void {
+    void gitStore.deferSelected();
+  }
+
+  function handleDeferPath(path: string): void {
+    void gitStore.deferPath(path);
+  }
+
+  function handleRestoreDeferredPath(path: string): void {
+    void gitStore.restoreDeferredPath(path);
+  }
+
+  function handleRestoreAllDeferred(): void {
+    void gitStore.restoreAllDeferred();
   }
 
   function handleUnstageSelected(): void {
@@ -406,25 +423,33 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                 count={gitStore.changedFilesCount}
                 primaryActionLabel={t(`${gitLabelsKey}.stageSelected`)}
                 secondaryActionLabel={t(`${gitLabelsKey}.stageAll`)}
-                primaryActionDisabled={gitStore.selectedChangedPaths.length === 0 || gitStore.isLoading}
-                secondaryActionDisabled={gitStore.changedFilesCount === 0 || gitStore.isLoading}
+                tertiaryActionDisabled={gitStore.selectedChangedPaths.length === 0 || gitStore.isBusy}
+                tertiaryActionLabel={t("git.deferSelected")}
+                primaryActionDisabled={gitStore.selectedChangedPaths.length === 0 || gitStore.isBusy}
+                secondaryActionDisabled={gitStore.changedFilesCount === 0 || gitStore.isBusy}
                 onPrimaryAction={handleStageSelected}
                 onSecondaryAction={handleStageAll}
+                onTertiaryAction={handleDeferSelected}
               />
-              {gitStore.status.changedFiles.length === 0 ? (
+              {gitStore.stageableChangedFiles.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
                   {t(`${gitLabelsKey}.noChangedFiles`)}
                 </Typography>
               ) : (
                 <Stack className="git-file-list" spacing={0.25}>
-                  {gitStore.status.changedFiles.map((file) => (
+                  {gitStore.stageableChangedFiles.map((file) => (
                     <ProjectGitFileRow
                       key={`changed:${file.path}`}
                       actionIcon={<KeyboardArrowDownOutlinedIcon fontSize="small" />}
                       actionLabel={t(`${gitLabelsKey}.stageFile`)}
                       canOpenFile={canOpenFiles}
                       checked={gitStore.selectedChangedPaths.includes(file.path)}
+                      deferDirectoryLabel={t("git.deferDirectory")}
+                      deferFileLabel={t("git.deferFile")}
+                      disabled={gitStore.isBusy}
                       file={file}
+                      onDeferDirectory={handleDeferPath}
+                      onDeferFile={handleDeferPath}
                       onAction={gitStore.stagePath}
                       onOpenFile={handleOpenFile}
                       onToggle={gitStore.toggleChangedPath}
@@ -434,6 +459,44 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
               )}
             </Stack>
 
+            {gitStore.deferredChangedFiles.length > 0 ? (
+              <Stack className="git-deferred-section" spacing={1}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                  <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
+                    <Typography variant="subtitle2">
+                      {t("git.deferred", { count: gitStore.deferredFilesCount })}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {t("git.deferredDescription")}
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    disabled={gitStore.isBusy}
+                    onClick={handleRestoreAllDeferred}
+                  >
+                    {t("git.restoreAllDeferred")}
+                  </Button>
+                </Stack>
+                <Stack className="git-file-list" spacing={0.25}>
+                  {gitStore.deferredChangedFiles.map((file) => (
+                    <ProjectGitFileRow
+                      key={`deferred:${file.path}`}
+                      actionIcon={<UnarchiveOutlinedIcon fontSize="small" />}
+                      actionLabel={t("git.restoreDeferred")}
+                      actionPath={gitStore.getDeferredPathFor(file.path) ?? file.path}
+                      canOpenFile={canOpenFiles}
+                      checked={false}
+                      disabled={gitStore.isBusy}
+                      file={file}
+                      onAction={gitStore.restoreDeferredPath}
+                      onOpenFile={handleOpenFile}
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+            ) : null}
+
             <Divider />
 
             <Stack spacing={1}>
@@ -442,8 +505,8 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                 count={gitStore.stagedFilesCount}
                 primaryActionLabel={t(`${gitLabelsKey}.unstageSelected`)}
                 secondaryActionLabel={t(`${gitLabelsKey}.unstageAll`)}
-                primaryActionDisabled={gitStore.selectedStagedPaths.length === 0 || gitStore.isLoading}
-                secondaryActionDisabled={gitStore.stagedFilesCount === 0 || gitStore.isLoading}
+                primaryActionDisabled={gitStore.selectedStagedPaths.length === 0 || gitStore.isBusy}
+                secondaryActionDisabled={gitStore.stagedFilesCount === 0 || gitStore.isBusy}
                 onPrimaryAction={handleUnstageSelected}
                 onSecondaryAction={handleUnstageAll}
               />
@@ -460,6 +523,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                       actionLabel={t(`${gitLabelsKey}.unstageFile`)}
                       canOpenFile={canOpenFiles}
                       checked={gitStore.selectedStagedPaths.includes(file.path)}
+                      disabled={gitStore.isBusy}
                       file={file}
                       onAction={gitStore.unstagePath}
                       onOpenFile={handleOpenFile}

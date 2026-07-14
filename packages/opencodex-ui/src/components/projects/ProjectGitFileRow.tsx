@@ -1,21 +1,40 @@
 /**
  * Renders one Git file status row.
  */
-import type { ReactNode } from "react";
-
-import { Checkbox, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
+import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
+import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
+import {
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Checkbox,
+  Stack,
+  Tooltip,
+  Typography
+} from "@mui/material";
+import type { MouseEvent, ReactNode } from "react";
+import { useState } from "react";
 
 import type { OpenCodexGitFile } from "@open-codex-ui/opencodex-protocol";
 
 type ProjectGitFileRowProps = {
   actionIcon: ReactNode;
   actionLabel: string;
+  actionPath?: string;
   checked: boolean;
   canOpenFile: boolean;
+  deferDirectoryLabel?: string;
+  deferFileLabel?: string;
+  disabled?: boolean;
   file: OpenCodexGitFile;
+  onDeferDirectory?(path: string): void;
+  onDeferFile?(path: string): void;
   onAction(path: string): void;
   onOpenFile(path: string): void;
-  onToggle(path: string): void;
+  onToggle?(path: string): void;
 };
 
 /**
@@ -28,19 +47,57 @@ type ProjectGitFileRowProps = {
 export function ProjectGitFileRow({
   actionIcon,
   actionLabel,
+  actionPath,
   checked,
   canOpenFile,
+  deferDirectoryLabel,
+  deferFileLabel,
+  disabled = false,
   file,
+  onDeferDirectory,
+  onDeferFile,
   onAction,
   onOpenFile,
   onToggle
 }: ProjectGitFileRowProps) {
+  const [deferMenuAnchor, setDeferMenuAnchor] = useState<HTMLElement | null>(null);
+
   function handleToggle(): void {
-    onToggle(file.path);
+    onToggle?.(file.path);
   }
 
   function handleAction(): void {
-    onAction(file.path);
+    onAction(actionPath ?? file.path);
+  }
+
+  function handleDeferFile(): void {
+    onDeferFile?.(file.path);
+  }
+
+  function handleDeferDirectory(): void {
+    const directory = splitGitPath(file.path).directory;
+
+    if (directory.length > 0) {
+      onDeferDirectory?.(directory);
+    }
+  }
+
+  function handleOpenDeferMenu(event: MouseEvent<HTMLButtonElement>): void {
+    setDeferMenuAnchor(event.currentTarget);
+  }
+
+  function handleCloseDeferMenu(): void {
+    setDeferMenuAnchor(null);
+  }
+
+  function handleDeferFileFromMenu(): void {
+    handleCloseDeferMenu();
+    handleDeferFile();
+  }
+
+  function handleDeferDirectoryFromMenu(): void {
+    handleCloseDeferMenu();
+    handleDeferDirectory();
   }
 
   function handleOpenFile(): void {
@@ -73,9 +130,10 @@ export function ProjectGitFileRow({
     >
       <Checkbox
         checked={checked}
+        disabled={disabled || onToggle === undefined}
         size="small"
         slotProps={{ input: { "aria-label": file.path } }}
-        onChange={handleToggle}
+        onChange={onToggle === undefined ? undefined : handleToggle}
       />
       <span className="git-file-copy" title={file.path}>
         {nameContent}
@@ -89,10 +147,48 @@ export function ProjectGitFileRow({
         {statusDisplay}
       </span>
       <Tooltip title={actionLabel}>
-        <IconButton aria-label={actionLabel} size="small" onClick={handleAction}>
+        <IconButton aria-label={actionLabel} disabled={disabled} size="small" onClick={handleAction}>
           {actionIcon}
         </IconButton>
       </Tooltip>
+      {onDeferFile !== undefined ? (
+        <>
+          <Tooltip title={deferFileLabel ?? ""}>
+            <IconButton
+              aria-label={deferFileLabel}
+              disabled={disabled}
+              size="small"
+              onClick={handleOpenDeferMenu}
+            >
+              <MoreVertOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Menu
+            anchorEl={deferMenuAnchor}
+            open={deferMenuAnchor !== null}
+            onClose={handleCloseDeferMenu}
+          >
+            <MenuItem
+              onClick={handleDeferFileFromMenu}
+            >
+              <ListItemIcon>
+                <ArchiveOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>{deferFileLabel}</ListItemText>
+            </MenuItem>
+            {onDeferDirectory !== undefined && fileDisplay.directory.length > 0 ? (
+              <MenuItem
+                onClick={handleDeferDirectoryFromMenu}
+              >
+                <ListItemIcon>
+                  <FolderOutlinedIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>{deferDirectoryLabel}</ListItemText>
+              </MenuItem>
+            ) : null}
+          </Menu>
+        </>
+      ) : null}
     </Stack>
   );
 }

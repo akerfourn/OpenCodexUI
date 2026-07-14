@@ -9,6 +9,7 @@ import type {
   OpenCodexGitBranchKind,
   OpenCodexGitCommitDetails,
   OpenCodexGitCommitResult,
+  OpenCodexGitFile,
   OpenCodexGitLogCommit,
   OpenCodexGitLogPage,
   OpenCodexGitRemote,
@@ -21,6 +22,14 @@ import type {
 
 import type { ProjectStore } from "./ProjectStore";
 import type { RootStore } from "./RootStore";
+import {
+  findDeferredPath,
+  isPathDeferred,
+  mergeDeferredPaths,
+  normalizeDeferredPath,
+  normalizeDeferredPaths,
+  removeDeferredPath
+} from "./gitDeferredPaths";
 import { cloneProjectPreferences } from "./projectPreferencesDto";
 
 const emptyGitStatus: OpenCodexGitStatus = {
@@ -56,6 +65,8 @@ export class ProjectGitStore {
   selectedReferenceTagName: string | null = null;
   /** Number of commits since the selected reference tag. */
   commitsSinceReferenceTag: number | null = null;
+  /** Relative files or directories excluded from OpenCodexUI staging actions. */
+  deferredPaths: string[] = [];
   /** Last generic Git error shown by the panel. */
   errorMessage: string | null = null;
   /** Last branch operation error shown by branch modals. */
@@ -106,6 +117,8 @@ export class ProjectGitStore {
   isInitializingRepository = false;
   /** Whether remote configuration is being saved. */
   isSavingRemote = false;
+  /** Whether deferred-path preferences are being persisted. */
+  isUpdatingDeferredPaths = false;
   /** Whether a pull operation is in flight. */
   isPulling = false;
   /** Whether a push or branch publication is in flight. */
@@ -145,7 +158,27 @@ export class ProjectGitStore {
 
   /** Number of unstaged changed files. */
   get changedFilesCount(): number {
-    return this.status.changedFiles.length;
+    return this.stageableChangedFiles.length;
+  }
+
+  /** Files with unstaged changes that remain in the staging workflow. */
+  get stageableChangedFiles(): OpenCodexGitFile[] {
+    return this.status.changedFiles.filter((file) => !this.isPathDeferred(file.path));
+  }
+
+  /** Files with unstaged changes currently deferred in OpenCodexUI. */
+  get deferredChangedFiles(): OpenCodexGitFile[] {
+    return this.status.changedFiles.filter((file) => this.isPathDeferred(file.path));
+  }
+
+  /** Number of unstaged files currently deferred in OpenCodexUI. */
+  get deferredFilesCount(): number {
+    return this.deferredChangedFiles.length;
+  }
+
+  /** Whether a Git action should wait for a status or preference operation. */
+  get isBusy(): boolean {
+    return this.isLoading || this.isUpdatingDeferredPaths;
   }
 
   /** Number of staged files. */
@@ -160,7 +193,7 @@ export class ProjectGitStore {
       this.commitMessage.trim().length > 0 &&
       !this.isCommitting &&
       !this.isGeneratingCommitMessage &&
-      !this.isLoading
+      !this.isBusy
     );
   }
 
@@ -168,7 +201,7 @@ export class ProjectGitStore {
   get canGenerateCommitMessage(): boolean {
     return (
       this.stagedFilesCount > 0 &&
-      !this.isLoading &&
+      !this.isBusy &&
       !this.isGeneratingCommitMessage &&
       this.isAvailable
     );
@@ -255,6 +288,13 @@ export class ProjectGitStore {
    */
   applyProjectPreferences(preferences: OpenCodexProjectPreferences): void {
     const referenceTagName = normalizeNullableText(preferences.git?.referenceTagName ?? null);
+    const deferredPaths = normalizeDeferredPaths(preferences.git?.deferredPaths ?? []);
+
+    this.deferredPaths = deferredPaths;
+    this.selectedChangedPaths = keepExistingPaths(
+      this.selectedChangedPaths,
+      this.stageableChangedFiles.map((file) => file.path)
+    );
 
     if (referenceTagName === this.selectedReferenceTagName) {
       return;
@@ -274,7 +314,75 @@ export class ProjectGitStore {
    * @param path File path.
    */
   toggleChangedPath(path: string): void {
+    if (this.isPathDeferred(path)) {
+      return;
+    }
+
     this.selectedChangedPaths = togglePath(this.selectedChangedPaths, path);
+  }
+
+  /**
+   * Checks whether a path is covered by a deferred file or directory.
+   *
+   * @param path Relative Git path.
+   * @returns `true` when OpenCodexUI should exclude the path from staging.
+   */
+  isPathDeferred(path: string): boolean {
+    return isPathDeferred(path, this.deferredPaths);
+  }
+
+  /**
+   * Finds the deferred entry covering one changed file.
+   *
+   * @param path Relative Git file path.
+   * @returns Matching deferred entry, or `null`.
+   */
+  getDeferredPathFor(path: string): string | null {
+    return findDeferredPath(path, this.deferredPaths);
+  }
+
+  /**
+   * Defers selected changed files from OpenCodexUI staging actions.
+   *
+   * @returns Promise resolved when the preference update completes.
+   */
+  async deferSelected(): Promise<void> {
+    await this.updateDeferredPaths(mergeDeferredPaths(this.deferredPaths, this.selectedChangedPaths));
+  }
+
+  /**
+   * Defers one file or directory path from OpenCodexUI staging actions.
+   *
+   * @param path Relative file or directory path.
+   * @returns Promise resolved when the preference update completes.
+   */
+  async deferPath(path: string): Promise<void> {
+    const normalizedPath = normalizeDeferredPath(path);
+
+    if (normalizedPath === null) {
+      return;
+    }
+
+    await this.updateDeferredPaths(mergeDeferredPaths(this.deferredPaths, [normalizedPath]));
+  }
+
+  /**
+   * Restores one deferred file or directory entry to the staging workflow.
+   *
+   * @param path Deferred entry to restore.
+   * @returns Promise resolved when the preference update completes.
+   */
+  async restoreDeferredPath(path: string): Promise<void> {
+    await this.updateDeferredPaths(removeDeferredPath(this.deferredPaths, path));
+  }
+
+  /**
+   * Restores every deferred path to the staging workflow.
+   *
+   * @returns Promise resolved when the preference update completes.
+   */
+  async restoreAllDeferred(): Promise<void> {
+    await this.updateDeferredPaths([]);
   }
 
   /**
@@ -738,14 +846,14 @@ export class ProjectGitStore {
    * Stages selected changed files.
    */
   async stageSelected(): Promise<void> {
-    await this.stagePaths(this.selectedChangedPaths);
+    await this.stagePaths(this.selectedChangedPaths.filter((path) => !this.isPathDeferred(path)));
   }
 
   /**
    * Stages all changed files.
    */
   async stageAll(): Promise<void> {
-    await this.stagePaths(this.status.changedFiles.map((file) => file.path));
+    await this.stagePaths(this.stageableChangedFiles.map((file) => file.path));
   }
 
   /**
@@ -754,6 +862,10 @@ export class ProjectGitStore {
    * @param path File path.
    */
   async stagePath(path: string): Promise<void> {
+    if (this.isPathDeferred(path)) {
+      return;
+    }
+
     await this.stagePaths([path]);
   }
 
@@ -1036,6 +1148,67 @@ export class ProjectGitStore {
   }
 
   /**
+   * Persists a new project-local deferred path collection.
+   *
+   * @param nextPaths Desired normalized deferred paths.
+   */
+  private async updateDeferredPaths(nextPaths: string[]): Promise<void> {
+    const normalizedNextPaths = normalizeDeferredPaths(nextPaths);
+
+    if (
+      this.isUpdatingDeferredPaths ||
+      normalizedNextPaths.join("\u0000") === this.deferredPaths.join("\u0000")
+    ) {
+      return;
+    }
+
+    const previousPaths = this.deferredPaths;
+    const currentPreferences = cloneProjectPreferences(this.projectStore.project.preferences);
+    const preferences: OpenCodexProjectPreferences = {
+      ...currentPreferences,
+      git: {
+        ...currentPreferences.git,
+        deferredPaths: normalizedNextPaths
+      }
+    };
+
+    runInAction(() => {
+      this.deferredPaths = normalizedNextPaths;
+      this.selectedChangedPaths = keepExistingPaths(
+        this.selectedChangedPaths,
+        this.stageableChangedFiles.map((file) => file.path)
+      );
+      this.isUpdatingDeferredPaths = true;
+      this.errorMessage = null;
+    });
+
+    try {
+      const project = await this.root.request<OpenCodexProject>({
+        type: "projects.preferences.update",
+        projectId: this.projectStore.project.id,
+        patch: preferences
+      });
+
+      runInAction(() => {
+        this.projectStore.setProject(project);
+      });
+    } catch (error) {
+      runInAction(() => {
+        this.deferredPaths = previousPaths;
+        this.selectedChangedPaths = keepExistingPaths(
+          this.selectedChangedPaths,
+          this.stageableChangedFiles.map((file) => file.path)
+        );
+        this.errorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isUpdatingDeferredPaths = false;
+      });
+    }
+  }
+
+  /**
    * Unstages normalized file paths.
    *
    * @param paths File paths.
@@ -1211,7 +1384,7 @@ export class ProjectGitStore {
 
     this.selectedChangedPaths = keepExistingPaths(
       this.selectedChangedPaths,
-      status.changedFiles.map((file) => file.path)
+      this.stageableChangedFiles.map((file) => file.path)
     );
     this.selectedStagedPaths = keepExistingPaths(
       this.selectedStagedPaths,

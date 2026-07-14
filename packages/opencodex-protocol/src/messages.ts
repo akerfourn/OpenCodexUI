@@ -437,6 +437,8 @@ export type OpenCodexProjectCommandRuleApplyResult = {
 export type OpenCodexProjectPreferences = {
   git?: {
     referenceTagName?: string | null;
+    /** Relative paths temporarily excluded from OpenCodexUI staging actions. */
+    deferredPaths?: string[];
   };
   context?: {
     permissionsProfileId?: string | null;

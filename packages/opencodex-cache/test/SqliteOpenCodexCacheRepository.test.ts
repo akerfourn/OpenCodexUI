@@ -111,13 +111,15 @@ describe("SqliteOpenCodexCacheRepository", () => {
 
     const updatedProject = await repository.updateProjectPreferences(project.id, {
       git: {
-        referenceTagName: "v1.2.0"
+        referenceTagName: "v1.2.0",
+        deferredPaths: ["src/experimental.ts", "notes/"]
       }
     });
 
     expect(updatedProject?.preferences).toEqual({
       git: {
-        referenceTagName: "v1.2.0"
+        referenceTagName: "v1.2.0",
+        deferredPaths: ["notes", "src/experimental.ts"]
       }
     });
 
@@ -126,7 +128,8 @@ describe("SqliteOpenCodexCacheRepository", () => {
 
     expect(persistedProject?.preferences).toEqual({
       git: {
-        referenceTagName: "v1.2.0"
+        referenceTagName: "v1.2.0",
+        deferredPaths: ["notes", "src/experimental.ts"]
       }
     });
   });

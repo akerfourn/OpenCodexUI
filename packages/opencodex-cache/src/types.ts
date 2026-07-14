@@ -63,6 +63,7 @@ export type CachedProject = {
 export type CachedProjectPreferences = {
   git?: {
     referenceTagName?: string | null;
+    deferredPaths?: string[];
   };
   context?: {
     permissionsProfileId?: string | null;

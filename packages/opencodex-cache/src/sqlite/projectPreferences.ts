@@ -75,12 +75,56 @@ function normalizeGitPreferences(value: unknown): CachedProjectPreferences["git"
   }
 
   const referenceTagName = normalizeNullableText(value.referenceTagName);
+  const deferredPaths = normalizeDeferredPaths(value.deferredPaths);
 
-  if (referenceTagName === undefined) {
+  if (referenceTagName === undefined && deferredPaths.length === 0) {
     return undefined;
   }
 
-  return { referenceTagName };
+  return {
+    referenceTagName,
+    ...(deferredPaths.length > 0 ? { deferredPaths } : {})
+  };
+}
+
+/**
+ * Normalizes persisted paths excluded from OpenCodexUI staging actions.
+ *
+ * @param value Unknown deferred path list.
+ * @returns Unique relative paths.
+ */
+function normalizeDeferredPaths(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const paths = value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => normalizeDeferredPath(entry))
+    .filter((entry): entry is string => entry !== null);
+
+  return [...new Set(paths)].sort();
+}
+
+/**
+ * Normalizes one relative Git path used by the deferred-path preference.
+ *
+ * @param value Unknown path value.
+ * @returns Normalized relative path, or `null` when unsafe or empty.
+ */
+function normalizeDeferredPath(value: string): string | null {
+  const normalized = value.trim().replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+
+  if (
+    normalized.length === 0 ||
+    normalized === "." ||
+    normalized.startsWith("/") ||
+    normalized.split("/").some((segment) => segment === "..")
+  ) {
+    return null;
+  }
+
+  return normalized;
 }
 
 /**

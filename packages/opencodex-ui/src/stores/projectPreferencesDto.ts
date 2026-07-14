@@ -19,7 +19,10 @@ export function cloneProjectPreferences(
 
   if (preferences.git !== undefined) {
     clonedPreferences.git = {
-      ...preferences.git
+      ...preferences.git,
+      ...(preferences.git.deferredPaths !== undefined
+        ? { deferredPaths: [...preferences.git.deferredPaths] }
+        : {})
     };
   }
 
