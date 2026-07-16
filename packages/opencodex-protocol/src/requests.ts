@@ -96,6 +96,8 @@ export type OpenCodexRequest =
   | { type: "thread.compact"; threadId: string; projectPath?: string | null }
   | { type: "system.openLink"; href: string; projectPath?: string | null; sourceId?: string | null }
   | { type: "system.openProject"; projectPath: string; sourceId: string | null }
+  | { type: "system.openProjectFolder"; projectPath: string; sourceId: string | null }
+  | { type: "system.openProjectTerminal"; projectPath: string; sourceId: string | null }
   | {
       type: "turn.start";
       threadId: string | null;

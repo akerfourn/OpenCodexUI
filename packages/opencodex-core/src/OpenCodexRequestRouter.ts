@@ -149,6 +149,10 @@ export class OpenCodexRequestRouter {
         );
       case "system.openProject":
         return this.runtime.openProjectInIde(request.projectPath, request.sourceId);
+      case "system.openProjectFolder":
+        return this.runtime.openProjectFolder(request.projectPath, request.sourceId);
+      case "system.openProjectTerminal":
+        return this.runtime.openProjectTerminal(request.projectPath, request.sourceId);
       case "turn.start":
         return this.runtime.startTurn(
           request.threadId,

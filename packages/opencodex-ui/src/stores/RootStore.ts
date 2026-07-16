@@ -185,6 +185,46 @@ export class RootStore {
   }
 
   /**
+   * Requests opening a project folder in the host file manager.
+   *
+   * @param projectPath Project folder path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Nothing.
+   */
+  openProjectFolder(projectPath: string, sourceId: string | null): void {
+    if (sourceId === null) {
+      return;
+    }
+
+    void this.transport.request({
+      type: "system.openProjectFolder",
+      projectPath,
+      sourceId
+    });
+  }
+
+  /**
+   * Requests opening a host terminal in the project folder.
+   *
+   * @param projectPath Project folder path.
+   * @param sourceId Source identifier.
+   *
+   * @returns Nothing.
+   */
+  openProjectTerminal(projectPath: string, sourceId: string | null): void {
+    if (sourceId === null) {
+      return;
+    }
+
+    void this.transport.request({
+      type: "system.openProjectTerminal",
+      projectPath,
+      sourceId
+    });
+  }
+
+  /**
    * Applies an error event and clears pending loading states when needed.
    *
    * @param event Error event payload.

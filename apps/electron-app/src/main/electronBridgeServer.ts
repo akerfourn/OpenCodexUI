@@ -24,6 +24,10 @@ import {
   PerformanceMonitoringService,
   type OpenCodexProcessPerformanceMetric
 } from "./performanceMonitoringService.js";
+import {
+  openProjectFolder,
+  openProjectTerminal
+} from "./projectSystemActions.js";
 
 type ElectronBridgeServerOptions = {
   settings: OpenCodexSettings;
@@ -67,6 +71,8 @@ export class ElectronBridgeServer {
       openExternalLink: async (href, projectPath, openerCommand) => {
         await openExternalLink(href, projectPath, openerCommand);
       },
+      openProjectFolder,
+      openProjectTerminal,
       pickProjectDirectory: async (mode) => {
         return this.pickProjectDirectory(mode);
       },

@@ -4,9 +4,11 @@
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import TerminalOutlinedIcon from "@mui/icons-material/TerminalOutlined";
 import {
   Alert,
   Box,
@@ -61,6 +63,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
     store.sourcesStore.hasLocalAccess(source.id) &&
     "openFolderCommand" in source.settings &&
     source.settings.openFolderCommand !== null;
+  const canUseLocalProjectActions = source?.kind === "local";
   const sourceWarning = projectStore.isOrphan
     ? t("project.orphanSource")
     : t("project.codexSourceUnavailable");
@@ -79,6 +82,14 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
 
   function handleOpenProject(): void {
     store.openProjectInIde(projectStore.projectPath, projectStore.project.sourceId);
+  }
+
+  function handleOpenProjectFolder(): void {
+    store.openProjectFolder(projectStore.projectPath, projectStore.project.sourceId);
+  }
+
+  function handleOpenProjectTerminal(): void {
+    store.openProjectTerminal(projectStore.projectPath, projectStore.project.sourceId);
   }
 
   function handleOpenRenameDialog(): void {
@@ -102,6 +113,16 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
   function handleOpenProjectFromMenu(): void {
     handleCloseProjectActions();
     handleOpenProject();
+  }
+
+  function handleOpenProjectFolderFromMenu(): void {
+    handleCloseProjectActions();
+    handleOpenProjectFolder();
+  }
+
+  function handleOpenProjectTerminalFromMenu(): void {
+    handleCloseProjectActions();
+    handleOpenProjectTerminal();
   }
 
   function handleRefreshThreadsFromMenu(): void {
@@ -218,6 +239,24 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
               <OpenInNewOutlinedIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>{t("sidebar.openProject")}</ListItemText>
+          </MenuItem>
+          <MenuItem
+            disabled={!canUseLocalProjectActions}
+            onClick={handleOpenProjectFolderFromMenu}
+          >
+            <ListItemIcon>
+              <FolderOpenOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("sidebar.openProjectFolder")}</ListItemText>
+          </MenuItem>
+          <MenuItem
+            disabled={!canUseLocalProjectActions}
+            onClick={handleOpenProjectTerminalFromMenu}
+          >
+            <ListItemIcon>
+              <TerminalOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("sidebar.openProjectTerminal")}</ListItemText>
           </MenuItem>
           <MenuItem disabled={isReadOnlyProject} onClick={handleRefreshThreadsFromMenu}>
             <ListItemIcon>

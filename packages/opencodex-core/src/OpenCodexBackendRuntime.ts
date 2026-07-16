@@ -1164,6 +1164,63 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Opens a local project folder with the host file manager.
+   *
+   * @param projectPath Project folder path.
+   * @param sourceId Source identifier.
+   * @returns Success result.
+   */
+  async openProjectFolder(projectPath: string, sourceId: string | null): Promise<{ ok: true }> {
+    return this.runLocalProjectHostAction(
+      projectPath,
+      sourceId,
+      this.options.openProjectFolder
+    );
+  }
+
+  /**
+   * Opens a host terminal with a local project as its working directory.
+   *
+   * @param projectPath Project folder path.
+   * @param sourceId Source identifier.
+   * @returns Success result.
+   */
+  async openProjectTerminal(projectPath: string, sourceId: string | null): Promise<{ ok: true }> {
+    return this.runLocalProjectHostAction(
+      projectPath,
+      sourceId,
+      this.options.openProjectTerminal
+    );
+  }
+
+  /**
+   * Runs a host action only when the project belongs to a local source.
+   *
+   * @param projectPath Project folder path.
+   * @param sourceId Source identifier.
+   * @param action Host action to run.
+   * @returns Success result, including when the action is unavailable or unsupported.
+   */
+  private async runLocalProjectHostAction(
+    projectPath: string,
+    sourceId: string | null,
+    action: ((projectPath: string) => Promise<void> | void) | undefined
+  ): Promise<{ ok: true }> {
+    if (sourceId === null || action === undefined) {
+      return { ok: true };
+    }
+
+    const source = await this.resolveSource(sourceId);
+
+    if (source.kind !== "local") {
+      return { ok: true };
+    }
+
+    await action(projectPath);
+    return { ok: true };
+  }
+
+  /**
    * Lists available Codex models.
    *
    * @returns Model identifiers.

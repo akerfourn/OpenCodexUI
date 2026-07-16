@@ -46,6 +46,20 @@ export type OpenCodexBackendOptions = {
     openerCommand: string | null
   ): Promise<void> | void;
   /**
+   * Opens a local project folder with the host file manager.
+   *
+   * @param projectPath Project folder path.
+   * @returns Promise resolved after the host action is requested.
+   */
+  openProjectFolder?(projectPath: string): Promise<void> | void;
+  /**
+   * Opens a host terminal with a local project as its working directory.
+   *
+   * @param projectPath Project folder path.
+   * @returns Promise resolved after the host action is requested.
+   */
+  openProjectTerminal?(projectPath: string): Promise<void> | void;
+  /**
    * Lets the host application pick a project directory.
    *
    * @param mode Picker mode requested by the UI.
