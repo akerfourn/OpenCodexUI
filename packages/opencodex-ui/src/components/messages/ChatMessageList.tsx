@@ -473,6 +473,8 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
             height: 80,
             display: "flex",
             alignItems: "flex-start",
+            justifyContent: "center",
+            width: 64,
             overflow: "hidden",
             pointerEvents: showScrollToBottom ? "auto" : "none",
           }}
