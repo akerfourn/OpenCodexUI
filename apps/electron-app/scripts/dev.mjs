@@ -16,7 +16,6 @@ const electronPath = require("electron");
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(scriptDir, "..");
 const repoRoot = resolve(appRoot, "..", "..");
-const devServerUrl = "http://127.0.0.1:5173/";
 
 let electronProcess = null;
 let restartTimer = null;
@@ -37,15 +36,23 @@ main().catch((error) => {
 async function main() {
   await rebuildNativeDependenciesForElectron();
 
-  const viteServer = await startViteServer();
-  const mainContext = await createBuildContext("src/main/main.ts", "dist/main/main.cjs");
-  const preloadContext = await createBuildContext("src/main/preload.ts", "dist/main/preload.cjs");
+  const { server: viteServer, url: devServerUrl } = await startViteServer();
+  const mainContext = await createBuildContext(
+    "src/main/main.ts",
+    "dist/main/main.cjs",
+    devServerUrl
+  );
+  const preloadContext = await createBuildContext(
+    "src/main/preload.ts",
+    "dist/main/preload.cjs",
+    devServerUrl
+  );
 
   await mainContext.watch();
   await preloadContext.watch();
 
   shutdownDevServer = createShutdown(viteServer, [mainContext, preloadContext]);
-  startElectron();
+  startElectron(devServerUrl);
   installShutdownHandlers();
 }
 
@@ -102,7 +109,7 @@ async function runCommand(command, args) {
 /**
  * Starts the Vite dev server used by the Electron renderer.
  *
- * @returns Promise resolved with the active Vite server instance.
+ * @returns Promise resolved with the active Vite server and its effective URL.
  */
 async function startViteServer() {
   const configFile = resolve(appRoot, "vite.config.ts");
@@ -118,7 +125,7 @@ async function startViteServer() {
       ...loadedConfig.config.server,
       host: "127.0.0.1",
       port: 5173,
-      strictPort: true,
+      strictPort: false,
       fs: {
         allow: [repoRoot]
       }
@@ -126,8 +133,15 @@ async function startViteServer() {
   });
 
   await server.listen();
+  const devServerUrl = server.resolvedUrls?.local[0];
+
+  if (devServerUrl === undefined) {
+    await server.close();
+    throw new Error("Vite did not expose a local development URL.");
+  }
+
   console.info(`[OpenCodexUI dev] renderer available at ${devServerUrl}`);
-  return server;
+  return { server, url: devServerUrl };
 }
 
 /**
@@ -135,9 +149,10 @@ async function startViteServer() {
  *
  * @param entryPoint Source entry point relative to the Electron app root.
  * @param outfile Output bundle path relative to the Electron app root.
+ * @param devServerUrl URL of the active Vite development server.
  * @returns Promise resolved with the configured esbuild context.
  */
-async function createBuildContext(entryPoint, outfile) {
+async function createBuildContext(entryPoint, outfile, devServerUrl) {
   const context = await esbuild.context({
     absWorkingDir: appRoot,
     entryPoints: [entryPoint],
@@ -147,7 +162,7 @@ async function createBuildContext(entryPoint, outfile) {
     target: "node20",
     external: ["electron", "better-sqlite3"],
     outfile,
-    plugins: [createWorkspaceResolvePlugin(repoRoot), createRestartPlugin()]
+    plugins: [createWorkspaceResolvePlugin(repoRoot), createRestartPlugin(devServerUrl)]
   });
 
   await context.rebuild();
@@ -157,10 +172,11 @@ async function createBuildContext(entryPoint, outfile) {
 /**
  * Launches Electron and wires its exit lifecycle to the dev server shutdown flow.
  *
+ * @param devServerUrl URL of the active Vite development server.
  * @returns Nothing.
  */
-function startElectron() {
-  electronProcess = spawnElectron();
+function startElectron(devServerUrl) {
+  electronProcess = spawnElectron(devServerUrl);
   electronProcess.on("error", (error) => {
     console.error("[OpenCodexUI dev] failed to start electron");
     console.error(error);
@@ -196,9 +212,10 @@ function startElectron() {
 /**
  * Spawns the Electron desktop process configured for local development.
  *
+ * @param devServerUrl URL of the active Vite development server.
  * @returns Child process instance for the Electron runtime.
  */
-function spawnElectron() {
+function spawnElectron(devServerUrl) {
   return spawn(electronPath, ["dist/main/main.cjs"], {
     cwd: appRoot,
     env: {
@@ -258,9 +275,10 @@ function installShutdownHandlers() {
 /**
  * Debounces Electron restarts while builds are still stabilizing.
  *
+ * @param devServerUrl URL of the active Vite development server.
  * @returns Nothing.
  */
-function requestElectronRestart() {
+function requestElectronRestart(devServerUrl) {
   if (electronProcess === null) {
     return;
   }
@@ -271,16 +289,17 @@ function requestElectronRestart() {
 
   restartTimer = setTimeout(() => {
     restartTimer = null;
-    restartElectron();
+    restartElectron(devServerUrl);
   }, 150);
 }
 
 /**
  * Restarts the Electron process after a successful rebuild.
  *
+ * @param devServerUrl URL of the active Vite development server.
  * @returns Nothing.
  */
-function restartElectron() {
+function restartElectron(devServerUrl) {
   if (electronProcess === null) {
     return;
   }
@@ -292,7 +311,7 @@ function restartElectron() {
 
   currentProcess.once("exit", () => {
     isRestartingElectron = false;
-    startElectron();
+    startElectron(devServerUrl);
   });
   currentProcess.kill("SIGTERM");
 }
@@ -300,15 +319,16 @@ function restartElectron() {
 /**
  * Creates an esbuild plugin that restarts Electron after successful rebuilds.
  *
+ * @param devServerUrl URL of the active Vite development server.
  * @returns esbuild-compatible plugin descriptor.
  */
-function createRestartPlugin() {
+function createRestartPlugin(devServerUrl) {
   return {
     name: "restart-electron-on-rebuild",
     setup(build) {
       build.onEnd((result) => {
         if (result.errors.length === 0) {
-          requestElectronRestart();
+          requestElectronRestart(devServerUrl);
         }
       });
     }

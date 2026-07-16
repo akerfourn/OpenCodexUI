@@ -390,6 +390,10 @@ textarea {
   transition: opacity 140ms ease;
 }
 
+.project-sidebar-hover-action.is-open {
+  opacity: 1;
+}
+
 .project-sidebar-header:hover .project-sidebar-hover-action,
 .project-sidebar-header:focus-within .project-sidebar-hover-action {
   opacity: 1;

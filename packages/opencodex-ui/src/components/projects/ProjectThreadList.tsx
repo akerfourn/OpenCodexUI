@@ -4,6 +4,7 @@
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import {
@@ -17,13 +18,17 @@ import {
   DialogTitle,
   IconButton,
   LinearProgress,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   TextField,
   Tooltip,
   Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
@@ -48,6 +53,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState(projectStore.displayName);
   const [isSavingDisplayName, setIsSavingDisplayName] = useState(false);
+  const [projectActionsAnchor, setProjectActionsAnchor] = useState<HTMLElement | null>(null);
   const threadListStore = projectStore.threadListStore;
   const source = store.sourcesStore.sources.find((entry) => entry.id === projectStore.project.sourceId);
   const isReadOnlyProject = projectStore.isReadOnlyFromCache;
@@ -78,6 +84,29 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
   function handleOpenRenameDialog(): void {
     setDisplayNameDraft(projectStore.displayName);
     setIsRenameDialogOpen(true);
+  }
+
+  function handleOpenProjectActions(event: MouseEvent<HTMLButtonElement>): void {
+    setProjectActionsAnchor(event.currentTarget);
+  }
+
+  function handleCloseProjectActions(): void {
+    setProjectActionsAnchor(null);
+  }
+
+  function handleRenameFromMenu(): void {
+    handleCloseProjectActions();
+    handleOpenRenameDialog();
+  }
+
+  function handleOpenProjectFromMenu(): void {
+    handleCloseProjectActions();
+    handleOpenProject();
+  }
+
+  function handleRefreshThreadsFromMenu(): void {
+    handleCloseProjectActions();
+    handleRefreshThreads();
   }
 
   function handleCloseRenameDialog(): void {
@@ -144,33 +173,15 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
             </Typography>
             <Stack className="project-sidebar-hover-actions" direction="row" spacing={0.5}>
               <IconButton
-                className="project-sidebar-hover-action"
-                aria-label={t("sidebar.editProjectName")}
-                title={t("sidebar.editProjectName")}
+                className={`project-sidebar-hover-action${projectActionsAnchor !== null ? " is-open" : ""}`}
+                aria-label={t("sidebar.projectActions")}
+                aria-haspopup="menu"
+                aria-expanded={projectActionsAnchor !== null ? "true" : undefined}
+                title={t("sidebar.projectActions")}
                 size="small"
-                onClick={handleOpenRenameDialog}
+                onClick={handleOpenProjectActions}
               >
-                <EditOutlinedIcon fontSize="small" />
-              </IconButton>
-              <IconButton
-                className="project-sidebar-hover-action"
-                aria-label={t("sidebar.openProject")}
-                title={t("sidebar.openProject")}
-                size="small"
-                disabled={!canOpenProject}
-                onClick={handleOpenProject}
-              >
-                <OpenInNewOutlinedIcon fontSize="small" />
-              </IconButton>
-              <IconButton
-                className="project-sidebar-hover-action"
-                aria-label={t("sidebar.refresh")}
-                title={t("sidebar.refresh")}
-                size="small"
-                disabled={isReadOnlyProject}
-                onClick={handleRefreshThreads}
-              >
-                <RefreshOutlinedIcon fontSize="small" />
+                <MoreVertOutlinedIcon fontSize="small" />
               </IconButton>
             </Stack>
             <Stack className="project-sidebar-header-actions" direction="row" spacing={0.5}>
@@ -191,6 +202,30 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
             {projectStore.projectPath}
           </Typography>
         </Box>
+        <Menu
+          anchorEl={projectActionsAnchor}
+          open={projectActionsAnchor !== null}
+          onClose={handleCloseProjectActions}
+        >
+          <MenuItem onClick={handleRenameFromMenu}>
+            <ListItemIcon>
+              <EditOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("sidebar.editProjectName")}</ListItemText>
+          </MenuItem>
+          <MenuItem disabled={!canOpenProject} onClick={handleOpenProjectFromMenu}>
+            <ListItemIcon>
+              <OpenInNewOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("sidebar.openProject")}</ListItemText>
+          </MenuItem>
+          <MenuItem disabled={isReadOnlyProject} onClick={handleRefreshThreadsFromMenu}>
+            <ListItemIcon>
+              <RefreshOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("sidebar.refresh")}</ListItemText>
+          </MenuItem>
+        </Menu>
       </header>
 
       <Dialog open={isRenameDialogOpen} fullWidth maxWidth="xs" onClose={handleCloseRenameDialog}>
