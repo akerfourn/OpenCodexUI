@@ -5,3 +5,4 @@ export * from "./OpenCodexBackendRuntime.js";
 export * from "./OpenCodexRequestRouter.js";
 export * from "./mapping.js";
 export * from "./types.js";
+export * from "./version.js";

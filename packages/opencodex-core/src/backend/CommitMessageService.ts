@@ -39,6 +39,8 @@ type CommitMessageServiceOptions = {
   ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
   ignoreThreadNotifications(threadId: string): void;
   releaseThreadNotifications(threadId: string): void;
+  onGenerationStarted?(sourceId: string | null, model: string | null): void;
+  onGenerationFinished?(sourceId: string | null, model: string | null): void;
   logger?: (message: string) => void;
 };
 
@@ -132,16 +134,18 @@ export class CommitMessageService {
     const client = await this.options.ensureClient(sourceId);
     const selectedModel = model ?? this.options.getSettings().commitMessageModel;
     const selectedEffort = reasoningEffort ?? this.options.getSettings().commitMessageReasoningEffort;
-    const thread = await client.startThread({
-      cwd: projectPath,
-      model: selectedModel,
-      ephemeral: true,
-      experimentalRawEvents: false
-    });
-    const threadId = thread.thread.id;
-    this.options.ignoreThreadNotifications(threadId);
+    this.options.onGenerationStarted?.(sourceId, selectedModel);
+    let threadId: string | null = null;
 
     try {
+      const thread = await client.startThread({
+        cwd: projectPath,
+        model: selectedModel,
+        ephemeral: true,
+        experimentalRawEvents: false
+      });
+      threadId = thread.thread.id;
+      this.options.ignoreThreadNotifications(threadId);
       const response = await this.runGenerationTurn(
         client,
         threadId,
@@ -151,7 +155,10 @@ export class CommitMessageService {
       );
       return { message: response.message };
     } finally {
-      this.options.releaseThreadNotifications(threadId);
+      if (threadId !== null) {
+        this.options.releaseThreadNotifications(threadId);
+      }
+      this.options.onGenerationFinished?.(sourceId, selectedModel);
     }
   }
 

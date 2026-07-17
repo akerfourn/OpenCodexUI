@@ -33,6 +33,7 @@ export type OpenCodexEvent =
       sources: OpenCodexSource[];
       projectPath: string | null;
       appVersion: string | null;
+      isPrerelease: boolean;
     }
   | { type: "projects.updated"; projects: OpenCodexProject[] }
   | { type: "project.opened"; project: OpenCodexProject }

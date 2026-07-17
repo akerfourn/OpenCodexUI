@@ -91,6 +91,12 @@ import { ProjectContextService } from "./backend/ProjectContextService.js";
 import { CodexUpdateService } from "./backend/CodexUpdateService.js";
 import { filterSearchableProjectFiles } from "./backend/fileSearchFilters.js";
 import { readGitVersionStatus } from "./backend/toolVersionDetection.js";
+import {
+  UsageRateLimitDiagnostics,
+  type UsageRateLimitLogOrigin,
+  type UsageRateLimitLogReason
+} from "./backend/usageRateLimitDiagnostics.js";
+import { isPrereleaseVersion } from "./version.js";
 import { readObject, readString } from "./mapping.js";
 import {
   mapUsageLimitsNotification,
@@ -98,10 +104,15 @@ import {
 } from "./backend/usageMapping.js";
 import { mapThreadTokenUsageNotification } from "./backend/threadTokenUsageMapping.js";
 
+const DEFAULT_COMMIT_SOURCE_KEY = "__default_commit_source__";
+const DEFAULT_COMMIT_MODEL_KEY = "__default_commit_model__";
+
 /**
  * Coordinates backend services exposed to the UI transport.
  */
 export class OpenCodexBackendRuntime {
+  /** Whether this runtime belongs to an application pre-release build. */
+  readonly isPrerelease: boolean;
   private settings: OpenCodexSettings;
   private readonly threadTurnCache = new ThreadTurnCache();
   private readonly cacheRepository: OpenCodexCacheRepository | null;
@@ -120,8 +131,10 @@ export class OpenCodexBackendRuntime {
   private readonly pluginService: PluginService;
   private readonly projectContextService: ProjectContextService;
   private readonly codexUpdateService: CodexUpdateService;
+  private readonly usageRateLimitDiagnostics: UsageRateLimitDiagnostics;
   private readonly ignoredNotificationThreadIds = new Set<string>();
   private readonly activeTurnIdsBySourceId = new Map<string, Set<string>>();
+  private readonly activeCommitModelsBySourceId = new Map<string, Map<string, number>>();
 
   /**
    * Creates a backend runtime and wires its internal services.
@@ -130,7 +143,12 @@ export class OpenCodexBackendRuntime {
    */
   constructor(private readonly options: OpenCodexBackendOptions) {
     this.settings = options.settings;
+    this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.cacheRepository = options.cacheRepository ?? null;
+    this.usageRateLimitDiagnostics = new UsageRateLimitDiagnostics(
+      this.isPrerelease,
+      (type, message, details) => this.persistLog(type, message, details)
+    );
     this.clientPool = new OpenCodexClientPool({
       getSettings: () => this.settings,
       getAppVersion: () => this.options.appVersion ?? null,
@@ -228,6 +246,12 @@ export class OpenCodexBackendRuntime {
       releaseThreadNotifications: (threadId) => {
         this.ignoredNotificationThreadIds.delete(threadId);
       },
+      onGenerationStarted: (sourceId, model) => {
+        this.addActiveCommitModel(sourceId, model);
+      },
+      onGenerationFinished: (sourceId, model) => {
+        this.removeActiveCommitModel(sourceId, model);
+      },
       logger: options.logger
     });
     this.projectCommandService = new ProjectCommandService({
@@ -278,11 +302,12 @@ export class OpenCodexBackendRuntime {
       settings: this.settings,
       sources: await this.projectSourceService.listOpenCodexSources(),
       projectPath: this.options.projectPath,
-      appVersion: this.options.appVersion ?? null
+      appVersion: this.options.appVersion ?? null,
+      isPrerelease: this.isPrerelease
     });
     await this.listProjects();
     await this.listModels();
-    await this.readUsageLimits(this.settings.defaultSourceId);
+    await this.readUsageLimits(this.settings.defaultSourceId, "bootstrap");
     return { ok: true };
   }
 
@@ -1299,7 +1324,10 @@ export class OpenCodexBackendRuntime {
    * @param sourceId Source identifier, or `null` for the configured default.
    * @returns Usage limit snapshot, or `null` when unavailable.
    */
-  async readUsageLimits(sourceId: string | null = null): Promise<OpenCodexUsageSnapshot | null> {
+  async readUsageLimits(
+    sourceId: string | null = null,
+    reason: Exclude<UsageRateLimitLogReason, "accountRateLimitsUpdated"> = "request"
+  ): Promise<OpenCodexUsageSnapshot | null> {
     let resolvedSource: CachedSource | null = null;
 
     try {
@@ -1310,6 +1338,7 @@ export class OpenCodexBackendRuntime {
         undefined
       );
       const usage = mapUsageLimitsResponse(response, resolvedSource.id);
+      this.recordUsageRateLimitDiagnostic(resolvedSource.id, usage, "read", reason);
       this.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage });
       return usage;
     } catch (error) {
@@ -1358,7 +1387,7 @@ export class OpenCodexBackendRuntime {
       }
     );
 
-    await this.readUsageLimits(source.id);
+    await this.readUsageLimits(source.id, "resetConsume");
 
     return { outcome: response.outcome };
   }
@@ -2170,7 +2199,19 @@ export class OpenCodexBackendRuntime {
         const usage = mapUsageLimitsNotification(notification.params, sourceId);
 
         if (usage !== null) {
+          this.recordUsageRateLimitDiagnostic(
+            sourceId,
+            usage,
+            "notification",
+            "accountRateLimitsUpdated"
+          );
           this.emit({ type: "usage.updated", sourceId, usage });
+        } else {
+          this.usageRateLimitDiagnostics.recordIgnoredNotification(
+            sourceId,
+            readObject(notification.params).rateLimits,
+            this.readActiveCommitModels(sourceId)
+          );
         }
       }
 
@@ -2190,7 +2231,7 @@ export class OpenCodexBackendRuntime {
       }
 
       if (notification.method === "turn/completed") {
-        void this.readUsageLimits(sourceId);
+        void this.readUsageLimits(sourceId, "turnCompleted");
       }
     } finally {
       this.options.onCodexNotificationProcessed?.(
@@ -2198,6 +2239,102 @@ export class OpenCodexBackendRuntime {
         performance.now() - startedAt
       );
     }
+  }
+
+  /**
+   * Records one source-scoped rate-limit diagnostic when the snapshot changed.
+   *
+   * @param sourceId Source owning the rate limits.
+   * @param usage Rate-limit snapshot, or `null` when unavailable.
+   * @param origin Snapshot origin.
+   * @param reason Snapshot reason.
+   * @returns Nothing.
+   */
+  private recordUsageRateLimitDiagnostic(
+    sourceId: string,
+    usage: OpenCodexUsageSnapshot | null,
+    origin: UsageRateLimitLogOrigin,
+    reason: UsageRateLimitLogReason
+  ): void {
+    this.usageRateLimitDiagnostics.record(
+      sourceId,
+      usage,
+      origin,
+      reason,
+      this.readActiveCommitModels(sourceId)
+    );
+  }
+
+  /**
+   * Marks a commit model as active for one source.
+   *
+   * @param sourceId Source used by the generation, or `null` for the default.
+   * @param model Model used by the generation, or `null` for Codex default.
+   * @returns Nothing.
+   */
+  private addActiveCommitModel(sourceId: string | null, model: string | null): void {
+    const sourceKey = this.readCommitSourceKey(sourceId);
+    const modelKey = readCommitModelKey(model);
+    const models = this.activeCommitModelsBySourceId.get(sourceKey) ?? new Map<string, number>();
+    models.set(modelKey, (models.get(modelKey) ?? 0) + 1);
+    this.activeCommitModelsBySourceId.set(sourceKey, models);
+  }
+
+  /**
+   * Marks a commit model as finished for one source.
+   *
+   * @param sourceId Source used by the generation, or `null` for the default.
+   * @param model Model used by the generation, or `null` for Codex default.
+   * @returns Nothing.
+   */
+  private removeActiveCommitModel(sourceId: string | null, model: string | null): void {
+    const sourceKey = this.readCommitSourceKey(sourceId);
+    const models = this.activeCommitModelsBySourceId.get(sourceKey);
+
+    if (models === undefined) {
+      return;
+    }
+
+    const modelKey = readCommitModelKey(model);
+    const activeCount = models.get(modelKey) ?? 0;
+
+    if (activeCount <= 1) {
+      models.delete(modelKey);
+    } else {
+      models.set(modelKey, activeCount - 1);
+    }
+
+    if (models.size === 0) {
+      this.activeCommitModelsBySourceId.delete(sourceKey);
+    }
+  }
+
+  /**
+   * Reads the active commit models for a source in diagnostic-friendly form.
+   *
+   * @param sourceId Source owning the notification.
+   * @returns Active models, with `null` representing Codex's default model.
+   */
+  private readActiveCommitModels(sourceId: string): Array<string | null> {
+    const models = this.activeCommitModelsBySourceId.get(sourceId);
+
+    if (models === undefined) {
+      return [];
+    }
+
+    return Array.from(models.keys()).map((model) => (
+      model === DEFAULT_COMMIT_MODEL_KEY ? null : model
+    ));
+  }
+
+  /**
+   * Resolves the map key used for a commit generation source.
+   *
+   * @param sourceId Explicit source identifier, or `null` for the default.
+   * @returns Stable source key.
+   */
+  private readCommitSourceKey(sourceId: string | null): string {
+    return sourceId ?? this.settings.defaultSourceId ?? DEFAULT_COMMIT_SOURCE_KEY;
   }
 
   /**
@@ -2835,6 +2972,16 @@ function estimateNotificationBytes(value: unknown): number {
   }
 
   return estimatedBytes;
+}
+
+/**
+ * Converts a nullable commit model into a stable diagnostic map key.
+ *
+ * @param model Selected commit model, or `null` for Codex's default.
+ * @returns Stable model key.
+ */
+function readCommitModelKey(model: string | null): string {
+  return model ?? DEFAULT_COMMIT_MODEL_KEY;
 }
 
 /**

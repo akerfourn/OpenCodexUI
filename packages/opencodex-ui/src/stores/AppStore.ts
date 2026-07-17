@@ -63,6 +63,7 @@ export class AppStore implements RootChildStore {
   connectionStatus = "stopped";
   isBootstrapping = false;
   appVersion: string | null = null;
+  isPrerelease = false;
   gitVersionStatus: OpenCodexToolVersionStatus | null = null;
   isLoadingGitVersion = false;
   forceOnboarding = false;
@@ -191,6 +192,7 @@ export class AppStore implements RootChildStore {
         return;
       case "app.bootstrap":
         this.applyBootstrap(event.settings, event.projectPath, event.appVersion);
+        this.isPrerelease = event.isPrerelease;
         return;
       case "projects.updated":
         this.isBootstrapping = false;
