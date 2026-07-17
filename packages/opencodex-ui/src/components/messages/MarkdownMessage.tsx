@@ -128,6 +128,24 @@ function RenderedMarkdown({
         "& h1, & h2, & h3, & h4, & h5, & h6": {
           mt: 1,
           mb: 0.5
+        },
+        "& table": {
+          width: "100%",
+          my: 1,
+          borderCollapse: "collapse",
+          borderSpacing: 0
+        },
+        "& th, & td": {
+          px: 1,
+          py: 0.75,
+          border: "1px solid",
+          borderColor: "divider",
+          textAlign: "left",
+          verticalAlign: "top"
+        },
+        "& th": {
+          bgcolor: "action.hover",
+          fontWeight: 600
         }
       }}
     >
