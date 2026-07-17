@@ -758,6 +758,16 @@ export type OpenCodexThreadTokenUsage = {
 };
 
 /**
+ * Aggregated statistics for the user-facing chats of one project.
+ */
+export type OpenCodexProjectStatistics = {
+  chatCount: number;
+  chatsWithTokenUsage: number;
+  chatsWithoutTokenUsage: number;
+  tokenUsage: OpenCodexThreadTokenUsageBreakdown;
+};
+
+/**
  * Editable commit-generation prompt state.
  */
 export type OpenCodexCommitPrompt = {

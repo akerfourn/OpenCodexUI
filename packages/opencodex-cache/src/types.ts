@@ -414,6 +414,16 @@ export type CachedThreadTokenUsage = {
 };
 
 /**
+ * Aggregated token usage for the cached user-facing chats of one project.
+ */
+export type CachedProjectTokenUsageStatistics = {
+  chatCount: number;
+  chatsWithTokenUsage: number;
+  chatsWithoutTokenUsage: number;
+  tokenUsage: CachedThreadTokenUsageBreakdown;
+};
+
+/**
  * Full cached thread payload returned to the backend.
  */
 export type CachedThreadSnapshot = {
@@ -877,6 +887,18 @@ export interface OpenCodexCacheRepository {
    * @returns Matching cached thread summaries.
    */
   listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]>;
+
+  /**
+   * Aggregates token usage for one source-owned project.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier, or `null` for an orphan project.
+   * @returns Aggregated cached token usage.
+   */
+  getProjectTokenUsageStatistics(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<CachedProjectTokenUsageStatistics>;
 
   /**
    * Reads a cached thread snapshot.

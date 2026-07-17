@@ -612,6 +612,22 @@ export const resources = {
         codexSourceUnavailable: "La source Codex de ce projet est inactive. Le projet reste consultable depuis le cache local.",
         orphanSource: "Ce projet n'est plus associe a une source Codex. Il est disponible en lecture seule jusqu'a une resynchronisation."
       },
+      projectStatistics: {
+        cachedInputTokens: "Tokens d'entrée en cache",
+        chats: "Chats",
+        close: "Fermer",
+        coverage: "{{known}} sur {{total}} chat(s) avec une consommation connue",
+        description: "Consommation des chats présents dans le cache, chats actifs et archivés inclus.",
+        empty: "Aucun chat n'est présent dans le cache pour ce projet.",
+        inputTokens: "Tokens d'entrée",
+        loadError: "Impossible de charger les statistiques du projet.",
+        loading: "Chargement des statistiques...",
+        outputTokens: "Tokens de sortie",
+        reasoningTokens: "Tokens de raisonnement",
+        title: "Statistiques du projet",
+        totalTokens: "Total de tokens",
+        unknownChats: "La consommation de {{count}} chat(s) n'est pas connue et n'est pas incluse dans le total."
+      },
       projectTools: {
         closePanel: "Réduire le panneau d'outils",
         commands: "Commandes",
@@ -684,6 +700,7 @@ export const resources = {
         openProjectTerminal: "Terminal",
         otherChats: "Autres chats",
         projectActions: "Options du projet",
+        projectStatistics: "Statistiques",
         refresh: "Synchroniser les chats",
         search: "Rechercher",
         showActiveChats: "Retour aux chats actifs",
@@ -1399,6 +1416,22 @@ export const resources = {
         codexSourceUnavailable: "This project's Codex source is inactive. The project remains readable from the local cache.",
         orphanSource: "This project is no longer associated with a Codex source. It is read-only until it is resynchronized."
       },
+      projectStatistics: {
+        cachedInputTokens: "Cached input tokens",
+        chats: "Chats",
+        close: "Close",
+        coverage: "{{known}} of {{total}} chat(s) with known usage",
+        description: "Usage from chats present in the cache, including active and archived chats.",
+        empty: "No chat is present in the cache for this project.",
+        inputTokens: "Input tokens",
+        loadError: "Unable to load project statistics.",
+        loading: "Loading statistics...",
+        outputTokens: "Output tokens",
+        reasoningTokens: "Reasoning tokens",
+        title: "Project statistics",
+        totalTokens: "Total tokens",
+        unknownChats: "Usage is unknown for {{count}} chat(s) and is not included in the total."
+      },
       projectTools: {
         closePanel: "Collapse tools panel",
         commands: "Commands",
@@ -1471,6 +1504,7 @@ export const resources = {
         openProjectTerminal: "Terminal",
         otherChats: "Other chats",
         projectActions: "Project options",
+        projectStatistics: "Statistics",
         refresh: "Sync chats",
         search: "Search",
         showActiveChats: "Back to active chats",

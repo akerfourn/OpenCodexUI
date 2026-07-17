@@ -39,6 +39,7 @@ import type {
   OpenCodexPluginInstallResult,
   OpenCodexPluginListResult,
   OpenCodexProject,
+  OpenCodexProjectStatistics,
   OpenCodexProjectPreferences,
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRule,
@@ -820,6 +821,34 @@ export class OpenCodexBackendRuntime {
       searchTerm,
       isArchived
     );
+  }
+
+  /**
+   * Reads aggregate token usage for one project from the local cache.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier, or `null` for an orphan project.
+   * @returns Project statistics based on cached chat snapshots.
+   */
+  async readProjectStatistics(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<OpenCodexProjectStatistics> {
+    if (this.cacheRepository === null) {
+      return createEmptyProjectStatistics();
+    }
+
+    const statistics = await this.cacheRepository.getProjectTokenUsageStatistics(
+      projectPath,
+      sourceId
+    );
+
+    return {
+      chatCount: statistics.chatCount,
+      chatsWithTokenUsage: statistics.chatsWithTokenUsage,
+      chatsWithoutTokenUsage: statistics.chatsWithoutTokenUsage,
+      tokenUsage: statistics.tokenUsage
+    };
   }
 
   /**
@@ -2806,4 +2835,24 @@ function estimateNotificationBytes(value: unknown): number {
   }
 
   return estimatedBytes;
+}
+
+/**
+ * Creates an empty project statistics response when the cache is unavailable.
+ *
+ * @returns Zeroed project statistics.
+ */
+function createEmptyProjectStatistics(): OpenCodexProjectStatistics {
+  return {
+    chatCount: 0,
+    chatsWithTokenUsage: 0,
+    chatsWithoutTokenUsage: 0,
+    tokenUsage: {
+      totalTokens: 0,
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 0,
+      reasoningOutputTokens: 0
+    }
+  };
 }

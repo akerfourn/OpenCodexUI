@@ -27,6 +27,7 @@ import type {
   CachedProjectTask,
   CachedProjectTaskCreateInput,
   CachedProjectTaskUpdateInput,
+  CachedProjectTokenUsageStatistics,
   CachedSource,
   CachedSourceCodexDetection,
   CachedSourceSettingsPatch,
@@ -97,6 +98,7 @@ import {
   deleteThread,
   deleteEmptyUnsyncedThreads,
   getOlderTurns,
+  getProjectTokenUsageStatistics,
   getSyncState,
   getThread,
   listThreads,
@@ -684,6 +686,20 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]> {
     return await listThreads(this.database, query);
+  }
+
+  /**
+   * Aggregates token usage for one cached project.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier, or `null` for an orphan project.
+   * @returns Aggregated cached token usage.
+   */
+  async getProjectTokenUsageStatistics(
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<CachedProjectTokenUsageStatistics> {
+    return await getProjectTokenUsageStatistics(this.database, projectPath, sourceId);
   }
 
   /**

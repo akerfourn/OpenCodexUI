@@ -17,6 +17,7 @@ export type {
   CachedProjectTaskCreateInput,
   CachedProjectTaskStatus,
   CachedProjectTaskUpdateInput,
+  CachedProjectTokenUsageStatistics,
   CachedLogCreateInput,
   CachedLogEntry,
   CachedLogListQuery,

@@ -3,6 +3,7 @@
  */
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
+import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
@@ -37,6 +38,7 @@ import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { ThreadButtonX } from "../threads/ThreadButton";
 import { UsageLimitsWidgetX } from "../usage/UsageLimitsWidget";
+import { ProjectStatisticsDialogX } from "./ProjectStatisticsDialog";
 
 type ProjectThreadListProps = {
   store: RootStore;
@@ -56,6 +58,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
   const [displayNameDraft, setDisplayNameDraft] = useState(projectStore.displayName);
   const [isSavingDisplayName, setIsSavingDisplayName] = useState(false);
   const [projectActionsAnchor, setProjectActionsAnchor] = useState<HTMLElement | null>(null);
+  const [isStatisticsDialogOpen, setIsStatisticsDialogOpen] = useState(false);
   const threadListStore = projectStore.threadListStore;
   const source = store.sourcesStore.sources.find((entry) => entry.id === projectStore.project.sourceId);
   const isReadOnlyProject = projectStore.isReadOnlyFromCache;
@@ -123,6 +126,15 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
   function handleOpenProjectTerminalFromMenu(): void {
     handleCloseProjectActions();
     handleOpenProjectTerminal();
+  }
+
+  function handleOpenStatisticsFromMenu(): void {
+    handleCloseProjectActions();
+    setIsStatisticsDialogOpen(true);
+  }
+
+  function handleCloseStatisticsDialog(): void {
+    setIsStatisticsDialogOpen(false);
   }
 
   function handleRefreshThreadsFromMenu(): void {
@@ -258,6 +270,12 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
             </ListItemIcon>
             <ListItemText>{t("sidebar.openProjectTerminal")}</ListItemText>
           </MenuItem>
+          <MenuItem onClick={handleOpenStatisticsFromMenu}>
+            <ListItemIcon>
+              <BarChartOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{t("sidebar.projectStatistics")}</ListItemText>
+          </MenuItem>
           <MenuItem disabled={isReadOnlyProject} onClick={handleRefreshThreadsFromMenu}>
             <ListItemIcon>
               <RefreshOutlinedIcon fontSize="small" />
@@ -305,6 +323,14 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
           </DialogActions>
         </Box>
       </Dialog>
+
+      <ProjectStatisticsDialogX
+        open={isStatisticsDialogOpen}
+        projectPath={projectStore.projectPath}
+        sourceId={projectStore.project.sourceId}
+        store={store}
+        onClose={handleCloseStatisticsDialog}
+      />
 
       {isReadOnlyProject ? (
         <Alert

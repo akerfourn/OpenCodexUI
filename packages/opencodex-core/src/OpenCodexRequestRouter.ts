@@ -51,6 +51,8 @@ export class OpenCodexRequestRouter {
           request.sourceId === undefined ? this.runtime.getSettings().defaultSourceId : request.sourceId,
           request.createIfMissing === true
         );
+      case "projects.statistics.read":
+        return this.runtime.readProjectStatistics(request.projectPath, request.sourceId);
       case "projects.pickDirectory":
         return this.runtime.pickProjectDirectory(
           request.mode,
