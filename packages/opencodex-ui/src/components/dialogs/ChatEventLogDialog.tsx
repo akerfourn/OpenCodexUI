@@ -86,6 +86,8 @@ export function ChatEventLogDialog({
     setExpandedEntryId((currentId) => currentId === entryId ? null : entryId);
   }
 
+  const displayedEntries = eventLogStore.entries.slice().reverse();
+
   const body = eventLogStore.isLoading && eventLogStore.entries.length === 0 ? (
     <Stack spacing={1} sx={{ alignItems: "center", justifyContent: "center", minHeight: 220 }}>
       <CircularProgress size={24} />
@@ -105,7 +107,7 @@ export function ChatEventLogDialog({
         </Typography>
       ) : (
         <List disablePadding>
-          {eventLogStore.entries.map((entry) => (
+          {displayedEntries.map((entry) => (
             <ChatEventLogRow
               key={entry.id}
               entry={entry}
