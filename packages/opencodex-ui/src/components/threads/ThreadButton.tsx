@@ -24,6 +24,7 @@ import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { useTranslation } from "react-i18next";
@@ -31,10 +32,13 @@ import { useTranslation } from "react-i18next";
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectStore } from "../../stores/ProjectStore";
+import type { RootStore } from "../../stores/RootStore";
+import { ChatEventLogDialogX } from "../dialogs/ChatEventLogDialog";
 import { SubAgentThreadsDialogX } from "./SubAgentThreadsDialog";
 
 type ThreadButtonProps = {
   projectStore: ProjectStore;
+  root: RootStore;
   thread: OpenCodexThread;
 };
 
@@ -45,11 +49,12 @@ type ThreadButtonProps = {
  *
  * @returns Nothing.
  */
-export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
+export function ThreadButton({ projectStore, root, thread }: ThreadButtonProps) {
   const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSubAgentDialogOpen, setIsSubAgentDialogOpen] = useState(false);
+  const [isEventLogDialogOpen, setIsEventLogDialogOpen] = useState(false);
   const threadListStore = projectStore.threadListStore;
   const isMenuOpen = menuAnchor !== null;
   const threadTitle = getThreadTitle(thread, t("chat.untitled"));
@@ -89,6 +94,15 @@ export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
   function handleOpenSubAgentDialog(): void {
     handleCloseMenu();
     setIsSubAgentDialogOpen(true);
+  }
+
+  function handleOpenEventLogDialog(): void {
+    handleCloseMenu();
+    setIsEventLogDialogOpen(true);
+  }
+
+  function handleCloseEventLogDialog(): void {
+    setIsEventLogDialogOpen(false);
   }
 
   function handleCloseSubAgentDialog(): void {
@@ -183,6 +197,12 @@ export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
           </ListItemIcon>
           {t("sidebar.subAgentThreads")}
         </MenuItem>
+        <MenuItem onClick={handleOpenEventLogDialog}>
+          <ListItemIcon sx={{ minWidth: 32 }}>
+            <EventNoteOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          {t("sidebar.threadEventLog")}
+        </MenuItem>
         <MenuItem onClick={handleOpenDeleteDialog}>
           <ListItemIcon sx={{ minWidth: 32 }}>
             <DeleteOutlineOutlinedIcon color="error" fontSize="small" />
@@ -211,6 +231,14 @@ export function ThreadButton({ projectStore, thread }: ThreadButtonProps) {
         parentThread={thread}
         projectStore={projectStore}
         onClose={handleCloseSubAgentDialog}
+      />
+      <ChatEventLogDialogX
+        open={isEventLogDialogOpen}
+        sourceId={projectStore.resolveThreadSourceId(thread)}
+        threadId={thread.id}
+        threadTitle={threadTitle}
+        store={root}
+        onClose={handleCloseEventLogDialog}
       />
     </ListItemButton>
   );

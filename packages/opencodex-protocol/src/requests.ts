@@ -76,6 +76,12 @@ export type OpenCodexRequest =
       archived?: boolean;
     }
   | { type: "threads.open"; threadId: string }
+  | {
+      type: "threads.eventLog.read";
+      threadId: string;
+      sourceId?: string | null;
+      limit?: number;
+    }
   | { type: "threads.subAgents.list"; parentThreadId: string }
   | { type: "threads.readReadonly"; threadId: string }
   | { type: "threads.loadOlder"; threadId: string }

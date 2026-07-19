@@ -14,6 +14,7 @@ import type {
   OpenCodexSettings,
   OpenCodexSource,
   OpenCodexThread,
+  OpenCodexThreadEventLogEntry,
   OpenCodexThreadTokenUsage,
   OpenCodexTurn,
   OpenCodexUsageSnapshot
@@ -72,6 +73,12 @@ export type OpenCodexEvent =
   | { type: "thread.sync.completed"; sourceId?: string | null; threadId: string }
   | { type: "thread.recovery.started"; sourceId?: string | null; threadId: string }
   | { type: "thread.recovery.completed"; sourceId?: string | null; threadId: string }
+  | {
+      type: "thread.eventLog.updated";
+      sourceId?: string | null;
+      threadId: string;
+      entry: OpenCodexThreadEventLogEntry;
+    }
   | { type: "thread.renamed"; sourceId?: string | null; threadId: string; name: string }
   | { type: "thread.deleted"; sourceId?: string | null; threadId: string }
   | {
@@ -144,4 +151,11 @@ export type OpenCodexEvent =
       exitedAt: string;
     }
   | { type: "projectRules.updated"; projectId: string; snapshot: OpenCodexProjectCommandRulesSnapshot }
-  | { type: "error"; message: string; details?: unknown; recoverable?: boolean; threadId?: string };
+  | {
+      type: "error";
+      message: string;
+      details?: unknown;
+      recoverable?: boolean;
+      sourceId?: string | null;
+      threadId?: string;
+    };

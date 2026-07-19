@@ -112,6 +112,12 @@ export class OpenCodexRequestRouter {
         );
       case "threads.open":
         return this.runtime.openThread(request.threadId);
+      case "threads.eventLog.read":
+        return this.runtime.readThreadEventLog(
+          request.threadId,
+          request.sourceId ?? null,
+          request.limit ?? 500
+        );
       case "threads.subAgents.list":
         return this.runtime.listSubAgentThreads(request.parentThreadId);
       case "threads.readReadonly":

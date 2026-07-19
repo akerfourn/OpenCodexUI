@@ -13,6 +13,7 @@ import type {
 
 import { AppStore } from "./AppStore";
 import { ApprovalsStore } from "./ApprovalsStore";
+import { ChatEventLogStore } from "./ChatEventLogStore";
 import type { ChatStore } from "./ChatStore";
 import { CommitPromptStore } from "./CommitPromptStore";
 import { HomeStore } from "./HomeStore";
@@ -32,6 +33,7 @@ export { HOME_TAB_ID, type OpenCodexAppTab } from "./NavigationStore";
 export class RootStore {
   readonly appStore = new AppStore(this);
   readonly approvalsStore = new ApprovalsStore(this);
+  readonly chatEventLogStore = new ChatEventLogStore(this);
   readonly commitPromptStore = new CommitPromptStore(this);
   readonly homeStore = new HomeStore();
   readonly logsStore = new LogsStore(this);
@@ -98,6 +100,7 @@ export class RootStore {
    */
   handleEvent(event: OpenCodexEvent): void {
     this.appStore.handleEvent(event);
+    this.chatEventLogStore.handleEvent(event);
     if (event.type === "models.updated") {
       this.projectsStore.reconcileReasoningEfforts();
     }

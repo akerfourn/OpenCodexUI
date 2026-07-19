@@ -502,6 +502,42 @@ export type OpenCodexLogEntry = {
 };
 
 /**
+ * Processing stage recorded by the per-chat Codex event trace.
+ */
+export type OpenCodexThreadEventLogStage = "received" | "ui-emitted";
+
+/**
+ * Scalar metadata value retained by the per-chat Codex event trace.
+ */
+export type OpenCodexThreadEventLogValue = string | number | boolean | null;
+
+/**
+ * Metadata-only event entry associated with one source and chat thread.
+ */
+export type OpenCodexThreadEventLogEntry = {
+  id: string;
+  sequence: number;
+  stage: OpenCodexThreadEventLogStage;
+  eventName: string;
+  sourceId: string | null;
+  threadId: string;
+  turnId: string | null;
+  itemId: string | null;
+  occurredAt: string;
+  lastOccurredAt: string;
+  count: number;
+  details: Record<string, OpenCodexThreadEventLogValue>;
+};
+
+/**
+ * Bounded result returned when reading a per-chat Codex event trace.
+ */
+export type OpenCodexThreadEventLogPage = {
+  entries: OpenCodexThreadEventLogEntry[];
+  truncated: boolean;
+};
+
+/**
  * Paginated log result.
  */
 export type OpenCodexLogPage = {

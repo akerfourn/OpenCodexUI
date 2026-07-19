@@ -56,6 +56,7 @@ import type {
   OpenCodexSource,
   OpenCodexSourceSettingsPatch,
   OpenCodexThread,
+  OpenCodexThreadEventLogPage,
   OpenCodexThreadRuntimeStatus,
   OpenCodexToolVersionStatus,
   OpenCodexTurn,
@@ -82,6 +83,10 @@ import {
 } from "./backend/errors.js";
 import { ThreadConversationService } from "./backend/ThreadConversationService.js";
 import { ThreadCacheService } from "./backend/ThreadCacheService.js";
+import {
+  ThreadEventLogService,
+  type ThreadEventLogMutation
+} from "./backend/ThreadEventLogService.js";
 import { GitService } from "./backend/GitService.js";
 import { CommitMessageService } from "./backend/CommitMessageService.js";
 import { ProjectCommandService } from "./backend/ProjectCommandService.js";
@@ -115,6 +120,7 @@ export class OpenCodexBackendRuntime {
   readonly isPrerelease: boolean;
   private settings: OpenCodexSettings;
   private readonly threadTurnCache = new ThreadTurnCache();
+  private readonly threadEventLogService = new ThreadEventLogService();
   private readonly cacheRepository: OpenCodexCacheRepository | null;
   private readonly approvalService: ApprovalService;
   private readonly clientPool: OpenCodexClientPool;
@@ -468,6 +474,7 @@ export class OpenCodexBackendRuntime {
       message: normalized.message,
       details: normalized.details,
       recoverable: recoverableThreadId !== null,
+      sourceId: readRequestSourceId(request),
       threadId: recoverableThreadId ?? undefined
     });
 
@@ -918,6 +925,22 @@ export class OpenCodexBackendRuntime {
    */
   async openThread(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     return await this.threadConversationService.openThread(threadId);
+  }
+
+  /**
+   * Reads the in-memory metadata trace for one chat thread.
+   *
+   * @param threadId Thread identifier.
+   * @param sourceId Source identifier, or `null` for an orphaned thread.
+   * @param limit Maximum number of entries to return.
+   * @returns Chronological event trace.
+   */
+  readThreadEventLog(
+    threadId: string,
+    sourceId: string | null,
+    limit: number
+  ): OpenCodexThreadEventLogPage {
+    return this.threadEventLogService.read(sourceId, threadId, limit);
   }
 
   /**
@@ -2173,6 +2196,8 @@ export class OpenCodexBackendRuntime {
       return;
     }
 
+    this.notifyThreadEventLog(this.threadEventLogService.recordNotification(notification, sourceId));
+
     if (this.streamingNotificationBatcher.handleNotification(notification, sourceId)) {
       return;
     }
@@ -2559,7 +2584,31 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   private emit(event: OpenCodexEvent): void {
+    if (event.type !== "thread.eventLog.updated") {
+      this.notifyThreadEventLog(this.threadEventLogService.recordBackendEvent(event));
+    }
+
     this.options.emit(event);
+  }
+
+  /**
+   * Forwards a trace mutation without recursively recording the trace update.
+   *
+   * @param mutation Trace mutation, or `null` when no notification is needed.
+   */
+  private notifyThreadEventLog(
+    mutation: ThreadEventLogMutation | null
+  ): void {
+    if (mutation === null || !mutation.shouldNotify) {
+      return;
+    }
+
+    this.emit({
+      type: "thread.eventLog.updated",
+      sourceId: mutation.entry.sourceId,
+      threadId: mutation.entry.threadId,
+      entry: mutation.entry
+    });
   }
 
   private persistLog(
@@ -2972,6 +3021,20 @@ function estimateNotificationBytes(value: unknown): number {
   }
 
   return estimatedBytes;
+}
+
+/**
+ * Reads the source attached to a request when the request carries one.
+ *
+ * @param request Backend request.
+ * @returns Source identifier, or `null` when unavailable.
+ */
+function readRequestSourceId(request: OpenCodexRequest): string | null {
+  if (!("sourceId" in request)) {
+    return null;
+  }
+
+  return typeof request.sourceId === "string" ? request.sourceId : null;
 }
 
 /**

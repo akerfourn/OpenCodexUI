@@ -51,6 +51,28 @@ export const resources = {
         syncing: "Synchronisation avec Codex...",
         untitled: "Conversation sans titre"
       },
+      chatEventLog: {
+        close: "Fermer",
+        count: "Occurrences",
+        description:
+          "Métadonnées des événements reçus et transmis à l’interface. Le contenu des messages et des commandes n’est pas enregistré.",
+        empty: "Aucun événement enregistré pour ce chat.",
+        item: "Élément",
+        lastOccurredAt: "Dernier passage",
+        loadError: "Impossible de charger le journal : {{message}}",
+        loading: "Chargement du journal...",
+        occurredAt: "Premier passage",
+        occurrences: "{{count}} occurrences",
+        received: "Reçu de Codex",
+        refresh: "Actualiser",
+        sequence: "Séquence",
+        source: "Source",
+        thread: "Thread",
+        title: "Journal des événements — {{thread}}",
+        truncated: "Les événements les plus anciens ne sont plus disponibles.",
+        turn: "Tour",
+        uiEmitted: "Transmis à l’interface"
+      },
       composer: {
         advanced: {
           cancel: "Annuler",
@@ -709,6 +731,7 @@ export const resources = {
         subAgentThreads: "Voir les chats des sous-agents",
         subAgentThreadsEmpty: "Aucun chat de sous-agent trouvé pour cette conversation.",
         subAgentThreadsTitle: "Chats des sous-agents",
+        threadEventLog: "Journal des événements",
         threadActions: "Actions de conversation",
         unarchiveThread: "Désarchiver"
       },
@@ -855,6 +878,28 @@ export const resources = {
         start: "Start a chat",
         syncing: "Syncing with Codex...",
         untitled: "Untitled conversation"
+      },
+      chatEventLog: {
+        close: "Close",
+        count: "Occurrences",
+        description:
+          "Metadata for events received from Codex and sent to the UI. Message and command content is not stored.",
+        empty: "No events recorded for this chat.",
+        item: "Item",
+        lastOccurredAt: "Last occurrence",
+        loadError: "Unable to load the log: {{message}}",
+        loading: "Loading event log...",
+        occurredAt: "First occurrence",
+        occurrences: "{{count}} occurrences",
+        received: "Received from Codex",
+        refresh: "Refresh",
+        sequence: "Sequence",
+        source: "Source",
+        thread: "Thread",
+        title: "Event log — {{thread}}",
+        truncated: "The oldest events are no longer available.",
+        turn: "Turn",
+        uiEmitted: "Sent to the UI"
       },
       composer: {
         advanced: {
@@ -1513,6 +1558,7 @@ export const resources = {
         subAgentThreads: "View sub-agent chats",
         subAgentThreadsEmpty: "No sub-agent chat found for this conversation.",
         subAgentThreadsTitle: "Sub-agent chats",
+        threadEventLog: "Event log",
         threadActions: "Conversation actions",
         unarchiveThread: "Unarchive"
       },

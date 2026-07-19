@@ -376,7 +376,7 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
 
       <div className="thread-groups">
         {threadListStore.filteredThreads.map((thread) => (
-          <ThreadButtonX key={thread.id} projectStore={projectStore} thread={thread} />
+          <ThreadButtonX key={thread.id} projectStore={projectStore} root={store} thread={thread} />
         ))}
       </div>
       {projectStore.hasSyncingChat ? (
