@@ -141,7 +141,7 @@ export function SubAgentThreadsDialog({
   return (
     <Dialog open={open} fullWidth maxWidth="lg" onClose={onClose}>
       <DialogTitle>{t("sidebar.subAgentThreadsTitle")}</DialogTitle>
-      <DialogContent sx={{ p: 0 }}>
+      <DialogContent sx={{ p: 0, height: "min(70vh, 640px)", overflow: "hidden" }}>
         {content}
       </DialogContent>
     </Dialog>
@@ -194,8 +194,24 @@ function renderDialogContent(
   }
 
   return (
-    <Box sx={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", minHeight: 520 }}>
-      <List dense sx={{ borderRight: 1, borderColor: "divider", overflowY: "auto" }}>
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: "280px minmax(0, 1fr)",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden"
+      }}
+    >
+      <List
+        dense
+        sx={{
+          borderRight: 1,
+          borderColor: "divider",
+          minHeight: 0,
+          overflowY: "auto"
+        }}
+      >
         {threads.map((thread) => (
           <ListItemButton
             key={thread.id}
@@ -213,7 +229,7 @@ function renderDialogContent(
           </ListItemButton>
         ))}
       </List>
-      <Box sx={{ minWidth: 0, overflowY: "auto", p: 2 }}>
+      <Box sx={{ minWidth: 0, minHeight: 0, overflowY: "auto", p: 2 }}>
         {isLoadingThread ? (
           <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
             <CircularProgress size={24} />
