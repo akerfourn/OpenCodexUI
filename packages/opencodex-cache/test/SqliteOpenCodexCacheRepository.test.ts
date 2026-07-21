@@ -781,6 +781,67 @@ describe("SqliteOpenCodexCacheRepository", () => {
     ].sort());
   });
 
+  it("should remove an empty orphan duplicate when a source project exists", async () => {
+    const source = await repository.ensureDefaultSource();
+    const projectPath = "/tmp/redundant-orphan-project";
+
+    await repository.upsertProject(projectPath, source.id);
+    const orphanProject = await repository.upsertProject(projectPath, null);
+
+    const removedCount = await repository.deleteRedundantOrphanProjects();
+    const projects = await repository.listProjects();
+
+    expect(removedCount).toBe(1);
+    expect(projects).toHaveLength(1);
+    expect(projects[0]?.id).not.toBe(orphanProject.id);
+    expect(projects[0]?.sourceId).toBe(source.id);
+  });
+
+  it("should preserve an orphan duplicate that still owns a thread", async () => {
+    const source = await repository.ensureDefaultSource();
+    const projectPath = "/tmp/orphan-project-with-thread";
+
+    await repository.upsertProject(projectPath, source.id);
+    await repository.upsertThreadIndex([
+      {
+        id: "orphan-thread",
+        codexTitle: "Orphan thread",
+        customTitle: null,
+        title: "Orphan thread",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "orphan-project-with-thread",
+        projectPath,
+        sourceId: null,
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    const removedCount = await repository.deleteRedundantOrphanProjects();
+    const projects = await repository.listProjects();
+
+    expect(removedCount).toBe(0);
+    expect(projects.filter((project) => project.path === projectPath)).toHaveLength(2);
+  });
+
+  it("should preserve an orphan duplicate with a custom display name", async () => {
+    const source = await repository.ensureDefaultSource();
+    const projectPath = "/tmp/customized-orphan-project";
+
+    await repository.upsertProject(projectPath, source.id);
+    const orphanProject = await repository.upsertProject(projectPath, null);
+    await repository.updateProjectDisplayName(orphanProject.id, "Projet conservé");
+
+    const removedCount = await repository.deleteRedundantOrphanProjects();
+    const projects = await repository.listProjects();
+
+    expect(removedCount).toBe(0);
+    expect(projects.find((project) => project.id === orphanProject.id)?.displayName)
+      .toBe("Projet conservé");
+  });
+
   it("should clear source associations explicitly", async () => {
     const source = await repository.ensureDefaultSource();
 

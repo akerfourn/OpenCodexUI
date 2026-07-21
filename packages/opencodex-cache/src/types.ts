@@ -638,6 +638,13 @@ export interface OpenCodexCacheRepository {
   listProjects(): Promise<CachedProject[]>;
 
   /**
+   * Deletes empty orphan projects duplicated by an active source project.
+   *
+   * @returns Number of removed project rows.
+   */
+  deleteRedundantOrphanProjects(): Promise<number>;
+
+  /**
    * Creates a persisted application log entry.
    *
    * @param input Log payload to persist.

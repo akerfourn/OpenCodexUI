@@ -245,27 +245,37 @@ export class ThreadConversationService {
    * Opens a thread using cache and background synchronization when possible.
    *
    * @param threadId Thread identifier.
+   * @param sourceIdOverride Source identifier known by the caller, or `null`.
    *
    * @returns Opened thread and UI turns.
    */
-  async openThread(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+  async openThread(
+    threadId: string,
+    sourceIdOverride: string | null = null
+  ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     const openStartedAt = Date.now();
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
+    const effectiveSnapshot = attachSourceIdToSnapshot(cachedSnapshot, sourceIdOverride);
 
-    if (cachedSnapshot !== null && cachedSnapshot.turns.length > 0) {
-      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+    if (effectiveSnapshot !== null && effectiveSnapshot.turns.length > 0) {
+      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(effectiveSnapshot);
+
+      if (shouldPersistSourceAssociation(cachedSnapshot, effectiveSnapshot)) {
+        await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      }
+
       const turns = this.options.threadCacheService.readTurns(cacheEntry);
       this.logThreadTiming("sqlite load finished", {
         threadId,
         startedAt: openStartedAt,
         turnCount: turns.length,
         cacheHit: true,
-        hasLoadedLatest: cachedSnapshot.syncState.hasLoadedLatest
+        hasLoadedLatest: effectiveSnapshot.syncState.hasLoadedLatest
       });
 
       this.emitThreadOpened(cacheEntry, turns);
 
-      if (cachedSnapshot.thread.sourceId !== null) {
+      if (cacheEntry.thread.sourceId !== null) {
         void this.syncCachedThread(threadId).catch((error: unknown) => {
           this.handleThreadOpenError(threadId, toError(error));
         });
@@ -274,15 +284,20 @@ export class ThreadConversationService {
       return { thread: cacheEntry.thread, turns };
     }
 
-    if (cachedSnapshot !== null && cachedSnapshot.thread.sourceId === null) {
-      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+    if (effectiveSnapshot !== null && effectiveSnapshot.thread.sourceId === null) {
+      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(effectiveSnapshot);
       const turns = this.options.threadCacheService.readTurns(cacheEntry);
       this.emitThreadOpened(cacheEntry, turns);
       return { thread: cacheEntry.thread, turns };
     }
 
-    if (cachedSnapshot !== null && isUnmaterializedThreadSnapshot(cachedSnapshot)) {
-      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+    if (effectiveSnapshot !== null && isUnmaterializedThreadSnapshot(effectiveSnapshot)) {
+      const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(effectiveSnapshot);
+
+      if (shouldPersistSourceAssociation(cachedSnapshot, effectiveSnapshot)) {
+        await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      }
+
       const turns = this.options.threadCacheService.readTurns(cacheEntry);
       this.logThreadTiming("sqlite load finished", {
         threadId,
@@ -296,7 +311,8 @@ export class ThreadConversationService {
       return { thread: cacheEntry.thread, turns };
     }
 
-    const client = await this.options.ensureClient(cachedSnapshot?.thread.sourceId ?? null);
+    const sourceId = effectiveSnapshot?.thread.sourceId ?? null;
+    const client = await this.options.ensureClient(sourceId);
     this.logThreadTiming("sqlite load finished", {
       threadId,
       startedAt: openStartedAt,
@@ -311,9 +327,9 @@ export class ThreadConversationService {
       thread = await this.readThreadMetadata(
         client,
         threadId,
-        cachedSnapshot?.thread.sourceId ?? null,
-        cachedSnapshot?.thread.model ?? null,
-        cachedSnapshot?.thread.reasoningEffort ?? null
+        sourceId,
+        effectiveSnapshot?.thread.model ?? null,
+        effectiveSnapshot?.thread.reasoningEffort ?? null
       );
     } catch (error) {
       await this.handleMissingRollout(threadId, error);
@@ -333,7 +349,9 @@ export class ThreadConversationService {
 
       const turns = this.options.threadCacheService.readTurns(cacheEntry);
 
-      await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      if (cacheEntry.thread.sourceId !== null) {
+        await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      }
       this.logThreadTiming("codex load finished", {
         threadId,
         startedAt: codexStartedAt,
@@ -344,8 +362,10 @@ export class ThreadConversationService {
       return { thread: cacheEntry.thread, turns };
     }
 
-    await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
-    await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
+    if (cacheEntry.thread.sourceId !== null) {
+      await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
+    }
     const turns = this.options.threadCacheService.readTurns(cacheEntry);
     this.logThreadTiming("codex load finished", {
       threadId,
@@ -1571,6 +1591,44 @@ function delay(durationMs: number): Promise<void> {
  */
 function isUnmaterializedThreadSnapshot(snapshot: CachedThreadSnapshot): boolean {
   return snapshot.turns.length === 0 && !snapshot.syncState.hasLoadedLatest;
+}
+
+/**
+ * Attaches a caller-provided source to a cached thread that has no source yet.
+ *
+ * @param snapshot Cached thread snapshot, or `null`.
+ * @param sourceId Source identifier known by the caller, or `null`.
+ * @returns Snapshot with the source association completed when possible.
+ */
+function attachSourceIdToSnapshot(
+  snapshot: CachedThreadSnapshot | null,
+  sourceId: string | null
+): CachedThreadSnapshot | null {
+  if (snapshot === null || sourceId === null || snapshot.thread.sourceId !== null) {
+    return snapshot;
+  }
+
+  return {
+    ...snapshot,
+    thread: {
+      ...snapshot.thread,
+      sourceId
+    }
+  };
+}
+
+/**
+ * Checks whether opening a thread repaired a missing source association.
+ *
+ * @param previousSnapshot Snapshot before the source repair.
+ * @param nextSnapshot Snapshot after the source repair.
+ * @returns Whether the repaired thread should be indexed again.
+ */
+function shouldPersistSourceAssociation(
+  previousSnapshot: CachedThreadSnapshot | null,
+  nextSnapshot: CachedThreadSnapshot
+): boolean {
+  return previousSnapshot?.thread.sourceId === null && nextSnapshot.thread.sourceId !== null;
 }
 
 /**

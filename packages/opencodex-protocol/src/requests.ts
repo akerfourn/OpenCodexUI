@@ -75,7 +75,7 @@ export type OpenCodexRequest =
       searchTerm?: string;
       archived?: boolean;
     }
-  | { type: "threads.open"; threadId: string }
+  | { type: "threads.open"; threadId: string; sourceId?: string | null }
   | {
       type: "threads.eventLog.read";
       threadId: string;

@@ -177,7 +177,11 @@ export class ThreadListStore {
       chatStore.isSyncing = true;
     }
 
-    void this.root.request({ type: "threads.open", threadId });
+    void this.root.request({
+      type: "threads.open",
+      threadId,
+      sourceId: thread?.sourceId ?? this.projectStore.project.sourceId
+    });
   }
 
   /**

@@ -418,12 +418,22 @@ export class ProjectSourceService {
    * @returns Cached project collection.
    */
   async readCachedProjects(): Promise<OpenCodexProject[]> {
-    if (this.options.cacheRepository === null) {
+    const repository = this.options.cacheRepository;
+
+    if (repository === null) {
       return [];
     }
 
     try {
-      const projects = await this.options.cacheRepository.listProjects();
+      const removedProjectCount = await repository.deleteRedundantOrphanProjects();
+
+      if (removedProjectCount > 0) {
+        this.options.backendOptions.logger?.(
+          `removed ${removedProjectCount} redundant orphan project(s)`
+        );
+      }
+
+      const projects = await repository.listProjects();
       return projects.map((project) => toOpenCodexProject(project));
     } catch (error) {
       this.options.backendOptions.logger?.(`project cache read failed: ${String(error)}`);

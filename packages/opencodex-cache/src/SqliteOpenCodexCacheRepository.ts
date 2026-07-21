@@ -87,6 +87,7 @@ import {
   updateSourceCodexDetection
 } from "./sqlite/sourceQueries.js";
 import {
+  deleteRedundantOrphanProjects,
   deleteProject,
   listProjects,
   setProjectHidden,
@@ -294,6 +295,15 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async listProjects(): Promise<CachedProject[]> {
     return await listProjects(this.database);
+  }
+
+  /**
+   * Deletes safe empty orphan project duplicates.
+   *
+   * @returns Number of removed project rows.
+   */
+  async deleteRedundantOrphanProjects(): Promise<number> {
+    return await deleteRedundantOrphanProjects(this.database);
   }
 
   /**

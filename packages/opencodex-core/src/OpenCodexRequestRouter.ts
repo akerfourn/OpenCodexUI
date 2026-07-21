@@ -111,7 +111,7 @@ export class OpenCodexRequestRouter {
           request.archived === true
         );
       case "threads.open":
-        return this.runtime.openThread(request.threadId);
+        return this.runtime.openThread(request.threadId, request.sourceId ?? null);
       case "threads.eventLog.read":
         return this.runtime.readThreadEventLog(
           request.threadId,

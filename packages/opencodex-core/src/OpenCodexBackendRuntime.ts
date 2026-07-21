@@ -920,11 +920,15 @@ export class OpenCodexBackendRuntime {
    * Opens a thread and loads its current turns.
    *
    * @param threadId Thread identifier.
+   * @param sourceId Source identifier known by the active project, or `null`.
    *
    * @returns Opened thread and turns.
    */
-  async openThread(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.threadConversationService.openThread(threadId);
+  async openThread(
+    threadId: string,
+    sourceId: string | null = null
+  ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+    return await this.threadConversationService.openThread(threadId, sourceId);
   }
 
   /**

@@ -113,6 +113,65 @@ export async function listProjects(database: BetterSqliteDatabase): Promise<Cach
 }
 
 /**
+ * Deletes empty orphan projects when an equivalent active source project exists.
+ *
+ * @param database SQLite database connection.
+ * @returns Number of removed project rows.
+ */
+export async function deleteRedundantOrphanProjects(
+  database: BetterSqliteDatabase
+): Promise<number> {
+  const result = database
+    .prepare(
+      `
+      DELETE FROM projects
+      WHERE source_key = 'orphan'
+        AND source_id IS NULL
+        AND display_name IS NULL
+        AND is_hidden = 0
+        AND preferences_json IS NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM threads
+          WHERE threads.project_id = projects.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM project_commands
+          WHERE project_commands.project_id = projects.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM project_tasks
+          WHERE project_tasks.project_id = projects.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM project_command_rules
+          WHERE project_command_rules.project_id = projects.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM project_command_rule_file_states
+          WHERE project_command_rule_file_states.project_id = projects.id
+        )
+        AND EXISTS (
+          SELECT 1
+          FROM projects AS source_projects
+          INNER JOIN sources
+            ON sources.id = source_projects.source_id
+          WHERE source_projects.path = projects.path
+            AND source_projects.source_id IS NOT NULL
+            AND source_projects.source_key <> 'orphan'
+        )
+      `
+    )
+    .run();
+
+  return result.changes;
+}
+
+/**
  * Updates the hidden flag for a cached project.
  *
  * @param database SQLite database connection.
