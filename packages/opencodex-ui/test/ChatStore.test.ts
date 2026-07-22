@@ -3,7 +3,11 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { OpenCodexThread, OpenCodexTurn } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexActivity,
+  OpenCodexThread,
+  OpenCodexTurn
+} from "@open-codex-ui/opencodex-protocol";
 
 import { ChatStore } from "../src/stores/ChatStore";
 import { hasActiveRunningTurn } from "../src/stores/chatTurnUtils";
@@ -281,6 +285,41 @@ describe("ChatStore thread snapshots", () => {
     expect(chatStore.scrollToBottomVersion).toBe(1);
   });
 });
+
+describe("ChatStore live activities", () => {
+  it("should keep the latest command details when output arrives later", () => {
+    const chatStore = createChatStore({});
+
+    chatStore.applyActivityUpdated(createCommandActivity(
+      "Commande: npm test",
+      "running",
+      { command: "npm test", aggregatedOutput: null }
+    ));
+    chatStore.applyActivityUpdated(createCommandActivity(
+      "Tests terminés",
+      "completed",
+      { command: "npm test", aggregatedOutput: "1 test passed" }
+    ));
+
+    expect(chatStore.turns[0]?.items[0]?.details).toContain("1 test passed");
+  });
+});
+
+function createCommandActivity(
+  content: string,
+  status: OpenCodexActivity["status"],
+  details: Record<string, unknown>
+): OpenCodexActivity {
+  return {
+    id: "command-1",
+    threadId: "thread-1",
+    kind: "commandExecution",
+    title: "turn-1",
+    content,
+    status,
+    details: JSON.stringify(details)
+  };
+}
 
 function createChatStore(threadPatch: Partial<OpenCodexThread>): ChatStore {
   return new ChatStore(
