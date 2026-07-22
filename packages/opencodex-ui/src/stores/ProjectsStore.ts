@@ -34,6 +34,8 @@ export class ProjectsStore implements RootChildStore {
   readonly trustStore: ProjectTrustStore;
   /** Temporary thread-to-project ownership hints while a thread opens. */
   private readonly pendingThreadProjectIds = new Map<string, string>();
+  /** Notification routes waiting for a thread snapshot before activation. */
+  private readonly pendingNotificationThreadRoutes = new Set<string>();
   /** Loaded chat routes grouped by source and thread identifiers. */
   private readonly loadedChatRoutesBySourceId = new Map<
     string,
@@ -54,11 +56,15 @@ export class ProjectsStore implements RootChildStore {
     this.trustStore = new ProjectTrustStore(this, root);
     makeAutoObservable<
       ProjectsStore,
-      "root" | "loadedChatRoutesBySourceId" | "loadedChatRouteByStore"
+      "root"
+      | "loadedChatRoutesBySourceId"
+      | "loadedChatRouteByStore"
+      | "pendingNotificationThreadRoutes"
     >(this, {
       root: false,
       loadedChatRoutesBySourceId: false,
-      loadedChatRouteByStore: false
+      loadedChatRouteByStore: false,
+      pendingNotificationThreadRoutes: false
     });
   }
 
@@ -384,6 +390,55 @@ export class ProjectsStore implements RootChildStore {
   }
 
   /**
+   * Opens a thread selected from a desktop notification.
+   *
+   * @param sourceId Source that produced the notification.
+   * @param threadId Thread to activate.
+   * @returns Nothing.
+   */
+  navigateToThreadFromNotification(sourceId: string | null, threadId: string): void {
+    const projectStore = this.findProjectStoreForThread(threadId, sourceId);
+
+    if (projectStore !== null) {
+      this.root.navigationStore.ensureProjectTab(projectStore.project.id, true);
+      projectStore.openThread(threadId);
+      return;
+    }
+
+    this.pendingNotificationThreadRoutes.add(createThreadRouteKey(sourceId, threadId));
+    void this.root.request({
+      type: "threads.open",
+      threadId,
+      sourceId
+    }).catch(() => {
+      this.pendingNotificationThreadRoutes.delete(createThreadRouteKey(sourceId, threadId));
+    });
+  }
+
+  /**
+   * Consumes a pending notification route after Codex returns thread metadata.
+   *
+   * @param thread Opened thread metadata.
+   * @returns Whether the project tab should be activated.
+   */
+  consumePendingNotificationRoute(thread: OpenCodexThread): boolean {
+    const sourceId = thread.sourceId ?? null;
+    const resolvedKey = createThreadRouteKey(sourceId, thread.id);
+
+    if (this.pendingNotificationThreadRoutes.delete(resolvedKey)) {
+      return true;
+    }
+
+    if (sourceId !== null && this.pendingNotificationThreadRoutes.delete(
+      createThreadRouteKey(null, thread.id)
+    )) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Registers or refreshes the direct route for one loaded chat.
    *
    * @param projectStore Project that owns the chat.
@@ -636,4 +691,15 @@ function matchesSource(
 function readProjectName(projectPath: string): string {
   const segments = projectPath.split(/[\\/]/).filter((segment) => segment.length > 0);
   return segments.at(-1) ?? projectPath;
+}
+
+/**
+ * Creates a source-aware route key for notification navigation.
+ *
+ * @param sourceId Source identifier, or `null`.
+ * @param threadId Thread identifier.
+ * @returns Stable route key.
+ */
+function createThreadRouteKey(sourceId: string | null, threadId: string): string {
+  return `${sourceId ?? "unknown"}:${threadId}`;
 }

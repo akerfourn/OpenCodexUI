@@ -47,6 +47,10 @@ export class AppStore implements RootChildStore {
     colorScheme: "system",
     enterKeyBehavior: "newline",
     versioningVocabulary: "simple",
+    desktopNotifications: {
+      turnCompleted: false,
+      approvalRequested: false
+    },
     discordRichPresenceEnabled: true,
     onboardingCompleted: false,
     allowOutdatedCodex: false,
@@ -363,6 +367,42 @@ export class AppStore implements RootChildStore {
     void this.root.request({
       type: "settings.update",
       patch: { allowTurnSteering }
+    });
+  }
+
+  /**
+   * Enables or disables notifications when a response has completed.
+   *
+   * @param turnCompleted Whether completed-response notifications are enabled.
+   * @returns Nothing.
+   */
+  setDesktopTurnCompletedNotifications(turnCompleted: boolean): void {
+    const desktopNotifications = {
+      ...this.settings.desktopNotifications,
+      turnCompleted
+    };
+    this.settings = { ...this.settings, desktopNotifications };
+    void this.root.request({
+      type: "settings.update",
+      patch: { desktopNotifications }
+    });
+  }
+
+  /**
+   * Enables or disables notifications for pending approvals.
+   *
+   * @param approvalRequested Whether approval notifications are enabled.
+   * @returns Nothing.
+   */
+  setDesktopApprovalNotifications(approvalRequested: boolean): void {
+    const desktopNotifications = {
+      ...this.settings.desktopNotifications,
+      approvalRequested
+    };
+    this.settings = { ...this.settings, desktopNotifications };
+    void this.root.request({
+      type: "settings.update",
+      patch: { desktopNotifications }
     });
   }
 

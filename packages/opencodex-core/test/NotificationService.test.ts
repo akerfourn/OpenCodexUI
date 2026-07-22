@@ -66,6 +66,32 @@ describe("NotificationService", () => {
       durationMs: 1200
     });
   });
+
+  it("should expose the Codex turn status on completion events", () => {
+    const emit = vi.fn();
+    const service = createService(emit);
+
+    service.handleNotification({
+      method: "turn/completed",
+      params: {
+        threadId: "thread-1",
+        turn: {
+          id: "turn-1",
+          status: "failed",
+          durationMs: 1200
+        }
+      }
+    }, "source-1");
+
+    expect(emit).toHaveBeenCalledWith({
+      type: "turn.completed",
+      sourceId: "source-1",
+      threadId: "thread-1",
+      turnId: "turn-1",
+      durationMs: 1200,
+      turnStatus: "failed"
+    });
+  });
 });
 
 function createService(emit: (event: OpenCodexEvent) => void): NotificationService {

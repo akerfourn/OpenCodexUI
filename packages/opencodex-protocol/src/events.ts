@@ -117,6 +117,11 @@ export type OpenCodexEvent =
   | { type: "activity.completed"; sourceId?: string | null; threadId: string; activityId: string }
   | { type: "approval.requested"; approval: OpenCodexApproval }
   | { type: "approval.resolved"; approvalId: string }
+  | {
+      type: "app.navigation.requested";
+      sourceId: string | null;
+      threadId: string;
+    }
   | { type: "project.trust.required"; projectPath: string; disabledFolders: string[] }
   | { type: "project.trust.completed"; projectPath: string }
   | { type: "turn.started"; sourceId?: string | null; threadId: string; turnId: string }
@@ -126,6 +131,7 @@ export type OpenCodexEvent =
       threadId: string;
       turnId: string;
       durationMs: number | null;
+      turnStatus?: string;
     }
   | { type: "models.updated"; models: OpenCodexModel[] }
   | { type: "usage.updated"; sourceId: string; usage: OpenCodexUsageSnapshot | null }

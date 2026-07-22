@@ -242,12 +242,21 @@ export class NotificationService {
    */
   private handleTurnCompleted(params: Record<string, unknown>, sourceId: string): void {
     const threadId = readString(params.threadId);
-    const turnId = readString(readObject(params.turn).id);
-    const durationMs = readNullableNumber(readObject(params.turn).durationMs);
+    const turn = readObject(params.turn);
+    const turnId = readString(turn.id);
+    const durationMs = readNullableNumber(turn.durationMs);
+    const turnStatus = readString(turn.status);
 
     if (threadId.length > 0 && turnId.length > 0) {
       this.flushPendingAssistantDeltas(sourceId, threadId, turnId, null);
-      this.options.emit({ type: "turn.completed", sourceId, threadId, turnId, durationMs });
+      this.options.emit({
+        type: "turn.completed",
+        sourceId,
+        threadId,
+        turnId,
+        durationMs,
+        ...(turnStatus.length > 0 ? { turnStatus } : {})
+      });
       this.options.syncCompletedTurn(threadId, sourceId);
     }
   }

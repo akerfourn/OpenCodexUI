@@ -220,6 +220,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
     tokenUsage: OpenCodexThreadTokenUsage | null
   ): void {
     const projectStore = this.projectsStore.ensureProjectStoreForThread(thread);
+    const shouldActivateProject = this.projectsStore.consumePendingNotificationRoute(thread);
     const openedThread = projectStore.upsertThread(thread);
     const chatStore = projectStore.getOrCreateChat(openedThread);
     const shouldMergeTurns = projectStore.selectedChatId === openedThread.id && chatStore.turns.length > 0;
@@ -227,6 +228,9 @@ export class ProjectThreadEventsStore implements RootChildStore {
     projectStore.isCreatingThread = false;
     projectStore.loadingThreadId = null;
     projectStore.selectChat(openedThread.id);
+    if (shouldActivateProject) {
+      this.root.navigationStore.ensureProjectTab(projectStore.project.id, true);
+    }
     this.root.approvalsStore.attachPendingApprovalsToChat(chatStore);
     chatStore.applyOpenedSnapshot(turns, source, hasMoreOlderMessages, shouldMergeTurns);
     chatStore.applyTokenUsage(tokenUsage);

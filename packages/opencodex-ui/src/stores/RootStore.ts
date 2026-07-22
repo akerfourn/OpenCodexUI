@@ -99,6 +99,11 @@ export class RootStore {
    * @returns Nothing.
    */
   handleEvent(event: OpenCodexEvent): void {
+    if (event.type === "app.navigation.requested") {
+      this.projectsStore.navigateToThreadFromNotification(event.sourceId, event.threadId);
+      return;
+    }
+
     this.appStore.handleEvent(event);
     this.chatEventLogStore.handleEvent(event);
     if (event.type === "models.updated") {

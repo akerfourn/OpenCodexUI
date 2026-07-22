@@ -30,6 +30,10 @@ export const defaultSettings: OpenCodexSettings = {
   colorScheme: "system",
   enterKeyBehavior: "newline",
   versioningVocabulary: "simple",
+  desktopNotifications: {
+    turnCompleted: false,
+    approvalRequested: false
+  },
   discordRichPresenceEnabled: true,
   onboardingCompleted: false,
   allowOutdatedCodex: false,
@@ -68,6 +72,10 @@ export class SettingsStore {
         codexReleaseCheck: {
           ...defaultSettings.codexReleaseCheck,
           ...parsed.codexReleaseCheck
+        },
+        desktopNotifications: {
+          ...defaultSettings.desktopNotifications,
+          ...parsed.desktopNotifications
         }
       };
 

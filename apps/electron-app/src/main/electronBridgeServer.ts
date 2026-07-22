@@ -24,6 +24,7 @@ import {
   PerformanceMonitoringService,
   type OpenCodexProcessPerformanceMetric
 } from "./performanceMonitoringService.js";
+import { DesktopNotificationService } from "./desktopNotificationService.js";
 import {
   openProjectFolder,
   openProjectTerminal
@@ -45,6 +46,7 @@ export class ElectronBridgeServer {
   private readonly requestRouter: OpenCodexRequestRouter;
   private readonly discordPresenceService: DiscordPresenceService;
   private readonly performanceMonitoringService: PerformanceMonitoringService;
+  private readonly desktopNotificationService: DesktopNotificationService;
   private readonly logger: (message: string) => void;
   private window: BrowserWindow | null = null;
   private isDisposed = false;
@@ -114,6 +116,19 @@ export class ElectronBridgeServer {
       options.settings.discordRichPresenceEnabled,
       logger
     );
+    this.desktopNotificationService = new DesktopNotificationService({
+      settings: options.settings,
+      focusWindow: () => this.focusWindow(),
+      navigateToThread: (sourceId, threadId) => this.emit({
+        type: "app.navigation.requested",
+        sourceId,
+        threadId
+      }),
+      resolveApproval: (approvalId, decision) => {
+        this.runtime.resolveApproval(approvalId, decision);
+      },
+      logger
+    });
   }
 
   /**
@@ -148,6 +163,7 @@ export class ElectronBridgeServer {
         const settings = response as OpenCodexSettings;
         this.discordPresenceService.setEnabled(settings.discordRichPresenceEnabled);
         this.performanceMonitoringService.setSettings(settings);
+        this.desktopNotificationService.setSettings(settings);
         this.closeDeveloperToolsWhenDisabled(settings);
       }
 
@@ -169,6 +185,7 @@ export class ElectronBridgeServer {
     ipcMain.removeHandler("opencodex:request");
     ipcMain.off("opencodex:performance-sample", this.handlePerformanceSample);
     this.window = null;
+    this.desktopNotificationService.dispose();
     this.performanceMonitoringService.dispose();
     const results = await Promise.allSettled([
       this.discordPresenceService.dispose(),
@@ -195,6 +212,7 @@ export class ElectronBridgeServer {
 
     this.discordPresenceService.handleEvent(event);
     this.performanceMonitoringService?.recordBackendEvent(event);
+    this.desktopNotificationService.handleEvent(event);
     const window = this.window;
 
     if (window === null || window.isDestroyed() || window.webContents.isDestroyed()) {
@@ -202,6 +220,27 @@ export class ElectronBridgeServer {
     }
 
     window.webContents.send("opencodex:event", event);
+  }
+
+  /**
+   * Restores and focuses the renderer window after a notification interaction.
+   */
+  private focusWindow(): void {
+    const window = this.window;
+
+    if (window === null || window.isDestroyed() || window.webContents.isDestroyed()) {
+      return;
+    }
+
+    if (window.isMinimized()) {
+      window.restore();
+    }
+
+    if (!window.isVisible()) {
+      window.show();
+    }
+
+    window.focus();
   }
 
   /**

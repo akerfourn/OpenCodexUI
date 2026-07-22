@@ -1018,12 +1018,21 @@ export type OpenCodexSettings = {
   colorScheme: OpenCodexColorScheme;
   enterKeyBehavior: OpenCodexEnterKeyBehavior;
   versioningVocabulary: OpenCodexVersioningVocabulary;
+  desktopNotifications: OpenCodexDesktopNotificationSettings;
   discordRichPresenceEnabled: boolean;
   onboardingCompleted: boolean;
   allowOutdatedCodex: boolean;
   developerMode: boolean;
   performanceMonitoringEnabled: boolean;
   advancedPerformanceMonitoringEnabled: boolean;
+};
+
+/**
+ * Desktop notification preferences handled by the Electron main process.
+ */
+export type OpenCodexDesktopNotificationSettings = {
+  turnCompleted: boolean;
+  approvalRequested: boolean;
 };
 
 /**

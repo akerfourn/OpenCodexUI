@@ -42,6 +42,18 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
     appStore.setAllowTurnSteering(event.target.checked);
   }
 
+  function handleDesktopTurnCompletedNotificationsChange(
+    event: ChangeEvent<HTMLInputElement>
+  ): void {
+    appStore.setDesktopTurnCompletedNotifications(event.target.checked);
+  }
+
+  function handleDesktopApprovalNotificationsChange(
+    event: ChangeEvent<HTMLInputElement>
+  ): void {
+    appStore.setDesktopApprovalNotifications(event.target.checked);
+  }
+
   function handleAllowOutdatedCodexChange(event: ChangeEvent<HTMLInputElement>): void {
     appStore.setAllowOutdatedCodex(event.target.checked);
   }
@@ -162,6 +174,69 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           </Stack>
         )}
       />
+      <Box
+        sx={{
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 1,
+          backgroundColor: "action.hover",
+          px: 1.5,
+          py: 1.25
+        }}
+      >
+        <Stack spacing={0.5}>
+          <Typography variant="subtitle1" sx={{ ml: 5 }}>
+            {t("settings.desktopNotifications")}
+          </Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ ml: 5, fontStyle: "italic" }}
+          >
+            {t("settings.desktopNotificationsDescription")}
+          </Typography>
+          <FormControlLabel
+            sx={{ alignItems: "flex-start", m: 0, ml: 1 }}
+            control={(
+              <Switch
+                checked={appStore.settings.desktopNotifications.turnCompleted}
+                onChange={handleDesktopTurnCompletedNotificationsChange}
+                sx={{ mt: -0.5 }}
+              />
+            )}
+            label={(
+              <Stack spacing={0.25}>
+                <Typography variant="body1">
+                  {t("settings.desktopNotificationsTurnCompleted")}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                  {t("settings.desktopNotificationsTurnCompletedDescription")}
+                </Typography>
+              </Stack>
+            )}
+          />
+          <FormControlLabel
+            sx={{ alignItems: "flex-start", m: 0, ml: 1 }}
+            control={(
+              <Switch
+                checked={appStore.settings.desktopNotifications.approvalRequested}
+                onChange={handleDesktopApprovalNotificationsChange}
+                sx={{ mt: -0.5 }}
+              />
+            )}
+            label={(
+              <Stack spacing={0.25}>
+                <Typography variant="body1">
+                  {t("settings.desktopNotificationsApprovalRequested")}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                  {t("settings.desktopNotificationsApprovalRequestedDescription")}
+                </Typography>
+              </Stack>
+            )}
+          />
+        </Stack>
+      </Box>
       <Stack spacing={1}>
         <FormControlLabel
           sx={{ alignItems: "flex-start", m: 0 }}
