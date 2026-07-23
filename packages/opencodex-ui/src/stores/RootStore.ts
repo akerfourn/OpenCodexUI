@@ -22,6 +22,7 @@ import { NavigationStore } from "./NavigationStore";
 import { PluginsStore } from "./PluginsStore";
 import type { ProjectStore } from "./ProjectStore";
 import { ProjectsStore } from "./ProjectsStore";
+import { ProjectGroupsStore } from "./ProjectGroupsStore";
 import { SourcesStore } from "./SourcesStore";
 import { UsageStore } from "./UsageStore";
 
@@ -40,6 +41,7 @@ export class RootStore {
   readonly navigationStore = new NavigationStore(this);
   readonly pluginsStore = new PluginsStore(this);
   readonly projectsStore = new ProjectsStore(this);
+  readonly projectGroupsStore = new ProjectGroupsStore(this);
   readonly sourcesStore = new SourcesStore(this);
   readonly usageStore = new UsageStore(this);
   /**
@@ -112,6 +114,7 @@ export class RootStore {
     this.approvalsStore.handleEvent(event);
     this.logsStore.handleEvent(event);
     this.projectsStore.handleEvent(event);
+    this.projectGroupsStore.handleEvent(event);
     this.sourcesStore.handleEvent(event);
     this.usageStore.handleEvent(event);
 

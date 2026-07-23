@@ -4,6 +4,11 @@
 export type {
   CachedProject,
   CachedProjectPreferences,
+  CachedProjectGroup,
+  CachedProjectGroupsSnapshot,
+  CachedProjectTreeItem,
+  CachedProjectGroupCreateInput,
+  CachedProjectGroupUpdateInput,
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
   CachedCommandRuleDecision,

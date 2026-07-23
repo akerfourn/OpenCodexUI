@@ -15,6 +15,10 @@ import type {
   CachedModelCatalog,
   CachedOlderTurnsResult,
   CachedProject,
+  CachedProjectGroup,
+  CachedProjectGroupCreateInput,
+  CachedProjectGroupsSnapshot,
+  CachedProjectGroupUpdateInput,
   CachedProjectPreferences,
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
@@ -86,6 +90,13 @@ import {
   updateSource,
   updateSourceCodexDetection
 } from "./sqlite/sourceQueries.js";
+import {
+  assignProjectToGroup,
+  createProjectGroup,
+  deleteProjectGroup,
+  listProjectGroups,
+  updateProjectGroup
+} from "./sqlite/projectGroupQueries.js";
 import {
   deleteRedundantOrphanProjects,
   deleteProject,
@@ -295,6 +306,34 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async listProjects(): Promise<CachedProject[]> {
     return await listProjects(this.database);
+  }
+
+  /** Lists OpenCodexUI-only project groups and their mixed tree. */
+  async listProjectGroups(): Promise<CachedProjectGroupsSnapshot> {
+    return await listProjectGroups(this.database);
+  }
+
+  /** Creates an OpenCodexUI-only project group. */
+  async createProjectGroup(input: CachedProjectGroupCreateInput): Promise<CachedProjectGroup> {
+    return await createProjectGroup(this.database, input);
+  }
+
+  /** Updates an OpenCodexUI-only project group. */
+  async updateProjectGroup(
+    groupId: string,
+    patch: CachedProjectGroupUpdateInput
+  ): Promise<CachedProjectGroup> {
+    return await updateProjectGroup(this.database, groupId, patch);
+  }
+
+  /** Deletes a project group while retaining its children. */
+  async deleteProjectGroup(groupId: string): Promise<void> {
+    await deleteProjectGroup(this.database, groupId);
+  }
+
+  /** Moves a project to a group or to the ungrouped root. */
+  async assignProjectToGroup(projectId: string, groupId: string | null): Promise<void> {
+    await assignProjectToGroup(this.database, projectId, groupId);
   }
 
   /**

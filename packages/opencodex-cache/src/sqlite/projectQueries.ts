@@ -5,6 +5,7 @@ import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import { createProjectIdentity } from "../projectIdentity.js";
 import type { CachedProject, CachedProjectPreferences } from "../types.js";
+import { ensureProjectTreeItem } from "./projectGroupQueries.js";
 import { mapProjectRow } from "./mappers.js";
 import { serializeProjectPreferences } from "./projectPreferences.js";
 import type { ProjectRow } from "./rowTypes.js";
@@ -71,9 +72,17 @@ export async function upsertProject(
       `
       SELECT
         projects.*,
-        COALESCE(MAX(threads.updated_at), projects.created_at) AS edited_at
+        COALESCE(
+          NULLIF(MAX(
+            MAX(COALESCE(threads.updated_at, '')),
+            MAX(COALESCE(turns.completed_at, '')),
+            MAX(COALESCE(turns.started_at, ''))
+          ), ''),
+          projects.created_at
+        ) AS edited_at
       FROM projects
       LEFT JOIN threads ON threads.project_id = projects.id
+      LEFT JOIN turns ON turns.thread_id = threads.id
       WHERE projects.source_key = @sourceKey AND projects.path = @path
       GROUP BY projects.id
       `
@@ -84,6 +93,7 @@ export async function upsertProject(
     throw new Error("Project could not be read after being cached.");
   }
 
+  ensureProjectTreeItem(database, row.id);
   return mapProjectRow(row);
 }
 
@@ -100,9 +110,17 @@ export async function listProjects(database: BetterSqliteDatabase): Promise<Cach
       `
       SELECT
         projects.*,
-        COALESCE(MAX(threads.updated_at), projects.created_at) AS edited_at
+        COALESCE(
+          NULLIF(MAX(
+            MAX(COALESCE(threads.updated_at, '')),
+            MAX(COALESCE(turns.completed_at, '')),
+            MAX(COALESCE(turns.started_at, ''))
+          ), ''),
+          projects.created_at
+        ) AS edited_at
       FROM projects
       LEFT JOIN threads ON threads.project_id = projects.id
+      LEFT JOIN turns ON turns.thread_id = threads.id
       GROUP BY projects.id
       ORDER BY edited_at DESC, projects.path ASC
       `
@@ -154,6 +172,12 @@ export async function deleteRedundantOrphanProjects(
           SELECT 1
           FROM project_command_rule_file_states
           WHERE project_command_rule_file_states.project_id = projects.id
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM project_tree_items
+          WHERE project_tree_items.project_id = projects.id
+            AND project_tree_items.parent_group_id IS NOT NULL
         )
         AND EXISTS (
           SELECT 1
@@ -300,9 +324,17 @@ function readProjectById(database: BetterSqliteDatabase, projectId: string): Cac
       `
       SELECT
         projects.*,
-        COALESCE(MAX(threads.updated_at), projects.created_at) AS edited_at
+        COALESCE(
+          NULLIF(MAX(
+            MAX(COALESCE(threads.updated_at, '')),
+            MAX(COALESCE(turns.completed_at, '')),
+            MAX(COALESCE(turns.started_at, ''))
+          ), ''),
+          projects.created_at
+        ) AS edited_at
       FROM projects
       LEFT JOIN threads ON threads.project_id = projects.id
+      LEFT JOIN turns ON turns.thread_id = threads.id
       WHERE projects.id = @projectId
       GROUP BY projects.id
       `

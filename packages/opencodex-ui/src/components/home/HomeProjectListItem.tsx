@@ -2,11 +2,22 @@
  * Renders one project entry in the Home project list.
  */
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import DriveFileMoveOutlinedIcon from "@mui/icons-material/DriveFileMoveOutlined";
 import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
+import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import { Box, IconButton, ListItemButton, ListItemIcon, Tooltip, Typography } from "@mui/material";
-import type { MouseEvent } from "react";
+import {
+  Box,
+  IconButton,
+  ListItemButton,
+  ListItemIcon,
+  Menu,
+  MenuItem,
+  Tooltip,
+  Typography
+} from "@mui/material";
+import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexProject, OpenCodexSourceColor } from "@open-codex-ui/opencodex-protocol";
@@ -15,11 +26,13 @@ import { getSourceBadgeSx } from "./sourceColor";
 
 type HomeProjectListItemProps = {
   project: OpenCodexProject;
+  depth: number;
   sourceName: string | null;
   sourceColor: OpenCodexSourceColor | null;
   onOpen(projectPath: string, sourceId: string | null): void;
   onSetHidden(projectId: string, isHidden: boolean): void;
   onDelete(project: OpenCodexProject): void;
+  onOrganize(project: OpenCodexProject): void;
 };
 
 /**
@@ -31,13 +44,16 @@ type HomeProjectListItemProps = {
  */
 export function HomeProjectListItem({
   project,
+  depth,
   sourceName,
   sourceColor,
   onOpen,
   onSetHidden,
-  onDelete
+  onDelete,
+  onOrganize
 }: HomeProjectListItemProps) {
   const { i18n, t } = useTranslation();
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const projectName = project.displayName ?? project.defaultName;
   const sourceLabel = sourceName ?? t("sources.orphan");
   const relativeEditedAt = formatRelativeTime(project.editedAt, i18n.language);
@@ -57,12 +73,27 @@ export function HomeProjectListItem({
     onDelete(project);
   }
 
+  function handleOpenMenu(event: MouseEvent<HTMLButtonElement>): void {
+    event.stopPropagation();
+    setMenuAnchor(event.currentTarget);
+  }
+
+  function closeMenu(): void {
+    setMenuAnchor(null);
+  }
+
+  function handleMenuAction(action: () => void): void {
+    closeMenu();
+    action();
+  }
+
   return (
-    <ListItemButton
-      className="home-project-list-item"
-      onClick={handleOpen}
-      sx={{ borderRadius: 1, mb: 0.5 }}
-    >
+    <>
+      <ListItemButton
+        className="home-project-list-item"
+        onClick={handleOpen}
+        sx={{ borderRadius: 1, mb: 0.5, pl: 1.5 + depth * 2 }}
+      >
       <ListItemIcon sx={{ minWidth: 34 }}>
         <FolderOutlinedIcon fontSize="small" />
       </ListItemIcon>
@@ -97,6 +128,14 @@ export function HomeProjectListItem({
       <Typography variant="caption" color="text.secondary" sx={{ flex: "0 0 auto", ml: 2 }}>
         {relativeEditedAt}
       </Typography>
+      <IconButton
+        aria-label={t("home.projectActions")}
+        size="small"
+        onClick={handleOpenMenu}
+        sx={{ flex: "0 0 auto", ml: 1 }}
+      >
+        <MoreVertOutlinedIcon fontSize="small" />
+      </IconButton>
       <Tooltip title={hiddenButtonLabel}>
         <IconButton
           aria-label={hiddenButtonLabel}
@@ -123,7 +162,14 @@ export function HomeProjectListItem({
           <DeleteOutlineOutlinedIcon fontSize="small" />
         </IconButton>
       </Tooltip>
-    </ListItemButton>
+      </ListItemButton>
+      <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={closeMenu}>
+        <MenuItem onClick={() => handleMenuAction(() => onOrganize(project))}>
+          <DriveFileMoveOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+          {t("home.organizeProjectAction")}
+        </MenuItem>
+      </Menu>
+    </>
   );
 }
 

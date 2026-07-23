@@ -23,6 +23,7 @@ import {
   mapThreadTokenUsage,
   mapThreadRow
 } from "./mappers.js";
+import { ensureProjectTreeItem } from "./projectGroupQueries.js";
 import type { ThreadRow } from "./rowTypes.js";
 import { parseTurnRows } from "./turnSerialization.js";
 import {
@@ -770,7 +771,12 @@ function writeThreadIndex(
       thread_source = excluded.thread_source,
       agent_nickname = excluded.agent_nickname,
       agent_role = excluded.agent_role,
-      updated_at = excluded.updated_at
+      updated_at = CASE
+        WHEN excluded.updated_at IS NULL THEN threads.updated_at
+        WHEN threads.updated_at IS NULL OR excluded.updated_at > threads.updated_at
+          THEN excluded.updated_at
+        ELSE threads.updated_at
+      END
     `
   );
 
@@ -786,6 +792,7 @@ function writeThreadIndex(
           isHidden: thread.projectHidden === true ? 1 : 0,
           now
         });
+        ensureProjectTreeItem(database, project.id);
       }
 
       upsertThread.run({

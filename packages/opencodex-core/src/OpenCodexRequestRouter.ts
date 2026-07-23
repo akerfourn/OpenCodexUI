@@ -70,6 +70,16 @@ export class OpenCodexRequestRouter {
         return this.runtime.pickProjectContextFolder();
       case "projects.delete":
         return this.runtime.deleteProject(request.projectId);
+      case "projectGroups.list":
+        return this.runtime.listProjectGroups();
+      case "projectGroups.create":
+        return this.runtime.createProjectGroup(request.name, request.parentGroupId ?? null);
+      case "projectGroups.update":
+        return this.runtime.updateProjectGroup(request.groupId, request.patch);
+      case "projectGroups.delete":
+        return this.runtime.deleteProjectGroup(request.groupId);
+      case "projectGroups.assignProject":
+        return this.runtime.assignProjectToGroup(request.projectId, request.groupId);
       case "attachments.pickImages":
         return this.runtime.pickImageFiles();
       case "sources.list":

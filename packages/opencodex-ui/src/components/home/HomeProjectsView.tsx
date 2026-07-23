@@ -2,6 +2,7 @@
  * Renders project opening controls on the Home tab.
  */
 import CreateNewFolderOutlinedIcon from "@mui/icons-material/CreateNewFolderOutlined";
+import FolderCopyOutlinedIcon from "@mui/icons-material/FolderCopyOutlined";
 import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
@@ -20,34 +21,48 @@ import {
   Typography,
   type SelectProps
 } from "@mui/material";
-import Fuse from "fuse.js";
 import { observer } from "mobx-react-lite";
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexProject,
+  OpenCodexProjectGroup
+} from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
 import { HomeProjectDeleteDialog } from "./HomeProjectDeleteDialog";
+import { HomeProjectGroupAssignmentDialog } from "./HomeProjectGroupAssignmentDialog";
+import { HomeProjectGroupDeleteDialog } from "./HomeProjectGroupDeleteDialog";
+import { HomeProjectGroupDialog } from "./HomeProjectGroupDialog";
+import { HomeProjectGroupRow } from "./HomeProjectGroupRow";
 import { HomeProjectListItem } from "./HomeProjectListItem";
+import { buildHomeProjectTree } from "./homeProjectTree";
 
 type HomeProjectsViewProps = {
   store: RootStore;
 };
 
-/**
- * Renders Home project controls.
- *
- * @param props Component props.
- *
- * @returns Rendered project view.
- */
+/** Renders Home project controls. */
 export function HomeProjectsView({ store }: HomeProjectsViewProps) {
   const { t } = useTranslation();
   const [projectPendingDeletion, setProjectPendingDeletion] =
     useState<OpenCodexProject | null>(null);
+  const [projectPendingAssignment, setProjectPendingAssignment] =
+    useState<OpenCodexProject | null>(null);
+  const [groupPendingDeletion, setGroupPendingDeletion] =
+    useState<OpenCodexProjectGroup | null>(null);
+  const [groupDialog, setGroupDialog] = useState<{
+    mode: "create" | "rename";
+    group: OpenCodexProjectGroup | null;
+  } | null>(null);
   const projectsStore = store.projectsStore;
+  const projectGroupsStore = store.projectGroupsStore;
   const sourcesStore = store.sourcesStore;
+
+  useEffect(() => {
+    void projectGroupsStore.refresh();
+  }, [projectGroupsStore]);
 
   function handlePickExisting(): void {
     projectsStore.openProjectFromPicker("open");
@@ -77,13 +92,35 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
     setProjectPendingDeletion(project);
   }
 
-  function handleCancelProjectDeletion(): void {
-    setProjectPendingDeletion(null);
-  }
-
   function handleConfirmProjectDeletion(projectId: string): void {
     projectsStore.deleteProject(projectId);
     setProjectPendingDeletion(null);
+  }
+
+  function handleCreateGroup(): void {
+    setGroupDialog({ mode: "create", group: null });
+  }
+
+  function handleRenameGroup(group: OpenCodexProjectGroup): void {
+    setGroupDialog({ mode: "rename", group });
+  }
+
+  function handleConfirmGroupDialog(name: string): void {
+    if (groupDialog === null) {
+      return;
+    }
+
+    if (groupDialog.mode === "create") {
+      projectGroupsStore.createGroup(name);
+    } else if (groupDialog.group !== null) {
+      projectGroupsStore.updateGroup(groupDialog.group.id, { name });
+    }
+    setGroupDialog(null);
+  }
+
+  function handleConfirmGroupDeletion(groupId: string): void {
+    projectGroupsStore.deleteGroup(groupId);
+    setGroupPendingDeletion(null);
   }
 
   function handleSourceChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
@@ -106,13 +143,17 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
     return sourcesStore.sources.find((source) => source.id === selected)?.name ?? selected;
   };
   const hiddenProjectCount = projectsStore.projects.filter((project) => project.isHidden).length;
-  const visibleProjects = getVisibleProjects(
+  const availableProjects = getAvailableProjects(
     projectsStore.projects,
     store.homeStore.showHiddenProjects,
-    store.homeStore.selectedSourceId,
-    store.homeStore.projectSearchTerm
+    store.homeStore.selectedSourceId
   );
-  const hasProjects = visibleProjects.length > 0;
+  const treeNodes = buildHomeProjectTree({
+    projects: availableProjects,
+    groups: projectGroupsStore.groups,
+    items: projectGroupsStore.items,
+    searchTerm: store.homeStore.projectSearchTerm
+  });
   const sourceById = new Map(sourcesStore.sources.map((source) => [source.id, source]));
   const hiddenProjectsButtonLabel = store.homeStore.showHiddenProjects
     ? t("home.hideHiddenProjects")
@@ -132,10 +173,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
           onChange={handleSourceChange}
           slotProps={{
             inputLabel: { shrink: true },
-            select: {
-              displayEmpty: true,
-              renderValue: renderSourceValue
-            }
+            select: { displayEmpty: true, renderValue: renderSourceValue }
           }}
           sx={{ minWidth: 180 }}
         >
@@ -151,28 +189,23 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
           ))}
         </TextField>
         <Tooltip title={t("home.pickExisting")}>
-          <IconButton
-            aria-label={t("home.pickExisting")}
-            onClick={handlePickExisting}
-            color="primary"
-          >
+          <IconButton aria-label={t("home.pickExisting")} onClick={handlePickExisting} color="primary">
             <FolderOpenOutlinedIcon />
           </IconButton>
         </Tooltip>
         <Tooltip title={t("home.pickNew")}>
-          <IconButton
-            aria-label={t("home.pickNew")}
-            onClick={handlePickNew}
-            color="primary"
-          >
+          <IconButton aria-label={t("home.pickNew")} onClick={handlePickNew} color="primary">
             <CreateNewFolderOutlinedIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title={t("home.createProjectGroup")}>
+          <IconButton aria-label={t("home.createProjectGroup")} onClick={handleCreateGroup} color="primary">
+            <FolderCopyOutlinedIcon />
           </IconButton>
         </Tooltip>
       </Box>
 
-      {store.homeStore.isOpeningProject ? (
-        <LinearProgress />
-      ) : null}
+      {store.homeStore.isOpeningProject ? <LinearProgress /> : null}
 
       <Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -214,20 +247,38 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
             <RefreshOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        {hasProjects ? (
+        {treeNodes.length > 0 ? (
           <List dense sx={{ mt: 1 }}>
-            {visibleProjects.map((project) => {
-              const source = project.sourceId === null ? null : sourceById.get(project.sourceId) ?? null;
+            {treeNodes.map((node) => {
+              if (node.type === "group") {
+                return (
+                  <HomeProjectGroupRow
+                    key={`group:${node.group.id}`}
+                    group={node.group}
+                    editedAt={node.editedAt}
+                    depth={node.depth}
+                    childCount={node.childCount}
+                    onToggle={() => projectGroupsStore.toggleGroup(node.group.id)}
+                    onRename={() => handleRenameGroup(node.group)}
+                    onDelete={() => setGroupPendingDeletion(node.group)}
+                  />
+                );
+              }
 
+              const source = node.project.sourceId === null
+                ? null
+                : sourceById.get(node.project.sourceId) ?? null;
               return (
                 <HomeProjectListItem
-                  key={project.id}
-                  project={project}
+                  key={`project:${node.project.id}`}
+                  project={node.project}
+                  depth={node.depth}
                   sourceName={source === null ? null : source.name}
                   sourceColor={source === null ? null : source.settings.color}
                   onOpen={handleOpenRecent}
                   onSetHidden={handleSetProjectHidden}
                   onDelete={handleDeleteProject}
+                  onOrganize={setProjectPendingAssignment}
                 />
               );
             })}
@@ -242,8 +293,34 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
       </Box>
       <HomeProjectDeleteDialog
         project={projectPendingDeletion}
-        onCancel={handleCancelProjectDeletion}
+        onCancel={() => setProjectPendingDeletion(null)}
         onConfirm={handleConfirmProjectDeletion}
+      />
+      <HomeProjectGroupDialog
+        open={groupDialog !== null}
+        mode={groupDialog?.mode ?? "create"}
+        initialName={groupDialog?.group?.name}
+        onCancel={() => setGroupDialog(null)}
+        onConfirm={handleConfirmGroupDialog}
+      />
+      <HomeProjectGroupDeleteDialog
+        group={groupPendingDeletion}
+        onCancel={() => setGroupPendingDeletion(null)}
+        onConfirm={handleConfirmGroupDeletion}
+      />
+      <HomeProjectGroupAssignmentDialog
+        project={projectPendingAssignment}
+        groups={projectGroupsStore.groups}
+        currentGroupId={projectPendingAssignment === null
+          ? null
+          : projectGroupsStore.getProjectGroupId(projectPendingAssignment.id)}
+        onCancel={() => setProjectPendingAssignment(null)}
+        onConfirm={(groupId) => {
+          if (projectPendingAssignment !== null) {
+            projectGroupsStore.assignProject(projectPendingAssignment.id, groupId);
+          }
+          setProjectPendingAssignment(null);
+        }}
       />
     </Stack>
   );
@@ -251,11 +328,11 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
 
 export const HomeProjectsViewX = observer(HomeProjectsView);
 
-function getVisibleProjects(
+/** Filters projects by visibility/source before the recursive tree search runs. */
+function getAvailableProjects(
   projects: OpenCodexProject[],
   showHiddenProjects: boolean,
-  sourceId: string | null,
-  searchTerm: string
+  sourceId: string | null
 ): OpenCodexProject[] {
   const visibleProjects = showHiddenProjects
     ? projects
@@ -263,29 +340,16 @@ function getVisibleProjects(
   const availableProjects = sourceId === null
     ? visibleProjects
     : visibleProjects.filter((project) => project.sourceId === sourceId);
-  const normalizedSearchTerm = searchTerm.trim();
 
-  if (normalizedSearchTerm.length === 0) {
-    return [...availableProjects].sort(compareProjectsByEditedAt);
-  }
-
-  const fuse = new Fuse(availableProjects, {
-    includeScore: true,
-    keys: [
-      { name: "displayName", weight: 0.45 },
-      { name: "defaultName", weight: 0.45 },
-      { name: "path", weight: 0.2 }
-    ],
-    threshold: 0.38
-  });
-
-  return fuse.search(normalizedSearchTerm).map((result) => result.item);
+  return [...availableProjects].sort(compareProjectsByEditedAt);
 }
 
+/** Keeps newly discovered projects deterministic before they enter the tree. */
 function compareProjectsByEditedAt(left: OpenCodexProject, right: OpenCodexProject): number {
   return readTimestamp(right.editedAt) - readTimestamp(left.editedAt);
 }
 
+/** Reads a timestamp without allowing malformed cache data to break rendering. */
 function readTimestamp(value: string): number {
   const timestamp = Date.parse(value);
   return Number.isNaN(timestamp) ? 0 : timestamp;

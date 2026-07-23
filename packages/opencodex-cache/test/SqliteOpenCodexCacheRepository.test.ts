@@ -50,6 +50,42 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should persist a mixed project tree and preserve projects when deleting a group", async () => {
+    const firstProject = await repository.upsertProject("/tmp/first-project");
+    const secondProject = await repository.upsertProject("/tmp/second-project");
+    const group = await repository.createProjectGroup({ name: "Related projects" });
+
+    await repository.assignProjectToGroup(firstProject.id, group.id);
+    await repository.assignProjectToGroup(secondProject.id, group.id);
+
+    const groupedSnapshot = await repository.listProjectGroups();
+    expect(groupedSnapshot.groups).toHaveLength(1);
+    expect(groupedSnapshot.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "project",
+          projectId: firstProject.id,
+          parentGroupId: group.id
+        }),
+        expect.objectContaining({
+          type: "project",
+          projectId: secondProject.id,
+          parentGroupId: group.id
+        })
+      ])
+    );
+
+    await repository.deleteProjectGroup(group.id);
+
+    expect((await repository.listProjects()).map((project) => project.id)).toEqual(
+      expect.arrayContaining([firstProject.id, secondProject.id])
+    );
+    expect((await repository.listProjectGroups()).groups).toHaveLength(0);
+    expect(
+      (await repository.listProjectGroups()).items.filter((item) => item.type === "project")
+    ).toHaveLength(2);
+  });
+
   it("should persist model catalogs per source", async () => {
     const source = await repository.ensureDefaultSource();
 
@@ -747,6 +783,63 @@ describe("SqliteOpenCodexCacheRepository", () => {
     ]);
     expect(projects[0]?.editedAt).toBe("2026-02-01T00:00:00.000Z");
     expect(projects[1]?.editedAt).toBe("2026-01-01T00:00:00.000Z");
+  });
+
+  it("should use the latest cached turn timestamp for project activity", async () => {
+    await repository.upsertThreadIndex([
+      {
+        id: "dated-thread",
+        codexTitle: "Dated",
+        customTitle: null,
+        title: "Dated",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "dated-project",
+        projectPath: "/tmp/dated-project",
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+
+    await repository.saveThreadSnapshot({
+      thread: {
+        id: "dated-thread",
+        codexTitle: "Dated",
+        customTitle: null,
+        title: "Dated",
+        preview: "",
+        model: null,
+        reasoningEffort: null,
+        projectName: "dated-project",
+        projectPath: "/tmp/dated-project",
+        branchName: null,
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      },
+      turns: [
+        {
+          id: "dated-turn",
+          startedAt: "2026-03-01T00:00:00.000Z",
+          completedAt: "2026-03-01T00:00:05.000Z",
+          items: []
+        }
+      ],
+      syncState: {
+        threadId: "dated-thread",
+        newestTurnId: "dated-turn",
+        oldestTurnId: "dated-turn",
+        olderCursor: null,
+        hasLoadedLatest: true,
+        hasLoadedAllOlderTurns: true,
+        lastSyncedAt: "2026-03-01T00:00:05.000Z"
+      },
+      tokenUsage: null
+    });
+
+    const project = (await repository.listProjects()).find(
+      (entry) => entry.path === "/tmp/dated-project"
+    );
+    expect(project?.editedAt).toBe("2026-03-01T00:00:05.000Z");
   });
 
   it("should keep orphan and source-scoped projects separate for the same path", async () => {

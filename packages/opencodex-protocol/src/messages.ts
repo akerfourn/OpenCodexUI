@@ -336,6 +336,42 @@ export type OpenCodexProject = {
 };
 
 /**
+ * OpenCodexUI-only group used to organize projects in the Home view.
+ */
+export type OpenCodexProjectGroup = {
+  id: string;
+  name: string;
+  isCollapsed: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * One ordered node in the OpenCodexUI project tree.
+ */
+export type OpenCodexProjectTreeItem =
+  | {
+      type: "group";
+      groupId: string;
+      parentGroupId: string | null;
+      sortOrder: number;
+    }
+  | {
+      type: "project";
+      projectId: string;
+      parentGroupId: string | null;
+      sortOrder: number;
+    };
+
+/**
+ * Complete OpenCodexUI-only project tree snapshot.
+ */
+export type OpenCodexProjectGroupsSnapshot = {
+  groups: OpenCodexProjectGroup[];
+  items: OpenCodexProjectTreeItem[];
+};
+
+/**
  * Decision written to a Codex command authorization rule.
  */
 export type OpenCodexCommandRuleDecision = "allow" | "prompt" | "forbidden";

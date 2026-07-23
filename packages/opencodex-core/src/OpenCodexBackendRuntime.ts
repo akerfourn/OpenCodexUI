@@ -39,6 +39,7 @@ import type {
   OpenCodexPluginInstallResult,
   OpenCodexPluginListResult,
   OpenCodexProject,
+  OpenCodexProjectGroupsSnapshot,
   OpenCodexProjectStatistics,
   OpenCodexProjectPreferences,
   OpenCodexProjectCommand,
@@ -93,6 +94,7 @@ import { ProjectCommandService } from "./backend/ProjectCommandService.js";
 import { ProjectCommandRuleService } from "./backend/ProjectCommandRuleService.js";
 import { PluginService } from "./backend/PluginService.js";
 import { ProjectContextService } from "./backend/ProjectContextService.js";
+import { ProjectGroupService } from "./backend/ProjectGroupService.js";
 import { CodexUpdateService } from "./backend/CodexUpdateService.js";
 import { filterSearchableProjectFiles } from "./backend/fileSearchFilters.js";
 import { readGitVersionStatus } from "./backend/toolVersionDetection.js";
@@ -136,6 +138,7 @@ export class OpenCodexBackendRuntime {
   private readonly projectCommandRuleService: ProjectCommandRuleService;
   private readonly pluginService: PluginService;
   private readonly projectContextService: ProjectContextService;
+  private readonly projectGroupService: ProjectGroupService;
   private readonly codexUpdateService: CodexUpdateService;
   private readonly usageRateLimitDiagnostics: UsageRateLimitDiagnostics;
   private readonly ignoredNotificationThreadIds = new Set<string>();
@@ -282,6 +285,10 @@ export class OpenCodexBackendRuntime {
       cacheRepository: this.cacheRepository,
       ensureClient: (sourceId) => this.ensureClient(sourceId)
     });
+    this.projectGroupService = new ProjectGroupService({
+      cacheRepository: this.cacheRepository,
+      emit: (event) => this.emit(event)
+    });
   }
 
   /**
@@ -312,6 +319,7 @@ export class OpenCodexBackendRuntime {
       isPrerelease: this.isPrerelease
     });
     await this.listProjects();
+    await this.listProjectGroups();
     await this.listModels();
     await this.readUsageLimits(this.settings.defaultSourceId, "bootstrap");
     return { ok: true };
@@ -521,6 +529,40 @@ export class OpenCodexBackendRuntime {
    */
   async listProjects(): Promise<OpenCodexProject[]> {
     return await this.projectSourceService.listProjects();
+  }
+
+  /** Lists the OpenCodexUI-only project group tree. */
+  async listProjectGroups(): Promise<OpenCodexProjectGroupsSnapshot> {
+    return await this.projectGroupService.listGroups();
+  }
+
+  /** Creates a project group. */
+  async createProjectGroup(
+    name: string,
+    parentGroupId: string | null = null
+  ): Promise<OpenCodexProjectGroupsSnapshot> {
+    return await this.projectGroupService.createGroup({ name, parentGroupId });
+  }
+
+  /** Updates a project group. */
+  async updateProjectGroup(
+    groupId: string,
+    patch: { name?: string; isCollapsed?: boolean }
+  ): Promise<OpenCodexProjectGroupsSnapshot> {
+    return await this.projectGroupService.updateGroup(groupId, patch);
+  }
+
+  /** Deletes a project group while retaining its children. */
+  async deleteProjectGroup(groupId: string): Promise<OpenCodexProjectGroupsSnapshot> {
+    return await this.projectGroupService.deleteGroup(groupId);
+  }
+
+  /** Assigns a project to a group or to the ungrouped root. */
+  async assignProjectToGroup(
+    projectId: string,
+    groupId: string | null
+  ): Promise<OpenCodexProjectGroupsSnapshot> {
+    return await this.projectGroupService.assignProject(projectId, groupId);
   }
 
   /**

@@ -58,6 +58,54 @@ export type CachedProject = {
 };
 
 /**
+ * OpenCodexUI-only project group.
+ */
+export type CachedProjectGroup = {
+  id: string;
+  name: string;
+  isCollapsed: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Ordered project tree node persisted by OpenCodexUI.
+ */
+export type CachedProjectTreeItem =
+  | {
+      type: "group";
+      groupId: string;
+      parentGroupId: string | null;
+      sortOrder: number;
+    }
+  | {
+      type: "project";
+      projectId: string;
+      parentGroupId: string | null;
+      sortOrder: number;
+    };
+
+/**
+ * Complete project tree snapshot stored in the local cache.
+ */
+export type CachedProjectGroupsSnapshot = {
+  groups: CachedProjectGroup[];
+  items: CachedProjectTreeItem[];
+};
+
+/** Input used to create a project group. */
+export type CachedProjectGroupCreateInput = {
+  name: string;
+  parentGroupId?: string | null;
+};
+
+/** Partial update applied to one project group. */
+export type CachedProjectGroupUpdateInput = {
+  name?: string;
+  isCollapsed?: boolean;
+};
+
+/**
  * User-editable and generated preferences attached to one cached project.
  */
 export type CachedProjectPreferences = {
@@ -586,6 +634,50 @@ export interface OpenCodexCacheRepository {
    * @returns Cached project entry.
    */
   upsertProject(projectPath: string, sourceId?: string | null): Promise<CachedProject>;
+
+  /**
+   * Lists the OpenCodexUI-only project groups and ordered tree nodes.
+   *
+   * @returns Complete project tree snapshot.
+   */
+  listProjectGroups(): Promise<CachedProjectGroupsSnapshot>;
+
+  /**
+   * Creates an OpenCodexUI-only project group.
+   *
+   * @param input Group name and optional parent group.
+   * @returns Created group.
+   */
+  createProjectGroup(input: CachedProjectGroupCreateInput): Promise<CachedProjectGroup>;
+
+  /**
+   * Updates an OpenCodexUI-only project group.
+   *
+   * @param groupId Group identifier.
+   * @param patch Group fields to update.
+   * @returns Updated group.
+   */
+  updateProjectGroup(
+    groupId: string,
+    patch: CachedProjectGroupUpdateInput
+  ): Promise<CachedProjectGroup>;
+
+  /**
+   * Deletes a group while preserving its projects.
+   *
+   * @param groupId Group identifier.
+   * @returns Promise resolved after children are promoted.
+   */
+  deleteProjectGroup(groupId: string): Promise<void>;
+
+  /**
+   * Moves a project into a group or back to the root.
+   *
+   * @param projectId Project identifier.
+   * @param groupId Destination group, or `null` for the root.
+   * @returns Promise resolved after the move.
+   */
+  assignProjectToGroup(projectId: string, groupId: string | null): Promise<void>;
 
   /**
    * Updates the hidden flag for a cached project.

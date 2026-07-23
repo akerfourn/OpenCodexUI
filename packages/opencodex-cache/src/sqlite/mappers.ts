@@ -3,6 +3,8 @@
  */
 import type {
   CachedProject,
+  CachedProjectGroup,
+  CachedProjectTreeItem,
   CachedProjectCommand,
   CachedProjectCommandRule,
   CachedProjectCommandRuleFileState,
@@ -21,6 +23,8 @@ import type {
   ProjectCommandRuleFileStateRow,
   ProjectCommandRuleRow,
   ProjectRow,
+  ProjectGroupRow,
+  ProjectTreeItemRow,
   ProjectTaskRow,
   SourceRow,
   ThreadRow
@@ -83,6 +87,40 @@ export function mapProjectRow(row: ProjectRow): CachedProject {
     lastSeenAt: row.last_seen_at,
     editedAt: row.edited_at
   };
+}
+
+/** Maps one project group row into the public cache shape. */
+export function mapProjectGroupRow(row: ProjectGroupRow): CachedProjectGroup {
+  return {
+    id: row.id,
+    name: row.name,
+    isCollapsed: row.is_collapsed === 1,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/** Maps one project tree row into the public cache shape. */
+export function mapProjectTreeItemRow(row: ProjectTreeItemRow): CachedProjectTreeItem {
+  if (row.item_type === "group" && row.group_id !== null) {
+    return {
+      type: "group",
+      groupId: row.group_id,
+      parentGroupId: row.parent_group_id,
+      sortOrder: row.sort_order
+    };
+  }
+
+  if (row.item_type === "project" && row.project_id !== null) {
+    return {
+      type: "project",
+      projectId: row.project_id,
+      parentGroupId: row.parent_group_id,
+      sortOrder: row.sort_order
+    };
+  }
+
+  throw new Error("Invalid project tree item row.");
 }
 
 /**

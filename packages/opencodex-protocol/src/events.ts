@@ -11,6 +11,7 @@ import type {
   OpenCodexProjectCommandRun,
   OpenCodexProjectCommandOutputStream,
   OpenCodexProjectCommandRulesSnapshot,
+  OpenCodexProjectGroupsSnapshot,
   OpenCodexSettings,
   OpenCodexSource,
   OpenCodexThread,
@@ -37,6 +38,7 @@ export type OpenCodexEvent =
       isPrerelease: boolean;
     }
   | { type: "projects.updated"; projects: OpenCodexProject[] }
+  | { type: "projectGroups.updated"; snapshot: OpenCodexProjectGroupsSnapshot }
   | { type: "project.opened"; project: OpenCodexProject }
   | { type: "sources.updated"; sources: OpenCodexSource[]; defaultSourceId: string | null }
   | {

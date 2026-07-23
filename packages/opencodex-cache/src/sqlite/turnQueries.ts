@@ -197,6 +197,31 @@ export function writeTurns(
       updatedAt
     });
   }
+
+  const latestTurn = database
+    .prepare(
+      `
+      SELECT MAX(COALESCE(completed_at, started_at)) AS latest_at
+      FROM turns
+      WHERE thread_id = @threadId
+      `
+    )
+    .get({ threadId }) as { latest_at: string | null };
+
+  if (latestTurn.latest_at !== null) {
+    database
+      .prepare(
+        `
+        UPDATE threads
+        SET updated_at = CASE
+          WHEN updated_at IS NULL OR updated_at < @latestAt THEN @latestAt
+          ELSE updated_at
+        END
+        WHERE id = @threadId
+        `
+      )
+      .run({ threadId, latestAt: latestTurn.latest_at });
+  }
 }
 
 /**

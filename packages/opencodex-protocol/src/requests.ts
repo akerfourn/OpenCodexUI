@@ -37,6 +37,15 @@ export type OpenCodexRequest =
   | { type: "projects.context.sync"; projectId: string }
   | { type: "projects.context.pickFolder" }
   | { type: "projects.delete"; projectId: string }
+  | { type: "projectGroups.list" }
+  | { type: "projectGroups.create"; name: string; parentGroupId?: string | null }
+  | {
+      type: "projectGroups.update";
+      groupId: string;
+      patch: { name?: string; isCollapsed?: boolean };
+    }
+  | { type: "projectGroups.delete"; groupId: string }
+  | { type: "projectGroups.assignProject"; projectId: string; groupId: string | null }
   | { type: "attachments.pickImages" }
   | { type: "sources.list" }
   | { type: "sources.create"; name?: string }

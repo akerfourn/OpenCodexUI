@@ -62,6 +62,24 @@ export type ProjectRow = {
   edited_at: string;
 };
 
+/** SQLite row containing one OpenCodexUI-only project group. */
+export type ProjectGroupRow = {
+  id: string;
+  name: string;
+  is_collapsed: number;
+  created_at: string;
+  updated_at: string;
+};
+
+/** SQLite row containing one ordered project tree node. */
+export type ProjectTreeItemRow = {
+  item_type: "group" | "project";
+  group_id: string | null;
+  project_id: string | null;
+  parent_group_id: string | null;
+  sort_order: number;
+};
+
 /**
  * SQLite row used to map application logs.
  */
