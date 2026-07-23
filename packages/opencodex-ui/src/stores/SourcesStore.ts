@@ -4,6 +4,7 @@ import type {
   OpenCodexEvent,
   OpenCodexCodexReleaseCheck,
   OpenCodexSource,
+  OpenCodexSourceKind,
   OpenCodexSourceSettingsPatch
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -128,18 +129,28 @@ export class SourcesStore implements RootChildStore {
   }
 
   /**
-   * Creates a local Codex source with default settings.
+   * Creates a Codex source from a validated configuration draft.
+   *
+   * @param name Source display name.
+   * @param kind Source kind.
+   * @param settings Source settings.
    *
    * @returns Created source, or `null` when creation fails.
    */
-  async createSource(): Promise<OpenCodexSource | null> {
+  async createSource(
+    name: string,
+    kind: OpenCodexSourceKind,
+    settings: OpenCodexSourceSettingsPatch
+  ): Promise<OpenCodexSource> {
     try {
       return await this.root.request<OpenCodexSource>({
         type: "sources.create",
-        name: "Codex"
+        name,
+        kind,
+        settings
       });
     } catch {
-      return null;
+      throw new Error("Unable to create the Codex source.");
     }
   }
 

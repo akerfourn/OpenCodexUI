@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
+import { HomeSourceCreateDialog } from "./HomeSourceCreateDialog";
 import { HomeSourceBoxX } from "./HomeSourceBox";
 
 type HomeSourcesViewProps = {
@@ -27,6 +28,7 @@ type HomeSourcesViewProps = {
 export function HomeSourcesView({ store }: HomeSourcesViewProps) {
   const { t } = useTranslation();
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [isCreatingSource, setIsCreatingSource] = useState(false);
   const appStore = store.appStore;
   const sourcesStore = store.sourcesStore;
   const sourceIdsKey = sourcesStore.sources.map((source) => source.id).join("|");
@@ -38,11 +40,7 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
   }, [sourceIdsKey, store, sourcesStore]);
 
   function handleCreateSource(): void {
-    void sourcesStore.createSource().then((source) => {
-      if (source !== null) {
-        setEditingSourceId(source.id);
-      }
-    });
+    setIsCreatingSource(true);
   }
 
   function handleSyncAllSources(): void {
@@ -55,6 +53,10 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
 
   function handleCloseEditor(): void {
     setEditingSourceId(null);
+  }
+
+  function handleCloseCreateDialog(): void {
+    setIsCreatingSource(false);
   }
 
   function handleEditSource(sourceId: string): void {
@@ -153,6 +155,12 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
           onCloseEdit={handleCloseEditor}
         />
       ))}
+
+      <HomeSourceCreateDialog
+        open={isCreatingSource}
+        store={store}
+        onClose={handleCloseCreateDialog}
+      />
     </Stack>
   );
 }

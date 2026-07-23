@@ -55,6 +55,7 @@ import type {
   OpenCodexSettings,
   OpenCodexSkillSearchResult,
   OpenCodexSource,
+  OpenCodexSourceKind,
   OpenCodexSourceSettingsPatch,
   OpenCodexThread,
   OpenCodexThreadEventLogPage,
@@ -658,8 +659,12 @@ export class OpenCodexBackendRuntime {
    *
    * @returns Created source.
    */
-  async createSource(name?: string): Promise<OpenCodexSource> {
-    return await this.projectSourceService.createSource(name);
+  async createSource(
+    name: string,
+    kind: OpenCodexSourceKind,
+    settings: OpenCodexSourceSettingsPatch
+  ): Promise<OpenCodexSource> {
+    return await this.projectSourceService.createSource(name, kind, settings);
   }
 
   /**

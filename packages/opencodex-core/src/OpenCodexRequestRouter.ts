@@ -85,7 +85,7 @@ export class OpenCodexRequestRouter {
       case "sources.list":
         return this.runtime.listSources();
       case "sources.create":
-        return this.runtime.createSource(request.name);
+        return this.runtime.createSource(request.name, request.kind, request.settings);
       case "sources.sync":
         return this.runtime.syncSources(request.sourceId ?? null);
       case "sources.codexRelease.check":

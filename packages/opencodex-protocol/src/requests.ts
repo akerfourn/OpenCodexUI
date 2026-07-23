@@ -13,6 +13,7 @@ import type {
   OpenCodexGitBranchKind,
   OpenCodexCommandRuleDecision,
   OpenCodexProjectPreferences,
+  OpenCodexSourceKind,
   OpenCodexSourceSettingsPatch,
   OpenCodexSettings,
   OpenCodexThreadScope
@@ -48,7 +49,12 @@ export type OpenCodexRequest =
   | { type: "projectGroups.assignProject"; projectId: string; groupId: string | null }
   | { type: "attachments.pickImages" }
   | { type: "sources.list" }
-  | { type: "sources.create"; name?: string }
+  | {
+      type: "sources.create";
+      name: string;
+      kind: OpenCodexSourceKind;
+      settings: OpenCodexSourceSettingsPatch;
+    }
   | { type: "sources.sync"; sourceId?: string | null }
   | { type: "sources.codexRelease.check"; force?: boolean }
   | { type: "sources.codexUpdate.apply"; sourceId: string }

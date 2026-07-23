@@ -8,6 +8,7 @@ import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 import type {
   CachedSource,
   CachedSourceCodexDetection,
+  CachedSourceCreateInput,
   CachedSourceSettings,
   CachedSourceSettingsPatch
 } from "../types.js";
@@ -17,9 +18,11 @@ import type { SourceRow } from "./rowTypes.js";
 import {
   createDefaultLocalSourceSettings,
   createDefaultCustomSourceSettings,
+  createSourceSettings,
   normalizeNullableText,
   normalizeSourceColor,
-  serializeSourceSettings
+  serializeSourceSettings,
+  validateSourceSettings
 } from "./sourceSettings.js";
 
 /**
@@ -80,29 +83,33 @@ export async function ensureDefaultSource(database: BetterSqliteDatabase): Promi
 }
 
 /**
- * Creates a local source with default settings.
+ * Creates a source with normalized settings for its selected kind.
  *
  * @param database SQLite database connection.
  * @param name Source display name.
+ * @param input Source kind and settings.
  *
  * @returns Created source.
  */
 export async function createSource(
   database: BetterSqliteDatabase,
-  name = "Codex"
+  name = "Codex",
+  input: CachedSourceCreateInput = { kind: "local" }
 ): Promise<CachedSource> {
   const now = new Date().toISOString();
-  const source: CachedSource = {
+  const settings = createSourceSettings(input.kind, input.settings);
+  validateSourceSettings(input.kind, settings);
+  const source = {
     id: crypto.randomUUID(),
-    kind: "local",
-    name,
-    settings: createDefaultLocalSourceSettings(),
+    kind: input.kind,
+    name: name.trim() || "Codex",
+    settings,
     lastDetectedCodexVersion: null,
     lastDetectedCodexAt: null,
     lastDetectionError: null,
     createdAt: now,
     updatedAt: now
-  };
+  } as CachedSource;
 
   database
     .prepare(

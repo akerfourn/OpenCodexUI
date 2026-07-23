@@ -34,6 +34,7 @@ import type {
   CachedProjectTokenUsageStatistics,
   CachedSource,
   CachedSourceCodexDetection,
+  CachedSourceCreateInput,
   CachedSourceSettingsPatch,
   CachedThreadDelta,
   CachedThreadReadOptions,
@@ -177,8 +178,8 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    *
    * @returns Created source.
    */
-  async createSource(name = "Codex"): Promise<CachedSource> {
-    return await createSource(this.database, name);
+  async createSource(name = "Codex", input: CachedSourceCreateInput = { kind: "local" }): Promise<CachedSource> {
+    return await createSource(this.database, name, input);
   }
 
   /**

@@ -14,6 +14,7 @@ import type {
   OpenCodexProjectPreferences,
   OpenCodexSettings,
   OpenCodexSource,
+  OpenCodexSourceKind,
   OpenCodexSourceSettingsPatch,
   OpenCodexCodexUpdateStatus,
   OpenCodexToolVersionStatus
@@ -94,9 +95,13 @@ export class ProjectSourceService {
    *
    * @returns Created source.
    */
-  async createSource(name?: string): Promise<OpenCodexSource> {
+  async createSource(
+    name: string,
+    kind: OpenCodexSourceKind,
+    sourceSettings: OpenCodexSourceSettingsPatch
+  ): Promise<OpenCodexSource> {
     const repository = this.requireCacheRepository("Source storage is unavailable.");
-    const createdSource = await repository.createSource(name);
+    const createdSource = await repository.createSource(name, { kind, settings: sourceSettings });
     const settings = this.options.getSettings();
     const source = this.withCodexUpdateStatus(toOpenCodexSource(
       createdSource,

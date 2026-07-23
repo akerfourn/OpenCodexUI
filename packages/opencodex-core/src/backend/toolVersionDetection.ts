@@ -1,6 +1,7 @@
 /**
  * Detects local command versions without starting long-lived services.
  */
+import { lstatSync, realpathSync } from "node:fs";
 import { spawn } from "node:child_process";
 
 import {
@@ -84,11 +85,30 @@ export async function readCodexCommandCandidateStatuses(): Promise<OpenCodexComm
 
     return {
       command: resolvedCommand.command,
+      linkTarget: readCommandLinkTarget(resolvedCommand.command),
       codex: await readResolvedCommandVersionStatus(resolvedCommand, "Codex CLI")
     };
   }));
 
   return uniqueCommandCandidates(candidateStatuses);
+}
+
+/**
+ * Resolves a symbolic-link command to the filesystem target it points to.
+ *
+ * @param command Resolved executable path.
+ * @returns Absolute link target, or `null` when the command is not a link.
+ */
+export function readCommandLinkTarget(command: string): string | null {
+  try {
+    if (!lstatSync(command).isSymbolicLink()) {
+      return null;
+    }
+
+    return realpathSync(command);
+  } catch {
+    return null;
+  }
 }
 
 /**

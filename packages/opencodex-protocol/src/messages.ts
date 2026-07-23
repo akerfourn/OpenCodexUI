@@ -182,6 +182,7 @@ export type OpenCodexCodexUpdateStatus = {
  */
 export type OpenCodexCommandCandidate = {
   command: string;
+  linkTarget: string | null;
   codex: OpenCodexToolVersionStatus;
 };
 

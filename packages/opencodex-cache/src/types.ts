@@ -378,6 +378,14 @@ export type CachedSourceSettingsPatch = Partial<
 >;
 
 /**
+ * Input used to create a source with its selected kind and settings.
+ */
+export type CachedSourceCreateInput = {
+  kind: CachedSourceKind;
+  settings?: CachedSourceSettingsPatch;
+};
+
+/**
  * Common metadata shared by all source kinds.
  */
 export type CachedSourceBase = {
@@ -537,12 +545,13 @@ export interface OpenCodexCacheRepository {
   ensureDefaultSource(): Promise<CachedSource>;
 
   /**
-   * Creates a new local source with default settings.
+   * Creates a source with its selected kind and settings.
    *
    * @param name Optional display name for the source.
+   * @param input Source kind and settings.
    * @returns Created source.
    */
-  createSource(name?: string): Promise<CachedSource>;
+  createSource(name?: string, input?: CachedSourceCreateInput): Promise<CachedSource>;
 
   /**
    * Lists all configured sources.

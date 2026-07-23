@@ -695,6 +695,48 @@ describe("SqliteOpenCodexCacheRepository", () => {
     });
   });
 
+  it("should create each source kind from its selected configuration", async () => {
+    const localSource = await repository.createSource("Local", {
+      kind: "local",
+      settings: { color: "teal" }
+    });
+    const customSource = await repository.createSource("Custom", {
+      kind: "custom",
+      settings: { command: "/opt/codex", hasLocalAccess: true }
+    });
+    const wslSource = await repository.createSource("WSL", {
+      kind: "wsl",
+      settings: { distro: "Ubuntu", codexCommand: "codex" }
+    });
+    const sshSource = await repository.createSource("SSH", {
+      kind: "ssh",
+      settings: { host: "codex.example.com", user: "adrien", port: 2222 }
+    });
+
+    expect(localSource).toMatchObject({ kind: "local", settings: { color: "teal" } });
+    expect(customSource).toMatchObject({
+      kind: "custom",
+      settings: { commandMode: "custom", command: "/opt/codex", hasLocalAccess: true }
+    });
+    expect(wslSource).toMatchObject({
+      kind: "wsl",
+      settings: { distro: "Ubuntu", codexCommand: "codex" }
+    });
+    expect(sshSource).toMatchObject({
+      kind: "ssh",
+      settings: { host: "codex.example.com", user: "adrien", port: 2222 }
+    });
+  });
+
+  it("should reject incomplete custom and SSH source configurations", async () => {
+    await expect(repository.createSource("Custom", { kind: "custom" })).rejects.toThrow(
+      "A Codex command is required"
+    );
+    await expect(repository.createSource("SSH", { kind: "ssh" })).rejects.toThrow(
+      "An SSH host is required"
+    );
+  });
+
   it("should persist source colors in settings", async () => {
     const source = await repository.ensureDefaultSource();
 

@@ -7,6 +7,7 @@ import type {
   CachedSourceKind,
   CachedSourceLocalSettings,
   CachedSourceSettings,
+  CachedSourceSettingsPatch,
   CachedSourceSshSettings,
   CachedSourceWslSettings
 } from "../types.js";
@@ -40,6 +41,95 @@ export function createDefaultCustomSourceSettings(command: string | null = null)
     openFolderCommand: null,
     openFileCommand: null
   };
+}
+
+/**
+ * Creates normalized settings for a newly selected source kind.
+ *
+ * @param kind Source kind being created.
+ * @param patch Optional user-provided settings.
+ * @returns Settings matching the selected source kind.
+ */
+export function createSourceSettings(
+  kind: CachedSourceKind,
+  patch: CachedSourceSettingsPatch = {}
+): CachedSourceSettings {
+  const color = patch.color !== undefined ? normalizeSourceColor(patch.color) : "blue";
+
+  if (kind === "custom") {
+    return {
+      commandMode: "custom",
+      command: normalizeNullableText(patch.command ?? null),
+      hasLocalAccess: patch.hasLocalAccess === true,
+      color,
+      openFolderCommand: normalizeNullableText(patch.openFolderCommand ?? null),
+      openFileCommand: normalizeNullableText(patch.openFileCommand ?? null)
+    };
+  }
+
+  if (kind === "wsl") {
+    return {
+      distro: normalizeNullableText(patch.distro ?? null),
+      codexCommand: normalizeCommand(patch.codexCommand),
+      color
+    };
+  }
+
+  if (kind === "ssh") {
+    return {
+      host: typeof patch.host === "string" ? patch.host.trim() : "",
+      user: normalizeNullableText(patch.user ?? null),
+      port: typeof patch.port === "number" ? patch.port : null,
+      identityFile: normalizeNullableText(patch.identityFile ?? null),
+      codexCommand: normalizeCommand(patch.codexCommand),
+      color
+    };
+  }
+
+  return {
+    commandMode: "auto",
+    command: null,
+    color,
+    openFolderCommand: normalizeNullableText(patch.openFolderCommand ?? null),
+    openFileCommand: normalizeNullableText(patch.openFileCommand ?? null)
+  };
+}
+
+/**
+ * Validates the minimum configuration required to launch a source.
+ *
+ * @param kind Source kind.
+ * @param settings Normalized source settings.
+ * @returns Nothing.
+ * @throws When a required connection setting is missing or invalid.
+ */
+export function validateSourceSettings(
+  kind: CachedSourceKind,
+  settings: CachedSourceSettings
+): void {
+  if (kind === "custom") {
+    const customSettings = settings as CachedSourceCustomSettings;
+
+    if (customSettings.command === null || customSettings.command.trim().length === 0) {
+      throw new Error("A Codex command is required for a custom source.");
+    }
+  }
+
+  if (kind === "ssh") {
+    const sshSettings = settings as CachedSourceSshSettings;
+
+    if (sshSettings.host.trim().length === 0) {
+      throw new Error("An SSH host is required.");
+    }
+
+    if (sshSettings.port !== null && (
+      !Number.isInteger(sshSettings.port)
+      || sshSettings.port < 1
+      || sshSettings.port > 65535
+    )) {
+      throw new Error("The SSH port must be an integer between 1 and 65535.");
+    }
+  }
 }
 
 /**
@@ -240,6 +330,17 @@ function parseSettingsObject(value: string): Record<string, unknown> {
 function readStringValue(parsed: Record<string, unknown>, key: string): string | null {
   const value = parsed[key];
   return typeof value === "string" ? value : null;
+}
+
+/**
+ * Normalizes a Codex command while keeping a safe default for empty input.
+ *
+ * @param command Optional command text.
+ * @returns Trimmed command or the default Codex command.
+ */
+function normalizeCommand(command: string | undefined): string {
+  const normalizedCommand = command?.trim() ?? "";
+  return normalizedCommand.length > 0 ? normalizedCommand : "codex";
 }
 
 /**
