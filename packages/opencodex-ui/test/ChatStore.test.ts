@@ -203,6 +203,53 @@ describe("ChatStore active turn state", () => {
     expect(chatStore.turns.find((turn) => turn.id === "turn-active")?.durationMs).toBe(1234);
   });
 
+  it.each(["failed", "interrupted"] as const)(
+    "should allow editing the last user message when the turn is %s",
+    (status) => {
+      const chatStore = createChatStore({});
+      const turn = createTurn("turn-terminal", status);
+
+      turn.items.push({
+        id: "user-message",
+        role: "user",
+        content: "hello",
+        status: "completed",
+        createdAt: null,
+        attachments: []
+      });
+      chatStore.setTurns([turn]);
+
+      expect(chatStore.editableLastUserItem).toEqual({
+        turnId: "turn-terminal",
+        itemId: "user-message",
+        content: "hello",
+        attachments: []
+      });
+    }
+  );
+
+  it("should apply the terminal status before exposing a completed turn as editable", () => {
+    const chatStore = createChatStore({});
+    const activeTurn = createTurn("turn-active", "running");
+
+    activeTurn.items.push({
+      id: "user-message",
+      role: "user",
+      content: "hello",
+      status: "completed",
+      createdAt: null,
+      attachments: []
+    });
+    chatStore.setTurns([activeTurn]);
+    chatStore.isWorking = true;
+    chatStore.activeTurnId = "turn-active";
+
+    chatStore.applyTurnCompleted("turn-active", 1234, "interrupted");
+
+    expect(chatStore.turns.find((turn) => turn.id === "turn-active")?.status).toBe("interrupted");
+    expect(chatStore.editableLastUserItem?.itemId).toBe("user-message");
+  });
+
   it("should keep a running turn active even when a final answer item exists", () => {
     const turn = createTurn("turn-active", "running");
 

@@ -35,6 +35,16 @@ import {
 
 const THREAD_RUNTIME_STATUS_POLL_INTERVAL_MS = 30_000;
 
+/**
+ * Checks whether a terminal turn can be rolled back for editing.
+ *
+ * @param status Turn status reported by Codex.
+ * @returns Whether the status represents a finished editable turn.
+ */
+function isEditableTerminalTurnStatus(status: string | null): boolean {
+  return status === "completed" || status === "failed" || status === "interrupted";
+}
+
 /** Reading state retained while a chat timeline is not mounted. */
 export interface ChatTimelineViewState {
   visibleTurnCount: number;
@@ -226,7 +236,7 @@ export class ChatStore {
     if (
       lastTurn === undefined ||
       lastTurn.id.startsWith("pending:") ||
-      lastTurn.status !== "completed"
+      !isEditableTerminalTurnStatus(lastTurn.status)
     ) {
       return null;
     }
@@ -272,7 +282,7 @@ export class ChatStore {
     if (
       lastTurn === undefined ||
       lastTurn.id.startsWith("pending:") ||
-      lastTurn.status !== "completed"
+      !isEditableTerminalTurnStatus(lastTurn.status)
     ) {
       return null;
     }
@@ -1027,9 +1037,20 @@ export class ChatStore {
    *
    * @param turnId Completed turn identifier.
    * @param durationMs Optional turn duration.
+   * @param turnStatus Terminal status reported by Codex, when available.
    */
-  applyTurnCompleted(turnId: string, durationMs: number | null): void {
+  applyTurnCompleted(
+    turnId: string,
+    durationMs: number | null,
+    turnStatus?: string
+  ): void {
     applyTurnDuration(this, turnId, durationMs);
+
+    const completedTurn = this.turns.find((turn) => turn.id === turnId);
+
+    if (completedTurn !== undefined && turnStatus !== undefined && turnStatus.length > 0) {
+      completedTurn.status = turnStatus;
+    }
 
     if (this.activeTurnId !== null && this.activeTurnId !== turnId) {
       return;
