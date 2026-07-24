@@ -4,12 +4,14 @@ import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import FolderCopyOutlinedIcon from "@mui/icons-material/FolderCopyOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import {
+  Box,
   IconButton,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Menu,
-  MenuItem
+  MenuItem,
+  Typography
 } from "@mui/material";
 import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -87,22 +89,38 @@ export function HomeProjectGroupRow({
         />
         <ListItemText
           primary={group.name}
-          secondary={activityLabel.length > 0
-            ? `${childCountLabel} · ${activityLabel}`
-            : childCountLabel}
+          secondary={childCountLabel}
           slotProps={{
             primary: { sx: { fontWeight: 600 }, noWrap: true },
             secondary: { noWrap: true }
           }}
         />
-        <IconButton
-          aria-label={t("home.projectGroupActions")}
-          size="small"
-          onClick={handleOpenMenu}
-          sx={{ ml: 1 }}
+        <Box
+          sx={{
+            alignItems: "center",
+            display: "flex",
+            flex: "0 0 150px",
+            justifyContent: "flex-end",
+            ml: 1
+          }}
         >
-          <MoreVertOutlinedIcon fontSize="small" />
-        </IconButton>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            noWrap
+            sx={{ flex: "1 1 auto", textAlign: "right" }}
+          >
+            {activityLabel}
+          </Typography>
+          <IconButton
+            aria-label={t("home.projectGroupActions")}
+            size="small"
+            onClick={handleOpenMenu}
+            sx={{ flex: "0 0 auto", ml: 0.5 }}
+          >
+            <MoreVertOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Box>
       </ListItemButton>
       <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={closeMenu}>
         <MenuItem onClick={() => handleAction(onRename)}>

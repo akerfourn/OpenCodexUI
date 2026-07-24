@@ -138,7 +138,7 @@ function HomeProjectTreeBranchView({
         borderColor: alpha(colorOption.main, 0.28),
         borderRadius: 1,
         mb: 0.75,
-        p: 0.5
+        py: 0.5
       }}
     >
       {groupContent}

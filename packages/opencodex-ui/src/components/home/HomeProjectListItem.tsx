@@ -14,7 +14,6 @@ import {
   ListItemIcon,
   Menu,
   MenuItem,
-  Tooltip,
   Typography
 } from "@mui/material";
 import { useState, type MouseEvent } from "react";
@@ -63,13 +62,11 @@ export function HomeProjectListItem({
     onOpen(project.path, project.sourceId);
   }
 
-  function handleSetHidden(event: MouseEvent<HTMLButtonElement>): void {
-    event.stopPropagation();
+  function handleSetHidden(): void {
     onSetHidden(project.id, !project.isHidden);
   }
 
-  function handleDelete(event: MouseEvent<HTMLButtonElement>): void {
-    event.stopPropagation();
+  function handleDelete(): void {
     onDelete(project);
   }
 
@@ -125,48 +122,49 @@ export function HomeProjectListItem({
           {project.path}
         </Typography>
       </Box>
-      <Typography variant="caption" color="text.secondary" sx={{ flex: "0 0 auto", ml: 2 }}>
-        {relativeEditedAt}
-      </Typography>
-      <IconButton
-        aria-label={t("home.projectActions")}
-        size="small"
-        onClick={handleOpenMenu}
-        sx={{ flex: "0 0 auto", ml: 1 }}
+      <Box
+        sx={{
+          alignItems: "center",
+          display: "flex",
+          flex: "0 0 150px",
+          justifyContent: "flex-end",
+          ml: 1
+        }}
       >
-        <MoreVertOutlinedIcon fontSize="small" />
-      </IconButton>
-      <Tooltip title={hiddenButtonLabel}>
-        <IconButton
-          aria-label={hiddenButtonLabel}
-          className="home-project-hidden-button"
-          size="small"
-          onClick={handleSetHidden}
-          sx={{ flex: "0 0 auto", ml: 1 }}
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          noWrap
+          sx={{ flex: "1 1 auto", textAlign: "right" }}
         >
-          {project.isHidden ? (
-            <VisibilityOutlinedIcon fontSize="small" />
-          ) : (
-            <VisibilityOffOutlinedIcon fontSize="small" />
-          )}
-        </IconButton>
-      </Tooltip>
-      <Tooltip title={t("home.deleteProjectFromCache")}>
+          {relativeEditedAt}
+        </Typography>
         <IconButton
-          aria-label={t("home.deleteProjectFromCache")}
-          className="home-project-hidden-button"
+          aria-label={t("home.projectActions")}
           size="small"
-          onClick={handleDelete}
+          onClick={handleOpenMenu}
           sx={{ flex: "0 0 auto", ml: 0.5 }}
         >
-          <DeleteOutlineOutlinedIcon fontSize="small" />
+          <MoreVertOutlinedIcon fontSize="small" />
         </IconButton>
-      </Tooltip>
+      </Box>
       </ListItemButton>
       <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={closeMenu}>
         <MenuItem onClick={() => handleMenuAction(() => onOrganize(project))}>
           <DriveFileMoveOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
           {t("home.organizeProjectAction")}
+        </MenuItem>
+        <MenuItem onClick={() => handleMenuAction(handleSetHidden)}>
+          {project.isHidden ? (
+            <VisibilityOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+          ) : (
+            <VisibilityOffOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+          )}
+          {hiddenButtonLabel}
+        </MenuItem>
+        <MenuItem onClick={() => handleMenuAction(handleDelete)}>
+          <DeleteOutlineOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+          {t("home.deleteProjectFromCache")}
         </MenuItem>
       </Menu>
     </>
