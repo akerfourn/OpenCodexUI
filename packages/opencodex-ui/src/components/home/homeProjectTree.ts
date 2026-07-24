@@ -22,6 +22,11 @@ export type HomeProjectTreeNode =
       groupId: string | null;
     };
 
+export type HomeProjectTreeBranch = {
+  node: HomeProjectTreeNode;
+  children: HomeProjectTreeBranch[];
+};
+
 type NormalizedTreeItem = {
   item: OpenCodexProjectTreeItem;
   id: string;
@@ -93,6 +98,39 @@ export function buildHomeProjectTree(options: {
   };
 
   return buildLevel(context, null, 0, false).nodes;
+}
+
+/**
+ * Rebuilds nested branches from the flattened rendering tree.
+ *
+ * @param nodes Flattened nodes ordered for display.
+ * @returns Nested branches suitable for grouped rendering.
+ */
+export function nestHomeProjectTreeNodes(nodes: HomeProjectTreeNode[]): HomeProjectTreeBranch[] {
+  const rootBranches: HomeProjectTreeBranch[] = [];
+  const groupStack: Array<{
+    depth: number;
+    children: HomeProjectTreeBranch[];
+  }> = [];
+
+  for (const node of nodes) {
+    while (
+      groupStack.length > 0
+      && groupStack[groupStack.length - 1]!.depth >= node.depth
+    ) {
+      groupStack.pop();
+    }
+
+    const siblings = groupStack[groupStack.length - 1]?.children ?? rootBranches;
+    const branch: HomeProjectTreeBranch = { node, children: [] };
+    siblings.push(branch);
+
+    if (node.type === "group") {
+      groupStack.push({ depth: node.depth, children: branch.children });
+    }
+  }
+
+  return rootBranches;
 }
 
 /** Finds fuzzy project matches while keeping source/visibility filtering external. */

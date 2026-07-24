@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildHomeProjectTree } from "../src/components/home/homeProjectTree";
+import {
+  buildHomeProjectTree,
+  nestHomeProjectTreeNodes
+} from "../src/components/home/homeProjectTree";
 
 const firstProject = {
   id: "project-1",
@@ -31,6 +34,7 @@ describe("home project tree", () => {
         {
           id: "group-1",
           name: "tata",
+          color: "blue",
           isCollapsed: true,
           createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-01-01T00:00:00.000Z"
@@ -57,6 +61,7 @@ describe("home project tree", () => {
         {
           id: "group-1",
           name: "Groupe",
+          color: "blue",
           isCollapsed: false,
           createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-01-01T00:00:00.000Z"
@@ -82,6 +87,7 @@ describe("home project tree", () => {
         {
           id: "group-1",
           name: "Groupe actif",
+          color: "blue",
           isCollapsed: false,
           createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-01-01T00:00:00.000Z"
@@ -101,5 +107,37 @@ describe("home project tree", () => {
       group: { id: "group-1" },
       editedAt: "2026-01-01T00:00:00.000Z"
     });
+  });
+
+  it("should nest expanded group descendants for grouped rendering", () => {
+    const nodes = buildHomeProjectTree({
+      projects: [firstProject, secondProject],
+      groups: [
+        {
+          id: "group-1",
+          name: "Groupe",
+          color: "blue",
+          isCollapsed: false,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      items: [
+        { type: "group", groupId: "group-1", parentGroupId: null, sortOrder: 0 },
+        { type: "project", projectId: "project-1", parentGroupId: "group-1", sortOrder: 0 },
+        { type: "project", projectId: "project-2", parentGroupId: null, sortOrder: 1 }
+      ],
+      searchTerm: ""
+    });
+
+    const branches = nestHomeProjectTreeNodes(nodes);
+
+    expect(branches).toHaveLength(2);
+    expect(branches[0]?.node).toMatchObject({ type: "group", group: { id: "group-1" } });
+    expect(branches[0]?.children[0]?.node).toMatchObject({
+      type: "project",
+      project: { id: "project-1" }
+    });
+    expect(branches[1]?.node).toMatchObject({ type: "project", project: { id: "project-2" } });
   });
 });

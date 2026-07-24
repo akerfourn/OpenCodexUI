@@ -12,6 +12,7 @@ import type {
   CachedProjectGroupUpdateInput
 } from "../types.js";
 import { mapProjectGroupRow, mapProjectTreeItemRow } from "./mappers.js";
+import { normalizeSourceColor } from "./sourceSettings.js";
 import type { ProjectGroupRow, ProjectTreeItemRow } from "./rowTypes.js";
 
 /**
@@ -26,7 +27,7 @@ export async function listProjectGroups(
   const groups = database
     .prepare(
       `
-      SELECT id, name, is_collapsed, created_at, updated_at
+      SELECT id, name, color, is_collapsed, created_at, updated_at
       FROM project_groups
       ORDER BY created_at ASC, id ASC
       `
@@ -69,11 +70,11 @@ export async function createProjectGroup(
     database
       .prepare(
         `
-        INSERT INTO project_groups (id, name, is_collapsed, created_at, updated_at)
-        VALUES (@id, @name, 0, @now, @now)
+        INSERT INTO project_groups (id, name, color, is_collapsed, created_at, updated_at)
+        VALUES (@id, @name, @color, 1, @now, @now)
         `
       )
-      .run({ id, name, now });
+      .run({ id, name, color: normalizeSourceColor(input.color), now });
     insertTreeItem(database, "group", id, parentGroupId, readNextSortOrder(database, parentGroupId));
   });
 
@@ -82,7 +83,7 @@ export async function createProjectGroup(
 }
 
 /**
- * Updates a group name and/or collapsed state.
+ * Updates a group name, color, and/or collapsed state.
  *
  * @param database SQLite database connection.
  * @param groupId Group identifier.
@@ -96,19 +97,23 @@ export async function updateProjectGroup(
 ): Promise<CachedProjectGroup> {
   const current = readProjectGroup(database, groupId);
   const name = patch.name === undefined ? current.name : normalizeGroupName(patch.name);
+  const color = patch.color === undefined
+    ? current.color
+    : normalizeSourceColor(patch.color);
   const isCollapsed = patch.isCollapsed === undefined ? current.isCollapsed : patch.isCollapsed;
 
   database
     .prepare(
       `
       UPDATE project_groups
-      SET name = @name, is_collapsed = @isCollapsed, updated_at = @updatedAt
+      SET name = @name, color = @color, is_collapsed = @isCollapsed, updated_at = @updatedAt
       WHERE id = @groupId
       `
     )
     .run({
       groupId,
       name,
+      color,
       isCollapsed: isCollapsed ? 1 : 0,
       updatedAt: new Date().toISOString()
     });
@@ -226,7 +231,7 @@ function readProjectGroup(
   const row = database
     .prepare(
       `
-      SELECT id, name, is_collapsed, created_at, updated_at
+      SELECT id, name, color, is_collapsed, created_at, updated_at
       FROM project_groups
       WHERE id = ?
       `

@@ -63,6 +63,7 @@ export type CachedProject = {
 export type CachedProjectGroup = {
   id: string;
   name: string;
+  color: CachedSourceColor;
   isCollapsed: boolean;
   createdAt: string;
   updatedAt: string;
@@ -96,12 +97,14 @@ export type CachedProjectGroupsSnapshot = {
 /** Input used to create a project group. */
 export type CachedProjectGroupCreateInput = {
   name: string;
+  color?: CachedSourceColor;
   parentGroupId?: string | null;
 };
 
 /** Partial update applied to one project group. */
 export type CachedProjectGroupUpdateInput = {
   name?: string;
+  color?: CachedSourceColor;
   isCollapsed?: boolean;
 };
 

@@ -16,6 +16,8 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexProjectGroup } from "@open-codex-ui/opencodex-protocol";
 
+import { getSourceColorOption } from "./sourceColor";
+
 type HomeProjectGroupRowProps = {
   group: OpenCodexProjectGroup;
   editedAt: string;
@@ -60,12 +62,18 @@ export function HomeProjectGroupRow({
     { count: childCount }
   );
   const activityLabel = formatRelativeTime(editedAt, i18n.language);
+  const colorOption = getSourceColorOption(group.color);
 
   return (
     <>
       <ListItemButton
+        aria-expanded={!group.isCollapsed}
         onClick={onToggle}
-        sx={{ borderRadius: 1, mb: 0.5, pl: 1.5 + depth * 2 }}
+        sx={{
+          borderRadius: 1,
+          mb: 0.5,
+          pl: 1.5 + depth * 2
+        }}
       >
         <ListItemIcon sx={{ minWidth: 30 }}>
           <ExpandMoreOutlinedIcon
@@ -73,7 +81,10 @@ export function HomeProjectGroupRow({
             sx={{ transform: group.isCollapsed ? "rotate(-90deg)" : "none" }}
           />
         </ListItemIcon>
-        <FolderCopyOutlinedIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
+        <FolderCopyOutlinedIcon
+          fontSize="small"
+          sx={{ color: colorOption.main, mr: 1 }}
+        />
         <ListItemText
           primary={group.name}
           secondary={activityLabel.length > 0
@@ -96,7 +107,7 @@ export function HomeProjectGroupRow({
       <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={closeMenu}>
         <MenuItem onClick={() => handleAction(onRename)}>
           <EditOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
-          {t("home.renameProjectGroup")}
+          {t("home.editProjectGroup")}
         </MenuItem>
         <MenuItem onClick={() => handleAction(onDelete)}>
           <DeleteOutlineOutlinedIcon fontSize="small" sx={{ mr: 1 }} />

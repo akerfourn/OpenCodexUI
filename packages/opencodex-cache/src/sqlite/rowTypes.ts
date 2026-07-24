@@ -66,6 +66,7 @@ export type ProjectRow = {
 export type ProjectGroupRow = {
   id: string;
   name: string;
+  color: string;
   is_collapsed: number;
   created_at: string;
   updated_at: string;

@@ -132,6 +132,7 @@ export function runMigrations(database: BetterSqliteDatabase): void {
   applySchemaMigrationV19(database);
   applySchemaMigrationV20(database);
   applySchemaMigrationV21(database);
+  applySchemaMigrationV22(database);
 }
 
 /**
@@ -1154,7 +1155,8 @@ function applySchemaMigrationV21(database: BetterSqliteDatabase): void {
       CREATE TABLE IF NOT EXISTS project_groups (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        is_collapsed INTEGER NOT NULL DEFAULT 0,
+        color TEXT NOT NULL DEFAULT 'blue',
+        is_collapsed INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -1217,6 +1219,34 @@ function applySchemaMigrationV21(database: BetterSqliteDatabase): void {
     database
       .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
       .run(21, now);
+  });
+
+  applyMigration();
+}
+
+/**
+ * Adds persisted project group colors to databases created before the color
+ * setting was introduced.
+ *
+ * @param database SQLite database connection.
+ * @returns Nothing.
+ */
+function applySchemaMigrationV22(database: BetterSqliteDatabase): void {
+  const migration = database
+    .prepare("SELECT version FROM schema_migrations WHERE version = ?")
+    .get(22);
+
+  if (migration !== undefined) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const applyMigration = database.transaction(() => {
+    addColumnIfMissing(database, "project_groups", "color", "TEXT NOT NULL DEFAULT 'blue'");
+
+    database
+      .prepare("INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)")
+      .run(22, now);
   });
 
   applyMigration();

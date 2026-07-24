@@ -73,7 +73,11 @@ export class OpenCodexRequestRouter {
       case "projectGroups.list":
         return this.runtime.listProjectGroups();
       case "projectGroups.create":
-        return this.runtime.createProjectGroup(request.name, request.parentGroupId ?? null);
+        return this.runtime.createProjectGroup(
+          request.name,
+          request.parentGroupId ?? null,
+          request.color ?? "blue"
+        );
       case "projectGroups.update":
         return this.runtime.updateProjectGroup(request.groupId, request.patch);
       case "projectGroups.delete":

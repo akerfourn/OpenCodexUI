@@ -55,6 +55,7 @@ import type {
   OpenCodexSettings,
   OpenCodexSkillSearchResult,
   OpenCodexSource,
+  OpenCodexSourceColor,
   OpenCodexSourceKind,
   OpenCodexSourceSettingsPatch,
   OpenCodexThread,
@@ -540,15 +541,16 @@ export class OpenCodexBackendRuntime {
   /** Creates a project group. */
   async createProjectGroup(
     name: string,
-    parentGroupId: string | null = null
+    parentGroupId: string | null = null,
+    color: OpenCodexSourceColor = "blue"
   ): Promise<OpenCodexProjectGroupsSnapshot> {
-    return await this.projectGroupService.createGroup({ name, parentGroupId });
+    return await this.projectGroupService.createGroup({ name, color, parentGroupId });
   }
 
   /** Updates a project group. */
   async updateProjectGroup(
     groupId: string,
-    patch: { name?: string; isCollapsed?: boolean }
+    patch: { name?: string; color?: OpenCodexSourceColor; isCollapsed?: boolean }
   ): Promise<OpenCodexProjectGroupsSnapshot> {
     return await this.projectGroupService.updateGroup(groupId, patch);
   }

@@ -13,7 +13,6 @@ import {
   IconButton,
   InputAdornment,
   LinearProgress,
-  List,
   MenuItem,
   Stack,
   TextField,
@@ -27,7 +26,8 @@ import { useTranslation } from "react-i18next";
 
 import type {
   OpenCodexProject,
-  OpenCodexProjectGroup
+  OpenCodexProjectGroup,
+  OpenCodexSourceColor
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
@@ -35,9 +35,8 @@ import { HomeProjectDeleteDialog } from "./HomeProjectDeleteDialog";
 import { HomeProjectGroupAssignmentDialog } from "./HomeProjectGroupAssignmentDialog";
 import { HomeProjectGroupDeleteDialog } from "./HomeProjectGroupDeleteDialog";
 import { HomeProjectGroupDialog } from "./HomeProjectGroupDialog";
-import { HomeProjectGroupRow } from "./HomeProjectGroupRow";
-import { HomeProjectListItem } from "./HomeProjectListItem";
-import { buildHomeProjectTree } from "./homeProjectTree";
+import { HomeProjectTreeList } from "./HomeProjectTreeList";
+import { buildHomeProjectTree, nestHomeProjectTreeNodes } from "./homeProjectTree";
 
 type HomeProjectsViewProps = {
   store: RootStore;
@@ -105,15 +104,15 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
     setGroupDialog({ mode: "rename", group });
   }
 
-  function handleConfirmGroupDialog(name: string): void {
+  function handleConfirmGroupDialog(name: string, color: OpenCodexSourceColor): void {
     if (groupDialog === null) {
       return;
     }
 
     if (groupDialog.mode === "create") {
-      projectGroupsStore.createGroup(name);
+      projectGroupsStore.createGroup(name, color);
     } else if (groupDialog.group !== null) {
-      projectGroupsStore.updateGroup(groupDialog.group.id, { name });
+      projectGroupsStore.updateGroup(groupDialog.group.id, { name, color });
     }
     setGroupDialog(null);
   }
@@ -154,6 +153,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
     items: projectGroupsStore.items,
     searchTerm: store.homeStore.projectSearchTerm
   });
+  const treeBranches = nestHomeProjectTreeNodes(treeNodes);
   const sourceById = new Map(sourcesStore.sources.map((source) => [source.id, source]));
   const hiddenProjectsButtonLabel = store.homeStore.showHiddenProjects
     ? t("home.hideHiddenProjects")
@@ -247,42 +247,18 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
             <RefreshOutlinedIcon fontSize="small" />
           </IconButton>
         </Box>
-        {treeNodes.length > 0 ? (
-          <List dense sx={{ mt: 1 }}>
-            {treeNodes.map((node) => {
-              if (node.type === "group") {
-                return (
-                  <HomeProjectGroupRow
-                    key={`group:${node.group.id}`}
-                    group={node.group}
-                    editedAt={node.editedAt}
-                    depth={node.depth}
-                    childCount={node.childCount}
-                    onToggle={() => projectGroupsStore.toggleGroup(node.group.id)}
-                    onRename={() => handleRenameGroup(node.group)}
-                    onDelete={() => setGroupPendingDeletion(node.group)}
-                  />
-                );
-              }
-
-              const source = node.project.sourceId === null
-                ? null
-                : sourceById.get(node.project.sourceId) ?? null;
-              return (
-                <HomeProjectListItem
-                  key={`project:${node.project.id}`}
-                  project={node.project}
-                  depth={node.depth}
-                  sourceName={source === null ? null : source.name}
-                  sourceColor={source === null ? null : source.settings.color}
-                  onOpen={handleOpenRecent}
-                  onSetHidden={handleSetProjectHidden}
-                  onDelete={handleDeleteProject}
-                  onOrganize={setProjectPendingAssignment}
-                />
-              );
-            })}
-          </List>
+        {treeBranches.length > 0 ? (
+          <HomeProjectTreeList
+            branches={treeBranches}
+            sourceById={sourceById}
+            onOpenProject={handleOpenRecent}
+            onSetProjectHidden={handleSetProjectHidden}
+            onDeleteProject={handleDeleteProject}
+            onOrganizeProject={setProjectPendingAssignment}
+            onToggleGroup={(groupId) => projectGroupsStore.toggleGroup(groupId)}
+            onRenameGroup={handleRenameGroup}
+            onDeleteGroup={setGroupPendingDeletion}
+          />
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             {store.homeStore.projectSearchTerm.trim().length > 0
@@ -300,6 +276,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
         open={groupDialog !== null}
         mode={groupDialog?.mode ?? "create"}
         initialName={groupDialog?.group?.name}
+        initialColor={groupDialog?.group?.color}
         onCancel={() => setGroupDialog(null)}
         onConfirm={handleConfirmGroupDialog}
       />

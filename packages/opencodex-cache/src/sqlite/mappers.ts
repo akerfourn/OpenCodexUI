@@ -16,7 +16,7 @@ import type {
   CachedThreadTokenUsage
 } from "../types.js";
 import { parseProjectPreferences } from "./projectPreferences.js";
-import { parseSourceSettings } from "./sourceSettings.js";
+import { normalizeSourceColor, parseSourceSettings } from "./sourceSettings.js";
 import type {
   LogRow,
   ProjectCommandRow,
@@ -94,6 +94,7 @@ export function mapProjectGroupRow(row: ProjectGroupRow): CachedProjectGroup {
   return {
     id: row.id,
     name: row.name,
+    color: normalizeSourceColor(row.color),
     isCollapsed: row.is_collapsed === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at

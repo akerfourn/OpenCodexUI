@@ -342,6 +342,7 @@ export type OpenCodexProject = {
 export type OpenCodexProjectGroup = {
   id: string;
   name: string;
+  color: OpenCodexSourceColor;
   isCollapsed: boolean;
   createdAt: string;
   updatedAt: string;

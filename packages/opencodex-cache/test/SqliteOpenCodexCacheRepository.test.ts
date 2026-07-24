@@ -53,13 +53,25 @@ describe("SqliteOpenCodexCacheRepository", () => {
   it("should persist a mixed project tree and preserve projects when deleting a group", async () => {
     const firstProject = await repository.upsertProject("/tmp/first-project");
     const secondProject = await repository.upsertProject("/tmp/second-project");
-    const group = await repository.createProjectGroup({ name: "Related projects" });
+    const group = await repository.createProjectGroup({
+      name: "Related projects",
+      color: "purple"
+    });
+
+    expect(group).toMatchObject({
+      color: "purple",
+      isCollapsed: true
+    });
 
     await repository.assignProjectToGroup(firstProject.id, group.id);
     await repository.assignProjectToGroup(secondProject.id, group.id);
 
     const groupedSnapshot = await repository.listProjectGroups();
     expect(groupedSnapshot.groups).toHaveLength(1);
+    expect(groupedSnapshot.groups[0]).toMatchObject({
+      color: "purple",
+      isCollapsed: true
+    });
     expect(groupedSnapshot.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -74,6 +86,19 @@ describe("SqliteOpenCodexCacheRepository", () => {
         })
       ])
     );
+
+    const updatedGroup = await repository.updateProjectGroup(group.id, {
+      color: "teal",
+      isCollapsed: false
+    });
+    expect(updatedGroup).toMatchObject({
+      color: "teal",
+      isCollapsed: false
+    });
+    expect((await repository.listProjectGroups()).groups[0]).toMatchObject({
+      color: "teal",
+      isCollapsed: false
+    });
 
     await repository.deleteProjectGroup(group.id);
 

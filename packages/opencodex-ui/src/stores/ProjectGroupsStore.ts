@@ -2,7 +2,8 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexEvent,
-  OpenCodexProjectGroupsSnapshot
+  OpenCodexProjectGroupsSnapshot,
+  OpenCodexSourceColor
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "./RootStore";
@@ -48,12 +49,19 @@ export class ProjectGroupsStore implements RootChildStore {
   }
 
   /** Creates a group. */
-  createGroup(name: string, parentGroupId: string | null = null): void {
-    void this.root.request({ type: "projectGroups.create", name, parentGroupId });
+  createGroup(
+    name: string,
+    color: OpenCodexSourceColor = "blue",
+    parentGroupId: string | null = null
+  ): void {
+    void this.root.request({ type: "projectGroups.create", name, color, parentGroupId });
   }
 
   /** Updates a group. */
-  updateGroup(groupId: string, patch: { name?: string; isCollapsed?: boolean }): void {
+  updateGroup(
+    groupId: string,
+    patch: { name?: string; color?: OpenCodexSourceColor; isCollapsed?: boolean }
+  ): void {
     void this.root.request({ type: "projectGroups.update", groupId, patch });
   }
 
