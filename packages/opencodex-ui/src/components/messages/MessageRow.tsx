@@ -219,13 +219,13 @@ export function MessageRow({
         <CommandActivityRow
           content={content}
           details={details}
-          icon={renderActivityKindIcon(kind)}
+          icon={renderActivityKindIconWithTooltip(kind, t)}
         />
       ) : role === "activity" && kind === "fileChange" ? (
         <FileChangeActivityRow
           content={content}
           details={details}
-          icon={renderActivityKindIcon(kind)}
+          icon={renderActivityKindIconWithTooltip(kind, t)}
         />
       ) : role === "activity" || isCommentary ? (
         <Box
@@ -236,7 +236,9 @@ export function MessageRow({
             minWidth: 0
           }}
         >
-          {isCommentary ? <PsychologyOutlinedIcon fontSize="small" /> : renderActivityKindIcon(kind)}
+          {isCommentary
+            ? renderActivityKindIconWithTooltip("reasoning", t)
+            : renderActivityKindIconWithTooltip(kind, t)}
           <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
             <MarkdownMessageM
               markdown={content}
@@ -356,6 +358,96 @@ function renderActivityKindIcon(kind?: string): ReactNode {
   }
 
   return <MoreHorizOutlinedIcon fontSize="small" />;
+}
+
+/**
+ * Renders an activity icon with its generic type tooltip.
+ *
+ * @param kind Activity kind.
+ * @param translate Translation function.
+ * @returns Icon wrapped in a tooltip.
+ */
+function renderActivityKindIconWithTooltip(
+  kind: string | undefined,
+  translate: ReturnType<typeof useTranslation>["t"]
+): ReactNode {
+  return (
+    <Tooltip title={getActivityKindLabel(kind, translate)}>
+      <Box component="span" sx={{ display: "inline-flex", flex: "0 0 auto" }}>
+        {renderActivityKindIcon(kind)}
+      </Box>
+    </Tooltip>
+  );
+}
+
+/**
+ * Resolves the translated generic label for an activity kind.
+ *
+ * @param kind Activity kind.
+ * @param translate Translation function.
+ * @returns Generic activity label.
+ */
+function getActivityKindLabel(
+  kind: string | undefined,
+  translate: ReturnType<typeof useTranslation>["t"]
+): string {
+  if (kind === "reasoning") {
+    return translate("message.activityType.reasoning");
+  }
+
+  if (kind === "plan") {
+    return translate("message.activityType.plan");
+  }
+
+  if (kind === "commandExecution" || kind === "command") {
+    return translate("message.activityType.command");
+  }
+
+  if (kind === "mcpToolCall" || kind === "mcpTool") {
+    return translate("message.activityType.mcpTool");
+  }
+
+  if (kind === "fileChange") {
+    return translate("message.activityType.fileChange");
+  }
+
+  if (kind === "webSearch") {
+    return translate("message.activityType.webSearch");
+  }
+
+  if (kind === "imageView") {
+    return translate("message.activityType.imageView");
+  }
+
+  if (kind === "imageGeneration") {
+    return translate("message.activityType.imageGeneration");
+  }
+
+  if (kind === "dynamicToolCall") {
+    return translate("message.activityType.dynamicTool");
+  }
+
+  if (kind === "collabAgentToolCall") {
+    return translate("message.activityType.subAgent");
+  }
+
+  if (kind === "enteredReviewMode") {
+    return translate("message.activityType.reviewStart");
+  }
+
+  if (kind === "exitedReviewMode") {
+    return translate("message.activityType.reviewEnd");
+  }
+
+  if (kind === "contextCompaction") {
+    return translate("message.activityType.contextCompaction");
+  }
+
+  if (kind === "hookPrompt") {
+    return translate("message.activityType.hook");
+  }
+
+  return translate("message.activityType.activity");
 }
 
 function isCommandActivityKind(kind?: string): boolean {
