@@ -1,12 +1,26 @@
 /**
  * Renders a compact file-change activity row.
  */
-import { useState, type ReactNode } from "react";
-import { Box, Dialog, DialogContent, DialogTitle, IconButton, Tooltip, Typography } from "@mui/material";
+import { useState, type MouseEvent, type ReactNode } from "react";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  Typography
+} from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTranslation } from "react-i18next";
 
 import { CommandDetailBlock } from "./CommandDetailBlock";
+import { FileChangeDiffViewer } from "./FileChangeDiffViewer";
+import { parseFileChangeDiff, type FileChangeDiffData } from "./fileChangeDiff";
 
 type FileChangeActivityRowProps = {
   content: string;
@@ -24,15 +38,35 @@ type FileChangeActivityRowProps = {
 export function FileChangeActivityRow({ content, details, icon }: FileChangeActivityRowProps) {
   const { t } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRawView, setIsRawView] = useState(false);
+  const [parsedDiff, setParsedDiff] = useState<FileChangeDiffData | null>(null);
   const hasDetails = details !== null && details !== undefined && details.trim().length > 0;
 
   function handleOpenDetails(): void {
+    const rawDetails = details ?? "";
+
+    setParsedDiff(parseFileChangeDiff(rawDetails));
+    setIsRawView(false);
     setIsDialogOpen(true);
   }
 
   function handleCloseDetails(): void {
     setIsDialogOpen(false);
   }
+
+  function handleViewChange(
+    _event: MouseEvent<HTMLElement>,
+    value: "visual" | "raw" | null
+  ): void {
+    if (value === null) {
+      return;
+    }
+
+    setIsRawView(value === "raw");
+  }
+
+  const canRenderVisualDiff = parsedDiff !== null;
+  const shouldShowRawView = isRawView || !canRenderVisualDiff;
 
   return (
     <>
@@ -77,16 +111,39 @@ export function FileChangeActivityRow({ content, details, icon }: FileChangeActi
         ) : null}
       </Box>
       {isDialogOpen ? (
-        <Dialog open fullWidth maxWidth="lg" onClose={handleCloseDetails}>
+        <Dialog open fullWidth maxWidth="xl" onClose={handleCloseDetails}>
           <DialogTitle>{t("message.fileChangeDetails")}</DialogTitle>
           <DialogContent dividers sx={{ maxHeight: "75vh", overflow: "auto" }}>
-            <CommandDetailBlock
-              label={t("message.fileChangeDiff")}
-              value={details ?? ""}
-              emptyLabel={t("message.fileChangeDiffUnavailable")}
-              previewStrategy="head-tail"
-            />
+            {canRenderVisualDiff ? (
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={shouldShowRawView ? "raw" : "visual"}
+                onChange={handleViewChange}
+                sx={{ mb: 1.5 }}
+              >
+                <ToggleButton value="visual">
+                  {t("message.fileChangeVisualView")}
+                </ToggleButton>
+                <ToggleButton value="raw">
+                  {t("message.fileChangeRawView")}
+                </ToggleButton>
+              </ToggleButtonGroup>
+            ) : null}
+            {shouldShowRawView ? (
+              <CommandDetailBlock
+                label={t("message.fileChangeRawData")}
+                value={details ?? ""}
+                emptyLabel={t("message.fileChangeDiffUnavailable")}
+                previewStrategy="head-tail"
+              />
+            ) : parsedDiff !== null ? (
+              <FileChangeDiffViewer data={parsedDiff} />
+            ) : null}
           </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDetails}>{t("message.close")}</Button>
+          </DialogActions>
         </Dialog>
       ) : null}
     </>
