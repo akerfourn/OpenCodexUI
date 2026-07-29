@@ -80,7 +80,7 @@ export type OpenCodexBackendOptions = {
    */
   pickExecutableFile?(): Promise<string | null> | string | null;
   /**
-   * Validates or creates a project directory before opening it.
+   * Validates or creates a project directory on the host filesystem.
    *
    * @param projectPath User-provided project path.
    * @param createIfMissing Whether missing folders should be created.

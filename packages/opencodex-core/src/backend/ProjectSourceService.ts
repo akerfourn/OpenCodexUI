@@ -23,7 +23,10 @@ import type {
 import type { OpenCodexBackendOptions } from "../types.js";
 import { THREAD_LIST_PAGE_SIZE, THREAD_SOURCE_KINDS } from "./constants.js";
 import { readThreadPages } from "./codexReaders.js";
-import { toOpenCodexProject } from "./projectMapping.js";
+import {
+  shouldValidateProjectPathOnHost,
+  toOpenCodexProject
+} from "./projectMapping.js";
 import { ProjectPathVisibilityValidator } from "./projectPathVisibility.js";
 import {
   createDefaultCachedSource,
@@ -340,8 +343,12 @@ export class ProjectSourceService {
     sourceId: string | null,
     createIfMissing: boolean
   ): Promise<OpenCodexProject> {
-    const ensuredProjectPath = await this.ensureProjectPath(projectPath, createIfMissing);
     const resolvedSource = await this.resolveSource(sourceId);
+    const ensuredProjectPath = await this.ensureProjectPath(
+      projectPath,
+      createIfMissing,
+      resolvedSource
+    );
     const project = await this.cacheProject(ensuredProjectPath, resolvedSource.id);
 
     if (project === null) {
@@ -719,16 +726,64 @@ export class ProjectSourceService {
    *
    * @param projectPath Project path.
    * @param createIfMissing Whether the directory may be created.
+   * @param source Source that owns the project path.
    *
    * @returns Normalized project path.
    */
-  private async ensureProjectPath(projectPath: string, createIfMissing: boolean): Promise<string> {
+  private async ensureProjectPath(
+    projectPath: string,
+    createIfMissing: boolean,
+    source: CachedSource
+  ): Promise<string> {
+    if (!shouldValidateProjectPathOnHost(source)) {
+      return await this.ensureSourceProjectPath(projectPath, createIfMissing, source);
+    }
+
     const ensuredPath = await this.options.backendOptions.ensureProjectDirectory?.(projectPath, createIfMissing)
       ?? projectPath;
     const normalizedPath = normalizeProjectPath(ensuredPath);
 
     if (normalizedPath === null) {
       throw new Error("Project path is required.");
+    }
+
+    return normalizedPath;
+  }
+
+  /**
+   * Ensures a project path through the source-owned filesystem.
+   *
+   * @param projectPath Project path.
+   * @param createIfMissing Whether the directory may be created.
+   * @param source Source that owns the project path.
+   *
+   * @returns Normalized project path.
+   */
+  private async ensureSourceProjectPath(
+    projectPath: string,
+    createIfMissing: boolean,
+    source: CachedSource
+  ): Promise<string> {
+    const normalizedPath = normalizeProjectPath(projectPath);
+
+    if (normalizedPath === null) {
+      throw new Error("Project path is required.");
+    }
+
+    const client = await this.options.ensureClient(source.id);
+
+    try {
+      const metadata = await client.getMetadata(normalizedPath);
+
+      if (!metadata.isDirectory) {
+        throw new Error(`Project path is not a directory: ${normalizedPath}`);
+      }
+    } catch (error) {
+      if (!createIfMissing || !isMissingProjectPathError(error)) {
+        throw error;
+      }
+
+      await client.createDirectory(normalizedPath);
     }
 
     return normalizedPath;
@@ -748,6 +803,19 @@ export class ProjectSourceService {
 
     return this.options.cacheRepository;
   }
+}
+
+function isMissingProjectPathError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalizedMessage = message.toLowerCase();
+
+  return [
+    "enoent",
+    "no such file",
+    "does not exist",
+    "not exist",
+    "path not found"
+  ].some((marker) => normalizedMessage.includes(marker));
 }
 
 type ProjectIdentity = NonNullable<ReturnType<typeof createProjectIdentity>>;
