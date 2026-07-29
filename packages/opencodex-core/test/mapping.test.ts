@@ -20,6 +20,25 @@ import {
 import { readReasoningDeltaText, readReasoningSegments } from "../src/mapping/activitySummary";
 
 describe("OpenCodex mapping", () => {
+  it("should preserve a turn error message when mapping completed turns", () => {
+    const turns = mapTurnsToOpenCodexTurns("thread-1", [
+      {
+        id: "turn-1",
+        status: "failed",
+        error: {
+          message: "Selected model is at capacity. Please try a different model."
+        },
+        items: []
+      }
+    ]);
+
+    expect(turns[0]).toMatchObject({
+      id: "turn-1",
+      status: "failed",
+      errorMessage: "Selected model is at capacity. Please try a different model."
+    });
+  });
+
   it("should preserve usage limit ids from rate-limit response keys", () => {
     const usage = mapUsageLimitsResponse(
       {

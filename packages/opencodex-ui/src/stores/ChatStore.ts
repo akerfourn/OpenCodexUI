@@ -1038,11 +1038,13 @@ export class ChatStore {
    * @param turnId Completed turn identifier.
    * @param durationMs Optional turn duration.
    * @param turnStatus Terminal status reported by Codex, when available.
+   * @param errorMessage Error reported by Codex, when available.
    */
   applyTurnCompleted(
     turnId: string,
     durationMs: number | null,
-    turnStatus?: string
+    turnStatus?: string,
+    errorMessage?: string
   ): void {
     applyTurnDuration(this, turnId, durationMs);
 
@@ -1050,6 +1052,10 @@ export class ChatStore {
 
     if (completedTurn !== undefined && turnStatus !== undefined && turnStatus.length > 0) {
       completedTurn.status = turnStatus;
+    }
+
+    if (completedTurn !== undefined && errorMessage !== undefined && errorMessage.length > 0) {
+      completedTurn.errorMessage = errorMessage;
     }
 
     if (this.activeTurnId !== null && this.activeTurnId !== turnId) {

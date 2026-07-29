@@ -78,7 +78,10 @@ describe("NotificationService", () => {
         turn: {
           id: "turn-1",
           status: "failed",
-          durationMs: 1200
+          durationMs: 1200,
+          error: {
+            message: "Selected model is at capacity. Please try a different model."
+          }
         }
       }
     }, "source-1");
@@ -89,7 +92,8 @@ describe("NotificationService", () => {
       threadId: "thread-1",
       turnId: "turn-1",
       durationMs: 1200,
-      turnStatus: "failed"
+      turnStatus: "failed",
+      errorMessage: "Selected model is at capacity. Please try a different model."
     });
   });
 });

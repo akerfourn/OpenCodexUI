@@ -54,6 +54,7 @@ export const resources = {
       chatEventLog: {
         close: "Fermer",
         count: "Occurrences",
+        copyMetadata: "Copier les métadonnées",
         description:
           "Métadonnées des événements reçus et transmis à l’interface. Le contenu des messages et des commandes n’est pas enregistré.",
         empty: "Aucun événement enregistré pour ce chat.",
@@ -592,6 +593,7 @@ export const resources = {
         showAllContent: "Tout afficher",
         showMoreContent: "Afficher plus",
         submitEdit: "Relancer",
+        turnFailed: "La réponse a échoué.",
         todayAt: "Aujourd'hui à {{time}}",
         yesterdayAt: "Hier à {{time}}"
       },
@@ -965,6 +967,7 @@ export const resources = {
       chatEventLog: {
         close: "Close",
         count: "Occurrences",
+        copyMetadata: "Copy metadata",
         description:
           "Metadata for events received from Codex and sent to the UI. Message and command content is not stored.",
         empty: "No events recorded for this chat.",
@@ -1502,6 +1505,7 @@ export const resources = {
         showAllContent: "Show all",
         showMoreContent: "Show more",
         submitEdit: "Regenerate",
+        turnFailed: "The response failed.",
         todayAt: "Today at {{time}}",
         yesterdayAt: "Yesterday at {{time}}"
       },

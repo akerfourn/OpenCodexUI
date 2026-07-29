@@ -258,6 +258,7 @@ function mapTurnToOpenCodexTurn(
     id: turnId,
     threadId,
     status: readNullableString(turn.status),
+    errorMessage: readNullableString(readObject(turn.error).message),
     startedAt: readTimestamp(turn.startedAt),
     completedAt: readTimestamp(turn.completedAt),
     durationMs: readNullableNumber(turn.durationMs),

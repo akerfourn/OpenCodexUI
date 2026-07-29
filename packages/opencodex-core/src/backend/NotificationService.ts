@@ -246,6 +246,7 @@ export class NotificationService {
     const turnId = readString(turn.id);
     const durationMs = readNullableNumber(turn.durationMs);
     const turnStatus = readString(turn.status);
+    const errorMessage = readString(readObject(turn.error).message);
 
     if (threadId.length > 0 && turnId.length > 0) {
       this.flushPendingAssistantDeltas(sourceId, threadId, turnId, null);
@@ -255,7 +256,8 @@ export class NotificationService {
         threadId,
         turnId,
         durationMs,
-        ...(turnStatus.length > 0 ? { turnStatus } : {})
+        ...(turnStatus.length > 0 ? { turnStatus } : {}),
+        ...(errorMessage.length > 0 ? { errorMessage } : {})
       });
       this.options.syncCompletedTurn(threadId, sourceId);
     }

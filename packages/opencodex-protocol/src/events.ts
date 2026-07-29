@@ -134,6 +134,7 @@ export type OpenCodexEvent =
       turnId: string;
       durationMs: number | null;
       turnStatus?: string;
+      errorMessage?: string;
     }
   | { type: "models.updated"; models: OpenCodexModel[] }
   | { type: "usage.updated"; sourceId: string; usage: OpenCodexUsageSnapshot | null }

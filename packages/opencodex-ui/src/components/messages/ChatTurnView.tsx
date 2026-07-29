@@ -3,11 +3,13 @@
  */
 import type { RefObject } from "react";
 import { observer } from "mobx-react-lite";
+import { useTranslation } from "react-i18next";
 
 import type { ChatTurnStore } from "../../stores/ChatTurnStore";
 import type { ChatSubTurn } from "../../stores/chatTurnStructure";
 
 import { ChatSubTurnViewX } from "./ChatSubTurnView";
+import { TurnErrorRow } from "./TurnErrorRow";
 
 type EditableItemIdentity = {
   turnId: string;
@@ -42,9 +44,13 @@ export function ChatTurnView({
   onOpenLink,
   onStartEdit
 }: ChatTurnViewProps) {
+  const { t } = useTranslation();
   const turn = turnStore.turn;
   const isRunning = turnStore.isRunning(activeTurnId, isWorking);
   const subTurns = readRenderableSubTurns(turnStore, isRunning);
+  const errorMessage = turn.errorMessage ?? (
+    turn.status === "failed" ? t("message.turnFailed") : null
+  );
 
   return (
     <>
@@ -61,6 +67,9 @@ export function ChatTurnView({
           onStartEdit={onStartEdit}
         />
       ))}
+      {errorMessage !== null && errorMessage.trim().length > 0 ? (
+        <TurnErrorRow message={errorMessage} />
+      ) : null}
     </>
   );
 }

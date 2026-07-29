@@ -1163,6 +1163,7 @@ export type OpenCodexTurn = {
   id: string;
   threadId: string;
   status: string | null;
+  errorMessage?: string | null;
   startedAt: string | null;
   completedAt: string | null;
   durationMs: number | null;

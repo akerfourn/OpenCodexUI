@@ -34,6 +34,8 @@ import type {
 
 import type { RootStore } from "../../stores/RootStore";
 
+import { CopyIconButton } from "../common/CopyIconButton";
+
 type ChatEventLogDialogProps = {
   open: boolean;
   threadId: string;
@@ -177,6 +179,7 @@ function ChatEventLogRow({
     ? t("chatEventLog.occurrences", { count: entry.count })
     : null;
   const metadata = createMetadataRows(entry, t);
+  const serializedMetadata = serializeEventMetadata(entry);
 
   return (
     <>
@@ -222,6 +225,13 @@ function ChatEventLogRow({
       {expanded ? (
         <Box sx={{ bgcolor: "action.hover", px: 3, py: 1.25 }}>
           <Stack spacing={0.5}>
+            <Stack direction="row" sx={{ alignItems: "center", justifyContent: "flex-end" }}>
+              <CopyIconButton
+                value={serializedMetadata}
+                label={t("chatEventLog.copyMetadata")}
+                copiedLabel={t("message.copied")}
+              />
+            </Stack>
             {metadata.map(([label, value]) => (
               <Stack key={label} direction="row" spacing={1} sx={{ minWidth: 0 }}>
                 <Typography variant="caption" color="text.secondary" sx={{ minWidth: 150 }}>
@@ -241,6 +251,29 @@ function ChatEventLogRow({
       <Divider component="li" />
     </>
   );
+}
+
+/**
+ * Serializes the safe metadata retained for an event-log entry.
+ *
+ * @param entry Event entry to serialize.
+ * @returns Human-readable JSON metadata.
+ */
+function serializeEventMetadata(entry: OpenCodexThreadEventLogEntry): string {
+  return JSON.stringify({
+    id: entry.id,
+    sequence: entry.sequence,
+    stage: entry.stage,
+    eventName: entry.eventName,
+    sourceId: entry.sourceId,
+    threadId: entry.threadId,
+    turnId: entry.turnId,
+    itemId: entry.itemId,
+    occurredAt: entry.occurredAt,
+    lastOccurredAt: entry.lastOccurredAt,
+    count: entry.count,
+    details: entry.details
+  }, null, 2);
 }
 
 /**

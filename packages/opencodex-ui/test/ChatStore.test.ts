@@ -203,6 +203,27 @@ describe("ChatStore active turn state", () => {
     expect(chatStore.turns.find((turn) => turn.id === "turn-active")?.durationMs).toBe(1234);
   });
 
+  it("should preserve a completed turn error for the chat UI", () => {
+    const chatStore = createChatStore({});
+    const activeTurn = createTurn("turn-active", "running");
+
+    chatStore.setTurns([activeTurn]);
+    chatStore.isWorking = true;
+    chatStore.activeTurnId = "turn-active";
+
+    chatStore.applyTurnCompleted(
+      "turn-active",
+      1234,
+      "failed",
+      "Selected model is at capacity. Please try a different model."
+    );
+
+    expect(chatStore.turns.find((turn) => turn.id === "turn-active")).toMatchObject({
+      status: "failed",
+      errorMessage: "Selected model is at capacity. Please try a different model."
+    });
+  });
+
   it.each(["failed", "interrupted"] as const)(
     "should allow editing the last user message when the turn is %s",
     (status) => {

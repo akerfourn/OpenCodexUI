@@ -123,6 +123,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
           event.turnId,
           event.durationMs,
           event.turnStatus,
+          event.errorMessage,
           event.sourceId
         );
         return;
@@ -523,6 +524,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
    * @param turnId Turn identifier.
    * @param durationMs Optional duration in milliseconds.
    * @param turnStatus Terminal status reported by Codex, when available.
+   * @param errorMessage Error reported by Codex, when available.
    * @param sourceId Optional source carried by the event.
    */
   private applyTurnCompleted(
@@ -530,6 +532,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
     turnId: string,
     durationMs: number | null,
     turnStatus: string | undefined,
+    errorMessage: string | undefined,
     sourceId?: string | null
   ): void {
     const chatStore = this.findChatStore(threadId, sourceId);
@@ -540,7 +543,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
 
     const shouldRefreshGit = chatStore.activeTurnId === turnId;
 
-    chatStore.applyTurnCompleted(turnId, durationMs, turnStatus);
+    chatStore.applyTurnCompleted(turnId, durationMs, turnStatus, errorMessage);
 
     if (shouldRefreshGit) {
       const projectStore = this.findProjectStoreForThread(threadId, sourceId);
