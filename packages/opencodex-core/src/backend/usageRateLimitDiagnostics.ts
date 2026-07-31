@@ -25,6 +25,7 @@ type UsageRateLimitLogDetails = {
   activeCommitModels: Array<string | null>;
   mapping: "mapped" | "ignored";
   limits: OpenCodexUsageLimits[];
+  correctionApplied?: boolean;
   rawRateLimits?: Record<string, unknown>;
 };
 
@@ -61,13 +62,15 @@ export class UsageRateLimitDiagnostics {
    * @param origin Whether the snapshot came from a read or notification.
    * @param reason More precise reason for the snapshot.
    * @param activeCommitModels Commit models currently generating on the source.
+   * @param correctionApplied Whether a corrective mapping changed the snapshot.
    */
   record(
     sourceId: string,
     snapshot: OpenCodexUsageSnapshot | null,
     origin: UsageRateLimitLogOrigin,
     reason: UsageRateLimitLogReason,
-    activeCommitModels: Array<string | null>
+    activeCommitModels: Array<string | null>,
+    correctionApplied = false
   ): void {
     if (!this.isPrerelease || snapshot === null || snapshot.limits.length === 0) {
       return;
@@ -99,7 +102,8 @@ export class UsageRateLimitDiagnostics {
       reason,
       activeCommitModels,
       mapping: "mapped",
-      limits: snapshot.limits
+      limits: snapshot.limits,
+      ...(correctionApplied ? { correctionApplied: true } : {})
     });
   }
 

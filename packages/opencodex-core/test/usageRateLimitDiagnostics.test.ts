@@ -57,6 +57,26 @@ describe("UsageRateLimitDiagnostics", () => {
     );
   });
 
+  it("should mark a diagnostic when a usage correction was applied", () => {
+    const writeLog = vi.fn();
+    const diagnostics = new UsageRateLimitDiagnostics(true, writeLog);
+
+    diagnostics.record(
+      "source-1",
+      createSnapshot([createLimit("codex_bengalfox", 92)]),
+      "notification",
+      "accountRateLimitsUpdated",
+      ["gpt-5.3-codex-spark"],
+      true
+    );
+
+    expect(writeLog).toHaveBeenCalledWith(
+      "info",
+      "Codex rate limits updated",
+      expect.objectContaining({ correctionApplied: true })
+    );
+  });
+
   it("should stay silent for stable builds", () => {
     const writeLog = vi.fn();
     const diagnostics = new UsageRateLimitDiagnostics(false, writeLog);

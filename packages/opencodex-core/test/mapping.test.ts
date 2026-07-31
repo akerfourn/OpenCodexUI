@@ -13,10 +13,8 @@ import {
   mapTurnsToOpenCodexTurns
 } from "../src/mapping";
 import { mapThreadTokenUsageNotification } from "../src/backend/threadTokenUsageMapping";
-import {
-  mapUsageLimitsNotification,
-  mapUsageLimitsResponse
-} from "../src/backend/usageMapping";
+import { correctUsageLimitNotification } from "../src/backend/usageCorrections";
+import { mapUsageLimitsNotification, mapUsageLimitsResponse } from "../src/backend/usageMapping";
 import { readReasoningDeltaText, readReasoningSegments } from "../src/mapping/activitySummary";
 
 describe("OpenCodex mapping", () => {
@@ -178,6 +176,32 @@ describe("OpenCodex mapping", () => {
 
     expect(usage).toMatchObject({ sourceId: "source-3" });
     expect(usage).not.toHaveProperty("rateLimitResetCredits");
+  });
+
+  it("should correct a Spark notification limit id only for an active Spark model", () => {
+    const usage = mapUsageLimitsNotification(
+      {
+        rateLimits: {
+          limitId: "codex",
+          primary: {
+            usedPercent: 92,
+            windowDurationMins: 10_080,
+            resetsAt: 1_000
+          }
+        }
+      },
+      "source-1"
+    );
+
+    const corrected = correctUsageLimitNotification(usage, ["gpt-5.3-codex-spark"]);
+    const unchanged = correctUsageLimitNotification(usage, []);
+
+    expect(corrected).toMatchObject({
+      sourceId: "source-1",
+      limits: [expect.objectContaining({ limitId: "codex_bengalfox" })]
+    });
+    expect(unchanged).toBe(usage);
+    expect(corrected).not.toBe(usage);
   });
 
   it("should use the latest turn usage for context-window pressure", () => {

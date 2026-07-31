@@ -108,10 +108,8 @@ import {
 } from "./backend/usageRateLimitDiagnostics.js";
 import { isPrereleaseVersion } from "./version.js";
 import { readObject, readString } from "./mapping.js";
-import {
-  mapUsageLimitsNotification,
-  mapUsageLimitsResponse
-} from "./backend/usageMapping.js";
+import { correctUsageLimitNotification } from "./backend/usageCorrections.js";
+import { mapUsageLimitsNotification, mapUsageLimitsResponse } from "./backend/usageMapping.js";
 import { mapThreadTokenUsageNotification } from "./backend/threadTokenUsageMapping.js";
 
 const DEFAULT_COMMIT_SOURCE_KEY = "__default_commit_source__";
@@ -2276,21 +2274,27 @@ export class OpenCodexBackendRuntime {
       this.notificationService.handleNotification(notification, sourceId);
 
       if (notification.method === "account/rateLimits/updated") {
-        const usage = mapUsageLimitsNotification(notification.params, sourceId);
+        const activeCommitModels = this.readActiveCommitModels(sourceId);
+        const mappedUsage = mapUsageLimitsNotification(notification.params, sourceId);
+        const usage = correctUsageLimitNotification(
+          mappedUsage,
+          activeCommitModels
+        );
 
         if (usage !== null) {
           this.recordUsageRateLimitDiagnostic(
             sourceId,
             usage,
             "notification",
-            "accountRateLimitsUpdated"
+            "accountRateLimitsUpdated",
+            usage !== mappedUsage
           );
           this.emit({ type: "usage.updated", sourceId, usage });
         } else {
           this.usageRateLimitDiagnostics.recordIgnoredNotification(
             sourceId,
             readObject(notification.params).rateLimits,
-            this.readActiveCommitModels(sourceId)
+            activeCommitModels
           );
         }
       }
@@ -2387,20 +2391,23 @@ export class OpenCodexBackendRuntime {
    * @param usage Rate-limit snapshot, or `null` when unavailable.
    * @param origin Snapshot origin.
    * @param reason Snapshot reason.
+   * @param correctionApplied Whether a corrective mapping changed the snapshot.
    * @returns Nothing.
    */
   private recordUsageRateLimitDiagnostic(
     sourceId: string,
     usage: OpenCodexUsageSnapshot | null,
     origin: UsageRateLimitLogOrigin,
-    reason: UsageRateLimitLogReason
+    reason: UsageRateLimitLogReason,
+    correctionApplied = false
   ): void {
     this.usageRateLimitDiagnostics.record(
       sourceId,
       usage,
       origin,
       reason,
-      this.readActiveCommitModels(sourceId)
+      this.readActiveCommitModels(sourceId),
+      correctionApplied
     );
   }
 
