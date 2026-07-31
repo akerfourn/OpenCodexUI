@@ -77,6 +77,31 @@ describe("UsageRateLimitDiagnostics", () => {
     );
   });
 
+  it("should log a changed reset-credit summary even when limits stay stable", () => {
+    const writeLog = vi.fn();
+    const diagnostics = new UsageRateLimitDiagnostics(true, writeLog);
+    const initialSnapshot = createSnapshot([createLimit("codex", 77)]);
+    const changedResetSnapshot = {
+      ...initialSnapshot,
+      rateLimitResetCredits: {
+        availableCount: 1,
+        credits: null
+      }
+    };
+
+    diagnostics.record("source-1", initialSnapshot, "read", "bootstrap", []);
+    diagnostics.record("source-1", changedResetSnapshot, "read", "request", []);
+
+    expect(writeLog).toHaveBeenCalledTimes(2);
+    expect(writeLog).toHaveBeenLastCalledWith(
+      "info",
+      "Codex rate limits updated",
+      expect.objectContaining({
+        rateLimitResetCredits: changedResetSnapshot.rateLimitResetCredits
+      })
+    );
+  });
+
   it("should stay silent for stable builds", () => {
     const writeLog = vi.fn();
     const diagnostics = new UsageRateLimitDiagnostics(false, writeLog);

@@ -4,6 +4,7 @@
 import type {
   OpenCodexLogType,
   OpenCodexUsageLimits,
+  OpenCodexUsageResetCredits,
   OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -25,6 +26,8 @@ type UsageRateLimitLogDetails = {
   activeCommitModels: Array<string | null>;
   mapping: "mapped" | "ignored";
   limits: OpenCodexUsageLimits[];
+  updatedAt?: string;
+  rateLimitResetCredits?: OpenCodexUsageResetCredits | null;
   correctionApplied?: boolean;
   rawRateLimits?: Record<string, unknown>;
 };
@@ -36,11 +39,12 @@ type LogWriter = (
 ) => void;
 
 /**
- * Tracks the latest effective limit values so periodic reads do not create
+ * Tracks the latest effective usage values so periodic reads do not create
  * duplicate diagnostic entries.
  */
 export class UsageRateLimitDiagnostics {
   private readonly lastLimitsBySourceId = new Map<string, Map<string, string>>();
+  private readonly lastResetCreditsBySourceId = new Map<string, string>();
   private readonly lastIgnoredNotificationBySourceId = new Map<string, string>();
 
   /**
@@ -72,7 +76,11 @@ export class UsageRateLimitDiagnostics {
     activeCommitModels: Array<string | null>,
     correctionApplied = false
   ): void {
-    if (!this.isPrerelease || snapshot === null || snapshot.limits.length === 0) {
+    if (
+      !this.isPrerelease ||
+      snapshot === null ||
+      (snapshot.limits.length === 0 && snapshot.rateLimitResetCredits == null)
+    ) {
       return;
     }
 
@@ -82,6 +90,11 @@ export class UsageRateLimitDiagnostics {
       ? new Map(incomingLimits)
       : new Map(previousLimits);
     let hasChanged = origin === "read" && hasRemovedLimit(previousLimits, incomingLimits);
+    const incomingResetCredits = JSON.stringify(snapshot.rateLimitResetCredits ?? null);
+
+    if (origin === "read" && this.lastResetCreditsBySourceId.get(sourceId) !== incomingResetCredits) {
+      hasChanged = true;
+    }
 
     for (const [limitId, signature] of incomingLimits) {
       if (previousLimits.get(limitId) !== signature) {
@@ -96,6 +109,10 @@ export class UsageRateLimitDiagnostics {
     }
 
     this.lastLimitsBySourceId.set(sourceId, nextLimits);
+    if (origin === "read") {
+      this.lastResetCreditsBySourceId.set(sourceId, incomingResetCredits);
+    }
+
     this.writeLog("info", "Codex rate limits updated", {
       sourceId,
       origin,
@@ -103,6 +120,8 @@ export class UsageRateLimitDiagnostics {
       activeCommitModels,
       mapping: "mapped",
       limits: snapshot.limits,
+      updatedAt: snapshot.updatedAt,
+      rateLimitResetCredits: snapshot.rateLimitResetCredits ?? null,
       ...(correctionApplied ? { correctionApplied: true } : {})
     });
   }
