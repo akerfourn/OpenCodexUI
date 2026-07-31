@@ -500,6 +500,19 @@ export type CachedThreadTokenUsageSnapshotQuery = {
 };
 
 /**
+ * Query for token usage snapshots across every thread of one source.
+ *
+ * The repository includes the latest snapshot before the period for each
+ * thread so callers can calculate deltas without counting older usage again.
+ */
+export type CachedSourceTokenUsageSnapshotQuery = {
+  sourceId: string;
+  fromObservedAt: string;
+  toObservedAt: string;
+  limit?: number | null;
+};
+
+/**
  * Origin of a persisted Codex rate-limit snapshot.
  */
 export type CachedUsageRateLimitSnapshotOrigin = "read" | "notification";
@@ -527,6 +540,7 @@ export type CachedUsageRateLimitSnapshotQuery = {
   sourceId: string;
   fromObservedAt?: string | null;
   toObservedAt?: string | null;
+  includeBaselineBeforeFrom?: boolean;
   limit?: number | null;
 };
 
@@ -1175,6 +1189,16 @@ export interface OpenCodexCacheRepository {
    */
   listThreadTokenUsageSnapshots(
     query: CachedThreadTokenUsageSnapshotQuery
+  ): Promise<CachedThreadTokenUsageSnapshot[]>;
+
+  /**
+   * Reads source-wide token usage snapshots with one baseline per thread.
+   *
+   * @param query Snapshot query.
+   * @returns Baselines and in-range snapshots ordered from oldest to newest.
+   */
+  listSourceTokenUsageSnapshots(
+    query: CachedSourceTokenUsageSnapshotQuery
   ): Promise<CachedThreadTokenUsageSnapshot[]>;
 
   /**

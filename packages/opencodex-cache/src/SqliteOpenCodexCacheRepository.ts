@@ -36,6 +36,7 @@ import type {
   CachedSourceCodexDetection,
   CachedSourceCreateInput,
   CachedSourceSettingsPatch,
+  CachedSourceTokenUsageSnapshotQuery,
   CachedThreadDelta,
   CachedThreadReadOptions,
   CachedThreadSnapshot,
@@ -131,6 +132,7 @@ import {
 import {
   insertTokenUsageSnapshot,
   listTokenUsageSnapshots,
+  listSourceTokenUsageSnapshots,
   saveThreadTokenUsageAndSnapshot,
   upsertTurnExecutionMetadata
 } from "./sqlite/tokenUsageQueries.js";
@@ -865,6 +867,18 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     query: CachedThreadTokenUsageSnapshotQuery
   ): Promise<CachedThreadTokenUsageSnapshot[]> {
     return listTokenUsageSnapshots(this.database, query);
+  }
+
+  /**
+   * Reads source-wide token usage snapshots with one baseline per thread.
+   *
+   * @param query Source-wide snapshot query.
+   * @returns Baselines and in-range snapshots ordered from oldest to newest.
+   */
+  async listSourceTokenUsageSnapshots(
+    query: CachedSourceTokenUsageSnapshotQuery
+  ): Promise<CachedThreadTokenUsageSnapshot[]> {
+    return listSourceTokenUsageSnapshots(this.database, query);
   }
 
   /**

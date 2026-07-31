@@ -49,6 +49,7 @@ export type {
   CachedThreadTokenUsageBreakdown,
   CachedThreadTokenUsageSnapshot,
   CachedThreadTokenUsageSnapshotQuery,
+  CachedSourceTokenUsageSnapshotQuery,
   CachedTurnExecutionSettings,
   CachedTurnExecutionMetadata,
   CachedUsageRateLimitSnapshot,

@@ -90,6 +90,33 @@ describe("usage rate-limit history", () => {
 
     expect(snapshots.map((snapshot) => snapshot.fingerprint)).toEqual(["fingerprint-b"]);
   });
+
+  it("should include the latest baseline when requested", async () => {
+    await repository.saveUsageRateLimitSnapshot(createSnapshot(
+      "source-a",
+      "fingerprint-a",
+      "2026-07-31T09:00:00.000Z",
+      {}
+    ));
+    await repository.saveUsageRateLimitSnapshot(createSnapshot(
+      "source-a",
+      "fingerprint-b",
+      "2026-07-31T10:30:00.000Z",
+      {}
+    ));
+
+    const snapshots = await repository.listUsageRateLimitSnapshots({
+      sourceId: "source-a",
+      fromObservedAt: "2026-07-31T10:00:00.000Z",
+      toObservedAt: "2026-07-31T11:00:00.000Z",
+      includeBaselineBeforeFrom: true
+    });
+
+    expect(snapshots.map((snapshot) => snapshot.fingerprint)).toEqual([
+      "fingerprint-a",
+      "fingerprint-b"
+    ]);
+  });
 });
 
 function createSnapshot(

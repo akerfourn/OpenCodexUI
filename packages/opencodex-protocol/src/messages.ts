@@ -808,6 +808,44 @@ export type OpenCodexUsageSnapshot = {
 };
 
 /**
+ * Requested resolution for usage history charts.
+ */
+export type OpenCodexUsageHistoryAggregation = "auto" | "raw" | "minute" | "hour" | "day";
+
+/**
+ * Resolved history resolution returned by the backend.
+ */
+export type OpenCodexUsageHistoryResolvedAggregation = Exclude<
+  OpenCodexUsageHistoryAggregation,
+  "auto"
+>;
+
+/**
+ * One rate-limit window represented in usage history.
+ */
+export type OpenCodexUsageHistoryRateLimitWindow = "primary" | "secondary";
+
+/**
+ * One point in a rate-limit history series.
+ */
+export type OpenCodexUsageHistoryRateLimitPoint = {
+  observedAt: string;
+  usedPercent: number;
+  remainingPercent: number;
+};
+
+/**
+ * History series for one source rate-limit window.
+ */
+export type OpenCodexUsageHistoryRateLimitSeries = {
+  limitId: string | null;
+  limitName: string | null;
+  window: OpenCodexUsageHistoryRateLimitWindow;
+  label: OpenCodexUsageWindow["label"];
+  points: OpenCodexUsageHistoryRateLimitPoint[];
+};
+
+/**
  * Token counts grouped by category.
  */
 export type OpenCodexThreadTokenUsageBreakdown = {
@@ -829,6 +867,33 @@ export type OpenCodexThreadTokenUsage = {
   contextWindowTokens: number;
   modelContextWindow: number | null;
   usedPercent: number | null;
+};
+
+/**
+ * One point in source-wide token usage history.
+ *
+ * `instant` is the increase in the thread cumulative counters since the
+ * previous observed snapshot. `cumulative` starts at zero for the requested
+ * period.
+ */
+export type OpenCodexUsageHistoryTokenPoint = {
+  observedAt: string;
+  instant: OpenCodexThreadTokenUsageBreakdown;
+  cumulative: OpenCodexThreadTokenUsageBreakdown;
+  isPartial: boolean;
+};
+
+/**
+ * Source-wide usage history returned for chart rendering.
+ */
+export type OpenCodexUsageHistory = {
+  sourceId: string;
+  from: string;
+  to: string;
+  aggregation: OpenCodexUsageHistoryResolvedAggregation;
+  rateLimits: OpenCodexUsageHistoryRateLimitSeries[];
+  tokens: OpenCodexUsageHistoryTokenPoint[];
+  hasPartialTokenData: boolean;
 };
 
 /**

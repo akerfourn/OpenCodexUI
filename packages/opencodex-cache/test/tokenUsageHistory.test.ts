@@ -82,6 +82,41 @@ describe("token usage history", () => {
     expect(snapshots).toHaveLength(1);
   });
 
+  it("should include one source-wide baseline per thread before a period", async () => {
+    await repository.saveThreadTokenUsageSnapshot(
+      createSnapshot("source-a", "turn-1", 100, 100, "2026-07-31T09:00:00.000Z")
+    );
+    await repository.saveThreadTokenUsageSnapshot(
+      createSnapshot("source-a", "turn-1", 130, 30, "2026-07-31T10:00:00.000Z")
+    );
+    await repository.saveThreadTokenUsageSnapshot(
+      createSnapshot("source-a", "turn-2", 160, 30, "2026-07-31T11:00:00.000Z")
+    );
+    await repository.saveThreadTokenUsageSnapshot(
+      createSnapshot("source-a", "turn-3", 50, 50, "2026-07-31T09:30:00.000Z", "thread-2")
+    );
+    await repository.saveThreadTokenUsageSnapshot(
+      createSnapshot("source-a", "turn-3", 70, 20, "2026-07-31T10:30:00.000Z", "thread-2")
+    );
+    await repository.saveThreadTokenUsageSnapshot(
+      createSnapshot("source-b", "turn-1", 900, 900, "2026-07-31T09:30:00.000Z")
+    );
+
+    const snapshots = await repository.listSourceTokenUsageSnapshots({
+      sourceId: "source-a",
+      fromObservedAt: "2026-07-31T10:00:00.000Z",
+      toObservedAt: "2026-07-31T12:00:00.000Z"
+    });
+
+    expect(snapshots.map((snapshot) => [snapshot.threadId, snapshot.total.totalTokens])).toEqual([
+      ["thread-1", 100],
+      ["thread-2", 50],
+      ["thread-1", 130],
+      ["thread-2", 70],
+      ["thread-1", 160]
+    ]);
+  });
+
   it("should expose persisted execution metadata on cached turns", async () => {
     await repository.saveTurnExecutionMetadata({
       sourceId: "source-a",
@@ -128,11 +163,12 @@ function createSnapshot(
   turnId: string,
   totalTokens: number,
   lastTokens: number,
-  observedAt: string
+  observedAt: string,
+  threadId = "thread-1"
 ) {
   return {
     sourceId,
-    threadId: "thread-1",
+    threadId,
     turnId,
     observedAt,
     total: createBreakdown(totalTokens),

@@ -220,6 +220,13 @@ export class OpenCodexRequestRouter {
         return this.runtime.listModels();
       case "usage.read":
         return this.runtime.readUsageLimits(request.sourceId ?? null);
+      case "usage.history.read":
+        return this.runtime.readUsageHistory(
+          request.sourceId,
+          request.from,
+          request.to,
+          request.aggregation
+        );
       case "usage.reset.consume":
         return this.runtime.consumeUsageReset(
           request.sourceId,

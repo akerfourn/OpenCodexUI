@@ -64,6 +64,8 @@ import type {
   OpenCodexToolVersionStatus,
   OpenCodexTurn,
   OpenCodexTurnExecutionMetadata,
+  OpenCodexUsageHistory,
+  OpenCodexUsageHistoryAggregation,
   OpenCodexUsageResetConsumeResult,
   OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
@@ -112,6 +114,7 @@ import { correctUsageLimitNotification } from "./backend/usageCorrections.js";
 import { mapUsageLimitsNotification, mapUsageLimitsResponse } from "./backend/usageMapping.js";
 import { mapThreadTokenUsageNotification } from "./backend/threadTokenUsageMapping.js";
 import { createUsageRateLimitHistorySnapshot } from "./backend/usageRateLimitHistory.js";
+import { readUsageHistory as readUsageHistoryFromCache } from "./backend/usageHistory.js";
 
 const DEFAULT_COMMIT_SOURCE_KEY = "__default_commit_source__";
 const DEFAULT_COMMIT_MODEL_KEY = "__default_commit_model__";
@@ -1427,6 +1430,29 @@ export class OpenCodexBackendRuntime {
 
       return null;
     }
+  }
+
+  /**
+   * Reads source-scoped rate-limit and token usage history.
+   *
+   * @param sourceId Source whose history should be read.
+   * @param from Inclusive ISO start timestamp.
+   * @param to Exclusive ISO end timestamp.
+   * @param aggregation Requested chart granularity.
+   * @returns Aggregated usage history.
+   */
+  async readUsageHistory(
+    sourceId: string,
+    from: string,
+    to: string,
+    aggregation?: OpenCodexUsageHistoryAggregation
+  ): Promise<OpenCodexUsageHistory> {
+    return readUsageHistoryFromCache(this.cacheRepository, {
+      sourceId,
+      from,
+      to,
+      aggregation
+    });
   }
 
   /**

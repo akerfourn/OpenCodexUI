@@ -7,6 +7,7 @@ import type {
   CachedThreadTokenUsage,
   CachedThreadTokenUsageSnapshot,
   CachedThreadTokenUsageSnapshotQuery,
+  CachedSourceTokenUsageSnapshotQuery,
   CachedTurnExecutionMetadata
 } from "../types.js";
 
@@ -220,6 +221,68 @@ export function listTokenUsageSnapshots(
 }
 
 /**
+ * Reads source-wide token usage snapshots and one baseline before the period
+ * for every thread.
+ *
+ * @param database SQLite database connection.
+ * @param query Source-wide snapshot query.
+ * @returns Baselines and in-range snapshots ordered by observation time.
+ */
+export function listSourceTokenUsageSnapshots(
+  database: BetterSqliteDatabase,
+  query: CachedSourceTokenUsageSnapshotQuery
+): CachedThreadTokenUsageSnapshot[] {
+  const rows = database
+    .prepare(
+      `
+      WITH baselines AS (
+        SELECT current_snapshot.*
+        FROM thread_token_usage_snapshots AS current_snapshot
+        WHERE current_snapshot.source_id = @sourceId
+          AND current_snapshot.observed_at < @fromObservedAt
+          AND NOT EXISTS (
+            SELECT 1
+            FROM thread_token_usage_snapshots AS newer_snapshot
+            WHERE newer_snapshot.source_id = current_snapshot.source_id
+              AND newer_snapshot.thread_id = current_snapshot.thread_id
+              AND newer_snapshot.observed_at < @fromObservedAt
+              AND (
+                newer_snapshot.observed_at > current_snapshot.observed_at
+                OR (
+                  newer_snapshot.observed_at = current_snapshot.observed_at
+                  AND newer_snapshot.id > current_snapshot.id
+                )
+              )
+          )
+      )
+      SELECT *
+      FROM (
+        SELECT *
+        FROM thread_token_usage_snapshots
+        WHERE source_id = @sourceId
+          AND observed_at >= @fromObservedAt
+          AND observed_at < @toObservedAt
+
+        UNION ALL
+
+        SELECT *
+        FROM baselines
+      )
+      ORDER BY observed_at ASC, id ASC
+      LIMIT @limit
+      `
+    )
+    .all({
+      sourceId: query.sourceId,
+      fromObservedAt: query.fromObservedAt,
+      toObservedAt: query.toObservedAt,
+      limit: normalizeSourceSnapshotLimit(query.limit)
+    }) as Array<Record<string, unknown>>;
+
+  return rows.map(mapTokenUsageSnapshotRow);
+}
+
+/**
  * Upserts the latest known execution metadata for a turn.
  *
  * @param database SQLite database connection.
@@ -393,4 +456,18 @@ function readString(value: unknown): string {
  */
 function readNullableString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/**
+ * Normalizes the maximum number of source-wide snapshots returned by SQLite.
+ *
+ * @param limit Requested limit.
+ * @returns Positive bounded limit.
+ */
+function normalizeSourceSnapshotLimit(limit: number | null | undefined): number {
+  if (limit === undefined || limit === null || !Number.isFinite(limit) || limit <= 0) {
+    return 200_000;
+  }
+
+  return Math.min(Math.floor(limit), 200_000);
 }

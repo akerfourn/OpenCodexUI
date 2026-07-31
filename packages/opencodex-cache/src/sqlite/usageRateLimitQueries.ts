@@ -82,9 +82,51 @@ export function listUsageRateLimitSnapshots(
   database: BetterSqliteDatabase,
   query: CachedUsageRateLimitSnapshotQuery
 ): CachedUsageRateLimitSnapshot[] {
-  const rows = database
-    .prepare(
-      `
+  const sql = query.includeBaselineBeforeFrom === true && query.fromObservedAt !== undefined
+    ? `
+      WITH baselines AS (
+        SELECT current_snapshot.*
+        FROM usage_rate_limit_snapshots AS current_snapshot
+        WHERE current_snapshot.source_id = @sourceId
+          AND current_snapshot.observed_at < @fromObservedAt
+          AND NOT EXISTS (
+            SELECT 1
+            FROM usage_rate_limit_snapshots AS newer_snapshot
+            WHERE newer_snapshot.source_id = current_snapshot.source_id
+              AND (
+                newer_snapshot.observed_at > current_snapshot.observed_at
+                OR (
+                  newer_snapshot.observed_at = current_snapshot.observed_at
+                  AND newer_snapshot.id > current_snapshot.id
+                )
+              )
+              AND newer_snapshot.observed_at < @fromObservedAt
+          )
+      )
+      SELECT
+        id,
+        source_id,
+        observed_at,
+        origin,
+        reason,
+        fingerprint,
+        payload_json
+      FROM (
+        SELECT *
+        FROM usage_rate_limit_snapshots
+        WHERE source_id = @sourceId
+          AND observed_at >= @fromObservedAt
+          AND (@toObservedAt IS NULL OR observed_at < @toObservedAt)
+
+        UNION ALL
+
+        SELECT *
+        FROM baselines
+      )
+      ORDER BY observed_at ASC, id ASC
+      LIMIT @limit
+    `
+    : `
       SELECT
         id,
         source_id,
@@ -99,8 +141,9 @@ export function listUsageRateLimitSnapshots(
         AND (@toObservedAt IS NULL OR observed_at < @toObservedAt)
       ORDER BY observed_at ASC, id ASC
       LIMIT @limit
-      `
-    )
+    `;
+  const rows = database
+    .prepare(sql)
     .all({
       sourceId: query.sourceId,
       fromObservedAt: query.fromObservedAt ?? null,

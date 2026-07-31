@@ -17,7 +17,8 @@ import type {
   OpenCodexSourceColor,
   OpenCodexSourceSettingsPatch,
   OpenCodexSettings,
-  OpenCodexThreadScope
+  OpenCodexThreadScope,
+  OpenCodexUsageHistoryAggregation
 } from "./messages";
 
 /**
@@ -164,6 +165,13 @@ export type OpenCodexRequest =
   | { type: "project.trust.dismiss"; projectPath: string }
   | { type: "models.list" }
   | { type: "usage.read"; sourceId?: string | null }
+  | {
+      type: "usage.history.read";
+      sourceId: string;
+      from: string;
+      to: string;
+      aggregation?: OpenCodexUsageHistoryAggregation;
+    }
   | {
       type: "usage.reset.consume";
       sourceId: string;
