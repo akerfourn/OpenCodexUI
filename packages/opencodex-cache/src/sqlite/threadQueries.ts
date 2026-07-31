@@ -560,19 +560,23 @@ export async function saveThreadDelta(
  */
 export async function saveThreadTokenUsage(
   database: BetterSqliteDatabase,
-  usage: CachedThreadTokenUsage
+  usage: CachedThreadTokenUsage,
+  sourceId: string | null = null
 ): Promise<void> {
+  const sourceClause = sourceId === null ? "" : " AND source_id = @sourceId";
   database
     .prepare(
       `
       UPDATE threads SET
         token_usage_json = @tokenUsageJson
       WHERE id = @threadId
+        ${sourceClause}
       `
     )
     .run({
       threadId: usage.threadId,
-      tokenUsageJson: JSON.stringify(usage)
+      tokenUsageJson: JSON.stringify(usage),
+      ...(sourceId === null ? {} : { sourceId })
     });
 }
 

@@ -5,7 +5,8 @@ import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexEvent,
   OpenCodexSettings,
-  OpenCodexThread
+  OpenCodexThread,
+  OpenCodexTurnExecutionMetadata
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it } from "vitest";
 
@@ -19,6 +20,7 @@ describe("ThreadConversationService", () => {
     const thread = createThread({ sourceId: null });
     threadTurnCache.getOrCreate(thread);
     const writtenThreads: OpenCodexThread[] = [];
+    let executionMetadata: OpenCodexTurnExecutionMetadata | null = null;
     const client = new FakeCodexClient();
     const events: OpenCodexEvent[] = [];
     const service = new ThreadConversationService({
@@ -28,6 +30,14 @@ describe("ThreadConversationService", () => {
         readSnapshot: async () => null,
         writeIndex: async (threads: OpenCodexThread[]) => {
           writtenThreads.push(...threads);
+        },
+        writeTurnExecutionMetadata: async (
+          _sourceId: string,
+          _threadId: string,
+          _turnId: string,
+          metadata: OpenCodexTurnExecutionMetadata
+        ) => {
+          executionMetadata = metadata;
         }
       } as unknown as ThreadCacheService,
       getSettings: () => createSettings(),
@@ -54,13 +64,21 @@ describe("ThreadConversationService", () => {
       [],
       [],
       "gpt-5.5",
-      "medium"
+      "medium",
+      "fast"
     );
 
     expect(result).toEqual({ threadId: "thread-1", turnId: "turn-1" });
     expect(threadTurnCache.get("thread-1")?.thread.sourceId).toBe("source-1");
     expect(writtenThreads).toMatchObject([{ id: "thread-1", sourceId: "source-1" }]);
     expect(client.startedTurns).toHaveLength(1);
+    expect(executionMetadata).toEqual({
+      requestedModel: "gpt-5.5",
+      effectiveModel: "gpt-5.5",
+      requestedReasoningEffort: "medium",
+      effectiveReasoningEffort: "medium",
+      serviceTier: "fast"
+    });
     expect(events.some((event) => event.type === "message.started")).toBe(true);
   });
 });

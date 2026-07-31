@@ -17,6 +17,7 @@ import {
   mapActivityMessage,
   mapActivityTurnItem
 } from "./mapping/activity.js";
+import { readTurnExecutionMetadata } from "./turnExecutionMetadata.js";
 import {
   createId,
   readMessagePhase,
@@ -253,8 +254,9 @@ function mapTurnToOpenCodexTurn(
   const turn = readObject(turnValue);
   const turnId = readString(turn.id);
   const items = Array.isArray(turn.items) ? turn.items : [];
+  const execution = readTurnExecutionMetadata(turn);
 
-  return {
+  const mappedTurn: OpenCodexTurn = {
     id: turnId,
     threadId,
     status: readNullableString(turn.status),
@@ -266,6 +268,12 @@ function mapTurnToOpenCodexTurn(
       .map((itemValue) => mapTurnItem(itemValue, language))
       .filter((item): item is OpenCodexTurnItem => item !== null)
   };
+
+  if (execution !== null) {
+    mappedTurn.execution = execution;
+  }
+
+  return mappedTurn;
 }
 
 /**

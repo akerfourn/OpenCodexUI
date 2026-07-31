@@ -1157,6 +1157,17 @@ export type OpenCodexTurnItem = {
 };
 
 /**
+ * Model and execution settings observed for one Codex turn.
+ */
+export type OpenCodexTurnExecutionMetadata = {
+  requestedModel: string | null;
+  effectiveModel: string | null;
+  requestedReasoningEffort: OpenCodexReasoningEffort | null;
+  effectiveReasoningEffort: OpenCodexReasoningEffort | null;
+  serviceTier: OpenCodexServiceTier | null;
+};
+
+/**
  * Structured turn shown by the chat UI.
  */
 export type OpenCodexTurn = {
@@ -1167,6 +1178,7 @@ export type OpenCodexTurn = {
   startedAt: string | null;
   completedAt: string | null;
   durationMs: number | null;
+  execution?: OpenCodexTurnExecutionMetadata | null;
   items: OpenCodexTurnItem[];
 };
 

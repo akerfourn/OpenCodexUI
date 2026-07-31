@@ -63,6 +63,7 @@ import type {
   OpenCodexThreadRuntimeStatus,
   OpenCodexToolVersionStatus,
   OpenCodexTurn,
+  OpenCodexTurnExecutionMetadata,
   OpenCodexUsageResetConsumeResult,
   OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
@@ -2269,6 +2270,7 @@ export class OpenCodexBackendRuntime {
 
     try {
       this.recordLiveCacheNotification(notification);
+      this.recordTurnExecutionNotification(notification, sourceId);
       this.trackActiveTurnNotification(notification, sourceId);
       this.projectCommandService.handleNotification(notification);
       this.notificationService.handleNotification(notification, sourceId);
@@ -2303,7 +2305,7 @@ export class OpenCodexBackendRuntime {
             cacheEntry.tokenUsage = usage;
           }
 
-          void this.threadCacheService.writeTokenUsage(usage);
+          void this.threadCacheService.writeTokenUsage(sourceId, usage);
           this.emit({ type: "thread.tokenUsage.updated", sourceId, usage });
         }
       }
@@ -2317,6 +2319,65 @@ export class OpenCodexBackendRuntime {
         performance.now() - startedAt
       );
     }
+  }
+
+  /**
+   * Records turn-level model, reasoning, and speed metadata from notifications.
+   *
+   * @param notification Codex notification.
+   * @param sourceId Source that produced the notification.
+   * @returns Nothing.
+   */
+  private recordTurnExecutionNotification(
+    notification: CodexNotification,
+    sourceId: string
+  ): void {
+    const params = readObject(notification.params);
+    const threadId = readString(params.threadId);
+
+    if (threadId.length === 0) {
+      return;
+    }
+
+    if (notification.method === "turn/started") {
+      const turnId = readString(readObject(params.turn).id);
+
+      if (turnId.length === 0 || this.threadTurnCache.getTurnExecutionMetadata(threadId, turnId) !== null) {
+        return;
+      }
+
+      const thread = this.threadTurnCache.get(threadId)?.thread;
+      const metadata: OpenCodexTurnExecutionMetadata = {
+        requestedModel: null,
+        effectiveModel: thread?.model ?? null,
+        requestedReasoningEffort: null,
+        effectiveReasoningEffort: thread?.reasoningEffort ?? null,
+        serviceTier: null
+      };
+      void this.threadCacheService.writeTurnExecutionMetadata(sourceId, threadId, turnId, metadata);
+      return;
+    }
+
+    if (notification.method !== "model/rerouted") {
+      return;
+    }
+
+    const turnId = readString(params.turnId);
+    const toModel = readString(params.toModel);
+
+    if (turnId.length === 0 || toModel.length === 0) {
+      return;
+    }
+
+    const current = this.threadTurnCache.getTurnExecutionMetadata(threadId, turnId);
+    const metadata: OpenCodexTurnExecutionMetadata = {
+      requestedModel: current?.requestedModel ?? null,
+      effectiveModel: toModel,
+      requestedReasoningEffort: current?.requestedReasoningEffort ?? null,
+      effectiveReasoningEffort: current?.effectiveReasoningEffort ?? null,
+      serviceTier: current?.serviceTier ?? null
+    };
+    void this.threadCacheService.writeTurnExecutionMetadata(sourceId, threadId, turnId, metadata);
   }
 
   /**

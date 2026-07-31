@@ -12,7 +12,8 @@ import type {
   OpenCodexSettings,
   OpenCodexThread,
   OpenCodexThreadRuntimeStatus,
-  OpenCodexTurn
+  OpenCodexTurn,
+  OpenCodexTurnExecutionMetadata
 } from "@open-codex-ui/opencodex-protocol";
 
 import {
@@ -707,6 +708,9 @@ export class ThreadConversationService {
       attachments
     };
 
+    const requestedReasoningEffort = reasoningEffort ??
+      this.options.getSettings().defaultReasoningEffort;
+
     this.options.emit({
       type: "message.started",
       sourceId: resolvedSource.id,
@@ -719,12 +723,27 @@ export class ThreadConversationService {
       input,
       model,
       serviceTier,
-      effort: reasoningEffort ?? this.options.getSettings().defaultReasoningEffort
+      effort: requestedReasoningEffort
     });
     const turn = readObject(readObject(turnResponse).turn);
     const turnId = readString(turn.id);
 
     if (turnId.length > 0) {
+      const currentThread = this.options.threadTurnCache.get(targetThreadId)?.thread;
+      const execution: OpenCodexTurnExecutionMetadata = {
+        requestedModel: model,
+        effectiveModel: model ?? currentThread?.model ?? null,
+        requestedReasoningEffort,
+        effectiveReasoningEffort: requestedReasoningEffort,
+        serviceTier: serviceTier ?? null
+      };
+
+      await this.options.threadCacheService.writeTurnExecutionMetadata(
+        resolvedSource.id,
+        targetThreadId,
+        turnId,
+        execution
+      );
       this.options.emit({
         type: "turn.started",
         sourceId: resolvedSource.id,

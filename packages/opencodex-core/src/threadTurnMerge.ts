@@ -8,6 +8,11 @@ import {
   materializeLiveItemText,
   materializeLiveTurnText
 } from "./liveTurnTextBuffer.js";
+import {
+  attachTurnExecutionMetadata,
+  mergeTurnExecutionMetadata,
+  readTurnExecutionMetadata
+} from "./turnExecutionMetadata.js";
 
 export type RecordedTurnMutation = {
   entry: ThreadTurnCacheEntry;
@@ -32,9 +37,25 @@ export function mergeTurns(entry: ThreadTurnCacheEntry, turns: unknown[]): void 
 
     materializeLiveTurnText(entry, turnId);
     const existingTurn = entry.turnsById.get(turnId);
-    const nextTurn = existingTurn === undefined
+    const incomingExecution = readTurnExecutionMetadata(turn);
+
+    if (incomingExecution !== null) {
+      entry.turnExecutionMetadataById.set(
+        turnId,
+        mergeTurnExecutionMetadata(
+          entry.turnExecutionMetadataById.get(turnId) ?? null,
+          incomingExecution
+        )
+      );
+    }
+
+    const mergedTurn = existingTurn === undefined
       ? turn
       : mergeTurnPreservingExistingItems(existingTurn, turn);
+    const execution = entry.turnExecutionMetadataById.get(turnId);
+    const nextTurn = execution === undefined
+      ? mergedTurn
+      : attachTurnExecutionMetadata(mergedTurn, execution);
 
     entry.turnsById.set(turnId, nextTurn);
 

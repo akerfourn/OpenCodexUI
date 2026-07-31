@@ -1,5 +1,7 @@
 import type {
   CachedThreadSnapshot,
+  CachedThreadTokenUsageSnapshot,
+  CachedTurnExecutionMetadata,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import type {
@@ -7,6 +9,7 @@ import type {
   OpenCodexSettings,
   OpenCodexThread,
   OpenCodexThreadTokenUsage,
+  OpenCodexTurnExecutionMetadata,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -357,7 +360,7 @@ export class ThreadCacheService {
    *
    * @returns Promise resolved when the write attempt completes.
    */
-  async writeTokenUsage(usage: OpenCodexThreadTokenUsage): Promise<void> {
+  async writeTokenUsage(sourceId: string, usage: OpenCodexThreadTokenUsage): Promise<void> {
     const repository = this.options.cacheRepository;
 
     if (repository === null) {
@@ -365,9 +368,71 @@ export class ThreadCacheService {
     }
 
     try {
-      await repository.saveThreadTokenUsage(usage);
+      await repository.saveThreadTokenUsage(usage, sourceId);
+
+      const execution = this.options.threadTurnCache.getTurnExecutionMetadata(
+        usage.threadId,
+        usage.turnId
+      );
+      const snapshot: CachedThreadTokenUsageSnapshot = {
+        sourceId,
+        threadId: usage.threadId,
+        turnId: usage.turnId,
+        observedAt: new Date().toISOString(),
+        total: usage.total,
+        last: usage.last,
+        modelContextWindow: usage.modelContextWindow,
+        model: execution?.effectiveModel ?? execution?.requestedModel ?? null,
+        reasoningEffort:
+          execution?.effectiveReasoningEffort ?? execution?.requestedReasoningEffort ?? null,
+        serviceTier: execution?.serviceTier ?? null
+      };
+      await repository.saveThreadTokenUsageSnapshot(snapshot);
     } catch (error) {
       this.log(`thread token usage cache write failed: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Stores execution metadata for one turn and makes it available to UI turn mapping.
+   *
+   * @param sourceId Source owning the turn.
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @param metadata Newly observed execution metadata.
+   * @returns Promise resolved when the write attempt completes.
+   */
+  async writeTurnExecutionMetadata(
+    sourceId: string,
+    threadId: string,
+    turnId: string,
+    metadata: OpenCodexTurnExecutionMetadata
+  ): Promise<void> {
+    const merged = this.options.threadTurnCache.setTurnExecutionMetadata(
+      threadId,
+      turnId,
+      metadata
+    ) ?? metadata;
+    const repository = this.options.cacheRepository;
+
+    if (repository === null) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const cachedMetadata: CachedTurnExecutionMetadata = {
+      sourceId,
+      threadId,
+      turnId,
+      ...merged,
+      firstObservedAt: now,
+      updatedAt: now
+    };
+
+    try {
+      await repository.saveTurnExecutionMetadata(cachedMetadata);
+    } catch (error) {
+      this.log(`turn execution metadata cache write failed: ${String(error)}`);
     }
   }
 

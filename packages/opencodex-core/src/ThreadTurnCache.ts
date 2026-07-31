@@ -3,7 +3,8 @@
  */
 import type {
   OpenCodexThread,
-  OpenCodexThreadTokenUsage
+  OpenCodexThreadTokenUsage,
+  OpenCodexTurnExecutionMetadata
 } from "@open-codex-ui/opencodex-protocol";
 import type { CachedThreadSnapshot, CachedThreadSyncState } from "@open-codex-ui/opencodex-cache";
 
@@ -13,6 +14,10 @@ import {
   type LiveTurnTextBuffers
 } from "./liveTurnTextBuffer.js";
 import { readObject, readString } from "./mapping.js";
+import {
+  attachTurnExecutionMetadata,
+  mergeTurnExecutionMetadata
+} from "./turnExecutionMetadata.js";
 import {
   appendActivityDeltaToTurn,
   appendAgentMessageDeltaToTurn,
@@ -35,6 +40,7 @@ export type ThreadTurnCacheEntry = {
   hasLoadedAllOlderTurns: boolean;
   lastSyncedAt: string | null;
   tokenUsage: OpenCodexThreadTokenUsage | null;
+  turnExecutionMetadataById: Map<string, OpenCodexTurnExecutionMetadata>;
 };
 
 /**
@@ -42,6 +48,10 @@ export type ThreadTurnCacheEntry = {
  */
 export class ThreadTurnCache {
   private readonly entries = new Map<string, ThreadTurnCacheEntry>();
+  private readonly executionMetadataByThreadId = new Map<
+    string,
+    Map<string, OpenCodexTurnExecutionMetadata>
+  >();
 
   /**
    * Returns.
@@ -52,6 +62,64 @@ export class ThreadTurnCache {
    */
   get(threadId: string): ThreadTurnCacheEntry | null {
     return this.entries.get(threadId) ?? null;
+  }
+
+  /**
+   * Returns the latest execution metadata known for one turn.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @returns Metadata, or `null` when unavailable.
+   */
+  getTurnExecutionMetadata(
+    threadId: string,
+    turnId: string
+  ): OpenCodexTurnExecutionMetadata | null {
+    return this.entries.get(threadId)?.turnExecutionMetadataById.get(turnId) ??
+      this.executionMetadataByThreadId.get(threadId)?.get(turnId) ??
+      null;
+  }
+
+  /**
+   * Merges execution metadata and attaches it to the in-memory raw turn.
+   *
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @param metadata Newly observed metadata.
+   * @returns Merged metadata, or `null` when the thread is not loaded.
+   */
+  setTurnExecutionMetadata(
+    threadId: string,
+    turnId: string,
+    metadata: OpenCodexTurnExecutionMetadata
+  ): OpenCodexTurnExecutionMetadata | null {
+    if (turnId.length === 0) {
+      return null;
+    }
+
+    const executionMetadata = this.executionMetadataByThreadId.get(threadId) ?? new Map();
+    const merged = mergeTurnExecutionMetadata(
+      executionMetadata.get(turnId) ?? null,
+      metadata
+    );
+    executionMetadata.set(turnId, merged);
+    this.executionMetadataByThreadId.set(threadId, executionMetadata);
+
+    const entry = this.entries.get(threadId);
+
+    if (entry === undefined) {
+      return merged;
+    }
+
+    entry.turnExecutionMetadataById.set(turnId, merged);
+
+    const turn = entry.turnsById.get(turnId);
+
+    if (turn !== undefined) {
+      entry.turnsById.set(turnId, attachTurnExecutionMetadata(turn, merged));
+    }
+
+    return merged;
   }
 
   /**
@@ -81,7 +149,10 @@ export class ThreadTurnCache {
       hasLoadedLatest: false,
       hasLoadedAllOlderTurns: false,
       lastSyncedAt: null,
-      tokenUsage: null
+      tokenUsage: null,
+      turnExecutionMetadataById: new Map(
+        this.executionMetadataByThreadId.get(thread.id) ?? []
+      )
     };
 
     this.entries.set(thread.id, created);

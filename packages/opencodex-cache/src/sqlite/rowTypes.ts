@@ -42,6 +42,13 @@ export type ThreadRow = {
 export type TurnRow = {
   id: string;
   raw_json: string;
+  execution_requested_model?: string | null;
+  execution_effective_model?: string | null;
+  execution_requested_reasoning_effort?: string | null;
+  execution_effective_reasoning_effort?: string | null;
+  execution_service_tier?: string | null;
+  execution_first_observed_at?: string | null;
+  execution_updated_at?: string | null;
 };
 
 /**

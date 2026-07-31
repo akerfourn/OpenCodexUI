@@ -20,6 +20,31 @@ import {
 import { readReasoningDeltaText, readReasoningSegments } from "../src/mapping/activitySummary";
 
 describe("OpenCodex mapping", () => {
+  it("should expose optional execution metadata on a turn", () => {
+    const turns = mapTurnsToOpenCodexTurns("thread-1", [
+      {
+        id: "turn-1",
+        status: "completed",
+        items: [],
+        openCodexUiExecution: {
+          requestedModel: "gpt-5.5",
+          effectiveModel: "gpt-5.4",
+          requestedReasoningEffort: "high",
+          effectiveReasoningEffort: "high",
+          serviceTier: "fast"
+        }
+      }
+    ]);
+
+    expect(turns[0]?.execution).toEqual({
+      requestedModel: "gpt-5.5",
+      effectiveModel: "gpt-5.4",
+      requestedReasoningEffort: "high",
+      effectiveReasoningEffort: "high",
+      serviceTier: "fast"
+    });
+  });
+
   it("should preserve a turn error message when mapping completed turns", () => {
     const turns = mapTurnsToOpenCodexTurns("thread-1", [
       {

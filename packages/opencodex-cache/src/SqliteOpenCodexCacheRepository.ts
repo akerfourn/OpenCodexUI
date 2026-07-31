@@ -42,6 +42,9 @@ import type {
   CachedThreadSummary,
   CachedThreadSyncState,
   CachedThreadTokenUsage,
+  CachedThreadTokenUsageSnapshot,
+  CachedThreadTokenUsageSnapshotQuery,
+  CachedTurnExecutionMetadata,
   OpenCodexCacheRepository,
   ThreadListCacheQuery
 } from "./types.js";
@@ -123,6 +126,11 @@ import {
   updateThreadTitle,
   upsertThreadIndex
 } from "./sqlite/threadQueries.js";
+import {
+  insertTokenUsageSnapshot,
+  listTokenUsageSnapshots,
+  upsertTurnExecutionMetadata
+} from "./sqlite/tokenUsageQueries.js";
 
 export type SqliteOpenCodexCacheRepositoryOptions = {
   directory: string;
@@ -807,8 +815,43 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    *
    * @returns Promise resolved when save completes.
    */
-  async saveThreadTokenUsage(usage: CachedThreadTokenUsage): Promise<void> {
-    await saveThreadTokenUsage(this.database, usage);
+  async saveThreadTokenUsage(
+    usage: CachedThreadTokenUsage,
+    sourceId: string | null = null
+  ): Promise<void> {
+    await saveThreadTokenUsage(this.database, usage, sourceId);
+  }
+
+  /**
+   * Appends one token usage snapshot to the history.
+   *
+   * @param snapshot Token usage snapshot.
+   * @returns Promise resolved when the write completes.
+   */
+  async saveThreadTokenUsageSnapshot(snapshot: CachedThreadTokenUsageSnapshot): Promise<void> {
+    insertTokenUsageSnapshot(this.database, snapshot);
+  }
+
+  /**
+   * Reads historical token usage snapshots for one thread.
+   *
+   * @param query Snapshot query.
+   * @returns Snapshots ordered from oldest to newest.
+   */
+  async listThreadTokenUsageSnapshots(
+    query: CachedThreadTokenUsageSnapshotQuery
+  ): Promise<CachedThreadTokenUsageSnapshot[]> {
+    return listTokenUsageSnapshots(this.database, query);
+  }
+
+  /**
+   * Upserts execution metadata for one turn.
+   *
+   * @param metadata Turn execution metadata.
+   * @returns Promise resolved when the write completes.
+   */
+  async saveTurnExecutionMetadata(metadata: CachedTurnExecutionMetadata): Promise<void> {
+    upsertTurnExecutionMetadata(this.database, metadata);
   }
 
   /**

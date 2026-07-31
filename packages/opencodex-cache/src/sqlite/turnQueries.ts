@@ -4,8 +4,14 @@
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import type { CachedThreadSyncState } from "../types.js";
+import { upsertTurnExecutionMetadata } from "./tokenUsageQueries.js";
 import type { TurnRow } from "./rowTypes.js";
-import { normalizeTurn, readTurnMetadata, stringifyTurn } from "./turnSerialization.js";
+import {
+  normalizeTurn,
+  readTurnExecutionSettings,
+  readTurnMetadata,
+  stringifyTurn
+} from "./turnSerialization.js";
 
 /**
  * Reads the latest cached turn rows for a thread.
@@ -25,10 +31,24 @@ export function readLatestTurnRows(
     return database
       .prepare(
         `
-        SELECT id, raw_json
+        SELECT
+          turns.id,
+          turns.raw_json,
+          metadata.requested_model AS execution_requested_model,
+          metadata.effective_model AS execution_effective_model,
+          metadata.requested_reasoning_effort AS execution_requested_reasoning_effort,
+          metadata.effective_reasoning_effort AS execution_effective_reasoning_effort,
+          metadata.service_tier AS execution_service_tier,
+          metadata.first_observed_at AS execution_first_observed_at,
+          metadata.updated_at AS execution_updated_at
         FROM turns
-        WHERE thread_id = @threadId
-        ORDER BY started_at ASC, completed_at ASC, id ASC
+        LEFT JOIN threads ON threads.id = turns.thread_id
+        LEFT JOIN turn_execution_metadata AS metadata
+          ON metadata.source_id = threads.source_id
+          AND metadata.thread_id = turns.thread_id
+          AND metadata.turn_id = turns.id
+        WHERE turns.thread_id = @threadId
+        ORDER BY turns.started_at ASC, turns.completed_at ASC, turns.id ASC
         `
       )
       .all({ threadId }) as TurnRow[];
@@ -37,12 +57,37 @@ export function readLatestTurnRows(
   return database
     .prepare(
       `
-      SELECT id, raw_json
+      SELECT
+        id,
+        raw_json,
+        execution_requested_model,
+        execution_effective_model,
+        execution_requested_reasoning_effort,
+        execution_effective_reasoning_effort,
+        execution_service_tier,
+        execution_first_observed_at,
+        execution_updated_at
       FROM (
-        SELECT id, raw_json, started_at, completed_at
+        SELECT
+          turns.id,
+          turns.raw_json,
+          turns.started_at,
+          turns.completed_at,
+          metadata.requested_model AS execution_requested_model,
+          metadata.effective_model AS execution_effective_model,
+          metadata.requested_reasoning_effort AS execution_requested_reasoning_effort,
+          metadata.effective_reasoning_effort AS execution_effective_reasoning_effort,
+          metadata.service_tier AS execution_service_tier,
+          metadata.first_observed_at AS execution_first_observed_at,
+          metadata.updated_at AS execution_updated_at
         FROM turns
-        WHERE thread_id = @threadId
-        ORDER BY started_at DESC, completed_at DESC, id DESC
+        LEFT JOIN threads ON threads.id = turns.thread_id
+        LEFT JOIN turn_execution_metadata AS metadata
+          ON metadata.source_id = threads.source_id
+          AND metadata.thread_id = turns.thread_id
+          AND metadata.turn_id = turns.id
+        WHERE turns.thread_id = @threadId
+        ORDER BY turns.started_at DESC, turns.completed_at DESC, turns.id DESC
         LIMIT @limit
       )
       ORDER BY started_at ASC, completed_at ASC, id ASC
@@ -70,20 +115,49 @@ export function readOlderTurnRows(
   return database
     .prepare(
       `
-      SELECT id, raw_json
+      SELECT
+        id,
+        raw_json,
+        execution_requested_model,
+        execution_effective_model,
+        execution_requested_reasoning_effort,
+        execution_effective_reasoning_effort,
+        execution_service_tier,
+        execution_first_observed_at,
+        execution_updated_at
       FROM (
-        SELECT id, raw_json, started_at, completed_at
+        SELECT
+          turns.id,
+          turns.raw_json,
+          turns.started_at,
+          turns.completed_at,
+          metadata.requested_model AS execution_requested_model,
+          metadata.effective_model AS execution_effective_model,
+          metadata.requested_reasoning_effort AS execution_requested_reasoning_effort,
+          metadata.effective_reasoning_effort AS execution_effective_reasoning_effort,
+          metadata.service_tier AS execution_service_tier,
+          metadata.first_observed_at AS execution_first_observed_at,
+          metadata.updated_at AS execution_updated_at
         FROM turns
+        LEFT JOIN threads ON threads.id = turns.thread_id
+        LEFT JOIN turn_execution_metadata AS metadata
+          ON metadata.source_id = threads.source_id
+          AND metadata.thread_id = turns.thread_id
+          AND metadata.turn_id = turns.id
         WHERE
-          thread_id = @threadId
+          turns.thread_id = @threadId
           AND (
-            started_at < (SELECT started_at FROM turns WHERE thread_id = @threadId AND id = @beforeTurnId)
+            turns.started_at < (
+              SELECT started_at FROM turns WHERE thread_id = @threadId AND id = @beforeTurnId
+            )
             OR (
-              started_at = (SELECT started_at FROM turns WHERE thread_id = @threadId AND id = @beforeTurnId)
-              AND id < @beforeTurnId
+              turns.started_at = (
+                SELECT started_at FROM turns WHERE thread_id = @threadId AND id = @beforeTurnId
+              )
+              AND turns.id < @beforeTurnId
             )
           )
-        ORDER BY started_at DESC, completed_at DESC, id DESC
+        ORDER BY turns.started_at DESC, turns.completed_at DESC, turns.id DESC
         LIMIT @limit
       )
       ORDER BY started_at ASC, completed_at ASC, id ASC
@@ -181,6 +255,10 @@ export function writeTurns(
     `
   );
   const updatedAt = new Date().toISOString();
+  const sourceRow = database
+    .prepare("SELECT source_id FROM threads WHERE id = @threadId")
+    .get({ threadId }) as { source_id: string | null } | undefined;
+  const sourceId = sourceRow?.source_id ?? null;
 
   for (const turn of turns) {
     const normalizedTurn = normalizeTurn(turn) ?? turn;
@@ -196,6 +274,19 @@ export function writeTurns(
       rawJson: stringifyTurn(normalizedTurn),
       updatedAt
     });
+
+    const execution = readTurnExecutionSettings(normalizedTurn);
+
+    if (sourceId !== null && execution !== null) {
+      upsertTurnExecutionMetadata(database, {
+        sourceId,
+        threadId,
+        turnId: metadata.id,
+        ...execution,
+        firstObservedAt: metadata.startedAt ?? updatedAt,
+        updatedAt
+      });
+    }
   }
 
   const latestTurn = database

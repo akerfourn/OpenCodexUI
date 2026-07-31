@@ -473,6 +473,60 @@ export type CachedThreadTokenUsage = {
 };
 
 /**
+ * Immutable token usage snapshot received for one source/thread/turn.
+ */
+export type CachedThreadTokenUsageSnapshot = {
+  id?: number;
+  sourceId: string;
+  threadId: string;
+  turnId: string;
+  observedAt: string;
+  total: CachedThreadTokenUsageBreakdown;
+  last: CachedThreadTokenUsageBreakdown;
+  modelContextWindow: number | null;
+  model: string | null;
+  reasoningEffort: string | null;
+  serviceTier: string | null;
+};
+
+/**
+ * Query for historical token usage snapshots.
+ */
+export type CachedThreadTokenUsageSnapshotQuery = {
+  sourceId: string;
+  threadId: string;
+  turnId?: string | null;
+  limit?: number | null;
+};
+
+/**
+ * Execution settings embedded temporarily in a cached raw turn.
+ */
+export type CachedTurnExecutionSettings = {
+  requestedModel: string | null;
+  effectiveModel: string | null;
+  requestedReasoningEffort: string | null;
+  effectiveReasoningEffort: string | null;
+  serviceTier: string | null;
+};
+
+/**
+ * Persisted execution metadata associated with one turn.
+ */
+export type CachedTurnExecutionMetadata = {
+  sourceId: string;
+  threadId: string;
+  turnId: string;
+  requestedModel: string | null;
+  effectiveModel: string | null;
+  requestedReasoningEffort: string | null;
+  effectiveReasoningEffort: string | null;
+  serviceTier: string | null;
+  firstObservedAt: string;
+  updatedAt: string;
+};
+
+/**
  * Aggregated token usage for the cached user-facing chats of one project.
  */
 export type CachedProjectTokenUsageStatistics = {
@@ -1058,7 +1112,33 @@ export interface OpenCodexCacheRepository {
    * @param usage Thread token usage snapshot.
    * @returns Promise resolved when the write completes.
    */
-  saveThreadTokenUsage(usage: CachedThreadTokenUsage): Promise<void>;
+  saveThreadTokenUsage(usage: CachedThreadTokenUsage, sourceId?: string | null): Promise<void>;
+
+  /**
+   * Appends one immutable token usage snapshot.
+   *
+   * @param snapshot Token usage snapshot.
+   * @returns Promise resolved when the write completes.
+   */
+  saveThreadTokenUsageSnapshot(snapshot: CachedThreadTokenUsageSnapshot): Promise<void>;
+
+  /**
+   * Reads historical token usage snapshots for one thread.
+   *
+   * @param query Snapshot query.
+   * @returns Snapshots ordered from oldest to newest.
+   */
+  listThreadTokenUsageSnapshots(
+    query: CachedThreadTokenUsageSnapshotQuery
+  ): Promise<CachedThreadTokenUsageSnapshot[]>;
+
+  /**
+   * Upserts execution metadata for one turn.
+   *
+   * @param metadata Turn execution metadata.
+   * @returns Promise resolved when the write completes.
+   */
+  saveTurnExecutionMetadata(metadata: CachedTurnExecutionMetadata): Promise<void>;
 
   /**
    * Closes resources owned by the repository.

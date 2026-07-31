@@ -1,7 +1,10 @@
 /**
  * Parses and serializes raw turn payloads stored in SQLite.
  */
+import type { CachedTurnExecutionSettings } from "../types.js";
 import type { TurnRow } from "./rowTypes.js";
+
+const TURN_EXECUTION_METADATA_KEY = "openCodexUiExecution";
 
 /**
  * Parses serialized turn rows and drops rows that no longer contain valid JSON.
@@ -11,9 +14,38 @@ import type { TurnRow } from "./rowTypes.js";
  */
 export function parseTurnRows(rows: TurnRow[]): unknown[] {
   return rows
-    .map((row) => parseTurn(row.raw_json))
+    .map((row) => attachExecutionMetadata(parseTurn(row.raw_json), row))
     .map((turn) => normalizeTurn(turn))
     .filter((turn): turn is unknown => turn !== null);
+}
+
+/**
+ * Reads the execution settings embedded in an in-memory turn.
+ *
+ * @param turn Raw or enriched turn value.
+ * @returns Settings, or `null` when absent.
+ */
+export function readTurnExecutionSettings(turn: unknown): CachedTurnExecutionSettings | null {
+  if (turn === null || typeof turn !== "object" || Array.isArray(turn)) {
+    return null;
+  }
+
+  const value = turn as Record<string, unknown>;
+  const metadata = value[TURN_EXECUTION_METADATA_KEY];
+
+  if (metadata === null || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const record = metadata as Record<string, unknown>;
+
+  return {
+    requestedModel: readNullableString(record.requestedModel),
+    effectiveModel: readNullableString(record.effectiveModel),
+    requestedReasoningEffort: readNullableString(record.requestedReasoningEffort),
+    effectiveReasoningEffort: readNullableString(record.effectiveReasoningEffort),
+    serviceTier: readNullableString(record.serviceTier)
+  };
 }
 
 /**
@@ -50,7 +82,52 @@ export function readTurnMetadata(turn: unknown): {
  * @returns JSON payload.
  */
 export function stringifyTurn(turn: unknown): string {
-  return JSON.stringify(normalizeTurn(turn) ?? turn);
+  const sanitizedTurn = stripExecutionMetadata(turn);
+  return JSON.stringify(normalizeTurn(sanitizedTurn) ?? sanitizedTurn);
+}
+
+/**
+ * Attaches persisted execution settings without changing Codex's raw payload.
+ *
+ * @param turn Parsed raw turn.
+ * @param row SQLite row containing optional settings.
+ * @returns Enriched turn, or the original value.
+ */
+function attachExecutionMetadata(turn: unknown | null, row: TurnRow): unknown | null {
+  if (
+    turn === null ||
+    row.execution_first_observed_at === null ||
+    row.execution_first_observed_at === undefined
+  ) {
+    return turn;
+  }
+
+  return {
+    ...(turn as Record<string, unknown>),
+    [TURN_EXECUTION_METADATA_KEY]: {
+      requestedModel: row.execution_requested_model,
+      effectiveModel: row.execution_effective_model,
+      requestedReasoningEffort: row.execution_requested_reasoning_effort,
+      effectiveReasoningEffort: row.execution_effective_reasoning_effort,
+      serviceTier: row.execution_service_tier
+    }
+  };
+}
+
+/**
+ * Removes OpenCodexUI-only metadata before persisting a raw Codex turn.
+ *
+ * @param turn Raw or enriched turn value.
+ * @returns Turn without internal metadata.
+ */
+function stripExecutionMetadata(turn: unknown): unknown {
+  if (turn === null || typeof turn !== "object" || Array.isArray(turn)) {
+    return turn;
+  }
+
+  const value = { ...(turn as Record<string, unknown>) };
+  delete value[TURN_EXECUTION_METADATA_KEY];
+  return value;
 }
 
 /**
