@@ -10,6 +10,8 @@ type CreateWindowOptions = {
   rendererPath: string;
   devServerUrl?: string | null;
   iconPath?: string | null;
+  windowKind?: "main" | "usage-history";
+  rendererQuery?: Record<string, string>;
 };
 
 /**
@@ -21,13 +23,17 @@ type CreateWindowOptions = {
 export function createWindow(options: CreateWindowOptions): BrowserWindow {
   const devServerUrl = options.devServerUrl ?? null;
   const isDevMode = devServerUrl !== null;
-  const title = isDevMode ? "OpenCodexUI [dev mode]" : "OpenCodexUI";
+  const windowKind = options.windowKind ?? "main";
+  const baseTitle = windowKind === "usage-history"
+    ? "OpenCodexUI — Usage history"
+    : "OpenCodexUI";
+  const title = isDevMode ? `${baseTitle} [dev mode]` : baseTitle;
+  const dimensions = windowKind === "usage-history"
+    ? { width: 1280, height: 900, minWidth: 960, minHeight: 640 }
+    : { width: 1440, height: 960, minWidth: 960, minHeight: 700 };
   const window = new BrowserWindow({
     title,
-    width: 1440,
-    height: 960,
-    minWidth: 960,
-    minHeight: 700,
+    ...dimensions,
     icon: options.iconPath ?? undefined,
     webPreferences: {
       contextIsolation: true,
@@ -62,10 +68,34 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
   });
 
   if (isDevMode) {
-    void window.loadURL(devServerUrl);
+    void window.loadURL(buildRendererUrl(devServerUrl, options.rendererQuery));
   } else {
-    void window.loadFile(path.join(options.rendererPath, "index.html"));
+    void window.loadFile(path.join(options.rendererPath, "index.html"), {
+      query: options.rendererQuery
+    });
   }
 
   return window;
+}
+
+/**
+ * Adds renderer query parameters to a Vite development URL.
+ *
+ * @param devServerUrl Vite development URL.
+ * @param query Query parameters identifying the renderer view.
+ * @returns URL used to load the renderer.
+ */
+function buildRendererUrl(
+  devServerUrl: string,
+  query: Record<string, string> | undefined
+): string {
+  if (query === undefined) {
+    return devServerUrl;
+  }
+
+  const url = new URL(devServerUrl);
+  Object.entries(query).forEach(([key, value]) => {
+    url.searchParams.set(key, value);
+  });
+  return url.toString();
 }

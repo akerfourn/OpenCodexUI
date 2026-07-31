@@ -2,6 +2,7 @@
  * Renders account usage limits seen from Codex.
  */
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 import {
@@ -52,6 +53,14 @@ export function HomeUsageView({ store }: HomeUsageViewProps) {
     void usageStore.load();
   }
 
+  function handleOpenHistory(): void {
+    const sourceId = store.appStore.settings.defaultSourceId;
+
+    if (sourceId !== null) {
+      store.openUsageHistory(sourceId);
+    }
+  }
+
   let content = (
     <Typography color="text.secondary">
       {t("usagePage.empty")}
@@ -95,18 +104,32 @@ export function HomeUsageView({ store }: HomeUsageViewProps) {
             {t("usagePage.description")}
           </Typography>
         </Box>
-        <Tooltip title={t("usagePage.refresh")}>
-          <span>
-            <Button
-              variant="contained"
-              startIcon={<RefreshOutlinedIcon />}
-              disabled={usageStore.isLoading}
-              onClick={handleRefresh}
-            >
-              {t("usagePage.refresh")}
-            </Button>
-          </span>
-        </Tooltip>
+        <Stack direction="row" spacing={1}>
+          <Tooltip title={t("usagePage.historyOpen")}>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<HistoryOutlinedIcon />}
+                disabled={store.appStore.settings.defaultSourceId === null}
+                onClick={handleOpenHistory}
+              >
+                {t("usagePage.historyOpen")}
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={t("usagePage.refresh")}>
+            <span>
+              <Button
+                variant="contained"
+                startIcon={<RefreshOutlinedIcon />}
+                disabled={usageStore.isLoading}
+                onClick={handleRefresh}
+              >
+                {t("usagePage.refresh")}
+              </Button>
+            </span>
+          </Tooltip>
+        </Stack>
       </Stack>
       {content}
     </Stack>

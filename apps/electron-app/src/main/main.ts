@@ -11,6 +11,8 @@ import { ElectronBridgeServer } from "./electronBridgeServer.js";
 import { SettingsStore } from "./settingsStore.js";
 
 let bridgeServer: ElectronBridgeServer | null = null;
+let mainWindow: BrowserWindow | null = null;
+let usageHistoryWindow: BrowserWindow | null = null;
 let isDisposing = false;
 let isDisposed = false;
 
@@ -38,24 +40,45 @@ async function main(): Promise<void> {
     devServerUrl,
     iconPath
   });
+  mainWindow = window;
+  window.on("closed", () => {
+    if (mainWindow === window) {
+      mainWindow = null;
+    }
+  });
 
   bridgeServer = new ElectronBridgeServer({
     settings,
     projectPath,
     appVersion: app.getVersion(),
     userDataPath,
-    saveSettings: (nextSettings) => settingsStore.save(nextSettings)
+    saveSettings: (nextSettings) => settingsStore.save(nextSettings),
+    openUsageHistory: (sourceId) => {
+      openUsageHistoryWindow({
+        sourceId,
+        preloadPath: path.join(__dirname, "preload.cjs"),
+        rendererPath: path.join(__dirname, "..", "renderer"),
+        devServerUrl,
+        iconPath
+      });
+    }
   });
   bridgeServer.attachWindow(window);
   bridgeServer.register();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (mainWindow === null || mainWindow.isDestroyed()) {
       const nextWindow = createWindow({
         preloadPath: path.join(__dirname, "preload.cjs"),
         rendererPath: path.join(__dirname, "..", "renderer"),
         devServerUrl,
         iconPath
+      });
+      mainWindow = nextWindow;
+      nextWindow.on("closed", () => {
+        if (mainWindow === nextWindow) {
+          mainWindow = null;
+        }
       });
       bridgeServer?.attachWindow(nextWindow);
     }
@@ -123,6 +146,47 @@ async function disposeAndExit(code: number): Promise<void> {
  */
 function resolveProjectPath(): string | null {
   return process.env.OPENCODEX_PROJECT_PATH ?? null;
+}
+
+/**
+ * Opens or focuses the dedicated usage history window.
+ *
+ * @param options Renderer paths and source selected by the user.
+ * @returns Nothing.
+ */
+function openUsageHistoryWindow(options: {
+  sourceId: string;
+  preloadPath: string;
+  rendererPath: string;
+  devServerUrl: string | null;
+  iconPath: string | null;
+}): void {
+  if (usageHistoryWindow !== null && !usageHistoryWindow.isDestroyed()) {
+    if (usageHistoryWindow.isMinimized()) {
+      usageHistoryWindow.restore();
+    }
+    usageHistoryWindow.show();
+    usageHistoryWindow.focus();
+    return;
+  }
+
+  const window = createWindow({
+    preloadPath: options.preloadPath,
+    rendererPath: options.rendererPath,
+    devServerUrl: options.devServerUrl,
+    iconPath: options.iconPath,
+    windowKind: "usage-history",
+    rendererQuery: {
+      view: "usage-history",
+      sourceId: options.sourceId
+    }
+  });
+  usageHistoryWindow = window;
+  window.on("closed", () => {
+    if (usageHistoryWindow === window) {
+      usageHistoryWindow = null;
+    }
+  });
 }
 
 /**

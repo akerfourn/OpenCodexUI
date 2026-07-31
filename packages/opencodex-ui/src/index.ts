@@ -3,6 +3,7 @@
  */
 export { AppX } from "./components/App";
 export { OpenCodexThemeProviderX } from "./components/OpenCodexThemeProvider";
+export { UsageHistoryWindowX } from "./components/usage/UsageHistoryWindow";
 export { initializeOpenCodexI18n } from "./i18n/i18n";
 export { setRendererPerformanceRecorder } from "./performance/rendererPerformanceRecorder";
 export { RootStore } from "./stores/RootStore";

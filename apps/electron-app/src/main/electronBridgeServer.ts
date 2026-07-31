@@ -36,6 +36,7 @@ type ElectronBridgeServerOptions = {
   appVersion: string;
   userDataPath: string;
   saveSettings(settings: OpenCodexSettings): Promise<void>;
+  openUsageHistory(sourceId: string): void;
 };
 
 /**
@@ -48,6 +49,7 @@ export class ElectronBridgeServer {
   private readonly performanceMonitoringService: PerformanceMonitoringService;
   private readonly desktopNotificationService: DesktopNotificationService;
   private readonly logger: (message: string) => void;
+  private readonly openUsageHistoryWindow: (sourceId: string) => void;
   private window: BrowserWindow | null = null;
   private isDisposed = false;
 
@@ -60,6 +62,7 @@ export class ElectronBridgeServer {
     const cacheRepository = createCacheRepository(options.userDataPath);
     const logger = (message: string) => console.log(`[OpenCodexUI] ${message}`);
     this.logger = logger;
+    this.openUsageHistoryWindow = options.openUsageHistory;
 
     this.runtime = new OpenCodexBackendRuntime({
       settings: options.settings,
@@ -150,6 +153,11 @@ export class ElectronBridgeServer {
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
       if (request.type === "app.openDevTools") {
         return this.openDeveloperTools();
+      }
+
+      if (request.type === "app.openUsageHistory") {
+        this.openUsageHistoryWindow(request.sourceId);
+        return { ok: true };
       }
 
       if (request.type === "discord.reconnect") {

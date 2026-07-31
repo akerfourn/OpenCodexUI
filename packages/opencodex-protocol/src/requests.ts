@@ -30,6 +30,7 @@ import type {
 export type OpenCodexRequest =
   | { type: "app.bootstrap" }
   | { type: "app.openDevTools" }
+  | { type: "app.openUsageHistory"; sourceId: string }
   | { type: "projects.list" }
   | { type: "projects.open"; projectPath: string; sourceId?: string | null; createIfMissing?: boolean }
   | { type: "projects.statistics.read"; projectPath: string; sourceId: string | null }

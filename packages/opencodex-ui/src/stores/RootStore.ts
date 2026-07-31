@@ -236,6 +236,23 @@ export class RootStore {
   }
 
   /**
+   * Opens the source-scoped usage history in a dedicated native window.
+   *
+   * @param sourceId Source whose usage history should be displayed.
+   * @returns Nothing.
+   */
+  openUsageHistory(sourceId: string): void {
+    if (sourceId.trim().length === 0) {
+      return;
+    }
+
+    void this.transport.request({
+      type: "app.openUsageHistory",
+      sourceId
+    });
+  }
+
+  /**
    * Applies an error event and clears pending loading states when needed.
    *
    * @param event Error event payload.
