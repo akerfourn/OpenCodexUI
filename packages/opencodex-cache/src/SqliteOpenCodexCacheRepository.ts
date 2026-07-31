@@ -45,6 +45,8 @@ import type {
   CachedThreadTokenUsageSnapshot,
   CachedThreadTokenUsageSnapshotQuery,
   CachedTurnExecutionMetadata,
+  CachedUsageRateLimitSnapshot,
+  CachedUsageRateLimitSnapshotQuery,
   OpenCodexCacheRepository,
   ThreadListCacheQuery
 } from "./types.js";
@@ -132,6 +134,10 @@ import {
   saveThreadTokenUsageAndSnapshot,
   upsertTurnExecutionMetadata
 } from "./sqlite/tokenUsageQueries.js";
+import {
+  insertUsageRateLimitSnapshot,
+  listUsageRateLimitSnapshots
+} from "./sqlite/usageRateLimitQueries.js";
 
 export type SqliteOpenCodexCacheRepositoryOptions = {
   directory: string;
@@ -859,6 +865,28 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     query: CachedThreadTokenUsageSnapshotQuery
   ): Promise<CachedThreadTokenUsageSnapshot[]> {
     return listTokenUsageSnapshots(this.database, query);
+  }
+
+  /**
+   * Stores one source-scoped rate-limit snapshot when its values changed.
+   *
+   * @param snapshot Rate-limit snapshot.
+   * @returns Promise resolved when the write completes.
+   */
+  async saveUsageRateLimitSnapshot(snapshot: CachedUsageRateLimitSnapshot): Promise<void> {
+    insertUsageRateLimitSnapshot(this.database, snapshot);
+  }
+
+  /**
+   * Reads historical source-scoped rate-limit snapshots.
+   *
+   * @param query Snapshot query.
+   * @returns Snapshots ordered from oldest to newest.
+   */
+  async listUsageRateLimitSnapshots(
+    query: CachedUsageRateLimitSnapshotQuery
+  ): Promise<CachedUsageRateLimitSnapshot[]> {
+    return listUsageRateLimitSnapshots(this.database, query);
   }
 
   /**

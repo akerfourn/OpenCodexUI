@@ -51,6 +51,17 @@ export type TurnRow = {
   execution_updated_at?: string | null;
 };
 
+/** SQLite row containing one serialized source-scoped rate-limit snapshot. */
+export type UsageRateLimitSnapshotRow = {
+  id: number;
+  source_id: string;
+  observed_at: string;
+  origin: string;
+  reason: string;
+  fingerprint: string;
+  payload_json: string;
+};
+
 /**
  * Joined SQLite row used to map cached projects.
  */

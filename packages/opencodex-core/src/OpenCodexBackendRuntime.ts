@@ -111,6 +111,7 @@ import { readObject, readString } from "./mapping.js";
 import { correctUsageLimitNotification } from "./backend/usageCorrections.js";
 import { mapUsageLimitsNotification, mapUsageLimitsResponse } from "./backend/usageMapping.js";
 import { mapThreadTokenUsageNotification } from "./backend/threadTokenUsageMapping.js";
+import { createUsageRateLimitHistorySnapshot } from "./backend/usageRateLimitHistory.js";
 
 const DEFAULT_COMMIT_SOURCE_KEY = "__default_commit_source__";
 const DEFAULT_COMMIT_MODEL_KEY = "__default_commit_model__";
@@ -1414,6 +1415,7 @@ export class OpenCodexBackendRuntime {
       );
       const usage = mapUsageLimitsResponse(response, resolvedSource.id);
       this.recordUsageRateLimitDiagnostic(resolvedSource.id, usage, "read", reason);
+      this.persistUsageRateLimitSnapshot(resolvedSource.id, response, usage, "read", reason);
       this.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage });
       return usage;
     } catch (error) {
@@ -2289,6 +2291,13 @@ export class OpenCodexBackendRuntime {
             "accountRateLimitsUpdated",
             usage !== mappedUsage
           );
+          this.persistUsageRateLimitSnapshot(
+            sourceId,
+            notification.params,
+            usage,
+            "notification",
+            "accountRateLimitsUpdated"
+          );
           this.emit({ type: "usage.updated", sourceId, usage });
         } else {
           this.usageRateLimitDiagnostics.recordIgnoredNotification(
@@ -2409,6 +2418,41 @@ export class OpenCodexBackendRuntime {
       this.readActiveCommitModels(sourceId),
       correctionApplied
     );
+  }
+
+  /**
+   * Persists one effective rate-limit snapshot without blocking notification
+   * processing or making the cache a runtime requirement.
+   *
+   * @param sourceId Source owning the rate limits.
+   * @param rawPayload Original Codex response or notification parameters.
+   * @param usage Corrected mapped usage snapshot, or `null` when unavailable.
+   * @param origin Snapshot origin.
+   * @param reason Snapshot reason.
+   * @returns Nothing.
+   */
+  private persistUsageRateLimitSnapshot(
+    sourceId: string,
+    rawPayload: unknown,
+    usage: OpenCodexUsageSnapshot | null,
+    origin: UsageRateLimitLogOrigin,
+    reason: UsageRateLimitLogReason
+  ): void {
+    if (this.cacheRepository === null || usage === null) {
+      return;
+    }
+
+    const snapshot = createUsageRateLimitHistorySnapshot(
+      sourceId,
+      rawPayload,
+      usage,
+      origin,
+      reason
+    );
+
+    void this.cacheRepository.saveUsageRateLimitSnapshot(snapshot).catch((error) => {
+      this.options.logger?.(`rate-limit history write failed: ${String(error)}`);
+    });
   }
 
   /**

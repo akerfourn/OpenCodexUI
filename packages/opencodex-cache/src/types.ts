@@ -500,6 +500,37 @@ export type CachedThreadTokenUsageSnapshotQuery = {
 };
 
 /**
+ * Origin of a persisted Codex rate-limit snapshot.
+ */
+export type CachedUsageRateLimitSnapshotOrigin = "read" | "notification";
+
+/**
+ * Immutable source-scoped rate-limit snapshot.
+ *
+ * The payload is intentionally kept as JSON so new Codex fields can be
+ * retained without requiring a cache schema change.
+ */
+export type CachedUsageRateLimitSnapshot = {
+  id?: number;
+  sourceId: string;
+  observedAt: string;
+  origin: CachedUsageRateLimitSnapshotOrigin;
+  reason: string;
+  fingerprint: string;
+  payloadJson: string;
+};
+
+/**
+ * Query for historical source-scoped rate-limit snapshots.
+ */
+export type CachedUsageRateLimitSnapshotQuery = {
+  sourceId: string;
+  fromObservedAt?: string | null;
+  toObservedAt?: string | null;
+  limit?: number | null;
+};
+
+/**
  * Execution settings embedded temporarily in a cached raw turn.
  */
 export type CachedTurnExecutionSettings = {
@@ -1145,6 +1176,24 @@ export interface OpenCodexCacheRepository {
   listThreadTokenUsageSnapshots(
     query: CachedThreadTokenUsageSnapshotQuery
   ): Promise<CachedThreadTokenUsageSnapshot[]>;
+
+  /**
+   * Stores one source-scoped rate-limit snapshot when its effective values changed.
+   *
+   * @param snapshot Rate-limit snapshot to persist.
+   * @returns Promise resolved when the write completes.
+   */
+  saveUsageRateLimitSnapshot(snapshot: CachedUsageRateLimitSnapshot): Promise<void>;
+
+  /**
+   * Reads historical source-scoped rate-limit snapshots.
+   *
+   * @param query Snapshot query.
+   * @returns Snapshots ordered from oldest to newest.
+   */
+  listUsageRateLimitSnapshots(
+    query: CachedUsageRateLimitSnapshotQuery
+  ): Promise<CachedUsageRateLimitSnapshot[]>;
 
   /**
    * Upserts execution metadata for one turn.
