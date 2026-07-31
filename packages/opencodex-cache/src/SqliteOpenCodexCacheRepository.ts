@@ -129,6 +129,7 @@ import {
 import {
   insertTokenUsageSnapshot,
   listTokenUsageSnapshots,
+  saveThreadTokenUsageAndSnapshot,
   upsertTurnExecutionMetadata
 } from "./sqlite/tokenUsageQueries.js";
 
@@ -823,13 +824,29 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
   }
 
   /**
-   * Appends one token usage snapshot to the history.
+   * Stores one token usage snapshot when its values changed.
+   * Repeated values for the same source, thread, and turn are ignored.
    *
    * @param snapshot Token usage snapshot.
+   *
    * @returns Promise resolved when the write completes.
    */
   async saveThreadTokenUsageSnapshot(snapshot: CachedThreadTokenUsageSnapshot): Promise<void> {
     insertTokenUsageSnapshot(this.database, snapshot);
+  }
+
+  /**
+   * Saves the latest token usage and one distinct history snapshot atomically.
+   *
+   * @param usage Latest usage values for the thread.
+   * @param snapshot Immutable history snapshot.
+   * @returns Promise resolved when the write completes.
+   */
+  async saveThreadTokenUsageAndSnapshot(
+    usage: CachedThreadTokenUsage,
+    snapshot: CachedThreadTokenUsageSnapshot
+  ): Promise<void> {
+    saveThreadTokenUsageAndSnapshot(this.database, usage, snapshot);
   }
 
   /**

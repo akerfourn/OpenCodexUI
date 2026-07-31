@@ -24,7 +24,7 @@ describe("token usage history", () => {
     fs.rmSync(directory, { recursive: true, force: true });
   });
 
-  it("should append every snapshot and keep source-scoped history", async () => {
+  it("should append distinct snapshots and keep source-scoped history", async () => {
     await repository.saveThreadTokenUsageSnapshot(
       createSnapshot("source-a", "turn-1", 100, 10, "2026-07-31T10:00:00.000Z")
     );
@@ -33,6 +33,9 @@ describe("token usage history", () => {
     );
     await repository.saveThreadTokenUsageSnapshot(
       createSnapshot("source-b", "turn-1", 900, 90, "2026-07-31T10:02:00.000Z")
+    );
+    await repository.saveThreadTokenUsageSnapshot(
+      createSnapshot("source-a", "turn-1", 130, 30, "2026-07-31T10:03:00.000Z")
     );
 
     const snapshots = await repository.listThreadTokenUsageSnapshots({
@@ -49,6 +52,34 @@ describe("token usage history", () => {
     expect(snapshots.map((snapshot) => snapshot.total.totalTokens)).toEqual([100, 130]);
     expect(turnSnapshots).toHaveLength(2);
     expect(turnSnapshots[1]?.last.totalTokens).toBe(30);
+  });
+
+  it("should save latest usage and skip duplicate history values atomically", async () => {
+    await repository.saveThreadSnapshot({
+      thread: createThread(),
+      turns: [],
+      syncState: createSyncState(),
+      tokenUsage: null
+    });
+
+    const usage = createUsage(130, 30);
+    await repository.saveThreadTokenUsageAndSnapshot(
+      usage,
+      createSnapshot("source-a", "turn-1", 130, 30, "2026-07-31T10:00:00.000Z")
+    );
+    await repository.saveThreadTokenUsageAndSnapshot(
+      usage,
+      createSnapshot("source-a", "turn-1", 130, 30, "2026-07-31T10:01:00.000Z")
+    );
+
+    const cachedThread = await repository.getThread("thread-1");
+    const snapshots = await repository.listThreadTokenUsageSnapshots({
+      sourceId: "source-a",
+      threadId: "thread-1"
+    });
+
+    expect(cachedThread?.tokenUsage).toEqual(usage);
+    expect(snapshots).toHaveLength(1);
   });
 
   it("should expose persisted execution metadata on cached turns", async () => {
@@ -120,6 +151,18 @@ function createBreakdown(totalTokens: number) {
     cachedInputTokens: 0,
     outputTokens: 0,
     reasoningOutputTokens: 0
+  };
+}
+
+function createUsage(totalTokens: number, lastTokens: number) {
+  return {
+    threadId: "thread-1",
+    turnId: "turn-1",
+    total: createBreakdown(totalTokens),
+    last: createBreakdown(lastTokens),
+    contextWindowTokens: lastTokens,
+    modelContextWindow: 1000,
+    usedPercent: lastTokens / 10
   };
 }
 

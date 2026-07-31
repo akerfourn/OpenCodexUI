@@ -368,8 +368,6 @@ export class ThreadCacheService {
     }
 
     try {
-      await repository.saveThreadTokenUsage(usage, sourceId);
-
       const execution = this.options.threadTurnCache.getTurnExecutionMetadata(
         usage.threadId,
         usage.turnId
@@ -387,7 +385,7 @@ export class ThreadCacheService {
           execution?.effectiveReasoningEffort ?? execution?.requestedReasoningEffort ?? null,
         serviceTier: execution?.serviceTier ?? null
       };
-      await repository.saveThreadTokenUsageSnapshot(snapshot);
+      await repository.saveThreadTokenUsageAndSnapshot(usage, snapshot);
     } catch (error) {
       this.log(`thread token usage cache write failed: ${String(error)}`);
     }

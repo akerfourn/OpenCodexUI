@@ -4,22 +4,61 @@
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import type {
+  CachedThreadTokenUsage,
   CachedThreadTokenUsageSnapshot,
   CachedThreadTokenUsageSnapshotQuery,
   CachedTurnExecutionMetadata
 } from "../types.js";
 
 /**
- * Appends one immutable token usage snapshot.
+ * Inserts one immutable token usage snapshot when its values changed.
+ * Repeated values for the same source, thread, and turn are ignored.
  *
  * @param database SQLite database connection.
  * @param snapshot Snapshot to persist.
+ *
  * @returns Nothing.
  */
 export function insertTokenUsageSnapshot(
   database: BetterSqliteDatabase,
   snapshot: CachedThreadTokenUsageSnapshot
 ): void {
+  const latestSnapshot = database
+    .prepare(
+      `
+      SELECT
+        total_total_tokens,
+        total_input_tokens,
+        total_cached_input_tokens,
+        total_output_tokens,
+        total_reasoning_output_tokens,
+        last_total_tokens,
+        last_input_tokens,
+        last_cached_input_tokens,
+        last_output_tokens,
+        last_reasoning_output_tokens,
+        model_context_window,
+        model,
+        reasoning_effort,
+        service_tier
+      FROM thread_token_usage_snapshots
+      WHERE source_id = @sourceId
+        AND thread_id = @threadId
+        AND turn_id = @turnId
+      ORDER BY observed_at DESC, id DESC
+      LIMIT 1
+      `
+    )
+    .get({
+      sourceId: snapshot.sourceId,
+      threadId: snapshot.threadId,
+      turnId: snapshot.turnId
+    }) as Record<string, unknown> | undefined;
+
+  if (latestSnapshot !== undefined && hasSameSnapshotValues(latestSnapshot, snapshot)) {
+    return;
+  }
+
   database
     .prepare(
       `
@@ -85,6 +124,58 @@ export function insertTokenUsageSnapshot(
       reasoningEffort: snapshot.reasoningEffort,
       serviceTier: snapshot.serviceTier
     });
+}
+
+/**
+ * Saves the latest usage and appends its distinct history snapshot atomically.
+ *
+ * Duplicate snapshots skip both the latest-value update and the history insert.
+ *
+ * @param database SQLite database connection.
+ * @param usage Latest usage values for the thread.
+ * @param snapshot Immutable history snapshot.
+ * @returns Nothing.
+ */
+export function saveThreadTokenUsageAndSnapshot(
+  database: BetterSqliteDatabase,
+  usage: CachedThreadTokenUsage,
+  snapshot: CachedThreadTokenUsageSnapshot
+): void {
+  const persist = database.transaction(() => {
+    const sourceId = snapshot.sourceId;
+    const tokenUsageJson = JSON.stringify(usage);
+    const currentThread = database
+      .prepare(
+        `
+        SELECT token_usage_json
+        FROM threads
+        WHERE id = @threadId
+          AND source_id = @sourceId
+        `
+      )
+      .get({ threadId: usage.threadId, sourceId }) as { token_usage_json?: unknown } | undefined;
+
+    if (currentThread?.token_usage_json !== tokenUsageJson) {
+      database
+        .prepare(
+          `
+          UPDATE threads SET
+            token_usage_json = @tokenUsageJson
+          WHERE id = @threadId
+            AND source_id = @sourceId
+          `
+        )
+        .run({
+          threadId: usage.threadId,
+          sourceId,
+          tokenUsageJson
+        });
+    }
+
+    insertTokenUsageSnapshot(database, snapshot);
+  });
+
+  persist();
 }
 
 /**
@@ -232,6 +323,36 @@ function mapTokenUsageSnapshotRow(row: Record<string, unknown>): CachedThreadTok
     reasoningEffort: readNullableString(row.reasoning_effort),
     serviceTier: readNullableString(row.service_tier)
   };
+}
+
+/**
+ * Checks whether a stored row contains the same usage values as a snapshot.
+ *
+ * Observation time is deliberately excluded so repeated identical reports do
+ * not create unbounded history rows.
+ *
+ * @param row Stored SQLite values.
+ * @param snapshot Incoming usage snapshot.
+ * @returns Whether both snapshots carry the same usage data.
+ */
+function hasSameSnapshotValues(
+  row: Record<string, unknown>,
+  snapshot: CachedThreadTokenUsageSnapshot
+): boolean {
+  return readNumber(row.total_total_tokens) === snapshot.total.totalTokens &&
+    readNumber(row.total_input_tokens) === snapshot.total.inputTokens &&
+    readNumber(row.total_cached_input_tokens) === snapshot.total.cachedInputTokens &&
+    readNumber(row.total_output_tokens) === snapshot.total.outputTokens &&
+    readNumber(row.total_reasoning_output_tokens) === snapshot.total.reasoningOutputTokens &&
+    readNumber(row.last_total_tokens) === snapshot.last.totalTokens &&
+    readNumber(row.last_input_tokens) === snapshot.last.inputTokens &&
+    readNumber(row.last_cached_input_tokens) === snapshot.last.cachedInputTokens &&
+    readNumber(row.last_output_tokens) === snapshot.last.outputTokens &&
+    readNumber(row.last_reasoning_output_tokens) === snapshot.last.reasoningOutputTokens &&
+    readNullableNumber(row.model_context_window) === snapshot.modelContextWindow &&
+    readNullableString(row.model) === snapshot.model &&
+    readNullableString(row.reasoning_effort) === snapshot.reasoningEffort &&
+    readNullableString(row.service_tier) === snapshot.serviceTier;
 }
 
 /**

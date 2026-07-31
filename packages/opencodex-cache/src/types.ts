@@ -1115,12 +1115,26 @@ export interface OpenCodexCacheRepository {
   saveThreadTokenUsage(usage: CachedThreadTokenUsage, sourceId?: string | null): Promise<void>;
 
   /**
-   * Appends one immutable token usage snapshot.
+   * Stores one immutable token usage snapshot when its values changed.
+   * Repeated values for the same source, thread, and turn are ignored.
    *
    * @param snapshot Token usage snapshot.
+   *
    * @returns Promise resolved when the write completes.
    */
   saveThreadTokenUsageSnapshot(snapshot: CachedThreadTokenUsageSnapshot): Promise<void>;
+
+  /**
+   * Saves the latest token usage and a distinct history snapshot atomically.
+   *
+   * @param usage Latest usage values for the thread.
+   * @param snapshot Immutable history snapshot.
+   * @returns Promise resolved when the write completes.
+   */
+  saveThreadTokenUsageAndSnapshot(
+    usage: CachedThreadTokenUsage,
+    snapshot: CachedThreadTokenUsageSnapshot
+  ): Promise<void>;
 
   /**
    * Reads historical token usage snapshots for one thread.
