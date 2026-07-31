@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   OpenCodexActivity,
   OpenCodexThread,
+  OpenCodexThreadTokenUsage,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -171,6 +172,17 @@ describe("ChatStore composer model settings", () => {
 });
 
 describe("ChatStore active turn state", () => {
+  it("should attach token usage to the matching turn even when it arrives first", () => {
+    const chatStore = createChatStore({});
+    const usage = createTokenUsage("turn-usage");
+
+    chatStore.applyTokenUsage(usage);
+    chatStore.setTurns([createTurn("turn-usage", "completed")]);
+
+    expect(chatStore.tokenUsage).toEqual(usage);
+    expect(chatStore.turns[0]?.tokenUsage).toEqual(usage);
+  });
+
   it("should keep the active turn running when a stale completed event arrives", () => {
     const chatStore = createChatStore({});
     const oldTurn = createTurn("turn-old", "completed");
@@ -424,6 +436,30 @@ function createTurn(id: string, status: OpenCodexTurn["status"]): OpenCodexTurn 
     completedAt: null,
     durationMs: null,
     items: []
+  };
+}
+
+function createTokenUsage(turnId: string): OpenCodexThreadTokenUsage {
+  return {
+    threadId: "thread-1",
+    turnId,
+    total: {
+      totalTokens: 120,
+      inputTokens: 80,
+      cachedInputTokens: 20,
+      outputTokens: 30,
+      reasoningOutputTokens: 10
+    },
+    last: {
+      totalTokens: 120,
+      inputTokens: 80,
+      cachedInputTokens: 20,
+      outputTokens: 30,
+      reasoningOutputTokens: 10
+    },
+    contextWindowTokens: 120,
+    modelContextWindow: 1_000,
+    usedPercent: 12
   };
 }
 

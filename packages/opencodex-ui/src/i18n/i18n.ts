@@ -605,6 +605,25 @@ export const resources = {
         reasoning: "Réflexion",
         showFullHistory: "Afficher tout l’historique ({{count}})"
       },
+      turnDetails: {
+        cachedInputTokens: "Tokens d'entrée en cache",
+        close: "Fermer",
+        execution: "Exécution",
+        inputTokens: "Tokens d'entrée",
+        model: "Modèle utilisé",
+        outputTokens: "Tokens de sortie",
+        reasoning: "Niveau de réflexion",
+        reasoningTokens: "Tokens de raisonnement",
+        requestedModel: "Modèle demandé",
+        requestedReasoning: "Niveau demandé",
+        speed: "Vitesse",
+        speedAuto: "Auto",
+        speedFast: "Fast",
+        title: "Détails du tour",
+        tokens: "Tokens consommés",
+        tokensUnavailable: "La consommation de ce tour n'est pas disponible.",
+        totalTokens: "Total de tokens"
+      },
       settings: {
         advancedPerformanceMonitoring: "Surveillance avancée des performances",
         advancedPerformanceMonitoringDescription: "Ajoute des détails par type d'événement aux diagnostics automatiques. Disponible uniquement en mode développeur.",
@@ -1516,6 +1535,25 @@ export const resources = {
         mixed: "Thinking and activities",
         reasoning: "Thinking",
         showFullHistory: "Show full history ({{count}})"
+      },
+      turnDetails: {
+        cachedInputTokens: "Cached input tokens",
+        close: "Close",
+        execution: "Execution",
+        inputTokens: "Input tokens",
+        model: "Effective model",
+        outputTokens: "Output tokens",
+        reasoning: "Reasoning level",
+        reasoningTokens: "Reasoning tokens",
+        requestedModel: "Requested model",
+        requestedReasoning: "Requested level",
+        speed: "Speed",
+        speedAuto: "Auto",
+        speedFast: "Fast",
+        title: "Turn details",
+        tokens: "Tokens consumed",
+        tokensUnavailable: "Token usage is not available for this turn.",
+        totalTokens: "Total tokens"
       },
       settings: {
         advancedPerformanceMonitoring: "Advanced performance monitoring",

@@ -1179,6 +1179,7 @@ export type OpenCodexTurn = {
   completedAt: string | null;
   durationMs: number | null;
   execution?: OpenCodexTurnExecutionMetadata | null;
+  tokenUsage?: OpenCodexThreadTokenUsage | null;
   items: OpenCodexTurnItem[];
 };
 

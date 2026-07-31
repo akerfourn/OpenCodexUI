@@ -92,6 +92,8 @@ export function ChatSubTurnView({
           createdAt={assistantAnswer.createdAt ?? turn.completedAt ?? turn.startedAt}
           details={assistantAnswer.details}
           attachments={assistantAnswer.attachments ?? []}
+          turnExecution={turn.execution}
+          turnTokenUsage={turn.tokenUsage}
         />
       ) : null}
     </>

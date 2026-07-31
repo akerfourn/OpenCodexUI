@@ -1,9 +1,10 @@
 /**
  * Renders the message row component for the OpenCodex UI.
  */
-import { memo, type ReactNode, type RefObject } from "react";
+import { memo, useState, type ReactNode, type RefObject } from "react";
 import { Box, IconButton, Paper, Tooltip } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import FormatListBulletedOutlinedIcon from "@mui/icons-material/FormatListBulletedOutlined";
 import TerminalOutlinedIcon from "@mui/icons-material/TerminalOutlined";
@@ -21,9 +22,15 @@ import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
 import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexImageAttachment, OpenCodexMessage } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexImageAttachment,
+  OpenCodexMessage,
+  OpenCodexThreadTokenUsage,
+  OpenCodexTurnExecutionMetadata
+} from "@open-codex-ui/opencodex-protocol";
 
 import { CopyIconButton } from "../common/CopyIconButton";
+import { TurnDetailsDialog } from "../dialogs/TurnDetailsDialog";
 import { CommandActivityRow } from "./CommandActivityRow";
 import { FileChangeActivityRow } from "./FileChangeActivityRow";
 import { ImageAttachmentPreviewGrid } from "./ImageAttachmentPreviewGrid";
@@ -48,6 +55,8 @@ type MessageRowProps = {
   createdAt: string | null;
   details?: string | null;
   attachments: OpenCodexImageAttachment[];
+  turnExecution?: OpenCodexTurnExecutionMetadata | null;
+  turnTokenUsage?: OpenCodexThreadTokenUsage | null;
   canEdit?: boolean;
   /**
    * Handles edit.
@@ -76,14 +85,19 @@ export function MessageRow({
   createdAt,
   details,
   attachments,
+  turnExecution,
+  turnTokenUsage,
   canEdit = false,
   onEdit
 }: MessageRowProps) {
   const { t } = useTranslation();
+  const [isTurnDetailsOpen, setTurnDetailsOpen] = useState(false);
   const articleRef = isLast ? lastMessageRef : undefined;
   const isCommentary = role === "assistant" && phase === "commentary";
   const isSteerMessage = role === "user" && kind === "steer";
   const messageTimestamp = formatMessageTimestamp(createdAt, t);
+  const hasTurnDetails = turnExecution !== undefined && turnExecution !== null ||
+    turnTokenUsage !== undefined && turnTokenUsage !== null;
 
   if (role === "user") {
     return (
@@ -278,15 +292,42 @@ export function MessageRow({
             >
               {messageTimestamp}
             </Box>
-            <CopyIconButton
-              value={content}
-              label={t("message.copy")}
-              copiedLabel={t("message.copied")}
-              sx={{ color: "text.secondary" }}
-            />
+            <Box sx={{ display: "flex", gap: 0.5 }}>
+              {hasTurnDetails ? (
+                <Tooltip title={t("message.turnDetails")}>
+                  <IconButton
+                    aria-label={t("message.turnDetails")}
+                    size="small"
+                    onClick={() => setTurnDetailsOpen(true)}
+                    sx={{
+                      color: "text.secondary",
+                      height: 24,
+                      width: 24,
+                      p: 0.25
+                    }}
+                  >
+                    <InfoOutlinedIcon sx={{ fontSize: 15 }} />
+                  </IconButton>
+                </Tooltip>
+              ) : null}
+              <CopyIconButton
+                value={content}
+                label={t("message.copy")}
+                copiedLabel={t("message.copied")}
+                sx={{ color: "text.secondary" }}
+              />
+            </Box>
           </Box>
         </>
       )}
+      {hasTurnDetails ? (
+        <TurnDetailsDialog
+          open={isTurnDetailsOpen}
+          execution={turnExecution}
+          tokenUsage={turnTokenUsage}
+          onClose={() => setTurnDetailsOpen(false)}
+        />
+      ) : null}
     </Box>
   );
 }

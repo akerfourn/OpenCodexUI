@@ -119,6 +119,8 @@ export class ChatStore {
   private runtimeStatusPollId: ReturnType<typeof setInterval> | null = null;
   /** Turn stores keyed by raw turn id. */
   private turnStoresById = new Map<string, ChatTurnStore>();
+  /** Token usage snapshots retained while turns are loaded or updated live. */
+  private turnTokenUsageById = new Map<string, OpenCodexThreadTokenUsage>();
 
   /**
    * Creates a chat store for the provided thread.
@@ -138,6 +140,7 @@ export class ChatStore {
       | "projectStore"
       | "root"
       | "turnStoresById"
+      | "turnTokenUsageById"
       | "hasExplicitModelSelection"
       | "hasExplicitReasoningEffortSelection"
       | "isReadingRuntimeStatus"
@@ -147,6 +150,7 @@ export class ChatStore {
       projectStore: false,
       root: false,
       turnStoresById: false,
+      turnTokenUsageById: false,
       hasExplicitModelSelection: false,
       hasExplicitReasoningEffortSelection: false,
       isReadingRuntimeStatus: false,
@@ -519,6 +523,7 @@ export class ChatStore {
     this.isRefreshing = false;
     this.isRecovering = false;
     this.tokenUsage = null;
+    this.turnTokenUsageById.clear();
   }
 
   /**
@@ -534,7 +539,7 @@ export class ChatStore {
    * @param turns Raw turns.
    */
   setTurns(turns: OpenCodexTurn[]): void {
-    this.turns = turns;
+    this.turns = turns.map((turn) => this.attachKnownTokenUsage(turn));
     this.syncTurnStores();
   }
 
@@ -544,8 +549,38 @@ export class ChatStore {
    * @param turn Raw turn.
    */
   appendTurn(turn: OpenCodexTurn): void {
-    this.turns.push(turn);
-    this.upsertTurnStore(turn);
+    const enrichedTurn = this.attachKnownTokenUsage(turn);
+    this.turns.push(enrichedTurn);
+    this.upsertTurnStore(enrichedTurn);
+  }
+
+  /**
+   * Adds a previously received token usage snapshot to a turn.
+   *
+   * @param turn Turn to enrich.
+   * @returns Original or enriched turn.
+   */
+  private attachKnownTokenUsage(turn: OpenCodexTurn): OpenCodexTurn {
+    if (turn.tokenUsage !== undefined) {
+      if (turn.tokenUsage === null) {
+        this.turnTokenUsageById.delete(turn.id);
+      } else {
+        this.turnTokenUsageById.set(turn.id, turn.tokenUsage);
+      }
+
+      return turn;
+    }
+
+    const knownUsage = this.turnTokenUsageById.get(turn.id);
+
+    if (knownUsage === undefined) {
+      return turn;
+    }
+
+    return {
+      ...turn,
+      tokenUsage: knownUsage
+    };
   }
 
   /**
@@ -965,6 +1000,23 @@ export class ChatStore {
    */
   applyTokenUsage(usage: OpenCodexThreadTokenUsage | null): void {
     this.tokenUsage = usage;
+
+    if (usage === null) {
+      return;
+    }
+
+    this.turnTokenUsageById.set(usage.turnId, usage);
+    const turn = this.turns.find((entry) => entry.id === usage.turnId);
+
+    if (turn === undefined) {
+      return;
+    }
+
+    this.setTurns(this.turns.map((entry) => (
+      entry.id === usage.turnId
+        ? { ...entry, tokenUsage: usage }
+        : entry
+    )));
   }
 
   /**
