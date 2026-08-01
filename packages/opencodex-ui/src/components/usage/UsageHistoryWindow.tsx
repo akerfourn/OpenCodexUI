@@ -230,7 +230,16 @@ function UsageHistoryContent({ transport, initialSourceId }: UsageHistoryWindowP
   }
 
   return (
-    <Box sx={{ bgcolor: "background.default", minHeight: "100vh", p: { xs: 2, md: 3 } }}>
+    <Box
+      sx={{
+        bgcolor: "background.default",
+        height: "100%",
+        minHeight: "100vh",
+        overflowX: "hidden",
+        overflowY: "auto",
+        p: { xs: 2, md: 3 }
+      }}
+    >
       <Stack spacing={2.5} sx={{ margin: "0 auto", maxWidth: 1500 }}>
         <Stack
           direction={{ xs: "column", md: "row" }}
