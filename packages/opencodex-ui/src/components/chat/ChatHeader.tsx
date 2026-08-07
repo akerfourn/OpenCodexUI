@@ -44,7 +44,7 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
   ) : null;
 
   function handleRenameOpen(): void {
-    if (isReadOnlyProject) {
+    if (isReadOnlyProject || chatStore.isRenaming) {
       return;
     }
 
@@ -62,7 +62,7 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
   }
 
   function handleRenameSubmit(): void {
-    if (renameValue.trim().length > 0) {
+    if (renameValue.trim().length > 0 && !chatStore.isRenaming) {
       chatStore.rename(renameValue);
       setIsRenameModalOpen(false);
       setRenameValue("");
@@ -86,7 +86,7 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
             aria-label={t("header.rename")}
             title={t("header.rename")}
             size="small"
-            disabled={isReadOnlyProject}
+            disabled={isReadOnlyProject || chatStore.isRenaming}
             onClick={handleRenameOpen}
           >
             <EditOutlinedIcon fontSize="small" />

@@ -11,8 +11,10 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ChatStore } from "../src/stores/ChatStore";
+import { ProjectThreadEventsStore } from "../src/stores/ProjectThreadEventsStore";
 import { hasActiveRunningTurn } from "../src/stores/chatTurnUtils";
 import type { ProjectStore } from "../src/stores/ProjectStore";
+import type { ProjectsStore } from "../src/stores/ProjectsStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 afterEach(() => {
@@ -172,6 +174,84 @@ describe("ChatStore composer model settings", () => {
 });
 
 describe("ChatStore active turn state", () => {
+  it("should preserve an active turn when a rename succeeds", async () => {
+    const rootStore = createRootStore();
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+
+    chatStore.isWorking = true;
+    chatStore.activeTurnId = "turn-active";
+    chatStore.rename("Renamed thread");
+    await flushPromises();
+
+    expect(chatStore.thread.title).toBe("Renamed thread");
+    expect(chatStore.isWorking).toBe(true);
+    expect(chatStore.activeTurnId).toBe("turn-active");
+    expect(chatStore.isRenaming).toBe(false);
+  });
+
+  it("should preserve an active turn when the backend confirms a rename", () => {
+    const chatStore = createChatStore({});
+
+    chatStore.isWorking = true;
+    chatStore.activeTurnId = "turn-active";
+    chatStore.applyRename("Renamed thread");
+
+    expect(chatStore.thread.title).toBe("Renamed thread");
+    expect(chatStore.isWorking).toBe(true);
+    expect(chatStore.activeTurnId).toBe("turn-active");
+  });
+
+  it("should roll back a failed rename without stopping the active turn", async () => {
+    const rootStore = createRootStore();
+    const projectStore = createProjectStore();
+    vi.mocked(rootStore.request).mockRejectedValueOnce(new Error("Rename failed"));
+    const chatStore = new ChatStore(createThread({}), projectStore, rootStore);
+
+    chatStore.isWorking = true;
+    chatStore.activeTurnId = "turn-active";
+    chatStore.rename("Renamed thread");
+    await flushPromises();
+
+    expect(chatStore.thread.title).toBe("Thread");
+    expect(projectStore.threadListStore.threads[0]).toMatchObject({
+      id: "thread-1",
+      title: "Thread",
+      customTitle: "Thread"
+    });
+    expect(chatStore.isWorking).toBe(true);
+    expect(chatStore.activeTurnId).toBe("turn-active");
+    expect(chatStore.isRenaming).toBe(false);
+    expect(rootStore.appStore.errorMessage).toBe("Rename failed");
+  });
+
+  it("should serialize concurrent renames and release the state after success", async () => {
+    const rootStore = createRootStore();
+    let resolveFirstRequest: (() => void) | null = null;
+    const firstRequest = new Promise<unknown>((resolve) => {
+      resolveFirstRequest = () => resolve({ ok: true });
+    });
+    vi.mocked(rootStore.request).mockReturnValueOnce(firstRequest);
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+
+    chatStore.rename("First title");
+    chatStore.rename("Second title");
+
+    expect(rootStore.request).toHaveBeenCalledTimes(1);
+    expect(chatStore.thread.title).toBe("First title");
+    expect(chatStore.isRenaming).toBe(true);
+
+    resolveFirstRequest?.();
+    await flushPromises();
+
+    expect(chatStore.isRenaming).toBe(false);
+
+    chatStore.rename("Second title");
+    await flushPromises();
+
+    expect(chatStore.thread.title).toBe("Second title");
+    expect(chatStore.isRenaming).toBe(false);
+  });
+
   it("should attach token usage to the matching turn even when it arrives first", () => {
     const chatStore = createChatStore({});
     const usage = createTokenUsage("turn-usage");
@@ -339,6 +419,62 @@ describe("ChatStore active turn state", () => {
     expect(chatStore.activeTurnId).toBeNull();
     expect(projectStore.openThread).toHaveBeenCalledWith("thread-1");
   });
+
+  it("should not clear active turns when pending project UI state is reset", () => {
+    const activeChat = {
+      isLoadingOlderMessages: true,
+      isSyncing: true,
+      isRefreshing: true,
+      isWorking: true,
+      isStartingTurn: true,
+      isEditingLastTurn: true,
+      isRecovering: false,
+      activeTurnId: "turn-active"
+    };
+    const recoveringChat = {
+      isLoadingOlderMessages: true,
+      isSyncing: true,
+      isRefreshing: true,
+      isWorking: true,
+      isStartingTurn: false,
+      isEditingLastTurn: false,
+      isRecovering: true,
+      activeTurnId: "turn-recovering"
+    };
+    const projectsStore = {
+      projectStoresById: new Map([
+        ["project-1", {
+          isLoadingThreads: true,
+          isCreatingThread: true,
+          loadingThreadId: "thread-1",
+          chatsById: new Map([
+            ["thread-1", activeChat],
+            ["thread-2", recoveringChat]
+          ])
+        }]
+      ])
+    } as unknown as ProjectsStore;
+    const eventsStore = new ProjectThreadEventsStore(projectsStore, {} as RootStore);
+
+    eventsStore.resetPendingProjectStates();
+
+    expect(activeChat).toMatchObject({
+      isLoadingOlderMessages: false,
+      isSyncing: true,
+      isRefreshing: false,
+      isWorking: true,
+      isStartingTurn: true,
+      isEditingLastTurn: true,
+      isRecovering: false,
+      activeTurnId: "turn-active"
+    });
+    expect(recoveringChat).toMatchObject({
+      isSyncing: true,
+      isRecovering: true,
+      isWorking: true,
+      activeTurnId: "turn-recovering"
+    });
+  });
 });
 
 describe("ChatStore thread snapshots", () => {
@@ -463,7 +599,16 @@ function createTokenUsage(turnId: string): OpenCodexThreadTokenUsage {
   };
 }
 
+async function flushPromises(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 function createProjectStore(): ProjectStore {
+  const threadListState = {
+    threads: [createThread({})]
+  };
+
   return {
     project: {
       id: "project-1",
@@ -488,6 +633,14 @@ function createProjectStore(): ProjectStore {
     }),
     registerChatRoute: vi.fn(),
     upsertThread: vi.fn((thread: OpenCodexThread) => thread),
+    threadListStore: threadListState,
+    renameThread: vi.fn((threadId: string, name: string) => {
+      threadListState.threads = threadListState.threads.map((thread) => (
+        thread.id === threadId
+          ? { ...thread, customTitle: name, title: name }
+          : thread
+      ));
+    }),
     openThread: vi.fn()
   } as ProjectStore;
 }
@@ -527,6 +680,7 @@ function createRootStore(): RootStore {
         defaultModel: null,
         defaultReasoningEffort: "medium"
       },
+      errorMessage: null,
       getReasoningEffortOptions: vi.fn(() => []),
       resolveReasoningEffort: vi.fn((_model: string | null, effort: string) => effort)
     },

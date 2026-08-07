@@ -81,6 +81,8 @@ export class ChatStore {
   isStartingTurn = false;
   /** Whether the last turn is being edited and restarted. */
   isEditingLastTurn = false;
+  /** Whether a thread rename request is currently in flight. */
+  isRenaming = false;
   /** Whether completed work is unseen by the user. */
   hasUnseenCompletedTurn = false;
   /** Active Codex turn id while a turn is running. */
@@ -121,6 +123,8 @@ export class ChatStore {
   private turnStoresById = new Map<string, ChatTurnStore>();
   /** Token usage snapshots retained while turns are loaded or updated live. */
   private turnTokenUsageById = new Map<string, OpenCodexThreadTokenUsage>();
+  /** Last thread metadata confirmed by Codex, excluding the current optimistic rename. */
+  private confirmedThread: OpenCodexThread;
 
   /**
    * Creates a chat store for the provided thread.
@@ -133,6 +137,7 @@ export class ChatStore {
     private readonly root: RootStore
   ) {
     this.thread = projectStore.ensureThreadSource(thread);
+    this.confirmedThread = this.thread;
     this.selectedModel = resolveInitialSelectedModel(thread, root);
     this.reasoningEffort = resolveInitialReasoningEffort(thread, root);
     makeAutoObservable<
@@ -141,6 +146,7 @@ export class ChatStore {
       | "root"
       | "turnStoresById"
       | "turnTokenUsageById"
+      | "confirmedThread"
       | "hasExplicitModelSelection"
       | "hasExplicitReasoningEffortSelection"
       | "isReadingRuntimeStatus"
@@ -151,6 +157,7 @@ export class ChatStore {
       root: false,
       turnStoresById: false,
       turnTokenUsageById: false,
+      confirmedThread: false,
       hasExplicitModelSelection: false,
       hasExplicitReasoningEffortSelection: false,
       isReadingRuntimeStatus: false,
@@ -326,8 +333,24 @@ export class ChatStore {
    * @returns Nothing.
    */
   setThread(thread: OpenCodexThread): void {
+    this.applyThread(thread, true);
+  }
+
+  /**
+   * Applies thread metadata and optionally records it as backend-confirmed.
+   *
+   * @param thread Thread metadata to apply.
+   * @param updateConfirmed Whether this snapshot may be used for rollback.
+   *
+   * @returns Nothing.
+   */
+  private applyThread(thread: OpenCodexThread, updateConfirmed: boolean): void {
     this.thread = this.projectStore.ensureThreadSource(thread);
     this.projectStore.registerChatRoute(this);
+
+    if (updateConfirmed) {
+      this.confirmedThread = this.thread;
+    }
 
     if (!this.hasExplicitModelSelection && this.thread.model !== null) {
       this.selectedModel = this.thread.model;
@@ -489,6 +512,11 @@ export class ChatStore {
     };
 
     this.thread = thread;
+    this.confirmedThread = {
+      ...this.confirmedThread,
+      model,
+      reasoningEffort
+    };
     this.projectStore.upsertThread(thread);
 
     void this.root.request({
@@ -878,17 +906,43 @@ export class ChatStore {
   rename(name: string): void {
     const trimmedName = name.trim();
 
-    if (trimmedName.length === 0 || this.projectStore.isReadOnlyFromCache) {
+    if (
+      trimmedName.length === 0 ||
+      this.projectStore.isReadOnlyFromCache ||
+      this.isRenaming
+    ) {
       return;
     }
 
+    this.isRenaming = true;
     this.projectStore.renameThread(this.thread.id, trimmedName);
-    this.setThread({ ...this.thread, customTitle: trimmedName, title: trimmedName });
+    this.applyThread({ ...this.thread, customTitle: trimmedName, title: trimmedName }, false);
 
     void this.root.request({
       type: "threads.rename",
       threadId: this.thread.id,
       name: trimmedName
+    }).then(() => {
+      runInAction(() => {
+        this.confirmedThread = {
+          ...this.confirmedThread,
+          customTitle: trimmedName,
+          title: trimmedName
+        };
+        this.isRenaming = false;
+      });
+    }).catch((error: unknown) => {
+      runInAction(() => {
+        const restoredThread = this.confirmedThread;
+
+        this.projectStore.renameThread(this.thread.id, restoredThread.title);
+        this.applyThread(restoredThread, false);
+        this.isRenaming = false;
+
+        if (this.root.appStore.errorMessage === null) {
+          this.root.appStore.errorMessage = readErrorMessage(error);
+        }
+      });
     });
   }
 
@@ -991,6 +1045,7 @@ export class ChatStore {
   applyRename(name: string): void {
     this.projectStore.renameThread(this.thread.id, name);
     this.setThread({ ...this.thread, customTitle: name, title: name });
+    this.isRenaming = false;
   }
 
   /**

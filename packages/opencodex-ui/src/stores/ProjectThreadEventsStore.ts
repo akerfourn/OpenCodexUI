@@ -133,7 +133,11 @@ export class ProjectThreadEventsStore implements RootChildStore {
   }
 
   /**
-   * Clears loading and running flags after an unrecoverable error.
+   * Clears pending request UI flags after an unrecoverable error.
+   *
+   * Runtime turn, recovery, and synchronization state are intentionally left
+   * untouched. A request error can be unrelated to every active chat, and only
+   * a matching event or trusted runtime status may change those states.
    *
    * @returns Nothing.
    */
@@ -145,11 +149,6 @@ export class ProjectThreadEventsStore implements RootChildStore {
 
       for (const chatStore of projectStore.chatsById.values()) {
         chatStore.isLoadingOlderMessages = false;
-        chatStore.isSyncing = false;
-        chatStore.isRecovering = false;
-        chatStore.isWorking = false;
-        chatStore.isStartingTurn = false;
-        chatStore.isEditingLastTurn = false;
         chatStore.isRefreshing = false;
       }
     }
