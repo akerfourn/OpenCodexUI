@@ -24,7 +24,7 @@ type ProcessResult = {
 };
 
 const versionTimeoutMs = 4_000;
-export const MINIMUM_CODEX_CLI_VERSION = "0.144.1";
+export const MINIMUM_CODEX_CLI_VERSION = "0.147.0";
 
 /**
  * Reads the Codex CLI version for one configured source.

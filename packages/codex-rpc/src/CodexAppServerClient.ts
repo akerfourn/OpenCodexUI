@@ -579,7 +579,8 @@ export class CodexAppServerClient {
     await this.request("initialize", {
       clientInfo: this.clientInfo,
       capabilities: {
-        experimentalApi: this.experimentalApi
+        experimentalApi: this.experimentalApi,
+        requestAttestation: false
       }
     });
 

@@ -1339,7 +1339,8 @@ export class ThreadConversationService {
         sortDirection: "asc"
       });
       const responseObject = readObject(response);
-      const pageItems = Array.isArray(responseObject.data) ? responseObject.data : [];
+      const pageEntries = Array.isArray(responseObject.data) ? responseObject.data : [];
+      const pageItems = pageEntries.map((entryValue) => readObject(entryValue).item);
 
       items.push(...pageItems);
       cursor = readString(responseObject.nextCursor) || null;

@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache } from "../src/ThreadTurnCache";
 import { ThreadConversationService } from "../src/backend/ThreadConversationService";
-import type { ThreadCacheService } from "../src/backend/ThreadCacheService";
+import { ThreadCacheService } from "../src/backend/ThreadCacheService";
 
 describe("ThreadConversationService", () => {
   it("should use the request source when an existing cached thread has no source", async () => {
@@ -81,6 +81,45 @@ describe("ThreadConversationService", () => {
     });
     expect(events.some((event) => event.type === "message.started")).toBe(true);
   });
+
+  it("should unwrap paginated thread item entries returned by Codex 0.147", async () => {
+    const threadTurnCache = new ThreadTurnCache();
+    const settings = createSettings();
+    const threadCacheService = new ThreadCacheService({
+      backendOptions: { projectPath: "/workspace/project" },
+      cacheRepository: null,
+      threadTurnCache,
+      getSettings: () => settings,
+      emit: () => {}
+    });
+    const client = new PaginatedItemsCodexClient();
+    const service = new ThreadConversationService({
+      backendOptions: { projectPath: "/workspace/project" },
+      threadTurnCache,
+      threadCacheService,
+      getSettings: () => settings,
+      emit: () => {},
+      ensureClient: async () => client.asCodexClient(),
+      resolveSource: async (sourceId) => ({
+        id: sourceId ?? "source-1"
+      }) as never,
+      cacheProject: async () => null,
+      readCachedProjects: async () => [],
+      handleClientError: () => {}
+    });
+
+    const result = await service.openThread("thread-1", "source-1");
+
+    expect(client.listedItemTurns).toEqual(["turn-1"]);
+    expect(result.turns).toMatchObject([{
+      id: "turn-1",
+      items: [{
+        id: "message-1",
+        role: "assistant",
+        content: "Completed by the sub-agent."
+      }]
+    }]);
+  });
 });
 
 class FakeCodexClient {
@@ -93,6 +132,56 @@ class FakeCodexClient {
   async startTurn(params: unknown): Promise<unknown> {
     this.startedTurns.push(params);
     return { turn: { id: "turn-1" } };
+  }
+}
+
+class PaginatedItemsCodexClient {
+  readonly listedItemTurns: string[] = [];
+
+  asCodexClient(): CodexAppServerClient {
+    return this as unknown as CodexAppServerClient;
+  }
+
+  async readThread(): Promise<unknown> {
+    return {
+      thread: {
+        id: "thread-1",
+        cwd: "/workspace/project",
+        name: "Sub-agent",
+        preview: "",
+        turns: []
+      }
+    };
+  }
+
+  async listThreadTurns(): Promise<unknown> {
+    return {
+      data: [{
+        id: "turn-1",
+        status: "completed",
+        itemsView: "summary",
+        items: []
+      }],
+      nextCursor: null
+    };
+  }
+
+  async listThreadTurnItems(params: { turnId?: string | null }): Promise<unknown> {
+    this.listedItemTurns.push(params.turnId ?? "");
+    return {
+      data: [{
+        turnId: "turn-1",
+        item: {
+          type: "agentMessage",
+          id: "message-1",
+          text: "Completed by the sub-agent.",
+          phase: "final_answer",
+          memoryCitation: null
+        }
+      }],
+      nextCursor: null,
+      backwardsCursor: null
+    };
   }
 }
 

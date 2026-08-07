@@ -99,6 +99,10 @@ describe("CodexAppServerClient", () => {
         clientInfo: {
           name: "OpenCodexUI",
           version: "1.3.0"
+        },
+        capabilities: {
+          experimentalApi: true,
+          requestAttestation: false
         }
       })
     }));
