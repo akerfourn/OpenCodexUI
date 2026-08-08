@@ -2,7 +2,7 @@
  * Renders the assistant turn block component for the OpenCodex UI.
  */
 import { observer } from "mobx-react-lite";
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useMemo, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Accordion,
@@ -17,21 +17,32 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 
-import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexCollaborationEvent,
+  OpenCodexThread,
+  OpenCodexTurn,
+  OpenCodexTurnItem
+} from "@open-codex-ui/opencodex-protocol";
 
 import {
   ACTIVE_REASONING_ITEM_LIMIT,
   selectActiveReasoningItems
 } from "./activeReasoningHistory";
 import { MessageRowM } from "./MessageRow";
+import { CollaborationEventCard } from "./CollaborationEventCard";
+import { buildReasoningTimelineEntries } from "./collaborationReasoningTimeline";
 
 type AssistantTurnBlockProps = {
   turn: OpenCodexTurn;
   preludeItems: OpenCodexTurnItem[];
+  collaborationEvents: readonly OpenCodexCollaborationEvent[];
+  currentThread: OpenCodexThread;
+  navigableThreadIds?: readonly string[];
   isRunning: boolean;
   lastMessageRef: RefObject<HTMLElement>;
   isLast: boolean;
   onOpenLink(href: string): void;
+  onNavigateThread(threadId: string): void;
 };
 
 /**
@@ -44,15 +55,23 @@ type AssistantTurnBlockProps = {
 export function AssistantTurnBlock({
   turn,
   preludeItems,
+  collaborationEvents,
+  currentThread,
+  navigableThreadIds,
   isRunning,
   lastMessageRef,
   isLast,
-  onOpenLink
+  onOpenLink,
+  onNavigateThread
 }: AssistantTurnBlockProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [isFullActiveHistoryVisible, setIsFullActiveHistoryVisible] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const timelineEntries = useMemo(
+    () => buildReasoningTimelineEntries(preludeItems, collaborationEvents),
+    [collaborationEvents, preludeItems]
+  );
   const blockRef = isLast ? lastMessageRef : undefined;
   const runningStartedAt = turn.startedAt ?? readFirstCreatedAt(preludeItems);
   const displayedDurationMs = isRunning
@@ -63,14 +82,14 @@ export function AssistantTurnBlock({
     : formatBlockLabel(getBlockKind(preludeItems), turn.durationMs, t);
   const isExpanded = isRunning || expanded;
   const hasLimitedActiveHistory = isRunning
-    && preludeItems.length > ACTIVE_REASONING_ITEM_LIMIT;
-  const visiblePreludeItems = isRunning
-    ? selectActiveReasoningItems(preludeItems, isFullActiveHistoryVisible)
-    : preludeItems;
-  const visiblePreludeStartIndex = preludeItems.length - visiblePreludeItems.length;
+    && timelineEntries.length > ACTIVE_REASONING_ITEM_LIMIT;
+  const visibleTimelineEntries = isRunning
+    ? selectActiveReasoningItems(timelineEntries, isFullActiveHistoryVisible)
+    : timelineEntries;
+  const visibleTimelineStartIndex = timelineEntries.length - visibleTimelineEntries.length;
   const historyToggleLabel = isFullActiveHistoryVisible
     ? t("reasoningBlock.limitHistory")
-    : t("reasoningBlock.showFullHistory", { count: preludeItems.length });
+    : t("reasoningBlock.showFullHistory", { count: timelineEntries.length });
   const historyToggle = hasLimitedActiveHistory ? (
     <Button
       size="small"
@@ -85,22 +104,40 @@ export function AssistantTurnBlock({
     <AccordionDetails sx={{ pt: 0, pb: 1.25, px: 1.25, minWidth: 0, maxWidth: "100%" }}>
       <Stack spacing={1} sx={{ minWidth: 0, maxWidth: "100%" }}>
         {historyToggle}
-        {visiblePreludeItems.map((item, index) => (
-          <MessageRowM
-            key={buildMessageKey(item, visiblePreludeStartIndex + index)}
-            isLast={false}
-            lastMessageRef={lastMessageRef}
-            onOpenLink={onOpenLink}
-            role={item.role}
-            phase={item.phase}
-            kind={item.kind}
-            content={item.content}
-            isStreaming={isRunning && item.status === "streaming"}
-            createdAt={item.createdAt}
-            details={item.details}
-            attachments={item.attachments ?? []}
-          />
-        ))}
+        {visibleTimelineEntries.map((entry, index) => {
+          const absoluteIndex = visibleTimelineStartIndex + index;
+
+          if (entry.type === "collaboration") {
+            return (
+              <CollaborationEventCard
+                key={buildCollaborationKey(entry.event, absoluteIndex)}
+                event={entry.event}
+                currentThread={currentThread}
+                displayMode="embedded"
+                navigableThreadIds={navigableThreadIds}
+                onNavigateThread={onNavigateThread}
+              />
+            );
+          }
+
+          const item = entry.item;
+          return (
+            <MessageRowM
+              key={buildMessageKey(item, absoluteIndex)}
+              isLast={false}
+              lastMessageRef={lastMessageRef}
+              onOpenLink={onOpenLink}
+              role={item.role}
+              phase={item.phase}
+              kind={item.kind}
+              content={item.content}
+              isStreaming={isRunning && item.status === "streaming"}
+              createdAt={item.createdAt}
+              details={item.details}
+              attachments={item.attachments ?? []}
+            />
+          );
+        })}
       </Stack>
     </AccordionDetails>
   ) : null;
@@ -192,9 +229,9 @@ export function AssistantTurnBlock({
           <Typography variant="body2" noWrap sx={{ fontWeight: 600, minWidth: 0 }}>
             {label}
           </Typography>
-          {preludeItems.length > 0 ? (
+          {timelineEntries.length > 0 ? (
             <Typography variant="caption" color="text.secondary">
-              ({preludeItems.length})
+              ({timelineEntries.length})
             </Typography>
           ) : null}
         </AccordionSummary>
@@ -335,4 +372,12 @@ function buildMessageKey(item: OpenCodexTurnItem, index: number): string {
     item.id,
     index
   ].join(":");
+}
+
+/** Builds a stable React key for a collaboration entry. */
+function buildCollaborationKey(
+  event: OpenCodexCollaborationEvent,
+  index: number
+): string {
+  return ["assistantTurn", "collaboration", event.id, index].join(":");
 }

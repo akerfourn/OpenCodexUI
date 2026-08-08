@@ -12,10 +12,12 @@ import { ChatHeaderX } from "./ChatHeader";
 import { ChatMessageListX } from "../messages/ChatMessageList";
 import { ChatEmptyStateX } from "./ChatEmptyState";
 import { ChatLoadingState } from "./ChatLoadingState";
+import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 
 type ChatViewProps = {
   store: RootStore;
   projectStore: ProjectStore;
+  onOpenSubAgentDialog: OpenSubAgentDialog;
 };
 
 /**
@@ -25,7 +27,7 @@ type ChatViewProps = {
  *
  * @returns Nothing.
  */
-export function ChatView({ store, projectStore }: ChatViewProps) {
+export function ChatView({ store, projectStore, onOpenSubAgentDialog }: ChatViewProps) {
   const { t } = useTranslation();
   const chatStore = projectStore.selectedChat;
   const isReadOnlyProject = projectStore.isReadOnlyFromCache;
@@ -58,7 +60,11 @@ export function ChatView({ store, projectStore }: ChatViewProps) {
   const messageContent = isLoadingCurrentThread ? (
     <ChatLoadingState label={t("chat.loading")} />
   ) : (
-    <ChatMessageListX store={store} chatStore={chatStore} />
+    <ChatMessageListX
+      store={store}
+      chatStore={chatStore}
+      onOpenSubAgentDialog={onOpenSubAgentDialog}
+    />
   );
 
   return (

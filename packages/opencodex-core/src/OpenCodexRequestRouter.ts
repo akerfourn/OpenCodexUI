@@ -133,9 +133,18 @@ export class OpenCodexRequestRouter {
           request.limit ?? 500
         );
       case "threads.subAgents.list":
-        return this.runtime.listSubAgentThreads(request.parentThreadId);
+        return this.runtime.listSubAgentThreads(request.parentThreadId, request.sourceId);
+      case "threads.collaboration.list":
+        return this.runtime.listCollaborationEvents({
+          sourceId: request.sourceId,
+          threadId: request.threadId,
+          senderThreadId: request.senderThreadId,
+          receiverThreadId: request.receiverThreadId,
+          rootThreadId: request.rootThreadId,
+          limit: request.limit
+        });
       case "threads.readReadonly":
-        return this.runtime.readThreadReadonly(request.threadId);
+        return this.runtime.readThreadReadonly(request.threadId, request.sourceId);
       case "threads.loadOlder":
         return this.runtime.loadOlderThreadMessages(request.threadId);
       case "threads.recover":

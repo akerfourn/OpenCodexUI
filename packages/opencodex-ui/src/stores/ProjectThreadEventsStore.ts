@@ -61,6 +61,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
       case "thread.metadata.updated":
         this.applyThreadMetadata(event.thread);
         return;
+      case "thread.discovered":
+        this.applyThreadDiscovered(event.thread);
+        return;
+      case "collaboration.updated":
+        this.applyCollaborationStatuses(event.sourceId, event.event.targetAgentStatuses);
+        return;
       case "thread.turns.prepended":
         this.applyTurnsPrepended(
           event.threadId,
@@ -255,6 +261,35 @@ export class ProjectThreadEventsStore implements RootChildStore {
 
     if (chatStore !== undefined) {
       chatStore.setThread(updatedThread);
+    }
+
+    projectStore.threadListStore.recordSubAgentThread(updatedThread);
+  }
+
+  /**
+   * Publishes a newly started sub-agent to already loaded descendant lists.
+   *
+   * @param thread Newly discovered thread metadata.
+   */
+  private applyThreadDiscovered(thread: OpenCodexThread): void {
+    const projectStore = this.findProjectStoreForThread(thread.id, thread.sourceId)
+      ?? this.projectsStore.ensureProjectStoreForThread(thread);
+
+    projectStore.threadListStore.recordSubAgentThread(thread);
+  }
+
+  /**
+   * Applies agent statuses published alongside collaboration actions.
+   *
+   * @param sourceId Source that owns the agents.
+   * @param statuses Status values keyed by thread id or agent path.
+   */
+  private applyCollaborationStatuses(
+    sourceId: string,
+    statuses: Readonly<Record<string, string>>
+  ): void {
+    for (const projectStore of this.projectsStore.projectStoresById.values()) {
+      projectStore.threadListStore.updateSubAgentStatuses(sourceId, statuses);
     }
   }
 

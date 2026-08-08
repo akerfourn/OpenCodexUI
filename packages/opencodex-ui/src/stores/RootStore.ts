@@ -14,6 +14,7 @@ import type {
 import { AppStore } from "./AppStore";
 import { ApprovalsStore } from "./ApprovalsStore";
 import { ChatEventLogStore } from "./ChatEventLogStore";
+import { CollaborationStore } from "./CollaborationStore";
 import type { ChatStore } from "./ChatStore";
 import { CommitPromptStore } from "./CommitPromptStore";
 import { HomeStore } from "./HomeStore";
@@ -35,6 +36,7 @@ export class RootStore {
   readonly appStore = new AppStore(this);
   readonly approvalsStore = new ApprovalsStore(this);
   readonly chatEventLogStore = new ChatEventLogStore(this);
+  readonly collaborationStore = new CollaborationStore(this);
   readonly commitPromptStore = new CommitPromptStore(this);
   readonly homeStore = new HomeStore();
   readonly logsStore = new LogsStore(this);
@@ -108,6 +110,7 @@ export class RootStore {
 
     this.appStore.handleEvent(event);
     this.chatEventLogStore.handleEvent(event);
+    this.collaborationStore.handleEvent(event);
     if (event.type === "models.updated") {
       this.projectsStore.reconcileReasoningEfforts();
     }

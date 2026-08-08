@@ -597,6 +597,40 @@ export const resources = {
         todayAt: "Aujourd'hui à {{time}}",
         yesterdayAt: "Hier à {{time}}"
       },
+      collaboration: {
+        action: {
+          close: "Fermeture de l’agent",
+          followup: "Instruction complémentaire",
+          interrupt: "Interruption de l’agent",
+          message: "Message inter-agent",
+          result: "Résultat transmis",
+          resume: "Reprise de l’agent",
+          spawn: "Délégation à un sous-agent",
+          wait: "Attente des agents"
+        },
+        instructionUnavailable:
+          "L’instruction d’origine n’est pas disponible dans l’historique conservé.",
+        limitContent: "Limiter le contenu",
+        messageUnavailable:
+          "Le contenu de ce message inter-agent n’est pas disponible dans l’historique conservé.",
+        openSubAgentChat: "Voir le chat du sous-agent",
+        openSubAgentChatCompact: "Voir le chat",
+        showFullContentCompact: "Afficher",
+        limitContentCompact: "Limiter",
+        resultUnavailable:
+          "Le résultat transmis n’est pas disponible dans l’historique conservé.",
+        route: "{{sender}} → {{receiver}}",
+        showFullContent: "Afficher tout le contenu",
+        status: {
+          completed: "Terminé",
+          failed: "Échec",
+          pending: "En cours",
+          unknown: "État inconnu"
+        },
+        threadContext: "Collaboration liée à ce thread",
+        timelineLabel: "Événements de collaboration",
+        unknownAgent: "Agent non identifié"
+      },
       reasoningBlock: {
         active: "Réflexion en cours ({{duration}})",
         activity: "Activités",
@@ -828,6 +862,26 @@ export const resources = {
         search: "Rechercher",
         showActiveChats: "Retour aux chats actifs",
         showArchivedChats: "Voir les chats archivés",
+        subAgentBreadcrumbs: "Hiérarchie de l’agent",
+        subAgentDepth: "Niveau {{depth}}",
+        subAgentHierarchy: "Arbre des sous-agents",
+        subAgentMissingParent: "Parent indisponible ({{threadId}})",
+        subAgentParentUnavailable: "Parent {{threadId}} indisponible",
+        subAgentStatus: {
+          active: "Actif",
+          completed: "Terminé",
+          errored: "En erreur",
+          idle: "Inactif",
+          interrupted: "Interrompu",
+          notFound: "Introuvable",
+          notLoaded: "Non chargé",
+          pendingInit: "Initialisation",
+          running: "En cours",
+          shutdown: "Arrêté",
+          systemError: "Erreur système",
+          unknown: "État inconnu"
+        },
+        subAgentTreeRoot: "Thread parent",
         subAgentThreadNoMessages: "Aucun message chargé pour ce sous-agent.",
         subAgentThreads: "Voir les chats des sous-agents",
         subAgentThreadsEmpty: "Aucun chat de sous-agent trouvé pour cette conversation.",
@@ -1560,6 +1614,40 @@ export const resources = {
         todayAt: "Today at {{time}}",
         yesterdayAt: "Yesterday at {{time}}"
       },
+      collaboration: {
+        action: {
+          close: "Agent closed",
+          followup: "Follow-up instruction",
+          interrupt: "Agent interrupted",
+          message: "Inter-agent message",
+          result: "Delivered result",
+          resume: "Agent resumed",
+          spawn: "Delegation to a sub-agent",
+          wait: "Waiting for agents"
+        },
+        instructionUnavailable:
+          "The original instruction is unavailable in the retained history.",
+        limitContent: "Limit content",
+        messageUnavailable:
+          "This inter-agent message is unavailable in the retained history.",
+        openSubAgentChat: "View sub-agent chat",
+        openSubAgentChatCompact: "View chat",
+        showFullContentCompact: "Expand",
+        limitContentCompact: "Collapse",
+        resultUnavailable:
+          "The delivered result is unavailable in the retained history.",
+        route: "{{sender}} → {{receiver}}",
+        showFullContent: "Show all content",
+        status: {
+          completed: "Completed",
+          failed: "Failed",
+          pending: "In progress",
+          unknown: "Unknown status"
+        },
+        threadContext: "Collaboration related to this thread",
+        timelineLabel: "Collaboration events",
+        unknownAgent: "Unknown agent"
+      },
       reasoningBlock: {
         active: "Thinking ({{duration}})",
         activity: "Activities",
@@ -1791,6 +1879,26 @@ export const resources = {
         search: "Search",
         showActiveChats: "Back to active chats",
         showArchivedChats: "Show archived chats",
+        subAgentBreadcrumbs: "Agent hierarchy",
+        subAgentDepth: "Level {{depth}}",
+        subAgentHierarchy: "Sub-agent tree",
+        subAgentMissingParent: "Unavailable parent ({{threadId}})",
+        subAgentParentUnavailable: "Parent {{threadId}} unavailable",
+        subAgentStatus: {
+          active: "Active",
+          completed: "Completed",
+          errored: "Errored",
+          idle: "Idle",
+          interrupted: "Interrupted",
+          notFound: "Not found",
+          notLoaded: "Not loaded",
+          pendingInit: "Initializing",
+          running: "Running",
+          shutdown: "Shut down",
+          systemError: "System error",
+          unknown: "Unknown status"
+        },
+        subAgentTreeRoot: "Parent thread",
         subAgentThreadNoMessages: "No message loaded for this sub-agent.",
         subAgentThreads: "View sub-agent chats",
         subAgentThreadsEmpty: "No sub-agent chat found for this conversation.",

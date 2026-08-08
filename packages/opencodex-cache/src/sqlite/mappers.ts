@@ -1,6 +1,8 @@
 /**
  * Maps internal SQLite rows to public cache types.
  */
+import type { OpenCodexSubAgentSource } from "@open-codex-ui/opencodex-protocol";
+
 import type {
   CachedProject,
   CachedProjectGroup,
@@ -57,7 +59,9 @@ export function mapThreadRow(row: ThreadRow): CachedThreadSummary {
     isArchived: row.is_archived === 1,
     threadSource: row.thread_source,
     agentNickname: row.agent_nickname,
-    agentRole: row.agent_role
+    agentRole: row.agent_role,
+    subAgentSource: parseSubAgentSource(row.sub_agent_source_json),
+    canAcceptDirectInput: null
   };
 
   if (row.status !== null) {
@@ -65,6 +69,44 @@ export function mapThreadRow(row: ThreadRow): CachedThreadSummary {
   }
 
   return thread;
+}
+
+/**
+ * Parses persisted structured sub-agent source metadata.
+ *
+ * @param value Serialized source metadata.
+ * @returns Parsed metadata, or `null` when absent or invalid.
+ */
+function parseSubAgentSource(value: string | null): OpenCodexSubAgentSource | null {
+  if (value === null) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as Partial<OpenCodexSubAgentSource>;
+
+    if (
+      parsed.kind !== "review"
+      && parsed.kind !== "compact"
+      && parsed.kind !== "threadSpawn"
+      && parsed.kind !== "memoryConsolidation"
+      && parsed.kind !== "other"
+    ) {
+      return null;
+    }
+
+    return {
+      kind: parsed.kind,
+      parentThreadId: typeof parsed.parentThreadId === "string" ? parsed.parentThreadId : null,
+      depth: typeof parsed.depth === "number" ? parsed.depth : null,
+      agentPath: typeof parsed.agentPath === "string" ? parsed.agentPath : null,
+      agentNickname: typeof parsed.agentNickname === "string" ? parsed.agentNickname : null,
+      agentRole: typeof parsed.agentRole === "string" ? parsed.agentRole : null,
+      label: typeof parsed.label === "string" ? parsed.label : null
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**

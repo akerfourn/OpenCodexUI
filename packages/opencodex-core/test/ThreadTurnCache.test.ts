@@ -7,6 +7,53 @@ import { ThreadTurnCache } from "../src/ThreadTurnCache";
 import { createCacheSignature } from "../src/backend/threadCacheMapping";
 
 describe("ThreadTurnCache", () => {
+  it("should preserve structured sub-agent ancestry across partial metadata refreshes", () => {
+    const cache = new ThreadTurnCache();
+    const entry = cache.getOrCreate({
+      id: "child-1",
+      parentThreadId: "parent-1",
+      subAgentSource: {
+        kind: "threadSpawn",
+        parentThreadId: "parent-1",
+        depth: 1,
+        agentPath: "/root/reviewer",
+        agentNickname: "Luna",
+        agentRole: "reviewer",
+        label: null
+      },
+      agentNickname: "Luna",
+      agentRole: "reviewer",
+      codexTitle: "Child",
+      customTitle: null,
+      title: "Child",
+      preview: "",
+      model: null,
+      reasoningEffort: null,
+      projectName: null,
+      projectPath: null,
+      branchName: null,
+      updatedAt: null
+    });
+
+    cache.getOrCreate({
+      ...entry.thread,
+      parentThreadId: null,
+      subAgentSource: null,
+      agentNickname: null,
+      agentRole: null
+    });
+
+    expect(entry.thread).toMatchObject({
+      parentThreadId: "parent-1",
+      agentNickname: "Luna",
+      agentRole: "reviewer",
+      subAgentSource: {
+        depth: 1,
+        agentPath: "/root/reviewer"
+      }
+    });
+  });
+
   it("should merge turns without duplicating existing entries", () => {
     const cache = new ThreadTurnCache();
     const entry = cache.getOrCreate({

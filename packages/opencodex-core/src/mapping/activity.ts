@@ -20,6 +20,7 @@ import {
   summarizeActivityItem,
   summarizeRawResponseItem
 } from "./activitySummary.js";
+import { readV2Action } from "./collaborationReaders.js";
 import { createId, readObject, readString } from "./primitives.js";
 import { sanitizeTerminalOutput } from "../backend/terminalOutput.js";
 
@@ -300,16 +301,25 @@ function createRawResponseItemActivity(
 
   if (type === "local_shell_call" || type === "function_call") {
     const action = readObject(item.action);
+    const functionName = readString(item.name);
+    const functionNamespace = readString(item.namespace);
     const command = type === "local_shell_call"
       ? readCommandArray(action.command)
       : readFunctionCallCommand(item);
+    const isCollaborationCall = type === "function_call" && (
+      functionNamespace === "collaboration"
+      || (functionNamespace.length === 0 && readV2Action(functionName) !== null)
+    );
+    const activityKind = resolveRawFunctionActivityKind(
+      type,
+      functionName,
+      isCollaborationCall
+    );
 
     return createActivity(
       readString(item.call_id) || createId("command"),
       threadId,
-      readString(item.name) === "shell_command" || type === "local_shell_call"
-        ? "commandExecution"
-        : "dynamicToolCall",
+      activityKind,
       turnId,
       command.length > 0 ? command : summarizeRawResponseItem(item),
       readString(item.status) === "completed" ? "completed" : "running",
@@ -344,6 +354,23 @@ function createRawResponseItemActivity(
     null,
     summarizeActivityDetails(item)
   );
+}
+
+/** Resolves a semantic UI kind for raw shell, collaboration, and dynamic calls. */
+function resolveRawFunctionActivityKind(
+  responseItemType: string,
+  functionName: string,
+  isCollaborationCall: boolean
+): string {
+  if (isCollaborationCall) {
+    return "subAgentActivity";
+  }
+
+  if (responseItemType === "local_shell_call" || functionName === "shell_command") {
+    return "commandExecution";
+  }
+
+  return "dynamicToolCall";
 }
 
 /**

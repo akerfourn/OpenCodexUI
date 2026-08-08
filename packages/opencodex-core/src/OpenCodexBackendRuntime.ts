@@ -16,6 +16,8 @@ import type {
   OpenCodexApprovalDecision,
   OpenCodexCodexReleaseCheck,
   OpenCodexCommitMessageGenerationResult,
+  OpenCodexCollaborationEvent,
+  OpenCodexCollaborationQuery,
   OpenCodexCommitMessageLanguage,
   OpenCodexComposerReference,
   OpenCodexCommitPrompt,
@@ -89,6 +91,7 @@ import {
 } from "./backend/errors.js";
 import { ThreadConversationService } from "./backend/ThreadConversationService.js";
 import { ThreadCacheService } from "./backend/ThreadCacheService.js";
+import { CollaborationService } from "./backend/CollaborationService.js";
 import {
   ThreadEventLogService,
   type ThreadEventLogMutation
@@ -136,6 +139,7 @@ export class OpenCodexBackendRuntime {
   private readonly projectSourceService: ProjectSourceService;
   private readonly projectTrustService: ProjectTrustService;
   private readonly threadCacheService: ThreadCacheService;
+  private readonly collaborationService: CollaborationService;
   private readonly threadConversationService: ThreadConversationService;
   private readonly gitService: GitService;
   private readonly commitMessageService: CommitMessageService;
@@ -232,6 +236,11 @@ export class OpenCodexBackendRuntime {
       getSettings: () => this.settings,
       emit: (event) => this.emit(event)
     });
+    this.collaborationService = new CollaborationService({
+      cacheRepository: this.cacheRepository,
+      emit: (event) => this.emit(event),
+      logger: options.logger
+    });
     this.threadConversationService = new ThreadConversationService({
       backendOptions: options,
       threadTurnCache: this.threadTurnCache,
@@ -242,6 +251,12 @@ export class OpenCodexBackendRuntime {
       resolveSource: (sourceId) => this.resolveSource(sourceId),
       cacheProject: (projectPath, sourceId) => this.cacheProject(projectPath, sourceId),
       readCachedProjects: () => this.readCachedProjects(),
+      reconcileCollaborationTurns: (sourceId, threadId, turns) => (
+        this.collaborationService.reconcileTurns(sourceId, threadId, turns)
+      ),
+      reconcileDescendantThreads: (sourceId, rootThreadId, threads) => (
+        this.collaborationService.reconcileDescendantThreads(sourceId, rootThreadId, threads)
+      ),
       handleClientError: (error) => this.handleClientError(error)
     });
     this.gitService = new GitService({
@@ -1003,11 +1018,27 @@ export class OpenCodexBackendRuntime {
    * Lists sub-agent threads spawned by a parent thread.
    *
    * @param parentThreadId Parent thread identifier.
+   * @param sourceId Source that owns the parent thread.
    *
    * @returns Sub-agent threads.
    */
-  async listSubAgentThreads(parentThreadId: string): Promise<OpenCodexThread[]> {
-    return await this.threadConversationService.listSubAgentThreads(parentThreadId);
+  async listSubAgentThreads(
+    parentThreadId: string,
+    sourceId: string | null
+  ): Promise<OpenCodexThread[]> {
+    return await this.threadConversationService.listSubAgentThreads(parentThreadId, sourceId);
+  }
+
+  /**
+   * Lists persisted collaboration events using explicit source-aware filters.
+   *
+   * @param query Source and optional thread-tree filters.
+   * @returns Normalized collaboration events.
+   */
+  async listCollaborationEvents(
+    query: OpenCodexCollaborationQuery
+  ): Promise<OpenCodexCollaborationEvent[]> {
+    return await this.collaborationService.listEvents(query);
   }
 
   /**
@@ -1015,10 +1046,14 @@ export class OpenCodexBackendRuntime {
    *
    * @param threadId Thread identifier.
    *
+   * @param sourceId Source that owns the secondary thread.
    * @returns Thread and loaded turns.
    */
-  async readThreadReadonly(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.threadConversationService.readThreadReadonly(threadId);
+  async readThreadReadonly(
+    threadId: string,
+    sourceId: string | null
+  ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+    return await this.threadConversationService.readThreadReadonly(threadId, sourceId);
   }
 
   /**
@@ -2296,6 +2331,13 @@ export class OpenCodexBackendRuntime {
 
     try {
       this.recordLiveCacheNotification(notification);
+      void this.collaborationService.handleNotification(notification, sourceId);
+
+      if (notification.method === "thread/started") {
+        const thread = readObject(notification.params).thread;
+        void this.threadConversationService.recordStartedThread(thread, sourceId);
+      }
+
       this.recordTurnExecutionNotification(notification, sourceId);
       this.trackActiveTurnNotification(notification, sourceId);
       this.projectCommandService.handleNotification(notification);

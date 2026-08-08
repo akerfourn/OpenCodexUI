@@ -390,13 +390,13 @@ export class ProjectsStore implements RootChildStore {
   }
 
   /**
-   * Opens a thread selected from a desktop notification.
+   * Opens a thread through an explicit source-aware route.
    *
-   * @param sourceId Source that produced the notification.
+   * @param sourceId Source that owns the thread.
    * @param threadId Thread to activate.
    * @returns Nothing.
    */
-  navigateToThreadFromNotification(sourceId: string | null, threadId: string): void {
+  navigateToThread(sourceId: string | null, threadId: string): void {
     const projectStore = this.findProjectStoreForThread(threadId, sourceId);
 
     if (projectStore !== null) {
@@ -413,6 +413,17 @@ export class ProjectsStore implements RootChildStore {
     }).catch(() => {
       this.pendingNotificationThreadRoutes.delete(createThreadRouteKey(sourceId, threadId));
     });
+  }
+
+  /**
+   * Opens a thread selected from a desktop notification.
+   *
+   * @param sourceId Source that produced the notification.
+   * @param threadId Thread to activate.
+   * @returns Nothing.
+   */
+  navigateToThreadFromNotification(sourceId: string | null, threadId: string): void {
+    this.navigateToThread(sourceId, threadId);
   }
 
   /**

@@ -5,10 +5,15 @@ import type { RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
+import type {
+  OpenCodexCollaborationEvent,
+  OpenCodexThread
+} from "@open-codex-ui/opencodex-protocol";
 import type { ChatTurnStore } from "../../stores/ChatTurnStore";
 import type { ChatSubTurn } from "../../stores/chatTurnStructure";
 
 import { ChatSubTurnViewX } from "./ChatSubTurnView";
+import { assignCollaborationEvents } from "./collaborationReasoningTimeline";
 import { TurnErrorRow } from "./TurnErrorRow";
 
 type EditableItemIdentity = {
@@ -22,8 +27,12 @@ type ChatTurnViewProps = {
   isWorking: boolean;
   isLastTurn: boolean;
   editableItem: EditableItemIdentity | null;
+  collaborationEvents: readonly OpenCodexCollaborationEvent[];
+  currentThread: OpenCodexThread;
+  navigableThreadIds?: readonly string[];
   lastMessageRef: RefObject<HTMLElement>;
   onOpenLink(href: string): void;
+  onNavigateThread(threadId: string): void;
   onStartEdit(content: string): void;
 };
 
@@ -40,14 +49,22 @@ export function ChatTurnView({
   isWorking,
   isLastTurn,
   editableItem,
+  collaborationEvents,
+  currentThread,
+  navigableThreadIds,
   lastMessageRef,
   onOpenLink,
+  onNavigateThread,
   onStartEdit
 }: ChatTurnViewProps) {
   const { t } = useTranslation();
   const turn = turnStore.turn;
   const isRunning = turnStore.isRunning(activeTurnId, isWorking);
-  const subTurns = readRenderableSubTurns(turnStore, isRunning);
+  const subTurns = readRenderableSubTurns(turnStore, isRunning, collaborationEvents);
+  const collaborationEventsBySubTurnId = assignCollaborationEvents(
+    subTurns,
+    collaborationEvents
+  );
   const errorMessage = turn.errorMessage ?? (
     turn.status === "failed" ? t("message.turnFailed") : null
   );
@@ -59,11 +76,15 @@ export function ChatTurnView({
           key={subTurn.id}
           turn={turn}
           subTurn={subTurn}
+          collaborationEvents={collaborationEventsBySubTurnId.get(subTurn.id) ?? []}
+          currentThread={currentThread}
+          navigableThreadIds={navigableThreadIds}
           isReasoningRunning={isRunning && index === subTurns.length - 1}
           isLastInTurn={isLastTurn && index === subTurns.length - 1}
           editableItem={editableItem}
           lastMessageRef={lastMessageRef}
           onOpenLink={onOpenLink}
+          onNavigateThread={onNavigateThread}
           onStartEdit={onStartEdit}
         />
       ))}
@@ -76,14 +97,20 @@ export function ChatTurnView({
 
 export const ChatTurnViewX = observer(ChatTurnView);
 
-function readRenderableSubTurns(turnStore: ChatTurnStore, isRunning: boolean): ChatSubTurn[] {
-  if (turnStore.subTurns.length > 0 || !isRunning) {
-    return turnStore.subTurns;
+function readRenderableSubTurns(
+  turnStore: ChatTurnStore,
+  isRunning: boolean,
+  collaborationEvents: readonly OpenCodexCollaborationEvent[]
+): ChatSubTurn[] {
+  const subTurns = turnStore.subTurns;
+
+  if (subTurns.length > 0 || (!isRunning && collaborationEvents.length === 0)) {
+    return [...subTurns];
   }
 
   return [
     {
-      id: ["subTurn", turnStore.id, "running-empty"].join(":"),
+      id: ["subTurn", turnStore.id, "empty"].join(":"),
       userMessage: null,
       reasoningItems: [],
       assistantAnswer: null

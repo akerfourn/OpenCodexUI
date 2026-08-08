@@ -126,6 +126,98 @@ describe("source-aware thread routing", () => {
     firstProject.clearMemory();
     secondProject.clearMemory();
   });
+
+  it("should keep live collaboration and discovered children scoped to their source", () => {
+    const root = createRootStore();
+    const project = root.projectsStore.openProjectTab(
+      createProject("project-a", "source-a"),
+      false
+    );
+    const child = {
+      ...createThread("child-1", "source-a"),
+      parentThreadId: "parent-1",
+      projectName: "project-a",
+      projectPath: "/workspace/project-a"
+    };
+
+    root.handleEvent({ type: "thread.discovered", thread: child });
+    root.handleEvent({
+      type: "collaboration.updated",
+      sourceId: "source-a",
+      event: {
+        id: "fallback-1",
+        sourceId: "source-a",
+        threadId: "parent-1",
+        turnId: null,
+        callId: null,
+        action: "spawn",
+        toolName: null,
+        senderThreadId: "parent-1",
+        senderAgentPath: null,
+        receiverThreadIds: ["child-1"],
+        receiverAgentPaths: ["/root/reviewer"],
+        prompt: null,
+        result: null,
+        taskName: null,
+        model: null,
+        reasoningEffort: null,
+        agentRole: null,
+        forkTurns: null,
+        status: "completed",
+        targetAgentStatuses: {},
+        evidence: ["structuralInference"]
+      }
+    });
+    root.handleEvent({
+      type: "collaboration.updated",
+      sourceId: "source-a",
+      event: {
+        id: "event-1",
+        sourceId: "source-a",
+        threadId: "parent-1",
+        turnId: "turn-1",
+        callId: "call-1",
+        action: "spawn",
+        toolName: "spawn_agent",
+        senderThreadId: "parent-1",
+        senderAgentPath: "/root",
+        receiverThreadIds: ["child-1"],
+        receiverAgentPaths: ["/root/reviewer"],
+        prompt: "Review this module.",
+        result: null,
+        taskName: "review",
+        model: "gpt-5.6-luna",
+        reasoningEffort: "medium",
+        agentRole: "reviewer",
+        forkTurns: "all",
+        status: "completed",
+        targetAgentStatuses: { "child-1": "idle" },
+        evidence: ["rawFunctionCall"]
+      }
+    });
+
+    expect(project.threadListStore.readSubAgentThreads("parent-1", "source-a"))
+      .toMatchObject([{ id: "child-1" }]);
+    expect(project.threadListStore.readSubAgentThreads("parent-1", "source-b")).toEqual([]);
+    expect(root.collaborationStore.readThreadEvents("source-a", "child-1"))
+      .toMatchObject([{ id: "event-1", prompt: "Review this module." }]);
+    expect(root.collaborationStore.readThreadEvents("source-b", "child-1")).toEqual([]);
+
+    project.clearMemory();
+  });
+
+  it("should preserve the collaboration source when opening an unloaded related thread", () => {
+    const root = createRootStore();
+    const request = vi.spyOn(root, "request").mockResolvedValue(undefined);
+
+    root.projectsStore.navigateToThread("source-b", "child-1");
+
+    expect(request).toHaveBeenCalledWith({
+      type: "threads.open",
+      sourceId: "source-b",
+      threadId: "child-1"
+    });
+  });
 });
 
 /**
@@ -191,6 +283,8 @@ function createThread(id: string, sourceId: string | null): OpenCodexThread {
     isArchived: false,
     threadSource: null,
     agentNickname: null,
-    agentRole: null
+    agentRole: null,
+    subAgentSource: null,
+    canAcceptDirectInput: null
   };
 }

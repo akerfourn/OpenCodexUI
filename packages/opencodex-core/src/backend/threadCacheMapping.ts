@@ -87,7 +87,9 @@ export function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread 
     isArchived: thread.isArchived === true,
     threadSource: thread.threadSource,
     agentNickname: thread.agentNickname,
-    agentRole: thread.agentRole
+    agentRole: thread.agentRole,
+    subAgentSource: thread.subAgentSource,
+    canAcceptDirectInput: null
   };
 
   if (thread.status !== undefined) {
@@ -137,7 +139,9 @@ export function toCachedThreadSummary(thread: OpenCodexThreadWithProjectState): 
     isArchived: thread.isArchived,
     threadSource: thread.threadSource,
     agentNickname: thread.agentNickname,
-    agentRole: thread.agentRole
+    agentRole: thread.agentRole,
+    subAgentSource: thread.subAgentSource,
+    canAcceptDirectInput: thread.canAcceptDirectInput
   };
 
   if (thread.status !== undefined) {
@@ -194,7 +198,22 @@ export function mergeFreshThreadList(
 
   const cachedThreadsById = new Map(cachedThreads.map((thread) => [thread.id, thread]));
 
-  return freshThreads.map((thread) => cachedThreadsById.get(thread.id) ?? thread);
+  return freshThreads.map((thread) => {
+    const cachedThread = cachedThreadsById.get(thread.id);
+
+    if (cachedThread === undefined) {
+      return thread;
+    }
+
+    return {
+      ...cachedThread,
+      parentThreadId: thread.parentThreadId ?? cachedThread.parentThreadId,
+      agentNickname: thread.agentNickname ?? cachedThread.agentNickname,
+      agentRole: thread.agentRole ?? cachedThread.agentRole,
+      subAgentSource: thread.subAgentSource ?? cachedThread.subAgentSource,
+      canAcceptDirectInput: thread.canAcceptDirectInput
+    };
+  });
 }
 
 /**

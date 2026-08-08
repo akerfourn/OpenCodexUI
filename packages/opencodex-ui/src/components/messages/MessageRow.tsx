@@ -378,7 +378,7 @@ function renderActivityKindIcon(kind?: string): ReactNode {
     return <BuildOutlinedIcon fontSize="small" />;
   }
 
-  if (kind === "collabAgentToolCall") {
+  if (kind === "collabAgentToolCall" || kind === "subAgentActivity") {
     return <GroupsOutlinedIcon fontSize="small" />;
   }
 
@@ -468,7 +468,7 @@ function getActivityKindLabel(
     return translate("message.activityType.dynamicTool");
   }
 
-  if (kind === "collabAgentToolCall") {
+  if (kind === "collabAgentToolCall" || kind === "subAgentActivity") {
     return translate("message.activityType.subAgent");
   }
 

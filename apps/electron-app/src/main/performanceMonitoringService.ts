@@ -421,6 +421,18 @@ function readNotificationCategory(method: string): string {
     return "toolProgress";
   }
 
+  if (method === "rawResponseItem/completed") {
+    return "rawResponseItem";
+  }
+
+  if (method === "item/started" || method === "item/completed") {
+    return "itemLifecycle";
+  }
+
+  if (method === "thread/started" || method === "thread/status/changed") {
+    return "threadLifecycle";
+  }
+
   return "other";
 }
 
@@ -454,6 +466,20 @@ function estimateEventBytes(event: OpenCodexEvent): number {
 
   if (event.type === "projectCommand.output") {
     return event.delta.length;
+  }
+
+  if (event.type === "collaboration.updated") {
+    const collaborationEvent = event.event;
+    const values = [
+      collaborationEvent.prompt,
+      collaborationEvent.result,
+      collaborationEvent.taskName,
+      collaborationEvent.senderAgentPath,
+      ...collaborationEvent.receiverThreadIds,
+      ...collaborationEvent.receiverAgentPaths
+    ];
+
+    return values.reduce((total, value) => total + (value?.length ?? 0), 0);
   }
 
   return 0;

@@ -20,6 +20,7 @@ import type {
   OpenCodexThreadScope,
   OpenCodexUsageHistoryAggregation
 } from "./messages";
+import type { OpenCodexCollaborationQuery } from "./collaboration";
 
 /**
  * Request union sent by the renderer to the OpenCodex backend.
@@ -105,8 +106,9 @@ export type OpenCodexRequest =
       sourceId?: string | null;
       limit?: number;
     }
-  | { type: "threads.subAgents.list"; parentThreadId: string }
-  | { type: "threads.readReadonly"; threadId: string }
+  | { type: "threads.subAgents.list"; sourceId: string | null; parentThreadId: string }
+  | ({ type: "threads.collaboration.list" } & OpenCodexCollaborationQuery)
+  | { type: "threads.readReadonly"; sourceId: string | null; threadId: string }
   | { type: "threads.loadOlder"; threadId: string }
   | { type: "threads.recover"; threadId: string }
   | { type: "threads.runtimeStatus.read"; threadId: string }

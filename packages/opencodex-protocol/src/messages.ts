@@ -1139,6 +1139,19 @@ export type OpenCodexDesktopNotificationSettings = {
 };
 
 /**
+ * Structured origin metadata reported for a Codex sub-agent thread.
+ */
+export type OpenCodexSubAgentSource = {
+  kind: "review" | "compact" | "threadSpawn" | "memoryConsolidation" | "other";
+  parentThreadId: string | null;
+  depth: number | null;
+  agentPath: string | null;
+  agentNickname: string | null;
+  agentRole: string | null;
+  label: string | null;
+};
+
+/**
  * Thread metadata shown in project chat lists.
  */
 export type OpenCodexThread = {
@@ -1160,6 +1173,9 @@ export type OpenCodexThread = {
   threadSource: string | null;
   agentNickname: string | null;
   agentRole: string | null;
+  subAgentSource: OpenCodexSubAgentSource | null;
+  /** Current App Server capability; cached-only threads intentionally expose `null`. */
+  canAcceptDirectInput: boolean | null;
   status?: string;
 };
 

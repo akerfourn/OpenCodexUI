@@ -100,6 +100,56 @@ describe("PerformanceMonitoringService", () => {
     service.dispose();
   });
 
+  it("should_expose_multi_agent_lifecycle_volume_without_retaining_content", () => {
+    let now = 1_800_000_000_000;
+    const service = createService(defaultSettings, () => now, vi.fn());
+
+    service.recordCodexNotification("rawResponseItem/completed", 100);
+    service.recordCodexNotification("item/completed", 80);
+    service.recordCodexNotification("thread/started", 60);
+    service.recordBackendEvent({
+      type: "collaboration.updated",
+      sourceId: "source-1",
+      event: {
+        id: "event-1",
+        sourceId: "source-1",
+        threadId: "parent-1",
+        turnId: "turn-1",
+        callId: "call-1",
+        action: "spawn",
+        toolName: "spawn_agent",
+        senderThreadId: "parent-1",
+        senderAgentPath: "/root",
+        receiverThreadIds: ["child-1"],
+        receiverAgentPaths: ["/root/reviewer"],
+        prompt: "delegate",
+        result: "done",
+        taskName: "review",
+        model: "gpt-5.6-luna",
+        reasoningEffort: "medium",
+        agentRole: "explorer",
+        forkTurns: "all",
+        status: "completed",
+        targetAgentStatuses: {},
+        evidence: ["rawFunctionCall"]
+      }
+    });
+    now += 1_000;
+
+    const snapshot = service.collectSnapshot();
+
+    expect(snapshot).toMatchObject({
+      notificationCategories: {
+        rawResponseItem: 1,
+        itemLifecycle: 1,
+        threadLifecycle: 1
+      },
+      eventCount: 1,
+      eventBytes: 44
+    });
+    service.dispose();
+  });
+
   it("should_log_after_three_sustained_slow_intervals_and_apply_cooldown", () => {
     let now = 1_800_000_000_000;
     const createLog = vi.fn();

@@ -1,7 +1,11 @@
 import { type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 
-import type { OpenCodexTurn } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexCollaborationEvent,
+  OpenCodexThread,
+  OpenCodexTurn
+} from "@open-codex-ui/opencodex-protocol";
 import type { ChatSubTurn } from "../../stores/chatTurnStructure";
 
 import { AssistantTurnBlockX } from "./AssistantTurnBlock";
@@ -15,11 +19,15 @@ type EditableItemIdentity = {
 type ChatSubTurnViewProps = {
   turn: OpenCodexTurn;
   subTurn: ChatSubTurn;
+  collaborationEvents: readonly OpenCodexCollaborationEvent[];
+  currentThread: OpenCodexThread;
+  navigableThreadIds?: readonly string[];
   isReasoningRunning: boolean;
   isLastInTurn: boolean;
   editableItem: EditableItemIdentity | null;
   lastMessageRef: RefObject<HTMLElement>;
   onOpenLink(href: string): void;
+  onNavigateThread(threadId: string): void;
   onStartEdit(content: string): void;
 };
 
@@ -33,15 +41,21 @@ type ChatSubTurnViewProps = {
 export function ChatSubTurnView({
   turn,
   subTurn,
+  collaborationEvents,
+  currentThread,
+  navigableThreadIds,
   isReasoningRunning,
   isLastInTurn,
   editableItem,
   lastMessageRef,
   onOpenLink,
+  onNavigateThread,
   onStartEdit
 }: ChatSubTurnViewProps) {
   const assistantAnswer = subTurn.assistantAnswer;
-  const shouldShowReasoning = subTurn.reasoningItems.length > 0 || isReasoningRunning;
+  const shouldShowReasoning = subTurn.reasoningItems.length > 0
+    || collaborationEvents.length > 0
+    || isReasoningRunning;
   const shouldShowAnswer = assistantAnswer !== null;
   const isUserMessageLast = isLastInTurn && !shouldShowReasoning && !shouldShowAnswer;
   const isReasoningLast = isLastInTurn && shouldShowReasoning && !shouldShowAnswer;
@@ -72,10 +86,14 @@ export function ChatSubTurnView({
           key={buildSubTurnReasoningKey(turn.id, subTurn.id)}
           turn={turn}
           preludeItems={subTurn.reasoningItems}
+          collaborationEvents={collaborationEvents}
+          currentThread={currentThread}
+          navigableThreadIds={navigableThreadIds}
           isRunning={isReasoningRunning}
           lastMessageRef={lastMessageRef}
           isLast={isReasoningLast}
           onOpenLink={onOpenLink}
+          onNavigateThread={onNavigateThread}
         />
       ) : null}
       {assistantAnswer !== null ? (

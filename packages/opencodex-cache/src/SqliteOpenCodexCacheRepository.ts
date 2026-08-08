@@ -5,8 +5,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 import Database, { type Database as BetterSqliteDatabase } from "better-sqlite3";
+import type { OpenCodexCollaborationEvent } from "@open-codex-ui/opencodex-protocol";
 
 import type {
+  CachedCollaborationEvent,
+  CachedCollaborationEventQuery,
   CachedOlderTurnsQuery,
   CachedLogCreateInput,
   CachedLogEntry,
@@ -51,6 +54,10 @@ import type {
   OpenCodexCacheRepository,
   ThreadListCacheQuery
 } from "./types.js";
+import {
+  listCollaborationEvents,
+  upsertCollaborationEvent
+} from "./sqlite/collaborationEventQueries.js";
 import { runMigrations } from "./sqlite/migrations.js";
 import {
   clearLogs,
@@ -303,6 +310,30 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
    */
   async saveModelCatalog(sourceId: string, modelsJson: string): Promise<void> {
     saveModelCatalog(this.database, sourceId, modelsJson);
+  }
+
+  /**
+   * Inserts or enriches one normalized collaboration event.
+   *
+   * @param event Source-aware collaboration event.
+   * @returns Persisted event with observation timestamps.
+   */
+  async upsertCollaborationEvent(
+    event: OpenCodexCollaborationEvent
+  ): Promise<CachedCollaborationEvent> {
+    return upsertCollaborationEvent(this.database, event);
+  }
+
+  /**
+   * Lists collaboration events matching source-aware routing filters.
+   *
+   * @param query Source, routing, and hierarchy filters.
+   * @returns Events ordered by first observation.
+   */
+  async listCollaborationEvents(
+    query: CachedCollaborationEventQuery
+  ): Promise<CachedCollaborationEvent[]> {
+    return listCollaborationEvents(this.database, query);
   }
 
   /**

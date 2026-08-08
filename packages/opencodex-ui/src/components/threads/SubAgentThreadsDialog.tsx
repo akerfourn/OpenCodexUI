@@ -1,7 +1,7 @@
 /**
  * Renders a readonly dialog for sub-agent threads spawned by a parent chat.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Box,
@@ -10,22 +10,35 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  List,
-  ListItemButton,
   Stack,
   Typography
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexThread, OpenCodexTurn } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexCollaborationEvent,
+  OpenCodexThread,
+  OpenCodexTurn
+} from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { ChatTurnStore } from "../../stores/ChatTurnStore";
 import { ChatTurnViewX } from "../messages/ChatTurnView";
+import { CollaborationEventList } from "../messages/CollaborationEventCard";
+import { buildCollaborationTimeline } from "../messages/collaborationTimeline";
+import { SubAgentThreadHeader } from "./SubAgentThreadHeader";
+import { SubAgentThreadTree } from "./SubAgentThreadTree";
+import {
+  buildSubAgentThreadTree,
+  createSourceThreadKey,
+  findFirstSubAgentThreadId,
+  type SubAgentThreadTreeNode
+} from "./subAgentThreadTree";
 
 type SubAgentThreadsDialogProps = {
   open: boolean;
   parentThread: OpenCodexThread;
+  initialSelectedThreadId?: string | null;
   projectStore: ProjectStore;
   onClose(): void;
 };
@@ -45,19 +58,39 @@ type ReadonlyThreadView = {
 export function SubAgentThreadsDialog({
   open,
   parentThread,
+  initialSelectedThreadId = null,
   projectStore,
   onClose
 }: SubAgentThreadsDialogProps) {
   const { t } = useTranslation();
   const threadListStore = projectStore.threadListStore;
-  const [threads, setThreads] = useState<OpenCodexThread[]>([]);
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
+    initialSelectedThreadId
+  );
   const [threadView, setThreadView] = useState<ReadonlyThreadView | null>(null);
-  const [isLoadingList, setIsLoadingList] = useState(false);
+  const [isLoadingList, setIsLoadingList] = useState(open);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const readonlyThreadViewsRef = useRef(new Map<string, ReadonlyThreadView>());
+  const sourceId = parentThread.sourceId;
+  const threads = threadListStore.readSubAgentThreads(parentThread.id, sourceId);
+  const treeNodes = buildSubAgentThreadTree(parentThread, threads, sourceId);
   const turnStores = useMemo(() => (
     threadView?.turns.map((turn) => new ChatTurnStore(turn)) ?? []
   ), [threadView?.turns]);
+  const currentThread = threadView === null
+    ? null
+    : threads.find((thread) => thread.id === threadView.thread.id) ?? threadView.thread;
+  const selectedThreadSourceId = currentThread?.sourceId ?? sourceId;
+  const collaborationEvents = currentThread === null || selectedThreadSourceId === null
+    ? []
+    : threadListStore.readCollaborationEvents(
+      selectedThreadSourceId,
+      currentThread.id
+    );
+  const collaborationTimeline = buildCollaborationTimeline(
+    collaborationEvents,
+    currentThread?.id ?? ""
+  );
 
   useEffect(() => {
     if (!open) {
@@ -67,16 +100,46 @@ export function SubAgentThreadsDialog({
     let isCancelled = false;
     setIsLoadingList(true);
     setThreadView(null);
-    setSelectedThreadId(null);
+    setSelectedThreadId(initialSelectedThreadId);
+    readonlyThreadViewsRef.current.clear();
 
-    void threadListStore.listSubAgentThreads(parentThread.id)
-      .then((subAgentThreads) => {
+    void threadListStore.listSubAgentThreads(parentThread.id, sourceId)
+      .then((loadedThreads) => {
         if (isCancelled) {
           return;
         }
 
-        setThreads(subAgentThreads);
-        setSelectedThreadId(subAgentThreads[0]?.id ?? null);
+        const loadedTreeNodes = buildSubAgentThreadTree(
+          parentThread,
+          loadedThreads,
+          sourceId
+        );
+        const firstLoadedThreadId = findFirstSubAgentThreadId(loadedTreeNodes);
+        setSelectedThreadId(resolveInitialSubAgentThreadId(
+          initialSelectedThreadId,
+          loadedThreads,
+          firstLoadedThreadId
+        ));
+      })
+      .catch(() => {
+        if (isCancelled) {
+          return;
+        }
+
+        const cachedThreads = threadListStore.readSubAgentThreads(
+          parentThread.id,
+          sourceId
+        );
+        const cachedTreeNodes = buildSubAgentThreadTree(
+          parentThread,
+          cachedThreads,
+          sourceId
+        );
+        setSelectedThreadId(resolveInitialSubAgentThreadId(
+          initialSelectedThreadId,
+          cachedThreads,
+          findFirstSubAgentThreadId(cachedTreeNodes)
+        ));
       })
       .finally(() => {
         if (!isCancelled) {
@@ -87,7 +150,7 @@ export function SubAgentThreadsDialog({
     return () => {
       isCancelled = true;
     };
-  }, [open, parentThread.id, threadListStore]);
+  }, [initialSelectedThreadId, open, parentThread.id, sourceId, threadListStore]);
 
   useEffect(() => {
     if (!open || selectedThreadId === null) {
@@ -95,14 +158,34 @@ export function SubAgentThreadsDialog({
     }
 
     let isCancelled = false;
-    setIsLoadingThread(true);
+    const viewKey = createSourceThreadKey(sourceId, selectedThreadId);
+    const cachedView = readonlyThreadViewsRef.current.get(viewKey) ?? null;
 
-    void threadListStore.readThreadReadonly(selectedThreadId)
+    if (cachedView !== null) {
+      setThreadView(cachedView);
+      setIsLoadingThread(false);
+    } else {
+      setIsLoadingThread(true);
+    }
+
+    if (sourceId !== null) {
+      void threadListStore
+        .loadCollaborationEvents(sourceId, selectedThreadId)
+        .catch(() => undefined);
+    }
+
+    if (cachedView !== null) {
+      return;
+    }
+
+    void threadListStore.readThreadReadonly(selectedThreadId, sourceId)
       .then((nextThreadView) => {
         if (!isCancelled) {
+          readonlyThreadViewsRef.current.set(viewKey, nextThreadView);
           setThreadView(nextThreadView);
         }
       })
+      .catch(() => undefined)
       .finally(() => {
         if (!isCancelled) {
           setIsLoadingThread(false);
@@ -112,7 +195,7 @@ export function SubAgentThreadsDialog({
     return () => {
       isCancelled = true;
     };
-  }, [open, selectedThreadId, threadListStore]);
+  }, [open, selectedThreadId, sourceId, threadListStore]);
 
   function handleSelectThread(threadId: string): void {
     setSelectedThreadId(threadId);
@@ -126,15 +209,35 @@ export function SubAgentThreadsDialog({
     // Readonly sub-agent inspection intentionally disables message editing.
   }
 
+  function handleNavigateThread(threadId: string): void {
+    if (threads.some((thread) => thread.id === threadId)) {
+      setSelectedThreadId(threadId);
+    }
+  }
+
+  function handleNavigateRoot(): void {
+    projectStore.navigateToThread(sourceId, parentThread.id);
+    onClose();
+  }
+
   const content = renderDialogContent(
     t,
+    parentThread,
+    sourceId,
     threads,
+    treeNodes,
     selectedThreadId,
+    currentThread,
     turnStores,
+    collaborationTimeline.threadEvents,
+    collaborationTimeline.eventsByTurnId,
+    threads.map((thread) => thread.id),
     isLoadingList,
     isLoadingThread,
     handleSelectThread,
+    handleNavigateRoot,
     handleOpenLink,
+    handleNavigateThread,
     handleIgnoredEdit
   );
 
@@ -148,31 +251,65 @@ export function SubAgentThreadsDialog({
   );
 }
 
+/** Chooses the requested descendant when available, otherwise the first tree entry. */
+export function resolveInitialSubAgentThreadId(
+  requestedThreadId: string | null,
+  threads: readonly OpenCodexThread[],
+  firstThreadId: string | null
+): string | null {
+  if (
+    requestedThreadId !== null
+    && threads.some((thread) => thread.id === requestedThreadId)
+  ) {
+    return requestedThreadId;
+  }
+
+  return firstThreadId;
+}
+
 export const SubAgentThreadsDialogX = observer(SubAgentThreadsDialog);
 
 /**
  * Renders the dialog body for the current sub-agent loading state.
  *
  * @param t Translation function.
+ * @param rootThread Root thread whose hierarchy is displayed.
+ * @param sourceId Source that owns the hierarchy.
  * @param threads Sub-agent thread list.
+ * @param treeNodes Structural descendant roots.
  * @param selectedThreadId Selected sub-agent thread id.
+ * @param currentThread Selected readonly thread metadata.
  * @param turnStores Renderable turn stores.
+ * @param threadCollaborationEvents Events not reliably correlated to a receiver turn.
+ * @param collaborationEventsByTurnId Events correlated to turns observed in this thread.
+ * @param navigableThreadIds Descendants that can be selected without leaving the dialog.
  * @param isLoadingList Whether the sub-agent list is loading.
  * @param isLoadingThread Whether the selected thread is loading.
  * @param onSelectThread Selection callback.
+ * @param onNavigateRoot Root navigation callback.
  * @param onOpenLink Link opening callback.
+ * @param onNavigateThread Related-thread navigation callback.
  * @param onIgnoredEdit Readonly edit placeholder.
  * @returns Dialog body.
  */
 function renderDialogContent(
   t: (key: string) => string,
+  rootThread: OpenCodexThread,
+  sourceId: string | null,
   threads: OpenCodexThread[],
+  treeNodes: readonly SubAgentThreadTreeNode[],
   selectedThreadId: string | null,
+  currentThread: OpenCodexThread | null,
   turnStores: ChatTurnStore[],
+  threadCollaborationEvents: readonly OpenCodexCollaborationEvent[],
+  collaborationEventsByTurnId: ReadonlyMap<string, OpenCodexCollaborationEvent[]>,
+  navigableThreadIds: readonly string[],
   isLoadingList: boolean,
   isLoadingThread: boolean,
   onSelectThread: (threadId: string) => void,
+  onNavigateRoot: () => void,
   onOpenLink: (href: string) => void,
+  onNavigateThread: (threadId: string) => void,
   onIgnoredEdit: () => void
 ) {
   if (isLoadingList) {
@@ -183,7 +320,7 @@ function renderDialogContent(
     );
   }
 
-  if (threads.length === 0) {
+  if (treeNodes.length === 0) {
     return (
       <Box sx={{ p: 4 }}>
         <Typography color="text.secondary">
@@ -197,14 +334,13 @@ function renderDialogContent(
     <Box
       sx={{
         display: "grid",
-        gridTemplateColumns: "280px minmax(0, 1fr)",
+        gridTemplateColumns: "340px minmax(0, 1fr)",
         height: "100%",
         minHeight: 0,
         overflow: "hidden"
       }}
     >
-      <List
-        dense
+      <Box
         sx={{
           borderRight: 1,
           borderColor: "divider",
@@ -212,23 +348,14 @@ function renderDialogContent(
           overflowY: "auto"
         }}
       >
-        {threads.map((thread) => (
-          <ListItemButton
-            key={thread.id}
-            selected={thread.id === selectedThreadId}
-            onClick={() => onSelectThread(thread.id)}
-          >
-            <Stack sx={{ minWidth: 0 }}>
-              <Typography variant="body2" noWrap>
-                {thread.agentNickname ?? thread.title}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" noWrap>
-                {thread.agentRole ?? thread.preview}
-              </Typography>
-            </Stack>
-          </ListItemButton>
-        ))}
-      </List>
+        <SubAgentThreadTree
+          rootThread={rootThread}
+          nodes={treeNodes}
+          selectedThreadId={selectedThreadId}
+          onNavigateRoot={onNavigateRoot}
+          onSelectThread={onSelectThread}
+        />
+      </Box>
       <Box sx={{ minWidth: 0, minHeight: 0, overflowY: "auto", p: 2 }}>
         {isLoadingThread ? (
           <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
@@ -236,7 +363,26 @@ function renderDialogContent(
           </Box>
         ) : (
           <Stack spacing={1.25}>
-            {turnStores.map((turnStore, index) => (
+            {currentThread !== null ? (
+              <>
+                <SubAgentThreadHeader
+                  rootThread={rootThread}
+                  descendants={threads}
+                  currentThread={currentThread}
+                  sourceId={sourceId}
+                  onNavigateRoot={onNavigateRoot}
+                  onSelectThread={onSelectThread}
+                />
+                <CollaborationEventList
+                  events={threadCollaborationEvents}
+                  currentThread={currentThread}
+                  isThreadContext
+                  navigableThreadIds={navigableThreadIds}
+                  onNavigateThread={onNavigateThread}
+                />
+              </>
+            ) : null}
+            {currentThread !== null ? turnStores.map((turnStore, index) => (
               <ChatTurnViewX
                 key={turnStore.id}
                 turnStore={turnStore}
@@ -244,11 +390,15 @@ function renderDialogContent(
                 isWorking={false}
                 isLastTurn={index === turnStores.length - 1}
                 editableItem={null}
+                collaborationEvents={collaborationEventsByTurnId.get(turnStore.id) ?? []}
+                navigableThreadIds={navigableThreadIds}
+                currentThread={currentThread}
                 lastMessageRef={{ current: null }}
                 onOpenLink={onOpenLink}
+                onNavigateThread={onNavigateThread}
                 onStartEdit={onIgnoredEdit}
               />
-            ))}
+            )) : null}
             {turnStores.length === 0 ? (
               <>
                 <Divider />

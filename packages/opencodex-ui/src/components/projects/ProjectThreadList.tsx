@@ -37,12 +37,14 @@ import { useTranslation } from "react-i18next";
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import { ThreadButtonX } from "../threads/ThreadButton";
+import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 import { UsageLimitsWidgetX } from "../usage/UsageLimitsWidget";
 import { ProjectStatisticsDialogX } from "./ProjectStatisticsDialog";
 
 type ProjectThreadListProps = {
   store: RootStore;
   projectStore: ProjectStore;
+  onOpenSubAgentDialog: OpenSubAgentDialog;
 };
 
 /**
@@ -52,7 +54,11 @@ type ProjectThreadListProps = {
  *
  * @returns Rendered thread list.
  */
-export function ProjectThreadList({ store, projectStore }: ProjectThreadListProps) {
+export function ProjectThreadList({
+  store,
+  projectStore,
+  onOpenSubAgentDialog
+}: ProjectThreadListProps) {
   const { t } = useTranslation();
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [displayNameDraft, setDisplayNameDraft] = useState(projectStore.displayName);
@@ -376,7 +382,13 @@ export function ProjectThreadList({ store, projectStore }: ProjectThreadListProp
 
       <div className="thread-groups">
         {threadListStore.filteredThreads.map((thread) => (
-          <ThreadButtonX key={thread.id} projectStore={projectStore} root={store} thread={thread} />
+          <ThreadButtonX
+            key={thread.id}
+            projectStore={projectStore}
+            root={store}
+            thread={thread}
+            onOpenSubAgentDialog={onOpenSubAgentDialog}
+          />
         ))}
       </div>
       {projectStore.hasSyncingChat ? (

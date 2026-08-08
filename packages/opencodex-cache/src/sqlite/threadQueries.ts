@@ -729,6 +729,7 @@ function writeThreadIndex(
       thread_source,
       agent_nickname,
       agent_role,
+      sub_agent_source_json,
       updated_at
     )
     VALUES (
@@ -750,11 +751,12 @@ function writeThreadIndex(
       @threadSource,
       @agentNickname,
       @agentRole,
+      @subAgentSourceJson,
       @updatedAt
     )
     ON CONFLICT(id) DO UPDATE SET
       session_id = COALESCE(excluded.session_id, threads.session_id),
-      parent_thread_id = excluded.parent_thread_id,
+      parent_thread_id = COALESCE(excluded.parent_thread_id, threads.parent_thread_id),
       source_id = COALESCE(excluded.source_id, threads.source_id),
       project_id = excluded.project_id,
       cwd = excluded.cwd,
@@ -775,6 +777,10 @@ function writeThreadIndex(
       thread_source = excluded.thread_source,
       agent_nickname = excluded.agent_nickname,
       agent_role = excluded.agent_role,
+      sub_agent_source_json = COALESCE(
+        excluded.sub_agent_source_json,
+        threads.sub_agent_source_json
+      ),
       updated_at = CASE
         WHEN excluded.updated_at IS NULL THEN threads.updated_at
         WHEN threads.updated_at IS NULL OR excluded.updated_at > threads.updated_at
@@ -818,6 +824,9 @@ function writeThreadIndex(
         threadSource: thread.threadSource,
         agentNickname: thread.agentNickname,
         agentRole: thread.agentRole,
+        subAgentSourceJson: thread.subAgentSource === null
+          ? null
+          : JSON.stringify(thread.subAgentSource),
         updatedAt: thread.updatedAt ?? null
       });
     }

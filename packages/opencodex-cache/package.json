@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@open-codex-ui/opencodex-protocol": "file:../opencodex-protocol",
     "better-sqlite3": "^12.9.0"
   },
   "devDependencies": {

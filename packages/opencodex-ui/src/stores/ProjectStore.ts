@@ -102,6 +102,16 @@ export class ProjectStore {
   }
 
   /**
+   * Opens a related collaboration thread without losing its source route.
+   *
+   * @param sourceId Source that owns the related thread.
+   * @param threadId Related thread identifier.
+   */
+  navigateToThread(sourceId: string | null, threadId: string): void {
+    this.root.projectsStore.navigateToThread(sourceId, threadId);
+  }
+
+  /**
    * Resolves the Codex source that owns one thread.
    *
    * @param thread Thread metadata.

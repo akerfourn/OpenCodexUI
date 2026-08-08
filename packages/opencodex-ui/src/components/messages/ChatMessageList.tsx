@@ -41,16 +41,20 @@ import type {
 import type { RootStore } from "../../stores/RootStore";
 import { ModelSettingsFields } from "../chat/ModelSettingsFields";
 import { ChatTurnViewX } from "./ChatTurnView";
+import { CollaborationEventList } from "./CollaborationEventCard";
 import {
   getVisibleTurns,
   INITIAL_VISIBLE_TURN_COUNT,
   resolveRestoredVisibleTurnCount,
   TURN_WINDOW_INCREMENT
 } from "./chatTimelineWindow";
+import { buildCollaborationTimeline } from "./collaborationTimeline";
+import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 
 type ChatMessageListProps = {
   store: RootStore;
   chatStore: ChatStore;
+  onOpenSubAgentDialog: OpenSubAgentDialog;
 };
 
 /**
@@ -60,7 +64,11 @@ type ChatMessageListProps = {
  *
  * @returns Nothing.
  */
-export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
+export function ChatMessageList({
+  store,
+  chatStore,
+  onOpenSubAgentDialog
+}: ChatMessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -82,9 +90,30 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
   const visibleTurnStores = getVisibleTurns(chatStore.turnStores, visibleTurnCount);
   const hiddenOlderTurnCount = Math.max(chatStore.turnStores.length - visibleTurnCount, 0);
   const isWorking = chatStore.isWorking || chatStore.isStartingTurn;
+  const sourceId = chatStore.sourceId;
+  const collaborationEvents = sourceId === null
+    ? []
+    : store.collaborationStore.readThreadEvents(sourceId, currentThread.id);
+  const collaborationTimeline = buildCollaborationTimeline(
+    collaborationEvents,
+    currentThread.id
+  );
   const handleOpenLink = useCallback((href: string) => {
     store.openExternalLink(href);
   }, [store]);
+  const handleNavigateThread = useCallback((threadId: string) => {
+    onOpenSubAgentDialog(currentThread, threadId);
+  }, [currentThread, onOpenSubAgentDialog]);
+
+  useEffect(() => {
+    if (sourceId === null) {
+      return;
+    }
+
+    void store.collaborationStore
+      .loadThreadEvents(sourceId, currentThread.id)
+      .catch(() => undefined);
+  }, [currentThread.id, sourceId, store]);
 
   useEffect(() => {
     setEditedMessage(null);
@@ -436,6 +465,12 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
               <CircularProgress size={18} thickness={5} />
             </Box>
           ) : null}
+          <CollaborationEventList
+            events={collaborationTimeline.threadEvents}
+            currentThread={currentThread}
+            isThreadContext
+            onNavigateThread={handleNavigateThread}
+          />
           {visibleTurnStores.map((turnStore, index) => (
             <ChatTurnViewX
               key={turnStore.id}
@@ -444,8 +479,11 @@ export function ChatMessageList({ store, chatStore }: ChatMessageListProps) {
               isWorking={isWorking}
               isLastTurn={index === visibleTurnStores.length - 1}
               editableItem={editableItem}
+              collaborationEvents={collaborationTimeline.eventsByTurnId.get(turnStore.id) ?? []}
+              currentThread={currentThread}
               lastMessageRef={lastMessageRef}
               onOpenLink={handleOpenLink}
+              onNavigateThread={handleNavigateThread}
               onStartEdit={handleStartEdit}
             />
           ))}

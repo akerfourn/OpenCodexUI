@@ -266,7 +266,45 @@ describe("OpenCodex mapping", () => {
       threadSource: null,
       agentNickname: null,
       agentRole: null,
+      subAgentSource: null,
+      canAcceptDirectInput: null,
       status: "idle"
+    });
+  });
+
+  it("should map structured sub-agent source metadata from Codex 0.147", () => {
+    expect(mapThread({
+      id: "child-1",
+      parentThreadId: null,
+      source: {
+        subagent: {
+          thread_spawn: {
+            parent_thread_id: "parent-1",
+            depth: 2,
+            agent_path: "/root/reviewer",
+            agent_nickname: "Luna",
+            agent_role: "reviewer"
+          }
+        }
+      },
+      canAcceptDirectInput: true,
+      status: { type: "active", activeFlags: [] }
+    })).toMatchObject({
+      id: "child-1",
+      parentThreadId: "parent-1",
+      agentNickname: "Luna",
+      agentRole: "reviewer",
+      canAcceptDirectInput: true,
+      status: "active",
+      subAgentSource: {
+        kind: "threadSpawn",
+        parentThreadId: "parent-1",
+        depth: 2,
+        agentPath: "/root/reviewer",
+        agentNickname: "Luna",
+        agentRole: "reviewer",
+        label: null
+      }
     });
   });
 
@@ -560,6 +598,58 @@ describe("OpenCodex mapping", () => {
       content: "npm run typecheck",
       status: "completed"
     });
+  });
+
+  it.each([
+    ["spawn_agent", ""],
+    ["future_agent_action", "collaboration"]
+  ])("should identify raw collaboration function %s as sub-agent activity", (
+    functionName,
+    namespace
+  ) => {
+    const activity = createActivityFromNotification({
+      method: "rawResponseItem/completed",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        item: {
+          type: "function_call",
+          namespace,
+          name: functionName,
+          call_id: `call-${functionName}`,
+          arguments: "{}"
+        }
+      }
+    });
+
+    expect(activity).toMatchObject({
+      id: `call-${functionName}`,
+      kind: "subAgentActivity"
+    });
+  });
+
+  it("should label canonical V2 activity as sub-agent work when semantic data is missing", () => {
+    const activity = createActivityFromNotification({
+      method: "item/completed",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        item: {
+          type: "subAgentActivity",
+          id: "call-1",
+          kind: "interacted",
+          agentThreadId: "child-1",
+          agentPath: "/root/child"
+        }
+      }
+    });
+
+    expect(activity).toMatchObject({
+      id: "call-1",
+      kind: "subAgentActivity",
+      status: "completed"
+    });
+    expect(activity?.content).toContain("interacted");
   });
 
   it("should map approval server requests", () => {

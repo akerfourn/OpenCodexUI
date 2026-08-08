@@ -506,7 +506,11 @@ function mergeThreadMetadata(
     customTitle,
     title: resolveThreadTitle(nextThread.codexTitle, customTitle?.trim() ?? "", nextThread.preview),
     model: nextThread.model ?? currentThread.model,
-    reasoningEffort: nextThread.reasoningEffort ?? currentThread.reasoningEffort
+    reasoningEffort: nextThread.reasoningEffort ?? currentThread.reasoningEffort,
+    parentThreadId: nextThread.parentThreadId ?? currentThread.parentThreadId,
+    agentNickname: nextThread.agentNickname ?? currentThread.agentNickname,
+    agentRole: nextThread.agentRole ?? currentThread.agentRole,
+    subAgentSource: nextThread.subAgentSource ?? currentThread.subAgentSource
   };
 }
 

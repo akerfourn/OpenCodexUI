@@ -1,6 +1,11 @@
 /**
  * Declares the cache repository contracts and persisted thread/project shapes.
  */
+import type {
+  OpenCodexCollaborationEvent,
+  OpenCodexSubAgentSource
+} from "@open-codex-ui/opencodex-protocol";
+
 export type CachedThreadScope = "currentProject" | "all";
 export type CachedSourceColor = "blue" | "indigo" | "purple" | "pink" | "red" | "orange" | "amber" | "teal";
 export type CachedLogType = "error" | "warning" | "info";
@@ -12,6 +17,26 @@ export type CachedModelCatalog = {
   sourceId: string;
   modelsJson: string;
   updatedAt: string;
+};
+
+/**
+ * Collaboration event persisted after semantic App Server normalization.
+ */
+export type CachedCollaborationEvent = OpenCodexCollaborationEvent & {
+  firstObservedAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Source-aware filters used to read persisted collaboration events.
+ */
+export type CachedCollaborationEventQuery = {
+  sourceId: string;
+  threadId?: string;
+  senderThreadId?: string;
+  receiverThreadId?: string;
+  rootThreadId?: string;
+  limit?: number;
 };
 
 /**
@@ -37,6 +62,8 @@ export type CachedThreadSummary = {
   threadSource: string | null;
   agentNickname: string | null;
   agentRole: string | null;
+  subAgentSource: OpenCodexSubAgentSource | null;
+  canAcceptDirectInput: boolean | null;
   status?: string;
 };
 
@@ -736,6 +763,26 @@ export interface OpenCodexCacheRepository {
    * @returns Promise resolved when the catalog is stored.
    */
   saveModelCatalog(sourceId: string, modelsJson: string): Promise<void>;
+
+  /**
+   * Inserts or enriches one normalized collaboration event.
+   *
+   * @param event Source-aware collaboration event.
+   * @returns Persisted event with observation timestamps.
+   */
+  upsertCollaborationEvent(
+    event: OpenCodexCollaborationEvent
+  ): Promise<CachedCollaborationEvent>;
+
+  /**
+   * Lists normalized collaboration events matching source-aware filters.
+   *
+   * @param query Source, routing, and optional hierarchy filters.
+   * @returns Events ordered by first observation.
+   */
+  listCollaborationEvents(
+    query: CachedCollaborationEventQuery
+  ): Promise<CachedCollaborationEvent[]>;
 
   /**
    * Inserts or refreshes a cached project.

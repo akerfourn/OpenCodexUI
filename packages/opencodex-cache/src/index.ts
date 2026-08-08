@@ -2,6 +2,8 @@
  * Re-exports the cache repository contracts and SQLite implementation.
  */
 export type {
+  CachedCollaborationEvent,
+  CachedCollaborationEventQuery,
   CachedProject,
   CachedProjectPreferences,
   CachedProjectGroup,

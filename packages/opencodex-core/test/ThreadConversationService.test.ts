@@ -53,6 +53,8 @@ describe("ThreadConversationService", () => {
       }) as never,
       cacheProject: async () => null,
       readCachedProjects: async () => [],
+      reconcileCollaborationTurns: async () => undefined,
+      reconcileDescendantThreads: async () => undefined,
       handleClientError: () => {}
     });
 
@@ -93,6 +95,7 @@ describe("ThreadConversationService", () => {
       emit: () => {}
     });
     const client = new PaginatedItemsCodexClient();
+    const reconciledTurns: unknown[] = [];
     const service = new ThreadConversationService({
       backendOptions: { projectPath: "/workspace/project" },
       threadTurnCache,
@@ -105,6 +108,10 @@ describe("ThreadConversationService", () => {
       }) as never,
       cacheProject: async () => null,
       readCachedProjects: async () => [],
+      reconcileCollaborationTurns: async (_sourceId, _threadId, turns) => {
+        reconciledTurns.push(...turns);
+      },
+      reconcileDescendantThreads: async () => undefined,
       handleClientError: () => {}
     });
 
@@ -119,6 +126,115 @@ describe("ThreadConversationService", () => {
         content: "Completed by the sub-agent."
       }]
     }]);
+    expect(reconciledTurns).toMatchObject([{
+      id: "turn-1",
+      items: [{ id: "message-1", type: "agentMessage" }]
+    }]);
+  });
+
+  it("should publish a started sub-agent without selecting it as a created chat", async () => {
+    const threadTurnCache = new ThreadTurnCache();
+    const events: OpenCodexEvent[] = [];
+    const writtenThreads: OpenCodexThread[] = [];
+    const service = new ThreadConversationService({
+      backendOptions: { projectPath: "/workspace/project" },
+      threadTurnCache,
+      threadCacheService: {
+        writeIndex: async (threads: OpenCodexThread[]) => {
+          writtenThreads.push(...threads);
+        }
+      } as unknown as ThreadCacheService,
+      getSettings: () => createSettings(),
+      emit: (event) => events.push(event),
+      ensureClient: async () => new FakeCodexClient().asCodexClient(),
+      resolveSource: async () => ({ id: "source-1" }) as never,
+      cacheProject: async () => null,
+      readCachedProjects: async () => [],
+      reconcileCollaborationTurns: async () => undefined,
+      reconcileDescendantThreads: async () => undefined,
+      handleClientError: () => undefined
+    });
+
+    await service.recordStartedThread({
+      id: "child-1",
+      cwd: "/workspace/project",
+      source: {
+        subagent: {
+          thread_spawn: {
+            parent_thread_id: "parent-1",
+            depth: 1,
+            agent_path: "/root/reviewer",
+            agent_nickname: "Luna",
+            agent_role: "reviewer"
+          }
+        }
+      },
+      canAcceptDirectInput: false,
+      status: { type: "active" }
+    }, "source-1");
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "thread.discovered",
+        thread: expect.objectContaining({
+          id: "child-1",
+          parentThreadId: "parent-1",
+          sourceId: "source-1",
+          canAcceptDirectInput: false
+        })
+      })
+    ]);
+    expect(events.some((event) => event.type === "thread.created")).toBe(false);
+    expect(writtenThreads).toMatchObject([{ id: "child-1", sourceId: "source-1" }]);
+    expect(threadTurnCache.get("child-1")?.thread.parentThreadId).toBe("parent-1");
+  });
+
+  it("should restore active and archived sub-agent descendants for an orphan source", async () => {
+    const threadTurnCache = new ThreadTurnCache();
+    const activeChild = createThread({
+      id: "child-1",
+      sourceId: null,
+      parentThreadId: "parent-1"
+    });
+    const archivedGrandchild = createThread({
+      id: "grandchild-1",
+      sourceId: null,
+      parentThreadId: "child-1",
+      isArchived: true
+    });
+    const unrelatedThread = createThread({
+      id: "unrelated",
+      sourceId: null,
+      parentThreadId: "other-root"
+    });
+    const service = new ThreadConversationService({
+      backendOptions: { projectPath: "/workspace/project" },
+      threadTurnCache,
+      threadCacheService: {
+        readThreads: async (
+          _scope: string,
+          _projectPath: string | null,
+          _sourceId: string | null,
+          _searchTerm: string | undefined,
+          isArchived: boolean
+        ) => isArchived ? [archivedGrandchild] : [activeChild, unrelatedThread]
+      } as unknown as ThreadCacheService,
+      getSettings: () => createSettings(),
+      emit: () => undefined,
+      ensureClient: async () => {
+        throw new Error("An orphan hierarchy must not start Codex.");
+      },
+      resolveSource: async () => ({ id: "source-1" }) as never,
+      cacheProject: async () => null,
+      readCachedProjects: async () => [],
+      reconcileCollaborationTurns: async () => undefined,
+      reconcileDescendantThreads: async () => undefined,
+      handleClientError: () => undefined
+    });
+
+    const descendants = await service.listSubAgentThreads("parent-1", null);
+
+    expect(descendants.map((thread) => thread.id)).toEqual(["child-1", "grandchild-1"]);
   });
 });
 
@@ -199,6 +315,14 @@ function createThread(patch: Partial<OpenCodexThread> = {}): OpenCodexThread {
     sourceId: "source-1",
     branchName: null,
     updatedAt: null,
+    sessionId: null,
+    parentThreadId: null,
+    isArchived: false,
+    threadSource: null,
+    agentNickname: null,
+    agentRole: null,
+    subAgentSource: null,
+    canAcceptDirectInput: null,
     ...patch
   };
 }

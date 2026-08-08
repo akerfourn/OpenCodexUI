@@ -8,6 +8,7 @@ import type {
   OpenCodexLanguage,
   OpenCodexMessage,
   OpenCodexReasoningEffort,
+  OpenCodexSubAgentSource,
   OpenCodexThread,
   OpenCodexTurn,
   OpenCodexTurnItem
@@ -30,6 +31,13 @@ import {
 
 export { buildApprovalResponse, createApprovalRequest } from "./mapping/approvals.js";
 export { createActivityFromNotification } from "./mapping/activity.js";
+export {
+  correlateCollaborationEvents,
+  normalizeCollaborationResponseItem,
+  normalizeCollaborationThreadItem,
+  type CollaborationItemLifecycle,
+  type CollaborationNormalizationContext
+} from "./mapping/collaboration.js";
 export {
   readMessagePhase,
   readNullableNumber,
@@ -56,11 +64,15 @@ export function mapThread(
   const codexTitle = readString(thread.name);
   const preview = readString(thread.preview);
   const title = resolveDisplayTitle(codexTitle, null, preview);
+  const subAgentSource = readSubAgentSource(thread.source);
+  const parentThreadId = readNullableString(thread.parentThreadId)
+    ?? subAgentSource?.parentThreadId
+    ?? null;
 
   return {
     id: readString(thread.id),
     sessionId: readNullableString(thread.sessionId),
-    parentThreadId: readNullableString(thread.parentThreadId),
+    parentThreadId,
     codexTitle,
     customTitle: null,
     title,
@@ -74,10 +86,104 @@ export function mapThread(
     updatedAt: readTimestamp(thread.updatedAt),
     isArchived: false,
     threadSource: readNullableString(thread.threadSource),
-    agentNickname: readNullableString(thread.agentNickname),
-    agentRole: readNullableString(thread.agentRole),
-    status: readNullableString(thread.status) ?? undefined
+    agentNickname: readNullableString(thread.agentNickname) ?? subAgentSource?.agentNickname ?? null,
+    agentRole: readNullableString(thread.agentRole) ?? subAgentSource?.agentRole ?? null,
+    subAgentSource,
+    canAcceptDirectInput: readNullableBoolean(thread.canAcceptDirectInput),
+    status: readThreadStatus(thread.status) ?? undefined
   };
+}
+
+/**
+ * Maps the structured Codex session source for a sub-agent thread.
+ *
+ * @param value Raw `SessionSource` value.
+ * @returns Structured sub-agent source, or `null` for a main thread.
+ */
+function readSubAgentSource(value: unknown): OpenCodexSubAgentSource | null {
+  const source = readObject(value);
+  const subAgent = source.subagent ?? source.subAgent;
+
+  if (subAgent === undefined) {
+    return null;
+  }
+
+  if (subAgent === "review" || subAgent === "compact" || subAgent === "memory_consolidation") {
+    return {
+      kind: subAgent === "memory_consolidation" ? "memoryConsolidation" : subAgent,
+      parentThreadId: null,
+      depth: null,
+      agentPath: null,
+      agentNickname: null,
+      agentRole: null,
+      label: null
+    };
+  }
+
+  const subAgentObject = readObject(subAgent);
+  const threadSpawn = readObject(subAgentObject.thread_spawn ?? subAgentObject.threadSpawn);
+
+  if (Object.keys(threadSpawn).length > 0) {
+    return {
+      kind: "threadSpawn",
+      parentThreadId: readNullableString(threadSpawn.parent_thread_id ?? threadSpawn.parentThreadId),
+      depth: readNonNegativeInteger(threadSpawn.depth),
+      agentPath: readNullableString(threadSpawn.agent_path ?? threadSpawn.agentPath),
+      agentNickname: readNullableString(
+        threadSpawn.agent_nickname ?? threadSpawn.agentNickname
+      ),
+      agentRole: readNullableString(threadSpawn.agent_role ?? threadSpawn.agentRole),
+      label: null
+    };
+  }
+
+  const otherLabel = readNullableString(subAgentObject.other);
+
+  if (otherLabel !== null) {
+    return {
+      kind: "other",
+      parentThreadId: null,
+      depth: null,
+      agentPath: null,
+      agentNickname: null,
+      agentRole: null,
+      label: otherLabel
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Reads a nullable boolean without coercing numbers or strings.
+ *
+ * @param value Raw value.
+ * @returns Boolean value, or `null`.
+ */
+function readNullableBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+/**
+ * Reads a non-negative integer used for an agent-tree depth.
+ *
+ * @param value Raw value.
+ * @returns Normalized depth, or `null`.
+ */
+function readNonNegativeInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : null;
+}
+
+/**
+ * Reads the string or structured thread status used across App Server versions.
+ *
+ * @param value Raw status value.
+ * @returns Status identifier, or `null`.
+ */
+function readThreadStatus(value: unknown): string | null {
+  return readNullableString(value) ?? readNullableString(readObject(value).type);
 }
 
 /**

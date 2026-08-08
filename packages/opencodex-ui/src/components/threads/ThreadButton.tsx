@@ -34,12 +34,13 @@ import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ChatEventLogDialogX } from "../dialogs/ChatEventLogDialog";
-import { SubAgentThreadsDialogX } from "./SubAgentThreadsDialog";
+import type { OpenSubAgentDialog } from "./subAgentDialog";
 
 type ThreadButtonProps = {
   projectStore: ProjectStore;
   root: RootStore;
   thread: OpenCodexThread;
+  onOpenSubAgentDialog: OpenSubAgentDialog;
 };
 
 /**
@@ -49,11 +50,15 @@ type ThreadButtonProps = {
  *
  * @returns Nothing.
  */
-export function ThreadButton({ projectStore, root, thread }: ThreadButtonProps) {
+export function ThreadButton({
+  projectStore,
+  root,
+  thread,
+  onOpenSubAgentDialog
+}: ThreadButtonProps) {
   const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isSubAgentDialogOpen, setIsSubAgentDialogOpen] = useState(false);
   const [isEventLogDialogOpen, setIsEventLogDialogOpen] = useState(false);
   const threadListStore = projectStore.threadListStore;
   const isMenuOpen = menuAnchor !== null;
@@ -93,7 +98,7 @@ export function ThreadButton({ projectStore, root, thread }: ThreadButtonProps) 
 
   function handleOpenSubAgentDialog(): void {
     handleCloseMenu();
-    setIsSubAgentDialogOpen(true);
+    onOpenSubAgentDialog(thread);
   }
 
   function handleOpenEventLogDialog(): void {
@@ -103,10 +108,6 @@ export function ThreadButton({ projectStore, root, thread }: ThreadButtonProps) 
 
   function handleCloseEventLogDialog(): void {
     setIsEventLogDialogOpen(false);
-  }
-
-  function handleCloseSubAgentDialog(): void {
-    setIsSubAgentDialogOpen(false);
   }
 
   function handleCloseDeleteDialog(): void {
@@ -226,12 +227,6 @@ export function ThreadButton({ projectStore, root, thread }: ThreadButtonProps) 
           </Button>
         </DialogActions>
       </Dialog>
-      <SubAgentThreadsDialogX
-        open={isSubAgentDialogOpen}
-        parentThread={thread}
-        projectStore={projectStore}
-        onClose={handleCloseSubAgentDialog}
-      />
       <ChatEventLogDialogX
         open={isEventLogDialogOpen}
         sourceId={projectStore.resolveThreadSourceId(thread)}

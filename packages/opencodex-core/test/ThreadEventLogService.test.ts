@@ -66,6 +66,32 @@ describe("ThreadEventLogService", () => {
     ]);
   });
 
+  it("should trace future collaboration calls without retaining their arguments", () => {
+    const service = createService();
+    const mutation = service.recordNotification(createNotification(
+      "rawResponseItem/completed",
+      {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        item: {
+          type: "function_call",
+          namespace: "collaboration",
+          name: "future_agent_action",
+          call_id: "call-1",
+          arguments: JSON.stringify({ prompt: "private delegation content" })
+        }
+      }
+    ), "source-1");
+
+    expect(mutation?.entry.details).toMatchObject({
+      itemType: "function_call",
+      functionNamespace: "collaboration",
+      functionName: "future_agent_action",
+      hasArguments: true
+    });
+    expect(JSON.stringify(mutation)).not.toContain("private delegation content");
+  });
+
   it("should mark the trace as truncated after evicting old entries", () => {
     const service = createService(2);
 

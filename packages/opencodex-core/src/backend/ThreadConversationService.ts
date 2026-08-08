@@ -57,6 +57,16 @@ export type ThreadConversationServiceOptions = {
   resolveSource(sourceId: string | null): Promise<CachedSource>;
   cacheProject(projectPath: string | null, sourceId: string | null): Promise<OpenCodexProject | null>;
   readCachedProjects(): Promise<OpenCodexProject[]>;
+  reconcileCollaborationTurns(
+    sourceId: string,
+    threadId: string,
+    turns: readonly unknown[]
+  ): Promise<void>;
+  reconcileDescendantThreads(
+    sourceId: string,
+    rootThreadId: string,
+    threads: readonly OpenCodexThread[]
+  ): Promise<void>;
   handleClientError(error: Error): void;
 };
 
@@ -261,6 +271,8 @@ export class ThreadConversationService {
     if (effectiveSnapshot !== null && effectiveSnapshot.turns.length > 0) {
       const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(effectiveSnapshot);
 
+      await this.reconcileCachedCollaboration(cacheEntry.thread, effectiveSnapshot.turns);
+
       if (shouldPersistSourceAssociation(cachedSnapshot, effectiveSnapshot)) {
         await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
       }
@@ -312,7 +324,7 @@ export class ThreadConversationService {
       return { thread: cacheEntry.thread, turns };
     }
 
-    const sourceId = effectiveSnapshot?.thread.sourceId ?? null;
+    const sourceId = effectiveSnapshot?.thread.sourceId ?? sourceIdOverride;
     const client = await this.options.ensureClient(sourceId);
     this.logThreadTiming("sqlite load finished", {
       threadId,
@@ -424,6 +436,7 @@ export class ThreadConversationService {
     const olderTurns = await this.resolveFullTurnItems(client, threadId, rawTurns);
 
     this.options.threadTurnCache.mergeOlderTurns(cacheEntry, olderTurns, olderCursor);
+    await this.reconcileCachedCollaboration(cacheEntry.thread, olderTurns);
     await this.options.threadCacheService.writeDelta(
       cacheEntry,
       this.readMergedTurns(cacheEntry, olderTurns)
@@ -528,44 +541,111 @@ export class ThreadConversationService {
    * Lists sub-agent threads spawned from a parent thread.
    *
    * @param parentThreadId Parent thread identifier.
+   * @param sourceId Source that owns the parent thread.
    *
    * @returns Sub-agent thread metadata.
    */
-  async listSubAgentThreads(parentThreadId: string): Promise<OpenCodexThread[]> {
-    const sourceId = await this.resolveThreadSourceId(parentThreadId);
+  async listSubAgentThreads(
+    parentThreadId: string,
+    sourceId: string | null
+  ): Promise<OpenCodexThread[]> {
+    const cachedThreads = await this.readCachedSubAgentThreads(parentThreadId, sourceId);
 
     if (sourceId === null) {
-      return [];
+      return cachedThreads;
     }
 
-    const client = await this.options.ensureClient(sourceId);
-    const threads = (await readThreadPages(client, {
-      limit: THREAD_LIST_PAGE_SIZE,
-      sortKey: "updated_at",
-      sortDirection: "desc",
-      sourceKinds: THREAD_SUB_AGENT_SOURCE_KINDS,
-      ancestorThreadId: parentThreadId
-    })).map((thread) => ({
-      ...thread,
-      sourceId
-    }));
+    try {
+      const client = await this.options.ensureClient(sourceId);
+      const threads = (await readThreadPages(client, {
+        limit: THREAD_LIST_PAGE_SIZE,
+        sortKey: "updated_at",
+        sortDirection: "desc",
+        sourceKinds: THREAD_SUB_AGENT_SOURCE_KINDS,
+        ancestorThreadId: parentThreadId
+      })).map((thread) => ({
+        ...thread,
+        sourceId
+      }));
 
-    await this.options.threadCacheService.writeIndex(threads);
-    return threads;
+      await this.options.threadCacheService.writeIndex(threads);
+      await this.options.reconcileDescendantThreads(sourceId, parentThreadId, threads);
+      return threads;
+    } catch (error) {
+      if (cachedThreads.length > 0) {
+        return cachedThreads;
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Reads active and archived cached descendants for online fallback and orphan projects.
+   *
+   * @param parentThreadId Root thread identifier.
+   * @param sourceId Source identifier, or `null` for orphaned cache data.
+   * @returns Structurally reachable cached descendants.
+   */
+  private async readCachedSubAgentThreads(
+    parentThreadId: string,
+    sourceId: string | null
+  ): Promise<OpenCodexThread[]> {
+    const [activeThreads, archivedThreads] = await Promise.all([
+      this.options.threadCacheService.readThreads("all", null, sourceId, undefined, false),
+      this.options.threadCacheService.readThreads("all", null, sourceId, undefined, true)
+    ]);
+    const uniqueThreads = new Map<string, OpenCodexThread>();
+
+    for (const thread of [...activeThreads, ...archivedThreads]) {
+      uniqueThreads.set(thread.id, thread);
+    }
+
+    return filterDescendantThreads(parentThreadId, Array.from(uniqueThreads.values()));
+  }
+
+  /**
+   * Records a sub-agent thread announced by `thread/started` without selecting it.
+   *
+   * @param value Raw thread payload from the notification.
+   * @param sourceId Source that owns the App Server connection.
+   */
+  async recordStartedThread(value: unknown, sourceId: string): Promise<void> {
+    const thread = withSourceId(mapThread(value), sourceId);
+
+    if (thread.id.length === 0 || thread.parentThreadId === null) {
+      return;
+    }
+
+    this.options.threadTurnCache.getOrCreate(thread);
+    this.options.emit({ type: "thread.discovered", thread });
+    await this.options.threadCacheService.writeIndex([thread]);
   }
 
   /**
    * Reads a thread for secondary readonly display without emitting UI selection events.
    *
    * @param threadId Thread identifier.
+   * @param sourceIdOverride Source selected by the UI hierarchy.
    *
    * @returns Thread and loaded turns.
    */
-  async readThreadReadonly(threadId: string): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
+  async readThreadReadonly(
+    threadId: string,
+    sourceIdOverride: string | null
+  ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
+    const unscopedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
+    const hasMismatchedSource = sourceIdOverride !== null
+      && unscopedSnapshot !== null
+      && unscopedSnapshot.thread.sourceId !== null
+      && unscopedSnapshot.thread.sourceId !== sourceIdOverride;
+    const cachedSnapshot = hasMismatchedSource
+      ? null
+      : attachSourceIdToSnapshot(unscopedSnapshot, sourceIdOverride);
 
     if (cachedSnapshot !== null && cachedSnapshot.turns.length > 0) {
       const cacheEntry = this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+      await this.reconcileCachedCollaboration(cacheEntry.thread, cachedSnapshot.turns);
       return {
         thread: cacheEntry.thread,
         turns: this.options.threadCacheService.readTurns(cacheEntry)
@@ -580,7 +660,7 @@ export class ThreadConversationService {
       };
     }
 
-    const sourceId = cachedSnapshot?.thread.sourceId ?? await this.resolveThreadSourceId(threadId);
+    const sourceId = cachedSnapshot?.thread.sourceId ?? sourceIdOverride;
 
     if (sourceId === null) {
       throw new Error("Cannot read a sub-agent thread without a Codex source.");
@@ -871,6 +951,8 @@ export class ThreadConversationService {
     const rawTurns = Array.isArray(rollbackThread.turns) ? rollbackThread.turns : [];
     const cacheEntry = this.options.threadTurnCache.replaceThreadTurns(thread, rawTurns);
 
+    await this.reconcileCachedCollaboration(cacheEntry.thread, rawTurns);
+
     this.emitThreadOpened(
       cacheEntry,
       this.options.threadCacheService.readTurns(cacheEntry)
@@ -1111,7 +1193,10 @@ export class ThreadConversationService {
     const latestTurns = await this.readLatestTurnPage(client, cacheEntry.thread.id);
 
     this.options.threadTurnCache.mergeLatestTurns(nextEntry, latestTurns.turns, latestTurns.olderCursor);
-    return this.readMergedTurns(nextEntry, latestTurns.turns);
+    const mergedTurns = this.readMergedTurns(nextEntry, latestTurns.turns);
+
+    await this.reconcileCachedCollaboration(nextEntry.thread, mergedTurns);
+    return mergedTurns;
   }
 
   /**
@@ -1367,6 +1452,23 @@ export class ThreadConversationService {
       .filter((turnId) => turnId.length > 0)
       .map((turnId) => cacheEntry.turnsById.get(turnId))
       .filter((turn): turn is unknown => turn !== undefined);
+  }
+
+  /**
+   * Reconciles semantic collaboration data when a source-backed turn page is loaded.
+   *
+   * @param thread Thread owning the turns.
+   * @param turns Raw turn payloads.
+   */
+  private async reconcileCachedCollaboration(
+    thread: OpenCodexThread,
+    turns: readonly unknown[]
+  ): Promise<void> {
+    if (thread.sourceId === null) {
+      return;
+    }
+
+    await this.options.reconcileCollaborationTurns(thread.sourceId, thread.id, turns);
   }
 
   /**
@@ -1635,6 +1737,50 @@ function attachSourceIdToSnapshot(
       sourceId
     }
   };
+}
+
+/**
+ * Filters a cached thread collection to structurally reachable descendants.
+ *
+ * @param rootThreadId Root thread identifier.
+ * @param threads Candidate cached threads in display order.
+ * @returns Descendants in the original order, excluding cycles and unrelated roots.
+ */
+function filterDescendantThreads(
+  rootThreadId: string,
+  threads: readonly OpenCodexThread[]
+): OpenCodexThread[] {
+  const threadsById = new Map(threads.map((thread) => [thread.id, thread]));
+
+  return threads.filter((thread) => {
+    const visitedThreadIds = new Set<string>([thread.id]);
+    let parentThreadId = thread.parentThreadId
+      ?? thread.subAgentSource?.parentThreadId
+      ?? null;
+
+    while (parentThreadId !== null) {
+      if (parentThreadId === rootThreadId) {
+        return true;
+      }
+
+      if (visitedThreadIds.has(parentThreadId)) {
+        return false;
+      }
+
+      visitedThreadIds.add(parentThreadId);
+      const parentThread = threadsById.get(parentThreadId);
+
+      if (parentThread === undefined) {
+        return false;
+      }
+
+      parentThreadId = parentThread.parentThreadId
+        ?? parentThread.subAgentSource?.parentThreadId
+        ?? null;
+    }
+
+    return false;
+  });
 }
 
 /**

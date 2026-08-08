@@ -20,6 +20,7 @@ import type {
   OpenCodexTurn,
   OpenCodexUsageSnapshot
 } from "./messages";
+import type { OpenCodexCollaborationEvent } from "./collaboration";
 
 /**
  * Event union emitted by the backend to update UI stores.
@@ -56,6 +57,7 @@ export type OpenCodexEvent =
       tokenUsage?: OpenCodexThreadTokenUsage | null;
     }
   | { type: "thread.created"; thread: OpenCodexThread; turns: OpenCodexTurn[] }
+  | { type: "thread.discovered"; thread: OpenCodexThread }
   | { type: "thread.metadata.updated"; thread: OpenCodexThread }
   | {
       type: "thread.turns.prepended";
@@ -138,6 +140,11 @@ export type OpenCodexEvent =
     }
   | { type: "models.updated"; models: OpenCodexModel[] }
   | { type: "usage.updated"; sourceId: string; usage: OpenCodexUsageSnapshot | null }
+  | {
+      type: "collaboration.updated";
+      sourceId: string;
+      event: OpenCodexCollaborationEvent;
+    }
   | { type: "logs.created"; log: OpenCodexLogEntry }
   | { type: "logs.deleted"; logId: string }
   | { type: "logs.cleared" }

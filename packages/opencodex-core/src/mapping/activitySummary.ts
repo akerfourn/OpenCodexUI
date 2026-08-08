@@ -82,8 +82,9 @@ export function summarizeActivityFallback(
     return `${labels.dynamicTool}: ${readString(item.tool)}`;
   }
 
-  if (type === "collabAgentToolCall") {
-    return `${labels.collabAgent}: ${readString(item.tool)}`;
+  if (type === "collabAgentToolCall" || type === "subAgentActivity") {
+    const action = readString(item.tool) || readString(item.kind);
+    return action.length > 0 ? `${labels.collabAgent}: ${action}` : labels.collabAgent;
   }
 
   if (type === "enteredReviewMode") {

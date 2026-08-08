@@ -34,6 +34,7 @@ export type ThreadRow = {
   thread_source: string | null;
   agent_nickname: string | null;
   agent_role: string | null;
+  sub_agent_source_json: string | null;
 };
 
 /**
@@ -60,6 +61,36 @@ export type UsageRateLimitSnapshotRow = {
   reason: string;
   fingerprint: string;
   payload_json: string;
+};
+
+/**
+ * SQLite row containing one normalized collaboration event.
+ */
+export type CollaborationEventRow = {
+  sequence: number;
+  id: string;
+  source_id: string;
+  thread_id: string;
+  turn_id: string | null;
+  call_id: string | null;
+  action: string;
+  tool_name: string | null;
+  sender_thread_id: string | null;
+  sender_agent_path: string | null;
+  receiver_thread_ids_json: string;
+  receiver_agent_paths_json: string;
+  prompt: string | null;
+  result: string | null;
+  task_name: string | null;
+  model: string | null;
+  reasoning_effort: string | null;
+  agent_role: string | null;
+  fork_turns_json: string | null;
+  status: string;
+  target_agent_statuses_json: string;
+  evidence_json: string;
+  first_observed_at: string;
+  updated_at: string;
 };
 
 /**

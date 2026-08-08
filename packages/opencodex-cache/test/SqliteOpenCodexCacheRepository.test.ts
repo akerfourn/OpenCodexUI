@@ -1117,7 +1117,9 @@ describe("SqliteOpenCodexCacheRepository", () => {
         isArchived: false,
         threadSource: null,
         agentNickname: null,
-        agentRole: null
+        agentRole: null,
+        subAgentSource: null,
+        canAcceptDirectInput: null
       }
     ]);
   });

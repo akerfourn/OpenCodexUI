@@ -64,8 +64,21 @@ export function readBackendEventTarget(event: OpenCodexEvent): EventLogTarget | 
         itemId: null,
         details: { turnCount: event.turns.length }
       };
+    case "thread.discovered":
     case "thread.metadata.updated":
       return createTarget(event.thread.sourceId, event.thread.id, null, null);
+    case "collaboration.updated":
+      return createTarget(
+        event.sourceId,
+        event.event.threadId,
+        event.event.turnId,
+        event.event.callId,
+        {
+          action: event.event.action,
+          status: event.event.status,
+          receiverCount: event.event.receiverThreadIds.length
+        }
+      );
     case "thread.turns.prepended":
     case "thread.turns.synced":
       return createTarget(event.sourceId ?? null, event.threadId, null, null, {
@@ -173,6 +186,7 @@ function createNotificationDetails(
 
   addString(details, "itemType", itemType);
   addString(details, "itemStatus", itemStatus);
+  addCollaborationItemDetails(details, itemType, item);
 
   if (method === "turn/completed" || method === "turn/started") {
     addString(details, "turnStatus", readNonEmptyString(turn.status));
@@ -232,6 +246,47 @@ function createNotificationDetails(
   }
 
   return details;
+}
+
+/**
+ * Adds content-free collaboration metadata for known and future item variants.
+ *
+ * @param details Metadata target.
+ * @param itemType App Server item discriminator.
+ * @param item Raw item payload.
+ */
+function addCollaborationItemDetails(
+  details: Record<string, OpenCodexThreadEventLogValue>,
+  itemType: string | null,
+  item: Record<string, unknown>
+): void {
+  if (itemType === "collabAgentToolCall") {
+    addString(details, "collaborationTool", readNonEmptyString(item.tool));
+    addNumber(
+      details,
+      "receiverCount",
+      Array.isArray(item.receiverThreadIds) ? item.receiverThreadIds.length : null
+    );
+    return;
+  }
+
+  if (itemType === "subAgentActivity") {
+    addString(details, "collaborationActivity", readNonEmptyString(item.kind));
+    addBoolean(details, "hasAgentThreadId", readNonEmptyString(item.agentThreadId) !== null);
+    return;
+  }
+
+  if (itemType === "function_call") {
+    addString(details, "functionNamespace", readNonEmptyString(item.namespace));
+    addString(details, "functionName", readNonEmptyString(item.name));
+    addBoolean(details, "hasArguments", readNonEmptyString(item.arguments) !== null);
+    return;
+  }
+
+  if (itemType === "agent_message") {
+    addBoolean(details, "hasAuthor", readNonEmptyString(item.author) !== null);
+    addBoolean(details, "hasRecipient", readNonEmptyString(item.recipient) !== null);
+  }
 }
 
 /**
