@@ -135,6 +135,7 @@ export function AssistantTurnBlock({
               createdAt={item.createdAt}
               details={item.details}
               attachments={item.attachments ?? []}
+              widthMode="container"
             />
           );
         })}

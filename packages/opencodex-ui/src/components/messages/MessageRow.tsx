@@ -57,6 +57,7 @@ type MessageRowProps = {
   attachments: OpenCodexImageAttachment[];
   turnExecution?: OpenCodexTurnExecutionMetadata | null;
   turnTokenUsage?: OpenCodexThreadTokenUsage | null;
+  widthMode?: "message" | "container";
   canEdit?: boolean;
   /**
    * Handles edit.
@@ -87,6 +88,7 @@ export function MessageRow({
   attachments,
   turnExecution,
   turnTokenUsage,
+  widthMode = "message",
   canEdit = false,
   onEdit
 }: MessageRowProps) {
@@ -114,10 +116,12 @@ export function MessageRow({
           "&:hover .user-message-actions, &:focus-within .user-message-actions": {
             opacity: 1
           },
-          "@media (min-width: 1280px)": {
-            width: "80%",
-            maxWidth: "80%"
-          }
+          ...(widthMode === "message" ? {
+            "@media (min-width: 1280px)": {
+              width: "80%",
+              maxWidth: "80%"
+            }
+          } : {})
         }}
       >
         <Paper
@@ -223,10 +227,12 @@ export function MessageRow({
         "&:hover .assistant-message-actions, &:focus-within .assistant-message-actions": {
           opacity: 1
         },
-        "@media (min-width: 1280px)": {
-          width: "80%",
-          maxWidth: "80%"
-        }
+        ...(widthMode === "message" ? {
+          "@media (min-width: 1280px)": {
+            width: "80%",
+            maxWidth: "80%"
+          }
+        } : {})
       }}
     >
       {role === "activity" && isCommandActivityKind(kind) ? (
