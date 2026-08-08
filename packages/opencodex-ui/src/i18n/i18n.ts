@@ -571,6 +571,12 @@ export const resources = {
         commandOutput: "Résultat",
         commandOutputUnavailable: "Aucun résultat disponible.",
         commandStatus: "Statut",
+        planSteps: "Étapes du plan",
+        planStatus: {
+          completed: "Terminée",
+          inProgress: "En cours",
+          pending: "En attente"
+        },
         commandUnavailable: "Commande non disponible.",
         contentOmitted: "{{count}} caractères masqués pour préserver les performances",
         copied: "Copié",
@@ -1588,6 +1594,12 @@ export const resources = {
         commandOutput: "Output",
         commandOutputUnavailable: "No output available.",
         commandStatus: "Status",
+        planSteps: "Plan steps",
+        planStatus: {
+          completed: "Completed",
+          inProgress: "In progress",
+          pending: "Pending"
+        },
         commandUnavailable: "Command unavailable.",
         contentOmitted: "{{count}} characters hidden to preserve performance",
         copied: "Copied",

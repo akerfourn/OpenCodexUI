@@ -508,6 +508,59 @@ describe("OpenCodex mapping", () => {
     });
   });
 
+  it("should preserve structured plan snapshots alongside legacy text", () => {
+    const activity = createActivityFromNotification({
+      method: "turn/plan/updated",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        explanation: "Préparer la correction",
+        plan: [
+          { step: "Analyser le code", status: "completed" },
+          { step: "Adapter le rendu", status: "inProgress" },
+          { step: "Ajouter les tests", status: "pending" }
+        ]
+      }
+    });
+
+    expect(activity).toMatchObject({
+      id: "plan-turn-1",
+      kind: "plan",
+      content: expect.stringContaining("Préparer la correction"),
+      plan: {
+        explanation: "Préparer la correction",
+        steps: [
+          { step: "Analyser le code", status: "completed" },
+          { step: "Adapter le rendu", status: "inProgress" },
+          { step: "Ajouter les tests", status: "pending" }
+        ]
+      }
+    });
+  });
+
+  it("should keep historical text-only plans on the generic activity path", () => {
+    const turns = mapTurnsToOpenCodexTurns("thread-1", [
+      {
+        id: "turn-1",
+        status: "completed",
+        items: [
+          {
+            type: "plan",
+            id: "legacy-plan-1",
+            text: "completed: Analyser\npending: Implémenter"
+          }
+        ]
+      }
+    ]);
+
+    expect(turns[0]?.items[0]).toMatchObject({
+      id: "legacy-plan-1",
+      kind: "plan",
+      content: "completed: Analyser\npending: Implémenter",
+      plan: null
+    });
+  });
+
   it("should keep turn diff notifications compact and stable", () => {
     const activity = createActivityFromNotification({
       method: "turn/diff/updated",

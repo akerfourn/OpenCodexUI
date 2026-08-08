@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 import type {
   OpenCodexImageAttachment,
   OpenCodexMessage,
+  OpenCodexPlanSnapshot,
   OpenCodexThreadTokenUsage,
   OpenCodexTurnExecutionMetadata
 } from "@open-codex-ui/opencodex-protocol";
@@ -35,6 +36,7 @@ import { CommandActivityRow } from "./CommandActivityRow";
 import { FileChangeActivityRow } from "./FileChangeActivityRow";
 import { ImageAttachmentPreviewGrid } from "./ImageAttachmentPreviewGrid";
 import { MarkdownMessageM } from "./MarkdownMessage";
+import { PlanActivityRow } from "./PlanActivityRow";
 
 type MessageRowProps = {
   isLast: boolean;
@@ -54,6 +56,7 @@ type MessageRowProps = {
   isStreaming?: boolean;
   createdAt: string | null;
   details?: string | null;
+  plan?: OpenCodexPlanSnapshot | null;
   attachments: OpenCodexImageAttachment[];
   turnExecution?: OpenCodexTurnExecutionMetadata | null;
   turnTokenUsage?: OpenCodexThreadTokenUsage | null;
@@ -85,6 +88,7 @@ export function MessageRow({
   isStreaming = false,
   createdAt,
   details,
+  plan = null,
   attachments,
   turnExecution,
   turnTokenUsage,
@@ -245,6 +249,11 @@ export function MessageRow({
         <FileChangeActivityRow
           content={content}
           details={details}
+          icon={renderActivityKindIconWithTooltip(kind, t)}
+        />
+      ) : role === "activity" && kind === "plan" && plan !== null ? (
+        <PlanActivityRow
+          plan={plan}
           icon={renderActivityKindIconWithTooltip(kind, t)}
         />
       ) : role === "activity" || isCommentary ? (

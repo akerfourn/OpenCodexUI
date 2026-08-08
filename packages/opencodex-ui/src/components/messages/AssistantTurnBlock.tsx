@@ -134,6 +134,7 @@ export function AssistantTurnBlock({
               isStreaming={isRunning && item.status === "streaming"}
               createdAt={item.createdAt}
               details={item.details}
+              plan={item.plan}
               attachments={item.attachments ?? []}
               widthMode="container"
             />

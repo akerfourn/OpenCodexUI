@@ -152,20 +152,35 @@ export function shouldPersistLiveNotification(method: string): boolean {
 function createPlanTurnItem(turnId: string, params: Record<string, unknown>): Record<string, unknown> {
   const explanation = readString(params.explanation);
   const plan = Array.isArray(params.plan) ? params.plan : [];
-  const steps = plan
+  const structuredSteps = plan
     .map((entry) => readObject(entry))
     .map((entry) => {
       const status = readString(entry.status);
       const step = readString(entry.step);
-      return status.length > 0 ? `${status}: ${step}` : step;
+      return { step, status };
     })
-    .filter((entry) => entry.length > 0);
+    .filter((entry) => entry.step.length > 0);
+  const steps = structuredSteps.map((entry) =>
+    entry.status.length > 0 ? `${entry.status}: ${entry.step}` : entry.step
+  );
 
   return {
     type: "plan",
     id: `plan-${turnId}`,
-    text: [explanation, ...steps].filter((entry) => entry.length > 0).join("\n")
+    text: buildLegacyPlanText(explanation, steps),
+    plan: {
+      explanation: explanation.length > 0 ? explanation : null,
+      steps: structuredSteps
+    }
   };
+}
+
+/**
+ * Builds the temporary text projection kept for older OpenCodexUI instances.
+ * The structured `plan` field remains the source of truth for new renderers.
+ */
+function buildLegacyPlanText(explanation: string, steps: string[]): string {
+  return [explanation, ...steps].filter((entry) => entry.length > 0).join("\n");
 }
 
 /**

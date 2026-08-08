@@ -76,7 +76,11 @@ export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActi
       existing.details = activity.details;
     }
 
-    if (activity.kind === "fileChange") {
+    if (activity.plan !== undefined) {
+      existing.plan = activity.plan;
+    }
+
+    if (activity.kind === "fileChange" || activity.kind === "plan") {
       existing.content = activity.content;
       existing.status = toMessageStatus(activity.status);
       return;
@@ -100,7 +104,8 @@ export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActi
     createdAt: new Date().toISOString(),
     kind: activity.kind,
     summary: activity.summary,
-    details: activity.details
+    details: activity.details,
+    plan: activity.plan
   });
 }
 

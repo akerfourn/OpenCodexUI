@@ -519,7 +519,55 @@ describe("ChatStore live activities", () => {
 
     expect(chatStore.turns[0]?.items[0]?.details).toContain("1 test passed");
   });
+
+  it("should replace a live plan with its latest structured snapshot", () => {
+    const chatStore = createChatStore({});
+
+    chatStore.applyActivityUpdated(createPlanActivity(
+      "inProgress: Analyser",
+      [{ step: "Analyser", status: "inProgress" }]
+    ));
+    chatStore.applyActivityUpdated(createPlanActivity(
+      "completed: Analyser\npending: Implémenter",
+      [
+        { step: "Analyser", status: "completed" },
+        { step: "Implémenter", status: "pending" }
+      ]
+    ));
+
+    expect(chatStore.turns[0]?.items).toHaveLength(1);
+    expect(chatStore.turns[0]?.items[0]).toMatchObject({
+      id: "plan-turn-1",
+      content: "completed: Analyser\npending: Implémenter",
+      plan: {
+        explanation: null,
+        steps: [
+          { step: "Analyser", status: "completed" },
+          { step: "Implémenter", status: "pending" }
+        ]
+      }
+    });
+  });
 });
+
+/** Creates one replace-only live plan snapshot. */
+function createPlanActivity(
+  content: string,
+  steps: NonNullable<OpenCodexActivity["plan"]>["steps"]
+): OpenCodexActivity {
+  return {
+    id: "plan-turn-1",
+    threadId: "thread-1",
+    kind: "plan",
+    title: "turn-1",
+    content,
+    status: "running",
+    plan: {
+      explanation: null,
+      steps
+    }
+  };
+}
 
 function createCommandActivity(
   content: string,

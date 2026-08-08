@@ -1189,6 +1189,18 @@ export type OpenCodexMessageRole = "user" | "assistant" | "system" | "activity";
  */
 export type OpenCodexMessageStatus = "streaming" | "completed" | "error";
 
+/** One structured step in a Codex plan snapshot. */
+export type OpenCodexPlanStep = {
+  step: string;
+  status: "pending" | "inProgress" | "completed";
+};
+
+/** Structured plan data preserved alongside its legacy text projection. */
+export type OpenCodexPlanSnapshot = {
+  explanation: string | null;
+  steps: OpenCodexPlanStep[];
+};
+
 /**
  * Image attachment sent with a user message.
  */
@@ -1218,6 +1230,7 @@ export type OpenCodexMessage = {
   kind?: string;
   summary?: string | null;
   details?: string | null;
+  plan?: OpenCodexPlanSnapshot | null;
   attachments?: OpenCodexImageAttachment[];
 };
 
@@ -1234,6 +1247,7 @@ export type OpenCodexTurnItem = {
   kind?: string;
   summary?: string | null;
   details?: string | null;
+  plan?: OpenCodexPlanSnapshot | null;
   attachments?: OpenCodexImageAttachment[];
 };
 
@@ -1285,6 +1299,7 @@ export type OpenCodexActivity = {
   content?: string;
   summary?: string | null;
   details?: string | null;
+  plan?: OpenCodexPlanSnapshot | null;
   status: "running" | "completed" | "error";
 };
 

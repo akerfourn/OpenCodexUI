@@ -6,6 +6,8 @@ import type {
   OpenCodexActivity,
   OpenCodexLanguage,
   OpenCodexMessage,
+  OpenCodexPlanSnapshot,
+  OpenCodexPlanStep,
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -104,11 +106,15 @@ export function createActivityFromNotification(notification: CodexNotification):
 
   if (notification.method === "turn/plan/updated") {
     return createActivity(
-      createId("plan"),
+      `plan-${turnId}`,
       threadId,
       "plan",
       turnId,
-      summarizePlanNotification(params)
+      summarizePlanNotification(params),
+      "running",
+      null,
+      null,
+      readPlanSnapshot(params)
     );
   }
 
@@ -171,6 +177,7 @@ export function mapActivityTurnItem(
   const details = summarizeActivityDetails(item);
   const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item, language);
   const itemId = readActivityItemId(item);
+  const plan = type === "plan" ? readPlanSnapshot(item) : null;
 
   return {
     id: itemId,
@@ -180,7 +187,8 @@ export function mapActivityTurnItem(
     createdAt: null,
     kind: resolveActivityKind(type),
     summary: summary.length > 0 ? summary : null,
-    details: details.length > 0 ? details : null
+    details: details.length > 0 ? details : null,
+    plan
   };
 }
 
@@ -215,6 +223,7 @@ export function mapActivityMessage(
   const details = summarizeActivityDetails(item);
   const content = summary.length > 0 ? summary : summarizeActivityFallback(type, item, "fr");
   const itemId = readActivityItemId(item);
+  const plan = type === "plan" ? readPlanSnapshot(item) : null;
 
   return {
     id: itemId,
@@ -228,7 +237,8 @@ export function mapActivityMessage(
     itemId,
     kind: resolveActivityKind(type),
     summary: summary.length > 0 ? summary : null,
-    details: details.length > 0 ? details : null
+    details: details.length > 0 ? details : null,
+    plan
   };
 }
 
@@ -453,7 +463,8 @@ function createActivity(
   content: string,
   status: OpenCodexActivity["status"] = "running",
   summary?: string | null,
-  details?: string | null
+  details?: string | null,
+  plan?: OpenCodexPlanSnapshot | null
 ): OpenCodexActivity {
   return {
     id,
@@ -463,7 +474,41 @@ function createActivity(
     content,
     summary,
     details,
+    plan,
     status
+  };
+}
+
+/** Reads the structured plan snapshot from a Codex plan notification or item. */
+function readPlanSnapshot(value: Record<string, unknown>): OpenCodexPlanSnapshot | null {
+  const explanation = readString(value.explanation);
+  const nestedPlan = readObject(value.plan);
+  const rawSteps = Array.isArray(value.plan)
+    ? value.plan
+    : Array.isArray(nestedPlan.steps) ? nestedPlan.steps : [];
+  const nestedExplanation = readString(nestedPlan.explanation);
+  const resolvedExplanation = explanation.length > 0 ? explanation : nestedExplanation;
+  const steps: OpenCodexPlanStep[] = rawSteps
+    .map((entry) => readObject(entry))
+    .map((entry) => ({
+      step: readString(entry.step),
+      status: readString(entry.status)
+    }))
+    .filter((entry): entry is OpenCodexPlanStep =>
+      entry.step.length > 0 && (
+        entry.status === "pending" ||
+        entry.status === "inProgress" ||
+        entry.status === "completed"
+      )
+    );
+
+  if (steps.length === 0 && resolvedExplanation.length === 0) {
+    return null;
+  }
+
+  return {
+    explanation: resolvedExplanation.length > 0 ? resolvedExplanation : null,
+    steps
   };
 }
 

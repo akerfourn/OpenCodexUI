@@ -8,7 +8,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createOpenCodexSqliteCacheRepository } from "../src/SqliteOpenCodexCacheRepository";
-import { parseTurnRows } from "../src/sqlite/turnSerialization";
+import { parseTurnRows, stringifyTurn } from "../src/sqlite/turnSerialization";
 import type {
   CachedThreadTokenUsage,
   OpenCodexCacheRepository
@@ -1618,6 +1618,44 @@ function createStatisticsUsage(
 }
 
 describe("turn serialization", () => {
+  it("should preserve structured plans and their legacy text projection", () => {
+    const rawJson = stringifyTurn({
+      id: "turn-plan",
+      items: [
+        {
+          id: "plan-turn-plan",
+          type: "plan",
+          text: "completed: Analyser\npending: Implémenter",
+          plan: {
+            explanation: null,
+            steps: [
+              { step: "Analyser", status: "completed" },
+              { step: "Implémenter", status: "pending" }
+            ]
+          }
+        }
+      ]
+    });
+    const turns = parseTurnRows([{ id: "turn-plan", raw_json: rawJson }]);
+
+    expect(turns).toMatchObject([
+      {
+        id: "turn-plan",
+        items: [
+          {
+            text: "completed: Analyser\npending: Implémenter",
+            plan: {
+              steps: [
+                { step: "Analyser", status: "completed" },
+                { step: "Implémenter", status: "pending" }
+              ]
+            }
+          }
+        ]
+      }
+    ]);
+  });
+
   it("should drop duplicate chat items with different live and history ids", () => {
     const turns = parseTurnRows([
       {

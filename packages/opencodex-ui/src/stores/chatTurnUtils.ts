@@ -90,6 +90,10 @@ export function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
     item.details = message.details;
   }
 
+  if (message.plan !== undefined) {
+    item.plan = message.plan;
+  }
+
   if (message.attachments !== undefined) {
     item.attachments = message.attachments;
   }

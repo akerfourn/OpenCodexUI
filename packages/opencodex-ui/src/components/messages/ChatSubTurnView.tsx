@@ -76,6 +76,7 @@ export function ChatSubTurnView({
           content={subTurn.userMessage.content}
           createdAt={subTurn.userMessage.createdAt ?? turn.startedAt}
           details={subTurn.userMessage.details}
+          plan={subTurn.userMessage.plan}
           attachments={subTurn.userMessage.attachments ?? []}
           canEdit={canEdit}
           onEdit={canEdit ? () => onStartEdit(subTurn.userMessage?.content ?? "") : undefined}
@@ -109,6 +110,7 @@ export function ChatSubTurnView({
           isStreaming={isReasoningRunning && assistantAnswer.status === "streaming"}
           createdAt={assistantAnswer.createdAt ?? turn.completedAt ?? turn.startedAt}
           details={assistantAnswer.details}
+          plan={assistantAnswer.plan}
           attachments={assistantAnswer.attachments ?? []}
           turnExecution={turn.execution}
           turnTokenUsage={turn.tokenUsage}

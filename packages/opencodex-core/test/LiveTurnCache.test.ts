@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache, type ThreadTurnCacheEntry } from "../src/ThreadTurnCache";
+import { recordLiveNotification } from "../src/backend/liveTurnNotifications";
 import { MAX_LIVE_TEXT_BUFFER_CHUNKS } from "../src/liveTurnTextBuffer";
 
 describe("live turn cache", () => {
@@ -205,6 +206,47 @@ describe("live turn cache", () => {
       id: "reasoning-1",
       summary: [fragments.join("")]
     }]);
+  });
+
+  it("should replace plan snapshots while preserving structured and legacy forms", () => {
+    const { cache, entry } = createCacheEntry();
+
+    recordLiveNotification(cache, {
+      method: "turn/plan/updated",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        explanation: "Première version",
+        plan: [{ step: "Analyser", status: "inProgress" }]
+      }
+    });
+    recordLiveNotification(cache, {
+      method: "turn/plan/updated",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        explanation: "Plan actualisé",
+        plan: [
+          { step: "Analyser", status: "completed" },
+          { step: "Implémenter", status: "pending" }
+        ]
+      }
+    });
+
+    expect(readTurnItems(entry, "turn-1")).toEqual([
+      expect.objectContaining({
+        id: "plan-turn-1",
+        type: "plan",
+        text: "Plan actualisé\ncompleted: Analyser\npending: Implémenter",
+        plan: {
+          explanation: "Plan actualisé",
+          steps: [
+            { step: "Analyser", status: "completed" },
+            { step: "Implémenter", status: "pending" }
+          ]
+        }
+      })
+    ]);
   });
 });
 
