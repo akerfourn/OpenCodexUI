@@ -1,17 +1,9 @@
-import {
-  CodexProcessError,
-  type CodexNotification,
-  type FuzzyFileSearchResponse,
-  type v2,
-  type CodexServerRequest
-} from "@open-codex-ui/codex-rpc";
+import type { CodexServerRequest } from "@open-codex-ui/codex-rpc";
 import type {
   CachedProjectCommandRuleCreateInput,
   CachedProjectCommandRuleUpdateInput,
-  CachedSource,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
-import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexApprovalDecision,
   OpenCodexCodexReleaseCheck,
@@ -65,62 +57,30 @@ import type {
   OpenCodexThreadRuntimeStatus,
   OpenCodexToolVersionStatus,
   OpenCodexTurn,
-  OpenCodexTurnExecutionMetadata,
   OpenCodexUsageHistory,
   OpenCodexUsageHistoryAggregation,
   OpenCodexUsageResetConsumeResult,
   OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
 
-import { ThreadTurnCache } from "./ThreadTurnCache.js";
 import type { OpenCodexBackendOptions } from "./types.js";
 import { ApprovalService } from "./backend/ApprovalService.js";
 import { OpenCodexClientPool } from "./backend/OpenCodexClientPool.js";
-import { NotificationService } from "./backend/NotificationService.js";
-import { StreamingNotificationBatcher } from "./backend/StreamingNotificationBatcher.js";
-import { ProjectSourceService } from "./backend/ProjectSourceService.js";
-import { ProjectTrustService } from "./backend/ProjectTrustService.js";
-import {
-  fallbackModels,
-  readModels
-} from "./backend/codexReaders.js";
-import {
-  getBackendLabels,
-  normalizeError,
-  toError
-} from "./backend/errors.js";
-import { ThreadConversationService } from "./backend/ThreadConversationService.js";
-import { ThreadCacheService } from "./backend/ThreadCacheService.js";
-import { CollaborationService } from "./backend/CollaborationService.js";
-import {
-  ThreadEventLogService,
-  type ThreadEventLogMutation
-} from "./backend/ThreadEventLogService.js";
-import { GitService } from "./backend/GitService.js";
-import { CommitMessageService } from "./backend/CommitMessageService.js";
-import { ProjectCommandService } from "./backend/ProjectCommandService.js";
-import { ProjectCommandRuleService } from "./backend/ProjectCommandRuleService.js";
+import { RuntimeNotificationCoordinator } from "./backend/RuntimeNotificationCoordinator.js";
+import { ThreadRuntimeHandler } from "./backend/ThreadRuntimeHandler.js";
+import { GitRuntimeHandler } from "./backend/GitRuntimeHandler.js";
+import { ProjectAutomationRuntimeHandler } from "./backend/ProjectAutomationRuntimeHandler.js";
 import { PluginService } from "./backend/PluginService.js";
-import { ProjectContextService } from "./backend/ProjectContextService.js";
-import { ProjectGroupService } from "./backend/ProjectGroupService.js";
 import { CodexUpdateService } from "./backend/CodexUpdateService.js";
-import { filterSearchableProjectFiles } from "./backend/fileSearchFilters.js";
-import { readGitVersionStatus } from "./backend/toolVersionDetection.js";
-import {
-  UsageRateLimitDiagnostics,
-  type UsageRateLimitLogOrigin,
-  type UsageRateLimitLogReason
-} from "./backend/usageRateLimitDiagnostics.js";
+import { ProjectSearchService } from "./backend/ProjectSearchService.js";
+import { ApplicationLogService } from "./backend/ApplicationLogService.js";
+import { HostIntegrationService } from "./backend/HostIntegrationService.js";
+import { ModelCatalogService } from "./backend/ModelCatalogService.js";
+import { UsageRuntimeService } from "./backend/UsageRuntimeService.js";
+import { ProjectRuntimeHandler } from "./backend/ProjectRuntimeHandler.js";
+import { RuntimeErrorCoordinator } from "./backend/RuntimeErrorCoordinator.js";
 import { isPrereleaseVersion } from "./version.js";
-import { readObject, readString } from "./mapping.js";
-import { correctUsageLimitNotification } from "./backend/usageCorrections.js";
-import { mapUsageLimitsNotification, mapUsageLimitsResponse } from "./backend/usageMapping.js";
-import { mapThreadTokenUsageNotification } from "./backend/threadTokenUsageMapping.js";
-import { createUsageRateLimitHistorySnapshot } from "./backend/usageRateLimitHistory.js";
-import { readUsageHistory as readUsageHistoryFromCache } from "./backend/usageHistory.js";
-
-const DEFAULT_COMMIT_SOURCE_KEY = "__default_commit_source__";
-const DEFAULT_COMMIT_MODEL_KEY = "__default_commit_model__";
+import type { UsageRateLimitLogReason } from "./backend/usageRateLimitDiagnostics.js";
 
 /**
  * Coordinates backend services exposed to the UI transport.
@@ -128,31 +88,40 @@ const DEFAULT_COMMIT_MODEL_KEY = "__default_commit_model__";
 export class OpenCodexBackendRuntime {
   /** Whether this runtime belongs to an application pre-release build. */
   readonly isPrerelease: boolean;
+  /** Current backend settings. */
   private settings: OpenCodexSettings;
-  private readonly threadTurnCache = new ThreadTurnCache();
-  private readonly threadEventLogService = new ThreadEventLogService();
+  /** Optional local cache repository. */
   private readonly cacheRepository: OpenCodexCacheRepository | null;
+  /** Routes approval requests and decisions. */
   private readonly approvalService: ApprovalService;
+  /** Manages source-scoped Codex clients. */
   private readonly clientPool: OpenCodexClientPool;
-  private readonly notificationService: NotificationService;
-  private readonly streamingNotificationBatcher: StreamingNotificationBatcher;
-  private readonly projectSourceService: ProjectSourceService;
-  private readonly projectTrustService: ProjectTrustService;
-  private readonly threadCacheService: ThreadCacheService;
-  private readonly collaborationService: CollaborationService;
-  private readonly threadConversationService: ThreadConversationService;
-  private readonly gitService: GitService;
-  private readonly commitMessageService: CommitMessageService;
-  private readonly projectCommandService: ProjectCommandService;
-  private readonly projectCommandRuleService: ProjectCommandRuleService;
+  /** Coordinates normalized runtime notifications. */
+  private readonly notificationCoordinator: RuntimeNotificationCoordinator;
+  /** Handles project and source operations. */
+  private readonly projectRuntimeHandler: ProjectRuntimeHandler;
+  /** Handles thread and turn operations. */
+  private readonly threadRuntimeHandler: ThreadRuntimeHandler;
+  /** Handles Git operations and commit messages. */
+  private readonly gitRuntimeHandler: GitRuntimeHandler;
+  /** Handles project commands, rules, and tasks. */
+  private readonly projectAutomationRuntimeHandler: ProjectAutomationRuntimeHandler;
+  /** Handles Codex plugin operations. */
   private readonly pluginService: PluginService;
-  private readonly projectContextService: ProjectContextService;
-  private readonly projectGroupService: ProjectGroupService;
+  /** Handles project file and skill searches. */
+  private readonly projectSearchService: ProjectSearchService;
+  /** Persists and queries application logs. */
+  private readonly applicationLogService: ApplicationLogService;
+  /** Performs host filesystem and process integrations. */
+  private readonly hostIntegrationService: HostIntegrationService;
+  /** Loads and caches the available model catalog. */
+  private readonly modelCatalogService: ModelCatalogService;
+  /** Coordinates usage limits and history. */
+  private readonly usageRuntimeService: UsageRuntimeService;
+  /** Checks and applies Codex updates. */
   private readonly codexUpdateService: CodexUpdateService;
-  private readonly usageRateLimitDiagnostics: UsageRateLimitDiagnostics;
-  private readonly ignoredNotificationThreadIds = new Set<string>();
-  private readonly activeTurnIdsBySourceId = new Map<string, Set<string>>();
-  private readonly activeCommitModelsBySourceId = new Map<string, Map<string, number>>();
+  /** Normalizes request and client errors. */
+  private readonly runtimeErrorCoordinator: RuntimeErrorCoordinator;
 
   /**
    * Creates a backend runtime and wires its internal services.
@@ -163,40 +132,41 @@ export class OpenCodexBackendRuntime {
     this.settings = options.settings;
     this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.cacheRepository = options.cacheRepository ?? null;
-    this.usageRateLimitDiagnostics = new UsageRateLimitDiagnostics(
-      this.isPrerelease,
-      (type, message, details) => this.persistLog(type, message, details)
-    );
+    this.applicationLogService = new ApplicationLogService({
+      cacheRepository: this.cacheRepository,
+      emit: (event) => this.emit(event),
+      logger: options.logger
+    });
     this.clientPool = new OpenCodexClientPool({
       getSettings: () => this.settings,
       getAppVersion: () => this.options.appVersion ?? null,
-      resolveSource: (sourceId) => this.resolveSource(sourceId),
+      resolveSource: (sourceId) => this.projectRuntimeHandler.resolveSource(sourceId),
       emit: (event) => this.emit(event),
       logger: options.logger,
-      handleNotification: (notification, sourceId) => this.handleNotification(notification, sourceId),
+      handleNotification: (notification, sourceId) => (
+        this.notificationCoordinator.handleNotification(notification, sourceId)
+      ),
       handleServerRequest: (request, sourceId) => this.handleServerRequest(request, sourceId),
       handleError: (error) => this.handleClientError(error),
       handleClose: (sourceId) => this.handleClientClose(sourceId),
-      handleStderr: (message, sourceId) => this.handleCodexStderr(message, sourceId)
+      handleStderr: (message, sourceId) => (
+        this.projectRuntimeHandler.handleCodexStderr(message, sourceId)
+      )
+    });
+    this.usageRuntimeService = new UsageRuntimeService({
+      cacheRepository: this.cacheRepository,
+      getSettings: () => this.settings,
+      resolveRequestedSource: (sourceId) => this.projectRuntimeHandler.resolveRequestedSource(sourceId),
+      ensureClient: (sourceId) => this.ensureClient(sourceId),
+      isPrerelease: this.isPrerelease,
+      emit: (event) => this.emit(event),
+      persistLog: (type, message, details) => this.persistLog(type, message, details),
+      logger: options.logger
     });
     this.approvalService = new ApprovalService({
       getSettings: () => this.settings,
       emit: (event) => this.emit(event),
       getClient: (sourceId) => this.clientPool.getClient(sourceId)
-    });
-    this.notificationService = new NotificationService({
-      getSettings: () => this.settings,
-      emit: (event) => this.emit(event),
-      applyCodexThreadTitle: (threadId, title, sourceId) => (
-        this.applyCodexThreadTitle(threadId, title, sourceId)
-      ),
-      applyCodexThreadDeleted: (threadId, sourceId) => (
-        this.applyCodexThreadDeleted(threadId, sourceId)
-      ),
-      syncCompletedTurn: (threadId, sourceId) => this.syncCompletedTurn(threadId, sourceId)
-    });
-    this.streamingNotificationBatcher = new StreamingNotificationBatcher({
-      process: (notification, sourceId) => this.processNotification(notification, sourceId)
     });
     this.codexUpdateService = new CodexUpdateService({
       getSettings: () => this.settings,
@@ -209,7 +179,7 @@ export class OpenCodexBackendRuntime {
       refreshSources: async () => this.listSources(),
       logger: options.logger
     });
-    this.projectSourceService = new ProjectSourceService({
+    this.projectRuntimeHandler = new ProjectRuntimeHandler({
       backendOptions: options,
       cacheRepository: this.cacheRepository,
       getSettings: () => this.settings,
@@ -219,95 +189,106 @@ export class OpenCodexBackendRuntime {
       emit: (event) => this.emit(event),
       ensureClient: (sourceId) => this.ensureClient(sourceId),
       restartSourceClient: (sourceId) => this.restartSourceClient(sourceId),
+      hasActiveTurn: (sourceId) => this.notificationCoordinator.hasActiveTurn(sourceId),
       getCodexUpdateStatus: (source, fallbackCommand) => (
         this.codexUpdateService.getSourceUpdateStatus(source, fallbackCommand)
+      ),
+      checkLatestRelease: (force) => this.codexUpdateService.checkLatestRelease(force),
+      updateSource: (source, fallbackCommand) => (
+        this.codexUpdateService.updateSource(source, fallbackCommand)
       )
     });
-    this.projectTrustService = new ProjectTrustService({
-      backendOptions: options,
-      getSettings: () => this.settings,
+    this.runtimeErrorCoordinator = new RuntimeErrorCoordinator({
+      getLanguage: () => this.settings.language,
+      persistLog: (type, message, details) => this.persistLog(type, message, details),
       emit: (event) => this.emit(event),
-      ensureClient: (sourceId) => this.ensureClient(sourceId)
+      recoverThread: (threadId) => this.recoverThread(threadId)
     });
-    this.threadCacheService = new ThreadCacheService({
+    this.threadRuntimeHandler = new ThreadRuntimeHandler({
       backendOptions: options,
       cacheRepository: this.cacheRepository,
-      threadTurnCache: this.threadTurnCache,
       getSettings: () => this.settings,
-      emit: (event) => this.emit(event)
-    });
-    this.collaborationService = new CollaborationService({
-      cacheRepository: this.cacheRepository,
-      emit: (event) => this.emit(event),
-      logger: options.logger
-    });
-    this.threadConversationService = new ThreadConversationService({
-      backendOptions: options,
-      threadTurnCache: this.threadTurnCache,
-      threadCacheService: this.threadCacheService,
-      getSettings: () => this.settings,
-      emit: (event) => this.emit(event),
+      emitToHost: options.emit,
       ensureClient: (sourceId) => this.ensureClient(sourceId),
-      resolveSource: (sourceId) => this.resolveSource(sourceId),
-      cacheProject: (projectPath, sourceId) => this.cacheProject(projectPath, sourceId),
-      readCachedProjects: () => this.readCachedProjects(),
-      reconcileCollaborationTurns: (sourceId, threadId, turns) => (
-        this.collaborationService.reconcileTurns(sourceId, threadId, turns)
-      ),
-      reconcileDescendantThreads: (sourceId, rootThreadId, threads) => (
-        this.collaborationService.reconcileDescendantThreads(sourceId, rootThreadId, threads)
-      ),
+      resolveSource: this.projectRuntimeHandler.resolveSource,
+      cacheProject: this.projectRuntimeHandler.cacheProject,
+      readCachedProjects: this.projectRuntimeHandler.readCachedProjects,
       handleClientError: (error) => this.handleClientError(error)
     });
-    this.gitService = new GitService({
-      ensureClient: (sourceId) => this.ensureClient(sourceId)
-    });
-    this.commitMessageService = new CommitMessageService({
+    this.gitRuntimeHandler = new GitRuntimeHandler({
       userDataPath: options.userDataPath,
       defaultPromptPath: options.defaultCommitPromptPath,
       generationPromptPath: options.generationCommitPromptPath,
-      gitService: this.gitService,
       getSettings: () => this.settings,
       ensureClient: (sourceId) => this.ensureClient(sourceId),
-      ignoreThreadNotifications: (threadId) => {
-        this.ignoredNotificationThreadIds.add(threadId);
-      },
-      releaseThreadNotifications: (threadId) => {
-        this.ignoredNotificationThreadIds.delete(threadId);
-      },
+      ignoreThreadNotifications: (threadId) => this.threadRuntimeHandler.ignoreThreadNotifications(threadId),
+      releaseThreadNotifications: (threadId) => this.threadRuntimeHandler.releaseThreadNotifications(threadId),
       onGenerationStarted: (sourceId, model) => {
-        this.addActiveCommitModel(sourceId, model);
+        this.usageRuntimeService.onCommitGenerationStarted(sourceId, model);
       },
       onGenerationFinished: (sourceId, model) => {
-        this.removeActiveCommitModel(sourceId, model);
+        this.usageRuntimeService.onCommitGenerationFinished(sourceId, model);
       },
       logger: options.logger
     });
-    this.projectCommandService = new ProjectCommandService({
-      cacheRepository: this.cacheRepository,
+    this.projectAutomationRuntimeHandler = new ProjectAutomationRuntimeHandler({
+      cache: this.cacheRepository,
       userDataPath: options.userDataPath,
-      emit: (event) => this.emit(event),
-      ensureClient: (sourceId) => this.ensureClient(sourceId)
-    });
-    this.projectCommandRuleService = new ProjectCommandRuleService({
-      cacheRepository: this.cacheRepository,
       getSettings: () => this.settings,
       ensureClient: (sourceId) => this.ensureClient(sourceId),
-      resolveSource: (sourceId) => this.resolveSource(sourceId),
-      hasActiveTurn: (sourceId) => this.hasActiveTurnForSource(sourceId),
+      resolveSource: this.projectRuntimeHandler.resolveSource,
+      hasActiveTurn: (sourceId) => this.notificationCoordinator.hasActiveTurn(sourceId),
       restartSourceClient: (sourceId) => this.restartSourceClient(sourceId),
       emit: (event) => this.emit(event)
     });
     this.pluginService = new PluginService({
       ensureClient: (sourceId) => this.ensureClient(sourceId)
     });
-    this.projectContextService = new ProjectContextService({
-      cacheRepository: this.cacheRepository,
+    this.projectSearchService = new ProjectSearchService({
       ensureClient: (sourceId) => this.ensureClient(sourceId)
     });
-    this.projectGroupService = new ProjectGroupService({
+    this.hostIntegrationService = new HostIntegrationService({
+      getLanguage: () => this.settings.language,
+      getProjectPath: () => this.options.projectPath,
+      resolveSource: this.projectRuntimeHandler.resolveSource,
+      pickExecutableFile: options.pickExecutableFile,
+      pickImageFiles: options.pickImageFiles,
+      openExternalLink: options.openExternalLink,
+      openProjectFolder: options.openProjectFolder,
+      openProjectTerminal: options.openProjectTerminal
+    });
+    this.modelCatalogService = new ModelCatalogService({
       cacheRepository: this.cacheRepository,
-      emit: (event) => this.emit(event)
+      resolveSource: this.projectRuntimeHandler.resolveSource,
+      ensureClient: (sourceId) => this.ensureClient(sourceId),
+      emit: (event) => this.emit(event),
+      logger: options.logger
+    });
+    const threadNotificationAdapters = this.threadRuntimeHandler.getNotificationAdapters();
+    this.notificationCoordinator = new RuntimeNotificationCoordinator({
+      getSettings: () => this.settings,
+      onRawReceived: (method, estimatedBytes) => {
+        this.options.onCodexNotificationReceived?.(method, estimatedBytes);
+      },
+      onProcessed: (method, durationMs) => {
+        this.options.onCodexNotificationProcessed?.(method, durationMs);
+      },
+      onLiveCacheProcessed: (method, durationMs) => {
+        this.options.onLiveCacheNotificationProcessed?.(method, durationMs);
+      },
+      isThreadIgnored: (threadId) => this.threadRuntimeHandler.isThreadIgnored(threadId),
+      recordRawNotification: (notification, sourceId) => {
+        this.threadRuntimeHandler.recordRawNotification(notification, sourceId);
+      },
+      emit: (event) => this.emit(event),
+      handleRateLimitsUpdated: (sourceId, params) => {
+        this.usageRuntimeService.handleRateLimitsUpdated(sourceId, params);
+      },
+      handleTurnCompleted: (sourceId) => {
+        this.usageRuntimeService.handleTurnCompleted(sourceId);
+      },
+      ...threadNotificationAdapters,
+      ...this.projectAutomationRuntimeHandler.getNotificationAdapter()
     });
   }
 
@@ -317,7 +298,7 @@ export class OpenCodexBackendRuntime {
    * @returns Promise resolved when resources are disposed.
    */
   async dispose(): Promise<void> {
-    this.streamingNotificationBatcher.flushAll();
+    this.notificationCoordinator.flushAll();
     await this.clientPool.dispose();
     await this.cacheRepository?.close();
   }
@@ -328,12 +309,12 @@ export class OpenCodexBackendRuntime {
    * @returns Success result.
    */
   async bootstrap(): Promise<{ ok: true }> {
-    await this.projectSourceService.ensureSourcesInitialized();
+    await this.projectRuntimeHandler.ensureSourcesInitialized();
     await this.codexUpdateService.checkLatestRelease(false);
     this.emit({
       type: "app.bootstrap",
       settings: this.settings,
-      sources: await this.projectSourceService.listOpenCodexSources(),
+      sources: await this.projectRuntimeHandler.listOpenCodexSources(),
       projectPath: this.options.projectPath,
       appVersion: this.options.appVersion ?? null,
       isPrerelease: this.isPrerelease
@@ -345,11 +326,7 @@ export class OpenCodexBackendRuntime {
     return { ok: true };
   }
 
-  /**
-   * Returns current backend settings.
-   *
-   * @returns Settings snapshot.
-   */
+  /** Returns the current backend settings. */
   getSettings(): OpenCodexSettings {
     return this.settings;
   }
@@ -373,116 +350,29 @@ export class OpenCodexBackendRuntime {
     return this.settings;
   }
 
-  /**
-   * Opens the host executable picker for source commands.
-   *
-   * @returns Selected executable path, or `null`.
-   */
+  /** Opens the host executable picker for source commands. */
   async pickSourceExecutable(): Promise<string | null> {
-    return await this.options.pickExecutableFile?.() ?? null;
+    return await this.hostIntegrationService.pickSourceExecutable();
   }
 
-  /**
-   * Searches project files through the Codex source filesystem.
-   *
-   * @param projectPath Project root path.
-   * @param sourceId Source identifier, or `null`.
-   * @param query Fuzzy search query.
-   * @param limit Maximum number of results.
-   *
-   * @returns Matching files.
-   */
+  /** Searches project files through the Codex source filesystem. */
   async searchProjectFiles(
     projectPath: string,
     sourceId: string | null,
     query: string,
     limit: number
   ): Promise<OpenCodexFileSearchResult[]> {
-    const root = normalizeProjectPath(projectPath);
-
-    if (root === null) {
-      return [];
-    }
-
-    const client = await this.ensureClient(sourceId);
-    const normalizedLimit = Math.max(1, limit);
-
-    if (query.trim().length === 0) {
-      const response = await client.request<v2.FsReadDirectoryResponse>("fs/readDirectory", {
-        path: root
-      });
-      const files = mapRootDirectorySearchResults(root, response.entries);
-
-      return filterSearchableProjectFiles(files).slice(0, normalizedLimit);
-    }
-
-    const response = await client.request<FuzzyFileSearchResponse>("fuzzyFileSearch", {
-      query,
-      roots: [root],
-      cancellationToken: null
-    });
-
-    const files = response.files
-      .filter((file) => file.match_type === "file")
-      .map((file) => ({
-        root: file.root,
-        path: file.path,
-        relativePath: readRelativeFilePath(file.root, file.path),
-        fileName: file.file_name,
-        matchType: file.match_type
-      }));
-
-    return filterSearchableProjectFiles(files).slice(0, normalizedLimit);
+    return await this.projectSearchService.searchProjectFiles(projectPath, sourceId, query, limit);
   }
 
-  /**
-   * Searches Codex skills available for a project.
-   *
-   * @param projectPath Project root path.
-   * @param sourceId Source identifier, or `null`.
-   * @param query User query without the `$` trigger.
-   * @param limit Maximum number of results.
-   *
-   * @returns Matching skills.
-   */
+  /** Searches Codex skills available for a project. */
   async searchProjectSkills(
     projectPath: string,
     sourceId: string | null,
     query: string,
     limit: number
   ): Promise<OpenCodexSkillSearchResult[]> {
-    const root = normalizeProjectPath(projectPath);
-
-    if (root === null) {
-      return [];
-    }
-
-    const client = await this.ensureClient(sourceId);
-    const response = await client.request<v2.SkillsListResponse>("skills/list", {
-      cwds: [root],
-      forceReload: false
-    });
-    const allSkills = response.data.flatMap((entry: v2.SkillsListEntry) => entry.skills);
-    const enabledSkills = allSkills.filter((skill: v2.SkillMetadata) => skill.enabled);
-    const scoredSkills = enabledSkills
-      .map((skill: v2.SkillMetadata) => ({
-        skill,
-        score: scoreSkillSearchResult(skill.name, skill.interface?.displayName, query)
-      }))
-      .filter((entry: { skill: v2.SkillMetadata; score: number }) => entry.score >= 0)
-      .sort((
-        left: { skill: v2.SkillMetadata; score: number },
-        right: { skill: v2.SkillMetadata; score: number }
-      ) => right.score - left.score || left.skill.name.localeCompare(right.skill.name));
-
-    return scoredSkills.slice(0, Math.max(1, limit)).map(({ skill }) => ({
-      name: skill.name,
-      displayName: skill.interface?.displayName ?? skill.name,
-      description: skill.description,
-      shortDescription: skill.interface?.shortDescription ?? skill.shortDescription ?? null,
-      path: String(skill.path),
-      scope: skill.scope
-    }));
+    return await this.projectSearchService.searchProjectSkills(projectPath, sourceId, query, limit);
   }
 
   /**
@@ -494,25 +384,7 @@ export class OpenCodexBackendRuntime {
    * @returns Never returns because it rethrows the normalized error.
    */
   handleRequestError(request: OpenCodexRequest, error: unknown): never {
-    const normalized = normalizeError(error, this.settings.language);
-    const recoverableThreadId = this.readRecoverableThreadId(request, error);
-    this.persistLog("error", normalized.message, normalized.details);
-    this.emit({
-      type: "error",
-      message: normalized.message,
-      details: normalized.details,
-      recoverable: recoverableThreadId !== null,
-      sourceId: readRequestSourceId(request),
-      threadId: recoverableThreadId ?? undefined
-    });
-
-    if (recoverableThreadId !== null) {
-      void this.recoverThread(recoverableThreadId).catch((recoverError: unknown) => {
-        this.handleClientError(toError(recoverError));
-      });
-    }
-
-    throw normalized;
+    return this.runtimeErrorCoordinator.handleRequestError(request, error);
   }
 
   /**
@@ -526,43 +398,23 @@ export class OpenCodexBackendRuntime {
     return await this.clientPool.ensureClient(sourceId);
   }
 
-  /**
-   * Resolves a requested source without silently falling back to another source.
-   *
-   * @param sourceId Requested source identifier, or `null` for the configured default.
-   * @returns Resolved source.
-   */
-  private async resolveRequestedSource(sourceId: string | null): Promise<CachedSource> {
-    const source = await this.resolveSource(sourceId);
-
-    if (sourceId !== null && source.id !== sourceId) {
-      throw new Error(`Codex source not found: ${sourceId}`);
-    }
-
-    return source;
-  }
-
-  /**
-   * Lists cached projects.
-   *
-   * @returns Project collection.
-   */
+  /** Lists cached projects. */
   async listProjects(): Promise<OpenCodexProject[]> {
-    return await this.projectSourceService.listProjects();
+    return await this.projectRuntimeHandler.listProjects();
   }
 
   /** Lists the OpenCodexUI-only project group tree. */
   async listProjectGroups(): Promise<OpenCodexProjectGroupsSnapshot> {
-    return await this.projectGroupService.listGroups();
+    return await this.projectRuntimeHandler.listProjectGroups();
   }
 
-  /** Creates a project group. */
+  /** Creates a project group; omitted parent and color use the root group and blue. */
   async createProjectGroup(
     name: string,
     parentGroupId: string | null = null,
     color: OpenCodexSourceColor = "blue"
   ): Promise<OpenCodexProjectGroupsSnapshot> {
-    return await this.projectGroupService.createGroup({ name, color, parentGroupId });
+    return await this.projectRuntimeHandler.createProjectGroup(name, parentGroupId, color);
   }
 
   /** Updates a project group. */
@@ -570,12 +422,12 @@ export class OpenCodexBackendRuntime {
     groupId: string,
     patch: { name?: string; color?: OpenCodexSourceColor; isCollapsed?: boolean }
   ): Promise<OpenCodexProjectGroupsSnapshot> {
-    return await this.projectGroupService.updateGroup(groupId, patch);
+    return await this.projectRuntimeHandler.updateProjectGroup(groupId, patch);
   }
 
   /** Deletes a project group while retaining its children. */
   async deleteProjectGroup(groupId: string): Promise<OpenCodexProjectGroupsSnapshot> {
-    return await this.projectGroupService.deleteGroup(groupId);
+    return await this.projectRuntimeHandler.deleteProjectGroup(groupId);
   }
 
   /** Assigns a project to a group or to the ungrouped root. */
@@ -583,329 +435,140 @@ export class OpenCodexBackendRuntime {
     projectId: string,
     groupId: string | null
   ): Promise<OpenCodexProjectGroupsSnapshot> {
-    return await this.projectGroupService.assignProject(projectId, groupId);
+    return await this.projectRuntimeHandler.assignProjectToGroup(projectId, groupId);
   }
 
-  /**
-   * Lists persisted application logs.
-   *
-   * @param beforeCreatedAt Optional pagination cursor.
-   * @param limit Maximum number of entries to read.
-   *
-   * @returns Log page.
-   */
+  /** Lists persisted application logs. */
   async listLogs(beforeCreatedAt: string | null, limit: number): Promise<OpenCodexLogPage> {
-    if (this.cacheRepository === null) {
-      return { logs: [], hasMore: false };
-    }
-
-    return await this.cacheRepository.listLogs({ beforeCreatedAt, limit });
+    return await this.applicationLogService.listLogs(beforeCreatedAt, limit);
   }
 
-  /**
-   * Deletes one persisted application log.
-   *
-   * @param logId Log identifier.
-   *
-   * @returns Success result.
-   */
+  /** Deletes one persisted application log. */
   async deleteLog(logId: string): Promise<{ ok: true }> {
-    await this.cacheRepository?.deleteLog(logId);
-    this.emit({ type: "logs.deleted", logId });
-    return { ok: true };
+    return await this.applicationLogService.deleteLog(logId);
   }
 
-  /**
-   * Clears persisted application logs.
-   *
-   * @param mode Clear mode.
-   * @param amount Retention amount when keeping recent logs.
-   * @param unit Retention unit when keeping recent logs.
-   *
-   * @returns Success result.
-   */
+  /** Clears all logs or retains entries newer than the requested amount and unit. */
   async clearLogs(
     mode: "all" | "olderThan",
     amount: number,
     unit: OpenCodexLogRetentionUnit
   ): Promise<{ ok: true }> {
-    if (mode === "all") {
-      await this.cacheRepository?.clearLogs();
-    } else {
-      await this.cacheRepository?.clearLogsOlderThan(calculateRetentionCutoff(amount, unit));
-    }
-
-    this.emit({ type: "logs.cleared" });
-    return { ok: true };
+    return await this.applicationLogService.clearLogs(mode, amount, unit);
   }
 
-  /**
-   * Persists an application log entry.
-   *
-   * @param type Log severity.
-   * @param message User-facing log message.
-   * @param details Optional structured diagnostic details.
-   *
-   * @returns Success result.
-   */
+  /** Persists an application log entry. */
   async createLog(
     type: OpenCodexLogEntry["type"],
     message: string,
     details: unknown
   ): Promise<{ ok: true }> {
-    if (this.cacheRepository === null) {
-      return { ok: true };
-    }
-
-    const log = await this.cacheRepository.createLog({ type, message, details });
-    this.emit({ type: "logs.created", log });
-
-    return { ok: true };
+    return await this.applicationLogService.createLog(type, message, details);
   }
 
-  /**
-   * Lists configured sources.
-   *
-   * @returns Source collection.
-   */
+  /** Lists configured sources. */
   async listSources(): Promise<OpenCodexSource[]> {
-    return await this.projectSourceService.listSources();
+    return await this.projectRuntimeHandler.listSources();
   }
 
-  /**
-   * Creates a source.
-   *
-   * @param name Optional source name.
-   *
-   * @returns Created source.
-   */
+  /** Creates a source. */
   async createSource(
     name: string,
     kind: OpenCodexSourceKind,
     settings: OpenCodexSourceSettingsPatch
   ): Promise<OpenCodexSource> {
-    return await this.projectSourceService.createSource(name, kind, settings);
+    return await this.projectRuntimeHandler.createSource(name, kind, settings);
   }
 
-  /**
-   * Synchronizes projects from sources.
-   *
-   * @param sourceId Source identifier, or `null` for all sources.
-   *
-   * @returns Refreshed projects.
-   */
+  /** Synchronizes one source, or every source when `sourceId` is `null`. */
   async syncSources(sourceId: string | null): Promise<OpenCodexProject[]> {
-    return await this.projectSourceService.syncSources(sourceId);
+    return await this.projectRuntimeHandler.syncSources(sourceId);
   }
 
-  /**
-   * Refreshes the cached latest Codex release metadata.
-   *
-   * @param force Whether to bypass the hourly cache.
-   *
-   * @returns Latest release check state.
-   */
+  /** Refreshes release metadata, bypassing cache when forced, and emits the source snapshot. */
   async checkCodexRelease(force: boolean): Promise<OpenCodexCodexReleaseCheck> {
-    const releaseCheck = await this.codexUpdateService.checkLatestRelease(force);
-    this.emit({
-      type: "sources.updated",
-      sources: await this.projectSourceService.listOpenCodexSources(),
-      defaultSourceId: this.settings.defaultSourceId
-    });
-    return releaseCheck;
+    return await this.projectRuntimeHandler.checkCodexRelease(force);
   }
 
-  /**
-   * Applies a standalone Codex CLI update for one source.
-   *
-   * @param sourceId Source identifier.
-   *
-   * @returns Refreshed source list.
-   */
+  /** Updates one source, rejecting active turns and restarting its client afterward. */
   async updateCodexSource(sourceId: string): Promise<OpenCodexSource[]> {
-    if (this.hasActiveTurnForSource(sourceId)) {
-      throw new Error("Codex update cannot start while this source has an active turn.");
-    }
-
-    const source = (await this.projectSourceService.listOpenCodexSources())
-      .find((candidate) => candidate.id === sourceId);
-
-    if (source === undefined) {
-      throw new Error(`Source not found: ${sourceId}`);
-    }
-
-    const sources = await this.codexUpdateService.updateSource(source, this.settings.codexCommand);
-    await this.restartSourceClient(sourceId);
-    return sources;
+    return await this.projectRuntimeHandler.updateCodexSource(sourceId);
   }
 
-  /**
-   * Updates project hidden state.
-   *
-   * @param projectId Project identifier.
-   * @param isHidden Hidden flag.
-   *
-   * @returns Success result.
-   */
+  /** Updates project hidden state. */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<{ ok: true }> {
-    return await this.projectSourceService.setProjectHidden(projectId, isHidden);
+    return await this.projectRuntimeHandler.setProjectHidden(projectId, isHidden);
   }
 
-  /**
-   * Updates a cached project display name.
-   *
-   * @param projectId Project identifier.
-   * @param displayName Display name, or `null` to reset.
-   *
-   * @returns Updated project.
-   */
+  /** Updates a cached project display name. */
   async updateProjectDisplayName(
     projectId: string,
     displayName: string | null
   ): Promise<OpenCodexProject> {
-    return await this.projectSourceService.updateProjectDisplayName(projectId, displayName);
+    return await this.projectRuntimeHandler.updateProjectDisplayName(projectId, displayName);
   }
 
-  /**
-   * Updates project preferences.
-   *
-   * @param projectId Project identifier.
-   * @param patch Preferences patch.
-   *
-   * @returns Updated project.
-   */
+  /** Updates project preferences. */
   async updateProjectPreferences(
     projectId: string,
     patch: Partial<OpenCodexProjectPreferences>
   ): Promise<OpenCodexProject> {
-    return await this.projectSourceService.updateProjectPreferences(projectId, patch);
+    return await this.projectRuntimeHandler.updateProjectPreferences(projectId, patch);
   }
 
-  /**
-   * Synchronizes project context folders into `.codex/config.toml`.
-   *
-   * @param projectId Project identifier.
-   *
-   * @returns Updated project.
-   */
+  /** Synchronizes project context folders into `.codex/config.toml`. */
   async syncProjectContext(projectId: string): Promise<OpenCodexProject> {
-    return await this.projectContextService.syncProjectContext(projectId);
+    return await this.projectRuntimeHandler.syncProjectContext(projectId);
   }
 
-  /**
-   * Deletes a project from the local cache.
-   *
-   * @param projectId Project identifier.
-   *
-   * @returns Success result.
-   */
+  /** Deletes a project from the local cache. */
   async deleteProject(projectId: string): Promise<{ ok: true }> {
-    return await this.projectSourceService.deleteProject(projectId);
+    return await this.projectRuntimeHandler.deleteProject(projectId);
   }
 
-  /**
-   * Deletes a source.
-   *
-   * @param sourceId Source identifier.
-   *
-   * @returns Success result.
-   */
+  /** Deletes a source; the configured default source cannot be deleted. */
   async deleteSource(sourceId: string): Promise<{ ok: true }> {
-    return await this.projectSourceService.deleteSource(sourceId);
+    return await this.projectRuntimeHandler.deleteSource(sourceId);
   }
 
-  /**
-   * Updates source metadata and settings.
-   *
-   * @param sourceId Source identifier.
-   * @param patch Source patch.
-   *
-   * @returns Updated source.
-   */
+  /** Updates source metadata and settings. */
   async updateSource(
     sourceId: string,
     patch: Partial<Pick<OpenCodexSource, "name">> & {
       settings?: OpenCodexSourceSettingsPatch;
     }
   ): Promise<OpenCodexSource> {
-    return await this.projectSourceService.updateSource(sourceId, patch);
+    return await this.projectRuntimeHandler.updateSource(sourceId, patch);
   }
 
-  /**
-   * Opens and caches a project.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier, or `null`.
-   * @param createIfMissing Whether the directory may be created.
-   *
-   * @returns Opened project.
-   */
+  /** Opens and caches a project, optionally creating its path in the selected source. */
   async openProject(
     projectPath: string,
     sourceId: string | null,
     createIfMissing: boolean
   ): Promise<OpenCodexProject> {
-    return await this.projectSourceService.openProject(projectPath, sourceId, createIfMissing);
+    return await this.projectRuntimeHandler.openProject(projectPath, sourceId, createIfMissing);
   }
 
-  /**
-   * Opens the host project directory picker.
-   *
-   * @param mode Picker mode.
-   * @param sourceId Source identifier, or `null`.
-   *
-   * @returns Opened project, or `null` when cancelled.
-   */
+  /** Opens the host project directory picker. */
   async pickProjectDirectory(
     mode: "open" | "create",
     sourceId: string | null
   ): Promise<OpenCodexProject | null> {
-    return await this.projectSourceService.pickProjectDirectory(mode, sourceId);
+    return await this.projectRuntimeHandler.pickProjectDirectory(mode, sourceId);
   }
 
-  /**
-   * Opens the host directory picker for an external context folder.
-   *
-   * @returns Selected folder path, or `null` when cancelled.
-   */
+  /** Opens the host directory picker for an external context folder. */
   async pickProjectContextFolder(): Promise<string | null> {
-    return await this.projectSourceService.pickProjectContextFolder();
+    return await this.projectRuntimeHandler.pickProjectContextFolder();
   }
 
-  /**
-   * Opens the host image picker.
-   *
-   * @returns Selected image attachments.
-   */
+  /** Opens the host image picker. */
   async pickImageFiles(): Promise<OpenCodexImageAttachment[]> {
-    return await this.options.pickImageFiles?.() ?? [];
+    return await this.hostIntegrationService.pickImageFiles();
   }
 
-  /**
-   * Caches project metadata.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier, or `null`.
-   *
-   * @returns Cached project, or `null`.
-   */
-  private async cacheProject(
-    projectPath: string | null,
-    sourceId: string | null
-  ): Promise<OpenCodexProject | null> {
-    return await this.projectSourceService.cacheProject(projectPath, sourceId);
-  }
-
-  /**
-   * Lists thread metadata.
-   *
-   * @param scope Thread list scope.
-   * @param projectPath Current project path.
-   * @param sourceId Source identifier, or `null`.
-   * @param searchTerm Optional search text.
-   *
-   * @returns Thread collection.
-   */
+  /** Lists thread metadata, excluding archived threads by default. */
   async listThreads(
     scope: "currentProject" | "all",
     projectPath: string | null,
@@ -913,7 +576,7 @@ export class OpenCodexBackendRuntime {
     searchTerm?: string,
     isArchived = false
   ): Promise<OpenCodexThread[]> {
-    return await this.threadConversationService.listThreads(
+    return await this.threadRuntimeHandler.listThreads(
       scope,
       projectPath,
       sourceId,
@@ -922,213 +585,103 @@ export class OpenCodexBackendRuntime {
     );
   }
 
-  /**
-   * Reads aggregate token usage for one project from the local cache.
-   *
-   * @param projectPath Project working directory.
-   * @param sourceId Source identifier, or `null` for an orphan project.
-   * @returns Project statistics based on cached chat snapshots.
-   */
+  /** Reads aggregate token usage for one project from the local cache. */
   async readProjectStatistics(
     projectPath: string,
     sourceId: string | null
   ): Promise<OpenCodexProjectStatistics> {
-    if (this.cacheRepository === null) {
-      return createEmptyProjectStatistics();
-    }
-
-    const statistics = await this.cacheRepository.getProjectTokenUsageStatistics(
-      projectPath,
-      sourceId
-    );
-
-    return {
-      chatCount: statistics.chatCount,
-      chatsWithTokenUsage: statistics.chatsWithTokenUsage,
-      chatsWithoutTokenUsage: statistics.chatsWithoutTokenUsage,
-      tokenUsage: statistics.tokenUsage
-    };
+    return await this.projectRuntimeHandler.readProjectStatistics(projectPath, sourceId);
   }
 
-  /**
-   * Archives a thread through Codex and local cache.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Success result.
-   */
+  /** Archives a thread through Codex and local cache. */
   async archiveThread(threadId: string): Promise<{ ok: true }> {
-    return await this.threadConversationService.archiveThread(threadId);
+    return await this.threadRuntimeHandler.archiveThread(threadId);
   }
 
-  /**
-   * Permanently deletes a thread through Codex and local cache.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Success result.
-   */
+  /** Permanently deletes a thread through Codex and local cache. */
   async deleteThread(threadId: string): Promise<{ ok: true }> {
-    return await this.threadConversationService.deleteThread(threadId);
+    return await this.threadRuntimeHandler.deleteThread(threadId);
   }
 
-  /**
-   * Restores an archived thread through Codex and local cache.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Success result.
-   */
+  /** Restores an archived thread through Codex and local cache. */
   async unarchiveThread(threadId: string): Promise<{ ok: true }> {
-    return await this.threadConversationService.unarchiveThread(threadId);
+    return await this.threadRuntimeHandler.unarchiveThread(threadId);
   }
 
-  /**
-   * Opens a thread and loads its current turns.
-   *
-   * @param threadId Thread identifier.
-   * @param sourceId Source identifier known by the active project, or `null`.
-   *
-   * @returns Opened thread and turns.
-   */
+  /** Opens a thread and loads its current turns. */
   async openThread(
     threadId: string,
     sourceId: string | null = null
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.threadConversationService.openThread(threadId, sourceId);
+    return await this.threadRuntimeHandler.openThread(threadId, sourceId);
   }
 
-  /**
-   * Reads the in-memory metadata trace for one chat thread.
-   *
-   * @param threadId Thread identifier.
-   * @param sourceId Source identifier, or `null` for an orphaned thread.
-   * @param limit Maximum number of entries to return.
-   * @returns Chronological event trace.
-   */
+  /** Reads the in-memory metadata trace for one chat thread. */
   readThreadEventLog(
     threadId: string,
     sourceId: string | null,
     limit: number
   ): OpenCodexThreadEventLogPage {
-    return this.threadEventLogService.read(sourceId, threadId, limit);
+    return this.threadRuntimeHandler.readThreadEventLog(threadId, sourceId, limit);
   }
 
-  /**
-   * Lists sub-agent threads spawned by a parent thread.
-   *
-   * @param parentThreadId Parent thread identifier.
-   * @param sourceId Source that owns the parent thread.
-   *
-   * @returns Sub-agent threads.
-   */
+  /** Lists sub-agent threads spawned by a parent thread. */
   async listSubAgentThreads(
     parentThreadId: string,
     sourceId: string | null
   ): Promise<OpenCodexThread[]> {
-    return await this.threadConversationService.listSubAgentThreads(parentThreadId, sourceId);
+    return await this.threadRuntimeHandler.listSubAgentThreads(parentThreadId, sourceId);
   }
 
-  /**
-   * Lists persisted collaboration events using explicit source-aware filters.
-   *
-   * @param query Source and optional thread-tree filters.
-   * @returns Normalized collaboration events.
-   */
+  /** Lists persisted collaboration events using explicit source-aware filters. */
   async listCollaborationEvents(
     query: OpenCodexCollaborationQuery
   ): Promise<OpenCodexCollaborationEvent[]> {
-    return await this.collaborationService.listEvents(query);
+    return await this.threadRuntimeHandler.listCollaborationEvents(query);
   }
 
-  /**
-   * Reads a secondary thread without changing the selected chat.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @param sourceId Source that owns the secondary thread.
-   * @returns Thread and loaded turns.
-   */
+  /** Reads a secondary thread without changing the selected chat. */
   async readThreadReadonly(
     threadId: string,
     sourceId: string | null
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.threadConversationService.readThreadReadonly(threadId, sourceId);
+    return await this.threadRuntimeHandler.readThreadReadonly(threadId, sourceId);
   }
 
-  /**
-   * Loads older messages for a thread.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Older turn result.
-   */
+  /** Loads older messages for a thread. */
   async loadOlderThreadMessages(
     threadId: string
   ): Promise<{ turns: OpenCodexTurn[]; hasMoreOlderMessages: boolean }> {
-    return await this.threadConversationService.loadOlderThreadMessages(threadId);
+    return await this.threadRuntimeHandler.loadOlderThreadMessages(threadId);
   }
 
-  /**
-   * Recovers a thread after a recoverable process error.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Success result.
-   */
+  /** Recovers a thread after a recoverable process error. */
   async recoverThread(threadId: string): Promise<{ ok: true }> {
-    return await this.threadConversationService.recoverThread(threadId);
+    return await this.threadRuntimeHandler.recoverThread(threadId);
   }
 
-  /**
-   * Creates a thread in a project.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier, or `null`.
-   *
-   * @returns Created thread and initial turns.
-   */
+  /** Creates a thread in a project. */
   async createThread(
     projectPath: string | null,
     sourceId: string | null
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.threadConversationService.createThread(projectPath, sourceId);
+    return await this.threadRuntimeHandler.createThread(projectPath, sourceId);
   }
 
-  /**
-   * Persists the local composer model settings for a thread.
-   *
-   * @param threadId Thread identifier.
-   * @param model Selected model identifier.
-   * @param reasoningEffort Selected reasoning effort.
-   *
-   * @returns Promise resolved when metadata has been written.
-   */
+  /** Persists the local composer model settings for a thread. */
   async updateThreadComposerSettings(
     threadId: string,
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null
   ): Promise<void> {
-    await this.threadConversationService.updateThreadComposerSettings(
+    await this.threadRuntimeHandler.updateThreadComposerSettings(
       threadId,
       model,
       reasoningEffort
     );
   }
 
-  /**
-   * Starts a user turn.
-   *
-   * @param threadId Thread identifier, or `null` to create one.
-   * @param projectPath Project path.
-   * @param sourceId Source identifier, or `null`.
-   * @param text User text.
-   * @param attachments Image attachments.
-   * @param model Optional model override.
-   * @param reasoningEffort Optional reasoning effort override.
-   *
-   * @returns Thread and turn identifiers.
-   */
+  /** Starts a turn, creating its thread when `threadId` is `null` and applying turn options. */
   async startTurn(
     threadId: string | null,
     projectPath: string | null,
@@ -1140,7 +693,7 @@ export class OpenCodexBackendRuntime {
     reasoningEffort: OpenCodexReasoningEffort | null,
     serviceTier: string | null
   ): Promise<{ threadId: string; turnId: string }> {
-    return await this.threadConversationService.startTurn(
+    return await this.threadRuntimeHandler.startTurn(
       threadId,
       projectPath,
       sourceId,
@@ -1153,16 +706,7 @@ export class OpenCodexBackendRuntime {
     );
   }
 
-  /**
-   * Steers a running turn.
-   *
-   * @param threadId Thread identifier.
-   * @param turnId Active turn identifier.
-   * @param text User text.
-   * @param attachments Image attachments.
-   *
-   * @returns Thread and turn identifiers.
-   */
+  /** Steers a running turn. */
   async steerTurn(
     threadId: string,
     turnId: string,
@@ -1170,7 +714,7 @@ export class OpenCodexBackendRuntime {
     attachments: OpenCodexImageAttachment[],
     references: OpenCodexComposerReference[]
   ): Promise<{ threadId: string; turnId: string }> {
-    return await this.threadConversationService.steerTurn(
+    return await this.threadRuntimeHandler.steerTurn(
       threadId,
       turnId,
       text,
@@ -1179,19 +723,7 @@ export class OpenCodexBackendRuntime {
     );
   }
 
-  /**
-   * Rolls back the last turn before restarting it with edited user input.
-   *
-   * @param threadId Thread identifier.
-   * @param projectPath Project path.
-   * @param sourceId Source identifier, or `null`.
-   * @param text Edited user text.
-   * @param attachments Image attachments.
-   * @param model Optional model override.
-   * @param reasoningEffort Optional reasoning effort override.
-   *
-   * @returns Thread identifier after rollback.
-   */
+  /** Rolls back the last turn and refreshes state, applying model and reasoning-effort options. */
   async editLastTurn(
     threadId: string,
     projectPath: string | null,
@@ -1203,7 +735,7 @@ export class OpenCodexBackendRuntime {
     reasoningEffort: OpenCodexReasoningEffort | null,
     serviceTier: string | null
   ): Promise<{ threadId: string }> {
-    return await this.threadConversationService.editLastTurn(
+    return await this.threadRuntimeHandler.editLastTurn(
       threadId,
       projectPath,
       sourceId,
@@ -1216,339 +748,93 @@ export class OpenCodexBackendRuntime {
     );
   }
 
-  /**
-   * Interrupts a running turn.
-   *
-   * @param threadId Thread identifier.
-   * @param turnId Turn identifier.
-   *
-   * @returns Promise resolved when Codex accepts the interrupt.
-   */
+  /** Interrupts a running turn. */
   async interruptTurn(threadId: string, turnId: string): Promise<void> {
-    await this.threadConversationService.interruptTurn(threadId, turnId);
+    await this.threadRuntimeHandler.interruptTurn(threadId, turnId);
   }
 
-  /**
-   * Reads the runtime active/idle status for a thread.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Thread runtime status reported by Codex app-server.
-   */
+  /** Reads the runtime active/idle status for a thread. */
   async readThreadRuntimeStatus(threadId: string): Promise<OpenCodexThreadRuntimeStatus> {
-    return await this.threadConversationService.readThreadRuntimeStatus(threadId);
+    return await this.threadRuntimeHandler.readThreadRuntimeStatus(threadId);
   }
 
-  /**
-   * Starts an inline review of the current thread.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Success result.
-   */
+  /** Starts an inline review for a thread in the given project context. */
   async startThreadReview(threadId: string, projectPath: string | null): Promise<{ ok: true }> {
-    return await this.threadConversationService.startReview(threadId, projectPath);
+    return await this.threadRuntimeHandler.startThreadReview(threadId, projectPath);
   }
 
-  /**
-   * Starts context compaction for a thread.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Success result.
-   */
+  /** Starts context compaction for a thread in the given project context. */
   async compactThread(threadId: string, projectPath: string | null): Promise<{ ok: true }> {
-    return await this.threadConversationService.compactThread(threadId, projectPath);
+    return await this.threadRuntimeHandler.compactThread(threadId, projectPath);
   }
 
-  /**
-   * Renames a thread.
-   *
-   * @param threadId Thread identifier.
-   * @param name New title.
-   *
-   * @returns Promise resolved when rename completes.
-   */
+  /** Renames a thread. */
   async renameThread(threadId: string, name: string): Promise<void> {
-    await this.threadConversationService.renameThread(threadId, name);
+    await this.threadRuntimeHandler.renameThread(threadId, name);
   }
 
-  /**
-   * Opens an external link through the host.
-   *
-   * @param href Link target.
-   * @param projectPath Project path used as context.
-   *
-   * @returns Success result.
-   */
+  /** Opens a non-empty link with the selected source's opener and project context. */
   async openLink(
     href: string,
     projectPath: string | null,
     sourceId: string | null
   ): Promise<{ ok: true }> {
-    const target = href.trim();
-
-    if (target.length === 0) {
-      return { ok: true };
-    }
-
-    if (this.options.openExternalLink === undefined) {
-      throw new Error(getBackendLabels(this.settings.language).missingLinkHandler);
-    }
-
-    const source = sourceId === null ? null : await this.resolveSource(sourceId);
-    const openerCommand = readOpenFileCommand(source);
-
-    await this.options.openExternalLink(
-      target,
-      this.resolveCurrentProjectPath(projectPath),
-      openerCommand
-    );
-    return { ok: true };
+    return await this.hostIntegrationService.openLink(href, projectPath, sourceId);
   }
 
-  /**
-   * Opens a project folder through its configured source opener.
-   *
-   * @param projectPath Project folder path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Success result.
-   */
+  /** Opens a project folder through its configured source opener. */
   async openProjectInIde(projectPath: string, sourceId: string | null): Promise<{ ok: true }> {
-    if (sourceId === null) {
-      return { ok: true };
-    }
-
-    const source = await this.resolveSource(sourceId);
-    const openerCommand = readOpenFolderCommand(source);
-
-    if (openerCommand === null || this.options.openExternalLink === undefined) {
-      return { ok: true };
-    }
-
-    await this.options.openExternalLink(projectPath, projectPath, openerCommand);
-    return { ok: true };
+    return await this.hostIntegrationService.openProjectInIde(projectPath, sourceId);
   }
 
-  /**
-   * Opens a local project folder with the host file manager.
-   *
-   * @param projectPath Project folder path.
-   * @param sourceId Source identifier.
-   * @returns Success result.
-   */
+  /** Opens a local project folder with the host file manager. */
   async openProjectFolder(projectPath: string, sourceId: string | null): Promise<{ ok: true }> {
-    return this.runLocalProjectHostAction(
-      projectPath,
-      sourceId,
-      this.options.openProjectFolder
-    );
+    return await this.hostIntegrationService.openProjectFolder(projectPath, sourceId);
   }
 
-  /**
-   * Opens a host terminal with a local project as its working directory.
-   *
-   * @param projectPath Project folder path.
-   * @param sourceId Source identifier.
-   * @returns Success result.
-   */
+  /** Opens a host terminal with a local project as its working directory. */
   async openProjectTerminal(projectPath: string, sourceId: string | null): Promise<{ ok: true }> {
-    return this.runLocalProjectHostAction(
-      projectPath,
-      sourceId,
-      this.options.openProjectTerminal
-    );
+    return await this.hostIntegrationService.openProjectTerminal(projectPath, sourceId);
   }
 
-  /**
-   * Runs a host action only when the project belongs to a local source.
-   *
-   * @param projectPath Project folder path.
-   * @param sourceId Source identifier.
-   * @param action Host action to run.
-   * @returns Success result, including when the action is unavailable or unsupported.
-   */
-  private async runLocalProjectHostAction(
-    projectPath: string,
-    sourceId: string | null,
-    action: ((projectPath: string) => Promise<void> | void) | undefined
-  ): Promise<{ ok: true }> {
-    if (sourceId === null || action === undefined) {
-      return { ok: true };
-    }
-
-    const source = await this.resolveSource(sourceId);
-
-    if (source.kind !== "local") {
-      return { ok: true };
-    }
-
-    await action(projectPath);
-    return { ok: true };
-  }
-
-  /**
-   * Lists available Codex models.
-   *
-   * @returns Model identifiers.
-   */
+  /** Lists available Codex models. */
   async listModels(): Promise<OpenCodexModel[]> {
-    const source = await this.resolveSource(this.settings.defaultSourceId);
-    const cachedModels = await this.readCachedModels(source.id);
-
-    if (cachedModels.length > 0) {
-      this.emit({ type: "models.updated", models: cachedModels });
-    }
-
-    try {
-      const client = await this.ensureClient(source.id);
-      const response = await client.request("model/list", { limit: 100 });
-      const models = readModels(response);
-
-      if (models.length > 0) {
-        await this.saveModelCatalog(source.id, models);
-        this.emit({ type: "models.updated", models });
-        return models;
-      }
-
-      if (cachedModels.length > 0) {
-        return cachedModels;
-      }
-
-      const modelsFallback = fallbackModels();
-      this.emit({ type: "models.updated", models: modelsFallback });
-      return modelsFallback;
-    } catch (error) {
-      this.options.logger?.(`model/list unavailable: ${String(error)}`);
-
-      if (cachedModels.length > 0) {
-        return cachedModels;
-      }
-
-      const modelsFallback = fallbackModels();
-      this.emit({ type: "models.updated", models: modelsFallback });
-      return modelsFallback;
-    }
+    return await this.modelCatalogService.listModels(this.settings.defaultSourceId);
   }
 
-  /**
-   * Reads current Codex account usage limits.
-   *
-   * @param sourceId Source identifier, or `null` for the configured default.
-   * @returns Usage limit snapshot, or `null` when unavailable.
-   */
+  /** Reads usage limits for the requested or configured default source; reason defaults to `"request"`. */
   async readUsageLimits(
     sourceId: string | null = null,
     reason: Exclude<UsageRateLimitLogReason, "accountRateLimitsUpdated"> = "request"
   ): Promise<OpenCodexUsageSnapshot | null> {
-    let resolvedSource: CachedSource | null = null;
-
-    try {
-      resolvedSource = await this.resolveRequestedSource(sourceId);
-      const client = await this.ensureClient(resolvedSource.id);
-      const response = await client.request<v2.GetAccountRateLimitsResponse>(
-        "account/rateLimits/read",
-        undefined
-      );
-      const usage = mapUsageLimitsResponse(response, resolvedSource.id);
-      this.recordUsageRateLimitDiagnostic(resolvedSource.id, usage, "read", reason);
-      this.persistUsageRateLimitSnapshot(resolvedSource.id, response, usage, "read", reason);
-      this.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage });
-      return usage;
-    } catch (error) {
-      this.options.logger?.(`account/rateLimits/read unavailable: ${String(error)}`);
-
-      if (resolvedSource !== null) {
-        this.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage: null });
-      }
-
-      return null;
-    }
+    return await this.usageRuntimeService.readUsageLimits(sourceId, reason);
   }
 
-  /**
-   * Reads source-scoped rate-limit and token usage history.
-   *
-   * @param sourceId Source whose history should be read.
-   * @param from Inclusive ISO start timestamp.
-   * @param to Exclusive ISO end timestamp.
-   * @param aggregation Requested chart granularity.
-   * @returns Aggregated usage history.
-   */
+  /** Reads cached source-scoped usage history for an ISO range and optional aggregation. */
   async readUsageHistory(
     sourceId: string,
     from: string,
     to: string,
     aggregation?: OpenCodexUsageHistoryAggregation
   ): Promise<OpenCodexUsageHistory> {
-    return readUsageHistoryFromCache(this.cacheRepository, {
-      sourceId,
-      from,
-      to,
-      aggregation
-    });
+    return await this.usageRuntimeService.readUsageHistory(sourceId, from, to, aggregation);
   }
 
-  /**
-   * Consumes one source-scoped banked rate-limit reset.
-   *
-   * @param sourceId Source identifier owning the account reset.
-   * @param creditId Reset-credit identifier selected by the user.
-   * @param idempotencyKey Stable key for this logical consume attempt.
-   * @returns Codex consume outcome after refreshing the source usage snapshot.
-   */
+  /** Consumes a source-scoped reset credit idempotently, then refreshes usage limits. */
   async consumeUsageReset(
     sourceId: string,
     creditId: string,
     idempotencyKey: string
   ): Promise<OpenCodexUsageResetConsumeResult> {
-    if (sourceId.trim().length === 0) {
-      throw new Error("A source is required to consume a rate-limit reset.");
-    }
-
-    if (creditId.trim().length === 0) {
-      throw new Error("A reset-credit identifier is required.");
-    }
-
-    if (idempotencyKey.trim().length === 0) {
-      throw new Error("An idempotency key is required to consume a reset.");
-    }
-
-    const source = await this.resolveRequestedSource(sourceId);
-    const client = await this.ensureClient(source.id);
-    const response = await client.request<v2.ConsumeAccountRateLimitResetCreditResponse>(
-      "account/rateLimitResetCredit/consume",
-      {
-        idempotencyKey,
-        creditId
-      }
-    );
-
-    await this.readUsageLimits(source.id, "resetConsume");
-
-    return { outcome: response.outcome };
+    return await this.usageRuntimeService.consumeUsageReset(sourceId, creditId, idempotencyKey);
   }
 
-  /**
-   * Lists plugins visible from a Codex source.
-   *
-   * @param sourceId Source identifier, or `null` for the default source.
-   * @returns Plugin marketplaces.
-   */
+  /** Lists plugins visible from a Codex source. */
   async listPlugins(sourceId: string | null): Promise<OpenCodexPluginListResult> {
     return await this.pluginService.list(sourceId);
   }
 
-  /**
-   * Reads one plugin detail from a Codex source.
-   *
-   * @param sourceId Source identifier, or `null` for the default source.
-   * @param marketplaceName Marketplace identifier.
-   * @param marketplacePath Local marketplace path, when available.
-   * @param pluginName Plugin name inside the marketplace.
-   * @returns Plugin detail.
-   */
+  /** Reads one plugin detail from a Codex source. */
   async readPlugin(
     sourceId: string | null,
     marketplaceName: string,
@@ -1563,15 +849,7 @@ export class OpenCodexBackendRuntime {
     });
   }
 
-  /**
-   * Installs one plugin through a Codex source.
-   *
-   * @param sourceId Source identifier, or `null` for the default source.
-   * @param marketplaceName Marketplace identifier.
-   * @param marketplacePath Local marketplace path, when available.
-   * @param pluginName Plugin name inside the marketplace.
-   * @returns Installation result.
-   */
+  /** Installs one plugin through a Codex source. */
   async installPlugin(
     sourceId: string | null,
     marketplaceName: string,
@@ -1586,387 +864,200 @@ export class OpenCodexBackendRuntime {
     });
   }
 
-  /**
-   * Uninstalls one plugin through a Codex source.
-   *
-   * @param sourceId Source identifier, or `null` for the default source.
-   * @param pluginId Installed plugin identifier.
-   * @returns Success result.
-   */
+  /** Uninstalls one plugin through a Codex source. */
   async uninstallPlugin(sourceId: string | null, pluginId: string): Promise<{ ok: true }> {
     return await this.pluginService.uninstall(sourceId, pluginId);
   }
 
-  /**
-   * Reads the Git version available to the host runtime.
-   *
-   * @returns Git availability and version information.
-   */
+  /** Reads the Git version available to the host runtime. */
   async readGitVersion(): Promise<OpenCodexToolVersionStatus> {
-    return await readGitVersionStatus();
+    return await this.gitRuntimeHandler.readGitVersion();
   }
 
-  /**
-   * Reads Git status for a project through its Codex source.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Parsed Git status.
-   */
+  /** Reads Git status for a project through its Codex source. */
   async readGitStatus(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
-    return await this.gitService.status(projectPath, sourceId);
+    return await this.gitRuntimeHandler.readGitStatus(projectPath, sourceId);
   }
 
-  /**
-   * Initializes a Git repository for a project through its Codex source.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Initializes a Git repository for a project through its Codex source. */
   async initializeGitRepository(
     projectPath: string,
     sourceId: string | null
   ): Promise<OpenCodexGitStatus> {
-    return await this.gitService.init(projectPath, sourceId);
+    return await this.gitRuntimeHandler.initializeGitRepository(projectPath, sourceId);
   }
 
-  /**
-   * Lists configured Git remotes for a project.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Remote collection.
-   */
+  /** Lists configured Git remotes for a project. */
   async listGitRemotes(
     projectPath: string,
     sourceId: string | null
   ): Promise<OpenCodexGitRemote[]> {
-    return await this.gitService.remotes(projectPath, sourceId);
+    return await this.gitRuntimeHandler.listGitRemotes(projectPath, sourceId);
   }
 
-  /**
-   * Adds or updates one Git remote.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param name Remote name.
-   * @param url Remote URL.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Adds or updates one Git remote. */
   async upsertGitRemote(
     projectPath: string,
     sourceId: string | null,
     name: string,
     url: string
   ): Promise<OpenCodexGitStatus> {
-    return await this.gitService.upsertRemote(projectPath, sourceId, name, url);
+    return await this.gitRuntimeHandler.upsertGitRemote(projectPath, sourceId, name, url);
   }
 
-  /**
-   * Lists local and remote Git branches for a project.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Branch collection.
-   */
+  /** Lists local and remote Git branches for a project. */
   async listGitBranches(
     projectPath: string,
     sourceId: string | null
   ): Promise<OpenCodexGitBranch[]> {
-    return await this.gitService.branches(projectPath, sourceId);
+    return await this.gitRuntimeHandler.listGitBranches(projectPath, sourceId);
   }
 
-  /**
-   * Lists Git tags for a project.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Tag collection.
-   */
+  /** Lists Git tags for a project. */
   async listGitTags(
     projectPath: string,
     sourceId: string | null
   ): Promise<OpenCodexGitTagListResult> {
-    return await this.gitService.tags(projectPath, sourceId);
+    return await this.gitRuntimeHandler.listGitTags(projectPath, sourceId);
   }
 
-  /**
-   * Fetches remote Git tags and returns the refreshed local tag list.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Tag collection.
-   */
+  /** Fetches remote Git tags and returns the refreshed local tag list. */
   async fetchGitTags(
     projectPath: string,
     sourceId: string | null
   ): Promise<OpenCodexGitTagFetchResult> {
-    return await this.gitService.fetchTags(projectPath, sourceId);
+    return await this.gitRuntimeHandler.fetchGitTags(projectPath, sourceId);
   }
 
-  /**
-   * Creates a lightweight Git tag.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param tagName Tag name.
-   *
-   * @returns Refreshed tag collection.
-   */
+  /** Creates a lightweight Git tag. */
   async createGitTag(
     projectPath: string,
     sourceId: string | null,
     tagName: string
   ): Promise<OpenCodexGitTagListResult> {
-    return await this.gitService.createTag(projectPath, sourceId, tagName);
+    return await this.gitRuntimeHandler.createGitTag(projectPath, sourceId, tagName);
   }
 
-  /**
-   * Pushes one Git tag to the configured remote.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param tagName Tag name.
-   * @param force Whether an existing remote tag may be replaced.
-   * @returns Refreshed tag listing.
-   */
+  /** Pushes one Git tag, optionally replacing the remote tag when `force` is true. */
   async pushGitTag(
     projectPath: string,
     sourceId: string | null,
     tagName: string,
     force: boolean
   ): Promise<OpenCodexGitTagListResult> {
-    return await this.gitService.pushTag(projectPath, sourceId, tagName, force);
+    return await this.gitRuntimeHandler.pushGitTag(projectPath, sourceId, tagName, force);
   }
 
-  /**
-   * Pushes all local Git tags to the configured remote.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @returns Refreshed tag listing.
-   */
+  /** Pushes all local Git tags to the configured remote. */
   async pushGitTags(
     projectPath: string,
     sourceId: string | null
   ): Promise<OpenCodexGitTagListResult> {
-    return await this.gitService.pushTags(projectPath, sourceId);
+    return await this.gitRuntimeHandler.pushGitTags(projectPath, sourceId);
   }
 
-  /**
-   * Counts commits since a reference tag.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param tagName Tag name.
-   *
-   * @returns Commit count.
-   */
+  /** Counts commits since a reference tag. */
   async countGitCommitsSinceTag(
     projectPath: string,
     sourceId: string | null,
     tagName: string
   ): Promise<number> {
-    return await this.gitService.commitsSinceTag(projectPath, sourceId, tagName);
+    return await this.gitRuntimeHandler.countGitCommitsSinceTag(projectPath, sourceId, tagName);
   }
 
-  /**
-   * Reads a page of Git history for a project.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param limit Page size.
-   * @param skip Number of commits to skip from HEAD.
-   *
-   * @returns Git history page.
-   */
+  /** Reads a page of Git history for a project. */
   async readGitLog(
     projectPath: string,
     sourceId: string | null,
     limit: number,
     skip: number
   ): Promise<OpenCodexGitLogPage> {
-    return await this.gitService.log(projectPath, sourceId, limit, skip);
+    return await this.gitRuntimeHandler.readGitLog(projectPath, sourceId, limit, skip);
   }
 
-  /**
-   * Reads details for one Git commit.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param hash Commit hash.
-   *
-   * @returns Commit details.
-   */
+  /** Reads details for one Git commit. */
   async readGitCommitDetails(
     projectPath: string,
     sourceId: string | null,
     hash: string
   ): Promise<OpenCodexGitCommitDetails> {
-    return await this.gitService.commitDetails(projectPath, sourceId, hash);
+    return await this.gitRuntimeHandler.readGitCommitDetails(projectPath, sourceId, hash);
   }
 
-  /**
-   * Checks out an existing Git branch and returns the refreshed status.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param branchName Branch name.
-   * @param branchKind Branch kind.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Checks out an existing Git branch and returns the refreshed status. */
   async checkoutGitBranch(
     projectPath: string,
     sourceId: string | null,
     branchName: string,
     branchKind: OpenCodexGitBranchKind
   ): Promise<OpenCodexGitStatus> {
-    return await this.gitService.checkoutBranch(projectPath, sourceId, branchName, branchKind);
+    return await this.gitRuntimeHandler.checkoutGitBranch(projectPath, sourceId, branchName, branchKind);
   }
 
-  /**
-   * Creates and checks out a new Git branch.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param branchName Branch name.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Creates and checks out a new Git branch. */
   async createGitBranch(
     projectPath: string,
     sourceId: string | null,
     branchName: string
   ): Promise<OpenCodexGitStatus> {
-    return await this.gitService.createBranch(projectPath, sourceId, branchName);
+    return await this.gitRuntimeHandler.createGitBranch(projectPath, sourceId, branchName);
   }
 
-  /**
-   * Merges an existing Git branch into the current branch.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param branchName Branch name.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Merges an existing Git branch into the current branch. */
   async mergeGitBranch(
     projectPath: string,
     sourceId: string | null,
     branchName: string
   ): Promise<OpenCodexGitStatus> {
-    return await this.gitService.mergeBranch(projectPath, sourceId, branchName);
+    return await this.gitRuntimeHandler.mergeGitBranch(projectPath, sourceId, branchName);
   }
 
-  /**
-   * Stages selected Git paths.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param paths Relative paths to stage.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Stages selected Git paths. */
   async stageGitPaths(
     projectPath: string,
     sourceId: string | null,
     paths: string[]
   ): Promise<OpenCodexGitStatus> {
-    return await this.gitService.stage(projectPath, sourceId, paths);
+    return await this.gitRuntimeHandler.stageGitPaths(projectPath, sourceId, paths);
   }
 
-  /**
-   * Unstages selected Git paths.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param paths Relative paths to unstage.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Unstages selected Git paths. */
   async unstageGitPaths(
     projectPath: string,
     sourceId: string | null,
     paths: string[]
   ): Promise<OpenCodexGitStatus> {
-    return await this.gitService.unstage(projectPath, sourceId, paths);
+    return await this.gitRuntimeHandler.unstageGitPaths(projectPath, sourceId, paths);
   }
 
-  /**
-   * Creates a Git commit from staged paths.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   * @param message Commit message.
-   *
-   * @returns Commit result.
-   */
+  /** Creates a Git commit from staged paths. */
   async commitGitChanges(
     projectPath: string,
     sourceId: string | null,
     message: string
   ): Promise<OpenCodexGitCommitResult> {
-    return await this.gitService.commit(projectPath, sourceId, message);
+    return await this.gitRuntimeHandler.commitGitChanges(projectPath, sourceId, message);
   }
 
-  /**
-   * Pushes local commits to the configured upstream.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Pushes local commits to the configured upstream. */
   async pushGitChanges(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
-    return await this.gitService.push(projectPath, sourceId);
+    return await this.gitRuntimeHandler.pushGitChanges(projectPath, sourceId);
   }
 
-  /**
-   * Publishes the current local branch to a remote and configures its upstream.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Publishes the current local branch to a remote and configures its upstream. */
   async publishCurrentGitBranch(
     projectPath: string,
     sourceId: string | null
   ): Promise<OpenCodexGitStatus> {
-    return await this.gitService.publishCurrentBranch(projectPath, sourceId);
+    return await this.gitRuntimeHandler.publishCurrentGitBranch(projectPath, sourceId);
   }
 
-  /**
-   * Lists commands configured for a project.
-   *
-   * @param projectId Project identifier.
-   *
-   * @returns Project commands.
-   */
+  /** Lists commands configured for a project. */
   async listProjectCommands(projectId: string): Promise<OpenCodexProjectCommand[]> {
-    return await this.projectCommandService.listCommands(projectId);
+    return await this.projectAutomationRuntimeHandler.listProjectCommands(projectId);
   }
 
-  /**
-   * Creates a project command.
-   *
-   * @param projectId Project identifier.
-   * @param name Command display name.
-   * @param command Command line.
-   * @param allowParallel Whether multiple instances may run at once.
-   * @param persistLogs Whether output should be written to disk.
-   *
-   * @returns Created command.
-   */
+  /** Creates a project command. */
   async createProjectCommand(
     projectId: string,
     name: string,
@@ -1974,23 +1065,16 @@ export class OpenCodexBackendRuntime {
     allowParallel: boolean,
     persistLogs: boolean
   ): Promise<OpenCodexProjectCommand> {
-    return await this.projectCommandService.createCommand({
+    return await this.projectAutomationRuntimeHandler.createProjectCommand(
       projectId,
       name,
       command,
       allowParallel,
       persistLogs
-    });
+    );
   }
 
-  /**
-   * Updates a project command.
-   *
-   * @param commandId Command identifier.
-   * @param patch Command patch.
-   *
-   * @returns Updated command.
-   */
+  /** Updates a project command. */
   async updateProjectCommand(
     commandId: string,
     patch: {
@@ -2000,199 +1084,107 @@ export class OpenCodexBackendRuntime {
       persistLogs?: boolean;
     }
   ): Promise<OpenCodexProjectCommand> {
-    return await this.projectCommandService.updateCommand(commandId, patch);
+    return await this.projectAutomationRuntimeHandler.updateProjectCommand(commandId, patch);
   }
 
-  /**
-   * Reorders project commands.
-   *
-   * @param projectId Project identifier.
-   * @param commandIds Command identifiers in display order.
-   *
-   * @returns Commands in persisted order.
-   */
+  /** Reorders project commands. */
   async reorderProjectCommands(
     projectId: string,
     commandIds: string[]
   ): Promise<OpenCodexProjectCommand[]> {
-    return await this.projectCommandService.reorderCommands(projectId, commandIds);
+    return await this.projectAutomationRuntimeHandler.reorderProjectCommands(projectId, commandIds);
   }
 
-  /**
-   * Deletes a project command.
-   *
-   * @param commandId Command identifier.
-   *
-   * @returns Success result.
-   */
+  /** Deletes a project command. */
   async deleteProjectCommand(commandId: string): Promise<{ ok: true }> {
-    await this.projectCommandService.deleteCommand(commandId);
-    return { ok: true };
+    return await this.projectAutomationRuntimeHandler.deleteProjectCommand(commandId);
   }
 
-  /**
-   * Starts a project command.
-   *
-   * @param commandId Command identifier.
-   * @param projectPath Project working directory.
-   * @param sourceId Source identifier.
-   *
-   * @returns Started run.
-   */
+  /** Starts a project command. */
   async runProjectCommand(
     commandId: string,
     projectPath: string,
     sourceId: string | null
   ): Promise<OpenCodexProjectCommandRun> {
-    return await this.projectCommandService.runCommand(commandId, projectPath, sourceId);
+    return await this.projectAutomationRuntimeHandler.runProjectCommand(
+      commandId,
+      projectPath,
+      sourceId
+    );
   }
 
-  /**
-   * Stops a project command run.
-   *
-   * @param runId Run identifier.
-   *
-   * @returns Success result.
-   */
+  /** Stops a project command run. */
   async stopProjectCommandRun(runId: string): Promise<{ ok: true }> {
-    return await this.projectCommandService.stopRun(runId);
+    return await this.projectAutomationRuntimeHandler.stopProjectCommandRun(runId);
   }
 
-  /**
-   * Lists managed command rules and synchronization state for one project.
-   *
-   * @param projectId Project identifier.
-   * @returns Project rule snapshot.
-   */
+  /** Lists managed command rules and synchronization state for one project. */
   async listProjectRules(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
-    return await this.projectCommandRuleService.readSnapshot(projectId);
+    return await this.projectAutomationRuntimeHandler.listProjectRules(projectId);
   }
 
-  /**
-   * Creates a managed project command rule.
-   *
-   * @param input Rule input.
-   * @returns Created rule.
-   */
+  /** Creates a managed project command rule. */
   async createProjectRule(
     input: CachedProjectCommandRuleCreateInput
   ): Promise<OpenCodexProjectCommandRule> {
-    return await this.projectCommandRuleService.createRule(input);
+    return await this.projectAutomationRuntimeHandler.createProjectRule(input);
   }
 
-  /**
-   * Updates a managed project command rule.
-   *
-   * @param ruleId Rule identifier.
-   * @param patch Rule update.
-   * @returns Updated rule.
-   */
+  /** Updates a managed project command rule. */
   async updateProjectRule(
     ruleId: string,
     patch: CachedProjectCommandRuleUpdateInput
   ): Promise<OpenCodexProjectCommandRule> {
-    return await this.projectCommandRuleService.updateRule(ruleId, patch);
+    return await this.projectAutomationRuntimeHandler.updateProjectRule(ruleId, patch);
   }
 
-  /**
-   * Deletes a managed project command rule.
-   *
-   * @param ruleId Rule identifier.
-   * @returns Success result.
-   */
+  /** Deletes a managed project command rule. */
   async deleteProjectRule(ruleId: string): Promise<{ ok: true }> {
-    return await this.projectCommandRuleService.deleteRule(ruleId);
+    return await this.projectAutomationRuntimeHandler.deleteProjectRule(ruleId);
   }
 
-  /**
-   * Generates the managed project rules file.
-   *
-   * @param projectId Project identifier.
-   * @param force Whether an external file change may be overwritten.
-   * @returns Apply result.
-   */
+  /** Generates project rules, optionally overwriting external changes when `force` is true. */
   async applyProjectRules(
     projectId: string,
     force = false
   ): Promise<OpenCodexProjectCommandRuleApplyResult> {
-    return await this.projectCommandRuleService.applyRules(projectId, force);
+    return await this.projectAutomationRuntimeHandler.applyProjectRules(projectId, force);
   }
 
-  /**
-   * Tests a command against the generated project rules file.
-   *
-   * @param projectId Project identifier.
-   * @param command Command line.
-   * @returns Policy test result.
-   */
+  /** Tests a command against the generated project rules file. */
   async testProjectRules(
     projectId: string,
     command: string
   ): Promise<OpenCodexProjectCommandRuleTestResult> {
-    return await this.projectCommandRuleService.testRules(projectId, command);
+    return await this.projectAutomationRuntimeHandler.testProjectRules(projectId, command);
   }
 
-  /**
-   * Restarts the project's source runtime to load generated rules.
-   *
-   * @param projectId Project identifier.
-   * @returns Refreshed project rule snapshot.
-   */
+  /** Restarts the project's source runtime to load generated rules. */
   async restartProjectRules(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
-    return await this.projectCommandRuleService.restartRules(projectId);
+    return await this.projectAutomationRuntimeHandler.restartProjectRules(projectId);
   }
 
-  /**
-   * Lists local tasks configured for a project.
-   *
-   * @param projectId Project identifier.
-   *
-   * @returns Project tasks.
-   */
+  /** Lists local tasks configured for a project. */
   async listProjectTasks(projectId: string): Promise<OpenCodexProjectTask[]> {
-    if (this.cacheRepository === null) {
-      return [];
-    }
-
-    return await this.cacheRepository.listProjectTasks(projectId);
+    return await this.projectRuntimeHandler.listProjectTasks(projectId);
   }
 
-  /**
-   * Creates a local project task.
-   *
-   * @param projectId Project identifier.
-   * @param title Task title.
-   * @param description Task description.
-   * @param status Task status.
-   *
-   * @returns Created task.
-   */
+  /** Creates a local project task. */
   async createProjectTask(
     projectId: string,
     title: string,
     description: string,
     status: OpenCodexProjectTaskStatus
   ): Promise<OpenCodexProjectTask> {
-    if (this.cacheRepository === null) {
-      throw new Error("Project tasks require the local cache.");
-    }
-
-    return await this.cacheRepository.createProjectTask({
+    return await this.projectRuntimeHandler.createProjectTask(
       projectId,
       title,
       description,
       status
-    });
+    );
   }
 
-  /**
-   * Updates a local project task.
-   *
-   * @param taskId Task identifier.
-   * @param patch Task patch.
-   *
-   * @returns Updated task.
-   */
+  /** Updates a local project task. */
   async updateProjectTask(
     taskId: string,
     patch: {
@@ -2201,67 +1193,30 @@ export class OpenCodexBackendRuntime {
       status?: OpenCodexProjectTaskStatus;
     }
   ): Promise<OpenCodexProjectTask> {
-    if (this.cacheRepository === null) {
-      throw new Error("Project tasks require the local cache.");
-    }
-
-    return await this.cacheRepository.updateProjectTask(taskId, patch);
+    return await this.projectRuntimeHandler.updateProjectTask(taskId, patch);
   }
 
-  /**
-   * Deletes a local project task.
-   *
-   * @param taskId Task identifier.
-   *
-   * @returns Success result.
-   */
+  /** Deletes a local project task. */
   async deleteProjectTask(taskId: string): Promise<{ ok: true }> {
-    if (this.cacheRepository === null) {
-      throw new Error("Project tasks require the local cache.");
-    }
-
-    await this.cacheRepository.deleteProjectTask(taskId);
-    return { ok: true };
+    return await this.projectRuntimeHandler.deleteProjectTask(taskId);
   }
 
-  /**
-   * Reads the editable commit generation prompt.
-   *
-   * @returns Prompt state.
-   */
+  /** Reads the editable commit generation prompt. */
   async readCommitPrompt(): Promise<OpenCodexCommitPrompt> {
-    return await this.commitMessageService.readPrompt();
+    return await this.gitRuntimeHandler.readCommitPrompt();
   }
 
-  /**
-   * Persists the editable commit generation prompt.
-   *
-   * @param prompt Prompt content.
-   * @returns Prompt state.
-   */
+  /** Persists the editable commit generation prompt. */
   async updateCommitPrompt(prompt: string): Promise<OpenCodexCommitPrompt> {
-    return await this.commitMessageService.updatePrompt(prompt);
+    return await this.gitRuntimeHandler.updateCommitPrompt(prompt);
   }
 
-  /**
-   * Restores the default commit generation prompt.
-   *
-   * @returns Prompt state.
-   */
+  /** Restores the default commit generation prompt. */
   async resetCommitPrompt(): Promise<OpenCodexCommitPrompt> {
-    return await this.commitMessageService.resetPrompt();
+    return await this.gitRuntimeHandler.resetCommitPrompt();
   }
 
-  /**
-   * Generates a commit message from currently staged changes.
-   *
-   * @param projectPath Project working directory.
-   * @param sourceId Source identifier.
-   * @param instruction Optional generation instruction.
-   * @param model Optional model override.
-   * @param language Output language.
-   * @returns Generated commit message.
-   */
+  /** Generates a commit message with optional model, reasoning-effort, and language options. */
   async generateGitCommitMessage(
     projectPath: string,
     sourceId: string | null,
@@ -2270,7 +1225,7 @@ export class OpenCodexBackendRuntime {
     reasoningEffort: OpenCodexReasoningEffort | null,
     language: OpenCodexCommitMessageLanguage
   ): Promise<OpenCodexCommitMessageGenerationResult> {
-    return await this.commitMessageService.generateCommitMessage(
+    return await this.gitRuntimeHandler.generateGitCommitMessage(
       projectPath,
       sourceId,
       instruction,
@@ -2280,416 +1235,9 @@ export class OpenCodexBackendRuntime {
     );
   }
 
-  /**
-   * Pulls remote commits from the configured upstream.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Source identifier.
-   *
-   * @returns Refreshed Git status.
-   */
+  /** Pulls remote commits from the configured upstream. */
   async pullGitChanges(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
-    return await this.gitService.pull(projectPath, sourceId);
-  }
-
-  /**
-   * Routes Codex notifications into the notification service.
-   *
-   * @param notification Codex notification.
-   * @param sourceId Source that produced the notification.
-   *
-   * @returns Nothing.
-   */
-  private handleNotification(notification: CodexNotification, sourceId: string): void {
-    this.options.onCodexNotificationReceived?.(
-      notification.method,
-      estimateNotificationBytes(notification.params)
-    );
-    const threadId = readString(readObject(notification.params).threadId);
-
-    if (threadId.length > 0 && this.ignoredNotificationThreadIds.has(threadId)) {
-      return;
-    }
-
-    this.notifyThreadEventLog(this.threadEventLogService.recordNotification(notification, sourceId));
-
-    if (this.streamingNotificationBatcher.handleNotification(notification, sourceId)) {
-      return;
-    }
-
-    this.processNotification(notification, sourceId);
-  }
-
-  /**
-   * Processes an immediate or already-batched Codex notification.
-   *
-   * @param notification Notification ready for backend processing.
-   * @param sourceId Source that produced the notification.
-   */
-  private processNotification(notification: CodexNotification, sourceId: string): void {
-    const startedAt = performance.now();
-
-    try {
-      this.recordLiveCacheNotification(notification);
-      void this.collaborationService.handleNotification(notification, sourceId);
-
-      if (notification.method === "thread/started") {
-        const thread = readObject(notification.params).thread;
-        void this.threadConversationService.recordStartedThread(thread, sourceId);
-      }
-
-      this.recordTurnExecutionNotification(notification, sourceId);
-      this.trackActiveTurnNotification(notification, sourceId);
-      this.projectCommandService.handleNotification(notification);
-      this.notificationService.handleNotification(notification, sourceId);
-
-      if (notification.method === "account/rateLimits/updated") {
-        const activeCommitModels = this.readActiveCommitModels(sourceId);
-        const mappedUsage = mapUsageLimitsNotification(notification.params, sourceId);
-        const usage = correctUsageLimitNotification(
-          mappedUsage,
-          activeCommitModels
-        );
-
-        if (usage !== null) {
-          this.recordUsageRateLimitDiagnostic(
-            sourceId,
-            usage,
-            "notification",
-            "accountRateLimitsUpdated",
-            usage !== mappedUsage
-          );
-          this.persistUsageRateLimitSnapshot(
-            sourceId,
-            notification.params,
-            usage,
-            "notification",
-            "accountRateLimitsUpdated"
-          );
-          this.emit({ type: "usage.updated", sourceId, usage });
-        } else {
-          this.usageRateLimitDiagnostics.recordIgnoredNotification(
-            sourceId,
-            readObject(notification.params).rateLimits,
-            activeCommitModels
-          );
-        }
-      }
-
-      if (notification.method === "thread/tokenUsage/updated") {
-        const usage = mapThreadTokenUsageNotification(notification.params);
-
-        if (usage !== null) {
-          const cacheEntry = this.threadTurnCache.get(usage.threadId);
-
-          if (cacheEntry !== null) {
-            cacheEntry.tokenUsage = usage;
-          }
-
-          void this.threadCacheService.writeTokenUsage(sourceId, usage);
-          this.emit({ type: "thread.tokenUsage.updated", sourceId, usage });
-        }
-      }
-
-      if (notification.method === "turn/completed") {
-        void this.readUsageLimits(sourceId, "turnCompleted");
-      }
-    } finally {
-      this.options.onCodexNotificationProcessed?.(
-        notification.method,
-        performance.now() - startedAt
-      );
-    }
-  }
-
-  /**
-   * Records turn-level model, reasoning, and speed metadata from notifications.
-   *
-   * @param notification Codex notification.
-   * @param sourceId Source that produced the notification.
-   * @returns Nothing.
-   */
-  private recordTurnExecutionNotification(
-    notification: CodexNotification,
-    sourceId: string
-  ): void {
-    const params = readObject(notification.params);
-    const threadId = readString(params.threadId);
-
-    if (threadId.length === 0) {
-      return;
-    }
-
-    if (notification.method === "turn/started") {
-      const turnId = readString(readObject(params.turn).id);
-
-      if (turnId.length === 0 || this.threadTurnCache.getTurnExecutionMetadata(threadId, turnId) !== null) {
-        return;
-      }
-
-      const thread = this.threadTurnCache.get(threadId)?.thread;
-      const metadata: OpenCodexTurnExecutionMetadata = {
-        requestedModel: null,
-        effectiveModel: thread?.model ?? null,
-        requestedReasoningEffort: null,
-        effectiveReasoningEffort: thread?.reasoningEffort ?? null,
-        serviceTier: null
-      };
-      void this.threadCacheService.writeTurnExecutionMetadata(sourceId, threadId, turnId, metadata);
-      return;
-    }
-
-    if (notification.method !== "model/rerouted") {
-      return;
-    }
-
-    const turnId = readString(params.turnId);
-    const toModel = readString(params.toModel);
-
-    if (turnId.length === 0 || toModel.length === 0) {
-      return;
-    }
-
-    const current = this.threadTurnCache.getTurnExecutionMetadata(threadId, turnId);
-    const metadata: OpenCodexTurnExecutionMetadata = {
-      requestedModel: current?.requestedModel ?? null,
-      effectiveModel: toModel,
-      requestedReasoningEffort: current?.requestedReasoningEffort ?? null,
-      effectiveReasoningEffort: current?.effectiveReasoningEffort ?? null,
-      serviceTier: current?.serviceTier ?? null
-    };
-    void this.threadCacheService.writeTurnExecutionMetadata(sourceId, threadId, turnId, metadata);
-  }
-
-  /**
-   * Records one source-scoped rate-limit diagnostic when the snapshot changed.
-   *
-   * @param sourceId Source owning the rate limits.
-   * @param usage Rate-limit snapshot, or `null` when unavailable.
-   * @param origin Snapshot origin.
-   * @param reason Snapshot reason.
-   * @param correctionApplied Whether a corrective mapping changed the snapshot.
-   * @returns Nothing.
-   */
-  private recordUsageRateLimitDiagnostic(
-    sourceId: string,
-    usage: OpenCodexUsageSnapshot | null,
-    origin: UsageRateLimitLogOrigin,
-    reason: UsageRateLimitLogReason,
-    correctionApplied = false
-  ): void {
-    this.usageRateLimitDiagnostics.record(
-      sourceId,
-      usage,
-      origin,
-      reason,
-      this.readActiveCommitModels(sourceId),
-      correctionApplied
-    );
-  }
-
-  /**
-   * Persists one effective rate-limit snapshot without blocking notification
-   * processing or making the cache a runtime requirement.
-   *
-   * @param sourceId Source owning the rate limits.
-   * @param rawPayload Original Codex response or notification parameters.
-   * @param usage Corrected mapped usage snapshot, or `null` when unavailable.
-   * @param origin Snapshot origin.
-   * @param reason Snapshot reason.
-   * @returns Nothing.
-   */
-  private persistUsageRateLimitSnapshot(
-    sourceId: string,
-    rawPayload: unknown,
-    usage: OpenCodexUsageSnapshot | null,
-    origin: UsageRateLimitLogOrigin,
-    reason: UsageRateLimitLogReason
-  ): void {
-    if (this.cacheRepository === null || usage === null) {
-      return;
-    }
-
-    const snapshot = createUsageRateLimitHistorySnapshot(
-      sourceId,
-      rawPayload,
-      usage,
-      origin,
-      reason
-    );
-
-    void this.cacheRepository.saveUsageRateLimitSnapshot(snapshot).catch((error) => {
-      this.options.logger?.(`rate-limit history write failed: ${String(error)}`);
-    });
-  }
-
-  /**
-   * Marks a commit model as active for one source.
-   *
-   * @param sourceId Source used by the generation, or `null` for the default.
-   * @param model Model used by the generation, or `null` for Codex default.
-   * @returns Nothing.
-   */
-  private addActiveCommitModel(sourceId: string | null, model: string | null): void {
-    const sourceKey = this.readCommitSourceKey(sourceId);
-    const modelKey = readCommitModelKey(model);
-    const models = this.activeCommitModelsBySourceId.get(sourceKey) ?? new Map<string, number>();
-    models.set(modelKey, (models.get(modelKey) ?? 0) + 1);
-    this.activeCommitModelsBySourceId.set(sourceKey, models);
-  }
-
-  /**
-   * Marks a commit model as finished for one source.
-   *
-   * @param sourceId Source used by the generation, or `null` for the default.
-   * @param model Model used by the generation, or `null` for Codex default.
-   * @returns Nothing.
-   */
-  private removeActiveCommitModel(sourceId: string | null, model: string | null): void {
-    const sourceKey = this.readCommitSourceKey(sourceId);
-    const models = this.activeCommitModelsBySourceId.get(sourceKey);
-
-    if (models === undefined) {
-      return;
-    }
-
-    const modelKey = readCommitModelKey(model);
-    const activeCount = models.get(modelKey) ?? 0;
-
-    if (activeCount <= 1) {
-      models.delete(modelKey);
-    } else {
-      models.set(modelKey, activeCount - 1);
-    }
-
-    if (models.size === 0) {
-      this.activeCommitModelsBySourceId.delete(sourceKey);
-    }
-  }
-
-  /**
-   * Reads the active commit models for a source in diagnostic-friendly form.
-   *
-   * @param sourceId Source owning the notification.
-   * @returns Active models, with `null` representing Codex's default model.
-   */
-  private readActiveCommitModels(sourceId: string): Array<string | null> {
-    const models = this.activeCommitModelsBySourceId.get(sourceId);
-
-    if (models === undefined) {
-      return [];
-    }
-
-    return Array.from(models.keys()).map((model) => (
-      model === DEFAULT_COMMIT_MODEL_KEY ? null : model
-    ));
-  }
-
-  /**
-   * Resolves the map key used for a commit generation source.
-   *
-   * @param sourceId Explicit source identifier, or `null` for the default.
-   * @returns Stable source key.
-   */
-  private readCommitSourceKey(sourceId: string | null): string {
-    return sourceId ?? this.settings.defaultSourceId ?? DEFAULT_COMMIT_SOURCE_KEY;
-  }
-
-  /**
-   * Records a live cache notification with optional advanced timing.
-   *
-   * @param notification Notification ready for cache processing.
-   */
-  private recordLiveCacheNotification(notification: CodexNotification): void {
-    const shouldMeasure = this.settings.developerMode &&
-      this.settings.advancedPerformanceMonitoringEnabled;
-
-    if (!shouldMeasure) {
-      this.threadConversationService.recordNotification(notification);
-      return;
-    }
-
-    const startedAt = performance.now();
-    this.threadConversationService.recordNotification(notification);
-    this.options.onLiveCacheNotificationProcessed?.(
-      notification.method,
-      performance.now() - startedAt
-    );
-  }
-
-  /**
-   * Tracks active Codex turns by source for source-level maintenance guards.
-   *
-   * @param notification Codex notification.
-   * @param sourceId Source that produced the notification.
-   *
-   * @returns Nothing.
-   */
-  private trackActiveTurnNotification(notification: CodexNotification, sourceId: string): void {
-    const params = readObject(notification.params);
-
-    if (notification.method === "turn/started") {
-      const turnId = readString(readObject(params.turn).id);
-
-      if (turnId.length > 0) {
-        this.addActiveTurn(sourceId, turnId);
-      }
-      return;
-    }
-
-    if (notification.method === "turn/completed") {
-      const turnId = readString(readObject(params.turn).id);
-
-      if (turnId.length > 0) {
-        this.removeActiveTurn(sourceId, turnId);
-      }
-    }
-  }
-
-  /**
-   * Records one active turn for a source.
-   *
-   * @param sourceId Source identifier.
-   * @param turnId Turn identifier.
-   *
-   * @returns Nothing.
-   */
-  private addActiveTurn(sourceId: string, turnId: string): void {
-    const activeTurnIds = this.activeTurnIdsBySourceId.get(sourceId) ?? new Set<string>();
-    activeTurnIds.add(turnId);
-    this.activeTurnIdsBySourceId.set(sourceId, activeTurnIds);
-  }
-
-  /**
-   * Removes one active turn from a source.
-   *
-   * @param sourceId Source identifier.
-   * @param turnId Turn identifier.
-   *
-   * @returns Nothing.
-   */
-  private removeActiveTurn(sourceId: string, turnId: string): void {
-    const activeTurnIds = this.activeTurnIdsBySourceId.get(sourceId);
-
-    if (activeTurnIds === undefined) {
-      return;
-    }
-
-    activeTurnIds.delete(turnId);
-
-    if (activeTurnIds.size === 0) {
-      this.activeTurnIdsBySourceId.delete(sourceId);
-    }
-  }
-
-  /**
-   * Checks whether a source currently owns an active turn.
-   *
-   * @param sourceId Source identifier.
-   * @returns Whether update/restart operations should be blocked.
-   */
-  private hasActiveTurnForSource(sourceId: string): boolean {
-    return (this.activeTurnIdsBySourceId.get(sourceId)?.size ?? 0) > 0;
+    return await this.gitRuntimeHandler.pullGitChanges(projectPath, sourceId);
   }
 
   /**
@@ -2704,15 +1252,9 @@ export class OpenCodexBackendRuntime {
     this.approvalService.handleServerRequest(request, sourceId);
   }
 
-  /**
-   * Trusts a project in Codex configuration.
-   *
-   * @param projectPath Project path.
-   *
-   * @returns Success result.
-   */
+  /** Trusts a project in Codex configuration. */
   async trustProject(projectPath: string): Promise<{ ok: true }> {
-    return await this.projectTrustService.trustProject(projectPath);
+    return await this.projectRuntimeHandler.trustProject(projectPath);
   }
 
   /**
@@ -2723,19 +1265,7 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   dismissProjectTrustRequest(projectPath: string): void {
-    this.projectTrustService.dismissProjectTrustRequest(projectPath);
-  }
-
-  /**
-   * Handles Codex stderr output.
-   *
-   * @param message stderr message.
-   * @param sourceId Source that produced the message.
-   *
-   * @returns Nothing.
-   */
-  private handleCodexStderr(message: string, sourceId: string): void {
-    this.projectTrustService.handleCodexStderr(message, sourceId);
+    this.projectRuntimeHandler.dismissProjectTrustRequest(projectPath);
   }
 
   /**
@@ -2758,9 +1288,7 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   private handleClientError(error: Error): void {
-    const normalized = normalizeError(error, this.settings.language);
-    this.persistLog("error", normalized.message, normalized.details);
-    this.emit({ type: "error", message: normalized.message, details: normalized.details });
+    this.runtimeErrorCoordinator.handleClientError(error);
   }
 
   /**
@@ -2771,142 +1299,34 @@ export class OpenCodexBackendRuntime {
    * @returns Nothing.
    */
   private handleClientClose(sourceId: string): void {
-    this.streamingNotificationBatcher.flushSource(sourceId);
+    this.notificationCoordinator.flushSource(sourceId);
     this.clientPool.deleteClient(sourceId);
-    this.activeTurnIdsBySourceId.delete(sourceId);
+    this.notificationCoordinator.clearSourceActiveTurns(sourceId);
 
     if (!this.clientPool.hasClients()) {
       this.emit({ type: "connection.status", status: "stopped" });
     }
   }
 
-  /**
-   * Reads the recoverable thread identifier for a failed request.
-   *
-   * @param request Request that failed.
-   * @param error Unknown thrown value.
-   *
-   * @returns Thread identifier, or `null`.
-   */
-  private readRecoverableThreadId(request: OpenCodexRequest, error: unknown): string | null {
-    if (!(error instanceof CodexProcessError)) {
-      return null;
-    }
-
-    if (request.type === "turn.start") {
-      return request.threadId;
-    }
-
-    if (
-      request.type === "threads.open" ||
-      request.type === "threads.recover" ||
-      request.type === "thread.review" ||
-      request.type === "thread.compact"
-    ) {
-      return request.threadId;
-    }
-
-    return null;
+  /** Emits an event to the host and records thread-targeted events in the journal. */
+  private emit(event: OpenCodexEvent): void {
+    this.threadRuntimeHandler.emit(event);
   }
 
   /**
-   * Emits an event to the host transport.
+   * Starts a best-effort application log write through the log service.
    *
-   * @param event Event payload.
-   *
+   * @param type Log severity.
+   * @param message User-facing log message.
+   * @param details Optional structured diagnostic details.
    * @returns Nothing.
    */
-  private emit(event: OpenCodexEvent): void {
-    if (event.type !== "thread.eventLog.updated") {
-      this.notifyThreadEventLog(this.threadEventLogService.recordBackendEvent(event));
-    }
-
-    this.options.emit(event);
-  }
-
-  /**
-   * Forwards a trace mutation without recursively recording the trace update.
-   *
-   * @param mutation Trace mutation, or `null` when no notification is needed.
-   */
-  private notifyThreadEventLog(
-    mutation: ThreadEventLogMutation | null
-  ): void {
-    if (mutation === null || !mutation.shouldNotify) {
-      return;
-    }
-
-    this.emit({
-      type: "thread.eventLog.updated",
-      sourceId: mutation.entry.sourceId,
-      threadId: mutation.entry.threadId,
-      entry: mutation.entry
-    });
-  }
-
   private persistLog(
     type: OpenCodexLogEntry["type"],
     message: string,
     details: unknown
   ): void {
-    if (this.cacheRepository === null) {
-      return;
-    }
-
-    void this.cacheRepository.createLog({ type, message, details }).then((log) => {
-      this.emit({ type: "logs.created", log });
-    }).catch((error: unknown) => {
-      this.options.logger?.(`application log write failed: ${String(error)}`);
-    });
-  }
-
-  /**
-   * Reads cached projects through the project service.
-   *
-   * @returns Cached projects.
-   */
-  private async readCachedProjects(): Promise<OpenCodexProject[]> {
-    return await this.projectSourceService.readCachedProjects();
-  }
-
-  /**
-   * Resolves a current project path with runtime fallback.
-   *
-   * @param projectPath Project path candidate.
-   *
-   * @returns Normalized project path, or `null`.
-   */
-  private resolveCurrentProjectPath(projectPath: string | null): string | null {
-    return normalizeProjectPath(projectPath) ?? normalizeProjectPath(this.options.projectPath);
-  }
-
-  /**
-   * Ensures sources are initialized.
-   *
-   * @returns Promise resolved when initialization completes.
-   */
-  private async ensureSourcesInitialized(): Promise<void> {
-    await this.projectSourceService.ensureSourcesInitialized();
-  }
-
-  /**
-   * Resolves a source.
-   *
-   * @param sourceId Source identifier, or `null`.
-   *
-   * @returns Resolved source.
-   */
-  private async resolveSource(sourceId: string | null): Promise<CachedSource> {
-    return await this.projectSourceService.resolveSource(sourceId);
-  }
-
-  /**
-   * Lists sources as UI protocol objects.
-   *
-   * @returns Source collection.
-   */
-  private async listOpenCodexSources(): Promise<OpenCodexSource[]> {
-    return await this.projectSourceService.listOpenCodexSources();
+    this.applicationLogService.persistLog(type, message, details);
   }
 
   /**
@@ -2920,382 +1340,4 @@ export class OpenCodexBackendRuntime {
     await this.clientPool.restartClient(sourceId);
   }
 
-  /**
-   * Applies a Codex-generated thread title to memory and cache.
-   *
-   * @param threadId Thread identifier.
-   * @param title Codex-generated title.
-   * @param sourceId Source that produced the notification.
-   *
-   * @returns Nothing.
-   */
-  private applyCodexThreadTitle(threadId: string, title: string, sourceId: string): void {
-    const cacheEntry = this.threadTurnCache.updateCodexThreadTitle(threadId, title);
-
-    if (cacheEntry !== null) {
-      this.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
-    }
-
-    void this.threadCacheService.writeCodexTitle(threadId, title);
-  }
-
-  /**
-   * Applies a Codex-generated thread deletion to memory, cache, and UI.
-   *
-   * @param threadId Deleted thread identifier.
-   * @param sourceId Source that produced the notification.
-   *
-   * @returns Nothing.
-   */
-  private applyCodexThreadDeleted(threadId: string, sourceId: string): void {
-    void this.threadConversationService
-      .forgetDeletedThread(threadId, sourceId)
-      .catch((error: unknown) => {
-        this.handleClientError(toError(error));
-      });
-  }
-
-  /**
-   * Refreshes a completed turn after Codex has had time to persist its items.
-   *
-   * @param threadId Thread identifier.
-   * @param sourceId Source that produced the notification.
-   *
-   * @returns Nothing.
-   */
-  private syncCompletedTurn(threadId: string, sourceId: string): void {
-    void this.threadConversationService.syncCompletedTurn(threadId, sourceId).catch((error: unknown) => {
-      this.handleClientError(toError(error));
-    });
-  }
-
-  /**
-   * Reads and validates the cached model catalog for one source.
-   *
-   * @param sourceId Source identifier.
-   * @returns Cached models, or an empty list when unavailable or invalid.
-   */
-  private async readCachedModels(sourceId: string): Promise<OpenCodexModel[]> {
-    if (this.cacheRepository === null) {
-      return [];
-    }
-
-    try {
-      const catalog = await this.cacheRepository.getModelCatalog(sourceId);
-
-      if (catalog === null) {
-        return [];
-      }
-
-      const models = JSON.parse(catalog.modelsJson) as unknown;
-      return readModels({ data: models });
-    } catch (error) {
-      this.options.logger?.(`model catalog cache unavailable: ${String(error)}`);
-      return [];
-    }
-  }
-
-  /**
-   * Persists a fresh model catalog without making cache failures visible to the UI.
-   *
-   * @param sourceId Source identifier.
-   * @param models Fresh model metadata.
-   * @returns Promise resolved after the best-effort write.
-   */
-  private async saveModelCatalog(sourceId: string, models: OpenCodexModel[]): Promise<void> {
-    if (this.cacheRepository === null) {
-      return;
-    }
-
-    try {
-      await this.cacheRepository.saveModelCatalog(sourceId, JSON.stringify(models));
-    } catch (error) {
-      this.options.logger?.(`model catalog cache write unavailable: ${String(error)}`);
-    }
-  }
-
-}
-
-/**
- * Reads the host-local file opener command from a source.
- *
- * @param source Source DTO, or `null`.
- * @returns File opener command, or `null` when host-local access is unavailable.
- */
-function readOpenFileCommand(source: CachedSource | null): string | null {
-  if (source === null || !sourceHasLocalAccess(source)) {
-    return null;
-  }
-
-  return source.kind === "local" || source.kind === "custom"
-    ? source.settings.openFileCommand
-    : null;
-}
-
-/**
- * Reads the host-local folder opener command from a source.
- *
- * @param source Source DTO.
- * @returns Folder opener command, or `null` when host-local access is unavailable.
- */
-function readOpenFolderCommand(source: CachedSource): string | null {
-  if (!sourceHasLocalAccess(source)) {
-    return null;
-  }
-
-  return source.kind === "local" || source.kind === "custom"
-    ? source.settings.openFolderCommand
-    : null;
-}
-
-/**
- * Checks whether a source can access paths on the Electron host filesystem.
- *
- * @param source Source DTO.
- * @returns Whether local file openers may be used.
- */
-function sourceHasLocalAccess(source: CachedSource): boolean {
-  if (source.kind === "local") {
-    return true;
-  }
-
-  return source.kind === "custom" && source.settings.hasLocalAccess;
-}
-
-/**
- * Calculates the ISO cutoff used when deleting old logs.
- *
- * @param amount Retention amount selected by the user.
- * @param unit Retention unit selected by the user.
- * @returns ISO timestamp before which logs can be removed.
- */
-function calculateRetentionCutoff(amount: number, unit: OpenCodexLogRetentionUnit): string {
-  const normalizedAmount = Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : 24;
-  const cutoff = new Date();
-
-  if (unit === "hours") {
-    cutoff.setHours(cutoff.getHours() - normalizedAmount);
-  }
-
-  if (unit === "days") {
-    cutoff.setDate(cutoff.getDate() - normalizedAmount);
-  }
-
-  if (unit === "weeks") {
-    cutoff.setDate(cutoff.getDate() - normalizedAmount * 7);
-  }
-
-  if (unit === "months") {
-    cutoff.setMonth(cutoff.getMonth() - normalizedAmount);
-  }
-
-  return cutoff.toISOString();
-}
-
-/**
- * Reads a project-relative path while tolerating mixed path separators.
- *
- * @param root Project root path.
- * @param filePath Absolute or source-local file path.
- * @returns Relative path suitable for UI display.
- */
-function readRelativeFilePath(root: string, filePath: string): string {
-  const normalizedRoot = root.replaceAll("\\", "/").replace(/\/+$/, "");
-  const normalizedPath = filePath.replaceAll("\\", "/");
-  const rootPrefix = `${normalizedRoot}/`;
-
-  if (normalizedPath.startsWith(rootPrefix)) {
-    return normalizedPath.slice(rootPrefix.length);
-  }
-
-  return normalizedPath.replace(/^\/+/, "");
-}
-
-/**
- * Converts directory entries from one root into file-search results.
- *
- * @param root Root path that was searched.
- * @param entries Directory entries returned by Codex.
- * @returns Search results ordered with directories first.
- */
-function mapRootDirectorySearchResults(
-  root: string,
-  entries: v2.FsReadDirectoryEntry[]
-): OpenCodexFileSearchResult[] {
-  return entries
-    .filter((entry) => entry.isFile || entry.isDirectory)
-    .sort(compareDirectoryEntry)
-    .map((entry) => ({
-      root,
-      path: joinSourcePath(root, entry.fileName),
-      relativePath: entry.fileName,
-      fileName: entry.fileName,
-      matchType: entry.isDirectory ? "directory" : "file"
-    }));
-}
-
-/**
- * Orders directory entries for root-level fallback search.
- *
- * @param left Left directory entry.
- * @param right Right directory entry.
- * @returns Sort order with directories before files.
- */
-function compareDirectoryEntry(
-  left: v2.FsReadDirectoryEntry,
-  right: v2.FsReadDirectoryEntry
-): number {
-  if (left.isDirectory !== right.isDirectory) {
-    return left.isDirectory ? -1 : 1;
-  }
-
-  return left.fileName.localeCompare(right.fileName);
-}
-
-/**
- * Joins a source-local root with one child name.
- *
- * @param root Source-local root path.
- * @param childName Child entry name.
- * @returns Joined path using the source path style.
- */
-function joinSourcePath(root: string, childName: string): string {
-  if (root.endsWith("/") || root.endsWith("\\")) {
-    return `${root}${childName}`;
-  }
-
-  const separator = root.includes("\\") && !root.includes("/") ? "\\" : "/";
-
-  return `${root}${separator}${childName}`;
-}
-
-/**
- * Scores a skill search candidate against a fuzzy query.
- *
- * @param name Skill technical name.
- * @param displayName Optional display name.
- * @param query User search text.
- * @returns Positive score for matches, or -1 for no match.
- */
-function scoreSkillSearchResult(
-  name: string,
-  displayName: string | undefined,
-  query: string
-): number {
-  const normalizedQuery = query.trim().toLowerCase();
-  const candidates = [
-    name.toLowerCase(),
-    displayName?.toLowerCase() ?? ""
-  ];
-
-  if (normalizedQuery.length === 0) {
-    return 1;
-  }
-
-  if (candidates.some((candidate) => candidate === normalizedQuery)) {
-    return 100;
-  }
-
-  if (candidates.some((candidate) => candidate.startsWith(normalizedQuery))) {
-    return 80;
-  }
-
-  if (candidates.some((candidate) => candidate.includes(normalizedQuery))) {
-    return 60;
-  }
-
-  if (candidates.some((candidate) => isFuzzyMatch(candidate, normalizedQuery))) {
-    return 30;
-  }
-
-  return -1;
-}
-
-/**
- * Checks whether all query characters appear in order in a candidate.
- *
- * @param candidate Normalized candidate text.
- * @param query Normalized query text.
- * @returns Whether the candidate fuzzy-matches the query.
- */
-function isFuzzyMatch(candidate: string, query: string): boolean {
-  let candidateIndex = 0;
-
-  for (const queryCharacter of query) {
-    candidateIndex = candidate.indexOf(queryCharacter, candidateIndex);
-
-    if (candidateIndex === -1) {
-      return false;
-    }
-
-    candidateIndex += 1;
-  }
-
-  return true;
-}
-
-/**
- * Estimates streamed notification volume without serializing or retaining content.
- *
- * @param value Raw notification parameters.
- * @returns Total length of known high-volume string fields.
- */
-function estimateNotificationBytes(value: unknown): number {
-  const params = readObject(value);
-  const fieldNames = ["delta", "deltaBase64", "diff", "message", "output"];
-  let estimatedBytes = 0;
-
-  for (const fieldName of fieldNames) {
-    const fieldValue = params[fieldName];
-
-    if (typeof fieldValue === "string") {
-      estimatedBytes += fieldValue.length;
-    }
-  }
-
-  return estimatedBytes;
-}
-
-/**
- * Reads the source attached to a request when the request carries one.
- *
- * @param request Backend request.
- * @returns Source identifier, or `null` when unavailable.
- */
-function readRequestSourceId(request: OpenCodexRequest): string | null {
-  if (!("sourceId" in request)) {
-    return null;
-  }
-
-  return typeof request.sourceId === "string" ? request.sourceId : null;
-}
-
-/**
- * Converts a nullable commit model into a stable diagnostic map key.
- *
- * @param model Selected commit model, or `null` for Codex's default.
- * @returns Stable model key.
- */
-function readCommitModelKey(model: string | null): string {
-  return model ?? DEFAULT_COMMIT_MODEL_KEY;
-}
-
-/**
- * Creates an empty project statistics response when the cache is unavailable.
- *
- * @returns Zeroed project statistics.
- */
-function createEmptyProjectStatistics(): OpenCodexProjectStatistics {
-  return {
-    chatCount: 0,
-    chatsWithTokenUsage: 0,
-    chatsWithoutTokenUsage: 0,
-    tokenUsage: {
-      totalTokens: 0,
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      outputTokens: 0,
-      reasoningOutputTokens: 0
-    }
-  };
 }
