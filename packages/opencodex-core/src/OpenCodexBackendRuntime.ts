@@ -132,40 +132,58 @@ export class OpenCodexBackendRuntime {
     this.settings = options.settings;
     this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.cacheRepository = options.cacheRepository ?? null;
+
+    const emit = (event: OpenCodexEvent): void => {
+      this.threadRuntimeHandler.emit(event);
+    };
+    const handleServerRequest = (
+      request: CodexServerRequest,
+      sourceId: string
+    ): void => {
+      this.approvalService.handleServerRequest(request, sourceId);
+    };
+    const handleClientError = (error: Error): void => {
+      this.runtimeErrorCoordinator.handleClientError(error);
+    };
+
     this.applicationLogService = new ApplicationLogService({
       cacheRepository: this.cacheRepository,
-      emit: (event) => this.emit(event),
+      emit,
       logger: options.logger
     });
     this.clientPool = new OpenCodexClientPool({
       getSettings: () => this.settings,
       getAppVersion: () => this.options.appVersion ?? null,
       resolveSource: (sourceId) => this.projectRuntimeHandler.resolveSource(sourceId),
-      emit: (event) => this.emit(event),
+      emit,
       logger: options.logger,
       handleNotification: (notification, sourceId) => (
         this.notificationCoordinator.handleNotification(notification, sourceId)
       ),
-      handleServerRequest: (request, sourceId) => this.handleServerRequest(request, sourceId),
-      handleError: (error) => this.handleClientError(error),
+      handleServerRequest,
+      handleError: handleClientError,
       handleClose: (sourceId) => this.handleClientClose(sourceId),
       handleStderr: (message, sourceId) => (
         this.projectRuntimeHandler.handleCodexStderr(message, sourceId)
       )
     });
+    const ensureClient = this.clientPool.ensureClient.bind(this.clientPool);
+    const restartSourceClient = this.clientPool.restartClient.bind(this.clientPool);
+    const persistLog = this.applicationLogService.persistLog.bind(this.applicationLogService);
+
     this.usageRuntimeService = new UsageRuntimeService({
       cacheRepository: this.cacheRepository,
       getSettings: () => this.settings,
       resolveRequestedSource: (sourceId) => this.projectRuntimeHandler.resolveRequestedSource(sourceId),
-      ensureClient: (sourceId) => this.ensureClient(sourceId),
+      ensureClient,
       isPrerelease: this.isPrerelease,
-      emit: (event) => this.emit(event),
-      persistLog: (type, message, details) => this.persistLog(type, message, details),
+      emit,
+      persistLog,
       logger: options.logger
     });
     this.approvalService = new ApprovalService({
       getSettings: () => this.settings,
-      emit: (event) => this.emit(event),
+      emit,
       getClient: (sourceId) => this.clientPool.getClient(sourceId)
     });
     this.codexUpdateService = new CodexUpdateService({
@@ -186,9 +204,9 @@ export class OpenCodexBackendRuntime {
       setSettings: (settings) => {
         this.settings = settings;
       },
-      emit: (event) => this.emit(event),
-      ensureClient: (sourceId) => this.ensureClient(sourceId),
-      restartSourceClient: (sourceId) => this.restartSourceClient(sourceId),
+      emit,
+      ensureClient,
+      restartSourceClient,
       hasActiveTurn: (sourceId) => this.notificationCoordinator.hasActiveTurn(sourceId),
       getCodexUpdateStatus: (source, fallbackCommand) => (
         this.codexUpdateService.getSourceUpdateStatus(source, fallbackCommand)
@@ -200,8 +218,8 @@ export class OpenCodexBackendRuntime {
     });
     this.runtimeErrorCoordinator = new RuntimeErrorCoordinator({
       getLanguage: () => this.settings.language,
-      persistLog: (type, message, details) => this.persistLog(type, message, details),
-      emit: (event) => this.emit(event),
+      persistLog,
+      emit,
       recoverThread: (threadId) => this.recoverThread(threadId)
     });
     this.threadRuntimeHandler = new ThreadRuntimeHandler({
@@ -209,18 +227,18 @@ export class OpenCodexBackendRuntime {
       cacheRepository: this.cacheRepository,
       getSettings: () => this.settings,
       emitToHost: options.emit,
-      ensureClient: (sourceId) => this.ensureClient(sourceId),
+      ensureClient,
       resolveSource: this.projectRuntimeHandler.resolveSource,
       cacheProject: this.projectRuntimeHandler.cacheProject,
       readCachedProjects: this.projectRuntimeHandler.readCachedProjects,
-      handleClientError: (error) => this.handleClientError(error)
+      handleClientError
     });
     this.gitRuntimeHandler = new GitRuntimeHandler({
       userDataPath: options.userDataPath,
       defaultPromptPath: options.defaultCommitPromptPath,
       generationPromptPath: options.generationCommitPromptPath,
       getSettings: () => this.settings,
-      ensureClient: (sourceId) => this.ensureClient(sourceId),
+      ensureClient,
       ignoreThreadNotifications: (threadId) => this.threadRuntimeHandler.ignoreThreadNotifications(threadId),
       releaseThreadNotifications: (threadId) => this.threadRuntimeHandler.releaseThreadNotifications(threadId),
       onGenerationStarted: (sourceId, model) => {
@@ -235,17 +253,17 @@ export class OpenCodexBackendRuntime {
       cache: this.cacheRepository,
       userDataPath: options.userDataPath,
       getSettings: () => this.settings,
-      ensureClient: (sourceId) => this.ensureClient(sourceId),
+      ensureClient,
       resolveSource: this.projectRuntimeHandler.resolveSource,
       hasActiveTurn: (sourceId) => this.notificationCoordinator.hasActiveTurn(sourceId),
-      restartSourceClient: (sourceId) => this.restartSourceClient(sourceId),
-      emit: (event) => this.emit(event)
+      restartSourceClient,
+      emit
     });
     this.pluginService = new PluginService({
-      ensureClient: (sourceId) => this.ensureClient(sourceId)
+      ensureClient
     });
     this.projectSearchService = new ProjectSearchService({
-      ensureClient: (sourceId) => this.ensureClient(sourceId)
+      ensureClient
     });
     this.hostIntegrationService = new HostIntegrationService({
       getLanguage: () => this.settings.language,
@@ -260,8 +278,8 @@ export class OpenCodexBackendRuntime {
     this.modelCatalogService = new ModelCatalogService({
       cacheRepository: this.cacheRepository,
       resolveSource: this.projectRuntimeHandler.resolveSource,
-      ensureClient: (sourceId) => this.ensureClient(sourceId),
-      emit: (event) => this.emit(event),
+      ensureClient,
+      emit,
       logger: options.logger
     });
     const threadNotificationAdapters = this.threadRuntimeHandler.getNotificationAdapters();
@@ -280,7 +298,7 @@ export class OpenCodexBackendRuntime {
       recordRawNotification: (notification, sourceId) => {
         this.threadRuntimeHandler.recordRawNotification(notification, sourceId);
       },
-      emit: (event) => this.emit(event),
+      emit,
       handleRateLimitsUpdated: (sourceId, params) => {
         this.usageRuntimeService.handleRateLimitsUpdated(sourceId, params);
       },
@@ -311,7 +329,7 @@ export class OpenCodexBackendRuntime {
   async bootstrap(): Promise<{ ok: true }> {
     await this.projectRuntimeHandler.ensureSourcesInitialized();
     await this.codexUpdateService.checkLatestRelease(false);
-    this.emit({
+    this.threadRuntimeHandler.emit({
       type: "app.bootstrap",
       settings: this.settings,
       sources: await this.projectRuntimeHandler.listOpenCodexSources(),
@@ -385,17 +403,6 @@ export class OpenCodexBackendRuntime {
    */
   handleRequestError(request: OpenCodexRequest, error: unknown): never {
     return this.runtimeErrorCoordinator.handleRequestError(request, error);
-  }
-
-  /**
-   * Ensures a Codex client for a source.
-   *
-   * @param sourceId Source identifier, or `null` for the default source.
-   *
-   * @returns Started Codex client.
-   */
-  private async ensureClient(sourceId: string | null = this.settings.defaultSourceId) {
-    return await this.clientPool.ensureClient(sourceId);
   }
 
   /** Lists cached projects. */
@@ -1240,18 +1247,6 @@ export class OpenCodexBackendRuntime {
     return await this.gitRuntimeHandler.pullGitChanges(projectPath, sourceId);
   }
 
-  /**
-   * Routes Codex server requests into the approval service.
-   *
-   * @param request Codex server request.
-   * @param sourceId Source that owns the request.
-   *
-   * @returns Nothing.
-   */
-  private handleServerRequest(request: CodexServerRequest, sourceId: string): void {
-    this.approvalService.handleServerRequest(request, sourceId);
-  }
-
   /** Trusts a project in Codex configuration. */
   async trustProject(projectPath: string): Promise<{ ok: true }> {
     return await this.projectRuntimeHandler.trustProject(projectPath);
@@ -1281,17 +1276,6 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
-   * Emits a normalized client error.
-   *
-   * @param error Client error.
-   *
-   * @returns Nothing.
-   */
-  private handleClientError(error: Error): void {
-    this.runtimeErrorCoordinator.handleClientError(error);
-  }
-
-  /**
    * Updates connection state after a source client closes.
    *
    * @param sourceId Source identifier.
@@ -1304,40 +1288,8 @@ export class OpenCodexBackendRuntime {
     this.notificationCoordinator.clearSourceActiveTurns(sourceId);
 
     if (!this.clientPool.hasClients()) {
-      this.emit({ type: "connection.status", status: "stopped" });
+      this.threadRuntimeHandler.emit({ type: "connection.status", status: "stopped" });
     }
-  }
-
-  /** Emits an event to the host and records thread-targeted events in the journal. */
-  private emit(event: OpenCodexEvent): void {
-    this.threadRuntimeHandler.emit(event);
-  }
-
-  /**
-   * Starts a best-effort application log write through the log service.
-   *
-   * @param type Log severity.
-   * @param message User-facing log message.
-   * @param details Optional structured diagnostic details.
-   * @returns Nothing.
-   */
-  private persistLog(
-    type: OpenCodexLogEntry["type"],
-    message: string,
-    details: unknown
-  ): void {
-    this.applicationLogService.persistLog(type, message, details);
-  }
-
-  /**
-   * Restarts a source client after command changes.
-   *
-   * @param sourceId Source identifier.
-   *
-   * @returns Promise resolved when restarted.
-   */
-  private async restartSourceClient(sourceId: string): Promise<void> {
-    await this.clientPool.restartClient(sourceId);
   }
 
 }
