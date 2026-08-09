@@ -1,32 +1,34 @@
 import type {
   OpenCodexCodexReleaseCheck,
-  OpenCodexEvent,
   OpenCodexSource
 } from "@open-codex-ui/opencodex-protocol";
+import type { CodexUpdateService } from "./CodexUpdateService.js";
+import type { ProjectSourceService } from "./ProjectSourceService.js";
+import type {
+  ClientPort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
 
 /** Dependencies used by the runtime's source update and release operations. */
 export type SourceUpdateRuntimeHandlerOptions = {
-  /** Returns the current global Codex command used for automatic local sources. */
-  getCodexCommand(): string;
-  /** Returns the source identifier currently configured as the default. */
-  getDefaultSourceId(): string | null;
+  /** Reads the current global Codex command and default source settings. */
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
   /** Lists the source DTOs currently visible to the UI. */
-  listOpenCodexSources(): Promise<OpenCodexSource[]>;
-  /** Refreshes the globally cached latest Codex release metadata. */
-  checkLatestRelease(force: boolean): Promise<OpenCodexCodexReleaseCheck>;
-  /** Applies a standalone Codex update and returns the refreshed source list. */
-  updateSource(source: OpenCodexSource, fallbackCommand: string): Promise<OpenCodexSource[]>;
+  projects: Pick<ProjectSourceService, "listOpenCodexSources">;
+  /** Refreshes release metadata and applies standalone Codex updates. */
+  updates: Pick<CodexUpdateService, "checkLatestRelease" | "updateSource">;
   /** Reports whether a source currently has an active turn. */
   hasActiveTurn(sourceId: string): boolean;
-  /** Restarts a source client after its command has changed. */
-  restartSourceClient(sourceId: string): Promise<void>;
+  /** Provides source client lifecycle operations. */
+  clients: Pick<ClientPort, "restartClient">;
   /** Emits a source or release event to the UI transport. */
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
 };
 
 /** Coordinates source list refreshes and standalone Codex CLI updates. */
 export class SourceUpdateRuntimeHandler {
-  /** Creates a source update handler from narrow runtime callbacks. */
+  /** Creates a source update handler from runtime ports and update callbacks. */
   constructor(
     /** Settings, source, update, lifecycle, and event dependencies. */
     private readonly options: SourceUpdateRuntimeHandlerOptions
@@ -39,11 +41,11 @@ export class SourceUpdateRuntimeHandler {
    * @returns Latest release check state.
    */
   async checkCodexRelease(force: boolean): Promise<OpenCodexCodexReleaseCheck> {
-    const releaseCheck = await this.options.checkLatestRelease(force);
-    this.options.emit({
+    const releaseCheck = await this.options.updates.checkLatestRelease(force);
+    this.options.events.emit({
       type: "sources.updated",
-      sources: await this.options.listOpenCodexSources(),
-      defaultSourceId: this.options.getDefaultSourceId()
+      sources: await this.options.projects.listOpenCodexSources(),
+      defaultSourceId: this.options.settings.getSettings().defaultSourceId
     });
     return releaseCheck;
   }
@@ -60,15 +62,18 @@ export class SourceUpdateRuntimeHandler {
       throw new Error("Codex update cannot start while this source has an active turn.");
     }
 
-    const source = (await this.options.listOpenCodexSources())
+    const source = (await this.options.projects.listOpenCodexSources())
       .find((candidate) => candidate.id === sourceId);
 
     if (source === undefined) {
       throw new Error(`Source not found: ${sourceId}`);
     }
 
-    const sources = await this.options.updateSource(source, this.options.getCodexCommand());
-    await this.options.restartSourceClient(sourceId);
+    const sources = await this.options.updates.updateSource(
+      source,
+      this.options.settings.getSettings().codexCommand
+    );
+    await this.options.clients.restartClient(sourceId);
     return sources;
   }
 }

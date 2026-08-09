@@ -3,6 +3,8 @@ import type {
   OpenCodexEvent,
   OpenCodexSource
 } from "@open-codex-ui/opencodex-protocol";
+import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
+import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
 import { SourceUpdateRuntimeHandler } from "../src/backend/SourceUpdateRuntimeHandler";
@@ -24,14 +26,12 @@ describe("SourceUpdateRuntimeHandler", () => {
       operations.push(event.type);
     });
     const handler = new SourceUpdateRuntimeHandler({
-      getCodexCommand: () => "codex",
-      getDefaultSourceId: () => "source-1",
-      listOpenCodexSources,
-      checkLatestRelease,
-      updateSource: vi.fn(),
+      settings: createSettingsPort("source-1"),
+      projects: { listOpenCodexSources },
+      updates: { checkLatestRelease, updateSource: vi.fn() },
       hasActiveTurn: () => false,
-      restartSourceClient: vi.fn(async () => undefined),
-      emit
+      clients: createClientPort(),
+      events: { emit }
     });
 
     await expect(handler.checkCodexRelease(true)).resolves.toBe(releaseCheck);
@@ -48,14 +48,15 @@ describe("SourceUpdateRuntimeHandler", () => {
   it("should reject an active turn before resolving the source", async () => {
     const listOpenCodexSources = vi.fn(async () => [createSource("source-1")]);
     const handler = new SourceUpdateRuntimeHandler({
-      getCodexCommand: () => "codex",
-      getDefaultSourceId: () => null,
-      listOpenCodexSources,
-      checkLatestRelease: vi.fn(async () => createReleaseCheck()),
-      updateSource: vi.fn(),
+      settings: createSettingsPort(null),
+      projects: { listOpenCodexSources },
+      updates: {
+        checkLatestRelease: vi.fn(async () => createReleaseCheck()),
+        updateSource: vi.fn()
+      },
       hasActiveTurn: vi.fn(() => true),
-      restartSourceClient: vi.fn(async () => undefined),
-      emit: vi.fn()
+      clients: createClientPort(),
+      events: { emit: vi.fn() }
     });
 
     await expect(handler.updateCodexSource("source-1")).rejects.toThrow(
@@ -67,14 +68,15 @@ describe("SourceUpdateRuntimeHandler", () => {
   it("should report the exact error when the requested source is missing", async () => {
     const listOpenCodexSources = vi.fn(async () => [createSource("other-source")]);
     const handler = new SourceUpdateRuntimeHandler({
-      getCodexCommand: () => "codex",
-      getDefaultSourceId: () => null,
-      listOpenCodexSources,
-      checkLatestRelease: vi.fn(async () => createReleaseCheck()),
-      updateSource: vi.fn(),
+      settings: createSettingsPort(null),
+      projects: { listOpenCodexSources },
+      updates: {
+        checkLatestRelease: vi.fn(async () => createReleaseCheck()),
+        updateSource: vi.fn()
+      },
       hasActiveTurn: () => false,
-      restartSourceClient: vi.fn(async () => undefined),
-      emit: vi.fn()
+      clients: createClientPort(),
+      events: { emit: vi.fn() }
     });
 
     await expect(handler.updateCodexSource("missing-source")).rejects.toThrow(
@@ -92,46 +94,75 @@ describe("SourceUpdateRuntimeHandler", () => {
       expect(fallbackCommand).toBe("codex-current");
       return updatedSources;
     });
-    const restartSourceClient = vi.fn(async () => {
+    const restartClient = vi.fn(async () => {
       operations.push("restart");
     });
     const handler = new SourceUpdateRuntimeHandler({
-      getCodexCommand: () => "codex-current",
-      getDefaultSourceId: () => null,
-      listOpenCodexSources: vi.fn(async () => [source]),
-      checkLatestRelease: vi.fn(async () => createReleaseCheck()),
-      updateSource,
+      settings: createSettingsPort(null, "codex-current"),
+      projects: { listOpenCodexSources: vi.fn(async () => [source]) },
+      updates: {
+        checkLatestRelease: vi.fn(async () => createReleaseCheck()),
+        updateSource
+      },
       hasActiveTurn: () => false,
-      restartSourceClient,
-      emit: vi.fn()
+      clients: createClientPort(restartClient),
+      events: { emit: vi.fn() }
     });
 
     await expect(handler.updateCodexSource(source.id)).resolves.toBe(updatedSources);
 
     expect(operations).toEqual(["update", "restart"]);
-    expect(restartSourceClient).toHaveBeenCalledWith(source.id);
+    expect(restartClient).toHaveBeenCalledWith(source.id);
   });
 
   it("should not restart the source when the update fails", async () => {
     const updateError = new Error("update failed");
-    const restartSourceClient = vi.fn(async () => undefined);
+    const restartClient = vi.fn(async () => undefined);
     const handler = new SourceUpdateRuntimeHandler({
-      getCodexCommand: () => "codex",
-      getDefaultSourceId: () => null,
-      listOpenCodexSources: vi.fn(async () => [createSource("source-1")]),
-      checkLatestRelease: vi.fn(async () => createReleaseCheck()),
-      updateSource: vi.fn(async () => {
-        throw updateError;
-      }),
+      settings: createSettingsPort(null),
+      projects: {
+        listOpenCodexSources: vi.fn(async () => [createSource("source-1")])
+      },
+      updates: {
+        checkLatestRelease: vi.fn(async () => createReleaseCheck()),
+        updateSource: vi.fn(async () => {
+          throw updateError;
+        })
+      },
       hasActiveTurn: () => false,
-      restartSourceClient,
-      emit: vi.fn()
+      clients: createClientPort(restartClient),
+      events: { emit: vi.fn() }
     });
 
     await expect(handler.updateCodexSource("source-1")).rejects.toBe(updateError);
-    expect(restartSourceClient).not.toHaveBeenCalled();
+    expect(restartClient).not.toHaveBeenCalled();
   });
 });
+
+function createSettingsPort(
+  defaultSourceId: string | null,
+  codexCommand = "codex"
+) {
+  const settings = {
+    codexCommand,
+    defaultSourceId
+  } as OpenCodexSettings;
+
+  return {
+    getSettings: vi.fn(() => settings),
+    setSettings: vi.fn((nextSettings: OpenCodexSettings) => {
+      Object.assign(settings, nextSettings);
+    })
+  };
+}
+
+function createClientPort(restartClient = vi.fn(async () => undefined)) {
+  return {
+    ensureClient: vi.fn(async () => undefined as unknown as CodexAppServerClient),
+    getClient: vi.fn(() => undefined),
+    restartClient
+  };
+}
 
 /** Creates a release check value suitable for handler tests. */
 function createReleaseCheck(): OpenCodexCodexReleaseCheck {

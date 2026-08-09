@@ -6,14 +6,12 @@ import type {
   CachedProjectGroupUpdateInput,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
-import type {
-  OpenCodexEvent,
-  OpenCodexProjectGroupsSnapshot
-} from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProjectGroupsSnapshot } from "@open-codex-ui/opencodex-protocol";
+import type { RuntimeEventPort } from "./runtime/runtimePorts.js";
 
 export type ProjectGroupServiceOptions = {
   cacheRepository: OpenCodexCacheRepository | null;
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
 };
 
 /** Provides the UI-facing project group operations without involving Codex. */
@@ -26,7 +24,7 @@ export class ProjectGroupService {
     const snapshot = this.options.cacheRepository === null
       ? { groups: [], items: [] }
       : await this.options.cacheRepository.listProjectGroups();
-    this.options.emit({ type: "projectGroups.updated", snapshot });
+    this.options.events.emit({ type: "projectGroups.updated", snapshot });
     return snapshot;
   }
 

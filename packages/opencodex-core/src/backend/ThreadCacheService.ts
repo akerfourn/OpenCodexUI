@@ -5,8 +5,6 @@ import type {
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import type {
-  OpenCodexEvent,
-  OpenCodexSettings,
   OpenCodexThread,
   OpenCodexThreadTokenUsage,
   OpenCodexTurnExecutionMetadata,
@@ -15,7 +13,6 @@ import type {
 
 import { mapTurnsToOpenCodexTurns } from "../mapping.js";
 import { ThreadTurnCache, type ThreadTurnCacheEntry } from "../ThreadTurnCache.js";
-import type { OpenCodexBackendOptions } from "../types.js";
 import {
   THREAD_INITIAL_CACHED_TURNS,
   THREAD_TURNS_PAGE_SIZE
@@ -30,13 +27,14 @@ import {
   toOpenCodexThread
 } from "./threadCacheMapping.js";
 import type { OpenCodexThreadWithProjectState } from "./threadTypes.js";
+import type { RuntimeEventPort, RuntimeSettingsPort } from "./runtime/runtimePorts.js";
 
 export type ThreadCacheServiceOptions = {
-  backendOptions: OpenCodexBackendOptions;
   cacheRepository: OpenCodexCacheRepository | null;
   threadTurnCache: ThreadTurnCache;
-  getSettings(): OpenCodexSettings;
-  emit(event: OpenCodexEvent): void;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  events: Pick<RuntimeEventPort, "emit">;
+  logger?: (message: string) => void;
 };
 
 /**
@@ -46,7 +44,7 @@ export class ThreadCacheService {
   /**
    * Creates a thread cache service.
    *
-   * @param options Cache repository, turn cache, settings, and event emitter.
+   * @param options Cache repository, shared state, runtime ports, and diagnostics.
    */
   constructor(private readonly options: ThreadCacheServiceOptions) {}
 
@@ -152,7 +150,7 @@ export class ThreadCacheService {
     return mapTurnsToOpenCodexTurns(
       cacheEntry.thread.id,
       this.options.threadTurnCache.toTurns(cacheEntry),
-      this.options.getSettings().language
+      this.options.settings.getSettings().language
     );
   }
 
@@ -202,11 +200,11 @@ export class ThreadCacheService {
       const turns = mapTurnsToOpenCodexTurns(
         cacheEntry.thread.id,
         result.turns,
-        this.options.getSettings().language
+        this.options.settings.getSettings().language
       );
       const hasMoreOlderMessages = !cacheEntry.hasLoadedAllOlderTurns;
 
-      this.options.emit({
+      this.options.events.emit({
         type: "thread.turns.prepended",
         sourceId: cacheEntry.thread.sourceId,
         threadId: cacheEntry.thread.id,
@@ -463,6 +461,6 @@ export class ThreadCacheService {
    * @returns Nothing.
    */
   private log(message: string): void {
-    this.options.backendOptions.logger?.(message);
+    this.options.logger?.(message);
   }
 }

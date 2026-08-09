@@ -17,7 +17,7 @@ describe("ApplicationLogService", () => {
     const emit = vi.fn<(event: OpenCodexEvent) => void>();
     const service = new ApplicationLogService({
       cacheRepository: null,
-      emit
+      events: { emit }
     });
 
     await expect(service.listLogs(null, 30)).resolves.toEqual({
@@ -41,7 +41,7 @@ describe("ApplicationLogService", () => {
     const repository = createRepository({ listLogs });
     const service = new ApplicationLogService({
       cacheRepository: repository,
-      emit: vi.fn()
+      events: { emit: vi.fn() }
     });
 
     await expect(service.listLogs("2026-08-09T10:00:00.000Z", 30)).resolves.toEqual({
@@ -74,7 +74,7 @@ describe("ApplicationLogService", () => {
     const emittedEvents: OpenCodexEvent[] = [];
     const service = new ApplicationLogService({
       cacheRepository: repository,
-      emit: (event) => emittedEvents.push(event)
+      events: { emit: (event) => emittedEvents.push(event) }
     });
 
     await expect(service.createLog("warning", "A warning", null)).resolves.toEqual({ ok: true });
@@ -105,7 +105,7 @@ describe("ApplicationLogService", () => {
     const repository = createRepository({ clearLogsOlderThan });
     const service = new ApplicationLogService({
       cacheRepository: repository,
-      emit: vi.fn(),
+      events: { emit: vi.fn() },
       now: () => new Date("2026-08-09T12:34:56.789Z")
     });
 
@@ -119,7 +119,7 @@ describe("ApplicationLogService", () => {
     const repository = createRepository({ clearLogsOlderThan });
     const service = new ApplicationLogService({
       cacheRepository: repository,
-      emit: vi.fn(),
+      events: { emit: vi.fn() },
       now: () => new Date("2026-08-09T12:34:56.789Z")
     });
 
@@ -135,7 +135,7 @@ describe("ApplicationLogService", () => {
     const emit = vi.fn<(event: OpenCodexEvent) => void>();
     const service = new ApplicationLogService({
       cacheRepository: createRepository({ createLog }),
-      emit,
+      events: { emit },
       logger
     });
 

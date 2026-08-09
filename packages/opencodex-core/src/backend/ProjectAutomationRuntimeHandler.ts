@@ -1,23 +1,25 @@
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type {
   CachedProjectCommandRuleCreateInput,
   CachedProjectCommandRuleUpdateInput,
-  CachedSource,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import type {
-  OpenCodexEvent,
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRule,
   OpenCodexProjectCommandRuleApplyResult,
   OpenCodexProjectCommandRulesSnapshot,
   OpenCodexProjectCommandRuleTestResult,
-  OpenCodexProjectCommandRun,
-  OpenCodexSettings
+  OpenCodexProjectCommandRun
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ProjectCommandService } from "./ProjectCommandService.js";
 import { ProjectCommandRuleService } from "./ProjectCommandRuleService.js";
+import type {
+  ClientPort,
+  ProjectSourcePort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
 
 /** Dependencies used by project-command and project-rule runtime operations. */
 export type ProjectAutomationRuntimeHandlerOptions = {
@@ -25,18 +27,16 @@ export type ProjectAutomationRuntimeHandlerOptions = {
   cache: OpenCodexCacheRepository | null;
   /** Directory used for persisted command output logs. */
   userDataPath?: string;
-  /** Reads the current mutable runtime settings. */
-  getSettings(): OpenCodexSettings;
-  /** Ensures a Codex client for a source. */
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
-  /** Resolves a source for source-aware project-rule operations. */
-  resolveSource(sourceId: string | null): Promise<CachedSource>;
+  /** Runtime settings used when rendering source-specific rules. */
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  /** Source-scoped Codex clients used by command and rule services. */
+  clients: Pick<ClientPort, "ensureClient" | "restartClient">;
+  /** Project and source cache operations used by rule services. */
+  projects: Pick<ProjectSourcePort, "resolveSource">;
   /** Checks whether a source currently owns an active turn. */
   hasActiveTurn(sourceId: string): boolean;
-  /** Restarts a source client after generated rules change. */
-  restartSourceClient(sourceId: string): Promise<void>;
   /** Emits project command and rule events to the host transport. */
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
 };
 
 /** Notification adapter consumed by the ordered runtime notification pipeline. */
@@ -69,17 +69,16 @@ export class ProjectAutomationRuntimeHandler {
     this.projectCommandService = new ProjectCommandService({
       cacheRepository: options.cache,
       userDataPath: options.userDataPath,
-      emit: options.emit,
-      ensureClient: options.ensureClient
+      events: options.events,
+      clients: options.clients
     });
     this.projectCommandRuleService = new ProjectCommandRuleService({
       cacheRepository: options.cache,
-      getSettings: options.getSettings,
-      ensureClient: options.ensureClient,
-      resolveSource: options.resolveSource,
+      settings: options.settings,
+      clients: options.clients,
+      projects: options.projects,
       hasActiveTurn: options.hasActiveTurn,
-      restartSourceClient: options.restartSourceClient,
-      emit: options.emit
+      events: options.events
     });
     this.notificationAdapter = {
       projectCommandService: this.projectCommandService

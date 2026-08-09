@@ -26,7 +26,7 @@ describe("GitService", () => {
       }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const status = await service.status("/workspace/project", "source-1");
@@ -55,7 +55,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const status = await service.init("/workspace/project", "source-1");
@@ -94,7 +94,7 @@ describe("GitService", () => {
       "Revert \"docs(releases): expand 1.6.0 notes\"\n\nThis reverts commit 14f6c7f.\n"
     );
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const status = await service.status("/workspace/project", "source-1");
@@ -127,7 +127,7 @@ describe("GitService", () => {
       }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const branches = await service.branches("/workspace/project", "source-1");
@@ -175,7 +175,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const status = await service.checkoutBranch(
@@ -203,7 +203,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const status = await service.createBranch("/workspace/project", "source-1", "feature/new");
@@ -226,7 +226,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const status = await service.mergeBranch("/workspace/project", "source-1", "feature/api");
@@ -256,7 +256,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const status = await service.publishCurrentBranch("/workspace/project", "source-1");
@@ -289,7 +289,7 @@ describe("GitService", () => {
       }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const remotes = await service.remotes("/workspace/project", "source-1");
@@ -320,7 +320,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const status = await service.upsertRemote(
@@ -360,7 +360,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const tags = await service.tags("/workspace/project", "source-1");
@@ -411,7 +411,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const tags = await service.createTag("/workspace/project", "source-1", "v1.2.1");
@@ -459,7 +459,7 @@ describe("GitService", () => {
       }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const result = await service.tags("/workspace/project", "source-1");
@@ -514,7 +514,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: `${tagHash}\trefs/tags/v1.4.0\n`, stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const result = await service.pushTag("/workspace/project", "source-1", "v1.4.0", false);
@@ -550,7 +550,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     await service.pushTag("/workspace/project", "source-1", "v1.4.1", true);
@@ -580,7 +580,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     await service.pushTags("/workspace/project", "source-1");
@@ -605,7 +605,7 @@ describe("GitService", () => {
       { exitCode: 0, stdout: "7\n", stderr: "" }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const count = await service.commitsSinceTag("/workspace/project", "source-1", "v1.2.0");
@@ -628,7 +628,7 @@ describe("GitService", () => {
       }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const page = await service.log("/workspace/project", "source-1", 1, 2);
@@ -677,7 +677,7 @@ describe("GitService", () => {
       }
     ]);
     const service = new GitService({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const details = await service.commitDetails("/workspace/project", "source-1", "abc1234");

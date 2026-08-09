@@ -6,6 +6,7 @@ import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
 
 import { toError } from "./errors.js";
+import type { ClientPort } from "./runtime/runtimePorts.js";
 
 const defaultProfileId = "opencodex-context";
 const defaultBlockStart = "# BEGIN OpenCodexUI managed default permissions";
@@ -15,7 +16,7 @@ const blockEnd = "# END OpenCodexUI managed context permissions";
 
 export type ProjectContextServiceOptions = {
   cacheRepository: OpenCodexCacheRepository | null;
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
+  clients: Pick<ClientPort, "ensureClient">;
 };
 
 /**
@@ -25,7 +26,7 @@ export class ProjectContextService {
   /**
    * Creates a project context service.
    *
-   * @param options Cache access and Codex client resolver.
+   * @param options Cache access and Codex client port.
    */
   constructor(private readonly options: ProjectContextServiceOptions) {}
 
@@ -48,7 +49,7 @@ export class ProjectContextService {
     const enabledFolders = context?.folders?.filter((folder) => folder.enabled) ?? [];
     const configPath = joinSourcePath(project.path, ".codex", "config.toml");
     const codexDirectoryPath = joinSourcePath(project.path, ".codex");
-    const client = await this.options.ensureClient(project.sourceId);
+    const client = await this.options.clients.ensureClient(project.sourceId);
 
     await this.ensureConfigDirectory(client, codexDirectoryPath);
     await client.createDirectory(codexDirectoryPath);

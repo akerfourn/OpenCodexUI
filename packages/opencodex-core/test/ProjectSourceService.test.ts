@@ -29,18 +29,18 @@ describe("ProjectSourceService", () => {
       const service = new ProjectSourceService({
         backendOptions: createBackendOptions(ensureProjectDirectory),
         cacheRepository: repository,
-        getSettings: () => createSettings(source.id),
-        setSettings: vi.fn(),
-        emit: vi.fn(),
-        ensureClient: vi.fn(async () => client),
-        restartSourceClient: vi.fn(),
-        getCodexUpdateStatus: () => ({
-          supported: false,
-          updateAvailable: false,
-          latestVersion: null,
-          checkedAt: null,
-          message: null
-        })
+        settings: createSettingsPort(source.id),
+        events: { emit: vi.fn() },
+        clients: createClientPort(client),
+        updates: {
+          getSourceUpdateStatus: () => ({
+            supported: false,
+            updateAvailable: false,
+            latestVersion: null,
+            checkedAt: null,
+            message: null
+          })
+        }
       });
 
       const openedProject = await service.openProject(projectPath, source.id, false);
@@ -63,18 +63,18 @@ describe("ProjectSourceService", () => {
     const service = new ProjectSourceService({
       backendOptions: createBackendOptions(vi.fn()),
       cacheRepository: repository,
-      getSettings: () => createSettings(source.id),
-      setSettings: vi.fn(),
-      emit: vi.fn(),
-      ensureClient: vi.fn(async () => client),
-      restartSourceClient: vi.fn(),
-      getCodexUpdateStatus: () => ({
-        supported: false,
-        updateAvailable: false,
-        latestVersion: null,
-        checkedAt: null,
-        message: null
-      })
+      settings: createSettingsPort(source.id),
+      events: { emit: vi.fn() },
+      clients: createClientPort(client),
+      updates: {
+        getSourceUpdateStatus: () => ({
+          supported: false,
+          updateAvailable: false,
+          latestVersion: null,
+          checkedAt: null,
+          message: null
+        })
+      }
     });
 
     await service.openProject(projectPath, source.id, true);
@@ -153,6 +153,25 @@ function createSourceClient(): CodexAppServerClient {
     getMetadata: vi.fn(async () => ({ isDirectory: true })),
     createDirectory: vi.fn(async () => ({}))
   } as unknown as CodexAppServerClient;
+}
+
+function createClientPort(client: CodexAppServerClient) {
+  return {
+    ensureClient: vi.fn(async () => client),
+    getClient: vi.fn(() => client),
+    restartClient: vi.fn(async () => undefined)
+  };
+}
+
+function createSettingsPort(defaultSourceId: string) {
+  const settings = createSettings(defaultSourceId);
+
+  return {
+    getSettings: vi.fn(() => settings),
+    setSettings: vi.fn((nextSettings: OpenCodexSettings) => {
+      Object.assign(settings, nextSettings);
+    })
+  };
 }
 
 function createBackendOptions(

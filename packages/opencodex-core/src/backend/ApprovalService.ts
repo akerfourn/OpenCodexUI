@@ -1,23 +1,21 @@
-import type {
-  CodexAppServerClient,
-  CodexServerRequest
-} from "@open-codex-ui/codex-rpc";
-import type {
-  OpenCodexApprovalDecision,
-  OpenCodexEvent,
-  OpenCodexSettings
-} from "@open-codex-ui/opencodex-protocol";
+import type { CodexServerRequest } from "@open-codex-ui/codex-rpc";
+import type { OpenCodexApprovalDecision } from "@open-codex-ui/opencodex-protocol";
 
 import {
   buildApprovalResponse,
   createApprovalRequest
 } from "../mapping.js";
 import { getBackendLabels } from "./errors.js";
+import type { ClientPort, RuntimeEventPort, RuntimeSettingsPort } from "./runtime/runtimePorts.js";
 
+/** Dependencies used by the approval service. */
 export type ApprovalServiceOptions = {
-  getSettings(): OpenCodexSettings;
-  emit(event: OpenCodexEvent): void;
-  getClient(sourceId: string): CodexAppServerClient | undefined;
+  /** Reads the current language used in approval messages. */
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  /** Emits approval state changes to the host. */
+  events: Pick<RuntimeEventPort, "emit">;
+  /** Looks up the client that owns a pending approval. */
+  clients: Pick<ClientPort, "getClient">;
 };
 
 /**
@@ -43,11 +41,11 @@ export class ApprovalService {
    */
   handleServerRequest(request: CodexServerRequest, sourceId: string): void {
     const approval = {
-      ...createApprovalRequest(request, this.options.getSettings().language),
+      ...createApprovalRequest(request, this.options.settings.getSettings().language),
       sourceId
     };
     this.pendingApprovals.set(approval.id, { request, sourceId });
-    this.options.emit({ type: "approval.requested", approval });
+    this.options.events.emit({ type: "approval.requested", approval });
   }
 
   /**
@@ -62,12 +60,12 @@ export class ApprovalService {
     const pendingApproval = this.pendingApprovals.get(approvalId);
     const client = pendingApproval === undefined
       ? undefined
-      : this.options.getClient(pendingApproval.sourceId);
+      : this.options.clients.getClient(pendingApproval.sourceId);
 
     if (pendingApproval === undefined || client === undefined) {
-      this.options.emit({
+      this.options.events.emit({
         type: "error",
-        message: getBackendLabels(this.options.getSettings().language).approvalUnavailable
+        message: getBackendLabels(this.options.settings.getSettings().language).approvalUnavailable
       });
       return;
     }
@@ -81,7 +79,7 @@ export class ApprovalService {
       client.respond(request.id, buildApprovalResponse(request.method, decision, request.params));
     }
 
-    this.options.emit({ type: "approval.resolved", approvalId });
+    this.options.events.emit({ type: "approval.resolved", approvalId });
   }
 }
 

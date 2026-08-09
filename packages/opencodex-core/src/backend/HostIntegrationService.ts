@@ -1,20 +1,20 @@
-import type { CachedSource } from "@open-codex-ui/opencodex-cache";
-import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
-import type {
-  OpenCodexImageAttachment,
-  OpenCodexSettings
-} from "@open-codex-ui/opencodex-protocol";
+import { normalizeProjectPath, type CachedSource } from "@open-codex-ui/opencodex-cache";
+import type { OpenCodexImageAttachment } from "@open-codex-ui/opencodex-protocol";
 
 import { getBackendLabels } from "./errors.js";
+import type {
+  ProjectSourcePort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
 
 /** Dependencies needed for host-facing file, link, and project actions. */
 export type HostIntegrationServiceOptions = {
-  /** Provides the current UI language for localized host integration errors. */
-  getLanguage(): OpenCodexSettings["language"];
+  /** Provides the current settings for localized host integration errors. */
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
   /** Provides the host project path used as a fallback link context. */
-  getProjectPath(): string | null;
+  projectPath: string | null;
   /** Resolves a source identifier to its cached source configuration. */
-  resolveSource(sourceId: string): Promise<CachedSource>;
+  projects: Pick<ProjectSourcePort, "resolveSource">;
   /** Lets the host application pick a local executable. */
   pickExecutableFile?: () => Promise<string | null> | string | null;
   /** Lets the host application pick image attachments. */
@@ -78,10 +78,12 @@ export class HostIntegrationService {
     }
 
     if (this.options.openExternalLink === undefined) {
-      throw new Error(getBackendLabels(this.options.getLanguage()).missingLinkHandler);
+      throw new Error(
+        getBackendLabels(this.options.settings.getSettings().language).missingLinkHandler
+      );
     }
 
-    const source = sourceId === null ? null : await this.options.resolveSource(sourceId);
+    const source = sourceId === null ? null : await this.options.projects.resolveSource(sourceId);
     const openerCommand = readOpenFileCommand(source);
 
     await this.options.openExternalLink(
@@ -104,7 +106,7 @@ export class HostIntegrationService {
       return { ok: true };
     }
 
-    const source = await this.options.resolveSource(sourceId);
+    const source = await this.options.projects.resolveSource(sourceId);
     const openerCommand = readOpenFolderCommand(source);
 
     if (openerCommand === null || this.options.openExternalLink === undefined) {
@@ -162,7 +164,7 @@ export class HostIntegrationService {
       return { ok: true };
     }
 
-    const source = await this.options.resolveSource(sourceId);
+    const source = await this.options.projects.resolveSource(sourceId);
 
     if (source.kind !== "local") {
       return { ok: true };
@@ -179,7 +181,7 @@ export class HostIntegrationService {
    * @returns Normalized project path, or `null` when neither path is usable.
    */
   private resolveCurrentProjectPath(projectPath: string | null): string | null {
-    return normalizeProjectPath(projectPath) ?? normalizeProjectPath(this.options.getProjectPath());
+    return normalizeProjectPath(projectPath) ?? normalizeProjectPath(this.options.projectPath);
   }
 }
 

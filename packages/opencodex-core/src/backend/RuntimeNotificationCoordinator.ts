@@ -1,9 +1,5 @@
 import type { CodexNotification } from "@open-codex-ui/codex-rpc";
-import type {
-  OpenCodexEvent,
-  OpenCodexSettings,
-  OpenCodexTurnExecutionMetadata
-} from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexTurnExecutionMetadata } from "@open-codex-ui/opencodex-protocol";
 
 import type { ThreadTurnCache } from "../ThreadTurnCache.js";
 import { readObject, readString } from "../mapping.js";
@@ -13,12 +9,15 @@ import type { ProjectCommandService } from "./ProjectCommandService.js";
 import { StreamingNotificationBatcher } from "./StreamingNotificationBatcher.js";
 import type { ThreadCacheService } from "./ThreadCacheService.js";
 import type { ThreadConversationService } from "./ThreadConversationService.js";
+import type { ThreadRuntimeHandler } from "./ThreadRuntimeHandler.js";
 import { mapThreadTokenUsageNotification } from "./threadTokenUsageMapping.js";
+import type { RuntimeEventPort, RuntimeSettingsPort } from "./runtime/runtimePorts.js";
+import type { UsageRuntimeService } from "./UsageRuntimeService.js";
 
 /** Dependencies used by the notification coordination pipeline. */
 export type RuntimeNotificationCoordinatorOptions = {
   /** Reads the current runtime settings. */
-  getSettings(): OpenCodexSettings;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
   /** Reports receipt of one raw notification and its estimated payload size. */
   onRawReceived?(method: string, estimatedBytes: number): void;
   /** Reports synchronous processing time for one normalized notification. */
@@ -26,15 +25,11 @@ export type RuntimeNotificationCoordinatorOptions = {
   /** Reports synchronous live-cache processing time when advanced metrics are enabled. */
   onLiveCacheProcessed?(method: string, durationMs: number): void;
   /** Checks whether notifications for a thread are temporarily suppressed. */
-  isThreadIgnored(threadId: string): boolean;
+  threads: Pick<ThreadRuntimeHandler, "isThreadIgnored">;
   /** Records one raw notification in the runtime-owned event log. */
-  recordRawNotification(notification: CodexNotification, sourceId: string): void;
-  /** Emits a normalized backend event. */
-  emit(event: OpenCodexEvent): void;
-  /** Handles a rate-limit update in the usage runtime service. */
-  handleRateLimitsUpdated(sourceId: string, params: unknown): void;
-  /** Handles completion of one Codex turn in the usage runtime service. */
-  handleTurnCompleted(sourceId: string): void;
+  events: Pick<RuntimeEventPort, "emit" | "recordRawNotification">;
+  /** Handles rate-limit updates and turn completion in the usage runtime service. */
+  usage: Pick<UsageRuntimeService, "handleRateLimitsUpdated" | "handleTurnCompleted">;
   /** Cache service used for token and execution metadata persistence. */
   threadCacheService: Pick<
     ThreadCacheService,
@@ -58,9 +53,8 @@ export type RuntimeNotificationCoordinatorOptions = {
 /**
  * Owns the ordered processing pipeline for raw and streamed Codex notifications.
  *
- * The coordinator deliberately keeps raw journaling and thread suppression as
- * callbacks. Those concerns belong to the runtime because they also cover
- * backend-emitted events and commit-message notification suppression.
+ * The coordinator delegates thread suppression and usage accounting to their
+ * owning services while retaining callbacks only for lifecycle and metrics concerns.
  */
 export class RuntimeNotificationCoordinator {
   /** Combines high-frequency streaming notifications before processing them. */
@@ -71,7 +65,7 @@ export class RuntimeNotificationCoordinator {
   /**
    * Creates a notification coordinator and its streaming batcher.
    *
-   * @param options Narrow service and runtime callbacks.
+   * @param options Narrow service ports and runtime callbacks.
    */
   constructor(
     /** Service adapters and runtime callbacks used by the pipeline. */
@@ -96,11 +90,11 @@ export class RuntimeNotificationCoordinator {
     );
     const threadId = readString(readObject(notification.params).threadId);
 
-    if (threadId.length > 0 && this.options.isThreadIgnored(threadId)) {
+    if (threadId.length > 0 && this.options.threads.isThreadIgnored(threadId)) {
       return;
     }
 
-    this.options.recordRawNotification(notification, sourceId);
+    this.options.events.recordRawNotification(notification, sourceId);
 
     if (this.streamingNotificationBatcher.handleNotification(notification, sourceId)) {
       return;
@@ -174,7 +168,7 @@ export class RuntimeNotificationCoordinator {
       this.options.notificationService.handleNotification(notification, sourceId);
 
       if (notification.method === "account/rateLimits/updated") {
-        this.options.handleRateLimitsUpdated(sourceId, notification.params);
+        this.options.usage.handleRateLimitsUpdated(sourceId, notification.params);
       }
 
       if (notification.method === "thread/tokenUsage/updated") {
@@ -182,7 +176,7 @@ export class RuntimeNotificationCoordinator {
       }
 
       if (notification.method === "turn/completed") {
-        this.options.handleTurnCompleted(sourceId);
+        this.options.usage.handleTurnCompleted(sourceId);
       }
     } finally {
       this.options.onProcessed?.(
@@ -199,7 +193,7 @@ export class RuntimeNotificationCoordinator {
    * @returns Nothing.
    */
   private recordLiveCacheNotification(notification: CodexNotification): void {
-    const settings = this.options.getSettings();
+    const settings = this.options.settings.getSettings();
     const shouldMeasure = settings.developerMode &&
       settings.advancedPerformanceMonitoringEnabled;
 
@@ -312,7 +306,7 @@ export class RuntimeNotificationCoordinator {
     }
 
     void this.options.threadCacheService.writeTokenUsage(sourceId, usage);
-    this.options.emit({ type: "thread.tokenUsage.updated", sourceId, usage });
+    this.options.events.emit({ type: "thread.tokenUsage.updated", sourceId, usage });
   }
 
   /**

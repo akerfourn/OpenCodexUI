@@ -1,15 +1,13 @@
 import type { CodexAppServerClient, CodexNotification } from "@open-codex-ui/codex-rpc";
 
-import type { CachedSource, CachedThreadSnapshot } from "@open-codex-ui/opencodex-cache";
+import type { CachedThreadSnapshot } from "@open-codex-ui/opencodex-cache";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexComposerReference,
-  OpenCodexEvent,
   OpenCodexImageAttachment,
   OpenCodexMessage,
   OpenCodexProject,
   OpenCodexReasoningEffort,
-  OpenCodexSettings,
   OpenCodexThread,
   OpenCodexThreadRuntimeStatus,
   OpenCodexTurn,
@@ -46,27 +44,29 @@ import {
 } from "./threadCacheMapping.js";
 import { ThreadCacheService } from "./ThreadCacheService.js";
 import { buildTurnInput, createId } from "./turnInput.js";
+import type {
+  ClientPort,
+  ProjectSourcePort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
+import type { CollaborationService } from "./CollaborationService.js";
 
 export type ThreadConversationServiceOptions = {
   backendOptions: OpenCodexBackendOptions;
   threadTurnCache: ThreadTurnCache;
   threadCacheService: ThreadCacheService;
-  getSettings(): OpenCodexSettings;
-  emit(event: OpenCodexEvent): void;
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
-  resolveSource(sourceId: string | null): Promise<CachedSource>;
-  cacheProject(projectPath: string | null, sourceId: string | null): Promise<OpenCodexProject | null>;
-  readCachedProjects(): Promise<OpenCodexProject[]>;
-  reconcileCollaborationTurns(
-    sourceId: string,
-    threadId: string,
-    turns: readonly unknown[]
-  ): Promise<void>;
-  reconcileDescendantThreads(
-    sourceId: string,
-    rootThreadId: string,
-    threads: readonly OpenCodexThread[]
-  ): Promise<void>;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  events: Pick<RuntimeEventPort, "emit">;
+  clients: Pick<ClientPort, "ensureClient">;
+  projects: Pick<
+    ProjectSourcePort,
+    "resolveSource" | "cacheProject" | "readCachedProjects"
+  >;
+  collaborationService: Pick<
+    CollaborationService,
+    "reconcileTurns" | "reconcileDescendantThreads"
+  >;
   handleClientError(error: Error): void;
 };
 
@@ -127,8 +127,8 @@ export class ThreadConversationService {
       return cachedThreads;
     }
 
-    const resolvedSource = await this.options.resolveSource(sourceId);
-    const client = await this.options.ensureClient(resolvedSource.id);
+    const resolvedSource = await this.options.projects.resolveSource(sourceId);
+    const client = await this.options.clients.ensureClient(resolvedSource.id);
     const params: ThreadListParams = {
       limit: THREAD_LIST_PAGE_SIZE,
       sortKey: "updated_at",
@@ -164,7 +164,10 @@ export class ThreadConversationService {
     );
     const updatedThreads = mergeFreshThreadList(threads, mergedThreads);
     this.emitThreadsUpdated(updatedThreads, currentProjectPath, isArchived);
-    this.options.emit({ type: "projects.updated", projects: await this.options.readCachedProjects() });
+    this.options.events.emit({
+      type: "projects.updated",
+      projects: await this.options.projects.readCachedProjects()
+    });
 
     return updatedThreads;
   }
@@ -195,7 +198,7 @@ export class ThreadConversationService {
       throw new Error("Cannot delete a thread without a Codex source.");
     }
 
-    const client = await this.options.ensureClient(cachedSnapshot.thread.sourceId);
+    const client = await this.options.clients.ensureClient(cachedSnapshot.thread.sourceId);
     await client.deleteThread(threadId);
     await this.forgetDeletedThread(threadId, cachedSnapshot.thread.sourceId);
 
@@ -224,7 +227,7 @@ export class ThreadConversationService {
    */
   async forgetDeletedThread(threadId: string, sourceId: string | null = null): Promise<void> {
     await this.forgetCachedThread(threadId);
-    this.options.emit({ type: "thread.deleted", sourceId, threadId });
+    this.options.events.emit({ type: "thread.deleted", sourceId, threadId });
   }
 
   /**
@@ -238,7 +241,7 @@ export class ThreadConversationService {
   async readThreadRuntimeStatus(threadId: string): Promise<OpenCodexThreadRuntimeStatus> {
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
     const sourceId = cachedSnapshot?.thread.sourceId ?? null;
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const response = await client.readThread(threadId, false);
     const responseObject = readObject(response);
     const thread = readObject(responseObject.thread);
@@ -325,7 +328,7 @@ export class ThreadConversationService {
     }
 
     const sourceId = effectiveSnapshot?.thread.sourceId ?? sourceIdOverride;
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     this.logThreadTiming("sqlite load finished", {
       threadId,
       startedAt: openStartedAt,
@@ -421,7 +424,7 @@ export class ThreadConversationService {
       return { turns: [], hasMoreOlderMessages: false };
     }
 
-    const client = await this.options.ensureClient(cacheEntry.thread.sourceId);
+    const client = await this.options.clients.ensureClient(cacheEntry.thread.sourceId);
     const response = await client.listThreadTurns({
       threadId,
       cursor: cacheEntry.olderCursor,
@@ -448,12 +451,12 @@ export class ThreadConversationService {
     const turns = mapTurnsToOpenCodexTurns(
       threadId,
       addedTurns,
-      this.options.getSettings().language
+      this.options.settings.getSettings().language
     );
     const hasMoreOlderMessages = !cacheEntry.hasLoadedAllOlderTurns;
 
     if (turns.length > 0) {
-      this.options.emit({
+      this.options.events.emit({
         type: "thread.turns.prepended",
         sourceId: cacheEntry.thread.sourceId,
         threadId,
@@ -479,7 +482,7 @@ export class ThreadConversationService {
 
     const sourceId = await this.resolveThreadSourceId(threadId);
     this.recoveringThreadIds.add(threadId);
-    this.options.emit({ type: "thread.recovery.started", sourceId, threadId });
+    this.options.events.emit({ type: "thread.recovery.started", sourceId, threadId });
 
     try {
       const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
@@ -492,7 +495,7 @@ export class ThreadConversationService {
         await this.openThread(threadId);
       }
 
-      this.options.emit({ type: "thread.recovery.completed", sourceId, threadId });
+      this.options.events.emit({ type: "thread.recovery.completed", sourceId, threadId });
       return { ok: true };
     } finally {
       this.recoveringThreadIds.delete(threadId);
@@ -515,13 +518,13 @@ export class ThreadConversationService {
       throw new Error("Cannot create a thread for a project without a Codex source.");
     }
 
-    const resolvedSource = await this.options.resolveSource(sourceId);
-    const client = await this.options.ensureClient(resolvedSource.id);
+    const resolvedSource = await this.options.projects.resolveSource(sourceId);
+    const client = await this.options.clients.ensureClient(resolvedSource.id);
     const currentProjectPath = this.resolveCurrentProjectPath(projectPath);
-    await this.options.cacheProject(currentProjectPath, resolvedSource.id);
+    await this.options.projects.cacheProject(currentProjectPath, resolvedSource.id);
     const response = await client.startThread({
       cwd: currentProjectPath,
-      model: this.options.getSettings().defaultModel
+      model: this.options.settings.getSettings().defaultModel
     });
     const responseObject = readObject(response);
     const thread = withSourceId(mapThread(
@@ -532,7 +535,7 @@ export class ThreadConversationService {
     const turns: OpenCodexTurn[] = [];
 
     this.options.threadTurnCache.getOrCreate(thread);
-    this.options.emit({ type: "thread.created", thread, turns });
+    this.options.events.emit({ type: "thread.created", thread, turns });
     await this.options.threadCacheService.writeIndex([thread]);
     return { thread, turns };
   }
@@ -556,7 +559,7 @@ export class ThreadConversationService {
     }
 
     try {
-      const client = await this.options.ensureClient(sourceId);
+      const client = await this.options.clients.ensureClient(sourceId);
       const threads = (await readThreadPages(client, {
         limit: THREAD_LIST_PAGE_SIZE,
         sortKey: "updated_at",
@@ -569,7 +572,11 @@ export class ThreadConversationService {
       }));
 
       await this.options.threadCacheService.writeIndex(threads);
-      await this.options.reconcileDescendantThreads(sourceId, parentThreadId, threads);
+      await this.options.collaborationService.reconcileDescendantThreads(
+        sourceId,
+        parentThreadId,
+        threads
+      );
       return threads;
     } catch (error) {
       if (cachedThreads.length > 0) {
@@ -618,7 +625,7 @@ export class ThreadConversationService {
     }
 
     this.options.threadTurnCache.getOrCreate(thread);
-    this.options.emit({ type: "thread.discovered", thread });
+    this.options.events.emit({ type: "thread.discovered", thread });
     await this.options.threadCacheService.writeIndex([thread]);
   }
 
@@ -666,7 +673,7 @@ export class ThreadConversationService {
       throw new Error("Cannot read a sub-agent thread without a Codex source.");
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const thread = await this.readThreadMetadata(
       client,
       threadId,
@@ -764,8 +771,8 @@ export class ThreadConversationService {
       throw new Error("Cannot start a turn for a project without a Codex source.");
     }
 
-    const resolvedSource = await this.options.resolveSource(targetSourceId);
-    const client = await this.options.ensureClient(resolvedSource.id);
+    const resolvedSource = await this.options.projects.resolveSource(targetSourceId);
+    const client = await this.options.clients.ensureClient(resolvedSource.id);
     const targetThreadId = threadId ?? (
       await this.createThreadAndReturnId(client, projectPath, resolvedSource.id)
     );
@@ -789,9 +796,9 @@ export class ThreadConversationService {
     };
 
     const requestedReasoningEffort = reasoningEffort ??
-      this.options.getSettings().defaultReasoningEffort;
+      this.options.settings.getSettings().defaultReasoningEffort;
 
-    this.options.emit({
+    this.options.events.emit({
       type: "message.started",
       sourceId: resolvedSource.id,
       threadId: targetThreadId,
@@ -824,7 +831,7 @@ export class ThreadConversationService {
         turnId,
         execution
       );
-      this.options.emit({
+      this.options.events.emit({
         type: "turn.started",
         sourceId: resolvedSource.id,
         threadId: targetThreadId,
@@ -865,7 +872,7 @@ export class ThreadConversationService {
       throw new Error("Cannot steer a turn for a project without a Codex source.");
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const response = await client.steerTurn({
       threadId,
       input,
@@ -931,7 +938,7 @@ export class ThreadConversationService {
       throw new Error("Cannot edit a turn for a project without a Codex source.");
     }
 
-    const client = await this.options.ensureClient(targetSourceId);
+    const client = await this.options.clients.ensureClient(targetSourceId);
 
     if (this.shouldResumeThreadBeforeTurn(threadId)) {
       await this.resumeThreadForTurn(client, threadId, projectPath, model);
@@ -1016,7 +1023,7 @@ export class ThreadConversationService {
       throw new Error("Cannot interrupt a thread without a Codex source.");
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     await client.interruptTurn(threadId, turnId);
   }
 
@@ -1034,14 +1041,14 @@ export class ThreadConversationService {
       throw new Error("Cannot start a review for a thread without a Codex source.");
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     await this.resumeThreadForTurn(client, threadId, projectPath, null);
     const response = await client.startReview(threadId);
     const turn = readObject(readObject(response).turn);
     const turnId = readString(turn.id);
 
     if (turnId.length > 0) {
-      this.options.emit({ type: "turn.started", sourceId, threadId, turnId });
+      this.options.events.emit({ type: "turn.started", sourceId, threadId, turnId });
     }
 
     return { ok: true };
@@ -1061,7 +1068,7 @@ export class ThreadConversationService {
       throw new Error("Cannot compact a thread without a Codex source.");
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     await this.resumeThreadForTurn(client, threadId, projectPath, null);
     await client.compactThread(threadId);
 
@@ -1086,7 +1093,7 @@ export class ThreadConversationService {
     const cacheEntry = this.options.threadTurnCache.get(threadId);
 
     if (cacheEntry !== null) {
-      const client = await this.options.ensureClient(sourceId);
+      const client = await this.options.clients.ensureClient(sourceId);
       await this.syncLatestTurns(client, cacheEntry);
       return;
     }
@@ -1130,11 +1137,11 @@ export class ThreadConversationService {
       throw new Error("Cannot rename a thread without a Codex source.");
     }
 
-    const client = await this.options.ensureClient(cachedSnapshot.thread.sourceId);
+    const client = await this.options.clients.ensureClient(cachedSnapshot.thread.sourceId);
     await client.renameThread(threadId, trimmedName);
     await this.options.threadCacheService.writeTitle(threadId, trimmedName);
     this.options.threadTurnCache.renameThread(threadId, trimmedName);
-    this.options.emit({
+    this.options.events.emit({
       type: "thread.renamed",
       sourceId: cachedSnapshot.thread.sourceId,
       threadId,
@@ -1155,7 +1162,7 @@ export class ThreadConversationService {
       throw new Error("Cannot change archive state for a thread without a Codex source.");
     }
 
-    const client = await this.options.ensureClient(cachedSnapshot.thread.sourceId);
+    const client = await this.options.clients.ensureClient(cachedSnapshot.thread.sourceId);
 
     if (isArchived) {
       await client.archiveThread(threadId);
@@ -1216,7 +1223,7 @@ export class ThreadConversationService {
     const syncStartedAt = existingStartedAt ?? Date.now();
 
     if (existingStartedAt === null) {
-      this.options.emit({
+      this.options.events.emit({
         type: "thread.sync.started",
         sourceId: cacheEntry.thread.sourceId,
         threadId: cacheEntry.thread.id
@@ -1247,7 +1254,7 @@ export class ThreadConversationService {
 
       await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
       await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
-      this.options.emit({
+      this.options.events.emit({
         type: "thread.turns.synced",
         sourceId: cacheEntry.thread.sourceId,
         threadId: cacheEntry.thread.id,
@@ -1262,7 +1269,7 @@ export class ThreadConversationService {
         turnCount: cacheEntry.orderedTurnIds.length,
         mode: "background-sync"
       });
-      this.options.emit({
+      this.options.events.emit({
         type: "thread.sync.completed",
         sourceId: cacheEntry.thread.sourceId,
         threadId: cacheEntry.thread.id
@@ -1286,7 +1293,7 @@ export class ThreadConversationService {
     }
 
     const sourceId = cachedSnapshot.thread.sourceId;
-    this.options.emit({ type: "thread.sync.started", sourceId, threadId });
+    this.options.events.emit({ type: "thread.sync.started", sourceId, threadId });
 
     if (isUnmaterializedThreadSnapshot(cachedSnapshot)) {
       this.logThreadTiming("codex load finished", {
@@ -1295,17 +1302,17 @@ export class ThreadConversationService {
         turnCount: 0,
         mode: "unmaterialized-thread"
       });
-      this.options.emit({ type: "thread.sync.completed", sourceId, threadId });
+      this.options.events.emit({ type: "thread.sync.completed", sourceId, threadId });
       return;
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const cacheEntry = this.options.threadTurnCache.get(threadId)
       ?? this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
     const didSyncTurns = await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
 
     if (didSyncTurns) {
-      this.options.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
+      this.options.events.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
     }
   }
 
@@ -1468,7 +1475,7 @@ export class ThreadConversationService {
       return;
     }
 
-    await this.options.reconcileCollaborationTurns(thread.sourceId, thread.id, turns);
+    await this.options.collaborationService.reconcileTurns(thread.sourceId, thread.id, turns);
   }
 
   /**
@@ -1533,7 +1540,7 @@ export class ThreadConversationService {
    * @returns Nothing.
    */
   private emitThreadOpened(cacheEntry: ThreadTurnCacheEntry, turns: OpenCodexTurn[]): void {
-    this.options.emit({
+    this.options.events.emit({
       type: "thread.opened",
       thread: cacheEntry.thread,
       turns,
@@ -1557,10 +1564,10 @@ export class ThreadConversationService {
     sourceId: string
   ): Promise<string> {
     const currentProjectPath = this.resolveCurrentProjectPath(projectPath);
-    await this.options.cacheProject(currentProjectPath, sourceId);
+    await this.options.projects.cacheProject(currentProjectPath, sourceId);
     const response = await client.startThread({
       cwd: currentProjectPath,
-      model: this.options.getSettings().defaultModel
+      model: this.options.settings.getSettings().defaultModel
     });
     const responseObject = readObject(response);
     const thread = withSourceId(mapThread(
@@ -1571,7 +1578,7 @@ export class ThreadConversationService {
 
     this.options.threadTurnCache.getOrCreate(thread);
     await this.options.threadCacheService.writeIndex([thread]);
-    this.options.emit({ type: "thread.created", thread, turns: [] });
+    this.options.events.emit({ type: "thread.created", thread, turns: [] });
     return thread.id;
   }
 
@@ -1663,7 +1670,7 @@ export class ThreadConversationService {
     projectPath: string | null,
     isArchived: boolean
   ): void {
-    this.options.emit({
+    this.options.events.emit({
       type: "threads.updated",
       threads,
       currentProjectFilterAvailable: projectPath !== null,

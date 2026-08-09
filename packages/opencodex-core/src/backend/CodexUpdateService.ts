@@ -17,10 +17,10 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { compareVersionNumbers } from "./toolVersionDetection.js";
+import type { RuntimeSettingsPort } from "./runtime/runtimePorts.js";
 
 type CodexUpdateServiceOptions = {
-  getSettings(): OpenCodexSettings;
-  setSettings(settings: OpenCodexSettings): void;
+  settings: Pick<RuntimeSettingsPort, "getSettings" | "setSettings">;
   saveSettings(settings: OpenCodexSettings): Promise<void> | void;
   refreshSources(): Promise<OpenCodexSource[]>;
   logger?(message: string): void;
@@ -55,7 +55,7 @@ export class CodexUpdateService {
    * @returns Persisted release check state.
    */
   async checkLatestRelease(force: boolean): Promise<OpenCodexCodexReleaseCheck> {
-    const settings = this.options.getSettings();
+    const settings = this.options.settings.getSettings();
     const currentCheck = settings.codexReleaseCheck;
 
     if (!force && !isReleaseCheckStale(currentCheck)) {
@@ -68,7 +68,7 @@ export class CodexUpdateService {
       codexReleaseCheck: nextCheck
     };
 
-    this.options.setSettings(nextSettings);
+    this.options.settings.setSettings(nextSettings);
     await this.options.saveSettings(nextSettings);
     return nextCheck;
   }
@@ -117,7 +117,7 @@ export class CodexUpdateService {
     source: Pick<OpenCodexSource, "kind" | "settings" | "codex" | "resolvedCommand">,
     fallbackCommand: string
   ): OpenCodexCodexUpdateStatus {
-    const releaseCheck = this.options.getSettings().codexReleaseCheck;
+    const releaseCheck = this.options.settings.getSettings().codexReleaseCheck;
     const isSupported = isStandaloneSourceLike(source, fallbackCommand);
 
     if (!isSupported) {

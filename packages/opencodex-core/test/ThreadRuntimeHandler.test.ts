@@ -9,6 +9,12 @@ import {
   ThreadRuntimeHandler,
   type ThreadRuntimeHandlerOptions
 } from "../src/backend/ThreadRuntimeHandler";
+import { RuntimeEventDispatcher } from "../src/backend/runtime/RuntimeEventDispatcher";
+import type {
+  ClientPort,
+  ProjectSourcePort,
+  RuntimeSettingsPort
+} from "../src/backend/runtime/runtimePorts";
 
 describe("ThreadRuntimeHandler", () => {
   it("should construct without a cache repository and delegate representative reads", async () => {
@@ -138,6 +144,7 @@ describe("ThreadRuntimeHandler", () => {
 
 /** Creates a handler with deterministic cacheless callbacks. */
 function createHandler(emitToHost: (event: OpenCodexEvent) => void = () => undefined): ThreadRuntimeHandler {
+  const settings = createSettings();
   const options: ThreadRuntimeHandlerOptions = {
     backendOptions: {
       settings: createSettings(),
@@ -146,20 +153,47 @@ function createHandler(emitToHost: (event: OpenCodexEvent) => void = () => undef
       emit: emitToHost
     },
     cacheRepository: null,
-    getSettings: () => options.backendOptions.settings,
-    emitToHost,
-    ensureClient: async () => {
-      throw new Error("Codex client unavailable in cacheless test.");
-    },
-    resolveSource: async () => {
-      throw new Error("Source unavailable in cacheless test.");
-    },
-    cacheProject: async () => null,
-    readCachedProjects: async () => [],
+    settings: createSettingsPort(settings),
+    events: new RuntimeEventDispatcher({ emitToHost }),
+    clients: createClientPort(),
+    projects: createProjectPort(),
     handleClientError: () => undefined
   };
 
   return new ThreadRuntimeHandler(options);
+}
+
+/** Creates the settings port used by the cacheless handler fixture. */
+function createSettingsPort(settings: OpenCodexSettings): RuntimeSettingsPort {
+  return {
+    getSettings: () => settings,
+    setSettings: () => undefined
+  };
+}
+
+/** Creates a client port that fails only if a test reaches Codex I/O. */
+function createClientPort(): ClientPort {
+  return {
+    ensureClient: async () => {
+      throw new Error("Codex client unavailable in cacheless test.");
+    },
+    getClient: () => undefined,
+    restartClient: async () => undefined
+  };
+}
+
+/** Creates a source port that fails only if a test reaches source I/O. */
+function createProjectPort(): ProjectSourcePort {
+  return {
+    resolveSource: async () => {
+      throw new Error("Source unavailable in cacheless test.");
+    },
+    resolveRequestedSource: async () => {
+      throw new Error("Source unavailable in cacheless test.");
+    },
+    cacheProject: async () => null,
+    readCachedProjects: async () => []
+  };
 }
 
 /** Creates the smallest complete settings snapshot accepted by core services. */

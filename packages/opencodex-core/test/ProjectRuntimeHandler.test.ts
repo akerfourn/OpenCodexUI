@@ -73,27 +73,33 @@ function createHandler(
   return new ProjectRuntimeHandler({
     backendOptions,
     cacheRepository: null,
-    getSettings: () => settings,
-    setSettings: (nextSettings) => Object.assign(settings, nextSettings),
-    emit,
-    ensureClient: async () => {
-      throw new Error("A Codex client was not expected in this test.");
+    settings: {
+      getSettings: () => settings,
+      setSettings: (nextSettings) => Object.assign(settings, nextSettings)
     },
-    restartSourceClient: async () => undefined,
+    events: { emit },
+    clients: {
+      ensureClient: async () => {
+        throw new Error("A Codex client was not expected in this test.");
+      },
+      restartClient: async () => undefined
+    },
     hasActiveTurn: () => false,
-    getCodexUpdateStatus: (source) => ({
-      supported: false,
-      updateAvailable: false,
-      latestVersion: null,
-      checkedAt: null,
-      message: source.id
-    }),
-    checkLatestRelease: vi.fn(async () => ({
-      latestVersion: null,
-      checkedAt: null,
-      error: null
-    })),
-    updateSource: vi.fn(async () => [])
+    updates: {
+      getSourceUpdateStatus: (source) => ({
+        supported: false,
+        updateAvailable: false,
+        latestVersion: null,
+        checkedAt: null,
+        message: source.id
+      }),
+      checkLatestRelease: vi.fn(async () => ({
+        latestVersion: null,
+        checkedAt: null,
+        error: null
+      })),
+      updateSource: vi.fn(async () => [])
+    }
   });
 }
 

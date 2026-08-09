@@ -1,5 +1,4 @@
 import {
-  type CodexAppServerClient,
   type FuzzyFileSearchResponse,
   type v2
 } from "@open-codex-ui/codex-rpc";
@@ -10,10 +9,12 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { filterSearchableProjectFiles } from "./fileSearchFilters.js";
+import type { ClientPort } from "./runtime/runtimePorts.js";
 
-/** Resolves the Codex client used for project-scoped search operations. */
+/** Dependencies used by project-scoped search operations. */
 export type ProjectSearchServiceOptions = {
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
+  /** Codex client lifecycle operations used by searches. */
+  clients: Pick<ClientPort, "ensureClient">;
 };
 
 /** Coordinates file and skill searches exposed by the composer. */
@@ -51,7 +52,7 @@ export class ProjectSearchService {
       return [];
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const normalizedLimit = Math.max(1, limit);
 
     if (query.trim().length === 0) {
@@ -103,7 +104,7 @@ export class ProjectSearchService {
       return [];
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const response = await client.request<v2.SkillsListResponse>("skills/list", {
       cwds: [root],
       forceReload: false

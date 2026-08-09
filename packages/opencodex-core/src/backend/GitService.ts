@@ -18,6 +18,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { parseGitStatus } from "./gitStatusParser.js";
+import type { ClientPort } from "./runtime/runtimePorts.js";
 
 type GitProcessResult = Pick<
   v2.ProcessExitedNotification,
@@ -43,7 +44,7 @@ export type OpenCodexStagedCommitContext = {
 };
 
 export type GitServiceOptions = {
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
+  clients: Pick<ClientPort, "ensureClient">;
 };
 
 const commitDiffBytesCap = 220_000;
@@ -606,7 +607,7 @@ export class GitService {
     projectPath: string,
     sourceId: string | null
   ): Promise<string | null> {
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const source = await this.findPendingCommitMessageSource(projectPath, sourceId);
 
     if (source === null) {
@@ -658,7 +659,7 @@ export class GitService {
     sourceId: string | null,
     path: string
   ): Promise<boolean> {
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const resolvedPath = await this.resolveGitPath(projectPath, sourceId, path);
 
     if (resolvedPath === null) {
@@ -833,7 +834,7 @@ export class GitService {
       throw new Error("Git operations require a Codex source.");
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const response = await runHostProcess(client, {
       command: ["git", ...args],
       cwd: projectPath,

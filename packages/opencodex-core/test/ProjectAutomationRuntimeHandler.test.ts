@@ -11,7 +11,6 @@ import type {
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import type {
-  OpenCodexEvent,
   OpenCodexProjectCommand,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
@@ -129,8 +128,11 @@ describe("ProjectAutomationRuntimeHandler", () => {
         updateProjectCommandRule,
         deleteProjectCommandRule
       }),
-      resolveSource,
-      ensureClient: async () => ({ readFile } as unknown as CodexAppServerClient)
+      projects: { resolveSource },
+      clients: {
+        ensureClient: async () => ({ readFile } as unknown as CodexAppServerClient),
+        restartClient: async () => undefined
+      }
     });
 
     const snapshot = await handler.listProjectRules(project.id);
@@ -178,12 +180,14 @@ function createHandler(
   const options: ProjectAutomationRuntimeHandlerOptions = {
     cache: null,
     userDataPath: "/tmp/opencodex-ui-tests",
-    getSettings: () => createSettings(),
-    ensureClient: async () => createClient(),
-    resolveSource: async (sourceId) => createSource(sourceId ?? "source-default"),
+    settings: { getSettings: () => createSettings() },
+    clients: {
+      ensureClient: async () => createClient(),
+      restartClient: async () => undefined
+    },
+    projects: { resolveSource: async (sourceId) => createSource(sourceId ?? "source-default") },
     hasActiveTurn: () => false,
-    restartSourceClient: async () => undefined,
-    emit: (_event: OpenCodexEvent) => undefined,
+    events: { emit: () => undefined },
     ...overrides
   };
 

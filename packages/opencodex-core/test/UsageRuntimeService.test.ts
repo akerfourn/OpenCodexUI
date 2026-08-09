@@ -427,14 +427,14 @@ function createService(overrides: ServiceOverrides) {
           saveUsageRateLimitSnapshot: overrides.saveUsageRateLimitSnapshot
         })
     ),
-    getSettings: () => ({
+    settings: { getSettings: () => ({
       defaultSourceId: overrides.defaultSourceId ?? null
-    } as OpenCodexSettings),
-    resolveRequestedSource,
-    ensureClient,
+    } as OpenCodexSettings) },
+    projects: { resolveRequestedSource },
+    clients: { ensureClient },
     isPrerelease: true,
-    emit: (event) => emittedEvents.push(event),
-    persistLog: persistLog as UsageRuntimeServiceOptions["persistLog"],
+    events: { emit: (event) => emittedEvents.push(event) },
+    logs: { persistLog: persistLog as UsageRuntimeServiceOptions["logs"]["persistLog"] },
     logger: overrides.logger
   });
 

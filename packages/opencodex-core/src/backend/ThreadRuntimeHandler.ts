@@ -1,17 +1,12 @@
-import type { CodexAppServerClient, CodexNotification } from "@open-codex-ui/codex-rpc";
-import type {
-  CachedSource,
-  OpenCodexCacheRepository
-} from "@open-codex-ui/opencodex-cache";
+import type { CodexNotification } from "@open-codex-ui/codex-rpc";
+import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexCollaborationEvent,
   OpenCodexCollaborationQuery,
   OpenCodexComposerReference,
   OpenCodexEvent,
   OpenCodexImageAttachment,
-  OpenCodexProject,
   OpenCodexReasoningEffort,
-  OpenCodexSettings,
   OpenCodexThread,
   OpenCodexThreadEventLogPage,
   OpenCodexThreadRuntimeStatus,
@@ -25,10 +20,12 @@ import { NotificationService } from "./NotificationService.js";
 import { toError } from "./errors.js";
 import { ThreadConversationService } from "./ThreadConversationService.js";
 import { ThreadCacheService } from "./ThreadCacheService.js";
-import {
-  ThreadEventLogService,
-  type ThreadEventLogMutation
-} from "./ThreadEventLogService.js";
+import type {
+  ClientPort,
+  ProjectSourcePort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
 
 /** Dependencies needed to construct the thread runtime handler. */
 export type ThreadRuntimeHandlerOptions = {
@@ -37,17 +34,16 @@ export type ThreadRuntimeHandlerOptions = {
   /** Cache repository shared by thread and collaboration services. */
   cacheRepository: OpenCodexCacheRepository | null;
   /** Reads the current mutable settings snapshot. */
-  getSettings(): OpenCodexSettings;
-  /** Emits an event directly to the host transport. */
-  emitToHost(event: OpenCodexEvent): void;
-  /** Ensures a Codex client for a source. */
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
-  /** Resolves a source for source-aware Codex operations. */
-  resolveSource(sourceId: string | null): Promise<CachedSource>;
-  /** Caches project metadata for a thread operation. */
-  cacheProject(projectPath: string | null, sourceId: string | null): Promise<OpenCodexProject | null>;
-  /** Reads cached projects for thread-list refresh events. */
-  readCachedProjects(): Promise<OpenCodexProject[]>;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  /** Emits runtime events and records the thread event journal. */
+  events: RuntimeEventPort;
+  /** Provides source-aware Codex client lifecycle operations. */
+  clients: Pick<ClientPort, "ensureClient">;
+  /** Provides source resolution and project-cache operations. */
+  projects: Pick<
+    ProjectSourcePort,
+    "resolveSource" | "cacheProject" | "readCachedProjects"
+  >;
   /** Handles asynchronous client failures raised by thread callbacks. */
   handleClientError(error: Error): void;
 };
@@ -76,8 +72,8 @@ export type ThreadRuntimeNotificationAdapters = {
 export class ThreadRuntimeHandler {
   /** In-memory turn and thread cache shared by all thread services. */
   private readonly threadTurnCache: ThreadTurnCache;
-  /** Bounded metadata trace shared by raw and backend event recording. */
-  private readonly threadEventLogService: ThreadEventLogService;
+  /** Runtime event port used by thread services and the historical facade. */
+  private readonly eventPort: RuntimeEventPort;
   /** SQLite-backed thread metadata and turn cache service. */
   private readonly threadCacheService: ThreadCacheService;
   /** Collaboration event persistence and normalization service. */
@@ -88,51 +84,43 @@ export class ThreadRuntimeHandler {
   private readonly notificationService: NotificationService;
   /** Threads whose transient notifications must be ignored. */
   private readonly ignoredNotificationThreadIds = new Set<string>();
-  /** Host and service callbacks used while constructing the handler. */
+  /** Cyclic callback used when asynchronous thread work reports a client error. */
   private readonly options: ThreadRuntimeHandlerOptions;
 
   /**
    * Creates one cohesive set of thread services and shared state.
    *
-   * @param options Backend callbacks and persistence dependencies.
+   * @param options Runtime service ports and the cyclic error callback.
    */
   constructor(options: ThreadRuntimeHandlerOptions) {
     this.options = options;
+    this.eventPort = options.events;
     this.threadTurnCache = new ThreadTurnCache();
-    this.threadEventLogService = new ThreadEventLogService();
     this.threadCacheService = new ThreadCacheService({
-      backendOptions: options.backendOptions,
       cacheRepository: options.cacheRepository,
       threadTurnCache: this.threadTurnCache,
-      getSettings: options.getSettings,
-      emit: (event) => this.emit(event)
+      settings: options.settings,
+      events: options.events,
+      logger: options.backendOptions.logger
     });
     this.collaborationService = new CollaborationService({
       cacheRepository: options.cacheRepository,
-      emit: (event) => this.emit(event),
+      events: options.events,
       logger: options.backendOptions.logger
     });
     this.threadConversationService = new ThreadConversationService({
       backendOptions: options.backendOptions,
       threadTurnCache: this.threadTurnCache,
       threadCacheService: this.threadCacheService,
-      getSettings: options.getSettings,
-      emit: (event) => this.emit(event),
-      ensureClient: options.ensureClient,
-      resolveSource: options.resolveSource,
-      cacheProject: options.cacheProject,
-      readCachedProjects: options.readCachedProjects,
-      reconcileCollaborationTurns: (sourceId, threadId, turns) => (
-        this.collaborationService.reconcileTurns(sourceId, threadId, turns)
-      ),
-      reconcileDescendantThreads: (sourceId, rootThreadId, threads) => (
-        this.collaborationService.reconcileDescendantThreads(sourceId, rootThreadId, threads)
-      ),
+      settings: options.settings,
+      events: options.events,
+      clients: options.clients,
+      projects: options.projects,
+      collaborationService: this.collaborationService,
       handleClientError: options.handleClientError
     });
     this.notificationService = new NotificationService({
-      getSettings: options.getSettings,
-      emit: (event) => this.emit(event),
+      events: options.events,
       applyCodexThreadTitle: (threadId, title, sourceId) => {
         this.applyCodexThreadTitle(threadId, title, sourceId);
       },
@@ -228,7 +216,7 @@ export class ThreadRuntimeHandler {
     sourceId: string | null,
     limit: number
   ): OpenCodexThreadEventLogPage {
-    return this.threadEventLogService.read(sourceId, threadId, limit);
+    return this.eventPort.readThreadEventLog(threadId, sourceId, limit);
   }
 
   /**
@@ -521,7 +509,7 @@ export class ThreadRuntimeHandler {
    * @returns Nothing.
    */
   recordRawNotification(notification: CodexNotification, sourceId: string): void {
-    this.notifyThreadEventLog(this.threadEventLogService.recordNotification(notification, sourceId));
+    this.eventPort.recordRawNotification(notification, sourceId);
   }
 
   /**
@@ -531,11 +519,7 @@ export class ThreadRuntimeHandler {
    * @returns Nothing.
    */
   emit(event: OpenCodexEvent): void {
-    if (event.type !== "thread.eventLog.updated") {
-      this.notifyThreadEventLog(this.threadEventLogService.recordBackendEvent(event));
-    }
-
-    this.options.emitToHost(event);
+    this.eventPort.emit(event);
   }
 
   /**
@@ -599,22 +583,4 @@ export class ThreadRuntimeHandler {
     });
   }
 
-  /**
-   * Forwards a trace mutation without recursively recording the trace update.
-   *
-   * @param mutation Trace mutation, or `null` when no update is needed.
-   * @returns Nothing.
-   */
-  private notifyThreadEventLog(mutation: ThreadEventLogMutation | null): void {
-    if (mutation === null || !mutation.shouldNotify) {
-      return;
-    }
-
-    this.emit({
-      type: "thread.eventLog.updated",
-      sourceId: mutation.entry.sourceId,
-      threadId: mutation.entry.threadId,
-      entry: mutation.entry
-    });
-  }
 }

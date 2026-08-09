@@ -1,5 +1,8 @@
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
-import type { OpenCodexImageAttachment } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexImageAttachment,
+  OpenCodexSettings
+} from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -214,15 +217,18 @@ function createService(
     source?: CachedSource;
     language?: "en" | "fr";
     projectPath?: string | null;
+    resolveSource?: (sourceId: string) => Promise<CachedSource>;
   } = {}
 ): HostIntegrationService {
   const source = overrides.source ?? createSource("local");
   const resolveSource = overrides.resolveSource ?? vi.fn(async () => source);
 
   return new HostIntegrationService({
-    getLanguage: () => overrides.language ?? "en",
-    getProjectPath: () => overrides.projectPath ?? null,
-    resolveSource,
+    settings: {
+      getSettings: () => ({ language: overrides.language ?? "en" } as OpenCodexSettings)
+    },
+    projectPath: overrides.projectPath ?? null,
+    projects: { resolveSource },
     pickExecutableFile: overrides.pickExecutableFile,
     pickImageFiles: overrides.pickImageFiles,
     openExternalLink: overrides.openExternalLink,

@@ -1,28 +1,22 @@
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
-import type {
-  CachedSource,
-  OpenCodexCacheRepository
-} from "@open-codex-ui/opencodex-cache";
-import type {
-  OpenCodexEvent,
-  OpenCodexModel
-} from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
+import type { OpenCodexModel } from "@open-codex-ui/opencodex-protocol";
 
 import {
   fallbackModels,
   readModels
 } from "./codexReaders.js";
+import type { ClientPort, ProjectSourcePort, RuntimeEventPort } from "./runtime/runtimePorts.js";
 
 /** Dependencies used by the source-scoped model catalog service. */
 export type ModelCatalogServiceOptions = {
   /** Cache repository used to persist model metadata, or `null` when unavailable. */
   cacheRepository: OpenCodexCacheRepository | null;
-  /** Resolves the requested source before any source-scoped work begins. */
-  resolveSource(sourceId: string | null): Promise<CachedSource>;
+  /** Resolves the requested source before source-scoped work begins. */
+  projects: Pick<ProjectSourcePort, "resolveSource">;
   /** Ensures a started Codex client for a canonical source identifier. */
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
+  clients: Pick<ClientPort, "ensureClient">;
   /** Emits model catalog updates to the UI transport. */
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
   /** Writes best-effort diagnostics for cache and RPC failures. */
   logger?: (message: string) => void;
 };
@@ -42,21 +36,21 @@ export class ModelCatalogService {
    * @returns Available model metadata.
    */
   async listModels(sourceId: string | null): Promise<OpenCodexModel[]> {
-    const source = await this.options.resolveSource(sourceId);
+    const source = await this.options.projects.resolveSource(sourceId);
     const cachedModels = await this.readCachedModels(source.id);
 
     if (cachedModels.length > 0) {
-      this.options.emit({ type: "models.updated", models: cachedModels });
+      this.options.events.emit({ type: "models.updated", models: cachedModels });
     }
 
     try {
-      const client = await this.options.ensureClient(source.id);
+      const client = await this.options.clients.ensureClient(source.id);
       const response = await client.request("model/list", { limit: 100 });
       const models = readModels(response);
 
       if (models.length > 0) {
         await this.saveModelCatalog(source.id, models);
-        this.options.emit({ type: "models.updated", models });
+        this.options.events.emit({ type: "models.updated", models });
         return models;
       }
 
@@ -65,7 +59,7 @@ export class ModelCatalogService {
       }
 
       const modelsFallback = fallbackModels();
-      this.options.emit({ type: "models.updated", models: modelsFallback });
+      this.options.events.emit({ type: "models.updated", models: modelsFallback });
       return modelsFallback;
     } catch (error) {
       this.options.logger?.(`model/list unavailable: ${String(error)}`);
@@ -75,7 +69,7 @@ export class ModelCatalogService {
       }
 
       const modelsFallback = fallbackModels();
-      this.options.emit({ type: "models.updated", models: modelsFallback });
+      this.options.events.emit({ type: "models.updated", models: modelsFallback });
       return modelsFallback;
     }
   }

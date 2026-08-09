@@ -368,6 +368,8 @@ function createService(
 ): CollaborationService {
   return new CollaborationService({
     cacheRepository,
-    emit: (event) => emittedEvents.push(event)
+    events: {
+      emit: (event) => emittedEvents.push(event)
+    }
   });
 }

@@ -1,12 +1,9 @@
-import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
+import type { v2 } from "@open-codex-ui/codex-rpc";
 import type {
   CachedSource,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import type {
-  OpenCodexEvent,
-  OpenCodexLogEntry,
-  OpenCodexSettings,
   OpenCodexUsageHistory,
   OpenCodexUsageHistoryAggregation,
   OpenCodexUsageResetConsumeResult,
@@ -23,6 +20,13 @@ import {
 } from "./usageRateLimitDiagnostics.js";
 import { mapUsageLimitsNotification, mapUsageLimitsResponse } from "./usageMapping.js";
 import { readObject } from "../mapping.js";
+import type {
+  ApplicationLogPort,
+  ClientPort,
+  ProjectSourcePort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
 
 const DEFAULT_COMMIT_SOURCE_KEY = "__default_commit_source__";
 const DEFAULT_COMMIT_MODEL_KEY = "__default_commit_model__";
@@ -32,21 +36,17 @@ export type UsageRuntimeServiceOptions = {
   /** Cache repository used for usage history, or `null` when disabled. */
   cacheRepository: OpenCodexCacheRepository | null;
   /** Reads the current settings, including the configured default source. */
-  getSettings(): OpenCodexSettings;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
   /** Resolves a requested source without silently selecting another source. */
-  resolveRequestedSource(sourceId: string | null): Promise<CachedSource>;
+  projects: Pick<ProjectSourcePort, "resolveRequestedSource">;
   /** Ensures a started Codex client for the canonical source identifier. */
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
+  clients: Pick<ClientPort, "ensureClient">;
   /** Whether pre-release diagnostics should be persisted. */
   isPrerelease: boolean;
   /** Emits usage changes to the UI transport. */
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
   /** Writes best-effort application diagnostics. */
-  persistLog(
-    type: OpenCodexLogEntry["type"],
-    message: string,
-    details: unknown
-  ): void;
+  logs: ApplicationLogPort;
   /** Writes best-effort operational diagnostics. */
   logger?: (message: string) => void;
 };
@@ -65,7 +65,7 @@ export class UsageRuntimeService {
   ) {
     this.usageRateLimitDiagnostics = new UsageRateLimitDiagnostics(
       options.isPrerelease,
-      (type, message, details) => options.persistLog(type, message, details)
+      (type, message, details) => options.logs.persistLog(type, message, details)
     );
   }
 
@@ -83,8 +83,8 @@ export class UsageRuntimeService {
     let resolvedSource: CachedSource | null = null;
 
     try {
-      resolvedSource = await this.options.resolveRequestedSource(sourceId);
-      const client = await this.options.ensureClient(resolvedSource.id);
+      resolvedSource = await this.options.projects.resolveRequestedSource(sourceId);
+      const client = await this.options.clients.ensureClient(resolvedSource.id);
       const response = await client.request<v2.GetAccountRateLimitsResponse>(
         "account/rateLimits/read",
         undefined
@@ -92,13 +92,13 @@ export class UsageRuntimeService {
       const usage = mapUsageLimitsResponse(response, resolvedSource.id);
       this.recordUsageRateLimitDiagnostic(resolvedSource.id, usage, "read", reason);
       this.persistUsageRateLimitSnapshot(resolvedSource.id, response, usage, "read", reason);
-      this.options.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage });
+      this.options.events.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage });
       return usage;
     } catch (error) {
       this.options.logger?.(`account/rateLimits/read unavailable: ${String(error)}`);
 
       if (resolvedSource !== null) {
-        this.options.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage: null });
+        this.options.events.emit({ type: "usage.updated", sourceId: resolvedSource.id, usage: null });
       }
 
       return null;
@@ -153,8 +153,8 @@ export class UsageRuntimeService {
       throw new Error("An idempotency key is required to consume a reset.");
     }
 
-    const source = await this.options.resolveRequestedSource(sourceId);
-    const client = await this.options.ensureClient(source.id);
+    const source = await this.options.projects.resolveRequestedSource(sourceId);
+    const client = await this.options.clients.ensureClient(source.id);
     const response = await client.request<v2.ConsumeAccountRateLimitResetCreditResponse>(
       "account/rateLimitResetCredit/consume",
       {
@@ -195,7 +195,7 @@ export class UsageRuntimeService {
         "notification",
         "accountRateLimitsUpdated"
       );
-      this.options.emit({ type: "usage.updated", sourceId, usage });
+      this.options.events.emit({ type: "usage.updated", sourceId, usage });
       return;
     }
 
@@ -368,7 +368,7 @@ export class UsageRuntimeService {
    * @returns Stable source key.
    */
   private readCommitSourceKey(sourceId: string | null): string {
-    return sourceId ?? this.options.getSettings().defaultSourceId ?? DEFAULT_COMMIT_SOURCE_KEY;
+    return sourceId ?? this.options.settings.getSettings().defaultSourceId ?? DEFAULT_COMMIT_SOURCE_KEY;
   }
 }
 

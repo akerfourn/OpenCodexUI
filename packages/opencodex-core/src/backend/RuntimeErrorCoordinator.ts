@@ -1,24 +1,24 @@
-import type {
-  OpenCodexEvent,
-  OpenCodexLogEntry,
-  OpenCodexRequest,
-  OpenCodexSettings
-} from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 import { CodexProcessError } from "@open-codex-ui/codex-rpc";
 
 import {
   normalizeError,
   toError
 } from "./errors.js";
+import type {
+  ApplicationLogPort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
 
 /** Dependencies used to normalize, report, and recover runtime errors. */
 export type RuntimeErrorCoordinatorOptions = {
-  /** Reads the language used for user-facing error labels. */
-  getLanguage(): OpenCodexSettings["language"];
+  /** Reads the current settings used for user-facing error labels. */
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
   /** Persists an error without making persistence failures observable here. */
-  persistLog(type: OpenCodexLogEntry["type"], message: string, details: unknown): void;
+  logs: ApplicationLogPort;
   /** Emits an error event through the runtime's journal-aware event boundary. */
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
   /** Recovers a thread after a recoverable Codex process failure. */
   recoverThread(threadId: string): Promise<unknown>;
 };
@@ -39,10 +39,10 @@ export class RuntimeErrorCoordinator {
    * @returns Never returns because it rethrows the normalized error.
    */
   handleRequestError(request: OpenCodexRequest, error: unknown): never {
-    const normalized = normalizeError(error, this.options.getLanguage());
+    const normalized = normalizeError(error, this.options.settings.getSettings().language);
     const recoverableThreadId = this.readRecoverableThreadId(request, error);
-    this.options.persistLog("error", normalized.message, normalized.details);
-    this.options.emit({
+    this.options.logs.persistLog("error", normalized.message, normalized.details);
+    this.options.events.emit({
       type: "error",
       message: normalized.message,
       details: normalized.details,
@@ -67,9 +67,13 @@ export class RuntimeErrorCoordinator {
    * @returns Nothing.
    */
   handleClientError(error: Error): void {
-    const normalized = normalizeError(error, this.options.getLanguage());
-    this.options.persistLog("error", normalized.message, normalized.details);
-    this.options.emit({ type: "error", message: normalized.message, details: normalized.details });
+    const normalized = normalizeError(error, this.options.settings.getSettings().language);
+    this.options.logs.persistLog("error", normalized.message, normalized.details);
+    this.options.events.emit({
+      type: "error",
+      message: normalized.message,
+      details: normalized.details
+    });
   }
 
   /**

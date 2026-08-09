@@ -10,6 +10,10 @@ import {
   RuntimeNotificationCoordinator,
   type RuntimeNotificationCoordinatorOptions
 } from "../src/backend/RuntimeNotificationCoordinator";
+import type {
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "../src/backend/runtime/runtimePorts";
 
 describe("RuntimeNotificationCoordinator", () => {
   afterEach(() => {
@@ -60,9 +64,11 @@ describe("RuntimeNotificationCoordinator", () => {
 
   it("should skip ignored notifications after recording the receipt metric", () => {
     const context = createContext({
-      isThreadIgnored: () => {
-        context.timeline.push("ignored");
-        return true;
+      threads: {
+        isThreadIgnored: () => {
+          context.timeline.push("ignored");
+          return true;
+        }
       }
     });
 
@@ -130,10 +136,10 @@ describe("RuntimeNotificationCoordinator", () => {
     ({ developerMode, advancedPerformanceMonitoringEnabled, expectedCount }) => {
       const liveCacheMethods: string[] = [];
       const context = createContext({
-        getSettings: () => createSettings(
+        settings: createSettingsPort(createSettings(
           developerMode,
           advancedPerformanceMonitoringEnabled
-        ),
+        )),
         onLiveCacheProcessed: (method) => {
           liveCacheMethods.push(method);
         }
@@ -171,9 +177,12 @@ describe("RuntimeNotificationCoordinator", () => {
 
   it("should complete usage handling after notification handling and active-turn removal", () => {
     const context = createContext({
-      handleTurnCompleted: () => {
-        context.timeline.push("turn-completed");
-        expect(context.coordinator.hasActiveTurn("source-1")).toBe(false);
+      usage: {
+        handleRateLimitsUpdated: () => {},
+        handleTurnCompleted: () => {
+          context.timeline.push("turn-completed");
+          expect(context.coordinator.hasActiveTurn("source-1")).toBe(false);
+        }
       }
     });
 
@@ -294,7 +303,7 @@ function createContext(
   let emittedTokenUsage: unknown;
   const threadTurnCache = new ThreadTurnCache();
   const options: RuntimeNotificationCoordinatorOptions = {
-    getSettings: () => createSettings(),
+    settings: createSettingsPort(createSettings()),
     onRawReceived: () => {
       timeline.push("received");
     },
@@ -302,23 +311,26 @@ function createContext(
       processedMethods.push(method);
       timeline.push("processed");
     },
-    isThreadIgnored: () => {
-      timeline.push("ignored");
-      return false;
+    threads: {
+      isThreadIgnored: () => {
+        timeline.push("ignored");
+        return false;
+      }
     },
-    recordRawNotification: () => {
-      timeline.push("raw");
-    },
-    emit: (event) => {
+    events: createEventPort((event) => {
       if (event.type === "thread.tokenUsage.updated") {
         emittedTokenUsage = event;
       }
-    },
-    handleRateLimitsUpdated: () => {
-      timeline.push("rate-limits");
-    },
-    handleTurnCompleted: () => {
-      timeline.push("turn-completed");
+    }, () => {
+      timeline.push("raw");
+    }),
+    usage: {
+      handleRateLimitsUpdated: () => {
+        timeline.push("rate-limits");
+      },
+      handleTurnCompleted: () => {
+        timeline.push("turn-completed");
+      }
     },
     threadCacheService: {
       writeTokenUsage: vi.fn().mockResolvedValue(undefined),
@@ -373,6 +385,26 @@ function createSettings(
     developerMode,
     advancedPerformanceMonitoringEnabled
   } as OpenCodexSettings;
+}
+
+/** Wraps a settings snapshot in the runtime settings port used by tests. */
+function createSettingsPort(settings: OpenCodexSettings): RuntimeSettingsPort {
+  return {
+    getSettings: () => settings,
+    setSettings: () => undefined
+  };
+}
+
+/** Creates the event port used by notification coordinator tests. */
+function createEventPort(
+  emit: (event: Parameters<RuntimeEventPort["emit"]>[0]) => void,
+  recordRawNotification: () => void
+): RuntimeEventPort {
+  return {
+    emit,
+    recordRawNotification,
+    readThreadEventLog: () => ({ entries: [], truncated: false })
+  };
 }
 
 /** Creates the minimal thread metadata required by the in-memory cache. */

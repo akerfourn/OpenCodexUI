@@ -17,19 +17,23 @@ import type {
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import type {
-  OpenCodexEvent,
   OpenCodexProjectCommandRule,
   OpenCodexProjectCommandRuleApplyResult,
   OpenCodexProjectCommandRuleRuntimeState,
   OpenCodexProjectCommandRulesSnapshot,
   OpenCodexProjectCommandRuleStatus,
-  OpenCodexProjectCommandRuleTestResult,
-  OpenCodexSettings
+  OpenCodexProjectCommandRuleTestResult
 } from "@open-codex-ui/opencodex-protocol";
 
 import { hashProjectCommandRules, renderProjectCommandRules, tokenizeCommandLine } from "./projectCommandRuleGenerator.js";
 import { mapPolicyCheckResult } from "./projectCommandRulePolicy.js";
 import { resolveSourceCommand } from "./sourceMapping.js";
+import type {
+  ClientPort,
+  ProjectSourcePort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
 
 const managedRulesFileName = "opencodex-ui.rules";
 const commandCheckTimeoutMs = 30_000;
@@ -42,12 +46,11 @@ type RuntimeState = {
 
 export type ProjectCommandRuleServiceOptions = {
   cacheRepository: OpenCodexCacheRepository | null;
-  getSettings(): OpenCodexSettings;
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
-  resolveSource(sourceId: string | null): Promise<CachedSource>;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  clients: Pick<ClientPort, "ensureClient" | "restartClient">;
+  projects: Pick<ProjectSourcePort, "resolveSource">;
   hasActiveTurn(sourceId: string): boolean;
-  restartSourceClient(sourceId: string): Promise<void>;
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
 };
 
 /**
@@ -157,7 +160,7 @@ export class ProjectCommandRuleService {
 
     const content = renderProjectCommandRules(rules.map(toProtocolRule));
     const desiredHash = hashProjectCommandRules(content);
-    const client = await this.options.ensureClient(project.sourceId);
+    const client = await this.options.clients.ensureClient(project.sourceId);
 
     await client.createDirectory(path.dirname(before.filePath));
     await client.writeFile(before.filePath, Buffer.from(content, "utf8").toString("base64"));
@@ -176,7 +179,7 @@ export class ProjectCommandRuleService {
     }
 
     const snapshot = await this.readSnapshot(projectId);
-    this.options.emit({ type: "projectRules.updated", projectId, snapshot });
+    this.options.events.emit({ type: "projectRules.updated", projectId, snapshot });
 
     return {
       applied: true,
@@ -214,8 +217,8 @@ export class ProjectCommandRuleService {
     }
 
     const source = await this.requireSupportedSource(project.sourceId);
-    const client = await this.options.ensureClient(project.sourceId);
-    const commandLine = resolveSourceCommand(source, this.options.getSettings().codexCommand);
+    const client = await this.options.clients.ensureClient(project.sourceId);
+    const commandLine = resolveSourceCommand(source, this.options.settings.getSettings().codexCommand);
     const resolvedCommand = resolveCodexCommand(commandLine, [
       "execpolicy",
       "check",
@@ -263,14 +266,14 @@ export class ProjectCommandRuleService {
       state: "restarting",
       message: "Codex is restarting to apply project command rules."
     });
-    this.options.emit({
+    this.options.events.emit({
       type: "projectRules.updated",
       projectId,
       snapshot: await this.readSnapshot(projectId)
     });
 
     try {
-      await this.options.restartSourceClient(sourceId);
+      await this.options.clients.restartClient(sourceId);
       this.runtimeStatesBySourceId.delete(sourceId);
     } catch (error) {
       this.runtimeStatesBySourceId.set(sourceId, {
@@ -281,7 +284,7 @@ export class ProjectCommandRuleService {
     }
 
     const nextSnapshot = await this.readSnapshot(projectId);
-    this.options.emit({ type: "projectRules.updated", projectId, snapshot: nextSnapshot });
+    this.options.events.emit({ type: "projectRules.updated", projectId, snapshot: nextSnapshot });
     return nextSnapshot;
   }
 
@@ -321,14 +324,14 @@ export class ProjectCommandRuleService {
       return createUnsupportedStatus(project, desiredHash, fileState);
     }
 
-    const source = await this.options.resolveSource(project.sourceId);
+    const source = await this.options.projects.resolveSource(project.sourceId);
 
     if (!isSupportedSource(source)) {
       return createUnsupportedStatus(project, desiredHash, fileState);
     }
 
     const filePath = getRulesFilePath(project.path);
-    const client = await this.options.ensureClient(project.sourceId);
+    const client = await this.options.clients.ensureClient(project.sourceId);
     const currentContent = await readOptionalFile(client, filePath);
     const currentHash = currentContent === null ? null : hashProjectCommandRules(currentContent);
     const fileStatus = resolveFileStatus(fileState?.generatedHash ?? null, currentHash, desiredHash, fileState);
@@ -362,7 +365,7 @@ export class ProjectCommandRuleService {
       throw new Error("This project has no Codex source.");
     }
 
-    const source = await this.options.resolveSource(sourceId);
+    const source = await this.options.projects.resolveSource(sourceId);
 
     if (!isSupportedSource(source)) {
       throw new Error("Project command rules currently support local Codex sources only.");

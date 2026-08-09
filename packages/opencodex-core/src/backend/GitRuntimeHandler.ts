@@ -1,4 +1,3 @@
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexCommitMessageGenerationResult,
   OpenCodexCommitMessageLanguage,
@@ -13,25 +12,25 @@ import type {
   OpenCodexGitTagFetchResult,
   OpenCodexGitTagListResult,
   OpenCodexReasoningEffort,
-  OpenCodexSettings,
   OpenCodexToolVersionStatus
 } from "@open-codex-ui/opencodex-protocol";
 
 import { CommitMessageService } from "./CommitMessageService.js";
 import { GitService } from "./GitService.js";
+import type { ThreadRuntimeHandler } from "./ThreadRuntimeHandler.js";
 import { readGitVersionStatus } from "./toolVersionDetection.js";
+import type { ClientPort, RuntimeSettingsPort } from "./runtime/runtimePorts.js";
+import type { UsageRuntimeService } from "./UsageRuntimeService.js";
 
 /** Dependencies needed by the Git and commit-message runtime boundary. */
 export type GitRuntimeHandlerOptions = {
   userDataPath?: string;
   defaultPromptPath?: string;
   generationPromptPath?: string;
-  getSettings(): OpenCodexSettings;
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
-  ignoreThreadNotifications(threadId: string): void;
-  releaseThreadNotifications(threadId: string): void;
-  onGenerationStarted?(sourceId: string | null, model: string | null): void;
-  onGenerationFinished?(sourceId: string | null, model: string | null): void;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  clients: Pick<ClientPort, "ensureClient">;
+  threads: Pick<ThreadRuntimeHandler, "ignoreThreadNotifications" | "releaseThreadNotifications">;
+  usage: Pick<UsageRuntimeService, "onCommitGenerationStarted" | "onCommitGenerationFinished">;
   logger?: (message: string) => void;
 };
 
@@ -50,23 +49,21 @@ export class GitRuntimeHandler {
   /**
    * Creates a Git runtime handler and wires its two focused services.
    *
-   * @param options Source client, prompt, notification, usage, and logging callbacks.
+   * @param options Source client, prompt, thread, usage, and logging services.
    */
   constructor(options: GitRuntimeHandlerOptions) {
     this.gitService = new GitService({
-      ensureClient: options.ensureClient
+      clients: options.clients
     });
     this.commitMessageService = new CommitMessageService({
       userDataPath: options.userDataPath,
       defaultPromptPath: options.defaultPromptPath,
       generationPromptPath: options.generationPromptPath,
       gitService: this.gitService,
-      getSettings: options.getSettings,
-      ensureClient: options.ensureClient,
-      ignoreThreadNotifications: options.ignoreThreadNotifications,
-      releaseThreadNotifications: options.releaseThreadNotifications,
-      onGenerationStarted: options.onGenerationStarted,
-      onGenerationFinished: options.onGenerationFinished,
+      settings: options.settings,
+      clients: options.clients,
+      threads: options.threads,
+      usage: options.usage,
       logger: options.logger
     });
   }

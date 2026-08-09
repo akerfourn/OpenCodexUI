@@ -1,17 +1,16 @@
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
-import type {
-  OpenCodexEvent,
-  OpenCodexSettings
-} from "@open-codex-ui/opencodex-protocol";
-
 import type { OpenCodexBackendOptions } from "../types.js";
 import { parseProjectTrustWarning } from "./trustWarnings.js";
+import type {
+  ClientPort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
 
 export type ProjectTrustServiceOptions = {
   backendOptions: OpenCodexBackendOptions;
-  getSettings(): OpenCodexSettings;
-  emit(event: OpenCodexEvent): void;
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  events: Pick<RuntimeEventPort, "emit">;
+  clients: Pick<ClientPort, "ensureClient">;
 };
 
 /**
@@ -24,7 +23,7 @@ export class ProjectTrustService {
   /**
    * Creates a project trust service.
    *
-   * @param options Backend settings, event emitter, and Codex client resolver.
+   * @param options Backend options plus settings, event, and Codex client ports.
    */
   constructor(private readonly options: ProjectTrustServiceOptions) {}
 
@@ -43,8 +42,8 @@ export class ProjectTrustService {
     }
 
     const sourceId = this.sourceIdByProjectPath.get(normalizedProjectPath)
-      ?? this.options.getSettings().defaultSourceId;
-    const client = await this.options.ensureClient(sourceId);
+      ?? this.options.settings.getSettings().defaultSourceId;
+    const client = await this.options.clients.ensureClient(sourceId);
 
     await client.request("config/batchWrite", {
       edits: [
@@ -57,7 +56,7 @@ export class ProjectTrustService {
       reloadUserConfig: true
     });
 
-    this.options.emit({
+    this.options.events.emit({
       type: "project.trust.completed",
       projectPath: normalizedProjectPath
     });
@@ -80,7 +79,7 @@ export class ProjectTrustService {
       return;
     }
 
-    this.options.emit({
+    this.options.events.emit({
       type: "project.trust.completed",
       projectPath: normalizedProjectPath
     });
@@ -111,7 +110,7 @@ export class ProjectTrustService {
 
     this.stderrBufferBySourceId.set(sourceId, "");
     this.sourceIdByProjectPath.set(trustWarning.projectPath, sourceId);
-    this.options.emit({
+    this.options.events.emit({
       type: "project.trust.required",
       projectPath: trustWarning.projectPath,
       disabledFolders: trustWarning.disabledFolders

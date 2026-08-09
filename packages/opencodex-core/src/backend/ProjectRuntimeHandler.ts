@@ -1,19 +1,15 @@
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type {
   CachedSource,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexCodexReleaseCheck,
-  OpenCodexCodexUpdateStatus,
-  OpenCodexEvent,
   OpenCodexProject,
   OpenCodexProjectGroupsSnapshot,
   OpenCodexProjectPreferences,
   OpenCodexProjectStatistics,
   OpenCodexProjectTask,
   OpenCodexProjectTaskStatus,
-  OpenCodexSettings,
   OpenCodexSource,
   OpenCodexSourceColor,
   OpenCodexSourceKind,
@@ -27,6 +23,13 @@ import { ProjectGroupService } from "./ProjectGroupService.js";
 import { ProjectSourceService } from "./ProjectSourceService.js";
 import { ProjectTrustService } from "./ProjectTrustService.js";
 import { SourceUpdateRuntimeHandler } from "./SourceUpdateRuntimeHandler.js";
+import type {
+  ClientPort,
+  ProjectSourcePort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "./runtime/runtimePorts.js";
+import type { CodexUpdateService } from "./CodexUpdateService.js";
 
 /** Dependencies used by the project and source runtime boundary. */
 export type ProjectRuntimeHandlerOptions = {
@@ -34,31 +37,20 @@ export type ProjectRuntimeHandlerOptions = {
   backendOptions: OpenCodexBackendOptions;
   /** Cache repository shared by project, source, group, and task services. */
   cacheRepository: OpenCodexCacheRepository | null;
-  /** Reads the current mutable settings snapshot. */
-  getSettings(): OpenCodexSettings;
-  /** Replaces the current mutable settings snapshot. */
-  setSettings(settings: OpenCodexSettings): void;
-  /** Emits project and source events to the host transport. */
-  emit(event: OpenCodexEvent): void;
-  /** Ensures a Codex client for a source. */
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
-  /** Restarts a source client after its launch settings change. */
-  restartSourceClient(sourceId: string): Promise<void>;
+  /** Provides access to the current mutable settings snapshot. */
+  settings: Pick<RuntimeSettingsPort, "getSettings" | "setSettings">;
+  /** Emits project and source events to the host transport and journal. */
+  events: Pick<RuntimeEventPort, "emit">;
+  /** Provides source-scoped Codex client lifecycle operations. */
+  clients: Pick<ClientPort, "ensureClient" | "restartClient">;
   /** Reports whether a source currently owns an active turn. */
   hasActiveTurn(sourceId: string): boolean;
-  /** Adds the current update availability to a source DTO. */
-  getCodexUpdateStatus(
-    source: OpenCodexSource,
-    fallbackCommand: string
-  ): OpenCodexCodexUpdateStatus;
-  /** Refreshes the globally cached Codex release metadata. */
-  checkLatestRelease(force: boolean): Promise<OpenCodexCodexReleaseCheck>;
-  /** Applies a standalone Codex update and returns refreshed sources. */
-  updateSource(source: OpenCodexSource, fallbackCommand: string): Promise<OpenCodexSource[]>;
+  /** Provides source update status, release checks, and update execution. */
+  updates: Pick<CodexUpdateService, "getSourceUpdateStatus" | "checkLatestRelease" | "updateSource">;
 };
 
 /** Owns project/source services and exposes their runtime-facing facade. */
-export class ProjectRuntimeHandler {
+export class ProjectRuntimeHandler implements ProjectSourcePort {
   /** Coordinates source persistence, synchronization, and project cache reads. */
   private readonly projectSourceService: ProjectSourceService;
   /** Detects and resolves source-owned project trust prompts. */
@@ -119,45 +111,41 @@ export class ProjectRuntimeHandler {
   /**
    * Creates a project runtime handler and wires its focused services.
    *
-   * @param options Cache, settings, client, update, and event callbacks.
+   * @param options Cache, settings, client ports, and update callbacks.
    */
   constructor(options: ProjectRuntimeHandlerOptions) {
     this.projectSourceService = new ProjectSourceService({
       backendOptions: options.backendOptions,
       cacheRepository: options.cacheRepository,
-      getSettings: options.getSettings,
-      setSettings: options.setSettings,
-      emit: options.emit,
-      ensureClient: options.ensureClient,
-      restartSourceClient: options.restartSourceClient,
-      getCodexUpdateStatus: options.getCodexUpdateStatus
+      settings: options.settings,
+      events: options.events,
+      clients: options.clients,
+      updates: options.updates
     });
     this.projectTrustService = new ProjectTrustService({
       backendOptions: options.backendOptions,
-      getSettings: options.getSettings,
-      emit: options.emit,
-      ensureClient: options.ensureClient
+      settings: options.settings,
+      events: options.events,
+      clients: options.clients
     });
     this.projectContextService = new ProjectContextService({
       cacheRepository: options.cacheRepository,
-      ensureClient: options.ensureClient
+      clients: options.clients
     });
     this.projectGroupService = new ProjectGroupService({
       cacheRepository: options.cacheRepository,
-      emit: options.emit
+      events: options.events
     });
     this.projectCacheDataService = new ProjectCacheDataService({
       cacheRepository: options.cacheRepository
     });
     this.sourceUpdateRuntimeHandler = new SourceUpdateRuntimeHandler({
-      getCodexCommand: () => options.getSettings().codexCommand,
-      getDefaultSourceId: () => options.getSettings().defaultSourceId,
-      listOpenCodexSources: this.listOpenCodexSources,
-      checkLatestRelease: options.checkLatestRelease,
-      updateSource: options.updateSource,
+      settings: options.settings,
+      projects: this.projectSourceService,
+      updates: options.updates,
       hasActiveTurn: options.hasActiveTurn,
-      restartSourceClient: options.restartSourceClient,
-      emit: options.emit
+      clients: options.clients,
+      events: options.events
     });
   }
 

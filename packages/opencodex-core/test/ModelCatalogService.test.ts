@@ -25,9 +25,9 @@ describe("ModelCatalogService", () => {
     const emit = vi.fn<(event: OpenCodexEvent) => void>();
     const service = new ModelCatalogService({
       cacheRepository: createRepository({ saveModelCatalog }),
-      resolveSource,
-      ensureClient,
-      emit
+      projects: { resolveSource },
+      clients: { ensureClient },
+      events: { emit }
     });
 
     await expect(service.listModels("requested-source")).resolves.toEqual([freshModel]);
@@ -60,14 +60,14 @@ describe("ModelCatalogService", () => {
         }),
         saveModelCatalog
       }),
-      resolveSource: vi.fn(async () => source),
-      ensureClient: vi.fn(async () => {
+      projects: { resolveSource: vi.fn(async () => source) },
+      clients: { ensureClient: vi.fn(async () => {
         operations.push("ensure");
         return client;
-      }),
-      emit: (event) => {
+      }) },
+      events: { emit: (event) => {
         operations.push(event.models[0]?.id === cachedModel.id ? "cached-event" : "fresh-event");
-      }
+      } }
     });
 
     await expect(service.listModels(null)).resolves.toEqual([freshModel]);
@@ -89,9 +89,9 @@ describe("ModelCatalogService", () => {
       cacheRepository: createRepository({
         getModelCatalog: vi.fn(async () => createCatalog([cachedModel]))
       }),
-      resolveSource: vi.fn(async () => source),
-      ensureClient: vi.fn(async () => createClient(vi.fn(async () => ({ data: [] })))),
-      emit
+      projects: { resolveSource: vi.fn(async () => source) },
+      clients: { ensureClient: vi.fn(async () => createClient(vi.fn(async () => ({ data: [] })))) },
+      events: { emit }
     });
 
     await expect(service.listModels(source.id)).resolves.toEqual([cachedModel]);
@@ -109,11 +109,11 @@ describe("ModelCatalogService", () => {
       cacheRepository: createRepository({
         getModelCatalog: vi.fn(async () => createCatalog([cachedModel]))
       }),
-      resolveSource: vi.fn(async () => source),
-      ensureClient: vi.fn(async () => createClient(vi.fn(async () => {
+      projects: { resolveSource: vi.fn(async () => source) },
+      clients: { ensureClient: vi.fn(async () => createClient(vi.fn(async () => {
         throw rpcError;
-      }))),
-      emit,
+      }))) },
+      events: { emit },
       logger
     });
 
@@ -128,9 +128,9 @@ describe("ModelCatalogService", () => {
     const emit = vi.fn<(event: OpenCodexEvent) => void>();
     const service = new ModelCatalogService({
       cacheRepository: null,
-      resolveSource: vi.fn(async () => source),
-      ensureClient: vi.fn(async () => createClient(vi.fn(async () => ({ data: [] })))),
-      emit
+      projects: { resolveSource: vi.fn(async () => source) },
+      clients: { ensureClient: vi.fn(async () => createClient(vi.fn(async () => ({ data: [] })))) },
+      events: { emit }
     });
 
     await expect(service.listModels(null)).resolves.toEqual(fallbackModels());
@@ -151,9 +151,9 @@ describe("ModelCatalogService", () => {
       });
     const service = new ModelCatalogService({
       cacheRepository: createRepository({ getModelCatalog }),
-      resolveSource: vi.fn(async () => source),
-      ensureClient: vi.fn(async () => createClient(vi.fn(async () => ({ data: [] })))),
-      emit: vi.fn(),
+      projects: { resolveSource: vi.fn(async () => source) },
+      clients: { ensureClient: vi.fn(async () => createClient(vi.fn(async () => ({ data: [] })))) },
+      events: { emit: vi.fn() },
       logger
     });
 
@@ -175,11 +175,11 @@ describe("ModelCatalogService", () => {
     });
     const service = new ModelCatalogService({
       cacheRepository: createRepository({ saveModelCatalog }),
-      resolveSource: vi.fn(async () => source),
-      ensureClient: vi.fn(async () => createClient(vi.fn(async () => ({
+      projects: { resolveSource: vi.fn(async () => source) },
+      clients: { ensureClient: vi.fn(async () => createClient(vi.fn(async () => ({
         data: [{ model: freshModel.id }]
-      })))),
-      emit: vi.fn(),
+      })))) },
+      events: { emit: vi.fn() },
       logger
     });
 
@@ -194,9 +194,9 @@ describe("ModelCatalogService", () => {
     const ensureClient = vi.fn(async () => createClient(request));
     const service = new ModelCatalogService({
       cacheRepository: createRepository({ getModelCatalog }),
-      resolveSource: vi.fn(async () => source),
-      ensureClient,
-      emit: vi.fn()
+      projects: { resolveSource: vi.fn(async () => source) },
+      clients: { ensureClient },
+      events: { emit: vi.fn() }
     });
 
     await service.listModels("source-alias");
@@ -214,9 +214,9 @@ describe("ModelCatalogService", () => {
     const logger = vi.fn<(message: string) => void>();
     const service = new ModelCatalogService({
       cacheRepository: createRepository(),
-      resolveSource,
-      ensureClient,
-      emit: vi.fn(),
+      projects: { resolveSource },
+      clients: { ensureClient },
+      events: { emit: vi.fn() },
       logger
     });
 

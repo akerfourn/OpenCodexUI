@@ -1,4 +1,4 @@
-import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
+import type { v2 } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexPluginDetail,
   OpenCodexPluginInstallResult,
@@ -10,9 +10,12 @@ import {
   mapPluginDetail,
   mapPluginListResponse
 } from "./pluginMapping.js";
+import type { ClientPort } from "./runtime/runtimePorts.js";
 
+/** Dependencies used by the plugin service. */
 type PluginServiceOptions = {
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
+  /** Codex client lifecycle operations used by plugin requests. */
+  clients: Pick<ClientPort, "ensureClient">;
 };
 
 type PluginTarget = {
@@ -40,7 +43,7 @@ export class PluginService {
    * @returns Plugin marketplaces exposed by Codex.
    */
   async list(sourceId: string | null): Promise<OpenCodexPluginListResult> {
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const response = await client.request<v2.PluginListResponse>("plugin/list", {});
 
     return mapPluginListResponse(response, sourceId);
@@ -53,7 +56,7 @@ export class PluginService {
    * @returns Plugin detail.
    */
   async read(target: PluginTarget): Promise<OpenCodexPluginDetail> {
-    const client = await this.options.ensureClient(target.sourceId);
+    const client = await this.options.clients.ensureClient(target.sourceId);
     const response = await client.request<v2.PluginReadResponse>("plugin/read", {
       ...createMarketplaceParams(target),
       pluginName: target.pluginName
@@ -69,7 +72,7 @@ export class PluginService {
    * @returns Installation metadata.
    */
   async install(target: PluginTarget): Promise<OpenCodexPluginInstallResult> {
-    const client = await this.options.ensureClient(target.sourceId);
+    const client = await this.options.clients.ensureClient(target.sourceId);
     const response = await client.request<v2.PluginInstallResponse>("plugin/install", {
       ...createMarketplaceParams(target),
       pluginName: target.pluginName
@@ -90,7 +93,7 @@ export class PluginService {
    * @returns Success result.
    */
   async uninstall(sourceId: string | null, pluginId: string): Promise<{ ok: true }> {
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     await client.request<v2.PluginUninstallResponse>("plugin/uninstall", { pluginId });
 
     return { ok: true };

@@ -2,10 +2,11 @@
  * Covers Codex notification to UI event batching.
  */
 import type { CodexNotification } from "@open-codex-ui/codex-rpc";
-import type { OpenCodexEvent, OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexEvent } from "@open-codex-ui/opencodex-protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { NotificationService } from "../src/backend/NotificationService";
+import type { RuntimeEventPort } from "../src/backend/runtime/runtimePorts";
 
 describe("NotificationService", () => {
   afterEach(() => {
@@ -100,12 +101,20 @@ describe("NotificationService", () => {
 
 function createService(emit: (event: OpenCodexEvent) => void): NotificationService {
   return new NotificationService({
-    getSettings: () => ({}) as OpenCodexSettings,
-    emit,
+    events: createEventPort(emit),
     applyCodexThreadTitle: vi.fn(),
     applyCodexThreadDeleted: vi.fn(),
     syncCompletedTurn: vi.fn()
   });
+}
+
+/** Creates the event port required by notification tests. */
+function createEventPort(emit: (event: OpenCodexEvent) => void): RuntimeEventPort {
+  return {
+    emit,
+    recordRawNotification: () => undefined,
+    readThreadEventLog: () => ({ entries: [], truncated: false })
+  };
 }
 
 function createAgentMessageDelta(delta: string): CodexNotification {

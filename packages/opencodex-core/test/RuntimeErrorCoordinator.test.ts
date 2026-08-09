@@ -6,6 +6,11 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 
 import { RuntimeErrorCoordinator } from "../src/backend/RuntimeErrorCoordinator";
+import type {
+  ApplicationLogPort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "../src/backend/runtime/runtimePorts";
 
 describe("RuntimeErrorCoordinator", () => {
   it("should persist, emit, recover, and rethrow in the original synchronous order", () => {
@@ -215,17 +220,45 @@ describe("RuntimeErrorCoordinator", () => {
 /** Creates a coordinator with deterministic English error labels. */
 function createCoordinator(
   overrides: Partial<{
-    persistLog: (type: string, message: string, details: unknown) => void;
+    persistLog: ApplicationLogPort["persistLog"];
     emit: (event: OpenCodexEvent) => void;
     recoverThread: (threadId: string) => Promise<unknown>;
   }> = {}
 ): RuntimeErrorCoordinator {
   return new RuntimeErrorCoordinator({
-    getLanguage: () => "en",
-    persistLog: overrides.persistLog ?? (() => undefined),
-    emit: overrides.emit ?? (() => undefined),
+    settings: createSettingsPort(),
+    logs: createLogPort(overrides.persistLog),
+    events: createEventPort(overrides.emit),
     recoverThread: overrides.recoverThread ?? (async () => ({ ok: true }))
   });
+}
+
+/** Creates deterministic settings for error normalization tests. */
+function createSettingsPort(): RuntimeSettingsPort {
+  return {
+    getSettings: () => ({ language: "en" } as never),
+    setSettings: () => undefined
+  };
+}
+
+/** Creates the application log port used by error coordinator tests. */
+function createLogPort(
+  persistLog: ApplicationLogPort["persistLog"] | undefined
+): ApplicationLogPort {
+  return {
+    persistLog: persistLog ?? (() => undefined)
+  };
+}
+
+/** Creates the event port used by error coordinator tests. */
+function createEventPort(
+  emit: ((event: OpenCodexEvent) => void) | undefined
+): RuntimeEventPort {
+  return {
+    emit: emit ?? (() => undefined),
+    recordRawNotification: () => undefined,
+    readThreadEventLog: () => ({ entries: [], truncated: false })
+  };
 }
 
 /** Captures the plain normalized value thrown by request error handling. */

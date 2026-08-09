@@ -11,8 +11,15 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache } from "../src/ThreadTurnCache";
+import type { CollaborationService } from "../src/backend/CollaborationService";
 import { ThreadConversationService } from "../src/backend/ThreadConversationService";
 import { ThreadCacheService } from "../src/backend/ThreadCacheService";
+import type {
+  ClientPort,
+  ProjectSourcePort,
+  RuntimeEventPort,
+  RuntimeSettingsPort
+} from "../src/backend/runtime/runtimePorts";
 
 describe("ThreadConversationService", () => {
   it("should use the request source when an existing cached thread has no source", async () => {
@@ -40,21 +47,22 @@ describe("ThreadConversationService", () => {
           executionMetadata = metadata;
         }
       } as unknown as ThreadCacheService,
-      getSettings: () => createSettings(),
-      emit: (event) => {
+      settings: createSettingsPort(createSettings()),
+      events: createEventPort((event) => {
         events.push(event);
-      },
-      ensureClient: async (sourceId) => {
+      }),
+      clients: createClientPort(async (sourceId) => {
         expect(sourceId).toBe("source-1");
         return client.asCodexClient();
-      },
-      resolveSource: async (sourceId) => ({
+      }),
+      projects: createProjectPort({
+        resolveSource: async (sourceId) => ({
         id: sourceId ?? "source-1"
-      }) as never,
-      cacheProject: async () => null,
-      readCachedProjects: async () => [],
-      reconcileCollaborationTurns: async () => undefined,
-      reconcileDescendantThreads: async () => undefined,
+        }) as never,
+        cacheProject: async () => null,
+        readCachedProjects: async () => []
+      }),
+      collaborationService: createCollaborationPort(),
       handleClientError: () => {}
     });
 
@@ -88,11 +96,10 @@ describe("ThreadConversationService", () => {
     const threadTurnCache = new ThreadTurnCache();
     const settings = createSettings();
     const threadCacheService = new ThreadCacheService({
-      backendOptions: { projectPath: "/workspace/project" },
       cacheRepository: null,
       threadTurnCache,
-      getSettings: () => settings,
-      emit: () => {}
+      settings: createSettingsPort(settings),
+      events: createEventPort()
     });
     const client = new PaginatedItemsCodexClient();
     const reconciledTurns: unknown[] = [];
@@ -100,18 +107,21 @@ describe("ThreadConversationService", () => {
       backendOptions: { projectPath: "/workspace/project" },
       threadTurnCache,
       threadCacheService,
-      getSettings: () => settings,
-      emit: () => {},
-      ensureClient: async () => client.asCodexClient(),
-      resolveSource: async (sourceId) => ({
+      settings: createSettingsPort(settings),
+      events: createEventPort(),
+      clients: createClientPort(async () => client.asCodexClient()),
+      projects: createProjectPort({
+        resolveSource: async (sourceId) => ({
         id: sourceId ?? "source-1"
-      }) as never,
-      cacheProject: async () => null,
-      readCachedProjects: async () => [],
-      reconcileCollaborationTurns: async (_sourceId, _threadId, turns) => {
+        }) as never,
+        cacheProject: async () => null,
+        readCachedProjects: async () => []
+      }),
+      collaborationService: createCollaborationPort({
+        reconcileTurns: async (_sourceId, _threadId, turns) => {
         reconciledTurns.push(...turns);
-      },
-      reconcileDescendantThreads: async () => undefined,
+        }
+      }),
       handleClientError: () => {}
     });
 
@@ -144,14 +154,15 @@ describe("ThreadConversationService", () => {
           writtenThreads.push(...threads);
         }
       } as unknown as ThreadCacheService,
-      getSettings: () => createSettings(),
-      emit: (event) => events.push(event),
-      ensureClient: async () => new FakeCodexClient().asCodexClient(),
-      resolveSource: async () => ({ id: "source-1" }) as never,
-      cacheProject: async () => null,
-      readCachedProjects: async () => [],
-      reconcileCollaborationTurns: async () => undefined,
-      reconcileDescendantThreads: async () => undefined,
+      settings: createSettingsPort(createSettings()),
+      events: createEventPort((event) => events.push(event)),
+      clients: createClientPort(async () => new FakeCodexClient().asCodexClient()),
+      projects: createProjectPort({
+        resolveSource: async () => ({ id: "source-1" }) as never,
+        cacheProject: async () => null,
+        readCachedProjects: async () => []
+      }),
+      collaborationService: createCollaborationPort(),
       handleClientError: () => undefined
     });
 
@@ -219,16 +230,17 @@ describe("ThreadConversationService", () => {
           isArchived: boolean
         ) => isArchived ? [archivedGrandchild] : [activeChild, unrelatedThread]
       } as unknown as ThreadCacheService,
-      getSettings: () => createSettings(),
-      emit: () => undefined,
-      ensureClient: async () => {
+      settings: createSettingsPort(createSettings()),
+      events: createEventPort(),
+      clients: createClientPort(async () => {
         throw new Error("An orphan hierarchy must not start Codex.");
-      },
-      resolveSource: async () => ({ id: "source-1" }) as never,
-      cacheProject: async () => null,
-      readCachedProjects: async () => [],
-      reconcileCollaborationTurns: async () => undefined,
-      reconcileDescendantThreads: async () => undefined,
+      }),
+      projects: createProjectPort({
+        resolveSource: async () => ({ id: "source-1" }) as never,
+        cacheProject: async () => null,
+        readCachedProjects: async () => []
+      }),
+      collaborationService: createCollaborationPort(),
       handleClientError: () => undefined
     });
 
@@ -299,6 +311,66 @@ class PaginatedItemsCodexClient {
       backwardsCursor: null
     };
   }
+}
+
+/** Creates the runtime settings port required by thread service tests. */
+function createSettingsPort(settings: OpenCodexSettings): RuntimeSettingsPort {
+  return {
+    getSettings: () => settings,
+    setSettings: () => undefined
+  };
+}
+
+/** Creates the runtime event port required by thread service tests. */
+function createEventPort(
+  emit: (event: OpenCodexEvent) => void = () => undefined
+): RuntimeEventPort {
+  return {
+    emit,
+    recordRawNotification: () => undefined,
+    readThreadEventLog: () => ({ entries: [], truncated: false })
+  };
+}
+
+/** Creates a minimal client port around one test client factory. */
+function createClientPort(
+  ensureClient: ClientPort["ensureClient"]
+): ClientPort {
+  return {
+    ensureClient,
+    getClient: () => undefined,
+    restartClient: async () => undefined
+  };
+}
+
+/** Creates a minimal source/project port around the methods used by a test. */
+function createProjectPort(
+  overrides: Partial<ProjectSourcePort>
+): ProjectSourcePort {
+  return {
+    resolveSource: async () => ({ id: "source-1" }) as never,
+    resolveRequestedSource: async () => ({ id: "source-1" }) as never,
+    cacheProject: async () => null,
+    readCachedProjects: async () => [],
+    ...overrides
+  };
+}
+
+/** Creates a minimal collaboration adapter for thread reconciliation tests. */
+function createCollaborationPort(
+  overrides: Partial<Pick<
+    CollaborationService,
+    "reconcileTurns" | "reconcileDescendantThreads"
+  >> = {}
+): Pick<
+  CollaborationService,
+  "reconcileTurns" | "reconcileDescendantThreads"
+> {
+  return {
+    reconcileTurns: async () => undefined,
+    reconcileDescendantThreads: async () => undefined,
+    ...overrides
+  };
 }
 
 function createThread(patch: Partial<OpenCodexThread> = {}): OpenCodexThread {

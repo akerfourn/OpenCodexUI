@@ -11,6 +11,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { CollaborationService } from "../src/backend/CollaborationService";
+import type { RuntimeEventPort } from "../src/backend/runtime/runtimePorts";
 
 const temporaryDirectories: string[] = [];
 
@@ -26,7 +27,7 @@ describe("CollaborationService", () => {
     const emittedEvents: OpenCodexEvent[] = [];
     const service = new CollaborationService({
       cacheRepository: repository,
-      emit: (event) => emittedEvents.push(event)
+      events: createEventPort((event) => emittedEvents.push(event))
     });
 
     await service.handleNotification({
@@ -80,7 +81,7 @@ describe("CollaborationService", () => {
 
     const reconnectedService = new CollaborationService({
       cacheRepository: repository,
-      emit: () => undefined
+      events: createEventPort()
     });
     const events = await reconnectedService.listEvents({
       sourceId: "source-1",
@@ -109,7 +110,7 @@ describe("CollaborationService", () => {
     const repository = createRepository();
     const service = new CollaborationService({
       cacheRepository: repository,
-      emit: () => undefined
+      events: createEventPort()
     });
 
     await service.handleNotification({
@@ -158,7 +159,7 @@ describe("CollaborationService", () => {
     const repository = createRepository();
     const service = new CollaborationService({
       cacheRepository: repository,
-      emit: () => undefined
+      events: createEventPort()
     });
     const parent = createThread("parent-1", null, 0, "/root");
     const child = createThread("child-1", "parent-1", 1, "/root/reviewer");
@@ -223,7 +224,7 @@ describe("CollaborationService", () => {
     const emittedEvents: OpenCodexEvent[] = [];
     const service = new CollaborationService({
       cacheRepository: repository,
-      emit: (event) => emittedEvents.push(event)
+      events: createEventPort((event) => emittedEvents.push(event))
     });
 
     await service.handleNotification({
@@ -243,6 +244,15 @@ function createRepository() {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "opencodex-collaboration-core-"));
   temporaryDirectories.push(directory);
   return createOpenCodexSqliteCacheRepository({ directory });
+}
+
+/** Creates the event port required by the collaboration service tests. */
+function createEventPort(emit: (event: OpenCodexEvent) => void = () => undefined): RuntimeEventPort {
+  return {
+    emit,
+    recordRawNotification: () => undefined,
+    readThreadEventLog: () => ({ entries: [], truncated: false })
+  };
 }
 
 /** Creates source-aware thread metadata with a structured spawn origin. */

@@ -7,15 +7,15 @@ import {
   type CodexServerRequest
 } from "@open-codex-ui/codex-rpc";
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
-import type { OpenCodexEvent, OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
-
 import { resolveSourceCommand } from "./sourceMapping.js";
+import type { RuntimeEventPort, RuntimeSettingsPort } from "./runtime/runtimePorts.js";
 
 export type OpenCodexClientPoolOptions = {
-  getSettings(): OpenCodexSettings;
-  getAppVersion(): string | null;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  /** Immutable application version embedded in Codex client metadata. */
+  appVersion: string | null;
   resolveSource(sourceId: string | null): Promise<CachedSource>;
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
   logger?(message: string): void;
   handleNotification(notification: CodexNotification, sourceId: string): void;
   handleServerRequest(request: CodexServerRequest, sourceId: string): void;
@@ -54,7 +54,7 @@ export class OpenCodexClientPool {
    *
    * @returns Started Codex app-server client.
    */
-  async ensureClient(sourceId: string | null = this.options.getSettings().defaultSourceId): Promise<CodexAppServerClient> {
+  async ensureClient(sourceId: string | null = this.options.settings.getSettings().defaultSourceId): Promise<CodexAppServerClient> {
     const source = await this.options.resolveSource(sourceId);
     const existingClient = this.clientsBySourceId.get(source.id);
 
@@ -62,14 +62,14 @@ export class OpenCodexClientPool {
       return existingClient;
     }
 
-    this.options.emit({ type: "connection.status", status: "starting" });
+    this.options.events.emit({ type: "connection.status", status: "starting" });
 
-    const settings = this.options.getSettings();
+    const settings = this.options.settings.getSettings();
     const client = new CodexAppServerClient({
       command: resolveSourceCommand(source, settings.codexCommand),
       clientInfo: {
         name: "OpenCodexUI",
-        version: this.options.getAppVersion() ?? "unknown"
+        version: this.options.appVersion ?? "unknown"
       },
       experimentalApi: settings.experimentalApi,
       logger: (message) => this.options.logger?.(message),
@@ -83,7 +83,7 @@ export class OpenCodexClientPool {
     client.onClose(() => this.options.handleClose(source.id));
 
     await client.start();
-    this.options.emit({ type: "connection.status", status: "ready" });
+    this.options.events.emit({ type: "connection.status", status: "ready" });
     return client;
   }
 

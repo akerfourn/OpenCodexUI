@@ -1,17 +1,20 @@
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type {
-  OpenCodexEvent,
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit
 } from "@open-codex-ui/opencodex-protocol";
+
+import type { RuntimeEventPort } from "./runtime/runtimePorts.js";
+
+type ApplicationLogEventPort = Pick<RuntimeEventPort, "emit">;
 
 /** Dependencies used by the application log service. */
 export type ApplicationLogServiceOptions = {
   /** Cache repository used to persist and query logs, or `null` when unavailable. */
   cacheRepository: OpenCodexCacheRepository | null;
   /** Emits log state changes to the UI transport. */
-  emit(event: OpenCodexEvent): void;
+  events: ApplicationLogEventPort;
   /** Writes best-effort persistence diagnostics. */
   logger?: (message: string) => void;
   /** Provides the current time for retention calculations. */
@@ -49,7 +52,7 @@ export class ApplicationLogService {
    */
   async deleteLog(logId: string): Promise<{ ok: true }> {
     await this.options.cacheRepository?.deleteLog(logId);
-    this.options.emit({ type: "logs.deleted", logId });
+    this.options.events.emit({ type: "logs.deleted", logId });
     return { ok: true };
   }
 
@@ -74,7 +77,7 @@ export class ApplicationLogService {
       );
     }
 
-    this.options.emit({ type: "logs.cleared" });
+    this.options.events.emit({ type: "logs.cleared" });
     return { ok: true };
   }
 
@@ -96,7 +99,7 @@ export class ApplicationLogService {
     }
 
     const log = await this.options.cacheRepository.createLog({ type, message, details });
-    this.options.emit({ type: "logs.created", log });
+    this.options.events.emit({ type: "logs.created", log });
 
     return { ok: true };
   }
@@ -119,7 +122,7 @@ export class ApplicationLogService {
     }
 
     void this.options.cacheRepository.createLog({ type, message, details }).then((log) => {
-      this.options.emit({ type: "logs.created", log });
+      this.options.events.emit({ type: "logs.created", log });
     }).catch((error: unknown) => {
       this.options.logger?.(`application log write failed: ${String(error)}`);
     });

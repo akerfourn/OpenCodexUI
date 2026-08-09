@@ -6,7 +6,6 @@ import crypto from "node:crypto";
 import path from "node:path";
 
 import type {
-  CodexAppServerClient,
   CodexNotification,
   v2
 } from "@open-codex-ui/codex-rpc";
@@ -17,18 +16,18 @@ import type {
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import type {
-  OpenCodexEvent,
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRun
 } from "@open-codex-ui/opencodex-protocol";
 
 import { sanitizeTerminalOutput } from "./terminalOutput.js";
+import type { ClientPort, RuntimeEventPort } from "./runtime/runtimePorts.js";
 
 export type ProjectCommandServiceOptions = {
   cacheRepository: OpenCodexCacheRepository | null;
   userDataPath?: string;
-  emit(event: OpenCodexEvent): void;
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
+  events: Pick<RuntimeEventPort, "emit">;
+  clients: Pick<ClientPort, "ensureClient">;
 };
 
 type ActiveProjectCommandRun = OpenCodexProjectCommandRun & {
@@ -134,13 +133,13 @@ export class ProjectCommandService {
       throw new Error("This command is already running.");
     }
 
-    const client = await this.options.ensureClient(sourceId);
+    const client = await this.options.clients.ensureClient(sourceId);
     const run = await this.createRun(command, projectPath, sourceId);
     const protocolRun = toProtocolRun(run);
 
     this.runsById.set(run.id, run);
     this.runsByProcessHandle.set(run.processHandle, run);
-    this.options.emit({
+    this.options.events.emit({
       type: "projectCommand.started",
       projectId: run.projectId,
       run: protocolRun
@@ -178,7 +177,7 @@ export class ProjectCommandService {
       return { ok: true };
     }
 
-    const client = await this.options.ensureClient(run.sourceId);
+    const client = await this.options.clients.ensureClient(run.sourceId);
     this.stoppingRunIds.add(run.id);
     try {
       await client.request<v2.ProcessKillResponse>("process/kill", {
@@ -328,7 +327,7 @@ export class ProjectCommandService {
     }
 
     this.appendPersistentOutput(run, output.stream, delta);
-    this.options.emit({
+    this.options.events.emit({
       type: "projectCommand.output",
       projectId: run.projectId,
       commandId: run.commandId,
@@ -365,7 +364,7 @@ export class ProjectCommandService {
     this.runsByProcessHandle.delete(run.processHandle);
     this.runsById.delete(run.id);
 
-    this.options.emit({
+    this.options.events.emit({
       type: "projectCommand.exited",
       projectId: run.projectId,
       commandId: run.commandId,
@@ -390,7 +389,7 @@ export class ProjectCommandService {
     this.runsByProcessHandle.delete(run.processHandle);
     this.runsById.delete(run.id);
     this.appendPersistentOutput(run, "stderr", String(error));
-    this.options.emit({
+    this.options.events.emit({
       type: "projectCommand.exited",
       projectId: run.projectId,
       commandId: run.commandId,

@@ -6,7 +6,6 @@ import type {
 import type {
   OpenCodexCollaborationEvent,
   OpenCodexCollaborationQuery,
-  OpenCodexEvent,
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -17,10 +16,11 @@ import {
   readObject,
   readString
 } from "../mapping.js";
+import type { RuntimeEventPort } from "./runtime/runtimePorts.js";
 
 export type CollaborationServiceOptions = {
   cacheRepository: OpenCodexCacheRepository | null;
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
   logger?: (message: string) => void;
 };
 
@@ -31,7 +31,7 @@ export class CollaborationService {
   /**
    * Creates a collaboration service.
    *
-   * @param options Cache, transport, and diagnostic dependencies.
+   * @param options Cache, runtime event port, and diagnostic dependencies.
    */
   constructor(private readonly options: CollaborationServiceOptions) {}
 
@@ -178,7 +178,7 @@ export class CollaborationService {
         : await this.options.cacheRepository.upsertCollaborationEvent(event);
 
       if (shouldEmit) {
-        this.options.emit({
+        this.options.events.emit({
           type: "collaboration.updated",
           sourceId: event.sourceId,
           event: toProtocolEvent(persisted)

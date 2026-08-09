@@ -9,12 +9,14 @@ import type {
   OpenCodexCommitMessageGenerationResult,
   OpenCodexCommitMessageLanguage,
   OpenCodexCommitPrompt,
-  OpenCodexReasoningEffort,
-  OpenCodexSettings
+  OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
 import { buildTurnInput } from "./turnInput.js";
 import type { GitService } from "./GitService.js";
+import type { ThreadRuntimeHandler } from "./ThreadRuntimeHandler.js";
+import type { ClientPort, RuntimeSettingsPort } from "./runtime/runtimePorts.js";
+import type { UsageRuntimeService } from "./UsageRuntimeService.js";
 import {
   buildCommitMessageGenerationPrompt,
   readRequiredPromptFile
@@ -35,12 +37,10 @@ type CommitMessageServiceOptions = {
   defaultPromptPath?: string;
   generationPromptPath?: string;
   gitService: GitService;
-  getSettings(): OpenCodexSettings;
-  ensureClient(sourceId: string | null): Promise<CodexAppServerClient>;
-  ignoreThreadNotifications(threadId: string): void;
-  releaseThreadNotifications(threadId: string): void;
-  onGenerationStarted?(sourceId: string | null, model: string | null): void;
-  onGenerationFinished?(sourceId: string | null, model: string | null): void;
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  clients: Pick<ClientPort, "ensureClient">;
+  threads: Pick<ThreadRuntimeHandler, "ignoreThreadNotifications" | "releaseThreadNotifications">;
+  usage: Pick<UsageRuntimeService, "onCommitGenerationStarted" | "onCommitGenerationFinished">;
   logger?: (message: string) => void;
 };
 
@@ -51,7 +51,7 @@ export class CommitMessageService {
   /**
    * Creates a commit message service.
    *
-   * @param options Prompt paths, Git access, settings, and Codex client callbacks.
+   * @param options Prompt paths, Git access, settings, and runtime services.
    */
   constructor(private readonly options: CommitMessageServiceOptions) {}
 
@@ -131,10 +131,10 @@ export class CommitMessageService {
       instruction,
       language
     });
-    const client = await this.options.ensureClient(sourceId);
-    const selectedModel = model ?? this.options.getSettings().commitMessageModel;
-    const selectedEffort = reasoningEffort ?? this.options.getSettings().commitMessageReasoningEffort;
-    this.options.onGenerationStarted?.(sourceId, selectedModel);
+    const client = await this.options.clients.ensureClient(sourceId);
+    const selectedModel = model ?? this.options.settings.getSettings().commitMessageModel;
+    const selectedEffort = reasoningEffort ?? this.options.settings.getSettings().commitMessageReasoningEffort;
+    this.options.usage.onCommitGenerationStarted(sourceId, selectedModel);
     let threadId: string | null = null;
 
     try {
@@ -145,7 +145,7 @@ export class CommitMessageService {
         experimentalRawEvents: false
       });
       threadId = thread.thread.id;
-      this.options.ignoreThreadNotifications(threadId);
+      this.options.threads.ignoreThreadNotifications(threadId);
       const response = await this.runGenerationTurn(
         client,
         threadId,
@@ -156,9 +156,9 @@ export class CommitMessageService {
       return { message: response.message };
     } finally {
       if (threadId !== null) {
-        this.options.releaseThreadNotifications(threadId);
+        this.options.threads.releaseThreadNotifications(threadId);
       }
-      this.options.onGenerationFinished?.(sourceId, selectedModel);
+      this.options.usage.onCommitGenerationFinished(sourceId, selectedModel);
     }
   }
 

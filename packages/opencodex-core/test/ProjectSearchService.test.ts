@@ -7,7 +7,7 @@ import { ProjectSearchService } from "../src/backend/ProjectSearchService";
 describe("ProjectSearchService", () => {
   it("should return no results without resolving a client for an invalid root", async () => {
     const ensureClient = vi.fn();
-    const service = new ProjectSearchService({ ensureClient });
+    const service = new ProjectSearchService({ clients: { ensureClient } });
 
     await expect(service.searchProjectFiles("  ", null, "", 10)).resolves.toEqual([]);
     await expect(service.searchProjectSkills("", null, "", 10)).resolves.toEqual([]);
@@ -26,7 +26,7 @@ describe("ProjectSearchService", () => {
     }));
     const client = createClient(request);
     const ensureClient = vi.fn(async () => client);
-    const service = new ProjectSearchService({ ensureClient });
+    const service = new ProjectSearchService({ clients: { ensureClient } });
 
     const results = await service.searchProjectFiles(
       "/workspace/project",
@@ -55,7 +55,7 @@ describe("ProjectSearchService", () => {
     }));
     const client = createClient(request);
     const ensureClient = vi.fn(async () => client);
-    const service = new ProjectSearchService({ ensureClient });
+    const service = new ProjectSearchService({ clients: { ensureClient } });
 
     const results = await service.searchProjectFiles(
       "/workspace/project",
@@ -73,7 +73,7 @@ describe("ProjectSearchService", () => {
     }));
     const client = createClient(request);
     const ensureClient = vi.fn(async () => client);
-    const service = new ProjectSearchService({ ensureClient });
+    const service = new ProjectSearchService({ clients: { ensureClient } });
 
     const results = await service.searchProjectFiles(
       "C:/workspace/project",
@@ -121,7 +121,7 @@ describe("ProjectSearchService", () => {
     const client = createClient(request);
     const ensureClient = vi.fn(async () => client);
     const service = new ProjectSearchService({
-      ensureClient
+      clients: { ensureClient }
     });
 
     const results = await service.searchProjectFiles(
@@ -167,7 +167,7 @@ describe("ProjectSearchService", () => {
     const client = createClient(request);
     const ensureClient = vi.fn(async () => client);
     const service = new ProjectSearchService({
-      ensureClient
+      clients: { ensureClient }
     });
 
     const results = await service.searchProjectSkills(
@@ -210,7 +210,7 @@ describe("ProjectSearchService", () => {
     }));
     const client = createClient(request);
     const ensureClient = vi.fn(async () => client);
-    const service = new ProjectSearchService({ ensureClient });
+    const service = new ProjectSearchService({ clients: { ensureClient } });
 
     const results = await service.searchProjectSkills(
       "/workspace/project",
@@ -265,7 +265,7 @@ describe("ProjectSearchService", () => {
     }));
     const client = createClient(request);
     const service = new ProjectSearchService({
-      ensureClient: vi.fn(async () => client)
+      clients: { ensureClient: vi.fn(async () => client) }
     });
 
     const results = await service.searchProjectSkills(

@@ -23,7 +23,7 @@ describe("GitRuntimeHandler", () => {
       }
     ]);
     const handler = createHandler({
-      ensureClient: async () => client.asCodexClient()
+      clients: { ensureClient: async () => client.asCodexClient() }
     });
 
     const status = await handler.readGitStatus("/workspace/project", "source-1");
@@ -99,11 +99,15 @@ describe("GitRuntimeHandler", () => {
         userDataPath: path.join(temporaryDirectory, "user-data"),
         defaultPromptPath,
         generationPromptPath,
-        ensureClient: async () => client.asCodexClient(),
-        ignoreThreadNotifications: ignored,
-        releaseThreadNotifications: released,
-        onGenerationStarted: started,
-        onGenerationFinished: finished
+        clients: { ensureClient: async () => client.asCodexClient() },
+        threads: {
+          ignoreThreadNotifications: ignored,
+          releaseThreadNotifications: released
+        },
+        usage: {
+          onCommitGenerationStarted: started,
+          onCommitGenerationFinished: finished
+        }
       });
 
       await expect(handler.generateGitCommitMessage(
@@ -128,15 +132,21 @@ describe("GitRuntimeHandler", () => {
 /** Creates a handler with a narrow deterministic default dependency set. */
 function createHandler(overrides: Partial<GitRuntimeHandlerOptions> = {}): GitRuntimeHandler {
   return new GitRuntimeHandler({
-    getSettings: () => ({
+    settings: { getSettings: () => ({
       commitMessageModel: null,
       commitMessageReasoningEffort: null
-    } as OpenCodexSettings),
-    ensureClient: async () => {
+    } as OpenCodexSettings) },
+    clients: { ensureClient: async () => {
       throw new Error("No fake Codex client configured.");
+    } },
+    threads: {
+      ignoreThreadNotifications: () => {},
+      releaseThreadNotifications: () => {}
     },
-    ignoreThreadNotifications: () => {},
-    releaseThreadNotifications: () => {},
+    usage: {
+      onCommitGenerationStarted: () => {},
+      onCommitGenerationFinished: () => {}
+    },
     ...overrides
   });
 }

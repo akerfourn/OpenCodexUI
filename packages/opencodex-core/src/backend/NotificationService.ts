@@ -1,9 +1,5 @@
 import type { CodexNotification } from "@open-codex-ui/codex-rpc";
-import type {
-  OpenCodexEvent,
-  OpenCodexMessagePhase,
-  OpenCodexSettings
-} from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexMessagePhase } from "@open-codex-ui/opencodex-protocol";
 
 import {
   createActivityFromNotification,
@@ -13,10 +9,10 @@ import {
   readString
 } from "../mapping.js";
 import { createAssistantMessagePhaseKey } from "./turnInput.js";
+import type { RuntimeEventPort } from "./runtime/runtimePorts.js";
 
 export type NotificationServiceOptions = {
-  getSettings(): OpenCodexSettings;
-  emit(event: OpenCodexEvent): void;
+  events: Pick<RuntimeEventPort, "emit">;
   applyCodexThreadTitle(threadId: string, title: string, sourceId: string): void;
   applyCodexThreadDeleted(threadId: string, sourceId: string): void;
   syncCompletedTurn(threadId: string, sourceId: string): void;
@@ -44,7 +40,7 @@ export class NotificationService {
   /**
    * Creates a notification service.
    *
-   * @param options Settings, event emitter, and cache synchronization callbacks.
+   * @param options Event port and cache synchronization callbacks.
    */
   constructor(private readonly options: NotificationServiceOptions) {}
 
@@ -60,7 +56,7 @@ export class NotificationService {
     const activity = createActivityFromNotification(notification);
 
     if (activity !== null) {
-      this.options.emit({
+      this.options.events.emit({
         type: "activity.updated",
         sourceId,
         threadId: activity.threadId,
@@ -228,7 +224,7 @@ export class NotificationService {
     const turnId = readString(readObject(params.turn).id);
 
     if (threadId.length > 0 && turnId.length > 0) {
-      this.options.emit({ type: "turn.started", sourceId, threadId, turnId });
+      this.options.events.emit({ type: "turn.started", sourceId, threadId, turnId });
     }
   }
 
@@ -250,7 +246,7 @@ export class NotificationService {
 
     if (threadId.length > 0 && turnId.length > 0) {
       this.flushPendingAssistantDeltas(sourceId, threadId, turnId, null);
-      this.options.emit({
+      this.options.events.emit({
         type: "turn.completed",
         sourceId,
         threadId,
@@ -297,7 +293,7 @@ export class NotificationService {
 
     clearTimeout(pendingDelta.timeout);
     this.pendingAssistantDeltas.delete(key);
-    this.options.emit({
+    this.options.events.emit({
       type: "message.delta",
       sourceId: pendingDelta.sourceId,
       threadId: pendingDelta.threadId,
