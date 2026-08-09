@@ -1,0 +1,4 @@
+interface:
+  display_name: "Count Lines Review"
+  short_description: "Audit large tracked files in small batches"
+  default_prompt: "Use $count-lines-review to audit unusually large tracked files with the configured or default soft threshold in small cached batches."
