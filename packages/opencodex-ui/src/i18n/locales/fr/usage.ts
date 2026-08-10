@@ -1,0 +1,59 @@
+/**
+ * French translations for the usage UI domain.
+ */
+export const frUsage = {
+  usage: {
+    labels: {
+      "5h": "5h",
+      weekly: "Sem.",
+      usage: "Usage"
+    },
+    tooltip: "{{label}}: {{usedPercent}} % utilisés, {{remainingPercent}} % restants. Reset: {{reset}}"
+  },
+  usagePage: {
+    default: "Par défaut",
+    description: "Suivez les limites de consommation reçues depuis Codex.",
+    empty: "Aucune consommation disponible pour le moment.",
+    historyAggregation: "Granularité",
+    historyAggregationAuto: "Automatique",
+    historyAggregationDay: "Par jour",
+    historyAggregationHour: "Par heure",
+    historyAggregationMinute: "Par minute",
+    historyAggregationRaw: "Chaque mesure",
+    historyCachedInputTokens: "Tokens d'entrée en cache",
+    historyCachedShort: "Cache",
+    historyCumulativeTokens: "Tokens cumulés",
+    historyCurves: "Courbes à afficher",
+    historyDescription: "Visualisez l'évolution des limites et des tokens enregistrés pour une source.",
+    historyFrom: "Du",
+    historyInputShort: "Entrée",
+    historyInputTokens: "Tokens d'entrée",
+    historyInvalidRange: "La période sélectionnée est invalide.",
+    historyLoadError: "Impossible de charger l'historique de consommation.",
+    historyNoData: "Aucune donnée enregistrée sur cette période.",
+    historyOpen: "Ouvrir l'historique",
+    historyOutputShort: "Sortie",
+    historyOutputTokens: "Tokens de sortie",
+    historyPartialData: "Certaines mesures de tokens commencent sans état précédent connu. Les premiers points peuvent être incomplets.",
+    historyPoints: "{{count}} point(s) de tokens",
+    historyPreset24h: "24 h",
+    historyPreset30d: "30 jours",
+    historyPreset7d: "7 jours",
+    historyRateLimit: "Fenêtre de consommation",
+    historyRateLimitChart: "Consommation de la source",
+    historyResolvedAggregation: "Mesures {{aggregation}}",
+    historySource: "Source",
+    historyTitle: "Historique de consommation",
+    historyTo: "Au",
+    historyInstantTokens: "Tokens consommés par période",
+    noWindow: "Aucune fenêtre de consommation disponible.",
+    plan: "Plan: {{plan}}",
+    refresh: "Actualiser",
+    resetDateTooltip: "Le {{reset}}",
+    resetRelative: "(Reset {{reset}})",
+    setDefault: "Utiliser par défaut",
+    title: "Consommation",
+    usedPercentTooltip: "{{usedPercent}} % consommés"
+  },
+} as const;
+

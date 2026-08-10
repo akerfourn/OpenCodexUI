@@ -66,3 +66,19 @@ export const MarkdownMessageM = memo(MarkdownMessage);
 - Prefer top-level named handlers and helpers over nested component factories.
 - Keep the undecorated component as the source of truth; the suffixed export is
   the wrapper that is actually used by the app.
+
+## Internationalization
+
+- Keep translation resources under `src/i18n/locales/<language>/`, grouped in
+  the same domain modules for every locale.
+- Add or modify every translation key in all locales. Non-French modules must
+  satisfy the corresponding French module's `TranslationShape`.
+- Use every i18next plural category required by the locale, such as `_one`,
+  `_two`, `_few`, `_many`, and `_other`; do not assume that `_one` and
+  `_other` cover every language. Add an exact `_zero` variant only when the
+  interface needs wording distinct from the locale's normal plural rules.
+  Call the base key with a numeric `count`.
+- Never select plural variants manually or use forms such as `(s)`. If the
+  displayed count is formatted, keep the numeric `count` for plural selection
+  and use a separate placeholder for the formatted value.
+- Keep i18next configuration and runtime logic outside translation catalogues.

@@ -1,0 +1,199 @@
+/**
+ * English translations for the conversation UI domain.
+ */
+import type { TranslationShape } from "../../translationShape.js";
+import type { frConversation } from "../fr/conversation.js";
+
+export const enConversation = {
+  chat: {
+    activityInProgress: "Activity in progress",
+    copyCodeBlock: "Copy code block",
+    creating: "Creating chat...",
+    empty: "No conversation open",
+    loading: "Loading chat...",
+    newConversation: "New conversation",
+    noWorkspace: "Workspace not provided",
+    recovering: "Reconnecting to Codex...",
+    scrollToBottom: "Go to latest message",
+    start: "Start a chat",
+    syncing: "Syncing with Codex...",
+    untitled: "Untitled conversation"
+  },
+  chatEventLog: {
+    close: "Close",
+    count: "Occurrences",
+    copyMetadata: "Copy metadata",
+    description:
+      "Metadata for events received from Codex and sent to the UI. Message and command content is not stored.",
+    empty: "No events recorded for this chat.",
+    item: "Item",
+    lastOccurredAt: "Last occurrence",
+    loadError: "Unable to load the log: {{message}}",
+    loading: "Loading event log...",
+    occurredAt: "First occurrence",
+    occurrences: "{{count}} occurrences",
+    received: "Received from Codex",
+    refresh: "Refresh",
+    sequence: "Sequence",
+    source: "Source",
+    thread: "Thread",
+    title: "Event log — {{thread}}",
+    truncated: "The oldest events are no longer available.",
+    turn: "Turn",
+    uiEmitted: "Sent to the UI"
+  },
+  composer: {
+    advanced: {
+      cancel: "Cancel",
+      compact: "Compact context",
+      compactDescription: "Codex will summarize this conversation context to free space in the context window. The history remains visible, but the model will continue from that summary.",
+      compactTitle: "Compact this conversation?",
+      confirm: "Confirm",
+      open: "Advanced actions",
+      review: "Start review",
+      reviewDescription: "Codex will inspect the project's uncommitted changes and start a review in this conversation.",
+      reviewTitle: "Start a review?"
+    },
+    attachedImage: "Attached image",
+    attachImage: "Attach image",
+    imageIndex: "Image {{index}}",
+    interrupt: "Interrupt",
+    messagePlaceholder: "Message Codex",
+    model: "Model",
+    removeAttachment: "Remove image",
+    reasoning: "Reasoning",
+    serviceTier: "Speed",
+    serviceTierDefault: "Auto",
+    send: "Send",
+    steer: "Steer"
+  },
+  reasoningEffort: {
+    low: "Low",
+    medium: "Medium",
+    high: "High",
+    xhigh: "Extra high",
+    max: "Maximum"
+  },
+  message: {
+    attachedImage: "Attached image",
+    activityType: {
+      activity: "Activity",
+      command: "Command",
+      contextCompaction: "Context compaction",
+      dynamicTool: "Tool call",
+      fileChange: "File change",
+      hook: "Hook",
+      imageGeneration: "Image generation",
+      imageView: "Image view",
+      mcpTool: "MCP tool",
+      plan: "Plan",
+      reasoning: "Reasoning",
+      reviewEnd: "Exited review mode",
+      reviewStart: "Entered review mode",
+      subAgent: "Sub-agent",
+      webSearch: "Web search"
+    },
+    close: "Close",
+    cancelEdit: "Cancel",
+    command: "Command",
+    commandCwd: "Working directory",
+    commandDetails: "Command details",
+    commandDuration: "Duration",
+    commandExitCode: "Exit code",
+    commandOutput: "Output",
+    commandOutputUnavailable: "No output available.",
+    commandStatus: "Status",
+    planSteps: "Plan steps",
+    planStatus: {
+      completed: "Completed",
+      inProgress: "In progress",
+      pending: "Pending"
+    },
+    commandUnavailable: "Command unavailable.",
+    contentOmitted: "{{count}} characters hidden to preserve performance",
+    copied: "Copied",
+    copy: "Copy message",
+    edit: "Edit message",
+    editLast: "Edit last message",
+    fileChangeDetails: "File change details",
+    fileChangeDiff: "Diff",
+    fileChangeDiffUnavailable: "No diff available.",
+    fileChangeKindAdd: "Added",
+    fileChangeKindDelete: "Deleted",
+    fileChangeKindUpdate: "Modified",
+    fileChangePathUnavailable: "Unknown file",
+    fileChangeRawData: "Raw data",
+    fileChangeRawView: "Raw data",
+    fileChangeVisualView: "Diff view",
+    imageUnavailable: "Image missing or unavailable",
+    limitContent: "Limit display",
+    openImage: "Open image",
+    showAllContent: "Show all",
+    showMoreContent: "Show more",
+    submitEdit: "Regenerate",
+    turnFailed: "The response failed.",
+    todayAt: "Today at {{time}}",
+    yesterdayAt: "Yesterday at {{time}}"
+  },
+  collaboration: {
+    action: {
+      close: "Agent closed",
+      followup: "Follow-up instruction",
+      interrupt: "Agent interrupted",
+      message: "Inter-agent message",
+      result: "Delivered result",
+      resume: "Agent resumed",
+      spawn: "Delegation to a sub-agent",
+      wait: "Waiting for agents"
+    },
+    instructionUnavailable:
+      "The original instruction is unavailable in the retained history.",
+    limitContent: "Limit content",
+    messageUnavailable:
+      "This inter-agent message is unavailable in the retained history.",
+    openSubAgentChat: "View sub-agent chat",
+    openSubAgentChatCompact: "View chat",
+    showFullContentCompact: "Expand",
+    limitContentCompact: "Collapse",
+    resultUnavailable:
+      "The delivered result is unavailable in the retained history.",
+    route: "{{sender}} → {{receiver}}",
+    showFullContent: "Show all content",
+    status: {
+      completed: "Completed",
+      failed: "Failed",
+      pending: "In progress",
+      unknown: "Unknown status"
+    },
+    threadContext: "Collaboration related to this thread",
+    timelineLabel: "Collaboration events",
+    unknownAgent: "Unknown agent"
+  },
+  reasoningBlock: {
+    active: "Thinking ({{duration}})",
+    activity: "Activities",
+    limitHistory: "Limit history",
+    mixed: "Thinking and activities",
+    reasoning: "Thinking",
+    showFullHistory: "Show full history ({{count}})"
+  },
+  turnDetails: {
+    cachedInputTokens: "Cached input tokens",
+    close: "Close",
+    execution: "Execution",
+    inputTokens: "Input tokens",
+    model: "Effective model",
+    outputTokens: "Output tokens",
+    reasoning: "Reasoning level",
+    reasoningTokens: "Reasoning tokens",
+    requestedModel: "Requested model",
+    requestedReasoning: "Requested level",
+    speed: "Speed",
+    speedAuto: "Auto",
+    speedFast: "Fast",
+    title: "Turn details",
+    tokens: "Tokens consumed",
+    tokensUnavailable: "Token usage is not available for this turn.",
+    totalTokens: "Total tokens"
+  }
+} satisfies TranslationShape<typeof frConversation>;
