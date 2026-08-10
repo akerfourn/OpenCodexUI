@@ -1079,6 +1079,7 @@ export class ThreadConversationService {
    * Synchronizes a thread shortly after a turn completes.
    *
    * @param threadId Thread identifier.
+   * @param sourceIdOverride Source from the completion notification, or `null`.
    *
    * @returns Promise resolved when synchronization completes.
    */
@@ -1093,12 +1094,16 @@ export class ThreadConversationService {
     const cacheEntry = this.options.threadTurnCache.get(threadId);
 
     if (cacheEntry !== null) {
+      if (cacheEntry.thread.sourceId !== sourceId) {
+        await this.repairThreadSourceId(threadId, sourceId);
+      }
+
       const client = await this.options.clients.ensureClient(sourceId);
       await this.syncLatestTurns(client, cacheEntry);
       return;
     }
 
-    await this.syncCachedThread(threadId);
+    await this.syncCachedThread(threadId, sourceId);
   }
 
   /**
@@ -1281,21 +1286,47 @@ export class ThreadConversationService {
    * Synchronizes a cached thread from Codex without loading its full history.
    *
    * @param threadId Thread identifier.
+   * @param sourceIdOverride Explicit source known by the caller, or `null`.
    *
    * @returns Promise resolved when synchronization completes.
    */
-  private async syncCachedThread(threadId: string): Promise<void> {
+  private async syncCachedThread(
+    threadId: string,
+    sourceIdOverride: string | null = null
+  ): Promise<void> {
     const syncStartedAt = Date.now();
 
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
-    if (cachedSnapshot === null || cachedSnapshot.thread.sourceId === null) {
+    const sourceId = sourceIdOverride ?? cachedSnapshot?.thread.sourceId ?? null;
+
+    if (sourceId === null) {
       throw new Error("Cannot synchronize a thread without a Codex source.");
     }
 
-    const sourceId = cachedSnapshot.thread.sourceId;
+    if (cachedSnapshot === null) {
+      const client = await this.options.clients.ensureClient(sourceId);
+      const thread = await this.readThreadMetadata(client, threadId, sourceId);
+      const cacheEntry = this.options.threadTurnCache.getOrCreate(thread);
+
+      await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+      this.options.events.emit({ type: "thread.sync.started", sourceId, threadId });
+      const didSyncTurns = await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
+
+      if (didSyncTurns) {
+        this.options.events.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
+      }
+      return;
+    }
+
+    const effectiveSnapshot = overrideSnapshotSource(cachedSnapshot, sourceId);
+
+    if (effectiveSnapshot.thread.sourceId !== cachedSnapshot.thread.sourceId) {
+      await this.options.threadCacheService.writeIndex([effectiveSnapshot.thread]);
+    }
+
     this.options.events.emit({ type: "thread.sync.started", sourceId, threadId });
 
-    if (isUnmaterializedThreadSnapshot(cachedSnapshot)) {
+    if (sourceIdOverride === null && isUnmaterializedThreadSnapshot(effectiveSnapshot)) {
       this.logThreadTiming("codex load finished", {
         threadId,
         startedAt: syncStartedAt,
@@ -1308,7 +1339,12 @@ export class ThreadConversationService {
 
     const client = await this.options.clients.ensureClient(sourceId);
     const cacheEntry = this.options.threadTurnCache.get(threadId)
-      ?? this.options.threadTurnCache.replaceFromSnapshot(cachedSnapshot);
+      ?? this.options.threadTurnCache.replaceFromSnapshot(effectiveSnapshot);
+
+    if (cacheEntry.thread.sourceId !== sourceId) {
+      await this.repairThreadSourceId(threadId, sourceId);
+    }
+
     const didSyncTurns = await this.syncLatestTurns(client, cacheEntry, syncStartedAt);
 
     if (didSyncTurns) {
@@ -1734,6 +1770,30 @@ function attachSourceIdToSnapshot(
   sourceId: string | null
 ): CachedThreadSnapshot | null {
   if (snapshot === null || sourceId === null || snapshot.thread.sourceId !== null) {
+    return snapshot;
+  }
+
+  return {
+    ...snapshot,
+    thread: {
+      ...snapshot.thread,
+      sourceId
+    }
+  };
+}
+
+/**
+ * Replaces a cached snapshot source with the source that produced a live event.
+ *
+ * @param snapshot Cached thread snapshot.
+ * @param sourceId Authoritative source identifier from the live event.
+ * @returns Snapshot carrying the authoritative source association.
+ */
+function overrideSnapshotSource(
+  snapshot: CachedThreadSnapshot,
+  sourceId: string
+): CachedThreadSnapshot {
+  if (snapshot.thread.sourceId === sourceId) {
     return snapshot;
   }
 

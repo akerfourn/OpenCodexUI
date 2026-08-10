@@ -70,7 +70,8 @@ describe("NotificationService", () => {
 
   it("should expose the Codex turn status on completion events", () => {
     const emit = vi.fn();
-    const service = createService(emit);
+    const syncCompletedTurn = vi.fn();
+    const service = createService(emit, syncCompletedTurn);
 
     service.handleNotification({
       method: "turn/completed",
@@ -96,15 +97,19 @@ describe("NotificationService", () => {
       turnStatus: "failed",
       errorMessage: "Selected model is at capacity. Please try a different model."
     });
+    expect(syncCompletedTurn).toHaveBeenCalledWith("thread-1", "source-1");
   });
 });
 
-function createService(emit: (event: OpenCodexEvent) => void): NotificationService {
+function createService(
+  emit: (event: OpenCodexEvent) => void,
+  syncCompletedTurn: (threadId: string, sourceId: string) => void = vi.fn()
+): NotificationService {
   return new NotificationService({
     events: createEventPort(emit),
     applyCodexThreadTitle: vi.fn(),
     applyCodexThreadDeleted: vi.fn(),
-    syncCompletedTurn: vi.fn()
+    syncCompletedTurn
   });
 }
 
