@@ -69,7 +69,8 @@ export function CommandDetailBlock({
     displayedValue = value;
   } else if (hasValue) {
     const omissionLabel = t("message.contentOmitted", {
-      count: preview.omittedCharacterCount.toLocaleString()
+      count: preview.omittedCharacterCount,
+      formattedCount: preview.omittedCharacterCount.toLocaleString()
     });
     const leadingSeparator = preview.leadingText.length > 0 ? "\n" : "";
     const trailingSeparator = preview.trailingText.length > 0 ? "\n" : "";

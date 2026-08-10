@@ -57,12 +57,7 @@ export function HomeProjectGroupRow({
     action();
   }
 
-  const childCountLabel = t(
-    childCount === 1
-      ? "home.projectGroupChildCount_one"
-      : "home.projectGroupChildCount_other",
-    { count: childCount }
-  );
+  const childCountLabel = t("home.projectGroupChildCount", { count: childCount });
   const activityLabel = formatRelativeTime(editedAt, i18n.language);
   const colorOption = getSourceColorOption(group.color);
 

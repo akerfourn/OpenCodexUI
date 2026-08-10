@@ -176,7 +176,7 @@ function buildDialogContent(
         <Typography variant="body2" color="text.secondary">
           {translate("projectStatistics.coverage", {
             known: statistics.chatsWithTokenUsage,
-            total: statistics.chatCount
+            count: statistics.chatCount
           })}
         </Typography>
       </Paper>

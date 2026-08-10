@@ -10,7 +10,9 @@ export const frProjects = {
     cachedInputTokens: "Tokens d'entrée en cache",
     chats: "Chats",
     close: "Fermer",
-    coverage: "{{known}} sur {{total}} chat(s) avec une consommation connue",
+    coverage_one: "{{known}} sur {{count}} chat avec une consommation connue",
+    coverage_many: "{{known}} sur {{count}} chats avec une consommation connue",
+    coverage_other: "{{known}} sur {{count}} chats avec une consommation connue",
     description: "Consommation des chats présents dans le cache, chats actifs et archivés inclus.",
     empty: "Aucun chat n'est présent dans le cache pour ce projet.",
     inputTokens: "Tokens d'entrée",
@@ -20,7 +22,9 @@ export const frProjects = {
     reasoningTokens: "Tokens de raisonnement",
     title: "Statistiques du projet",
     totalTokens: "Total de tokens",
-    unknownChats: "La consommation de {{count}} chat(s) n'est pas connue et n'est pas incluse dans le total."
+    unknownChats_one: "La consommation de {{count}} chat n'est pas connue et n'est pas incluse dans le total.",
+    unknownChats_many: "La consommation de {{count}} chats n'est pas connue et n'est pas incluse dans le total.",
+    unknownChats_other: "La consommation de {{count}} chats n'est pas connue et n'est pas incluse dans le total."
   },
   projectTools: {
     closePanel: "Réduire le panneau d'outils",
@@ -71,4 +75,3 @@ export const frProjects = {
     warning: "N'acceptez que si vous faites confiance aux fichiers de ce dépôt, en particulier au dossier .codex."
   },
 } as const;
-

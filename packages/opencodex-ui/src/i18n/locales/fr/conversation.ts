@@ -28,7 +28,9 @@ export const frConversation = {
     loadError: "Impossible de charger le journal : {{message}}",
     loading: "Chargement du journal...",
     occurredAt: "Premier passage",
-    occurrences: "{{count}} occurrences",
+    occurrences_one: "{{count}} occurrence",
+    occurrences_many: "{{count}} occurrences",
+    occurrences_other: "{{count}} occurrences",
     received: "Reçu de Codex",
     refresh: "Actualiser",
     sequence: "Séquence",
@@ -107,7 +109,9 @@ export const frConversation = {
       pending: "En attente"
     },
     commandUnavailable: "Commande non disponible.",
-    contentOmitted: "{{count}} caractères masqués pour préserver les performances",
+    contentOmitted_one: "{{formattedCount}} caractère masqué pour préserver les performances",
+    contentOmitted_many: "{{formattedCount}} caractères masqués pour préserver les performances",
+    contentOmitted_other: "{{formattedCount}} caractères masqués pour préserver les performances",
     copied: "Copié",
     copy: "Copier le message",
     edit: "Éditer le message",
@@ -194,4 +198,3 @@ export const frConversation = {
     totalTokens: "Total de tokens"
   },
 } as const;
-

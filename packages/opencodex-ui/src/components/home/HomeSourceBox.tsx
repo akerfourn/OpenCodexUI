@@ -333,13 +333,9 @@ export function HomeSourceBox({
               <Paper
                 component="section"
                 variant="outlined"
-                aria-label={
-                  resetCredits.availableCount === 1
-                    ? t("sources.resetCredits.availableOne")
-                    : t("sources.resetCredits.availableOther", {
-                        count: resetCredits.availableCount
-                      })
-                }
+                aria-label={t("sources.resetCredits.available", {
+                  count: resetCredits.availableCount
+                })}
                 sx={{
                   borderColor: "divider",
                   borderLeft: "2px solid",
@@ -359,9 +355,9 @@ export function HomeSourceBox({
                       {resetCredits.availableCount}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {resetCredits.availableCount === 1
-                        ? t("sources.resetCredits.availableLabelOne")
-                        : t("sources.resetCredits.availableLabelOther")}
+                      {t("sources.resetCredits.availableLabel", {
+                        count: resetCredits.availableCount
+                      })}
                     </Typography>
                   </Stack>
                   <Button

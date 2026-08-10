@@ -71,12 +71,17 @@ export const MarkdownMessageM = memo(MarkdownMessage);
 
 - Keep translation resources under `src/i18n/locales/<language>/`, grouped in
   the same domain modules for every locale.
-- Add or modify every translation key in all locales. Non-French modules must
-  satisfy the corresponding French module's `TranslationShape`.
-- Use every i18next plural category required by the locale, such as `_one`,
-  `_two`, `_few`, `_many`, and `_other`; do not assume that `_one` and
-  `_other` cover every language. Add an exact `_zero` variant only when the
-  interface needs wording distinct from the locale's normal plural rules.
+- Add or modify every ordinary translation key in all locales. Non-French
+  modules must satisfy the corresponding French module's `TranslationShape`,
+  which compares ordinary keys and plural families while allowing each locale
+  to provide the CLDR categories it requires. If a locale needs categories
+  beyond the default `_one` and `_other`, pass them through the type's
+  `RequiredPluralCategories` parameter.
+- Use every i18next plural category returned by `Intl.PluralRules` for the
+  locale, such as `_zero`, `_one`, `_two`, `_few`, `_many`, and `_other`; do not
+  assume that `_one` and `_other` cover every language. `_zero` is therefore a
+  required category when the locale uses it, and may otherwise be added as an
+  exact special form only when the interface needs distinct zero wording.
   Call the base key with a numeric `count`.
 - Never select plural variants manually or use forms such as `(s)`. If the
   displayed count is formatted, keep the numeric `count` for plural selection

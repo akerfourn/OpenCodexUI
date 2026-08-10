@@ -32,6 +32,7 @@ export const frNavigation = {
     projectGroup: "Groupe",
     projectGroupActions: "Actions du groupe",
     projectGroupChildCount_one: "{{count}} élément",
+    projectGroupChildCount_many: "{{count}} éléments",
     projectGroupChildCount_other: "{{count}} éléments",
     projectGroupColor: "Couleur de l’icône",
     projectGroupName: "Nom du groupe",
@@ -124,4 +125,3 @@ export const frNavigation = {
     unarchiveThread: "Désarchiver"
   },
 } as const;
-

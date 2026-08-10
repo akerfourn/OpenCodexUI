@@ -35,7 +35,9 @@ export const frUsage = {
     historyOutputShort: "Sortie",
     historyOutputTokens: "Tokens de sortie",
     historyPartialData: "Certaines mesures de tokens commencent sans état précédent connu. Les premiers points peuvent être incomplets.",
-    historyPoints: "{{count}} point(s) de tokens",
+    historyPoints_one: "{{count}} point de tokens",
+    historyPoints_many: "{{count}} points de tokens",
+    historyPoints_other: "{{count}} points de tokens",
     historyPreset24h: "24 h",
     historyPreset30d: "30 jours",
     historyPreset7d: "7 jours",
@@ -56,4 +58,3 @@ export const frUsage = {
     usedPercentTooltip: "{{usedPercent}} % consommés"
   },
 } as const;
-

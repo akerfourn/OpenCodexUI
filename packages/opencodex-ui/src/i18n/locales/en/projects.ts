@@ -13,7 +13,8 @@ export const enProjects = {
     cachedInputTokens: "Cached input tokens",
     chats: "Chats",
     close: "Close",
-    coverage: "{{known}} of {{total}} chat(s) with known usage",
+    coverage_one: "{{known}} of {{count}} chat with known usage",
+    coverage_other: "{{known}} of {{count}} chats with known usage",
     description: "Usage from chats present in the cache, including active and archived chats.",
     empty: "No chat is present in the cache for this project.",
     inputTokens: "Input tokens",
@@ -23,7 +24,8 @@ export const enProjects = {
     reasoningTokens: "Reasoning tokens",
     title: "Project statistics",
     totalTokens: "Total tokens",
-    unknownChats: "Usage is unknown for {{count}} chat(s) and is not included in the total."
+    unknownChats_one: "Usage is unknown for {{count}} chat and is not included in the total.",
+    unknownChats_other: "Usage is unknown for {{count}} chats and is not included in the total."
   },
   projectTools: {
     closePanel: "Collapse tools panel",
