@@ -111,7 +111,7 @@ export class ElectronBridgeServer {
     this.requestRouter = new OpenCodexRequestRouter(this.runtime);
     this.performanceMonitoringService = new PerformanceMonitoringService(options.settings, {
       createLog: async (message, details) => {
-        await this.runtime.createLog("warning", message, details);
+        await this.runtime.logs.create("warning", message, details);
       },
       readProcessMetrics
     });
@@ -128,7 +128,7 @@ export class ElectronBridgeServer {
         threadId
       }),
       resolveApproval: (approvalId, decision) => {
-        this.runtime.resolveApproval(approvalId, decision);
+        this.runtime.approvals.resolve(approvalId, decision);
       },
       logger
     });
@@ -277,7 +277,7 @@ export class ElectronBridgeServer {
    * @returns Confirmation payload.
    */
   private openDeveloperTools(): { ok: true } {
-    if (!this.runtime.getSettings().developerMode) {
+    if (!this.runtime.settings.get().developerMode) {
       throw new Error("Developer mode is disabled.");
     }
 

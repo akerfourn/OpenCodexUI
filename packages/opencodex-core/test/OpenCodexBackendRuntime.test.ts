@@ -5,7 +5,7 @@ import type {
   OpenCodexEvent,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { OpenCodexBackendRuntime } from "../src/OpenCodexBackendRuntime";
 import type { OpenCodexBackendOptions } from "../src/types";
@@ -16,12 +16,39 @@ describe("OpenCodexBackendRuntime", () => {
     const options = createOptions((event) => emittedEvents.push(event));
     const runtime = new OpenCodexBackendRuntime(options);
 
-    expect(runtime.getSettings()).toBe(options.settings);
+    expect(runtime.settings.get()).toBe(options.settings);
     expect(runtime.isPrerelease).toBe(true);
 
     await expect(runtime.dispose()).resolves.toBeUndefined();
     await expect(runtime.dispose()).resolves.toBeUndefined();
     expect(emittedEvents).toEqual([]);
+  });
+
+  it("should expose stable public facades while keeping settings behavior compatible", async () => {
+    const saveSettings = vi.fn();
+    const runtime = new OpenCodexBackendRuntime({
+      ...createOptions(() => undefined),
+      saveSettings
+    });
+
+    expect(runtime.settings).toBe(runtime.settings);
+    expect(runtime.projects).toBe(runtime.projects);
+    expect(runtime.threads).toBe(runtime.threads);
+    expect(runtime.automation.commands).toBe(runtime.automation.commands);
+    expect(runtime.git.commitMessage).toBe(runtime.git.commitMessage);
+
+    const normalized = await runtime.settings.update({
+      developerMode: true,
+      performanceMonitoringEnabled: false,
+      advancedPerformanceMonitoringEnabled: true
+    });
+
+    expect(normalized.advancedPerformanceMonitoringEnabled).toBe(false);
+    expect(runtime.settings.get()).toBe(normalized);
+    expect(saveSettings).toHaveBeenCalledWith(normalized);
+
+    await expect(runtime.projects.list()).resolves.toEqual([]);
+    await runtime.dispose();
   });
 
   it("should keep cacheless project and group reads deterministic", async () => {
@@ -30,8 +57,8 @@ describe("OpenCodexBackendRuntime", () => {
       emittedEvents.push(event);
     }));
 
-    await expect(runtime.listProjects()).resolves.toEqual([]);
-    await expect(runtime.listProjectGroups()).resolves.toEqual({
+    await expect(runtime.projects.list()).resolves.toEqual([]);
+    await expect(runtime.groups.list()).resolves.toEqual({
       groups: [],
       items: []
     });

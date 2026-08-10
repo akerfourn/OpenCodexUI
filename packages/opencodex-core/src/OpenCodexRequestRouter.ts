@@ -44,80 +44,80 @@ export class OpenCodexRequestRouter {
       case "app.openDevTools":
         throw new Error("Developer tools are not available in this runtime.");
       case "projects.list":
-        return this.runtime.listProjects();
+        return this.runtime.projects.list();
       case "projects.open":
-        return this.runtime.openProject(
+        return this.runtime.projects.open(
           request.projectPath,
-          request.sourceId === undefined ? this.runtime.getSettings().defaultSourceId : request.sourceId,
+          request.sourceId === undefined ? this.runtime.settings.get().defaultSourceId : request.sourceId,
           request.createIfMissing === true
         );
       case "projects.statistics.read":
-        return this.runtime.readProjectStatistics(request.projectPath, request.sourceId);
+        return this.runtime.projects.readStatistics(request.projectPath, request.sourceId);
       case "projects.pickDirectory":
-        return this.runtime.pickProjectDirectory(
+        return this.runtime.projects.pickDirectory(
           request.mode,
-          request.sourceId === undefined ? this.runtime.getSettings().defaultSourceId : request.sourceId
+          request.sourceId === undefined ? this.runtime.settings.get().defaultSourceId : request.sourceId
         );
       case "projects.setHidden":
-        return this.runtime.setProjectHidden(request.projectId, request.isHidden);
+        return this.runtime.projects.setHidden(request.projectId, request.isHidden);
       case "projects.displayName.update":
-        return this.runtime.updateProjectDisplayName(request.projectId, request.displayName);
+        return this.runtime.projects.setDisplayName(request.projectId, request.displayName);
       case "projects.preferences.update":
-        return this.runtime.updateProjectPreferences(request.projectId, request.patch);
+        return this.runtime.projects.updatePreferences(request.projectId, request.patch);
       case "projects.context.sync":
-        return this.runtime.syncProjectContext(request.projectId);
+        return this.runtime.context.sync(request.projectId);
       case "projects.context.pickFolder":
-        return this.runtime.pickProjectContextFolder();
+        return this.runtime.context.pickFolder();
       case "projects.delete":
-        return this.runtime.deleteProject(request.projectId);
+        return this.runtime.projects.delete(request.projectId);
       case "projectGroups.list":
-        return this.runtime.listProjectGroups();
+        return this.runtime.groups.list();
       case "projectGroups.create":
-        return this.runtime.createProjectGroup(
+        return this.runtime.groups.create(
           request.name,
           request.parentGroupId ?? null,
           request.color ?? "blue"
         );
       case "projectGroups.update":
-        return this.runtime.updateProjectGroup(request.groupId, request.patch);
+        return this.runtime.groups.update(request.groupId, request.patch);
       case "projectGroups.delete":
-        return this.runtime.deleteProjectGroup(request.groupId);
+        return this.runtime.groups.delete(request.groupId);
       case "projectGroups.assignProject":
-        return this.runtime.assignProjectToGroup(request.projectId, request.groupId);
+        return this.runtime.groups.assignProject(request.projectId, request.groupId);
       case "attachments.pickImages":
-        return this.runtime.pickImageFiles();
+        return this.runtime.host.pickImages();
       case "sources.list":
-        return this.runtime.listSources();
+        return this.runtime.sources.list();
       case "sources.create":
-        return this.runtime.createSource(request.name, request.kind, request.settings);
+        return this.runtime.sources.create(request.name, request.kind, request.settings);
       case "sources.sync":
-        return this.runtime.syncSources(request.sourceId ?? null);
+        return this.runtime.sources.sync(request.sourceId ?? null);
       case "sources.codexRelease.check":
-        return this.runtime.checkCodexRelease(request.force === true);
+        return this.runtime.updates.checkRelease(request.force === true);
       case "sources.codexUpdate.apply":
-        return this.runtime.updateCodexSource(request.sourceId);
+        return this.runtime.updates.applyToSource(request.sourceId);
       case "sources.delete":
-        return this.runtime.deleteSource(request.sourceId);
+        return this.runtime.sources.delete(request.sourceId);
       case "sources.update":
-        return this.runtime.updateSource(request.sourceId, request.patch);
+        return this.runtime.sources.update(request.sourceId, request.patch);
       case "sources.pickExecutable":
-        return this.runtime.pickSourceExecutable();
+        return this.runtime.host.pickExecutable();
       case "files.search":
-        return this.runtime.searchProjectFiles(
+        return this.runtime.search.files(
           request.projectPath,
           request.sourceId,
           request.query,
           request.limit ?? 8
         );
       case "skills.search":
-        return this.runtime.searchProjectSkills(
+        return this.runtime.search.skills(
           request.projectPath,
           request.sourceId,
           request.query,
           request.limit ?? 8
         );
       case "threads.list":
-        return this.runtime.listThreads(
+        return this.runtime.threads.list(
           request.scope,
           request.projectPath ?? null,
           request.sourceId ?? null,
@@ -125,17 +125,17 @@ export class OpenCodexRequestRouter {
           request.archived === true
         );
       case "threads.open":
-        return this.runtime.openThread(request.threadId, request.sourceId ?? null);
+        return this.runtime.threads.open(request.threadId, request.sourceId ?? null);
       case "threads.eventLog.read":
-        return this.runtime.readThreadEventLog(
+        return this.runtime.eventLog.read(
           request.threadId,
           request.sourceId ?? null,
           request.limit ?? 500
         );
       case "threads.subAgents.list":
-        return this.runtime.listSubAgentThreads(request.parentThreadId, request.sourceId);
+        return this.runtime.threads.listSubAgents(request.parentThreadId, request.sourceId);
       case "threads.collaboration.list":
-        return this.runtime.listCollaborationEvents({
+        return this.runtime.collaboration.list({
           sourceId: request.sourceId,
           threadId: request.threadId,
           senderThreadId: request.senderThreadId,
@@ -144,48 +144,48 @@ export class OpenCodexRequestRouter {
           limit: request.limit
         });
       case "threads.readReadonly":
-        return this.runtime.readThreadReadonly(request.threadId, request.sourceId);
+        return this.runtime.threads.readReadonly(request.threadId, request.sourceId);
       case "threads.loadOlder":
-        return this.runtime.loadOlderThreadMessages(request.threadId);
+        return this.runtime.threads.loadOlderMessages(request.threadId);
       case "threads.recover":
-        return this.runtime.recoverThread(request.threadId);
+        return this.runtime.threads.recover(request.threadId);
       case "threads.runtimeStatus.read":
-        return this.runtime.readThreadRuntimeStatus(request.threadId);
+        return this.runtime.threads.readRuntimeStatus(request.threadId);
       case "threads.create":
-        return this.runtime.createThread(request.projectPath ?? null, request.sourceId ?? null);
+        return this.runtime.threads.create(request.projectPath ?? null, request.sourceId ?? null);
       case "threads.rename":
-        return this.runtime.renameThread(request.threadId, request.name);
+        return this.runtime.threads.rename(request.threadId, request.name);
       case "threads.archive":
-        return this.runtime.archiveThread(request.threadId);
+        return this.runtime.threads.archive(request.threadId);
       case "threads.delete":
-        return this.runtime.deleteThread(request.threadId);
+        return this.runtime.threads.delete(request.threadId);
       case "threads.unarchive":
-        return this.runtime.unarchiveThread(request.threadId);
+        return this.runtime.threads.restore(request.threadId);
       case "threads.updateComposerSettings":
-        await this.runtime.updateThreadComposerSettings(
+        await this.runtime.threads.updateComposerSettings(
           request.threadId,
           request.model,
           request.reasoningEffort
         );
         return { ok: true };
       case "thread.review":
-        return this.runtime.startThreadReview(request.threadId, request.projectPath ?? null);
+        return this.runtime.threads.startReview(request.threadId, request.projectPath ?? null);
       case "thread.compact":
-        return this.runtime.compactThread(request.threadId, request.projectPath ?? null);
+        return this.runtime.threads.compact(request.threadId, request.projectPath ?? null);
       case "system.openLink":
-        return this.runtime.openLink(
+        return this.runtime.host.openLink(
           request.href,
           request.projectPath ?? null,
           request.sourceId ?? null
         );
       case "system.openProject":
-        return this.runtime.openProjectInIde(request.projectPath, request.sourceId);
+        return this.runtime.host.openInIde(request.projectPath, request.sourceId);
       case "system.openProjectFolder":
-        return this.runtime.openProjectFolder(request.projectPath, request.sourceId);
+        return this.runtime.host.openFolder(request.projectPath, request.sourceId);
       case "system.openProjectTerminal":
-        return this.runtime.openProjectTerminal(request.projectPath, request.sourceId);
+        return this.runtime.host.openTerminal(request.projectPath, request.sourceId);
       case "turn.start":
-        return this.runtime.startTurn(
+        return this.runtime.threads.startTurn(
           request.threadId,
           request.projectPath ?? null,
           request.sourceId ?? null,
@@ -197,7 +197,7 @@ export class OpenCodexRequestRouter {
           request.serviceTier ?? null
         );
       case "turn.steer":
-        return this.runtime.steerTurn(
+        return this.runtime.threads.steerTurn(
           request.threadId,
           request.turnId,
           request.text,
@@ -205,7 +205,7 @@ export class OpenCodexRequestRouter {
           request.references ?? []
         );
       case "turn.editLast":
-        return this.runtime.editLastTurn(
+        return this.runtime.threads.editLastTurn(
           request.threadId,
           request.projectPath ?? null,
           request.sourceId ?? null,
@@ -217,118 +217,118 @@ export class OpenCodexRequestRouter {
           request.serviceTier ?? null
         );
       case "turn.interrupt":
-        return this.runtime.interruptTurn(request.threadId, request.turnId);
+        return this.runtime.threads.interruptTurn(request.threadId, request.turnId);
       case "approval.respond":
-        return this.runtime.resolveApproval(request.approvalId, request.decision);
+        return this.runtime.approvals.resolve(request.approvalId, request.decision);
       case "project.trust":
-        return this.runtime.trustProject(request.projectPath);
+        return this.runtime.trust.grant(request.projectPath);
       case "project.trust.dismiss":
-        this.runtime.dismissProjectTrustRequest(request.projectPath);
+        this.runtime.trust.dismiss(request.projectPath);
         return { ok: true };
       case "models.list":
-        return this.runtime.listModels();
+        return this.runtime.models.list();
       case "usage.read":
-        return this.runtime.readUsageLimits(request.sourceId ?? null);
+        return this.runtime.usage.readLimits(request.sourceId ?? null);
       case "usage.history.read":
-        return this.runtime.readUsageHistory(
+        return this.runtime.usage.readHistory(
           request.sourceId,
           request.from,
           request.to,
           request.aggregation
         );
       case "usage.reset.consume":
-        return this.runtime.consumeUsageReset(
+        return this.runtime.usage.consumeReset(
           request.sourceId,
           request.creditId,
           request.idempotencyKey
         );
       case "plugins.list":
-        return this.runtime.listPlugins(request.sourceId);
+        return this.runtime.plugins.list(request.sourceId);
       case "plugins.read":
-        return this.runtime.readPlugin(
-          request.sourceId,
-          request.marketplaceName,
-          request.marketplacePath,
-          request.pluginName
-        );
+        return this.runtime.plugins.read({
+          sourceId: request.sourceId,
+          marketplaceName: request.marketplaceName,
+          marketplacePath: request.marketplacePath,
+          pluginName: request.pluginName
+        });
       case "plugins.install":
-        return this.runtime.installPlugin(
-          request.sourceId,
-          request.marketplaceName,
-          request.marketplacePath,
-          request.pluginName
-        );
+        return this.runtime.plugins.install({
+          sourceId: request.sourceId,
+          marketplaceName: request.marketplaceName,
+          marketplacePath: request.marketplacePath,
+          pluginName: request.pluginName
+        });
       case "plugins.uninstall":
-        return this.runtime.uninstallPlugin(request.sourceId, request.pluginId);
+        return this.runtime.plugins.uninstall(request.sourceId, request.pluginId);
       case "git.version":
-        return this.runtime.readGitVersion();
+        return this.runtime.git.readVersion();
       case "git.status":
-        return this.runtime.readGitStatus(request.projectPath, request.sourceId);
+        return this.runtime.git.readStatus(request.projectPath, request.sourceId);
       case "git.init":
-        return this.runtime.initializeGitRepository(request.projectPath, request.sourceId);
+        return this.runtime.git.initializeRepository(request.projectPath, request.sourceId);
       case "git.remotes":
-        return this.runtime.listGitRemotes(request.projectPath, request.sourceId);
+        return this.runtime.git.listRemotes(request.projectPath, request.sourceId);
       case "git.remote.upsert":
-        return this.runtime.upsertGitRemote(
+        return this.runtime.git.upsertRemote(
           request.projectPath,
           request.sourceId,
           request.name,
           request.url
         );
       case "git.branches":
-        return this.runtime.listGitBranches(request.projectPath, request.sourceId);
+        return this.runtime.git.listBranches(request.projectPath, request.sourceId);
       case "git.tags":
-        return this.runtime.listGitTags(request.projectPath, request.sourceId);
+        return this.runtime.git.listTags(request.projectPath, request.sourceId);
       case "git.tags.fetch":
-        return this.runtime.fetchGitTags(request.projectPath, request.sourceId);
+        return this.runtime.git.fetchTags(request.projectPath, request.sourceId);
       case "git.tags.push":
-        return this.runtime.pushGitTags(request.projectPath, request.sourceId);
+        return this.runtime.git.pushTags(request.projectPath, request.sourceId);
       case "git.tag.create":
-        return this.runtime.createGitTag(request.projectPath, request.sourceId, request.tagName);
+        return this.runtime.git.createTag(request.projectPath, request.sourceId, request.tagName);
       case "git.tag.push":
-        return this.runtime.pushGitTag(
+        return this.runtime.git.pushTag(
           request.projectPath,
           request.sourceId,
           request.tagName,
           request.force
         );
       case "git.tag.commitsSince":
-        return this.runtime.countGitCommitsSinceTag(
+        return this.runtime.git.countCommitsSinceTag(
           request.projectPath,
           request.sourceId,
           request.tagName
         );
       case "git.log":
-        return this.runtime.readGitLog(request.projectPath, request.sourceId, request.limit, request.skip);
+        return this.runtime.git.readLog(request.projectPath, request.sourceId, request.limit, request.skip);
       case "git.commit.details":
-        return this.runtime.readGitCommitDetails(request.projectPath, request.sourceId, request.hash);
+        return this.runtime.git.readCommitDetails(request.projectPath, request.sourceId, request.hash);
       case "git.checkout":
-        return this.runtime.checkoutGitBranch(
+        return this.runtime.git.checkoutBranch(
           request.projectPath,
           request.sourceId,
           request.branchName,
           request.branchKind
         );
       case "git.branch.create":
-        return this.runtime.createGitBranch(request.projectPath, request.sourceId, request.branchName);
+        return this.runtime.git.createBranch(request.projectPath, request.sourceId, request.branchName);
       case "git.merge":
-        return this.runtime.mergeGitBranch(request.projectPath, request.sourceId, request.branchName);
+        return this.runtime.git.mergeBranch(request.projectPath, request.sourceId, request.branchName);
       case "git.stage":
-        return this.runtime.stageGitPaths(request.projectPath, request.sourceId, request.paths);
+        return this.runtime.git.stage(request.projectPath, request.sourceId, request.paths);
       case "git.unstage":
-        return this.runtime.unstageGitPaths(request.projectPath, request.sourceId, request.paths);
+        return this.runtime.git.unstage(request.projectPath, request.sourceId, request.paths);
       case "git.commit":
-        return this.runtime.commitGitChanges(request.projectPath, request.sourceId, request.message);
+        return this.runtime.git.commit(request.projectPath, request.sourceId, request.message);
       case "git.pull":
-        return this.runtime.pullGitChanges(request.projectPath, request.sourceId);
+        return this.runtime.git.pull(request.projectPath, request.sourceId);
       case "git.push":
-        return this.runtime.pushGitChanges(request.projectPath, request.sourceId);
+        return this.runtime.git.push(request.projectPath, request.sourceId);
       case "git.branch.publish":
-        return this.runtime.publishCurrentGitBranch(request.projectPath, request.sourceId);
+        return this.runtime.git.publishCurrentBranch(request.projectPath, request.sourceId);
       case "projectCommands.list":
-        return this.runtime.listProjectCommands(request.projectId);
+        return this.runtime.automation.commands.list(request.projectId);
       case "projectCommands.create":
-        return this.runtime.createProjectCommand(
+        return this.runtime.automation.commands.create(
           request.projectId,
           request.name,
           request.command,
@@ -336,23 +336,23 @@ export class OpenCodexRequestRouter {
           request.persistLogs
         );
       case "projectCommands.update":
-        return this.runtime.updateProjectCommand(request.commandId, request.patch);
+        return this.runtime.automation.commands.update(request.commandId, request.patch);
       case "projectCommands.delete":
-        return this.runtime.deleteProjectCommand(request.commandId);
+        return this.runtime.automation.commands.delete(request.commandId);
       case "projectCommands.reorder":
-        return this.runtime.reorderProjectCommands(request.projectId, request.commandIds);
+        return this.runtime.automation.commands.reorder(request.projectId, request.commandIds);
       case "projectCommands.run":
-        return this.runtime.runProjectCommand(
+        return this.runtime.automation.commands.run(
           request.commandId,
           request.projectPath,
           request.sourceId
         );
       case "projectCommands.stop":
-        return this.runtime.stopProjectCommandRun(request.runId);
+        return this.runtime.automation.commands.stop(request.runId);
       case "projectRules.list":
-        return this.runtime.listProjectRules(request.projectId);
+        return this.runtime.automation.rules.read(request.projectId);
       case "projectRules.create":
-        return this.runtime.createProjectRule({
+        return this.runtime.automation.rules.create({
           projectId: request.projectId,
           name: request.name,
           pattern: request.pattern,
@@ -363,36 +363,36 @@ export class OpenCodexRequestRouter {
           enabled: request.enabled
         });
       case "projectRules.update":
-        return this.runtime.updateProjectRule(request.ruleId, request.patch);
+        return this.runtime.automation.rules.update(request.ruleId, request.patch);
       case "projectRules.delete":
-        return this.runtime.deleteProjectRule(request.ruleId);
+        return this.runtime.automation.rules.delete(request.ruleId);
       case "projectRules.apply":
-        return this.runtime.applyProjectRules(request.projectId, request.force === true);
+        return this.runtime.automation.rules.apply(request.projectId, request.force === true);
       case "projectRules.test":
-        return this.runtime.testProjectRules(request.projectId, request.command);
+        return this.runtime.automation.rules.test(request.projectId, request.command);
       case "projectRules.restart":
-        return this.runtime.restartProjectRules(request.projectId);
+        return this.runtime.automation.rules.restart(request.projectId);
       case "projectTasks.list":
-        return this.runtime.listProjectTasks(request.projectId);
+        return this.runtime.tasks.list(request.projectId);
       case "projectTasks.create":
-        return this.runtime.createProjectTask(
+        return this.runtime.tasks.create(
           request.projectId,
           request.title,
           request.description,
           request.status
         );
       case "projectTasks.update":
-        return this.runtime.updateProjectTask(request.taskId, request.patch);
+        return this.runtime.tasks.update(request.taskId, request.patch);
       case "projectTasks.delete":
-        return this.runtime.deleteProjectTask(request.taskId);
+        return this.runtime.tasks.delete(request.taskId);
       case "commitPrompt.get":
-        return this.runtime.readCommitPrompt();
+        return this.runtime.git.commitMessage.readPrompt();
       case "commitPrompt.update":
-        return this.runtime.updateCommitPrompt(request.prompt);
+        return this.runtime.git.commitMessage.updatePrompt(request.prompt);
       case "commitPrompt.reset":
-        return this.runtime.resetCommitPrompt();
+        return this.runtime.git.commitMessage.resetPrompt();
       case "git.commitMessage.generate":
-        return this.runtime.generateGitCommitMessage(
+        return this.runtime.git.commitMessage.generate(
           request.projectPath,
           request.sourceId,
           request.instruction,
@@ -401,17 +401,17 @@ export class OpenCodexRequestRouter {
           request.language
         );
       case "logs.list":
-        return this.runtime.listLogs(request.beforeCreatedAt ?? null, request.limit ?? 30);
+        return this.runtime.logs.list(request.beforeCreatedAt ?? null, request.limit ?? 30);
       case "logs.delete":
-        return this.runtime.deleteLog(request.logId);
+        return this.runtime.logs.delete(request.logId);
       case "logs.clear":
-        return this.runtime.clearLogs(request.mode, request.amount ?? 24, request.unit ?? "hours");
+        return this.runtime.logs.clear(request.mode, request.amount ?? 24, request.unit ?? "hours");
       case "logs.create":
-        return this.runtime.createLog(request.logType, request.message, request.details ?? null);
+        return this.runtime.logs.create(request.logType, request.message, request.details ?? null);
       case "settings.get":
-        return this.runtime.getSettings();
+        return this.runtime.settings.get();
       case "settings.update":
-        return this.runtime.updateSettings(request.patch);
+        return this.runtime.settings.update(request.patch);
     }
   }
 }
