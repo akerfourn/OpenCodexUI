@@ -5,7 +5,6 @@ import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import AutorenewOutlinedIcon from "@mui/icons-material/AutorenewOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
@@ -14,17 +13,10 @@ import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import {
   Box,
   Button,
-  Checkbox,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
   IconButton,
   Paper,
   Stack,
-  TextField,
   Tooltip,
   Typography
 } from "@mui/material";
@@ -37,13 +29,19 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
+import { DeleteSourceDialog } from "./DeleteSourceDialog";
+import { EditSourceDialog } from "./EditSourceDialog";
 import { getSourceBadgeSx } from "./sourceColor";
 import {
   buildSourceSettings,
   sourceToDraft,
-  SourceConfigurationFields,
   type SourceDraft
 } from "./sourceConfiguration";
+import {
+  getCodexStatusLabel,
+  getCodexUpdateLabel,
+  getSourceKindLabelKey
+} from "./sourcePresentation";
 import { UsageResetCreditsDialogX } from "./UsageResetCreditsDialog";
 
 type HomeSourceBoxProps = {
@@ -431,77 +429,31 @@ export function HomeSourceBox({
         </Stack>
       </Box>
 
-      <Dialog open={isEditing} fullWidth maxWidth="sm" onClose={handleCloseEdit}>
-        <Box component="form" onSubmit={handleSubmit}>
-          <DialogTitle>{t("sources.editTitle")}</DialogTitle>
-          <DialogContent dividers>
-            <Stack spacing={2}>
-              <TextField
-                autoFocus
-                fullWidth
-                size="small"
-                value={nameDraft}
-                label={t("sources.name")}
-                onChange={handleNameChange}
-              />
-              <SourceConfigurationFields
-                draft={draft}
-                onChange={handleDraftChange}
-                store={store}
-                commandCandidates={source.commandCandidates}
-                selectedCommand={source.resolvedCommand}
-              />
-            </Stack>
-          </DialogContent>
-          <DialogActions>
-            {!isDefault ? (
-              <Button
-                type="button"
-                color="error"
-                startIcon={<DeleteOutlineOutlinedIcon />}
-                disabled={isDeleting}
-                onClick={handleDelete}
-                sx={{ mr: "auto" }}
-              >
-                {t("sources.delete")}
-              </Button>
-            ) : null}
-            <Button type="button" onClick={handleCloseEdit}>
-              {t("sources.cancel")}
-            </Button>
-            <Button variant="contained" type="submit">
-              {t("sources.save")}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
+      <EditSourceDialog
+        open={isEditing}
+        name={nameDraft}
+        draft={draft}
+        store={store}
+        commandCandidates={source.commandCandidates}
+        selectedCommand={source.resolvedCommand}
+        isDefault={isDefault}
+        isDeleting={isDeleting}
+        onNameChange={handleNameChange}
+        onDraftChange={handleDraftChange}
+        onClose={handleCloseEdit}
+        onSubmit={handleSubmit}
+        onDelete={handleDelete}
+      />
 
-      <Dialog open={isDeleteConfirmationOpen} fullWidth maxWidth="sm" onClose={handleCancelDelete}>
-        <DialogTitle>{t("sources.deleteTitle")}</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            {t("sources.deleteDescription", { count: source.associatedProjectCount })}
-          </Typography>
-          <FormControlLabel
-            control={<Checkbox checked={isDeleteConfirmed} onChange={handleDeleteConfirmationToggle} />}
-            label={t("sources.deleteConfirmCheckbox")}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button type="button" onClick={handleCancelDelete}>
-            {t("sources.cancel")}
-          </Button>
-          <Button
-            type="button"
-            variant="contained"
-            color="error"
-            disabled={!isDeleteConfirmed || isDeleting}
-            onClick={handleConfirmDelete}
-          >
-            {t("sources.delete")}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <DeleteSourceDialog
+        open={isDeleteConfirmationOpen}
+        associatedProjectCount={source.associatedProjectCount}
+        isConfirmed={isDeleteConfirmed}
+        isDeleting={isDeleting}
+        onConfirmationToggle={handleDeleteConfirmationToggle}
+        onCancel={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+      />
 
       {resetCredits !== undefined && resetCredits !== null ? (
         <UsageResetCreditsDialogX
@@ -521,74 +473,3 @@ export function HomeSourceBox({
 }
 
 export const HomeSourceBoxX = observer(HomeSourceBox);
-
-/**
- * Maps a source kind to the localized short label used in source cards.
- *
- * @param kind Source kind.
- * @returns i18n key.
- */
-function getSourceKindLabelKey(kind: OpenCodexSource["kind"]): string {
-  switch (kind) {
-    case "custom":
-      return "sources.kindCustom";
-    case "ssh":
-      return "sources.kindSsh";
-    case "wsl":
-      return "sources.kindWsl";
-    default:
-      return "sources.kindLocal";
-  }
-}
-
-/**
- * Formats the detected Codex availability status.
- *
- * @param status Codex availability status.
- * @param version Detected Codex version.
- * @param translate Translation function.
- * @returns User-visible status text.
- */
-function getCodexStatusLabel(
-  status: "ready" | "outdated" | "unavailable",
-  version: string | null,
-  translate: ReturnType<typeof useTranslation>["t"]
-): string {
-  if (status === "ready") {
-    return translate("sources.codexDetected", {
-      version: version ?? translate("sources.unknownVersion")
-    });
-  }
-
-  if (status === "outdated") {
-    return translate("sources.codexOutdated", {
-      version: version ?? translate("sources.unknownVersion")
-    });
-  }
-
-  return translate("sources.codexUnavailable");
-}
-
-/**
- * Formats update availability for a Codex source.
- *
- * @param source Source DTO.
- * @param translate Translation function.
- * @returns User-visible update status.
- */
-function getCodexUpdateLabel(
-  source: OpenCodexSource,
-  translate: ReturnType<typeof useTranslation>["t"]
-): string {
-  if (source.codexUpdate.updateAvailable) {
-    return translate("sources.codexUpdateAvailable", {
-      version: source.codexUpdate.latestVersion ?? translate("sources.unknownVersion")
-    });
-  }
-
-  if (source.codexUpdate.message !== null && source.codexUpdate.latestVersion === null) {
-    return translate("sources.codexUpdateUnknown");
-  }
-
-  return translate("sources.codexUpdateCurrent");
-}
