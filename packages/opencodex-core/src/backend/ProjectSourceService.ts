@@ -20,10 +20,8 @@ import type {
 import type { OpenCodexBackendOptions } from "../types.js";
 import { THREAD_LIST_PAGE_SIZE, THREAD_SOURCE_KINDS } from "./constants.js";
 import { readThreadPages } from "./codexReaders.js";
-import {
-  shouldValidateProjectPathOnHost,
-  toOpenCodexProject
-} from "./projectMapping.js";
+import { toOpenCodexProject } from "./projectMapping.js";
+import { ProjectPathService } from "./ProjectPathService.js";
 import { ProjectPathVisibilityValidator } from "./projectPathVisibility.js";
 import {
   createDefaultCachedSource,
@@ -58,12 +56,20 @@ export type ProjectSourceServiceOptions = {
  * Coordinates project and source persistence with Codex source synchronization.
  */
 export class ProjectSourceService {
+  /** Service used to validate and create project paths. */
+  private readonly projectPaths: ProjectPathService;
+
   /**
    * Creates a project/source service.
    *
    * @param options Backend options, cache, settings, event, and client ports.
    */
-  constructor(private readonly options: ProjectSourceServiceOptions) {}
+  constructor(private readonly options: ProjectSourceServiceOptions) {
+    this.projectPaths = new ProjectPathService({
+      host: options.backendOptions,
+      clients: options.clients
+    });
+  }
 
   /**
    * Lists cached projects and emits them to the UI.
@@ -345,7 +351,7 @@ export class ProjectSourceService {
     createIfMissing: boolean
   ): Promise<OpenCodexProject> {
     const resolvedSource = await this.resolveSource(sourceId);
-    const ensuredProjectPath = await this.ensureProjectPath(
+    const ensuredProjectPath = await this.projectPaths.ensure(
       projectPath,
       createIfMissing,
       resolvedSource
@@ -726,74 +732,6 @@ export class ProjectSourceService {
   }
 
   /**
-   * Ensures and normalizes a project path.
-   *
-   * @param projectPath Project path.
-   * @param createIfMissing Whether the directory may be created.
-   * @param source Source that owns the project path.
-   *
-   * @returns Normalized project path.
-   */
-  private async ensureProjectPath(
-    projectPath: string,
-    createIfMissing: boolean,
-    source: CachedSource
-  ): Promise<string> {
-    if (!shouldValidateProjectPathOnHost(source)) {
-      return await this.ensureSourceProjectPath(projectPath, createIfMissing, source);
-    }
-
-    const ensuredPath = await this.options.backendOptions.ensureProjectDirectory?.(projectPath, createIfMissing)
-      ?? projectPath;
-    const normalizedPath = normalizeProjectPath(ensuredPath);
-
-    if (normalizedPath === null) {
-      throw new Error("Project path is required.");
-    }
-
-    return normalizedPath;
-  }
-
-  /**
-   * Ensures a project path through the source-owned filesystem.
-   *
-   * @param projectPath Project path.
-   * @param createIfMissing Whether the directory may be created.
-   * @param source Source that owns the project path.
-   *
-   * @returns Normalized project path.
-   */
-  private async ensureSourceProjectPath(
-    projectPath: string,
-    createIfMissing: boolean,
-    source: CachedSource
-  ): Promise<string> {
-    const normalizedPath = normalizeProjectPath(projectPath);
-
-    if (normalizedPath === null) {
-      throw new Error("Project path is required.");
-    }
-
-    const client = await this.options.clients.ensureClient(source.id);
-
-    try {
-      const metadata = await client.getMetadata(normalizedPath);
-
-      if (!metadata.isDirectory) {
-        throw new Error(`Project path is not a directory: ${normalizedPath}`);
-      }
-    } catch (error) {
-      if (!createIfMissing || !isMissingProjectPathError(error)) {
-        throw error;
-      }
-
-      await client.createDirectory(normalizedPath);
-    }
-
-    return normalizedPath;
-  }
-
-  /**
    * Returns the cache repository or throws a contextual error.
    *
    * @param message Error message when storage is unavailable.
@@ -807,19 +745,6 @@ export class ProjectSourceService {
 
     return this.options.cacheRepository;
   }
-}
-
-function isMissingProjectPathError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  const normalizedMessage = message.toLowerCase();
-
-  return [
-    "enoent",
-    "no such file",
-    "does not exist",
-    "not exist",
-    "path not found"
-  ].some((marker) => normalizedMessage.includes(marker));
 }
 
 type ProjectIdentity = NonNullable<ReturnType<typeof createProjectIdentity>>;
