@@ -1,17 +1,8 @@
 /**
  * Renders Git controls for one opened project.
  */
-import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
-import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
-import CallMergeOutlinedIcon from "@mui/icons-material/CallMergeOutlined";
-import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
-import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
-import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
-import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
-import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
-import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import {
   Alert,
   Box,
@@ -20,17 +11,12 @@ import {
   Divider,
   IconButton,
   LinearProgress,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
   Stack,
-  TextField,
   Tooltip,
   Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import type { ChangeEvent, MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -43,8 +29,9 @@ import { ProjectGitReferenceTagRowX } from "./ProjectGitReferenceTagRow";
 import { ProjectGitLogDialogX } from "./ProjectGitLogDialog";
 import { ProjectGitRemoteDialogX } from "./ProjectGitRemoteDialog";
 import { ProjectTagSelectorDialogX } from "./ProjectTagSelectorDialog";
-import { ProjectGitFileRow } from "./ProjectGitFileRow";
-import { GitSectionHeader } from "./GitSectionHeader";
+import { ProjectGitActionsMenuX } from "./ProjectGitActionsMenu";
+import { ProjectGitCommitSectionX } from "./ProjectGitCommitSection";
+import { ProjectGitFileSectionsX } from "./ProjectGitFileSections";
 
 type ProjectGitPanelProps = {
   store: RootStore;
@@ -139,46 +126,6 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     setRemoteDialogOpen(false);
   }
 
-  function handleStageSelected(): void {
-    void gitStore.stageSelected();
-  }
-
-  function handleStageAll(): void {
-    void gitStore.stageAll();
-  }
-
-  function handleDeferSelected(): void {
-    void gitStore.deferSelected();
-  }
-
-  function handleDeferPath(path: string): void {
-    void gitStore.deferPath(path);
-  }
-
-  function handleRestoreDeferredPath(path: string): void {
-    void gitStore.restoreDeferredPath(path);
-  }
-
-  function handleRestoreAllDeferred(): void {
-    void gitStore.restoreAllDeferred();
-  }
-
-  function handleUnstageSelected(): void {
-    void gitStore.unstageSelected();
-  }
-
-  function handleUnstageAll(): void {
-    void gitStore.unstageAll();
-  }
-
-  function handleCommitMessageChange(event: ChangeEvent<HTMLInputElement>): void {
-    gitStore.setCommitMessage(event.target.value);
-  }
-
-  function handleCommit(): void {
-    void gitStore.commit();
-  }
-
   function handleOpenGenerateDialog(): void {
     setGenerateDialogOpen(true);
   }
@@ -191,41 +138,12 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     void gitStore.push();
   }
 
-  function handlePublishBranch(): void {
-    void gitStore.publishBranch();
-  }
-
   function handlePull(): void {
     void gitStore.pull();
   }
 
   function handleOpenFile(path: string): void {
     store.openExternalLink(path);
-  }
-
-  function handleSelectBranchAction(): void {
-    handleCloseGitActions();
-    handleOpenBranchDialog();
-  }
-
-  function handleSelectMergeAction(): void {
-    handleCloseGitActions();
-    handleOpenMergeDialog();
-  }
-
-  function handleSelectPublishAction(): void {
-    handleCloseGitActions();
-    handlePublishBranch();
-  }
-
-  function handleSelectLogAction(): void {
-    handleCloseGitActions();
-    handleOpenLogDialog();
-  }
-
-  function handleSelectRemoteAction(): void {
-    handleCloseGitActions();
-    handleOpenRemoteDialog();
   }
 
   const generateTooltip = gitStore.canGenerateCommitMessage
@@ -285,62 +203,15 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
           </span>
         </Tooltip>
       </Stack>
-      <Menu
+      <ProjectGitActionsMenuX
         anchorEl={gitActionsAnchor}
-        open={gitActionsAnchor !== null}
+        gitStore={gitStore}
         onClose={handleCloseGitActions}
-        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-        transformOrigin={{ horizontal: "right", vertical: "top" }}
-      >
-        <MenuItem
-          disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
-          onClick={handleSelectBranchAction}
-        >
-          <ListItemIcon>
-            <AccountTreeOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("git.branchSwitcher")}</ListItemText>
-        </MenuItem>
-        <MenuItem
-          disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
-          onClick={handleSelectMergeAction}
-        >
-          <ListItemIcon>
-            <CallMergeOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("git.mergeBranch")}</ListItemText>
-        </MenuItem>
-        <MenuItem
-          disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
-          onClick={handleSelectRemoteAction}
-        >
-          <ListItemIcon>
-            <CloudOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("git.remoteConfigure")}</ListItemText>
-        </MenuItem>
-        {gitStore.status.branchName !== null && gitStore.status.upstreamName === null ? (
-          <MenuItem disabled={!gitStore.canPublishBranch} onClick={handleSelectPublishAction}>
-            <ListItemIcon>
-              {gitStore.isPushing ? (
-                <CircularProgress color="inherit" size={18} />
-              ) : (
-                <PublishOutlinedIcon fontSize="small" />
-              )}
-            </ListItemIcon>
-            <ListItemText>{t("git.publishBranchTooltip")}</ListItemText>
-          </MenuItem>
-        ) : null}
-        <MenuItem
-          disabled={!gitStore.isAvailable || !gitStore.status.isRepository}
-          onClick={handleSelectLogAction}
-        >
-          <ListItemIcon>
-            <HistoryOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("git.log")}</ListItemText>
-        </MenuItem>
-      </Menu>
+        onOpenBranch={handleOpenBranchDialog}
+        onOpenMerge={handleOpenMergeDialog}
+        onOpenRemote={handleOpenRemoteDialog}
+        onOpenLog={handleOpenLogDialog}
+      />
 
       {gitStore.isLoading ? <LinearProgress /> : null}
 
@@ -417,160 +288,22 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
               <Alert severity="error">{gitStore.tagErrorMessage}</Alert>
             ) : null}
 
-            <Stack spacing={1}>
-              <GitSectionHeader
-                title={t(`${gitLabelsKey}.changed`)}
-                count={gitStore.changedFilesCount}
-                primaryActionLabel={t(`${gitLabelsKey}.stageSelected`)}
-                secondaryActionLabel={t(`${gitLabelsKey}.stageAll`)}
-                tertiaryActionDisabled={gitStore.selectedChangedPaths.length === 0 || gitStore.isBusy}
-                tertiaryActionLabel={t("git.deferSelected")}
-                primaryActionDisabled={gitStore.selectedChangedPaths.length === 0 || gitStore.isBusy}
-                secondaryActionDisabled={gitStore.changedFilesCount === 0 || gitStore.isBusy}
-                onPrimaryAction={handleStageSelected}
-                onSecondaryAction={handleStageAll}
-                onTertiaryAction={handleDeferSelected}
-              />
-              {gitStore.stageableChangedFiles.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  {t(`${gitLabelsKey}.noChangedFiles`)}
-                </Typography>
-              ) : (
-                <Stack className="git-file-list" spacing={0.25}>
-                  {gitStore.stageableChangedFiles.map((file) => (
-                    <ProjectGitFileRow
-                      key={`changed:${file.path}`}
-                      actionIcon={<KeyboardArrowDownOutlinedIcon fontSize="small" />}
-                      actionLabel={t(`${gitLabelsKey}.stageFile`)}
-                      canOpenFile={canOpenFiles}
-                      checked={gitStore.selectedChangedPaths.includes(file.path)}
-                      deferDirectoryLabel={t("git.deferDirectory")}
-                      deferFileLabel={t("git.deferFile")}
-                      disabled={gitStore.isBusy}
-                      file={file}
-                      onDeferDirectory={handleDeferPath}
-                      onDeferFile={handleDeferPath}
-                      onAction={gitStore.stagePath}
-                      onOpenFile={handleOpenFile}
-                      onToggle={gitStore.toggleChangedPath}
-                    />
-                  ))}
-                </Stack>
-              )}
-            </Stack>
-
-            {gitStore.deferredChangedFiles.length > 0 ? (
-              <Stack className="git-deferred-section" spacing={1}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                  <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-                    <Typography variant="subtitle2">
-                      {t("git.deferred", { count: gitStore.deferredFilesCount })}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {t("git.deferredDescription")}
-                    </Typography>
-                  </Box>
-                  <Button
-                    size="small"
-                    disabled={gitStore.isBusy}
-                    onClick={handleRestoreAllDeferred}
-                  >
-                    {t("git.restoreAllDeferred")}
-                  </Button>
-                </Stack>
-                <Stack className="git-file-list" spacing={0.25}>
-                  {gitStore.deferredChangedFiles.map((file) => (
-                    <ProjectGitFileRow
-                      key={`deferred:${file.path}`}
-                      actionIcon={<UnarchiveOutlinedIcon fontSize="small" />}
-                      actionLabel={t("git.restoreDeferred")}
-                      actionPath={gitStore.getDeferredPathFor(file.path) ?? file.path}
-                      canOpenFile={canOpenFiles}
-                      checked={false}
-                      disabled={gitStore.isBusy}
-                      file={file}
-                      onAction={gitStore.restoreDeferredPath}
-                      onOpenFile={handleOpenFile}
-                    />
-                  ))}
-                </Stack>
-              </Stack>
-            ) : null}
-
-            <Divider />
-
-            <Stack spacing={1}>
-              <GitSectionHeader
-                title={t(`${gitLabelsKey}.staged`)}
-                count={gitStore.stagedFilesCount}
-                primaryActionLabel={t(`${gitLabelsKey}.unstageSelected`)}
-                secondaryActionLabel={t(`${gitLabelsKey}.unstageAll`)}
-                primaryActionDisabled={gitStore.selectedStagedPaths.length === 0 || gitStore.isBusy}
-                secondaryActionDisabled={gitStore.stagedFilesCount === 0 || gitStore.isBusy}
-                onPrimaryAction={handleUnstageSelected}
-                onSecondaryAction={handleUnstageAll}
-              />
-              {gitStore.status.stagedFiles.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  {t(`${gitLabelsKey}.noStagedFiles`)}
-                </Typography>
-              ) : (
-                <Stack className="git-file-list" spacing={0.25}>
-                  {gitStore.status.stagedFiles.map((file) => (
-                    <ProjectGitFileRow
-                      key={`staged:${file.path}`}
-                      actionIcon={<KeyboardArrowUpOutlinedIcon fontSize="small" />}
-                      actionLabel={t(`${gitLabelsKey}.unstageFile`)}
-                      canOpenFile={canOpenFiles}
-                      checked={gitStore.selectedStagedPaths.includes(file.path)}
-                      disabled={gitStore.isBusy}
-                      file={file}
-                      onAction={gitStore.unstagePath}
-                      onOpenFile={handleOpenFile}
-                      onToggle={gitStore.toggleStagedPath}
-                    />
-                  ))}
-                </Stack>
-              )}
-            </Stack>
+            <ProjectGitFileSectionsX
+              canOpenFiles={canOpenFiles}
+              gitLabelsKey={gitLabelsKey}
+              gitStore={gitStore}
+              onOpenFile={handleOpenFile}
+            />
 
             {gitStore.stagedFilesCount > 0 ? (
               <>
                 <Divider />
-
-                <Stack spacing={1}>
-                  {gitStore.isGeneratingCommitMessage ? <LinearProgress /> : null}
-                  <TextField
-                    label={t(`${gitLabelsKey}.commitMessage`)}
-                    value={gitStore.commitMessage}
-                    minRows={3}
-                    multiline
-                    fullWidth
-                    disabled={gitStore.isCommitting || gitStore.isGeneratingCommitMessage}
-                    onChange={handleCommitMessageChange}
-                  />
-                  <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
-                    <Tooltip title={generateTooltip}>
-                      <span>
-                        <IconButton
-                          aria-label={t(`${gitLabelsKey}.generateMessage`)}
-                          size="small"
-                          disabled={!gitStore.canGenerateCommitMessage}
-                          onClick={handleOpenGenerateDialog}
-                        >
-                          <AutoAwesomeOutlinedIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Button
-                      variant="contained"
-                      disabled={!gitStore.canCommit}
-                      onClick={handleCommit}
-                    >
-                      {t(`${gitLabelsKey}.commit`)}
-                    </Button>
-                  </Stack>
-                </Stack>
+                <ProjectGitCommitSectionX
+                  generateTooltip={generateTooltip}
+                  gitLabelsKey={gitLabelsKey}
+                  gitStore={gitStore}
+                  onOpenGenerateDialog={handleOpenGenerateDialog}
+                />
               </>
             ) : null}
           </>
