@@ -1,6 +1,4 @@
-import { makeAutoObservable, runInAction } from "mobx";
-
-import { DEFAULT_OPEN_CODEX_REASONING_EFFORTS } from "@open-codex-ui/opencodex-protocol";
+import { action, computed, makeObservable, observable, override } from "mobx";
 
 import type {
   OpenCodexColorScheme,
@@ -13,73 +11,69 @@ import type {
   OpenCodexModelServiceTier,
   OpenCodexReasoningEffortOption,
   OpenCodexReasoningEffort,
-  OpenCodexSettings,
-  OpenCodexToolVersionStatus,
   OpenCodexVersioningVocabulary
 } from "@open-codex-ui/opencodex-protocol";
 
-import { applyOpenCodexLanguage } from "../i18n/i18n";
+import {
+  getCommitMessageModelOptions,
+  getModelOptions,
+  getReasoningEffortOptions,
+  getServiceTierOptions,
+  resolveReasoningEffort
+} from "./modelSelection";
+import { AppOnboardingStore } from "./AppOnboardingStore";
 import type { RootStore } from "./RootStore";
 import type { RootChildStore } from "./RootChildStore";
 
 /**
  * Stores application-wide settings, startup state, and model selection.
  */
-export class AppStore implements RootChildStore {
-  settings: OpenCodexSettings = {
-    codexCommand: "codex",
-    codexReleaseCheck: {
-      latestVersion: null,
-      checkedAt: null,
-      error: null
-    },
-    defaultSourceId: null,
-    defaultUsageLimitId: null,
-    defaultModel: null,
-    defaultReasoningEffort: "medium",
-    commitMessageModel: null,
-    commitMessageReasoningEffort: "medium",
-    commitMessageLanguage: "en",
-    showActivityPanel: true,
-    experimentalApi: true,
-    allowTurnSteering: false,
-    language: "system",
-    colorScheme: "system",
-    enterKeyBehavior: "newline",
-    versioningVocabulary: "simple",
-    desktopNotifications: {
-      turnCompleted: false,
-      approvalRequested: false
-    },
-    discordRichPresenceEnabled: true,
-    onboardingCompleted: false,
-    allowOutdatedCodex: false,
-    developerMode: false,
-    performanceMonitoringEnabled: true,
-    advancedPerformanceMonitoringEnabled: false
-  };
-  launchProjectPath: string | null = null;
+export class AppStore extends AppOnboardingStore implements RootChildStore {
   models: OpenCodexModel[] = [];
-  selectedModel: string | null = null;
-  reasoningEffort: OpenCodexReasoningEffort = "medium";
   errorMessage: string | null = null;
   warningMessage: string | null = null;
-  connectionStatus = "stopped";
-  isBootstrapping = false;
-  appVersion: string | null = null;
-  isPrerelease = false;
-  gitVersionStatus: OpenCodexToolVersionStatus | null = null;
-  isLoadingGitVersion = false;
-  forceOnboarding = false;
-  forcedOnboardingDismissed = false;
 
   /**
    * Creates the application store.
    *
    * @param root Root store used for backend requests and cross-store updates.
    */
-  constructor(private readonly root: RootStore) {
-    makeAutoObservable<AppStore, "root">(this, { root: false });
+  constructor(root: RootStore) {
+    super(root);
+    makeObservable<AppStore>(this, {
+      models: observable,
+      errorMessage: observable,
+      warningMessage: observable,
+      modelOptions: computed,
+      commitMessageModelOptions: computed,
+      handleEvent: override,
+      applyError: action,
+      clearErrorMessage: action,
+      showWarningMessage: action,
+      clearWarningMessage: action,
+      setSelectedModel: action,
+      setReasoningEffort: action,
+      setLanguage: action,
+      setAllowTurnSteering: action,
+      setDesktopTurnCompletedNotifications: action,
+      setDesktopApprovalNotifications: action,
+      setColorScheme: action,
+      setEnterKeyBehavior: action,
+      setVersioningVocabulary: action,
+      setDiscordRichPresenceEnabled: action,
+      reconnectDiscordRichPresence: action,
+      setAllowOutdatedCodex: action,
+      setDeveloperMode: action,
+      setPerformanceMonitoringEnabled: action,
+      setAdvancedPerformanceMonitoringEnabled: action,
+      setDefaultUsageLimitId: action,
+      setDefaultSourceId: action,
+      openDeveloperTools: action,
+      setCommitMessageModel: action,
+      setCommitMessageReasoningEffort: action,
+      setCommitMessageLanguage: action,
+      setCodexReleaseCheck: action
+    });
   }
 
   /**
@@ -88,13 +82,7 @@ export class AppStore implements RootChildStore {
    * @returns Model option list.
    */
   get modelOptions(): string[] {
-    const options = this.models.map((model) => model.model);
-
-    if (this.selectedModel !== null && !options.includes(this.selectedModel)) {
-      options.unshift(this.selectedModel);
-    }
-
-    return options;
+    return getModelOptions(this.models, this.selectedModel);
   }
 
   /**
@@ -103,83 +91,7 @@ export class AppStore implements RootChildStore {
    * @returns Model option list.
    */
   get commitMessageModelOptions(): string[] {
-    const options = this.models.map((model) => model.model);
-    const selectedModel = this.settings.commitMessageModel;
-
-    if (selectedModel !== null && !options.includes(selectedModel)) {
-      options.unshift(selectedModel);
-    }
-
-    return options;
-  }
-
-  /**
-   * Returns whether the startup onboarding should replace the main shell.
-   *
-   * @returns Whether onboarding is currently visible.
-   */
-  get shouldShowOnboarding(): boolean {
-    if (this.isBootstrapping) {
-      return false;
-    }
-
-    if (!this.settings.onboardingCompleted) {
-      return true;
-    }
-
-    return this.forceOnboarding && !this.forcedOnboardingDismissed;
-  }
-
-  /**
-   * Forces onboarding display for the current development session.
-   *
-   * @param forceOnboarding Whether onboarding should appear at startup.
-   *
-   * @returns Nothing.
-   */
-  setForceOnboarding(forceOnboarding: boolean): void {
-    this.forceOnboarding = forceOnboarding;
-  }
-
-  /**
-   * Requests initial application state from the backend.
-   *
-   * @returns Promise resolved when the request completes.
-   */
-  async bootstrap(): Promise<void> {
-    this.isBootstrapping = true;
-
-    try {
-      await this.root.request({ type: "app.bootstrap" });
-    } catch {
-      this.isBootstrapping = false;
-    }
-  }
-
-  /**
-   * Detects the Git command available to the host runtime.
-   *
-   * @returns Promise resolved when the diagnostic is stored.
-   */
-  async loadGitVersion(): Promise<void> {
-    if (this.isLoadingGitVersion) {
-      return;
-    }
-
-    this.isLoadingGitVersion = true;
-
-    try {
-      const gitVersionStatus = await this.root.request<OpenCodexToolVersionStatus>({
-        type: "git.version"
-      });
-      runInAction(() => {
-        this.gitVersionStatus = gitVersionStatus;
-      });
-    } finally {
-      runInAction(() => {
-        this.isLoadingGitVersion = false;
-      });
-    }
+    return getCommitMessageModelOptions(this.models, this.settings.commitMessageModel);
   }
 
   /**
@@ -189,25 +101,14 @@ export class AppStore implements RootChildStore {
    *
    * @returns Nothing.
    */
-  handleEvent(event: OpenCodexEvent): void {
-    switch (event.type) {
-      case "connection.status":
-        this.connectionStatus = event.status;
-        return;
-      case "app.bootstrap":
-        this.applyBootstrap(event.settings, event.projectPath, event.appVersion);
-        this.isPrerelease = event.isPrerelease;
-        return;
-      case "projects.updated":
-        this.isBootstrapping = false;
-        return;
-      case "models.updated":
-        this.models = event.models;
-        this.selectedModel = this.selectedModel ?? event.models[0]?.model ?? null;
-        return;
-      default:
-        return;
+  override handleEvent(event: OpenCodexEvent): void {
+    if (event.type === "models.updated") {
+      this.models = event.models;
+      this.selectedModel = this.selectedModel ?? event.models[0]?.model ?? null;
+      return;
     }
+
+    super.handleEvent(event);
   }
 
   /**
@@ -282,11 +183,7 @@ export class AppStore implements RootChildStore {
    * @returns Service tiers advertised by Codex.
    */
   getServiceTierOptions(model: string | null): OpenCodexModelServiceTier[] {
-    if (model === null) {
-      return [];
-    }
-
-    return this.models.find((entry) => entry.model === model)?.serviceTiers ?? [];
+    return getServiceTierOptions(this.models, model);
   }
 
   /**
@@ -296,16 +193,12 @@ export class AppStore implements RootChildStore {
    * @returns Model-specific efforts, or conservative fallback efforts.
    */
   getReasoningEffortOptions(model: string | null): OpenCodexReasoningEffortOption[] {
-    const modelEntry = this.findModel(model);
-
-    if (modelEntry !== undefined && modelEntry.supportedReasoningEfforts.length > 0) {
-      return modelEntry.supportedReasoningEfforts;
-    }
-
-    return DEFAULT_OPEN_CODEX_REASONING_EFFORTS.map((reasoningEffort) => ({
-      reasoningEffort,
-      description: ""
-    }));
+    return getReasoningEffortOptions(
+      this.models,
+      model,
+      this.selectedModel,
+      this.settings.defaultModel
+    );
   }
 
   /**
@@ -319,24 +212,13 @@ export class AppStore implements RootChildStore {
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort
   ): OpenCodexReasoningEffort {
-    const options = this.getReasoningEffortOptions(model);
-
-    if (options.some((option) => option.reasoningEffort === reasoningEffort)) {
-      return reasoningEffort;
-    }
-
-    const modelEntry = this.findModel(model);
-    const defaultReasoningEffort = modelEntry?.defaultReasoningEffort;
-
-    if (
-      defaultReasoningEffort !== null &&
-      defaultReasoningEffort !== undefined &&
-      options.some((option) => option.reasoningEffort === defaultReasoningEffort)
-    ) {
-      return defaultReasoningEffort;
-    }
-
-    return options[0]?.reasoningEffort ?? "medium";
+    return resolveReasoningEffort(
+      this.models,
+      model,
+      this.selectedModel,
+      this.settings.defaultModel,
+      reasoningEffort
+    );
   }
 
   /**
@@ -344,15 +226,12 @@ export class AppStore implements RootChildStore {
    *
    * @param language Language setting to apply.
    *
+   * @deprecated Use `settingsStore.setLanguage` instead.
+   *
    * @returns Nothing.
    */
   setLanguage(language: OpenCodexLanguage): void {
-    this.settings = { ...this.settings, language };
-    applyOpenCodexLanguage(language);
-    void this.root.request({
-      type: "settings.update",
-      patch: { language }
-    });
+    this.settingsStore.setLanguage(language);
   }
 
   /**
@@ -360,50 +239,34 @@ export class AppStore implements RootChildStore {
    *
    * @param allowTurnSteering Whether steering is enabled.
    *
+   * @deprecated Use `settingsStore.setAllowTurnSteering` instead.
+   *
    * @returns Nothing.
    */
   setAllowTurnSteering(allowTurnSteering: boolean): void {
-    this.settings = { ...this.settings, allowTurnSteering };
-    void this.root.request({
-      type: "settings.update",
-      patch: { allowTurnSteering }
-    });
+    this.settingsStore.setAllowTurnSteering(allowTurnSteering);
   }
 
   /**
    * Enables or disables notifications when a response has completed.
    *
    * @param turnCompleted Whether completed-response notifications are enabled.
+   * @deprecated Use `settingsStore.setDesktopTurnCompletedNotifications` instead.
    * @returns Nothing.
    */
   setDesktopTurnCompletedNotifications(turnCompleted: boolean): void {
-    const desktopNotifications = {
-      ...this.settings.desktopNotifications,
-      turnCompleted
-    };
-    this.settings = { ...this.settings, desktopNotifications };
-    void this.root.request({
-      type: "settings.update",
-      patch: { desktopNotifications }
-    });
+    this.settingsStore.setDesktopTurnCompletedNotifications(turnCompleted);
   }
 
   /**
    * Enables or disables notifications for pending approvals.
    *
    * @param approvalRequested Whether approval notifications are enabled.
+   * @deprecated Use `settingsStore.setDesktopApprovalNotifications` instead.
    * @returns Nothing.
    */
   setDesktopApprovalNotifications(approvalRequested: boolean): void {
-    const desktopNotifications = {
-      ...this.settings.desktopNotifications,
-      approvalRequested
-    };
-    this.settings = { ...this.settings, desktopNotifications };
-    void this.root.request({
-      type: "settings.update",
-      patch: { desktopNotifications }
-    });
+    this.settingsStore.setDesktopApprovalNotifications(approvalRequested);
   }
 
   /**
@@ -411,14 +274,12 @@ export class AppStore implements RootChildStore {
    *
    * @param colorScheme Color scheme setting to apply.
    *
+   * @deprecated Use `settingsStore.setColorScheme` instead.
+   *
    * @returns Nothing.
    */
   setColorScheme(colorScheme: OpenCodexColorScheme): void {
-    this.settings = { ...this.settings, colorScheme };
-    void this.root.request({
-      type: "settings.update",
-      patch: { colorScheme }
-    });
+    this.settingsStore.setColorScheme(colorScheme);
   }
 
   /**
@@ -426,14 +287,12 @@ export class AppStore implements RootChildStore {
    *
    * @param enterKeyBehavior Enter key behavior setting.
    *
+   * @deprecated Use `settingsStore.setEnterKeyBehavior` instead.
+   *
    * @returns Nothing.
    */
   setEnterKeyBehavior(enterKeyBehavior: OpenCodexEnterKeyBehavior): void {
-    this.settings = { ...this.settings, enterKeyBehavior };
-    void this.root.request({
-      type: "settings.update",
-      patch: { enterKeyBehavior }
-    });
+    this.settingsStore.setEnterKeyBehavior(enterKeyBehavior);
   }
 
   /**
@@ -441,14 +300,12 @@ export class AppStore implements RootChildStore {
    *
    * @param versioningVocabulary Vocabulary mode.
    *
+   * @deprecated Use `settingsStore.setVersioningVocabulary` instead.
+   *
    * @returns Nothing.
    */
   setVersioningVocabulary(versioningVocabulary: OpenCodexVersioningVocabulary): void {
-    this.settings = { ...this.settings, versioningVocabulary };
-    void this.root.request({
-      type: "settings.update",
-      patch: { versioningVocabulary }
-    });
+    this.settingsStore.setVersioningVocabulary(versioningVocabulary);
   }
 
   /**
@@ -456,14 +313,12 @@ export class AppStore implements RootChildStore {
    *
    * @param discordRichPresenceEnabled Whether Discord Rich Presence is enabled.
    *
+   * @deprecated Use `settingsStore.setDiscordRichPresenceEnabled` instead.
+   *
    * @returns Nothing.
    */
   setDiscordRichPresenceEnabled(discordRichPresenceEnabled: boolean): void {
-    this.settings = { ...this.settings, discordRichPresenceEnabled };
-    void this.root.request({
-      type: "settings.update",
-      patch: { discordRichPresenceEnabled }
-    });
+    this.settingsStore.setDiscordRichPresenceEnabled(discordRichPresenceEnabled);
   }
 
   /**
@@ -480,14 +335,12 @@ export class AppStore implements RootChildStore {
    *
    * @param allowOutdatedCodex Whether outdated Codex sources are usable.
    *
+   * @deprecated Use `settingsStore.setAllowOutdatedCodex` instead.
+   *
    * @returns Nothing.
    */
   setAllowOutdatedCodex(allowOutdatedCodex: boolean): void {
-    this.settings = { ...this.settings, allowOutdatedCodex };
-    void this.root.request({
-      type: "settings.update",
-      patch: { allowOutdatedCodex }
-    });
+    this.settingsStore.setAllowOutdatedCodex(allowOutdatedCodex);
   }
 
   /**
@@ -495,60 +348,34 @@ export class AppStore implements RootChildStore {
    *
    * @param developerMode Whether developer mode is enabled.
    *
+   * @deprecated Use `settingsStore.setDeveloperMode` instead.
+   *
    * @returns Nothing.
    */
   setDeveloperMode(developerMode: boolean): void {
-    const advancedPerformanceMonitoringEnabled = developerMode
-      ? this.settings.advancedPerformanceMonitoringEnabled
-      : false;
-    this.settings = {
-      ...this.settings,
-      developerMode,
-      advancedPerformanceMonitoringEnabled
-    };
-    void this.root.request({
-      type: "settings.update",
-      patch: { developerMode, advancedPerformanceMonitoringEnabled }
-    });
+    this.settingsStore.setDeveloperMode(developerMode);
   }
 
   /**
    * Enables or disables lightweight automatic performance monitoring.
    *
    * @param performanceMonitoringEnabled Whether monitoring is enabled.
+   * @deprecated Use `settingsStore.setPerformanceMonitoringEnabled` instead.
    */
   setPerformanceMonitoringEnabled(performanceMonitoringEnabled: boolean): void {
-    const advancedPerformanceMonitoringEnabled = performanceMonitoringEnabled
-      ? this.settings.advancedPerformanceMonitoringEnabled
-      : false;
-    this.settings = {
-      ...this.settings,
-      performanceMonitoringEnabled,
-      advancedPerformanceMonitoringEnabled
-    };
-    void this.root.request({
-      type: "settings.update",
-      patch: { performanceMonitoringEnabled, advancedPerformanceMonitoringEnabled }
-    });
+    this.settingsStore.setPerformanceMonitoringEnabled(performanceMonitoringEnabled);
   }
 
   /**
    * Enables detailed monitoring while developer mode is active.
    *
    * @param advancedPerformanceMonitoringEnabled Whether advanced monitoring is enabled.
+   * @deprecated Use `settingsStore.setAdvancedPerformanceMonitoringEnabled` instead.
    */
   setAdvancedPerformanceMonitoringEnabled(
     advancedPerformanceMonitoringEnabled: boolean
   ): void {
-    if (!this.settings.developerMode || !this.settings.performanceMonitoringEnabled) {
-      return;
-    }
-
-    this.settings = { ...this.settings, advancedPerformanceMonitoringEnabled };
-    void this.root.request({
-      type: "settings.update",
-      patch: { advancedPerformanceMonitoringEnabled }
-    });
+    this.settingsStore.setAdvancedPerformanceMonitoringEnabled(advancedPerformanceMonitoringEnabled);
   }
 
   /**
@@ -556,14 +383,12 @@ export class AppStore implements RootChildStore {
    *
    * @param defaultUsageLimitId Usage limit identifier, or `null` to use Codex.
    *
+   * @deprecated Use `settingsStore.setDefaultUsageLimitId` instead.
+   *
    * @returns Nothing.
    */
   setDefaultUsageLimitId(defaultUsageLimitId: string | null): void {
-    this.settings = { ...this.settings, defaultUsageLimitId };
-    void this.root.request({
-      type: "settings.update",
-      patch: { defaultUsageLimitId }
-    });
+    this.settingsStore.setDefaultUsageLimitId(defaultUsageLimitId);
   }
 
   /**
@@ -571,14 +396,12 @@ export class AppStore implements RootChildStore {
    *
    * @param defaultSourceId Source identifier.
    *
+   * @deprecated Use `settingsStore.setDefaultSourceId` instead.
+   *
    * @returns Nothing.
    */
   setDefaultSourceId(defaultSourceId: string): void {
-    this.settings = { ...this.settings, defaultSourceId };
-    void this.root.request({
-      type: "settings.update",
-      patch: { defaultSourceId }
-    });
+    this.settingsStore.setDefaultSourceId(defaultSourceId);
   }
 
   /**
@@ -588,24 +411,6 @@ export class AppStore implements RootChildStore {
    */
   openDeveloperTools(): void {
     void this.root.request({ type: "app.openDevTools" });
-  }
-
-  /**
-   * Marks onboarding as completed and hides forced onboarding for this session.
-   *
-   * @returns Nothing.
-   */
-  completeOnboarding(): void {
-    this.forcedOnboardingDismissed = true;
-    this.settings = {
-      ...this.settings,
-      onboardingCompleted: true
-    };
-
-    void this.root.request({
-      type: "settings.update",
-      patch: { onboardingCompleted: true }
-    });
   }
 
   /**
@@ -620,15 +425,10 @@ export class AppStore implements RootChildStore {
     const commitMessageReasoningEffort = currentEffort === null
       ? null
       : this.resolveReasoningEffort(commitMessageModel, currentEffort);
-    this.settings = {
-      ...this.settings,
+    this.settingsStore.setCommitMessageModelAndEffort(
       commitMessageModel,
       commitMessageReasoningEffort
-    };
-    void this.root.request({
-      type: "settings.update",
-      patch: { commitMessageModel, commitMessageReasoningEffort }
-    });
+    );
   }
 
   /**
@@ -636,16 +436,14 @@ export class AppStore implements RootChildStore {
    *
    * @param commitMessageReasoningEffort Reasoning effort, or `null` for backend default.
    *
+   * @deprecated Use `settingsStore.setCommitMessageReasoningEffort` instead.
+   *
    * @returns Nothing.
    */
   setCommitMessageReasoningEffort(
     commitMessageReasoningEffort: OpenCodexReasoningEffort | null
   ): void {
-    this.settings = { ...this.settings, commitMessageReasoningEffort };
-    void this.root.request({
-      type: "settings.update",
-      patch: { commitMessageReasoningEffort }
-    });
+    this.settingsStore.setCommitMessageReasoningEffort(commitMessageReasoningEffort);
   }
 
   /**
@@ -653,61 +451,22 @@ export class AppStore implements RootChildStore {
    *
    * @param commitMessageLanguage Output language.
    *
+   * @deprecated Use `settingsStore.setCommitMessageLanguage` instead.
+   *
    * @returns Nothing.
    */
   setCommitMessageLanguage(commitMessageLanguage: OpenCodexCommitMessageLanguage): void {
-    this.settings = { ...this.settings, commitMessageLanguage };
-    void this.root.request({
-      type: "settings.update",
-      patch: { commitMessageLanguage }
-    });
+    this.settingsStore.setCommitMessageLanguage(commitMessageLanguage);
   }
 
   /**
    * Stores the latest Codex release check returned by the backend.
    *
    * @param codexReleaseCheck Latest release check metadata.
+   * @deprecated Use `settingsStore.setCodexReleaseCheck` instead.
    */
   setCodexReleaseCheck(codexReleaseCheck: OpenCodexCodexReleaseCheck): void {
-    this.settings = {
-      ...this.settings,
-      codexReleaseCheck
-    };
+    this.settingsStore.setCodexReleaseCheck(codexReleaseCheck);
   }
 
-  private applyBootstrap(
-    settings: OpenCodexSettings,
-    launchProjectPath: string | null,
-    appVersion: string | null
-  ): void {
-    this.settings = {
-      ...this.settings,
-      ...settings
-    };
-    this.launchProjectPath = launchProjectPath;
-    this.selectedModel = settings.defaultModel;
-    this.reasoningEffort = settings.defaultReasoningEffort ?? "medium";
-    this.appVersion = appVersion;
-    applyOpenCodexLanguage(settings.language);
-  }
-
-  /**
-   * Finds a model using the explicit selection or the current default.
-   *
-   * @param model Model identifier, or `null` for the current default.
-   * @returns Matching model metadata, or `undefined`.
-   */
-  private findModel(model: string | null): OpenCodexModel | undefined {
-    const modelId = model
-      ?? this.selectedModel
-      ?? this.settings.defaultModel
-      ?? this.models[0]?.model
-      ?? null;
-
-    if (modelId === null) {
-      return undefined;
-    }
-
-    return this.models.find((entry) => entry.model === modelId || entry.id === modelId);
-  }
 }
