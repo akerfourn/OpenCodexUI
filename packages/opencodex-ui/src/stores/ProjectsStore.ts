@@ -7,18 +7,13 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ChatStore } from "./ChatStore";
+import { createClientProject, resolveProjectOpenSourceId } from "./projectMapping";
 import { ProjectStore } from "./ProjectStore";
 import { ProjectThreadEventsStore } from "./ProjectThreadEventsStore";
+import { ProjectThreadRouteIndex } from "./ProjectThreadRouteIndex";
 import { ProjectTrustStore } from "./ProjectTrustStore";
 import type { RootStore } from "./RootStore";
 import type { RootChildStore } from "./RootChildStore";
-
-type LoadedChatRoute = {
-  sourceId: string;
-  threadId: string;
-  projectStore: ProjectStore;
-  chatStore: ChatStore;
-};
 
 /**
  * Stores recent projects and opened project workspaces.
@@ -32,17 +27,8 @@ export class ProjectsStore implements RootChildStore {
   readonly threadEventsStore: ProjectThreadEventsStore;
   /** Store responsible for project trust requests. */
   readonly trustStore: ProjectTrustStore;
-  /** Temporary thread-to-project ownership hints while a thread opens. */
-  private readonly pendingThreadProjectIds = new Map<string, string>();
-  /** Notification routes waiting for a thread snapshot before activation. */
-  private readonly pendingNotificationThreadRoutes = new Set<string>();
-  /** Loaded chat routes grouped by source and thread identifiers. */
-  private readonly loadedChatRoutesBySourceId = new Map<
-    string,
-    Map<string, LoadedChatRoute>
-  >();
-  /** Registered route metadata keyed by loaded chat instance. */
-  private readonly loadedChatRouteByStore = new WeakMap<ChatStore, LoadedChatRoute>();
+  /** Non-observable index for loaded and pending thread routes. */
+  private readonly threadRoutes: ProjectThreadRouteIndex;
   /** Source selected when opening a project before the backend responds. */
   private pendingProjectOpenSourceId: string | null = null;
 
@@ -52,19 +38,12 @@ export class ProjectsStore implements RootChildStore {
    * @param root Root store used for backend requests and navigation.
    */
   constructor(private readonly root: RootStore) {
+    this.threadRoutes = new ProjectThreadRouteIndex(() => this.projectStoresById);
     this.threadEventsStore = new ProjectThreadEventsStore(this, root);
     this.trustStore = new ProjectTrustStore(this, root);
-    makeAutoObservable<
-      ProjectsStore,
-      "root"
-      | "loadedChatRoutesBySourceId"
-      | "loadedChatRouteByStore"
-      | "pendingNotificationThreadRoutes"
-    >(this, {
+    makeAutoObservable<ProjectsStore, "root" | "threadRoutes">(this, {
       root: false,
-      loadedChatRoutesBySourceId: false,
-      loadedChatRouteByStore: false,
-      pendingNotificationThreadRoutes: false
+      threadRoutes: false
     });
   }
 
@@ -133,9 +112,17 @@ export class ProjectsStore implements RootChildStore {
       return;
     }
 
-    const resolvedSourceId = sourceId === undefined
-      ? this.resolveProjectOpenSourceId()
-      : sourceId;
+    let resolvedSourceId: string | null;
+
+    if (sourceId === undefined) {
+      resolvedSourceId = resolveProjectOpenSourceId(
+        this.root.homeStore.selectedSourceId,
+        this.root.settings.defaultSourceId,
+        this.root.sourcesStore.sources[0]?.id
+      );
+    } else {
+      resolvedSourceId = sourceId;
+    }
     const existingProject = this.findProjectStoreByPath(trimmedPath, resolvedSourceId);
 
     if (existingProject !== null) {
@@ -167,7 +154,11 @@ export class ProjectsStore implements RootChildStore {
    * @returns Nothing.
    */
   openProjectFromPicker(mode: "open" | "create"): void {
-    const sourceId = this.resolveProjectOpenSourceId();
+    const sourceId = resolveProjectOpenSourceId(
+      this.root.homeStore.selectedSourceId,
+      this.root.settings.defaultSourceId,
+      this.root.sourcesStore.sources[0]?.id
+    );
 
     this.root.homeStore.isOpeningProject = true;
     this.root.appStore.errorMessage = null;
@@ -299,94 +290,22 @@ export class ProjectsStore implements RootChildStore {
     return projectStore;
   }
 
-  /**
-   * Finds an opened project store by path and optional source.
-   *
-   * @param projectPath Project path to match.
-   * @param sourceId Optional source identifier to match.
-   *
-   * @returns Matching project store, or `null`.
-   */
+  /** Finds an opened project by its source-aware path. */
   findProjectStoreByPath(projectPath: string, sourceId?: string | null): ProjectStore | null {
-    const normalizedPath = projectPath.trim();
-
-    for (const projectStore of this.projectStoresById.values()) {
-      const sourceMatches = sourceId === undefined || projectStore.project.sourceId === sourceId;
-
-      if (projectStore.projectPath === normalizedPath && sourceMatches) {
-        return projectStore;
-      }
-    }
-
-    return null;
+    return this.threadRoutes.findProjectStoreByPath(projectPath, sourceId);
   }
 
-  /**
-   * Finds the opened project that owns a thread.
-   *
-   * @param threadId Thread identifier.
-   * @param sourceId Optional source carried by the event.
-   *
-   * @returns Matching project store, or `null`.
-   */
+  /** Finds the opened project that owns a source-aware thread route. */
   findProjectStoreForThread(
     threadId: string,
     sourceId?: string | null
   ): ProjectStore | null {
-    const indexedRoute = this.findLoadedChatRoute(threadId, sourceId);
-
-    if (indexedRoute !== null) {
-      return indexedRoute.projectStore;
-    }
-
-    for (const projectStore of this.projectStoresById.values()) {
-      const chatStore = projectStore.chatsById.get(threadId);
-
-      if (chatStore !== undefined && matchesSource(chatStore.sourceId, sourceId)) {
-        this.registerLoadedChat(projectStore, chatStore);
-        return projectStore;
-      }
-
-      const thread = projectStore.findThread(threadId);
-
-      if (
-        thread !== null &&
-        matchesSource(projectStore.resolveThreadSourceId(thread), sourceId)
-      ) {
-        return projectStore;
-      }
-    }
-
-    return null;
+    return this.threadRoutes.findProjectStoreForThread(threadId, sourceId);
   }
 
-  /**
-   * Finds a loaded chat store by thread identifier.
-   *
-   * @param threadId Thread identifier.
-   * @param sourceId Optional source carried by the event.
-   *
-   * @returns Matching chat store, or `null`.
-   */
+  /** Finds the loaded chat for a source-aware thread route. */
   findChatStoreByThreadId(threadId: string, sourceId?: string | null): ChatStore | null {
-    const indexedRoute = this.findLoadedChatRoute(threadId, sourceId);
-
-    if (indexedRoute !== null) {
-      return indexedRoute.chatStore;
-    }
-
-    for (const projectStore of this.projectStoresById.values()) {
-      const chatStore = projectStore.chatsById.get(threadId);
-
-      if (chatStore === undefined || !matchesSource(chatStore.sourceId, sourceId)) {
-        continue;
-      }
-
-      this.registerLoadedChat(projectStore, chatStore);
-      return chatStore;
-    }
-
-    return null;
+    return this.threadRoutes.findChatStoreByThreadId(threadId, sourceId);
   }
 
   /**
@@ -405,13 +324,13 @@ export class ProjectsStore implements RootChildStore {
       return;
     }
 
-    this.pendingNotificationThreadRoutes.add(createThreadRouteKey(sourceId, threadId));
+    this.threadRoutes.rememberNotificationRoute(sourceId, threadId);
     void this.root.request({
       type: "threads.open",
       threadId,
       sourceId
     }).catch(() => {
-      this.pendingNotificationThreadRoutes.delete(createThreadRouteKey(sourceId, threadId));
+      this.threadRoutes.forgetNotificationRoute(sourceId, threadId);
     });
   }
 
@@ -426,128 +345,29 @@ export class ProjectsStore implements RootChildStore {
     this.navigateToThread(sourceId, threadId);
   }
 
-  /**
-   * Consumes a pending notification route after Codex returns thread metadata.
-   *
-   * @param thread Opened thread metadata.
-   * @returns Whether the project tab should be activated.
-   */
+  /** Consumes a pending notification route after thread metadata arrives. */
   consumePendingNotificationRoute(thread: OpenCodexThread): boolean {
-    const sourceId = thread.sourceId ?? null;
-    const resolvedKey = createThreadRouteKey(sourceId, thread.id);
-
-    if (this.pendingNotificationThreadRoutes.delete(resolvedKey)) {
-      return true;
-    }
-
-    if (sourceId !== null && this.pendingNotificationThreadRoutes.delete(
-      createThreadRouteKey(null, thread.id)
-    )) {
-      return true;
-    }
-
-    return false;
+    return this.threadRoutes.consumePendingNotificationRoute(thread);
   }
 
-  /**
-   * Registers or refreshes the direct route for one loaded chat.
-   *
-   * @param projectStore Project that owns the chat.
-   * @param chatStore Loaded chat instance.
-   */
+  /** Registers or refreshes the indexed route for a loaded chat. */
   registerLoadedChat(projectStore: ProjectStore, chatStore: ChatStore): void {
-    this.unregisterLoadedChat(chatStore);
-
-    const sourceId = chatStore.sourceId;
-
-    if (sourceId === null) {
-      return;
-    }
-
-    const route: LoadedChatRoute = {
-      sourceId,
-      threadId: chatStore.thread.id,
-      projectStore,
-      chatStore
-    };
-    const sourceRoutes = this.loadedChatRoutesBySourceId.get(sourceId)
-      ?? new Map<string, LoadedChatRoute>();
-
-    sourceRoutes.set(route.threadId, route);
-    this.loadedChatRoutesBySourceId.set(sourceId, sourceRoutes);
-    this.loadedChatRouteByStore.set(chatStore, route);
+    this.threadRoutes.registerLoadedChat(projectStore, chatStore);
   }
 
-  /**
-   * Removes the direct route owned by one loaded chat.
-   *
-   * @param chatStore Chat being disposed or detached.
-   */
+  /** Removes the indexed route owned by a loaded chat. */
   unregisterLoadedChat(chatStore: ChatStore): void {
-    const route = this.loadedChatRouteByStore.get(chatStore);
-
-    if (route === undefined) {
-      return;
-    }
-
-    this.loadedChatRouteByStore.delete(chatStore);
-    const sourceRoutes = this.loadedChatRoutesBySourceId.get(route.sourceId);
-
-    if (sourceRoutes?.get(route.threadId) === route) {
-      sourceRoutes.delete(route.threadId);
-    }
-
-    if (sourceRoutes !== undefined && sourceRoutes.size === 0) {
-      this.loadedChatRoutesBySourceId.delete(route.sourceId);
-    }
+    this.threadRoutes.unregisterLoadedChat(chatStore);
   }
 
-  /**
-   * Finds a loaded-chat route when an event carries its source.
-   *
-   * @param threadId Thread identifier.
-   * @param sourceId Optional source identifier from the event channel.
-   * @returns Loaded route, or `null` when absent.
-   */
-  private findLoadedChatRoute(
-    threadId: string,
-    sourceId?: string | null
-  ): LoadedChatRoute | null {
-    if (sourceId === undefined || sourceId === null) {
-      return null;
-    }
-
-    return this.loadedChatRoutesBySourceId.get(sourceId)?.get(threadId) ?? null;
-  }
-
-  /**
-   * Remembers which project initiated a thread request.
-   *
-   * @param threadId Thread identifier.
-   * @param projectId Project identifier.
-   *
-   * @returns Nothing.
-   */
+  /** Remembers which project initiated a pending thread request. */
   rememberPendingThreadProject(threadId: string, projectId: string): void {
-    this.pendingThreadProjectIds.set(threadId, projectId);
+    this.threadRoutes.rememberPendingThreadProject(threadId, projectId);
   }
 
-  /**
-   * Consumes the remembered project for a pending thread request.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Matching project store, or `null`.
-   */
+  /** Consumes the project associated with a pending thread request. */
   takePendingThreadProject(threadId: string): ProjectStore | null {
-    const projectId = this.pendingThreadProjectIds.get(threadId);
-
-    if (projectId === undefined) {
-      return null;
-    }
-
-    this.pendingThreadProjectIds.delete(threadId);
-    return this.projectStoresById.get(projectId) ?? null;
+    return this.threadRoutes.takePendingThreadProject(threadId);
   }
 
   /**
@@ -632,85 +452,4 @@ export class ProjectsStore implements RootChildStore {
     }
   }
 
-  /**
-   * Resolves the source to use for a new project-open request.
-   *
-   * @returns Source identifier, or `null` when none is configured.
-   */
-  private resolveProjectOpenSourceId(): string | null {
-    return this.root.homeStore.selectedSourceId
-      ?? this.root.settings.defaultSourceId
-      ?? this.root.sourcesStore.sources[0]?.id
-      ?? null;
-  }
-}
-
-/**
- * Creates local project metadata when only a path is available.
- *
- * @param projectPath Project path.
- * @param projectName Optional project display name.
- * @param sourceId Optional source identifier.
- * @returns Client-side project metadata.
- */
-function createClientProject(
-  projectPath: string,
-  projectName: string | null,
-  sourceId: string | null
-): OpenCodexProject {
-  const now = new Date().toISOString();
-  const safePath = projectPath.trim().length > 0 ? projectPath.trim() : "unknown";
-  const defaultName = projectName ?? readProjectName(safePath);
-
-  return {
-    id: `client:${sourceId ?? "orphan"}:${safePath}`,
-    sourceId,
-    path: safePath,
-    defaultName,
-    displayName: null,
-    isHidden: false,
-    preferences: {},
-    createdAt: now,
-    updatedAt: now,
-    lastSeenAt: now,
-    editedAt: now
-  };
-}
-
-/**
- * Matches a resolved owner source against an optional event source.
- *
- * Missing or null event sources retain the legacy thread-only fallback.
- *
- * @param ownerSourceId Source resolved from loaded state.
- * @param eventSourceId Optional source carried by the event.
- * @returns Whether the loaded owner may handle the event.
- */
-function matchesSource(
-  ownerSourceId: string | null,
-  eventSourceId?: string | null
-): boolean {
-  return eventSourceId === undefined || eventSourceId === null || ownerSourceId === eventSourceId;
-}
-
-/**
- * Reads the default project name from a filesystem-like path.
- *
- * @param projectPath Project path.
- * @returns Last path segment or the original path.
- */
-function readProjectName(projectPath: string): string {
-  const segments = projectPath.split(/[\\/]/).filter((segment) => segment.length > 0);
-  return segments.at(-1) ?? projectPath;
-}
-
-/**
- * Creates a source-aware route key for notification navigation.
- *
- * @param sourceId Source identifier, or `null`.
- * @param threadId Thread identifier.
- * @returns Stable route key.
- */
-function createThreadRouteKey(sourceId: string | null, threadId: string): string {
-  return `${sourceId ?? "unknown"}:${threadId}`;
 }
