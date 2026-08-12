@@ -7,41 +7,29 @@ import type {
 } from "@open-codex-ui/opencodex-cache";
 import { createProjectIdentity, normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
-  OpenCodexCommandCandidate,
   OpenCodexProject,
   OpenCodexProjectPreferences,
   OpenCodexSource,
   OpenCodexSourceKind,
-  OpenCodexSourceSettingsPatch,
-  OpenCodexCodexUpdateStatus,
-  OpenCodexToolVersionStatus
+  OpenCodexSourceSettingsPatch
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { OpenCodexBackendOptions } from "../types.js";
-import { THREAD_LIST_PAGE_SIZE, THREAD_SOURCE_KINDS } from "./constants.js";
-import { readThreadPages } from "./codexReaders.js";
-import { toOpenCodexProject } from "./projectMapping.js";
+import { createUncachedProject, toOpenCodexProject } from "./projectMapping.js";
 import { ProjectPathService } from "./ProjectPathService.js";
-import { ProjectPathVisibilityValidator } from "./projectPathVisibility.js";
-import {
-  createDefaultCachedSource,
-  toOpenCodexSource
-} from "./sourceMapping.js";
-import {
-  readCodexCommandCandidateStatuses,
-  readCodexVersionStatus
-} from "./toolVersionDetection.js";
-import {
-  toCachedThreadSummary,
-  withSourceId
-} from "./threadCacheMapping.js";
-import type { OpenCodexThreadWithProjectState } from "./threadTypes.js";
 import type {
   ClientPort,
   RuntimeEventPort,
   RuntimeSettingsPort
 } from "./runtime/runtimePorts.js";
-import type { CodexUpdateService } from "./CodexUpdateService.js";
+import { SourceCatalogService } from "./SourceCatalogService.js";
+import { SourceDetectionService } from "./SourceDetectionService.js";
+import { SourceThreadSyncService } from "./SourceThreadSyncService.js";
+import type {
+  SourceCatalogPort,
+  SourceThreadSyncPort,
+  SourceUpdateStatusPort
+} from "./sourcePorts.js";
 
 export type ProjectSourceServiceOptions = {
   backendOptions: OpenCodexBackendOptions;
@@ -49,7 +37,7 @@ export type ProjectSourceServiceOptions = {
   settings: Pick<RuntimeSettingsPort, "getSettings" | "setSettings">;
   events: Pick<RuntimeEventPort, "emit">;
   clients: Pick<ClientPort, "ensureClient" | "restartClient">;
-  updates: Pick<CodexUpdateService, "getSourceUpdateStatus">;
+  updates: SourceUpdateStatusPort;
 };
 
 /**
@@ -58,6 +46,10 @@ export type ProjectSourceServiceOptions = {
 export class ProjectSourceService {
   /** Service used to validate and create project paths. */
   private readonly projectPaths: ProjectPathService;
+  /** Service used to persist, resolve, and present configured sources. */
+  private readonly sourceCatalog: SourceCatalogPort;
+  /** Service used to synchronize source-owned thread indexes. */
+  private readonly sourceThreadSync: SourceThreadSyncPort;
 
   /**
    * Creates a project/source service.
@@ -68,6 +60,25 @@ export class ProjectSourceService {
     this.projectPaths = new ProjectPathService({
       host: options.backendOptions,
       clients: options.clients
+    });
+    const sourceDetection = new SourceDetectionService({
+      cacheRepository: options.cacheRepository,
+      host: options.backendOptions
+    });
+    this.sourceCatalog = new SourceCatalogService({
+      cacheRepository: options.cacheRepository,
+      settings: options.settings,
+      clients: options.clients,
+      detection: sourceDetection,
+      updates: options.updates,
+      host: options.backendOptions
+    });
+    this.sourceThreadSync = new SourceThreadSyncService({
+      cacheRepository: options.cacheRepository,
+      settings: options.settings,
+      clients: options.clients,
+      detection: sourceDetection,
+      host: options.backendOptions
     });
   }
 
@@ -110,23 +121,13 @@ export class ProjectSourceService {
     kind: OpenCodexSourceKind,
     sourceSettings: OpenCodexSourceSettingsPatch
   ): Promise<OpenCodexSource> {
-    const repository = this.requireCacheRepository("Source storage is unavailable.");
-    const createdSource = await repository.createSource(name, { kind, settings: sourceSettings });
-    const settings = this.options.settings.getSettings();
-    const source = this.withCodexUpdateStatus(toOpenCodexSource(
-      createdSource,
-      settings.codexCommand,
-      0,
-      await this.readAndStoreCodexVersionStatus(createdSource, settings.codexCommand),
-      this.createCodexUpdateStatusPlaceholder(),
-      await this.readCommandCandidates()
-    ));
+    const result = await this.sourceCatalog.createSource(name, kind, sourceSettings);
     this.options.events.emit({
       type: "sources.updated",
-      sources: await this.listOpenCodexSources(),
-      defaultSourceId: settings.defaultSourceId
+      sources: await this.sourceCatalog.listOpenCodexSources(),
+      defaultSourceId: result.defaultSourceId
     });
-    return source;
+    return result.source;
   }
 
   /**
@@ -145,18 +146,18 @@ export class ProjectSourceService {
     }
 
     const sources = sourceId === null
-      ? await repository.listSources()
-      : [await this.resolveSource(sourceId)];
+      ? await this.sourceCatalog.listCachedSources()
+      : [await this.sourceCatalog.resolveSource(sourceId)];
 
     for (const source of sources) {
-      await this.syncSource(source);
+      await this.sourceThreadSync.syncSource(source);
     }
 
     const projects = await this.readCachedProjects();
     this.options.events.emit({ type: "projects.updated", projects });
     this.options.events.emit({
       type: "sources.updated",
-      sources: await this.listOpenCodexSources(),
+      sources: await this.sourceCatalog.listOpenCodexSources(),
       defaultSourceId: this.options.settings.getSettings().defaultSourceId
     });
     return projects;
@@ -276,19 +277,11 @@ export class ProjectSourceService {
    * @returns Success result.
    */
   async deleteSource(sourceId: string): Promise<{ ok: true }> {
-    const settings = this.options.settings.getSettings();
-
-    if (sourceId === settings.defaultSourceId) {
-      throw new Error("Default source cannot be deleted.");
-    }
-
-    const repository = this.requireCacheRepository("Source storage is unavailable.");
-    await repository.clearSourceAssociations(sourceId);
-    await repository.deleteSource(sourceId);
+    const result = await this.sourceCatalog.deleteSource(sourceId);
     this.options.events.emit({
       type: "sources.updated",
-      sources: await this.listOpenCodexSources(),
-      defaultSourceId: settings.defaultSourceId
+      sources: await this.sourceCatalog.listOpenCodexSources(),
+      defaultSourceId: result.defaultSourceId
     });
     this.options.events.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
     return { ok: true };
@@ -308,32 +301,15 @@ export class ProjectSourceService {
       settings?: OpenCodexSourceSettingsPatch;
     }
   ): Promise<OpenCodexSource> {
-    const repository = this.requireCacheRepository("Source storage is unavailable.");
-    const previousSource = await this.resolveSource(sourceId);
-    const updatedSource = await repository.updateSource(sourceId, patch);
-
-    if (hasSourceLaunchCommandChanged(previousSource, updatedSource)) {
-      await repository.clearSourceAssociations(sourceId);
-      await this.options.clients.restartClient(sourceId);
-    }
-
-    const settings = this.options.settings.getSettings();
-    const source = this.withCodexUpdateStatus(toOpenCodexSource(
-      updatedSource,
-      settings.codexCommand,
-      await repository.getSourceProjectCount(updatedSource.id),
-      await this.readAndStoreCodexVersionStatus(updatedSource, settings.codexCommand),
-      this.createCodexUpdateStatusPlaceholder(),
-      await this.readCommandCandidates()
-    ));
+    const result = await this.sourceCatalog.updateSource(sourceId, patch);
 
     this.options.events.emit({
       type: "sources.updated",
-      sources: await this.listOpenCodexSources(),
-      defaultSourceId: settings.defaultSourceId
+      sources: await this.sourceCatalog.listOpenCodexSources(),
+      defaultSourceId: result.defaultSourceId
     });
     this.options.events.emit({ type: "projects.updated", projects: await this.readCachedProjects() });
-    return source;
+    return result.source;
   }
 
   /**
@@ -350,7 +326,7 @@ export class ProjectSourceService {
     sourceId: string | null,
     createIfMissing: boolean
   ): Promise<OpenCodexProject> {
-    const resolvedSource = await this.resolveSource(sourceId);
+    const resolvedSource = await this.sourceCatalog.resolveSource(sourceId);
     const ensuredProjectPath = await this.projectPaths.ensure(
       projectPath,
       createIfMissing,
@@ -466,25 +442,7 @@ export class ProjectSourceService {
    * @returns Promise resolved when initialization completes.
    */
   async ensureSourcesInitialized(): Promise<void> {
-    const repository = this.options.cacheRepository;
-
-    if (repository === null) {
-      return;
-    }
-
-    const source = await repository.ensureDefaultSource();
-    const settings = this.options.settings.getSettings();
-
-    if (settings.defaultSourceId !== null && settings.defaultSourceId !== "default") {
-      return;
-    }
-
-    const nextSettings = {
-      ...settings,
-      defaultSourceId: source.id
-    };
-    this.options.settings.setSettings(nextSettings);
-    await this.options.backendOptions.saveSettings?.(nextSettings);
+    await this.sourceCatalog.ensureSourcesInitialized();
   }
 
   /**
@@ -495,25 +453,7 @@ export class ProjectSourceService {
    * @returns Resolved source.
    */
   async resolveSource(sourceId: string | null): Promise<CachedSource> {
-    const repository = this.options.cacheRepository;
-
-    if (repository === null) {
-      return createDefaultCachedSource();
-    }
-
-    await this.ensureSourcesInitialized();
-    const sources = await repository.listSources();
-    const resolvedSourceId = sourceId ?? this.options.settings.getSettings().defaultSourceId;
-
-    if (resolvedSourceId !== null) {
-      const source = sources.find((entry) => entry.id === resolvedSourceId);
-
-      if (source !== undefined) {
-        return source;
-      }
-    }
-
-    return sources[0] ?? createDefaultCachedSource();
+    return await this.sourceCatalog.resolveSource(sourceId);
   }
 
   /**
@@ -522,213 +462,7 @@ export class ProjectSourceService {
    * @returns Source collection.
    */
   async listOpenCodexSources(): Promise<OpenCodexSource[]> {
-    const repository = this.options.cacheRepository;
-    const settings = this.options.settings.getSettings();
-
-    if (repository === null) {
-      const defaultSource = createDefaultCachedSource();
-      const commandCandidates = await this.readCommandCandidates();
-
-      return [
-        this.withCodexUpdateStatus(toOpenCodexSource(
-          defaultSource,
-          settings.codexCommand,
-          0,
-          await readCodexVersionStatus(defaultSource, settings.codexCommand),
-          this.createCodexUpdateStatusPlaceholder(),
-          commandCandidates
-        ))
-      ];
-    }
-
-    const sources = await repository.listSources();
-    const commandCandidates = await this.readCommandCandidates();
-
-    return Promise.all(sources.map(async (source) => {
-      const protocolSource = toOpenCodexSource(
-        source,
-        settings.codexCommand,
-        await repository.getSourceProjectCount(source.id),
-        await this.readAndStoreCodexVersionStatus(source, settings.codexCommand),
-        this.createCodexUpdateStatusPlaceholder(),
-        commandCandidates
-      );
-
-      return this.withCodexUpdateStatus(protocolSource);
-    }));
-  }
-
-  /**
-   * Adds computed update availability to a source DTO.
-   *
-   * @param source Source DTO without final update state.
-   * @returns Source DTO with update state.
-   */
-  private withCodexUpdateStatus(source: OpenCodexSource): OpenCodexSource {
-    return {
-      ...source,
-      codexUpdate: this.options.updates.getSourceUpdateStatus(
-        source,
-        this.options.settings.getSettings().codexCommand
-      )
-    };
-  }
-
-  /**
-   * Creates a temporary update status used before the final source DTO exists.
-   *
-   * @returns Neutral update status.
-   */
-  private createCodexUpdateStatusPlaceholder(): OpenCodexCodexUpdateStatus {
-    return {
-      supported: false,
-      updateAvailable: false,
-      latestVersion: this.options.settings.getSettings().codexReleaseCheck.latestVersion,
-      checkedAt: this.options.settings.getSettings().codexReleaseCheck.checkedAt,
-      message: null
-    };
-  }
-
-  /**
-   * Reads local Codex command candidates with availability details.
-   *
-   * @returns Detected command candidates.
-   */
-  private async readCommandCandidates(): Promise<OpenCodexCommandCandidate[]> {
-    try {
-      return await readCodexCommandCandidateStatuses();
-    } catch (error) {
-      this.options.backendOptions.logger?.(`codex candidate detection failed: ${String(error)}`);
-      return [];
-    }
-  }
-
-  private async readAndStoreCodexVersionStatus(
-    source: CachedSource,
-    fallbackCommand: string
-  ): Promise<OpenCodexToolVersionStatus> {
-    const status = await readCodexVersionStatus(source, fallbackCommand);
-    const repository = this.options.cacheRepository;
-
-    if (repository === null) {
-      return status;
-    }
-
-    await repository.updateSourceCodexDetection(source.id, {
-      version: status.version,
-      checkedAt: status.checkedAt,
-      error: status.status === "ready" ? null : status.message
-    });
-
-    return status;
-  }
-
-  /**
-   * Synchronizes thread/project metadata for one source.
-   *
-   * @param source Source to synchronize.
-   *
-   * @returns Promise resolved when synchronization completes.
-   */
-  private async syncSource(source: CachedSource): Promise<void> {
-    const settings = this.options.settings.getSettings();
-    const codexStatus = await this.readAndStoreCodexVersionStatus(source, settings.codexCommand);
-    const isCodexUsable = codexStatus.status === "ready" ||
-      (codexStatus.status === "outdated" && settings.allowOutdatedCodex);
-
-    if (!isCodexUsable) {
-      this.options.backendOptions.logger?.(
-        `skipping source sync because Codex is not usable for ${source.name}: ${codexStatus.message ?? "unknown"}`
-      );
-      return;
-    }
-
-    const client = await this.options.clients.ensureClient(source.id);
-    const projectPathValidator = new ProjectPathVisibilityValidator(source, client);
-    const sourceThreads = await readThreadPages(client, {
-      limit: THREAD_LIST_PAGE_SIZE,
-      sortKey: "updated_at",
-      sortDirection: "desc",
-      sourceKinds: THREAD_SOURCE_KINDS
-    });
-    const threads = await Promise.all(sourceThreads.map(async (thread) => {
-      const projectHidden = await projectPathValidator.shouldHideProjectPath(thread.projectPath);
-
-      return withSourceId(
-        {
-          ...thread,
-          projectHidden
-        },
-        source.id
-      );
-    }));
-
-    await this.writeThreadIndex(threads);
-    await this.deleteEmptyUnsyncedThreadShells(source.id, threads);
-  }
-
-  /**
-   * Writes synchronized thread metadata to the cache.
-   *
-   * @param threads Threads to persist.
-   *
-   * @returns Promise resolved when the write attempt completes.
-   */
-  private async writeThreadIndex(threads: OpenCodexThreadWithProjectState[]): Promise<void> {
-    const repository = this.options.cacheRepository;
-
-    if (repository === null) {
-      return;
-    }
-
-    try {
-      await repository.upsertThreadIndex(threads.map((thread) => toCachedThreadSummary(thread)));
-    } catch (error) {
-      this.options.backendOptions.logger?.(`thread cache index write failed: ${String(error)}`);
-    }
-  }
-
-  /**
-   * Removes empty cached thread shells after a source has reported its real thread index.
-   *
-   * @param sourceId Source identifier being synchronized.
-   * @param threads Threads reported by the source.
-   *
-   * @returns Promise resolved when cleanup completes.
-   */
-  private async deleteEmptyUnsyncedThreadShells(
-    sourceId: string,
-    threads: OpenCodexThreadWithProjectState[]
-  ): Promise<void> {
-    const repository = this.options.cacheRepository;
-
-    if (repository === null) {
-      return;
-    }
-
-    const projectPaths = new Set<string>();
-
-    for (const thread of threads) {
-      if (thread.projectPath !== null && thread.projectPath !== undefined) {
-        projectPaths.add(thread.projectPath);
-      }
-    }
-
-    try {
-      for (const projectPath of projectPaths) {
-        const deletedCount = await repository.deleteEmptyUnsyncedThreads(projectPath, sourceId);
-
-        if (deletedCount > 0) {
-          this.options.backendOptions.logger?.(
-            `deleted ${deletedCount} empty unsynced cached thread(s) for ${projectPath}`
-          );
-        }
-      }
-    } catch (error) {
-      this.options.backendOptions.logger?.(
-        `empty thread cache cleanup failed: ${String(error)}`
-      );
-    }
+    return await this.sourceCatalog.listOpenCodexSources();
   }
 
   /**
@@ -745,58 +479,4 @@ export class ProjectSourceService {
 
     return this.options.cacheRepository;
   }
-}
-
-type ProjectIdentity = NonNullable<ReturnType<typeof createProjectIdentity>>;
-
-/**
- * Creates a project DTO when the cache cannot persist it yet.
- *
- * @param projectIdentity Normalized project identity.
- * @param sourceId Source identifier, or `null`.
- * @returns Ephemeral project DTO.
- */
-function createUncachedProject(projectIdentity: ProjectIdentity, sourceId: string | null): OpenCodexProject {
-  const now = new Date().toISOString();
-
-  return {
-    id: projectIdentity.id,
-    sourceId,
-    path: projectIdentity.path,
-    defaultName: projectIdentity.defaultName,
-    displayName: null,
-    isHidden: false,
-    preferences: {},
-    createdAt: now,
-    updatedAt: now,
-    lastSeenAt: now,
-    editedAt: now
-  };
-}
-
-/**
- * Checks whether a source update changes the command used to start Codex.
- *
- * @param previousSource Source before the update.
- * @param updatedSource Source after the update.
- * @returns Whether the associated app-server client must be restarted.
- */
-function hasSourceLaunchCommandChanged(
-  previousSource: CachedSource,
-  updatedSource: CachedSource
-): boolean {
-  if (previousSource.kind !== updatedSource.kind) {
-    return true;
-  }
-
-  if ("commandMode" in previousSource.settings && "commandMode" in updatedSource.settings) {
-    return previousSource.settings.commandMode !== updatedSource.settings.commandMode ||
-      previousSource.settings.command !== updatedSource.settings.command;
-  }
-
-  if ("codexCommand" in previousSource.settings && "codexCommand" in updatedSource.settings) {
-    return previousSource.settings.codexCommand !== updatedSource.settings.codexCommand;
-  }
-
-  return false;
 }

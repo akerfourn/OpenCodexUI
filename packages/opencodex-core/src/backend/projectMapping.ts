@@ -1,8 +1,12 @@
 /**
  * Maps cached projects.
  */
+import { createProjectIdentity } from "@open-codex-ui/opencodex-cache";
 import type { CachedProject, CachedSource } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
+
+/** Normalized identity used by an uncached project snapshot. */
+export type ProjectIdentity = NonNullable<ReturnType<typeof createProjectIdentity>>;
 
 /**
  * Converts a cached project row into the protocol project DTO.
@@ -23,6 +27,34 @@ export function toOpenCodexProject(project: CachedProject): OpenCodexProject {
     updatedAt: project.updatedAt,
     lastSeenAt: project.lastSeenAt,
     editedAt: project.editedAt
+  };
+}
+
+/**
+ * Creates a project DTO when the cache cannot persist it yet.
+ *
+ * @param projectIdentity Normalized project identity.
+ * @param sourceId Source identifier, or `null`.
+ * @returns Ephemeral project DTO.
+ */
+export function createUncachedProject(
+  projectIdentity: ProjectIdentity,
+  sourceId: string | null
+): OpenCodexProject {
+  const now = new Date().toISOString();
+
+  return {
+    id: projectIdentity.id,
+    sourceId,
+    path: projectIdentity.path,
+    defaultName: projectIdentity.defaultName,
+    displayName: null,
+    isHidden: false,
+    preferences: {},
+    createdAt: now,
+    updatedAt: now,
+    lastSeenAt: now,
+    editedAt: now
   };
 }
 
