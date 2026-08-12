@@ -7,6 +7,16 @@ import type {
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
 
+import {
+  createCounters,
+  estimateEventBytes,
+  isSevereAnomaly,
+  readAnomalyReasons,
+  readAverageDuration,
+  readNotificationCategory
+} from "./performanceMonitoringHelpers.js";
+import type { MonitoringCounters } from "./performanceMonitoringHelpers.js";
+
 const SAMPLE_INTERVAL_MS = 1_000;
 const HISTORY_LIMIT = 300;
 const LOG_HISTORY_LIMIT = 60;
@@ -44,21 +54,6 @@ type PerformanceMonitoringOptions = {
   createLog(message: string, details: unknown): Promise<void> | void;
   readProcessMetrics(): OpenCodexProcessPerformanceMetric[];
   now?(): number;
-};
-
-type MonitoringCounters = {
-  notificationCount: number;
-  notificationBytes: number;
-  maxNotificationDurationMs: number;
-  notificationCategories: Record<string, number>;
-  eventCount: number;
-  eventBytes: number;
-  notificationCounts: Record<string, number>;
-  eventCounts: Record<string, number>;
-  liveCacheNotificationCount: number;
-  liveCacheDurationMs: number;
-  maxLiveCacheDurationMs: number;
-  liveCacheNotificationCounts: Record<string, number>;
 };
 
 /**
@@ -375,156 +370,7 @@ export class PerformanceMonitoringService {
   }
 }
 
-/** Creates empty interval counters. */
-function createCounters(): MonitoringCounters {
-  return {
-    notificationCount: 0,
-    notificationBytes: 0,
-    maxNotificationDurationMs: 0,
-    notificationCategories: {},
-    eventCount: 0,
-    eventBytes: 0,
-    notificationCounts: {},
-    eventCounts: {},
-    liveCacheNotificationCount: 0,
-    liveCacheDurationMs: 0,
-    maxLiveCacheDurationMs: 0,
-    liveCacheNotificationCounts: {}
-  };
-}
-
-/** Maps verbose notification methods to stable standard-mode categories. */
-function readNotificationCategory(method: string): string {
-  if (method === "item/agentMessage/delta") {
-    return "assistantDelta";
-  }
-
-  if (method.startsWith("item/reasoning/")) {
-    return "reasoningDelta";
-  }
-
-  if (method === "command/exec/outputDelta" ||
-    method === "item/commandExecution/outputDelta" ||
-    method === "process/outputDelta") {
-    return "commandOutputDelta";
-  }
-
-  if (method === "turn/diff/updated") {
-    return "diffUpdated";
-  }
-
-  if (method.startsWith("item/fileChange/")) {
-    return "fileChange";
-  }
-
-  if (method === "item/mcpToolCall/progress") {
-    return "toolProgress";
-  }
-
-  if (method === "rawResponseItem/completed") {
-    return "rawResponseItem";
-  }
-
-  if (method === "item/started" || method === "item/completed") {
-    return "itemLifecycle";
-  }
-
-  if (method === "thread/started" || method === "thread/status/changed") {
-    return "threadLifecycle";
-  }
-
-  return "other";
-}
-
 /** Increments one count without allocating per event. */
 function incrementCount(counts: Record<string, number>, key: string): void {
   counts[key] = (counts[key] ?? 0) + 1;
-}
-
-/**
- * Returns a stable average duration for one sampled interval.
- *
- * @param totalDurationMs Accumulated duration.
- * @param count Number of timed operations.
- * @returns Average duration, or zero when no operation was timed.
- */
-function readAverageDuration(totalDurationMs: number, count: number): number {
-  return count > 0 ? totalDurationMs / count : 0;
-}
-
-/** Estimates user-independent event payload volume from known string fields. */
-function estimateEventBytes(event: OpenCodexEvent): number {
-  if (event.type === "message.delta") {
-    return event.delta.length;
-  }
-
-  if (event.type === "activity.updated") {
-    return (event.activity.content?.length ?? 0) +
-      (event.activity.details?.length ?? 0) +
-      (event.activity.summary?.length ?? 0);
-  }
-
-  if (event.type === "projectCommand.output") {
-    return event.delta.length;
-  }
-
-  if (event.type === "collaboration.updated") {
-    const collaborationEvent = event.event;
-    const values = [
-      collaborationEvent.prompt,
-      collaborationEvent.result,
-      collaborationEvent.taskName,
-      collaborationEvent.senderAgentPath,
-      ...collaborationEvent.receiverThreadIds,
-      ...collaborationEvent.receiverAgentPaths
-    ];
-
-    return values.reduce((total, value) => total + (value?.length ?? 0), 0);
-  }
-
-  return 0;
-}
-
-/** Reads anomaly reasons from one aggregated interval. */
-function readAnomalyReasons(snapshot: PerformanceMonitoringSnapshot): string[] {
-  const reasons: string[] = [];
-  const renderer = snapshot.renderer;
-
-  if (snapshot.mainEventLoopDelayMs >= 150) {
-    reasons.push("main_event_loop_delay");
-  }
-
-  if (snapshot.maxNotificationDurationMs >= 100) {
-    reasons.push("backend_notification_duration");
-  }
-
-  if (renderer?.isDocumentVisible === true && renderer.eventLoopDelayMs >= 150) {
-    reasons.push("renderer_event_loop_delay");
-  }
-
-  if (renderer?.isDocumentVisible === true && renderer.longTaskDurationMs >= 500) {
-    reasons.push("renderer_long_tasks");
-  }
-
-  if (renderer?.isDocumentVisible === true && renderer.maxEventHandlingDurationMs >= 100) {
-    reasons.push("renderer_event_handling_duration");
-  }
-
-  return reasons;
-}
-
-/** Returns whether one interval is severe enough to log immediately. */
-function isSevereAnomaly(snapshot: PerformanceMonitoringSnapshot): boolean {
-  const renderer = snapshot.renderer;
-
-  return snapshot.mainEventLoopDelayMs >= 1_000 ||
-    snapshot.maxNotificationDurationMs >= 500 ||
-    (
-      renderer?.isDocumentVisible === true &&
-      (
-        renderer.eventLoopDelayMs >= 1_000 ||
-        renderer.maxLongTaskDurationMs >= 1_000 ||
-        renderer.maxEventHandlingDurationMs >= 500
-      )
-    );
 }
