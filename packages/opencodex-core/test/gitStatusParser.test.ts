@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { parseGitStatus } from "../src/backend/gitStatusParser";
+import { parseGitStatus } from "../src/backend/git/gitStatusParser";
 
 describe("parseGitStatus", () => {
   it("should split staged and unstaged files from porcelain v2 output", () => {
