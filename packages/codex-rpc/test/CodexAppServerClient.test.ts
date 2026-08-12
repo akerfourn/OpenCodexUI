@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CodexAppServerClient } from "../src/CodexAppServerClient";
 import { parseJsonRpcLine } from "../src/events";
+import { JsonRpcError } from "../src/types";
 import type { ProcessLike } from "../src/types";
 
 /**
@@ -54,6 +55,28 @@ describe("parseJsonRpcLine", () => {
 });
 
 describe("CodexAppServerClient", () => {
+  it("should start concurrently with one process and one initialization handshake", async () => {
+    const fakeProcess = new FakeProcess();
+    const processFactory = vi.fn(() => fakeProcess);
+    const client = new CodexAppServerClient({
+      processFactory,
+      requestTimeoutMs: 100
+    });
+    let initializationCount = 0;
+
+    respondToRequests(fakeProcess, (request) => {
+      if (request.method === "initialize") {
+        initializationCount += 1;
+        fakeProcess.stdout.write(`{"id":${request.id},"result":{}}\n`);
+      }
+    });
+
+    await Promise.all([client.start(), client.start()]);
+
+    expect(processFactory).toHaveBeenCalledOnce();
+    expect(initializationCount).toBe(1);
+  });
+
   it("should correlate requests with responses by id", async () => {
     const fakeProcess = new FakeProcess();
     const client = createClient(fakeProcess);
@@ -125,6 +148,78 @@ describe("CodexAppServerClient", () => {
     });
   });
 
+  it("should dispatch server requests with their id and method", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+    const serverRequestSpy = vi.fn();
+
+    respondToInitialize(fakeProcess);
+    client.onServerRequest(serverRequestSpy);
+
+    await client.start();
+    fakeProcess.stdout.write(
+      '{"jsonrpc":"2.0","id":"server-1","method":"approval/request",' +
+      '"params":{"command":"npm test"}}\n'
+    );
+
+    expect(serverRequestSpy).toHaveBeenCalledWith({
+      id: "server-1",
+      method: "approval/request",
+      params: { command: "npm test" }
+    });
+  });
+
+  it("should preserve JSON-RPC error details in JsonRpcError", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+
+    respondToRequests(fakeProcess, (request) => {
+      if (request.method === "initialize") {
+        fakeProcess.stdout.write(`{"id":${request.id},"result":{}}\n`);
+        return;
+      }
+
+      fakeProcess.stdout.write(`${JSON.stringify({
+        id: request.id,
+        error: {
+          code: -32042,
+          message: "Permission denied",
+          data: { reason: "policy" }
+        }
+      })}\n`);
+    });
+
+    await client.start();
+    const requestPromise = client.request("protected/method");
+
+    await expect(requestPromise).rejects.toBeInstanceOf(JsonRpcError);
+    await expect(requestPromise).rejects.toMatchObject({
+      message: "Permission denied",
+      code: -32042,
+      data: { reason: "policy" }
+    });
+  });
+
+  it("should trim stderr before sending it to the logger and callback", async () => {
+    const fakeProcess = new FakeProcess();
+    const logger = vi.fn();
+    const stderr = vi.fn();
+    const client = new CodexAppServerClient({
+      processFactory: () => fakeProcess,
+      requestTimeoutMs: 100,
+      logger,
+      stderr
+    });
+
+    respondToInitialize(fakeProcess);
+
+    await client.start();
+    fakeProcess.stderr.write("  warning from app-server  \n");
+
+    expect(logger).toHaveBeenCalledWith("[codex stderr] warning from app-server");
+    expect(stderr).toHaveBeenCalledWith("warning from app-server");
+  });
+
   it("should emit errors for invalid JSONL messages", async () => {
     const fakeProcess = new FakeProcess();
     const client = createClient(fakeProcess);
@@ -163,6 +258,45 @@ describe("CodexAppServerClient", () => {
     await client.stop();
 
     expect(closeSpy).not.toHaveBeenCalled();
+  });
+
+  it("should emit external close details and reject pending requests", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+    const closeSpy = vi.fn();
+
+    respondToInitialize(fakeProcess);
+    client.onClose(closeSpy);
+
+    await client.start();
+    const pendingRequest = client.request("never/responds");
+    fakeProcess.emit("close", 17, "SIGTERM");
+
+    await expect(pendingRequest).rejects.toThrow("Codex app-server process exited.");
+    expect(closeSpy).toHaveBeenCalledWith({ code: 17, signal: "SIGTERM" });
+  });
+
+  it("should send exact JSONL for notifications and server responses", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+    let outgoing = "";
+
+    respondToInitialize(fakeProcess);
+
+    await client.start();
+    fakeProcess.stdin.on("data", (chunk) => {
+      outgoing += String(chunk);
+    });
+
+    client.notify("demo/notify", { value: 1 });
+    client.respond("request-1", { ok: true });
+    client.rejectServerRequest("request-2", "not allowed");
+
+    expect(outgoing).toBe(
+      '{"jsonrpc":"2.0","method":"demo/notify","params":{"value":1}}\n' +
+      '{"jsonrpc":"2.0","id":"request-1","result":{"ok":true}}\n' +
+      '{"jsonrpc":"2.0","id":"request-2","error":{"code":-32000,"message":"not allowed"}}\n'
+    );
   });
 
   it("should reject a request when the response times out", async () => {
