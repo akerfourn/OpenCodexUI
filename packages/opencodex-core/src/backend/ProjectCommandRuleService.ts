@@ -26,7 +26,14 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { hashProjectCommandRules, renderProjectCommandRules, tokenizeCommandLine } from "./projectCommandRuleGenerator.js";
+import { errorMessage, toProtocolRule } from "./projectCommandRuleMapping.js";
 import { mapPolicyCheckResult } from "./projectCommandRulePolicy.js";
+import {
+  createUnsupportedStatus,
+  getRulesFilePath,
+  isSupportedSource,
+  resolveFileStatus
+} from "./projectCommandRuleStatus.js";
 import { resolveSourceCommand } from "./sourceMapping.js";
 import type {
   ClientPort,
@@ -35,7 +42,6 @@ import type {
   RuntimeSettingsPort
 } from "./runtime/runtimePorts.js";
 
-const managedRulesFileName = "opencodex-ui.rules";
 const commandCheckTimeoutMs = 30_000;
 const commandCheckOutputCap = 1024 * 1024;
 
@@ -389,56 +395,7 @@ export class ProjectCommandRuleService {
   }
 }
 
-/**
- * Returns the generated rules file path for a local project.
- *
- * @param projectPath Project path.
- * @returns Managed rules file path.
- */
-export function getRulesFilePath(projectPath: string): string {
-  return path.join(projectPath, ".codex", "rules", managedRulesFileName);
-}
-
-/**
- * Checks whether a source can be handled by the first local-only integration.
- *
- * @param source Codex source.
- * @returns Whether source-side local filesystem and command access are available.
- */
-function isSupportedSource(source: CachedSource): boolean {
-  if (source.kind === "local") {
-    return true;
-  }
-
-  return source.kind === "custom" && source.settings.hasLocalAccess;
-}
-
-/**
- * Creates an unsupported status without starting a Codex client.
- *
- * @param project Cached project.
- * @param desiredHash Desired generated file hash.
- * @param fileState Persisted file state.
- * @returns Unsupported status.
- */
-function createUnsupportedStatus(
-  project: CachedProject,
-  desiredHash: string,
-  fileState: Awaited<ReturnType<OpenCodexCacheRepository["getProjectCommandRuleFileState"]>>
-): OpenCodexProjectCommandRuleStatus {
-  return {
-    projectId: project.id,
-    sourceId: project.sourceId,
-    filePath: null,
-    fileStatus: "unsupported",
-    generatedHash: fileState?.generatedHash ?? null,
-    currentHash: null,
-    desiredHash,
-    isSupported: false,
-    runtimeState: "ready",
-    runtimeMessage: null
-  };
-}
+export { getRulesFilePath } from "./projectCommandRuleStatus.js";
 
 /**
  * Reads an optional source-local file.
@@ -460,69 +417,4 @@ async function readOptionalFile(client: CodexAppServerClient, filePath: string):
 
     throw error;
   }
-}
-
-/**
- * Resolves whether the generated file is synchronized or needs attention.
- *
- * @param generatedHash Last hash written by OpenCodexUI.
- * @param currentHash Hash currently present on disk.
- * @param desiredHash Hash produced from current SQLite rules.
- * @param fileState Persisted file state.
- * @returns File synchronization status.
- */
-function resolveFileStatus(
-  generatedHash: string | null,
-  currentHash: string | null,
-  desiredHash: string,
-  fileState: Awaited<ReturnType<OpenCodexCacheRepository["getProjectCommandRuleFileState"]>>
-): OpenCodexProjectCommandRuleStatus["fileStatus"] {
-  if (currentHash !== null && currentHash === desiredHash) {
-    return "synchronized";
-  }
-
-  if (currentHash !== null && (
-    (generatedHash !== null && currentHash !== generatedHash) ||
-    (fileState === null && currentHash !== desiredHash)
-  )) {
-    return "external";
-  }
-
-  if (currentHash === null && generatedHash === null) {
-    return "notGenerated";
-  }
-
-  return "pending";
-}
-
-/**
- * Maps a cached rule into the shared protocol shape.
- *
- * @param rule Cached rule.
- * @returns Protocol rule.
- */
-function toProtocolRule(rule: CachedProjectCommandRule): OpenCodexProjectCommandRule {
-  return {
-    id: rule.id,
-    projectId: rule.projectId,
-    name: rule.name,
-    pattern: [...rule.pattern],
-    decision: rule.decision,
-    justification: rule.justification,
-    matchExamples: [...rule.matchExamples],
-    notMatchExamples: [...rule.notMatchExamples],
-    enabled: rule.enabled,
-    createdAt: rule.createdAt,
-    updatedAt: rule.updatedAt
-  };
-}
-
-/**
- * Converts an unknown thrown value into a readable message.
- *
- * @param error Unknown error.
- * @returns Error message.
- */
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
