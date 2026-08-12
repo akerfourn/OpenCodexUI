@@ -1,0 +1,61 @@
+.spacer {
+  flex: 1;
+}
+
+.empty-state {
+  display: grid;
+  height: 100%;
+  place-content: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.empty-state h2 {
+  margin: 0;
+}
+
+.error-banner {
+  max-height: 160px;
+  margin: 0;
+  overflow: auto;
+  border-bottom: 1px solid var(--vscode-inputValidation-errorBorder);
+  color: var(--vscode-inputValidation-errorForeground);
+  background: var(--vscode-inputValidation-errorBackground);
+  padding: 10px 14px;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 760px) {
+  .resizable-sidebar-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 38dvh) minmax(0, 1fr);
+  }
+
+  .resizable-sidebar-shell {
+    grid-template-rows: minmax(0, 38dvh) 0 minmax(0, 1fr);
+  }
+
+  .sidebar-resizer {
+    display: none;
+  }
+
+  .thread-list,
+  .home-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--vscode-sideBar-border);
+  }
+
+  .project-workspace-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) 0 minmax(220px, 34dvh);
+  }
+
+  .project-panel-resizer {
+    display: none;
+  }
+
+  .project-side-panel {
+    border-top: 1px solid var(--vscode-panel-border);
+    border-left: 0;
+  }
+}

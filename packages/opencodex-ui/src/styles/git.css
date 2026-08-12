@@ -1,0 +1,128 @@
+.git-panel {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.git-panel-header {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 8px 12px;
+}
+
+.git-panel-header-action {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.git-panel-header:hover .git-panel-header-action,
+.git-panel-header:focus-within .git-panel-header-action {
+  opacity: 1;
+}
+
+.git-panel-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.git-file-list {
+  min-width: 0;
+}
+
+.git-deferred-section {
+  border: 1px solid color-mix(in srgb, var(--vscode-panel-border) 80%, var(--vscode-focusBorder));
+  border-radius: 8px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 94%, var(--vscode-focusBorder));
+}
+
+.git-file-row {
+  min-width: 0;
+  border-radius: 6px;
+  padding: 1px 0;
+}
+
+.git-file-row:hover {
+  background: color-mix(in srgb, var(--vscode-focusBorder) 8%, transparent);
+}
+
+.git-file-copy {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.git-file-name,
+.git-file-directory {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-file-name {
+  font-size: 13px;
+}
+
+.git-file-name-link {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.git-file-name-link:hover,
+.git-file-name-link:focus-visible {
+  text-decoration: underline;
+}
+
+.git-file-directory {
+  font-size: 11px;
+}
+
+.git-file-state {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  flex: 1 1 auto;
+  flex-grow: 0;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.git-file-state-added,
+.git-file-state-untracked {
+  color: #3fb950;
+}
+
+.git-file-state-modified {
+  color: #d29922;
+}
+
+.git-file-state-deleted {
+  color: #f85149;
+}
+
+.git-file-state-renamed,
+.git-file-state-copied {
+  color: #58a6ff;
+}
+
+.git-file-state-conflicted {
+  color: #ff7b72;
+}
+
