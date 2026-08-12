@@ -1,20 +1,16 @@
 /**
  * Hosts the Electron-side bridge between renderer IPC requests and the backend.
  */
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import type { IpcMainEvent } from "electron";
-import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import { createOpenCodexSqliteCacheRepository } from "@open-codex-ui/opencodex-cache";
 import { OpenCodexBackendRuntime, OpenCodexRequestRouter } from "@open-codex-ui/opencodex-core";
 import type {
   OpenCodexEvent,
-  OpenCodexImageAttachment,
-  OpenCodexRendererPerformanceSample,
   OpenCodexRequest,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
@@ -29,6 +25,9 @@ import {
   openProjectFolder,
   openProjectTerminal
 } from "./projectSystemActions.js";
+import { openExternalLink } from "./externalLinkOpener.js";
+import { pickImageFiles } from "./imageAttachmentPicker.js";
+import { readRendererPerformanceSample } from "./rendererPerformancePayload.js";
 
 type ElectronBridgeServerOptions = {
   settings: OpenCodexSettings;
@@ -82,7 +81,7 @@ export class ElectronBridgeServer {
         return this.pickProjectDirectory(mode);
       },
       pickImageFiles: async () => {
-        return this.pickImageFiles();
+        return pickImageFiles(this.window);
       },
       pickExecutableFile: async () => {
         return this.pickExecutableFile();
@@ -328,33 +327,6 @@ export class ElectronBridgeServer {
   }
 
   /**
-   * Opens a native image picker.
-   *
-   * @returns Selected image file paths.
-   */
-  private async pickImageFiles(): Promise<OpenCodexImageAttachment[]> {
-    const options = {
-      properties: ["openFile", "multiSelections"] as Array<"openFile" | "multiSelections">,
-      title: "Attach images",
-      filters: [
-        {
-          name: "Images",
-          extensions: ["png", "jpg", "jpeg", "webp", "gif"]
-        }
-      ]
-    };
-    const result = this.window === null
-      ? await dialog.showOpenDialog(options)
-      : await dialog.showOpenDialog(this.window, options);
-
-    if (result.canceled) {
-      return [];
-    }
-
-    return Promise.all(result.filePaths.map(createImageAttachmentFromPath));
-  }
-
-  /**
    * Opens a native executable picker.
    *
    * @returns Selected executable path.
@@ -397,48 +369,6 @@ function resolvePackagedMarkdownPath(fileName: string): string {
 
   return candidates.find((candidate) => fsSync.existsSync(candidate))
     ?? path.resolve(process.cwd(), "..", "..", fileName);
-}
-
-async function createImageAttachmentFromPath(
-  filePath: string,
-  index: number
-): Promise<OpenCodexImageAttachment> {
-  return {
-    id: `attachment-${Date.now()}-${index}`,
-    kind: "image",
-    source: "localPath",
-    value: filePath,
-    name: path.basename(filePath),
-    previewUrl: await readImagePreviewDataUrl(filePath)
-  };
-}
-
-async function readImagePreviewDataUrl(filePath: string): Promise<string | null> {
-  try {
-    const buffer = await fs.readFile(filePath);
-    const mimeType = readImageMimeType(filePath);
-    return `data:${mimeType};base64,${buffer.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
-
-function readImageMimeType(filePath: string): string {
-  const extension = path.extname(filePath).toLowerCase();
-
-  if (extension === ".jpg" || extension === ".jpeg") {
-    return "image/jpeg";
-  }
-
-  if (extension === ".webp") {
-    return "image/webp";
-  }
-
-  if (extension === ".gif") {
-    return "image/gif";
-  }
-
-  return "image/png";
 }
 
 /**
@@ -549,225 +479,6 @@ function isMissingPathError(error: unknown): boolean {
 }
 
 /**
- * Opens an external URL or a local file path from the renderer.
- *
- * @param href Link value requested by the user interface.
- * @param projectPath Current project path used to resolve relative file links.
- * @param openerCommand Source-specific command used for local path targets.
- * @returns Promise resolved once Electron has handled the request.
- */
-async function openExternalLink(
-  href: string,
-  projectPath: string | null,
-  openerCommand: string | null
-): Promise<void> {
-  const target = href.trim();
-
-  if (target.length === 0) {
-    return;
-  }
-
-  const resolved = resolveOpenTarget(target, projectPath);
-
-  if (resolved.type === "url") {
-    await shell.openExternal(resolved.value);
-    return;
-  }
-
-  if (openerCommand === null) {
-    return;
-  }
-
-  openDetachedCommand(openerCommand, {
-    projectPath,
-    filePath: resolved.value,
-    relativePath: projectPath === null ? resolved.value : path.relative(projectPath, resolved.value),
-    line: resolved.line,
-    column: resolved.column
-  });
-}
-
-/**
- * Resolves a link into either a URL target or a filesystem path target.
- *
- * @param href Link value emitted by the UI.
- * @param projectPath Current project path used as the base for relative paths.
- * @returns Normalized target description that can be opened by Electron.
- */
-function resolveOpenTarget(
-  href: string,
-  projectPath: string | null
-): { type: "url"; value: string } | {
-  type: "path";
-  value: string;
-  line: string | null;
-  column: string | null;
-} {
-  try {
-    const url = new URL(href);
-
-    if (url.protocol === "file:") {
-      const location = readLocation(fileURLToPath(url));
-      return {
-        type: "path",
-        value: location.path,
-        line: location.line,
-        column: location.column
-      };
-    }
-
-    return { type: "url", value: href };
-  } catch {
-    const location = readLocation(href);
-    const cleanedPath = location.path;
-
-    if (path.isAbsolute(cleanedPath)) {
-      return { type: "path", value: cleanedPath, line: location.line, column: location.column };
-    }
-
-    if (projectPath !== null) {
-      return {
-        type: "path",
-        value: path.resolve(projectPath, cleanedPath),
-        line: location.line,
-        column: location.column
-      };
-    }
-
-    return {
-      type: "path",
-      value: path.resolve(process.cwd(), cleanedPath),
-      line: location.line,
-      column: location.column
-    };
-  }
-}
-
-type OpenCommandContext = {
-  projectPath: string | null;
-  filePath: string;
-  relativePath: string;
-  line: string | null;
-  column: string | null;
-};
-
-/**
- * Starts an opener command independently from the OpenCodexUI process.
- *
- * @param commandLine Source-specific command line.
- * @param context Placeholder values available to the command.
- */
-function openDetachedCommand(commandLine: string, context: OpenCommandContext): void {
-  const parts = splitCommandLine(commandLine).map((part) => substituteOpenCommandPlaceholder(part, context));
-
-  if (parts.length === 0) {
-    return;
-  }
-
-  const [command, ...args] = parts;
-
-  if (command === undefined || command.length === 0) {
-    return;
-  }
-
-  const child = spawn(command, args, {
-    detached: true,
-    stdio: "ignore",
-    windowsHide: false
-  });
-
-  child.unref();
-}
-
-/**
- * Replaces source opener placeholders inside one command argument.
- *
- * @param value Command argument.
- * @param context Placeholder values.
- * @returns Argument with placeholders replaced.
- */
-function substituteOpenCommandPlaceholder(value: string, context: OpenCommandContext): string {
-  return value
-    .replaceAll("%D", context.projectPath ?? "")
-    .replaceAll("%F", context.filePath)
-    .replaceAll("%R", context.relativePath)
-    .replaceAll("%L", context.line ?? "")
-    .replaceAll("%C", context.column ?? "");
-}
-
-/**
- * Splits a simple command line into executable and arguments.
- *
- * @param value Command line to split.
- * @returns Command-line parts with quoted segments preserved.
- */
-function splitCommandLine(value: string): string[] {
-  const parts: string[] = [];
-  let current = "";
-  let quote: "\"" | "'" | null = null;
-
-  for (let index = 0; index < value.length; index += 1) {
-    const character = value[index];
-
-    if ((character === "\"" || character === "'") && quote === null) {
-      quote = character;
-      continue;
-    }
-
-    if (character === quote) {
-      quote = null;
-      continue;
-    }
-
-    if (character === " " && quote === null) {
-      if (current.length > 0) {
-        parts.push(current);
-        current = "";
-      }
-      continue;
-    }
-
-    current += character;
-  }
-
-  if (current.length > 0) {
-    parts.push(current);
-  }
-
-  return parts;
-}
-
-/**
- * Removes editor location suffixes from a path-like value.
- *
- * @param value File path or URL-derived path that may include line or column hints.
- * @returns Clean filesystem path without location metadata.
- */
-function readLocation(value: string): { path: string; line: string | null; column: string | null } {
-  const lineHashMatch = /#L(\d+)(?:-L\d+)?$/i.exec(value);
-
-  if (lineHashMatch !== null) {
-    return {
-      path: value.slice(0, lineHashMatch.index),
-      line: lineHashMatch[1] ?? null,
-      column: null
-    };
-  }
-
-  const suffixMatch = /:(\d+)(?::(\d+))?$/.exec(value);
-
-  if (suffixMatch !== null) {
-    return {
-      path: value.slice(0, suffixMatch.index),
-      line: suffixMatch[1] ?? null,
-      column: suffixMatch[2] ?? null
-    };
-  }
-
-  return { path: value, line: null, column: null };
-}
-
-/**
  * Reads process metrics at a low frequency for diagnostic snapshots.
  *
  * @returns Content-free CPU and working-set metrics by Electron process type.
@@ -778,161 +489,4 @@ function readProcessMetrics(): OpenCodexProcessPerformanceMetric[] {
     cpuPercent: metric.cpu.percentCPUUsage,
     workingSetSizeKb: metric.memory.workingSetSize
   }));
-}
-
-/**
- * Validates and bounds a renderer performance sample received through IPC.
- *
- * @param value Untrusted renderer payload.
- * @returns Safe sample, or `null` when the payload is invalid.
- */
-function readRendererPerformanceSample(
-  value: unknown
-): OpenCodexRendererPerformanceSample | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return null;
-  }
-
-  const sample = value as Record<string, unknown>;
-  const capturedAt = typeof sample.capturedAt === "string" ? sample.capturedAt : null;
-  const isDocumentVisible = sample.isDocumentVisible;
-
-  if (
-    capturedAt === null ||
-    capturedAt.length > 50 ||
-    Number.isNaN(Date.parse(capturedAt)) ||
-    typeof isDocumentVisible !== "boolean"
-  ) {
-    return null;
-  }
-
-  const numericFields = [
-    "intervalMs",
-    "eventLoopDelayMs",
-    "longTaskCount",
-    "longTaskDurationMs",
-    "maxLongTaskDurationMs",
-    "processedEventCount",
-    "estimatedEventBytes",
-    "maxEventHandlingDurationMs"
-  ] as const;
-  const numbers: Record<(typeof numericFields)[number], number> = {
-    intervalMs: 0,
-    eventLoopDelayMs: 0,
-    longTaskCount: 0,
-    longTaskDurationMs: 0,
-    maxLongTaskDurationMs: 0,
-    processedEventCount: 0,
-    estimatedEventBytes: 0,
-    maxEventHandlingDurationMs: 0
-  };
-
-  for (const field of numericFields) {
-    const fieldValue = sample[field];
-
-    if (typeof fieldValue !== "number" || !Number.isFinite(fieldValue) || fieldValue < 0) {
-      return null;
-    }
-
-    numbers[field] = Math.min(fieldValue, 1_000_000_000);
-  }
-
-  const result: OpenCodexRendererPerformanceSample = {
-    capturedAt,
-    isDocumentVisible,
-    ...numbers
-  };
-  const eventTypeCounts = readBoundedNumberRecord(sample.eventTypeCounts);
-
-  if (eventTypeCounts !== null) {
-    result.eventTypeCounts = eventTypeCounts;
-  }
-
-  const eventTypeMaxDurationMs = readBoundedNumberRecord(sample.eventTypeMaxDurationMs);
-
-  if (eventTypeMaxDurationMs !== null) {
-    result.eventTypeMaxDurationMs = eventTypeMaxDurationMs;
-  }
-
-  const markdown = readRendererMarkdownPerformanceSample(sample.markdown);
-
-  if (markdown !== null) {
-    result.markdown = markdown;
-  }
-
-  return result;
-}
-
-/**
- * Validates content-free Markdown timing aggregates received from the renderer.
- *
- * @param value Candidate Markdown timing sample.
- * @returns Safe timing sample, or `null` when omitted or invalid.
- */
-function readRendererMarkdownPerformanceSample(
-  value: unknown
-): OpenCodexRendererPerformanceSample["markdown"] | null {
-  if (value === undefined) {
-    return null;
-  }
-
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return null;
-  }
-
-  const sample = value as Record<string, unknown>;
-  const fields = [
-    "plainRenderCount",
-    "plainRenderDurationMs",
-    "maxPlainRenderDurationMs",
-    "highlightedRenderCount",
-    "highlightedRenderDurationMs",
-    "maxHighlightedRenderDurationMs",
-    "maxMarkdownLength"
-  ] as const;
-  const result = {} as NonNullable<OpenCodexRendererPerformanceSample["markdown"]>;
-
-  for (const field of fields) {
-    const fieldValue = sample[field];
-
-    if (typeof fieldValue !== "number" || !Number.isFinite(fieldValue) || fieldValue < 0) {
-      return null;
-    }
-
-    result[field] = Math.min(fieldValue, 1_000_000_000);
-  }
-
-  return result;
-}
-
-/**
- * Reads a bounded map of event counters from an IPC payload.
- *
- * @param value Candidate numeric metric map.
- * @returns Safe numeric values, or `null` when omitted or invalid.
- */
-function readBoundedNumberRecord(value: unknown): Record<string, number> | null {
-  if (value === undefined) {
-    return null;
-  }
-
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return null;
-  }
-
-  const numbers: Record<string, number> = {};
-
-  for (const [key, numberValue] of Object.entries(value).slice(0, 100)) {
-    if (
-      typeof numberValue !== "number" ||
-      !Number.isFinite(numberValue) ||
-      numberValue < 0
-    ) {
-      continue;
-    }
-
-    numbers[key.slice(0, 100)] = Math.min(numberValue, 1_000_000_000);
-  }
-
-  return numbers;
 }
