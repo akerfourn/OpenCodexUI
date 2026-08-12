@@ -6,25 +6,17 @@ import { makeAutoObservable, runInAction } from "mobx";
 import type {
   OpenCodexEvent,
   OpenCodexProjectCommand,
-  OpenCodexProjectCommandOutputStream,
-  OpenCodexProjectCommandRun,
-  OpenCodexProjectCommandRunStatus
+  OpenCodexProjectCommandRun
 } from "@open-codex-ui/opencodex-protocol";
 
+import {
+  ProjectCommandRunsStore,
+  type ProjectCommandRunView
+} from "./ProjectCommandRunsStore";
 import type { ProjectStore } from "./ProjectStore";
 import type { RootStore } from "./RootStore";
-import { consumeProjectCommandOutput } from "./projectCommandOutputBuffer";
 
-export type ProjectCommandLogLine = {
-  id: string;
-  stream: OpenCodexProjectCommandOutputStream;
-  text: string;
-};
-
-/** UI run representation enriched with retained log lines. */
-export type ProjectCommandRunView = OpenCodexProjectCommandRun & {
-  lines: ProjectCommandLogLine[];
-};
+export type { ProjectCommandLogLine, ProjectCommandRunView } from "./ProjectCommandRunsStore";
 
 /** Editable project command form shape. */
 export type ProjectCommandFormInput = {
@@ -34,26 +26,33 @@ export type ProjectCommandFormInput = {
   persistLogs: boolean;
 };
 
-const maxRunLines = 100;
-
 /**
  * Stores project command configuration and live output for one project.
  */
 export class ProjectCommandsStore {
   /** Commands configured for the owning project. */
   commands: OpenCodexProjectCommand[] = [];
-  /** Live and completed command runs grouped by command id. */
-  runsByCommandId = new Map<string, ProjectCommandRunView[]>();
+  /** Store responsible for live command-run state and output reduction. */
+  private readonly commandRunsStore: ProjectCommandRunsStore;
   /** Whether command definitions are loading. */
   isLoading = false;
   /** Whether command configuration is being persisted. */
   isSaving = false;
   /** Whether a run request is currently in flight. */
   isRunningCommand = false;
-  /** Partial output lines waiting for a newline by run and stream. */
-  private readonly pendingTextByRunAndStream = new Map<string, string>();
-  /** Local sequence used to create stable log-line ids. */
-  private lineSequence = 0;
+  /** Live and completed command runs grouped by command id. */
+  get runsByCommandId(): Map<string, ProjectCommandRunView[]> {
+    return this.commandRunsStore.runsByCommandId;
+  }
+
+  /**
+   * Replaces the run map while preserving the historical writable property.
+   *
+   * @param runsByCommandId Replacement runs grouped by command id.
+   */
+  set runsByCommandId(runsByCommandId: Map<string, ProjectCommandRunView[]>) {
+    this.commandRunsStore.runsByCommandId = runsByCommandId;
+  }
 
   /**
    * Creates the project commands store.
@@ -65,12 +64,13 @@ export class ProjectCommandsStore {
     private readonly projectStore: ProjectStore,
     private readonly root: RootStore
   ) {
-    makeAutoObservable<ProjectCommandsStore, "projectStore" | "root" | "pendingTextByRunAndStream">(
+    this.commandRunsStore = new ProjectCommandRunsStore();
+    makeAutoObservable<ProjectCommandsStore, "projectStore" | "root" | "commandRunsStore">(
       this,
       {
         projectStore: false,
         root: false,
-        pendingTextByRunAndStream: false
+        commandRunsStore: false
       },
       {
         autoBind: true
@@ -188,12 +188,8 @@ export class ProjectCommandsStore {
       });
 
       runInAction(() => {
-        for (const run of this.getRuns(commandId)) {
-          this.clearPendingLines(run.id);
-        }
-
+        this.commandRunsStore.clearCommand(commandId);
         this.commands = this.commands.filter((command) => command.id !== commandId);
-        this.runsByCommandId.delete(commandId);
       });
     } catch (error) {
       this.reportError(error);
@@ -291,7 +287,7 @@ export class ProjectCommandsStore {
       });
 
       runInAction(() => {
-        this.applyRunStarted(run);
+        this.commandRunsStore.applyRunStarted(run);
       });
     } catch (error) {
       this.reportError(error);
@@ -323,14 +319,12 @@ export class ProjectCommandsStore {
    * @returns Nothing.
    */
   closeRun(commandId: string, runId: string): void {
-    const runs = this.runsByCommandId.get(commandId) ?? [];
-    this.clearPendingLines(runId);
-    this.runsByCommandId.set(commandId, runs.filter((run) => run.id !== runId));
+    this.commandRunsStore.closeRun(commandId, runId);
   }
 
   /** Clears transient output retained by this project store. */
   dispose(): void {
-    this.pendingTextByRunAndStream.clear();
+    this.commandRunsStore.dispose();
   }
 
   /**
@@ -340,7 +334,7 @@ export class ProjectCommandsStore {
    * @returns `true` when a run is active.
    */
   hasRunningRuns(commandId: string): boolean {
-    return this.getRuns(commandId).some((run) => run.status === "running");
+    return this.commandRunsStore.hasRunningRuns(commandId);
   }
 
   /**
@@ -350,7 +344,7 @@ export class ProjectCommandsStore {
    * @returns Run list.
    */
   getRuns(commandId: string): ProjectCommandRunView[] {
-    return this.runsByCommandId.get(commandId) ?? [];
+    return this.commandRunsStore.getRuns(commandId);
   }
 
   /**
@@ -382,19 +376,7 @@ export class ProjectCommandsStore {
       return;
     }
 
-    switch (event.type) {
-      case "projectCommand.started":
-        this.applyRunStarted(event.run);
-        return;
-      case "projectCommand.output":
-        this.applyRunOutput(event.commandId, event.runId, event.stream, event.delta);
-        return;
-      case "projectCommand.exited":
-        this.applyRunExited(event.commandId, event.runId, event.status, event.exitCode, event.exitedAt);
-        return;
-      default:
-        return;
-    }
+    this.commandRunsStore.handleEvent(event);
   }
 
   /**
@@ -411,174 +393,6 @@ export class ProjectCommandsStore {
     }
 
     this.commands = this.commands.map((entry) => entry.id === command.id ? command : entry);
-  }
-
-  /**
-   * Adds a newly started command run to local state.
-   *
-   * @param run Command run metadata.
-   */
-  private applyRunStarted(run: OpenCodexProjectCommandRun): void {
-    const runs = this.getRuns(run.commandId);
-
-    if (runs.some((entry) => entry.id === run.id)) {
-      return;
-    }
-
-    this.runsByCommandId.set(run.commandId, [
-      ...runs,
-      {
-        ...run,
-        lines: []
-      }
-    ]);
-  }
-
-  /**
-   * Appends streamed output to a running command instance.
-   *
-   * @param commandId Command identifier.
-   * @param runId Run identifier.
-   * @param stream Output stream.
-   * @param delta Output delta.
-   */
-  private applyRunOutput(
-    commandId: string,
-    runId: string,
-    stream: OpenCodexProjectCommandOutputStream,
-    delta: string
-  ): void {
-    const run = this.findRun(commandId, runId);
-
-    if (run === null) {
-      return;
-    }
-
-    const completedLines = this.consumeOutputLines(runId, stream, delta);
-
-    if (completedLines.length === 0) {
-      return;
-    }
-
-    run.lines = [...run.lines, ...completedLines].slice(-maxRunLines);
-  }
-
-  /**
-   * Marks a command run as exited and flushes partial output.
-   *
-   * @param commandId Command identifier.
-   * @param runId Run identifier.
-   * @param status Final run status.
-   * @param exitCode Process exit code.
-   * @param exitedAt Exit timestamp.
-   */
-  private applyRunExited(
-    commandId: string,
-    runId: string,
-    status: OpenCodexProjectCommandRunStatus,
-    exitCode: number | null,
-    exitedAt: string
-  ): void {
-    const run = this.findRun(commandId, runId);
-
-    if (run === null) {
-      return;
-    }
-
-    const flushedLines = this.flushPendingLines(runId);
-    run.lines = [...run.lines, ...flushedLines].slice(-maxRunLines);
-    run.status = status;
-    run.exitCode = exitCode;
-    run.exitedAt = exitedAt;
-  }
-
-  /**
-   * Finds a command run by command and run id.
-   *
-   * @param commandId Command identifier.
-   * @param runId Run identifier.
-   * @returns Run view, or `null`.
-   */
-  private findRun(commandId: string, runId: string): ProjectCommandRunView | null {
-    return this.getRuns(commandId).find((run) => run.id === runId) ?? null;
-  }
-
-  /**
-   * Converts an output delta into completed display lines.
-   *
-   * @param runId Run identifier.
-   * @param stream Output stream.
-   * @param delta Output delta.
-   * @returns Completed log lines.
-   */
-  private consumeOutputLines(
-    runId: string,
-    stream: OpenCodexProjectCommandOutputStream,
-    delta: string
-  ): ProjectCommandLogLine[] {
-    const key = createPendingOutputKey(runId, stream);
-    const result = consumeProjectCommandOutput(
-      this.pendingTextByRunAndStream.get(key) ?? "",
-      delta
-    );
-
-    this.pendingTextByRunAndStream.set(key, result.pendingText);
-
-    return result.completedTexts
-      .slice(-maxRunLines)
-      .map((line) => this.createLogLine(stream, line));
-  }
-
-  /**
-   * Flushes partial stdout/stderr lines when a run exits.
-   *
-   * @param runId Run identifier.
-   * @returns Flushed log lines.
-   */
-  private flushPendingLines(runId: string): ProjectCommandLogLine[] {
-    const lines: ProjectCommandLogLine[] = [];
-
-    for (const stream of ["stdout", "stderr"] as const) {
-      const key = createPendingOutputKey(runId, stream);
-      const text = this.pendingTextByRunAndStream.get(key);
-      this.pendingTextByRunAndStream.delete(key);
-
-      if (text !== undefined && text.length > 0) {
-        lines.push(this.createLogLine(stream, text));
-      }
-    }
-
-    return lines;
-  }
-
-  /**
-   * Discards partial stdout and stderr fragments for one removed run.
-   *
-   * @param runId Removed command run identifier.
-   */
-  private clearPendingLines(runId: string): void {
-    for (const stream of ["stdout", "stderr"] as const) {
-      this.pendingTextByRunAndStream.delete(createPendingOutputKey(runId, stream));
-    }
-  }
-
-  /**
-   * Creates a display log line with a stable local id.
-   *
-   * @param stream Output stream.
-   * @param text Log text.
-   * @returns Log line.
-   */
-  private createLogLine(
-    stream: OpenCodexProjectCommandOutputStream,
-    text: string
-  ): ProjectCommandLogLine {
-    this.lineSequence += 1;
-    return {
-      id: `line:${this.lineSequence}`,
-      stream,
-      text
-    };
   }
 
   /**
@@ -648,20 +462,6 @@ function normalizeCommandFormInput(input: ProjectCommandFormInput): ProjectComma
     allowParallel: input.allowParallel,
     persistLogs: input.persistLogs
   };
-}
-
-/**
- * Builds the key used to buffer partial command output per stream.
- *
- * @param runId Run identifier.
- * @param stream Output stream.
- * @returns Pending-output map key.
- */
-function createPendingOutputKey(
-  runId: string,
-  stream: OpenCodexProjectCommandOutputStream
-): string {
-  return `${runId}:${stream}`;
 }
 
 /**
