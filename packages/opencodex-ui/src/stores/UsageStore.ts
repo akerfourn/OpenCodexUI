@@ -89,7 +89,7 @@ export class UsageStore implements RootChildStore {
 
   /** Limit id selected for compact usage widgets. */
   get defaultUsageLimitId(): string {
-    return this.root.appStore.settings.defaultUsageLimitId ?? "codex";
+    return this.root.appStore.settingsStore.settings.defaultUsageLimitId ?? "codex";
   }
 
   /** Usage limits belonging to the configured default source. */
@@ -142,7 +142,7 @@ export class UsageStore implements RootChildStore {
    * @returns Promise resolved when the refresh has completed.
    */
   async load(sourceId: string | null = null): Promise<void> {
-    const requestedSourceId = sourceId ?? this.root.appStore.settings.defaultSourceId;
+    const requestedSourceId = sourceId ?? this.root.appStore.settingsStore.settings.defaultSourceId;
     const stateKey = requestedSourceId ?? DEFAULT_SOURCE_KEY;
     const state = this.ensureSourceState(stateKey);
 
@@ -245,7 +245,7 @@ export class UsageStore implements RootChildStore {
    * @returns Nothing.
    */
   selectDefaultUsageLimit(limitId: string): void {
-    this.root.appStore.setDefaultUsageLimitId(limitId === "codex" ? null : limitId);
+    this.root.appStore.settingsStore.setDefaultUsageLimitId(limitId === "codex" ? null : limitId);
   }
 
   /**
@@ -316,7 +316,7 @@ export class UsageStore implements RootChildStore {
    * @returns Default source state, or `null` before loading.
    */
   private readDefaultState(): OpenCodexSourceUsageState | null {
-    const sourceId = this.root.appStore.settings.defaultSourceId ?? DEFAULT_SOURCE_KEY;
+    const sourceId = this.root.appStore.settingsStore.settings.defaultSourceId ?? DEFAULT_SOURCE_KEY;
     return this.usageBySourceId.get(sourceId) ?? null;
   }
 

@@ -64,18 +64,18 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
   }
 
   const sortedSources = [...sourcesStore.sources].sort((firstSource, secondSource) => {
-    if (isDefaultSource(firstSource.id, appStore.settings.defaultSourceId)) {
+    if (isDefaultSource(firstSource.id, appStore.settingsStore.settings.defaultSourceId)) {
       return -1;
     }
 
-    if (isDefaultSource(secondSource.id, appStore.settings.defaultSourceId)) {
+    if (isDefaultSource(secondSource.id, appStore.settingsStore.settings.defaultSourceId)) {
       return 1;
     }
 
     return firstSource.createdAt.localeCompare(secondSource.createdAt);
   });
   const codexReleaseBanner = createCodexReleaseBanner(
-    appStore.settings.codexReleaseCheck,
+    appStore.settingsStore.settings.codexReleaseCheck,
     sourcesStore.isRefreshingCodexRelease,
     t
   );
@@ -149,7 +149,7 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
           key={source.id}
           source={source}
           store={store}
-          isDefault={isDefaultSource(source.id, appStore.settings.defaultSourceId)}
+          isDefault={isDefaultSource(source.id, appStore.settingsStore.settings.defaultSourceId)}
           isEditing={source.id === editingSourceId}
           onEdit={handleEditSource}
           onCloseEdit={handleCloseEditor}

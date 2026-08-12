@@ -157,9 +157,12 @@ export function createRootStore(): RootStore {
         }
       ],
       selectedModel: "gpt-5.4",
-      settings: {
-        defaultModel: null,
-        defaultReasoningEffort: "medium"
+      settingsStore: {
+        settings: {
+          defaultModel: null,
+          defaultReasoningEffort: "medium",
+          allowTurnSteering: false
+        }
       },
       errorMessage: null,
       getReasoningEffortOptions: vi.fn(() => []),

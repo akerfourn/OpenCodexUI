@@ -75,7 +75,9 @@ function createRootStore(): RootStore {
       getSourceUsage: vi.fn(() => undefined)
     },
     appStore: {
-      setDefaultSourceId: vi.fn()
+      settingsStore: {
+        setDefaultSourceId: vi.fn()
+      }
     }
   } as unknown as RootStore;
 }

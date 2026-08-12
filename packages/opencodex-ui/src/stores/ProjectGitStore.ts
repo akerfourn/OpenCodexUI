@@ -218,12 +218,12 @@ export class ProjectGitStore {
 
   /** Model configured for commit message generation. */
   get commitGenerationModelLabel(): string | null {
-    return this.root.appStore.settings.commitMessageModel;
+    return this.root.appStore.settingsStore.settings.commitMessageModel;
   }
 
   /** Reasoning effort configured for commit message generation. */
   get commitGenerationReasoningEffortLabel(): string | null {
-    return this.root.appStore.settings.commitMessageReasoningEffort;
+    return this.root.appStore.settingsStore.settings.commitMessageReasoningEffort;
   }
 
   /** Whether local commits can be pushed to the configured upstream. */
@@ -1092,9 +1092,9 @@ export class ProjectGitStore {
         projectPath: this.projectStore.projectPath,
         sourceId: this.projectStore.project.sourceId,
         instruction,
-        model: this.root.appStore.settings.commitMessageModel,
-        reasoningEffort: this.root.appStore.settings.commitMessageReasoningEffort,
-        language: this.root.appStore.settings.commitMessageLanguage
+        model: this.root.appStore.settingsStore.settings.commitMessageModel,
+        reasoningEffort: this.root.appStore.settingsStore.settings.commitMessageReasoningEffort,
+        language: this.root.appStore.settingsStore.settings.commitMessageLanguage
       });
 
       runInAction(() => {

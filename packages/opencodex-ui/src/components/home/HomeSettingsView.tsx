@@ -31,45 +31,45 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
   const appStore = store.appStore;
 
   function handleLanguageChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    appStore.setLanguage(event.target.value as OpenCodexLanguage);
+    appStore.settingsStore.setLanguage(event.target.value as OpenCodexLanguage);
   }
 
   function handleColorSchemeChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    appStore.setColorScheme(event.target.value as OpenCodexColorScheme);
+    appStore.settingsStore.setColorScheme(event.target.value as OpenCodexColorScheme);
   }
 
   function handleAllowTurnSteeringChange(event: ChangeEvent<HTMLInputElement>): void {
-    appStore.setAllowTurnSteering(event.target.checked);
+    appStore.settingsStore.setAllowTurnSteering(event.target.checked);
   }
 
   function handleDesktopTurnCompletedNotificationsChange(
     event: ChangeEvent<HTMLInputElement>
   ): void {
-    appStore.setDesktopTurnCompletedNotifications(event.target.checked);
+    appStore.settingsStore.setDesktopTurnCompletedNotifications(event.target.checked);
   }
 
   function handleDesktopApprovalNotificationsChange(
     event: ChangeEvent<HTMLInputElement>
   ): void {
-    appStore.setDesktopApprovalNotifications(event.target.checked);
+    appStore.settingsStore.setDesktopApprovalNotifications(event.target.checked);
   }
 
   function handleAllowOutdatedCodexChange(event: ChangeEvent<HTMLInputElement>): void {
-    appStore.setAllowOutdatedCodex(event.target.checked);
+    appStore.settingsStore.setAllowOutdatedCodex(event.target.checked);
   }
 
   function handleDeveloperModeChange(event: ChangeEvent<HTMLInputElement>): void {
-    appStore.setDeveloperMode(event.target.checked);
+    appStore.settingsStore.setDeveloperMode(event.target.checked);
   }
 
   function handlePerformanceMonitoringChange(event: ChangeEvent<HTMLInputElement>): void {
-    appStore.setPerformanceMonitoringEnabled(event.target.checked);
+    appStore.settingsStore.setPerformanceMonitoringEnabled(event.target.checked);
   }
 
   function handleAdvancedPerformanceMonitoringChange(
     event: ChangeEvent<HTMLInputElement>
   ): void {
-    appStore.setAdvancedPerformanceMonitoringEnabled(event.target.checked);
+    appStore.settingsStore.setAdvancedPerformanceMonitoringEnabled(event.target.checked);
   }
 
   function handleOpenDeveloperTools(): void {
@@ -77,7 +77,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
   }
 
   function handleDiscordRichPresenceChange(event: ChangeEvent<HTMLInputElement>): void {
-    appStore.setDiscordRichPresenceEnabled(event.target.checked);
+    appStore.settingsStore.setDiscordRichPresenceEnabled(event.target.checked);
   }
 
   function handleDiscordReconnect(): void {
@@ -85,11 +85,11 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
   }
 
   function handleEnterKeyBehaviorChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    appStore.setEnterKeyBehavior(event.target.value as OpenCodexEnterKeyBehavior);
+    appStore.settingsStore.setEnterKeyBehavior(event.target.value as OpenCodexEnterKeyBehavior);
   }
 
   function handleVersioningVocabularyChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    appStore.setVersioningVocabulary(event.target.value as OpenCodexVersioningVocabulary);
+    appStore.settingsStore.setVersioningVocabulary(event.target.value as OpenCodexVersioningVocabulary);
   }
 
   return (
@@ -99,7 +99,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
       </Typography>
       <TextField
         select
-        value={appStore.settings.language}
+        value={appStore.settingsStore.settings.language}
         label={t("language.label")}
         fullWidth
         size="small"
@@ -111,7 +111,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
       </TextField>
       <TextField
         select
-        value={appStore.settings.colorScheme}
+        value={appStore.settingsStore.settings.colorScheme}
         label={t("theme.label")}
         fullWidth
         size="small"
@@ -124,7 +124,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
       <Stack spacing={0.5}>
         <TextField
           select
-          value={appStore.settings.enterKeyBehavior}
+          value={appStore.settingsStore.settings.enterKeyBehavior}
           label={t("settings.enterKeyBehavior")}
           fullWidth
           size="small"
@@ -135,13 +135,13 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           <MenuItem value="smart">{t("settings.enterKeyBehaviorOptions.smart")}</MenuItem>
         </TextField>
         <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
-          {t(`settings.enterKeyBehaviorDescriptions.${appStore.settings.enterKeyBehavior}`)}
+          {t(`settings.enterKeyBehaviorDescriptions.${appStore.settingsStore.settings.enterKeyBehavior}`)}
         </Typography>
       </Stack>
       <Stack spacing={0.5}>
         <TextField
           select
-          value={appStore.settings.versioningVocabulary}
+          value={appStore.settingsStore.settings.versioningVocabulary}
           label={t("settings.versioningVocabulary")}
           fullWidth
           size="small"
@@ -151,14 +151,14 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           <MenuItem value="technical">{t("settings.versioningVocabularyOptions.technical")}</MenuItem>
         </TextField>
         <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
-          {t(`settings.versioningVocabularyDescriptions.${appStore.settings.versioningVocabulary}`)}
+          {t(`settings.versioningVocabularyDescriptions.${appStore.settingsStore.settings.versioningVocabulary}`)}
         </Typography>
       </Stack>
       <FormControlLabel
         sx={{ alignItems: "flex-start", m: 0 }}
         control={(
           <Switch
-            checked={appStore.settings.allowTurnSteering}
+            checked={appStore.settingsStore.settings.allowTurnSteering}
             onChange={handleAllowTurnSteeringChange}
             sx={{ mt: -0.5 }}
           />
@@ -199,7 +199,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
             sx={{ alignItems: "flex-start", m: 0, ml: 1 }}
             control={(
               <Switch
-                checked={appStore.settings.desktopNotifications.turnCompleted}
+                checked={appStore.settingsStore.settings.desktopNotifications.turnCompleted}
                 onChange={handleDesktopTurnCompletedNotificationsChange}
                 sx={{ mt: -0.5 }}
               />
@@ -219,7 +219,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
             sx={{ alignItems: "flex-start", m: 0, ml: 1 }}
             control={(
               <Switch
-                checked={appStore.settings.desktopNotifications.approvalRequested}
+                checked={appStore.settingsStore.settings.desktopNotifications.approvalRequested}
                 onChange={handleDesktopApprovalNotificationsChange}
                 sx={{ mt: -0.5 }}
               />
@@ -242,7 +242,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           sx={{ alignItems: "flex-start", m: 0 }}
           control={(
             <Switch
-              checked={appStore.settings.allowOutdatedCodex}
+              checked={appStore.settingsStore.settings.allowOutdatedCodex}
               onChange={handleAllowOutdatedCodexChange}
               sx={{ mt: -0.5 }}
             />
@@ -258,7 +258,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
             </Stack>
           )}
         />
-        {appStore.settings.allowOutdatedCodex ? (
+        {appStore.settingsStore.settings.allowOutdatedCodex ? (
           <Alert severity="warning" variant="outlined">
             {t("settings.allowOutdatedCodexWarning")}
           </Alert>
@@ -270,7 +270,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
             sx={{ alignItems: "flex-start", m: 0 }}
             control={(
               <Switch
-                checked={appStore.settings.developerMode}
+                checked={appStore.settingsStore.settings.developerMode}
                 onChange={handleDeveloperModeChange}
                 sx={{ mt: -0.5 }}
               />
@@ -287,7 +287,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
             )}
           />
         </Box>
-        {appStore.settings.developerMode ? (
+        {appStore.settingsStore.settings.developerMode ? (
           <Button
             type="button"
             variant="outlined"
@@ -304,7 +304,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           sx={{ alignItems: "flex-start", m: 0 }}
           control={(
             <Switch
-              checked={appStore.settings.performanceMonitoringEnabled}
+              checked={appStore.settingsStore.settings.performanceMonitoringEnabled}
               onChange={handlePerformanceMonitoringChange}
               sx={{ mt: -0.5 }}
             />
@@ -320,12 +320,13 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
             </Stack>
           )}
         />
-        {appStore.settings.developerMode && appStore.settings.performanceMonitoringEnabled ? (
+        {appStore.settingsStore.settings.developerMode &&
+        appStore.settingsStore.settings.performanceMonitoringEnabled ? (
           <FormControlLabel
             sx={{ alignItems: "flex-start", ml: 4, mr: 0 }}
             control={(
               <Switch
-                checked={appStore.settings.advancedPerformanceMonitoringEnabled}
+                checked={appStore.settingsStore.settings.advancedPerformanceMonitoringEnabled}
                 onChange={handleAdvancedPerformanceMonitoringChange}
                 sx={{ mt: -0.5 }}
               />
@@ -353,7 +354,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
             sx={{ alignItems: "flex-start", m: 0 }}
             control={(
               <Switch
-                checked={appStore.settings.discordRichPresenceEnabled}
+                checked={appStore.settingsStore.settings.discordRichPresenceEnabled}
                 onChange={handleDiscordRichPresenceChange}
                 sx={{ mt: -0.5 }}
               />
@@ -370,7 +371,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
             )}
           />
         </Box>
-        {appStore.settings.discordRichPresenceEnabled ? (
+        {appStore.settingsStore.settings.discordRichPresenceEnabled ? (
           <Button
             type="button"
             variant="outlined"

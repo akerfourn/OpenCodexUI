@@ -1,4 +1,4 @@
-import { autorun, isAction, isObservableProp, runInAction } from "mobx";
+import { autorun, isObservableProp, runInAction } from "mobx";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
@@ -59,8 +59,8 @@ describe("AppLifecycleStore", () => {
       isPrerelease: true
     });
 
-    expect(store.settings).toMatchObject(settings);
-    expect(store.settings).not.toBe(settings);
+    expect(store.settingsStore.settings).toMatchObject(settings);
+    expect(store.settingsStore.settings).not.toBe(settings);
     expect(store.launchProjectPath).toBe("/workspace/project");
     expect(store.selectedModel).toBe("gpt-5.5");
     expect(store.reasoningEffort).toBe("high");
@@ -150,16 +150,17 @@ describe("AppLifecycleStore", () => {
 });
 
 describe("AppStore lifecycle compatibility", () => {
-  it("should assign settings through the facade without persisting and keep wrappers as actions", () => {
+  it("should expose settings through the dedicated store without persisting replacements", () => {
     const request = vi.fn(async (_request: OpenCodexRequest): Promise<unknown> => undefined);
     const appStore = new AppStore({ request } as unknown as RootStore);
 
-    appStore.settings = createSettings({ language: "en" });
+    appStore.settingsStore.replaceSettings(createSettings({ language: "en" }));
 
     expect(appStore.settingsStore.settings.language).toBe("en");
     expect(request).not.toHaveBeenCalled();
-    expect(isAction(appStore.setLanguage)).toBe(true);
-    expect(isAction(appStore.setDeveloperMode)).toBe(true);
+    expect("settings" in appStore).toBe(false);
+    expect("setLanguage" in appStore).toBe(false);
+    expect("setDeveloperMode" in appStore).toBe(false);
   });
 
   it("should hide onboarding while bootstrap is pending", async () => {
@@ -179,7 +180,7 @@ describe("AppStore lifecycle compatibility", () => {
   it("should show onboarding when it has not been completed", () => {
     const appStore = new AppStore(createRequestPort() as unknown as RootStore);
 
-    appStore.settings = createSettings({ onboardingCompleted: false });
+    appStore.settingsStore.replaceSettings(createSettings({ onboardingCompleted: false }));
 
     expect(appStore.shouldShowOnboarding).toBe(true);
   });
@@ -187,14 +188,14 @@ describe("AppStore lifecycle compatibility", () => {
   it("should hide onboarding after it has been completed", () => {
     const appStore = new AppStore(createRequestPort() as unknown as RootStore);
 
-    appStore.settings = createSettings({ onboardingCompleted: true });
+    appStore.settingsStore.replaceSettings(createSettings({ onboardingCompleted: true }));
 
     expect(appStore.shouldShowOnboarding).toBe(false);
   });
 
   it("should show forced onboarding until it is dismissed", () => {
     const appStore = new AppStore(createRequestPort() as unknown as RootStore);
-    appStore.settings = createSettings({ onboardingCompleted: true });
+    appStore.settingsStore.replaceSettings(createSettings({ onboardingCompleted: true }));
 
     appStore.forceOnboarding = true;
     expect(appStore.shouldShowOnboarding).toBe(true);
@@ -205,7 +206,7 @@ describe("AppStore lifecycle compatibility", () => {
 
   it("should update forced onboarding through its public setter", () => {
     const appStore = new AppStore(createRequestPort() as unknown as RootStore);
-    appStore.settings = createSettings({ onboardingCompleted: true });
+    appStore.settingsStore.replaceSettings(createSettings({ onboardingCompleted: true }));
 
     appStore.setForceOnboarding(true);
     expect(appStore.forceOnboarding).toBe(true);
@@ -229,12 +230,12 @@ describe("AppStore lifecycle compatibility", () => {
   it("should complete onboarding locally and send exactly one settings update", () => {
     const request = vi.fn(async (_request: OpenCodexRequest): Promise<unknown> => undefined);
     const appStore = new AppStore({ request } as unknown as RootStore);
-    appStore.settings = createSettings({ onboardingCompleted: false });
+    appStore.settingsStore.replaceSettings(createSettings({ onboardingCompleted: false }));
     appStore.setForceOnboarding(true);
 
     expect(appStore.completeOnboarding()).toBeUndefined();
 
-    expect(appStore.settings.onboardingCompleted).toBe(true);
+    expect(appStore.settingsStore.settings.onboardingCompleted).toBe(true);
     expect(appStore.forcedOnboardingDismissed).toBe(true);
     expect(appStore.shouldShowOnboarding).toBe(false);
     expect(request).toHaveBeenCalledOnce();
@@ -308,7 +309,7 @@ describe("AppStore lifecycle compatibility", () => {
     appStore.isBootstrapping = true;
     appStore.appVersion = "1.2.4";
     appStore.isPrerelease = true;
-    appStore.settings = createSettings({ onboardingCompleted: true });
+    appStore.settingsStore.replaceSettings(createSettings({ onboardingCompleted: true }));
     appStore.launchProjectPath = "/workspace/other-project";
     appStore.selectedModel = "manual-model";
     appStore.reasoningEffort = "low";
@@ -319,7 +320,7 @@ describe("AppStore lifecycle compatibility", () => {
     expect(appStore.isBootstrapping).toBe(true);
     expect(appStore.appVersion).toBe("1.2.4");
     expect(appStore.isPrerelease).toBe(true);
-    expect(appStore.settings.onboardingCompleted).toBe(true);
+    expect(appStore.settingsStore.settings.onboardingCompleted).toBe(true);
     expect(appStore.launchProjectPath).toBe("/workspace/other-project");
     expect(appStore.selectedModel).toBe("manual-model");
     expect(appStore.reasoningEffort).toBe("low");
@@ -330,7 +331,7 @@ describe("AppStore lifecycle compatibility", () => {
   it("should keep lifecycle properties observable after extraction", () => {
     const appStore = new AppStore(createRequestPort() as unknown as RootStore);
 
-    expect(isObservableProp(appStore, "settings")).toBe(true);
+    expect(isObservableProp(appStore.settingsStore, "settings")).toBe(true);
     expect(isObservableProp(appStore, "launchProjectPath")).toBe(true);
     expect(isObservableProp(appStore, "selectedModel")).toBe(true);
     expect(isObservableProp(appStore, "reasoningEffort")).toBe(true);
@@ -354,7 +355,7 @@ describe("AppStore lifecycle compatibility", () => {
       appStore.isBootstrapping = false;
     });
     runInAction(() => {
-      appStore.settings = createSettings({ onboardingCompleted: true });
+      appStore.settingsStore.replaceSettings(createSettings({ onboardingCompleted: true }));
     });
     runInAction(() => {
       appStore.forceOnboarding = true;

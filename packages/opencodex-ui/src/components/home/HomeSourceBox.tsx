@@ -105,7 +105,7 @@ export function HomeSourceBox({
   }
 
   function handleSetDefaultSource(): void {
-    store.appStore.setDefaultSourceId(source.id);
+    store.appStore.settingsStore.setDefaultSourceId(source.id);
   }
 
   function handleOpenResetCredits(): void {

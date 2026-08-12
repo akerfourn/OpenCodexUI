@@ -61,11 +61,11 @@ export class RootStore {
   }
 
   get settings(): OpenCodexSettings {
-    return this.appStore.settings;
+    return this.appStore.settingsStore.settings;
   }
 
   set settings(settings: OpenCodexSettings) {
-    this.appStore.settings = settings;
+    this.appStore.settingsStore.replaceSettings(settings);
   }
 
   /**

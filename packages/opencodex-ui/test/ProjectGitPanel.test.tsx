@@ -255,8 +255,10 @@ function createRootStore(): RootStore {
       hasLocalAccess: vi.fn(() => false)
     },
     appStore: {
-      settings: {
-        versioningVocabulary: "technical"
+      settingsStore: {
+        settings: {
+          versioningVocabulary: "technical"
+        }
       }
     },
     openExternalLink: vi.fn()

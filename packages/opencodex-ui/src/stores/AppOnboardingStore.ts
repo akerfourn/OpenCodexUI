@@ -37,7 +37,7 @@ export class AppOnboardingStore extends AppLifecycleStore {
       return false;
     }
 
-    if (!this.settings.onboardingCompleted) {
+    if (!this.settingsStore.settings.onboardingCompleted) {
       return true;
     }
 

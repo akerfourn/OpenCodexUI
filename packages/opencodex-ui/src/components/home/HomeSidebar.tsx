@@ -31,7 +31,7 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
   const { t } = useTranslation();
   const selectedSection = store.homeStore.selectedSection;
   const appVersion = store.appStore.appVersion;
-  const commitLabelKey = store.appStore.settings.versioningVocabulary === "technical"
+  const commitLabelKey = store.appStore.settingsStore.settings.versioningVocabulary === "technical"
     ? "home.commit"
     : "home.saveChanges";
 
@@ -61,7 +61,7 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
     selectSection("plugins");
     store.pluginsStore.selectDefaultSource(
       store.sourcesStore.sources,
-      store.appStore.settings.defaultSourceId
+      store.appStore.settingsStore.settings.defaultSourceId
     );
   }
 

@@ -34,7 +34,9 @@ if (rootElement !== null && readRendererView() === "usage-history") {
   );
 } else if (rootElement !== null) {
   const store = new RootStore(transport);
-  const performanceMonitor = new RendererPerformanceMonitor(() => store.settings);
+  const performanceMonitor = new RendererPerformanceMonitor(
+    () => store.appStore.settingsStore.settings
+  );
   transport.setPerformanceMonitor(performanceMonitor);
   setRendererPerformanceRecorder(performanceMonitor);
   store.appStore.setForceOnboarding(import.meta.env.DEV);

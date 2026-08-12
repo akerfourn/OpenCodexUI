@@ -74,7 +74,7 @@ export class SourcesStore implements RootChildStore {
       return true;
     }
 
-    return status === "outdated" && this.root.appStore.settings.allowOutdatedCodex;
+    return status === "outdated" && this.root.appStore.settingsStore.settings.allowOutdatedCodex;
   }
 
   /**
@@ -211,7 +211,7 @@ export class SourcesStore implements RootChildStore {
         force: true
       });
       runInAction(() => {
-        this.root.appStore.setCodexReleaseCheck(releaseCheck);
+        this.root.appStore.settingsStore.setCodexReleaseCheck(releaseCheck);
       });
     } finally {
       runInAction(() => {
@@ -368,10 +368,11 @@ export class SourcesStore implements RootChildStore {
    */
   private applySourcesUpdated(defaultSourceId: string | null, sources: OpenCodexSource[]): void {
     this.sources = sources;
-    this.root.settings = {
-      ...this.root.settings,
+    const settingsStore = this.root.appStore.settingsStore;
+    settingsStore.replaceSettings({
+      ...settingsStore.settings,
       defaultSourceId
-    };
+    });
     this.selectFallbackHomeSource(defaultSourceId);
   }
 

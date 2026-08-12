@@ -113,7 +113,10 @@ export function ChatComposer({
       return;
     }
 
-    if (event.shiftKey || !shouldSubmitOnEnter(store.appStore.settings.enterKeyBehavior, draft)) {
+    if (
+      event.shiftKey ||
+      !shouldSubmitOnEnter(store.appStore.settingsStore.settings.enterKeyBehavior, draft)
+    ) {
       return;
     }
 

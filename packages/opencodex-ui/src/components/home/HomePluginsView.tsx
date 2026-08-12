@@ -39,8 +39,8 @@ export function HomePluginsView({ store }: HomePluginsViewProps) {
   const sources = store.sourcesStore.sources;
 
   useEffect(() => {
-    pluginsStore.selectDefaultSource(sources, store.appStore.settings.defaultSourceId);
-  }, [pluginsStore, sources, store.appStore.settings.defaultSourceId]);
+    pluginsStore.selectDefaultSource(sources, store.appStore.settingsStore.settings.defaultSourceId);
+  }, [pluginsStore, sources, store.appStore.settingsStore.settings.defaultSourceId]);
 
   function handleSourceChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     pluginsStore.setSelectedSourceId(event.target.value);

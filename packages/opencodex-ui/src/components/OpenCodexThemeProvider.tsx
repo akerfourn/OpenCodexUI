@@ -28,7 +28,10 @@ export function OpenCodexThemeProvider({
   children
 }: OpenCodexThemeProviderProps) {
   const prefersDark = useMediaQuery("(prefers-color-scheme: dark)", { noSsr: true });
-  const mode = resolvePaletteMode(store.appStore.settings.colorScheme, prefersDark);
+  const mode = resolvePaletteMode(
+    store.appStore.settingsStore.settings.colorScheme,
+    prefersDark
+  );
   const theme = useMemo(() => createOpenCodexTheme(mode), [mode]);
 
   useLayoutEffect(() => {

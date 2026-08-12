@@ -55,7 +55,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     store.sourcesStore.hasLocalAccess(source.id) &&
     "openFileCommand" in source.settings &&
     source.settings.openFileCommand !== null;
-  const gitLabelsKey = store.appStore.settings.versioningVocabulary === "technical"
+  const gitLabelsKey = store.appStore.settingsStore.settings.versioningVocabulary === "technical"
     ? "git.technical"
     : "git.simple";
   const [isGenerateDialogOpen, setGenerateDialogOpen] = useState(false);

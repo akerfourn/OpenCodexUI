@@ -117,7 +117,7 @@ export class ProjectsStore implements RootChildStore {
     if (sourceId === undefined) {
       resolvedSourceId = resolveProjectOpenSourceId(
         this.root.homeStore.selectedSourceId,
-        this.root.settings.defaultSourceId,
+        this.root.appStore.settingsStore.settings.defaultSourceId,
         this.root.sourcesStore.sources[0]?.id
       );
     } else {
@@ -156,7 +156,7 @@ export class ProjectsStore implements RootChildStore {
   openProjectFromPicker(mode: "open" | "create"): void {
     const sourceId = resolveProjectOpenSourceId(
       this.root.homeStore.selectedSourceId,
-      this.root.settings.defaultSourceId,
+      this.root.appStore.settingsStore.settings.defaultSourceId,
       this.root.sourcesStore.sources[0]?.id
     );
 

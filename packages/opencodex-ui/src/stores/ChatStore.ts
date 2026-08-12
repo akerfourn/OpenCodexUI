@@ -204,7 +204,7 @@ export class ChatStore {
   /** Whether the user can send steering input into the active turn. */
   get canSteerActiveTurn(): boolean {
     return (
-      this.root.appStore.settings.allowTurnSteering &&
+      this.root.appStore.settingsStore.settings.allowTurnSteering &&
       this.isWorking &&
       this.activeTurnId !== null &&
       this.sourceId !== null &&
@@ -1540,7 +1540,9 @@ function resolveInitialSelectedModel(thread: OpenCodexThread, root: RootStore): 
     return thread.model;
   }
 
-  return root.appStore.models[0]?.model ?? root.appStore.selectedModel ?? root.appStore.settings.defaultModel;
+  return root.appStore.models[0]?.model
+    ?? root.appStore.selectedModel
+    ?? root.appStore.settingsStore.settings.defaultModel;
 }
 
 /**
@@ -1555,7 +1557,9 @@ function resolveInitialReasoningEffort(
   root: RootStore
 ): OpenCodexReasoningEffort {
   const selectedModel = resolveInitialSelectedModel(thread, root);
-  const configuredEffort = thread.reasoningEffort ?? root.appStore.settings.defaultReasoningEffort ?? "medium";
+  const configuredEffort = thread.reasoningEffort
+    ?? root.appStore.settingsStore.settings.defaultReasoningEffort
+    ?? "medium";
   return root.appStore.resolveReasoningEffort(selectedModel, configuredEffort);
 }
 

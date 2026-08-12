@@ -54,7 +54,7 @@ export function HomeUsageView({ store }: HomeUsageViewProps) {
   }
 
   function handleOpenHistory(): void {
-    const sourceId = store.appStore.settings.defaultSourceId;
+    const sourceId = store.appStore.settingsStore.settings.defaultSourceId;
 
     if (sourceId !== null) {
       store.openUsageHistory(sourceId);
@@ -110,7 +110,7 @@ export function HomeUsageView({ store }: HomeUsageViewProps) {
               <Button
                 variant="outlined"
                 startIcon={<HistoryOutlinedIcon />}
-                disabled={store.appStore.settings.defaultSourceId === null}
+                disabled={store.appStore.settingsStore.settings.defaultSourceId === null}
                 onClick={handleOpenHistory}
               >
                 {t("usagePage.historyOpen")}

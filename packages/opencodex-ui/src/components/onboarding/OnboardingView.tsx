@@ -43,11 +43,16 @@ export function OnboardingView({ store }: OnboardingViewProps) {
   const { t } = useTranslation();
   const appStore = store.appStore;
   const sourcesStore = store.sourcesStore;
-  const defaultSource = getDefaultSource(sourcesStore.sources, appStore.settings.defaultSourceId);
+  const defaultSource = getDefaultSource(
+    sourcesStore.sources,
+    appStore.settingsStore.settings.defaultSourceId
+  );
   const codexStatus = defaultSource?.codex.status ?? "unavailable";
   const isCodexReady = codexStatus === "ready";
   const isCodexOutdated = codexStatus === "outdated";
-  const isCodexUsable = isCodexReady || (isCodexOutdated && appStore.settings.allowOutdatedCodex);
+  const isCodexUsable = isCodexReady || (
+    isCodexOutdated && appStore.settingsStore.settings.allowOutdatedCodex
+  );
   const isGitReady = appStore.gitVersionStatus?.status === "ready";
   const isCheckingCodex = sourcesStore.isRefreshingSources;
   const isCheckingGit = appStore.isLoadingGitVersion;
@@ -79,7 +84,7 @@ export function OnboardingView({ store }: OnboardingViewProps) {
   }
 
   function handleAllowOutdatedCodexChange(event: ChangeEvent<HTMLInputElement>): void {
-    appStore.setAllowOutdatedCodex(event.target.checked);
+    appStore.settingsStore.setAllowOutdatedCodex(event.target.checked);
   }
 
   function handleFinish(): void {
@@ -126,7 +131,7 @@ export function OnboardingView({ store }: OnboardingViewProps) {
                         sx={{ m: 0 }}
                         control={(
                           <Switch
-                            checked={appStore.settings.allowOutdatedCodex}
+                            checked={appStore.settingsStore.settings.allowOutdatedCodex}
                             onChange={handleAllowOutdatedCodexChange}
                           />
                         )}

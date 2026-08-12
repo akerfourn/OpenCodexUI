@@ -127,11 +127,13 @@ describe("UsageStore reset credits", () => {
 function createRootStore(request: RootStore["request"]): RootStore {
   return {
     appStore: {
-      settings: {
-        defaultSourceId: "source-a",
-        defaultUsageLimitId: null
+      settingsStore: {
+        settings: {
+          defaultSourceId: "source-a",
+          defaultUsageLimitId: null
+        },
+        setDefaultUsageLimitId: vi.fn()
       },
-      setDefaultUsageLimitId: vi.fn()
     },
     request
   } as unknown as RootStore;

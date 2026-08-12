@@ -1,4 +1,4 @@
-import { action, computed, makeObservable, observable, runInAction } from "mobx";
+import { action, makeObservable, observable, runInAction } from "mobx";
 
 import type {
   OpenCodexEvent,
@@ -51,7 +51,6 @@ export class AppLifecycleStore {
     makeObservable<AppLifecycleStore, "root">(this, {
       root: false,
       settingsStore: false,
-      settings: computed,
       launchProjectPath: observable,
       selectedModel: observable,
       reasoningEffort: observable,
@@ -65,31 +64,6 @@ export class AppLifecycleStore {
       loadGitVersion: action,
       handleEvent: action
     });
-  }
-
-  /**
-   * Reads the settings DTO through the dedicated settings store.
-   *
-   * This getter preserves the historical public `AppStore.settings` API while
-   * keeping the mutable observable state owned by `settingsStore`.
-   *
-   * @deprecated Use `settingsStore.settings` instead.
-   *
-   * @returns Current application settings snapshot.
-   */
-  get settings(): OpenCodexSettings {
-    return this.settingsStore.settings;
-  }
-
-  /**
-   * Replaces settings through the dedicated store without persisting them.
-   *
-   * @param settings Authoritative settings snapshot.
-   * @deprecated Use `settingsStore.replaceSettings(settings)` instead.
-   * @returns Nothing.
-   */
-  set settings(settings: OpenCodexSettings) {
-    this.settingsStore.replaceSettings(settings);
   }
 
   /**

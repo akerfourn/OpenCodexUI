@@ -40,12 +40,14 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
   const { t } = useTranslation();
   const promptStore = store.commitPromptStore;
   const appStore = store.appStore;
-  const commitPromptLabelsKey = appStore.settings.versioningVocabulary === "technical"
+  const commitPromptLabelsKey = appStore.settingsStore.settings.versioningVocabulary === "technical"
     ? "commitPrompt.technical"
     : "commitPrompt.simple";
-  const modelValue = appStore.settings.commitMessageModel ?? defaultModelValue;
-  const reasoningValue = appStore.settings.commitMessageReasoningEffort ?? defaultReasoningValue;
-  const reasoningEfforts = appStore.getReasoningEffortOptions(appStore.settings.commitMessageModel);
+  const modelValue = appStore.settingsStore.settings.commitMessageModel ?? defaultModelValue;
+  const reasoningValue = appStore.settingsStore.settings.commitMessageReasoningEffort ?? defaultReasoningValue;
+  const reasoningEfforts = appStore.getReasoningEffortOptions(
+    appStore.settingsStore.settings.commitMessageModel
+  );
   const [isEditingPrompt, setEditingPrompt] = useState(false);
 
   useEffect(() => {
@@ -92,12 +94,14 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
   }
 
   function handleLanguageChange(event: ChangeEvent<HTMLInputElement>): void {
-    appStore.setCommitMessageLanguage(event.target.value as OpenCodexCommitMessageLanguage);
+    appStore.settingsStore.setCommitMessageLanguage(
+      event.target.value as OpenCodexCommitMessageLanguage
+    );
   }
 
   function handleReasoningChange(event: ChangeEvent<HTMLInputElement>): void {
     const value = event.target.value;
-    appStore.setCommitMessageReasoningEffort(
+    appStore.settingsStore.setCommitMessageReasoningEffort(
       value === defaultReasoningValue ? null : value as OpenCodexReasoningEffort
     );
   }
@@ -258,7 +262,7 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
                 select
                 size="small"
                 label={t("commitPrompt.outputLanguage")}
-                value={appStore.settings.commitMessageLanguage}
+                value={appStore.settingsStore.settings.commitMessageLanguage}
                 sx={{ minWidth: 150 }}
                 onChange={handleLanguageChange}
               >

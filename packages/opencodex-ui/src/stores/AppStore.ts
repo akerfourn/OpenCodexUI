@@ -1,17 +1,11 @@
 import { action, computed, makeObservable, observable, override } from "mobx";
 
 import type {
-  OpenCodexColorScheme,
-  OpenCodexCodexReleaseCheck,
-  OpenCodexCommitMessageLanguage,
-  OpenCodexEnterKeyBehavior,
   OpenCodexEvent,
-  OpenCodexLanguage,
   OpenCodexModel,
   OpenCodexModelServiceTier,
   OpenCodexReasoningEffortOption,
-  OpenCodexReasoningEffort,
-  OpenCodexVersioningVocabulary
+  OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
 import {
@@ -53,26 +47,9 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
       clearWarningMessage: action,
       setSelectedModel: action,
       setReasoningEffort: action,
-      setLanguage: action,
-      setAllowTurnSteering: action,
-      setDesktopTurnCompletedNotifications: action,
-      setDesktopApprovalNotifications: action,
-      setColorScheme: action,
-      setEnterKeyBehavior: action,
-      setVersioningVocabulary: action,
-      setDiscordRichPresenceEnabled: action,
       reconnectDiscordRichPresence: action,
-      setAllowOutdatedCodex: action,
-      setDeveloperMode: action,
-      setPerformanceMonitoringEnabled: action,
-      setAdvancedPerformanceMonitoringEnabled: action,
-      setDefaultUsageLimitId: action,
-      setDefaultSourceId: action,
       openDeveloperTools: action,
-      setCommitMessageModel: action,
-      setCommitMessageReasoningEffort: action,
-      setCommitMessageLanguage: action,
-      setCodexReleaseCheck: action
+      setCommitMessageModel: action
     });
   }
 
@@ -91,7 +68,10 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
    * @returns Model option list.
    */
   get commitMessageModelOptions(): string[] {
-    return getCommitMessageModelOptions(this.models, this.settings.commitMessageModel);
+    return getCommitMessageModelOptions(
+      this.models,
+      this.settingsStore.settings.commitMessageModel
+    );
   }
 
   /**
@@ -197,7 +177,7 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
       this.models,
       model,
       this.selectedModel,
-      this.settings.defaultModel
+      this.settingsStore.settings.defaultModel
     );
   }
 
@@ -216,109 +196,9 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
       this.models,
       model,
       this.selectedModel,
-      this.settings.defaultModel,
+      this.settingsStore.settings.defaultModel,
       reasoningEffort
     );
-  }
-
-  /**
-   * Updates the UI language and persists it through the backend.
-   *
-   * @param language Language setting to apply.
-   *
-   * @deprecated Use `settingsStore.setLanguage` instead.
-   *
-   * @returns Nothing.
-   */
-  setLanguage(language: OpenCodexLanguage): void {
-    this.settingsStore.setLanguage(language);
-  }
-
-  /**
-   * Updates whether active turns can receive steering messages.
-   *
-   * @param allowTurnSteering Whether steering is enabled.
-   *
-   * @deprecated Use `settingsStore.setAllowTurnSteering` instead.
-   *
-   * @returns Nothing.
-   */
-  setAllowTurnSteering(allowTurnSteering: boolean): void {
-    this.settingsStore.setAllowTurnSteering(allowTurnSteering);
-  }
-
-  /**
-   * Enables or disables notifications when a response has completed.
-   *
-   * @param turnCompleted Whether completed-response notifications are enabled.
-   * @deprecated Use `settingsStore.setDesktopTurnCompletedNotifications` instead.
-   * @returns Nothing.
-   */
-  setDesktopTurnCompletedNotifications(turnCompleted: boolean): void {
-    this.settingsStore.setDesktopTurnCompletedNotifications(turnCompleted);
-  }
-
-  /**
-   * Enables or disables notifications for pending approvals.
-   *
-   * @param approvalRequested Whether approval notifications are enabled.
-   * @deprecated Use `settingsStore.setDesktopApprovalNotifications` instead.
-   * @returns Nothing.
-   */
-  setDesktopApprovalNotifications(approvalRequested: boolean): void {
-    this.settingsStore.setDesktopApprovalNotifications(approvalRequested);
-  }
-
-  /**
-   * Updates the UI color scheme and persists it through the backend.
-   *
-   * @param colorScheme Color scheme setting to apply.
-   *
-   * @deprecated Use `settingsStore.setColorScheme` instead.
-   *
-   * @returns Nothing.
-   */
-  setColorScheme(colorScheme: OpenCodexColorScheme): void {
-    this.settingsStore.setColorScheme(colorScheme);
-  }
-
-  /**
-   * Updates the Enter key behavior used by the chat composer.
-   *
-   * @param enterKeyBehavior Enter key behavior setting.
-   *
-   * @deprecated Use `settingsStore.setEnterKeyBehavior` instead.
-   *
-   * @returns Nothing.
-   */
-  setEnterKeyBehavior(enterKeyBehavior: OpenCodexEnterKeyBehavior): void {
-    this.settingsStore.setEnterKeyBehavior(enterKeyBehavior);
-  }
-
-  /**
-   * Updates the versioning vocabulary used by Git-related UI.
-   *
-   * @param versioningVocabulary Vocabulary mode.
-   *
-   * @deprecated Use `settingsStore.setVersioningVocabulary` instead.
-   *
-   * @returns Nothing.
-   */
-  setVersioningVocabulary(versioningVocabulary: OpenCodexVersioningVocabulary): void {
-    this.settingsStore.setVersioningVocabulary(versioningVocabulary);
-  }
-
-  /**
-   * Updates Discord Rich Presence usage.
-   *
-   * @param discordRichPresenceEnabled Whether Discord Rich Presence is enabled.
-   *
-   * @deprecated Use `settingsStore.setDiscordRichPresenceEnabled` instead.
-   *
-   * @returns Nothing.
-   */
-  setDiscordRichPresenceEnabled(discordRichPresenceEnabled: boolean): void {
-    this.settingsStore.setDiscordRichPresenceEnabled(discordRichPresenceEnabled);
   }
 
   /**
@@ -328,80 +208,6 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
    */
   reconnectDiscordRichPresence(): void {
     void this.root.request({ type: "discord.reconnect" });
-  }
-
-  /**
-   * Updates whether outdated Codex CLI versions can still be used.
-   *
-   * @param allowOutdatedCodex Whether outdated Codex sources are usable.
-   *
-   * @deprecated Use `settingsStore.setAllowOutdatedCodex` instead.
-   *
-   * @returns Nothing.
-   */
-  setAllowOutdatedCodex(allowOutdatedCodex: boolean): void {
-    this.settingsStore.setAllowOutdatedCodex(allowOutdatedCodex);
-  }
-
-  /**
-   * Updates whether developer-only actions are visible and available.
-   *
-   * @param developerMode Whether developer mode is enabled.
-   *
-   * @deprecated Use `settingsStore.setDeveloperMode` instead.
-   *
-   * @returns Nothing.
-   */
-  setDeveloperMode(developerMode: boolean): void {
-    this.settingsStore.setDeveloperMode(developerMode);
-  }
-
-  /**
-   * Enables or disables lightweight automatic performance monitoring.
-   *
-   * @param performanceMonitoringEnabled Whether monitoring is enabled.
-   * @deprecated Use `settingsStore.setPerformanceMonitoringEnabled` instead.
-   */
-  setPerformanceMonitoringEnabled(performanceMonitoringEnabled: boolean): void {
-    this.settingsStore.setPerformanceMonitoringEnabled(performanceMonitoringEnabled);
-  }
-
-  /**
-   * Enables detailed monitoring while developer mode is active.
-   *
-   * @param advancedPerformanceMonitoringEnabled Whether advanced monitoring is enabled.
-   * @deprecated Use `settingsStore.setAdvancedPerformanceMonitoringEnabled` instead.
-   */
-  setAdvancedPerformanceMonitoringEnabled(
-    advancedPerformanceMonitoringEnabled: boolean
-  ): void {
-    this.settingsStore.setAdvancedPerformanceMonitoringEnabled(advancedPerformanceMonitoringEnabled);
-  }
-
-  /**
-   * Updates the usage limit displayed as the default account usage.
-   *
-   * @param defaultUsageLimitId Usage limit identifier, or `null` to use Codex.
-   *
-   * @deprecated Use `settingsStore.setDefaultUsageLimitId` instead.
-   *
-   * @returns Nothing.
-   */
-  setDefaultUsageLimitId(defaultUsageLimitId: string | null): void {
-    this.settingsStore.setDefaultUsageLimitId(defaultUsageLimitId);
-  }
-
-  /**
-   * Updates the default Codex source used when a request omits a source id.
-   *
-   * @param defaultSourceId Source identifier.
-   *
-   * @deprecated Use `settingsStore.setDefaultSourceId` instead.
-   *
-   * @returns Nothing.
-   */
-  setDefaultSourceId(defaultSourceId: string): void {
-    this.settingsStore.setDefaultSourceId(defaultSourceId);
   }
 
   /**
@@ -421,7 +227,7 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
    * @returns Nothing.
    */
   setCommitMessageModel(commitMessageModel: string | null): void {
-    const currentEffort = this.settings.commitMessageReasoningEffort;
+    const currentEffort = this.settingsStore.settings.commitMessageReasoningEffort;
     const commitMessageReasoningEffort = currentEffort === null
       ? null
       : this.resolveReasoningEffort(commitMessageModel, currentEffort);
@@ -429,44 +235,6 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
       commitMessageModel,
       commitMessageReasoningEffort
     );
-  }
-
-  /**
-   * Updates the reasoning effort used for one-shot commit message generation.
-   *
-   * @param commitMessageReasoningEffort Reasoning effort, or `null` for backend default.
-   *
-   * @deprecated Use `settingsStore.setCommitMessageReasoningEffort` instead.
-   *
-   * @returns Nothing.
-   */
-  setCommitMessageReasoningEffort(
-    commitMessageReasoningEffort: OpenCodexReasoningEffort | null
-  ): void {
-    this.settingsStore.setCommitMessageReasoningEffort(commitMessageReasoningEffort);
-  }
-
-  /**
-   * Updates the output language used for generated commit messages.
-   *
-   * @param commitMessageLanguage Output language.
-   *
-   * @deprecated Use `settingsStore.setCommitMessageLanguage` instead.
-   *
-   * @returns Nothing.
-   */
-  setCommitMessageLanguage(commitMessageLanguage: OpenCodexCommitMessageLanguage): void {
-    this.settingsStore.setCommitMessageLanguage(commitMessageLanguage);
-  }
-
-  /**
-   * Stores the latest Codex release check returned by the backend.
-   *
-   * @param codexReleaseCheck Latest release check metadata.
-   * @deprecated Use `settingsStore.setCodexReleaseCheck` instead.
-   */
-  setCodexReleaseCheck(codexReleaseCheck: OpenCodexCodexReleaseCheck): void {
-    this.settingsStore.setCodexReleaseCheck(codexReleaseCheck);
   }
 
 }
