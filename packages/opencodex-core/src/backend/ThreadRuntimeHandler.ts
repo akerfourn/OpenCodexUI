@@ -1,5 +1,4 @@
 import type { CodexNotification } from "@open-codex-ui/codex-rpc";
-import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexCollaborationEvent,
   OpenCodexCollaborationQuery,
@@ -13,79 +12,25 @@ import type {
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
-import { ThreadTurnCache } from "../ThreadTurnCache.js";
-import type { OpenCodexBackendOptions } from "../types.js";
-import { CollaborationService } from "./CollaborationService.js";
-import { NotificationService } from "./NotificationService.js";
-import { toError } from "./errors.js";
 import { ThreadConversationService } from "./ThreadConversationService.js";
-import { ThreadCacheService } from "./ThreadCacheService.js";
-import type {
-  ClientPort,
-  ProjectSourcePort,
-  RuntimeEventPort,
-  RuntimeSettingsPort
-} from "./runtime/runtimePorts.js";
+import { ThreadRuntimeNotifications } from "./ThreadRuntimeNotifications.js";
+import {
+  createThreadRuntimeServices,
+  type ThreadRuntimeHandlerOptions,
+  type ThreadRuntimeNotificationAdapters
+} from "./threadRuntimeComposition.js";
 
-/** Dependencies needed to construct the thread runtime handler. */
-export type ThreadRuntimeHandlerOptions = {
-  /** Original backend options used by cache and conversation services. */
-  backendOptions: OpenCodexBackendOptions;
-  /** Cache repository shared by thread and collaboration services. */
-  cacheRepository: OpenCodexCacheRepository | null;
-  /** Reads the current mutable settings snapshot. */
-  settings: Pick<RuntimeSettingsPort, "getSettings">;
-  /** Emits runtime events and records the thread event journal. */
-  events: RuntimeEventPort;
-  /** Provides source-aware Codex client lifecycle operations. */
-  clients: Pick<ClientPort, "ensureClient">;
-  /** Provides source resolution and project-cache operations. */
-  projects: Pick<
-    ProjectSourcePort,
-    "resolveSource" | "cacheProject" | "readCachedProjects"
-  >;
-  /** Handles asynchronous client failures raised by thread callbacks. */
-  handleClientError(error: Error): void;
-};
-
-/** Adapters consumed by the ordered notification coordinator. */
-export type ThreadRuntimeNotificationAdapters = {
-  /** Thread cache operations used by notification processing. */
-  readonly threadCacheService: Pick<
-    ThreadCacheService,
-    "writeTokenUsage" | "writeTurnExecutionMetadata"
-  >;
-  /** In-memory thread and turn state used by notification processing. */
-  readonly threadTurnCache: ThreadTurnCache;
-  /** Collaboration notification adapter. */
-  readonly collaborationService: Pick<CollaborationService, "handleNotification">;
-  /** Conversation notification adapters. */
-  readonly threadConversationService: Pick<
-    ThreadConversationService,
-    "recordStartedThread" | "recordNotification"
-  >;
-  /** UI notification adapter. */
-  readonly notificationService: Pick<NotificationService, "handleNotification">;
-};
+export type {
+  ThreadRuntimeHandlerOptions,
+  ThreadRuntimeNotificationAdapters
+} from "./threadRuntimeComposition.js";
 
 /** Owns thread services, thread-scoped state, and their runtime-facing facade. */
 export class ThreadRuntimeHandler {
-  /** In-memory turn and thread cache shared by all thread services. */
-  private readonly threadTurnCache: ThreadTurnCache;
-  /** Runtime event port used by thread services and the historical facade. */
-  private readonly eventPort: RuntimeEventPort;
-  /** SQLite-backed thread metadata and turn cache service. */
-  private readonly threadCacheService: ThreadCacheService;
-  /** Collaboration event persistence and normalization service. */
-  private readonly collaborationService: CollaborationService;
   /** Thread conversation and turn lifecycle service. */
   private readonly threadConversationService: ThreadConversationService;
-  /** Converts Codex notifications to thread-related UI events. */
-  private readonly notificationService: NotificationService;
-  /** Threads whose transient notifications must be ignored. */
-  private readonly ignoredNotificationThreadIds = new Set<string>();
-  /** Cyclic callback used when asynchronous thread work reports a client error. */
-  private readonly options: ThreadRuntimeHandlerOptions;
+  /** Notification callbacks, adapters, journaling, and suppression state. */
+  private readonly notifications: ThreadRuntimeNotifications;
 
   /**
    * Creates one cohesive set of thread services and shared state.
@@ -93,44 +38,9 @@ export class ThreadRuntimeHandler {
    * @param options Runtime service ports and the cyclic error callback.
    */
   constructor(options: ThreadRuntimeHandlerOptions) {
-    this.options = options;
-    this.eventPort = options.events;
-    this.threadTurnCache = new ThreadTurnCache();
-    this.threadCacheService = new ThreadCacheService({
-      cacheRepository: options.cacheRepository,
-      threadTurnCache: this.threadTurnCache,
-      settings: options.settings,
-      events: options.events,
-      logger: options.backendOptions.logger
-    });
-    this.collaborationService = new CollaborationService({
-      cacheRepository: options.cacheRepository,
-      events: options.events,
-      logger: options.backendOptions.logger
-    });
-    this.threadConversationService = new ThreadConversationService({
-      backendOptions: options.backendOptions,
-      threadTurnCache: this.threadTurnCache,
-      threadCacheService: this.threadCacheService,
-      settings: options.settings,
-      events: options.events,
-      clients: options.clients,
-      projects: options.projects,
-      collaborationService: this.collaborationService,
-      handleClientError: options.handleClientError
-    });
-    this.notificationService = new NotificationService({
-      events: options.events,
-      applyCodexThreadTitle: (threadId, title, sourceId) => {
-        this.applyCodexThreadTitle(threadId, title, sourceId);
-      },
-      applyCodexThreadDeleted: (threadId, sourceId) => {
-        this.applyCodexThreadDeleted(threadId, sourceId);
-      },
-      syncCompletedTurn: (threadId, sourceId) => {
-        this.syncCompletedTurn(threadId, sourceId);
-      }
-    });
+    const services = createThreadRuntimeServices(options);
+    this.threadConversationService = services.threadConversationService;
+    this.notifications = services.notifications;
   }
 
   /**
@@ -216,7 +126,7 @@ export class ThreadRuntimeHandler {
     sourceId: string | null,
     limit: number
   ): OpenCodexThreadEventLogPage {
-    return this.eventPort.readThreadEventLog(threadId, sourceId, limit);
+    return this.notifications.readEventLog(threadId, sourceId, limit);
   }
 
   /**
@@ -242,7 +152,7 @@ export class ThreadRuntimeHandler {
   async listCollaborationEvents(
     query: OpenCodexCollaborationQuery
   ): Promise<OpenCodexCollaborationEvent[]> {
-    return await this.collaborationService.listEvents(query);
+    return await this.notifications.listCollaborationEvents(query);
   }
 
   /**
@@ -478,7 +388,7 @@ export class ThreadRuntimeHandler {
    * @returns Nothing.
    */
   ignoreThreadNotifications(threadId: string): void {
-    this.ignoredNotificationThreadIds.add(threadId);
+    this.notifications.ignore(threadId);
   }
 
   /**
@@ -488,7 +398,7 @@ export class ThreadRuntimeHandler {
    * @returns Nothing.
    */
   releaseThreadNotifications(threadId: string): void {
-    this.ignoredNotificationThreadIds.delete(threadId);
+    this.notifications.release(threadId);
   }
 
   /**
@@ -498,7 +408,7 @@ export class ThreadRuntimeHandler {
    * @returns Whether notifications are currently ignored.
    */
   isThreadIgnored(threadId: string): boolean {
-    return this.ignoredNotificationThreadIds.has(threadId);
+    return this.notifications.isIgnored(threadId);
   }
 
   /**
@@ -509,7 +419,7 @@ export class ThreadRuntimeHandler {
    * @returns Nothing.
    */
   recordRawNotification(notification: CodexNotification, sourceId: string): void {
-    this.eventPort.recordRawNotification(notification, sourceId);
+    this.notifications.recordRaw(notification, sourceId);
   }
 
   /**
@@ -519,7 +429,7 @@ export class ThreadRuntimeHandler {
    * @returns Nothing.
    */
   emit(event: OpenCodexEvent): void {
-    this.eventPort.emit(event);
+    this.notifications.emit(event);
   }
 
   /**
@@ -528,13 +438,7 @@ export class ThreadRuntimeHandler {
    * @returns Read-only notification adapters.
    */
   getNotificationAdapters(): ThreadRuntimeNotificationAdapters {
-    return {
-      threadCacheService: this.threadCacheService,
-      threadTurnCache: this.threadTurnCache,
-      collaborationService: this.collaborationService,
-      threadConversationService: this.threadConversationService,
-      notificationService: this.notificationService
-    };
+    return this.notifications.getAdapters();
   }
 
   /**
@@ -546,13 +450,7 @@ export class ThreadRuntimeHandler {
    * @returns Nothing.
    */
   applyCodexThreadTitle(threadId: string, title: string, sourceId: string): void {
-    const cacheEntry = this.threadTurnCache.updateCodexThreadTitle(threadId, title);
-
-    if (cacheEntry !== null) {
-      this.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
-    }
-
-    void this.threadCacheService.writeCodexTitle(threadId, title);
+    this.notifications.applyCodexThreadTitle(threadId, title, sourceId);
   }
 
   /**
@@ -563,11 +461,7 @@ export class ThreadRuntimeHandler {
    * @returns Nothing.
    */
   applyCodexThreadDeleted(threadId: string, sourceId: string): void {
-    void this.threadConversationService
-      .forgetDeletedThread(threadId, sourceId)
-      .catch((error: unknown) => {
-        this.options.handleClientError(toError(error));
-      });
+    this.notifications.applyCodexThreadDeleted(threadId, sourceId);
   }
 
   /**
@@ -578,9 +472,7 @@ export class ThreadRuntimeHandler {
    * @returns Nothing.
    */
   syncCompletedTurn(threadId: string, sourceId: string): void {
-    void this.threadConversationService.syncCompletedTurn(threadId, sourceId).catch((error: unknown) => {
-      this.options.handleClientError(toError(error));
-    });
+    this.notifications.syncCompletedTurn(threadId, sourceId);
   }
 
 }

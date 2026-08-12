@@ -3,12 +3,13 @@ import type {
   OpenCodexSettings,
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   ThreadRuntimeHandler,
   type ThreadRuntimeHandlerOptions
 } from "../src/backend/ThreadRuntimeHandler";
+import type { ThreadConversationService } from "../src/backend/ThreadConversationService";
 import { RuntimeEventDispatcher } from "../src/backend/runtime/RuntimeEventDispatcher";
 import type {
   ClientPort,
@@ -107,7 +108,13 @@ describe("ThreadRuntimeHandler", () => {
     const adapters = handler.getNotificationAdapters();
 
     adapters.threadTurnCache.getOrCreate(thread);
-    handler.applyCodexThreadTitle("thread-1", "Generated title", "source-1");
+    adapters.notificationService.handleNotification({
+      method: "thread/name/updated",
+      params: {
+        threadId: "thread-1",
+        name: "Generated title"
+      }
+    }, "source-1");
 
     expect(adapters.threadTurnCache.get("thread-1")?.thread.codexTitle).toBe("Generated title");
     expect(emittedEvents).toEqual([
@@ -129,7 +136,10 @@ describe("ThreadRuntimeHandler", () => {
     const emittedEvents: OpenCodexEvent[] = [];
     const handler = createHandler((event) => emittedEvents.push(event));
 
-    handler.applyCodexThreadDeleted("thread-1", "source-1");
+    handler.getNotificationAdapters().notificationService.handleNotification({
+      method: "thread/deleted",
+      params: { threadId: "thread-1" }
+    }, "source-1");
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     expect(emittedEvents).toEqual(expect.arrayContaining([
@@ -140,10 +150,38 @@ describe("ThreadRuntimeHandler", () => {
       })
     ]));
   });
+
+  it("should report asynchronous deletion and synchronization failures", async () => {
+    const handleClientError = vi.fn();
+    const handler = createHandler(undefined, handleClientError);
+    const conversationService = handler.getNotificationAdapters()
+      .threadConversationService as ThreadConversationService;
+    vi.spyOn(conversationService, "forgetDeletedThread")
+      .mockRejectedValueOnce(new Error("delete failed"));
+    vi.spyOn(conversationService, "syncCompletedTurn")
+      .mockRejectedValueOnce(new Error("sync failed"));
+
+    handler.applyCodexThreadDeleted("thread-1", "source-1");
+    handler.syncCompletedTurn("thread-2", "source-2");
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(handleClientError).toHaveBeenCalledTimes(2);
+    expect(handleClientError).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ message: "delete failed" })
+    );
+    expect(handleClientError).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ message: "sync failed" })
+    );
+  });
 });
 
 /** Creates a handler with deterministic cacheless callbacks. */
-function createHandler(emitToHost: (event: OpenCodexEvent) => void = () => undefined): ThreadRuntimeHandler {
+function createHandler(
+  emitToHost: (event: OpenCodexEvent) => void = () => undefined,
+  handleClientError: (error: Error) => void = () => undefined
+): ThreadRuntimeHandler {
   const settings = createSettings();
   const options: ThreadRuntimeHandlerOptions = {
     backendOptions: {
@@ -157,7 +195,7 @@ function createHandler(emitToHost: (event: OpenCodexEvent) => void = () => undef
     events: new RuntimeEventDispatcher({ emitToHost }),
     clients: createClientPort(),
     projects: createProjectPort(),
-    handleClientError: () => undefined
+    handleClientError
   };
 
   return new ThreadRuntimeHandler(options);
