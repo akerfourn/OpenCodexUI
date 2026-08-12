@@ -124,7 +124,7 @@ export function ThreadButton({
   }
 
   const isActive = projectStore.selectedChatId === thread.id;
-  const isLoading = projectStore.loadingThreadId === thread.id;
+  const isLoading = threadListStore.loadingThreadId === thread.id;
   const isArchiving = threadListStore.archivingThreadId === thread.id;
   const indicatorState = projectStore.getThreadIndicatorState(thread.id);
   const shouldShowLoading = isLoading || isArchiving || indicatorState === "running";

@@ -729,7 +729,7 @@ export class ChatStore {
     if (
       this.isLoadingOlderMessages ||
       !this.hasMoreOlderMessages ||
-      this.projectStore.loadingThreadId !== null
+      this.projectStore.threadListStore.loadingThreadId !== null
     ) {
       return;
     }
@@ -1014,7 +1014,7 @@ export class ChatStore {
     this.isRecovering = isRecovering;
     this.isSyncing = isRecovering;
     this.isRefreshing = false;
-    this.projectStore.loadingThreadId = null;
+    this.projectStore.threadListStore.loadingThreadId = null;
   }
 
   /**

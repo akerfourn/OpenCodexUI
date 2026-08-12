@@ -85,7 +85,7 @@ function registerMainWindowFocusRefresh(store: RootStore): void {
       activeChatStore.refresh();
     }
 
-    if (activeProjectStore !== null && !activeProjectStore.isLoadingThreads) {
+    if (activeProjectStore !== null && !activeProjectStore.threadListStore.isLoadingThreads) {
       activeProjectStore.refreshThreads();
     }
 

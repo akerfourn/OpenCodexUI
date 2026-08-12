@@ -149,9 +149,9 @@ export class ProjectThreadEventsStore implements RootChildStore {
    */
   resetPendingProjectStates(): void {
     for (const projectStore of this.projectsStore.projectStoresById.values()) {
-      projectStore.isLoadingThreads = false;
-      projectStore.isCreatingThread = false;
-      projectStore.loadingThreadId = null;
+      projectStore.threadListStore.isLoadingThreads = false;
+      projectStore.threadListStore.isCreatingThread = false;
+      projectStore.threadListStore.loadingThreadId = null;
 
       for (const chatStore of projectStore.chatsById.values()) {
         chatStore.isLoadingOlderMessages = false;
@@ -183,7 +183,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
     const projectStore = this.findProjectStoreForThread(threadId);
 
     if (projectStore !== null) {
-      projectStore.loadingThreadId = null;
+      projectStore.threadListStore.loadingThreadId = null;
     }
 
     return true;
@@ -237,8 +237,8 @@ export class ProjectThreadEventsStore implements RootChildStore {
     const chatStore = projectStore.getOrCreateChat(openedThread);
     const shouldMergeTurns = projectStore.selectedChatId === openedThread.id && chatStore.turns.length > 0;
 
-    projectStore.isCreatingThread = false;
-    projectStore.loadingThreadId = null;
+    projectStore.threadListStore.isCreatingThread = false;
+    projectStore.threadListStore.loadingThreadId = null;
     projectStore.selectChat(openedThread.id);
     if (shouldActivateProject) {
       this.root.navigationStore.ensureProjectTab(projectStore.project.id, true);

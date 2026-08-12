@@ -349,9 +349,11 @@ describe("ChatStore active turn state", () => {
     const projectsStore = {
       projectStoresById: new Map([
         ["project-1", {
-          isLoadingThreads: true,
-          isCreatingThread: true,
-          loadingThreadId: "thread-1",
+          threadListStore: {
+            isLoadingThreads: true,
+            isCreatingThread: true,
+            loadingThreadId: "thread-1"
+          },
           chatsById: new Map([
             ["thread-1", activeChat],
             ["thread-2", recoveringChat]

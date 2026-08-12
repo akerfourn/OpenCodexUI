@@ -30,12 +30,13 @@ type ProjectViewProps = {
  * @returns Rendered project view.
  */
 export function ProjectView({ store, projectStore }: ProjectViewProps) {
+  const layoutStore = projectStore.layoutStore;
   const [subAgentDialogRequest, setSubAgentDialogRequest] = useState<
     SubAgentDialogRequest | null
   >(null);
 
   function handleSidePanelCollapsedChange(value: boolean): void {
-    projectStore.setSidePanelCollapsed(value);
+    layoutStore.setSidePanelCollapsed(value);
   }
 
   const handleOpenSubAgentDialog = useCallback<OpenSubAgentDialog>((
@@ -54,8 +55,8 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
       <ResizableSidebarLayout
         className="workspace-shell"
         defaultSidebarWidth={320}
-        sidebarWidth={projectStore.workspaceSidebarWidth}
-        onSidebarWidthChange={(value) => projectStore.setWorkspaceSidebarWidth(value)}
+        sidebarWidth={layoutStore.workspaceSidebarWidth}
+        onSidebarWidthChange={(value) => layoutStore.setWorkspaceSidebarWidth(value)}
         sidebar={(
           <ProjectThreadListX
             store={store}
@@ -66,9 +67,9 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
       >
         <ProjectWorkspaceLayout
           defaultPanelWidth={360}
-          panelWidth={projectStore.sidePanelWidth}
-          onPanelWidthChange={(value) => projectStore.setSidePanelWidth(value)}
-          isSidePanelCollapsed={projectStore.isSidePanelCollapsed}
+          panelWidth={layoutStore.sidePanelWidth}
+          onPanelWidthChange={(value) => layoutStore.setSidePanelWidth(value)}
+          isSidePanelCollapsed={layoutStore.isSidePanelCollapsed}
           mainPanel={(
             <section className="main-pane">
               <ChatViewX
@@ -83,7 +84,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
             <ProjectSidePanel
               store={store}
               projectStore={projectStore}
-              isCollapsed={projectStore.isSidePanelCollapsed}
+              isCollapsed={layoutStore.isSidePanelCollapsed}
               onCollapsedChange={handleSidePanelCollapsedChange}
             />
           )}

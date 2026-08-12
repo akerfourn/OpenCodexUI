@@ -14,6 +14,7 @@ import { ProjectContextStore } from "./ProjectContextStore";
 import { ProjectGitStore } from "./ProjectGitStore";
 import { ProjectRulesStore } from "./ProjectRulesStore";
 import { ProjectTasksStore } from "./ProjectTasksStore";
+import { ProjectViewLayoutStore } from "./ProjectViewLayoutStore";
 import type { ProjectTrustRequest } from "./ProjectTrustStore";
 import type { RootStore } from "./RootStore";
 import { ThreadListStore } from "./ThreadListStore";
@@ -27,12 +28,8 @@ export class ProjectStore {
   project: OpenCodexProject;
   selectedChatId: string | null = null;
   trustRequest: ProjectTrustRequest | null = null;
-  /** Width of the project thread sidebar in pixels. */
-  workspaceSidebarWidth = 320;
-  /** Width of the project contextual side panel in pixels. */
-  sidePanelWidth = 360;
-  /** Whether the project contextual side panel is collapsed. */
-  isSidePanelCollapsed = false;
+  /** Resizable layout state retained outside mounted React views. */
+  readonly layoutStore: ProjectViewLayoutStore;
   readonly threadListStore: ThreadListStore;
   readonly gitStore: ProjectGitStore;
   readonly commandsStore: ProjectCommandsStore;
@@ -51,13 +48,17 @@ export class ProjectStore {
     private readonly root: RootStore
   ) {
     this.project = project;
+    this.layoutStore = new ProjectViewLayoutStore();
     this.threadListStore = new ThreadListStore(this, root);
     this.gitStore = new ProjectGitStore(this, root);
     this.commandsStore = new ProjectCommandsStore(this, root);
     this.contextStore = new ProjectContextStore(this, root);
     this.rulesStore = new ProjectRulesStore(this, root);
     this.tasksStore = new ProjectTasksStore(this, root);
-    makeAutoObservable<ProjectStore, "root">(this, { root: false });
+    makeAutoObservable<ProjectStore, "root" | "layoutStore">(this, {
+      root: false,
+      layoutStore: false
+    });
   }
 
   /**
@@ -162,138 +163,6 @@ export class ProjectStore {
     }
 
     return this.chatsById.get(this.selectedChatId) ?? null;
-  }
-
-  /**
-   * Updates the width of the project thread sidebar.
-   *
-   * @param value Sidebar width in pixels.
-   *
-   * @returns Nothing.
-   */
-  setWorkspaceSidebarWidth(value: number): void {
-    this.workspaceSidebarWidth = value;
-  }
-
-  /**
-   * Updates the width of the project contextual side panel.
-   *
-   * @param value Side panel width in pixels.
-   *
-   * @returns Nothing.
-   */
-  setSidePanelWidth(value: number): void {
-    this.sidePanelWidth = value;
-  }
-
-  /**
-   * Updates whether the project contextual side panel is collapsed.
-   *
-   * @param value Whether the side panel is collapsed.
-   *
-   * @returns Nothing.
-   */
-  setSidePanelCollapsed(value: boolean): void {
-    this.isSidePanelCollapsed = value;
-  }
-
-  /**
-   * Returns the thread metadata shown in the project sidebar.
-   *
-   * @returns Thread collection.
-   */
-  get threads(): OpenCodexThread[] {
-    return this.threadListStore.threads;
-  }
-
-  /**
-   * Replaces the thread metadata shown in the project sidebar.
-   *
-   * @param threads Thread collection.
-   */
-  set threads(threads: OpenCodexThread[]) {
-    this.threadListStore.threads = threads;
-  }
-
-  /**
-   * Returns the project thread search term.
-   *
-   * @returns Search text.
-   */
-  get searchTerm(): string {
-    return this.threadListStore.searchTerm;
-  }
-
-  /**
-   * Updates the project thread search term.
-   *
-   * @param value Search text.
-   */
-  set searchTerm(value: string) {
-    this.threadListStore.searchTerm = value;
-  }
-
-  /**
-   * Returns whether this project's thread list is loading.
-   *
-   * @returns Loading flag.
-   */
-  get isLoadingThreads(): boolean {
-    return this.threadListStore.isLoadingThreads;
-  }
-
-  /**
-   * Updates whether this project's thread list is loading.
-   *
-   * @param value Loading flag.
-   */
-  set isLoadingThreads(value: boolean) {
-    this.threadListStore.isLoadingThreads = value;
-  }
-
-  /**
-   * Returns whether a new thread is being created for this project.
-   *
-   * @returns Creation flag.
-   */
-  get isCreatingThread(): boolean {
-    return this.threadListStore.isCreatingThread;
-  }
-
-  /**
-   * Updates whether a new thread is being created for this project.
-   *
-   * @param value Creation flag.
-   */
-  set isCreatingThread(value: boolean) {
-    this.threadListStore.isCreatingThread = value;
-  }
-
-  /**
-   * Returns the thread currently loading for this project.
-   *
-   * @returns Loading thread identifier, or `null`.
-   */
-  get loadingThreadId(): string | null {
-    return this.threadListStore.loadingThreadId;
-  }
-
-  /**
-   * Updates the thread currently loading for this project.
-   *
-   * @param value Loading thread identifier, or `null`.
-   */
-  set loadingThreadId(value: string | null) {
-    this.threadListStore.loadingThreadId = value;
-  }
-
-  /**
-   * Returns the threads matching the current project search term.
-   *
-   * @returns Filtered thread list.
-   */
-  get filteredThreads(): OpenCodexThread[] {
-    return this.threadListStore.filteredThreads;
   }
 
   /**

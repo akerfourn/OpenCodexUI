@@ -1,6 +1,7 @@
 /**
  * Covers view layout state retained outside mounted React components.
  */
+import { autorun } from "mobx";
 import { describe, expect, it } from "vitest";
 
 import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
@@ -21,13 +22,26 @@ describe("view layout state", () => {
   it("should retain each project panel layout outside the mounted view", () => {
     const projectStore = new ProjectStore(createProject(), {} as RootStore);
 
-    projectStore.setWorkspaceSidebarWidth(410);
-    projectStore.setSidePanelWidth(460);
-    projectStore.setSidePanelCollapsed(true);
+    projectStore.layoutStore.setWorkspaceSidebarWidth(410);
+    projectStore.layoutStore.setSidePanelWidth(460);
+    projectStore.layoutStore.setSidePanelCollapsed(true);
 
-    expect(projectStore.workspaceSidebarWidth).toBe(410);
-    expect(projectStore.sidePanelWidth).toBe(460);
-    expect(projectStore.isSidePanelCollapsed).toBe(true);
+    expect(projectStore.layoutStore.workspaceSidebarWidth).toBe(410);
+    expect(projectStore.layoutStore.sidePanelWidth).toBe(460);
+    expect(projectStore.layoutStore.isSidePanelCollapsed).toBe(true);
+  });
+
+  it("should publish project layout changes through its nested observable store", () => {
+    const projectStore = new ProjectStore(createProject(), {} as RootStore);
+    const observedWidths: number[] = [];
+    const dispose = autorun(() => {
+      observedWidths.push(projectStore.layoutStore.sidePanelWidth);
+    });
+
+    projectStore.layoutStore.setSidePanelWidth(440);
+    dispose();
+
+    expect(observedWidths).toEqual([360, 440]);
   });
 });
 

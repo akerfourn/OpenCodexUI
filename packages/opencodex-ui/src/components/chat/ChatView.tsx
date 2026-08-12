@@ -39,7 +39,7 @@ export function ChatView({ store, projectStore, onOpenSubAgentDialog }: ChatView
     store.openSourcesHome();
   }
 
-  if (projectStore.isCreatingThread) {
+  if (projectStore.threadListStore.isCreatingThread) {
     return (
       <Stack className="chat-view">
         <ChatLoadingState label={t("chat.creating")} fillView />
@@ -56,7 +56,8 @@ export function ChatView({ store, projectStore, onOpenSubAgentDialog }: ChatView
   }
 
   const currentThread = chatStore.thread;
-  const isLoadingCurrentThread = projectStore.loadingThreadId === currentThread.id && chatStore.turns.length === 0;
+  const isLoadingCurrentThread = projectStore.threadListStore.loadingThreadId === currentThread.id
+    && chatStore.turns.length === 0;
   const messageContent = isLoadingCurrentThread ? (
     <ChatLoadingState label={t("chat.loading")} />
   ) : (
@@ -93,7 +94,7 @@ export function ChatView({ store, projectStore, onOpenSubAgentDialog }: ChatView
             chatStore.isWorking ||
             chatStore.isStartingTurn ||
             chatStore.isRecovering ||
-            projectStore.loadingThreadId !== null
+            projectStore.threadListStore.loadingThreadId !== null
           }
         />
       )}
