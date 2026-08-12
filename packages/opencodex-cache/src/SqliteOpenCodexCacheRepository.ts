@@ -10,27 +10,27 @@ import type { OpenCodexCollaborationEvent } from "@open-codex-ui/opencodex-proto
 import type {
   CachedCollaborationEvent,
   CachedCollaborationEventQuery,
-  CachedOlderTurnsQuery,
   CachedLogCreateInput,
   CachedLogEntry,
   CachedLogListQuery,
   CachedLogPage,
   CachedModelCatalog,
+  CachedOlderTurnsQuery,
   CachedOlderTurnsResult,
   CachedProject,
+  CachedProjectCommand,
+  CachedProjectCommandCreateInput,
+  CachedProjectCommandReorderInput,
+  CachedProjectCommandRule,
+  CachedProjectCommandRuleCreateInput,
+  CachedProjectCommandRuleFileState,
+  CachedProjectCommandRuleUpdateInput,
+  CachedProjectCommandUpdateInput,
   CachedProjectGroup,
   CachedProjectGroupCreateInput,
   CachedProjectGroupsSnapshot,
   CachedProjectGroupUpdateInput,
   CachedProjectPreferences,
-  CachedProjectCommand,
-  CachedProjectCommandCreateInput,
-  CachedProjectCommandRule,
-  CachedProjectCommandRuleCreateInput,
-  CachedProjectCommandRuleFileState,
-  CachedProjectCommandRuleUpdateInput,
-  CachedProjectCommandReorderInput,
-  CachedProjectCommandUpdateInput,
   CachedProjectTask,
   CachedProjectTaskCreateInput,
   CachedProjectTaskUpdateInput,
@@ -54,99 +54,23 @@ import type {
   OpenCodexCacheRepository,
   ThreadListCacheQuery
 } from "./types.js";
-import {
-  listCollaborationEvents,
-  upsertCollaborationEvent
-} from "./sqlite/collaborationEventQueries.js";
+import type {
+  CollaborationCacheRepository,
+  LogCacheRepository,
+  ProjectCacheRepository
+} from "./types/repositoryProjects.js";
+import type { ThreadCacheRepository } from "./types/repositoryThreads.js";
+import type {
+  AutomationCacheRepository,
+  SourceCacheRepository
+} from "./types/repositoryTooling.js";
 import { runMigrations } from "./sqlite/migrations.js";
-import {
-  clearLogs,
-  clearLogsOlderThan,
-  createLog,
-  deleteLog,
-  listLogs
-} from "./sqlite/logQueries.js";
-import {
-  getModelCatalog,
-  saveModelCatalog
-} from "./sqlite/modelCatalogQueries.js";
-import {
-  createProjectCommand,
-  deleteProjectCommand,
-  listProjectCommands,
-  readProjectCommand,
-  reorderProjectCommands,
-  updateProjectCommand
-} from "./sqlite/projectCommandQueries.js";
-import {
-  createProjectCommandRule,
-  deleteProjectCommandRule,
-  getProjectCommandRuleFileState,
-  listProjectCommandRules,
-  readProjectCommandRule,
-  saveProjectCommandRuleFileState,
-  updateProjectCommandRule
-} from "./sqlite/projectCommandRuleQueries.js";
-import {
-  createProjectTask,
-  deleteProjectTask,
-  listProjectTasks,
-  updateProjectTask
-} from "./sqlite/projectTaskQueries.js";
-import {
-  clearSourceAssociations,
-  createSource,
-  deleteSource,
-  ensureDefaultSource,
-  getSource,
-  getSourceProjectCount,
-  listSources,
-  updateSource,
-  updateSourceCodexDetection
-} from "./sqlite/sourceQueries.js";
-import {
-  assignProjectToGroup,
-  createProjectGroup,
-  deleteProjectGroup,
-  listProjectGroups,
-  updateProjectGroup
-} from "./sqlite/projectGroupQueries.js";
-import {
-  deleteRedundantOrphanProjects,
-  deleteProject,
-  listProjects,
-  setProjectHidden,
-  updateProjectDisplayName,
-  updateProjectPreferences,
-  upsertProject
-} from "./sqlite/projectQueries.js";
-import {
-  deleteThread,
-  deleteEmptyUnsyncedThreads,
-  getOlderTurns,
-  getProjectTokenUsageStatistics,
-  getSyncState,
-  getThread,
-  listThreads,
-  saveThreadDelta,
-  saveThreadTokenUsage,
-  saveThreadSnapshot,
-  updateThreadArchiveState,
-  updateThreadCodexTitle,
-  updateThreadTitle,
-  upsertThreadIndex
-} from "./sqlite/threadQueries.js";
-import {
-  insertTokenUsageSnapshot,
-  listTokenUsageSnapshots,
-  listSourceTokenUsageSnapshots,
-  saveThreadTokenUsageAndSnapshot,
-  upsertTurnExecutionMetadata
-} from "./sqlite/tokenUsageQueries.js";
-import {
-  insertUsageRateLimitSnapshot,
-  listUsageRateLimitSnapshots
-} from "./sqlite/usageRateLimitQueries.js";
+import { SqliteAutomationCacheRepository } from "./sqlite/repositories/SqliteAutomationCacheRepository.js";
+import { SqliteCollaborationCacheRepository } from "./sqlite/repositories/SqliteCollaborationCacheRepository.js";
+import { SqliteLogCacheRepository } from "./sqlite/repositories/SqliteLogCacheRepository.js";
+import { SqliteProjectCacheRepository } from "./sqlite/repositories/SqliteProjectCacheRepository.js";
+import { SqliteSourceCacheRepository } from "./sqlite/repositories/SqliteSourceCacheRepository.js";
+import { SqliteThreadCacheRepository } from "./sqlite/repositories/SqliteThreadCacheRepository.js";
 
 export type SqliteOpenCodexCacheRepositoryOptions = {
   directory: string;
@@ -166,13 +90,32 @@ export function createOpenCodexSqliteCacheRepository(
 }
 
 /**
- * Implements the thread cache contract with a local SQLite database.
+ * Exposes the cache contract while delegating persistence to domain repositories.
  */
 export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository {
+  /** SQLite connection owned by this facade. */
   private readonly database: BetterSqliteDatabase;
 
+  /** Source persistence operations. */
+  private readonly sources: SourceCacheRepository;
+
+  /** Collaboration-event persistence operations. */
+  private readonly collaboration: CollaborationCacheRepository;
+
+  /** Project persistence operations. */
+  private readonly projects: ProjectCacheRepository;
+
+  /** Application-log persistence operations. */
+  private readonly logs: LogCacheRepository;
+
+  /** Project automation persistence operations. */
+  private readonly automation: AutomationCacheRepository;
+
+  /** Thread and usage persistence operations. */
+  private readonly threads: ThreadCacheRepository;
+
   /**
-   * Opens the SQLite database, configures pragmas, and runs migrations.
+   * Opens and migrates the database, then initializes domain repositories.
    *
    * @param options Directory and optional file name for the database file.
    */
@@ -184,782 +127,423 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     this.database.pragma("journal_mode = WAL");
     this.database.pragma("foreign_keys = ON");
     runMigrations(this.database);
+
+    this.sources = new SqliteSourceCacheRepository(this.database);
+    this.collaboration = new SqliteCollaborationCacheRepository(this.database);
+    this.projects = new SqliteProjectCacheRepository(this.database);
+    this.logs = new SqliteLogCacheRepository(this.database);
+    this.automation = new SqliteAutomationCacheRepository(this.database);
+    this.threads = new SqliteThreadCacheRepository(this.database);
   }
 
-  /**
-   * Ensures a default source exists.
-   *
-   * @returns Default source.
-   */
+  /** Ensures a default source exists. */
   async ensureDefaultSource(): Promise<CachedSource> {
-    return await ensureDefaultSource(this.database);
+    return await this.sources.ensureDefaultSource();
   }
 
-  /**
-   * Creates a source.
-   *
-   * @param name Source display name.
-   *
-   * @returns Created source.
-   */
-  async createSource(name = "Codex", input: CachedSourceCreateInput = { kind: "local" }): Promise<CachedSource> {
-    return await createSource(this.database, name, input);
+  /** Creates a source. */
+  async createSource(
+    name = "Codex",
+    input: CachedSourceCreateInput = { kind: "local" }
+  ): Promise<CachedSource> {
+    return await this.sources.createSource(name, input);
   }
 
-  /**
-   * Lists configured sources.
-   *
-   * @returns Cached sources.
-   */
+  /** Lists configured sources. */
   async listSources(): Promise<CachedSource[]> {
-    return await listSources(this.database);
+    return await this.sources.listSources();
   }
 
-  /**
-   * Reads a source by identifier.
-   *
-   * @param sourceId Source identifier.
-   *
-   * @returns Cached source, or `null`.
-   */
+  /** Reads a source by identifier. */
   async getSource(sourceId: string): Promise<CachedSource | null> {
-    return await getSource(this.database, sourceId);
+    return await this.sources.getSource(sourceId);
   }
 
-  /**
-   * Counts projects associated with a source.
-   *
-   * @param sourceId Source identifier.
-   *
-   * @returns Associated project count.
-   */
+  /** Counts projects associated with a source. */
   async getSourceProjectCount(sourceId: string): Promise<number> {
-    return await getSourceProjectCount(this.database, sourceId);
+    return await this.sources.getSourceProjectCount(sourceId);
   }
 
-  /**
-   * Updates a source.
-   *
-   * @param sourceId Source identifier.
-   * @param patch Source patch.
-   *
-   * @returns Updated source.
-   */
+  /** Updates a source. */
   async updateSource(
     sourceId: string,
     patch: Partial<Pick<CachedSource, "name">> & {
       settings?: CachedSourceSettingsPatch;
     }
   ): Promise<CachedSource> {
-    return await updateSource(this.database, sourceId, patch);
+    return await this.sources.updateSource(sourceId, patch);
   }
 
-  /**
-   * Stores the latest Codex CLI detection result for a source.
-   *
-   * @param sourceId Source identifier.
-   * @param detection Latest detection result.
-   *
-   * @returns Promise resolved when the diagnostic is persisted.
-   */
+  /** Stores the latest Codex detection result for a source. */
   async updateSourceCodexDetection(
     sourceId: string,
     detection: CachedSourceCodexDetection
   ): Promise<void> {
-    await updateSourceCodexDetection(this.database, sourceId, detection);
+    await this.sources.updateSourceCodexDetection(sourceId, detection);
   }
 
-  /**
-   * Deletes a source.
-   *
-   * @param sourceId Source identifier.
-   *
-   * @returns Promise resolved when deletion completes.
-   */
+  /** Deletes a source. */
   async deleteSource(sourceId: string): Promise<void> {
-    await deleteSource(this.database, sourceId);
+    await this.sources.deleteSource(sourceId);
   }
 
-  /**
-   * Clears project and thread references to a source.
-   *
-   * @param sourceId Source identifier.
-   *
-   * @returns Promise resolved when associations are cleared.
-   */
+  /** Clears project and thread references to a source. */
   async clearSourceAssociations(sourceId: string): Promise<void> {
-    await clearSourceAssociations(this.database, sourceId);
+    await this.sources.clearSourceAssociations(sourceId);
   }
 
-  /**
-   * Reads the latest cached model catalog for one source.
-   *
-   * @param sourceId Source identifier.
-   * @returns Cached catalog, or `null` when no catalog is stored.
-   */
+  /** Reads the latest cached model catalog for a source. */
   async getModelCatalog(sourceId: string): Promise<CachedModelCatalog | null> {
-    return getModelCatalog(this.database, sourceId);
+    return await this.sources.getModelCatalog(sourceId);
   }
 
-  /**
-   * Stores the latest serialized model catalog for one source.
-   *
-   * @param sourceId Source identifier.
-   * @param modelsJson Serialized model metadata.
-   * @returns Promise resolved when the catalog is stored.
-   */
+  /** Stores the latest serialized model catalog for a source. */
   async saveModelCatalog(sourceId: string, modelsJson: string): Promise<void> {
-    saveModelCatalog(this.database, sourceId, modelsJson);
+    await this.sources.saveModelCatalog(sourceId, modelsJson);
   }
 
-  /**
-   * Inserts or enriches one normalized collaboration event.
-   *
-   * @param event Source-aware collaboration event.
-   * @returns Persisted event with observation timestamps.
-   */
+  /** Inserts or enriches a normalized collaboration event. */
   async upsertCollaborationEvent(
     event: OpenCodexCollaborationEvent
   ): Promise<CachedCollaborationEvent> {
-    return upsertCollaborationEvent(this.database, event);
+    return await this.collaboration.upsertCollaborationEvent(event);
   }
 
-  /**
-   * Lists collaboration events matching source-aware routing filters.
-   *
-   * @param query Source, routing, and hierarchy filters.
-   * @returns Events ordered by first observation.
-   */
+  /** Lists collaboration events matching source-aware filters. */
   async listCollaborationEvents(
     query: CachedCollaborationEventQuery
   ): Promise<CachedCollaborationEvent[]> {
-    return listCollaborationEvents(this.database, query);
+    return await this.collaboration.listCollaborationEvents(query);
   }
 
-  /**
-   * Inserts or updates a cached project.
-   *
-   * @param projectPath Project path.
-   * @param sourceId Optional source identifier.
-   *
-   * @returns Cached project.
-   */
-  async upsertProject(projectPath: string, sourceId: string | null = null): Promise<CachedProject> {
-    return await upsertProject(this.database, projectPath, sourceId);
+  /** Inserts or updates a cached project. */
+  async upsertProject(
+    projectPath: string,
+    sourceId: string | null = null
+  ): Promise<CachedProject> {
+    return await this.projects.upsertProject(projectPath, sourceId);
   }
 
-  /**
-   * Lists cached projects.
-   *
-   * @returns Cached projects.
-   */
+  /** Lists cached projects. */
   async listProjects(): Promise<CachedProject[]> {
-    return await listProjects(this.database);
+    return await this.projects.listProjects();
   }
 
-  /** Lists OpenCodexUI-only project groups and their mixed tree. */
+  /** Lists project groups and their mixed tree. */
   async listProjectGroups(): Promise<CachedProjectGroupsSnapshot> {
-    return await listProjectGroups(this.database);
+    return await this.projects.listProjectGroups();
   }
 
-  /** Creates an OpenCodexUI-only project group. */
+  /** Creates a project group. */
   async createProjectGroup(input: CachedProjectGroupCreateInput): Promise<CachedProjectGroup> {
-    return await createProjectGroup(this.database, input);
+    return await this.projects.createProjectGroup(input);
   }
 
-  /** Updates an OpenCodexUI-only project group. */
+  /** Updates a project group. */
   async updateProjectGroup(
     groupId: string,
     patch: CachedProjectGroupUpdateInput
   ): Promise<CachedProjectGroup> {
-    return await updateProjectGroup(this.database, groupId, patch);
+    return await this.projects.updateProjectGroup(groupId, patch);
   }
 
   /** Deletes a project group while retaining its children. */
   async deleteProjectGroup(groupId: string): Promise<void> {
-    await deleteProjectGroup(this.database, groupId);
+    await this.projects.deleteProjectGroup(groupId);
   }
 
-  /** Moves a project to a group or to the ungrouped root. */
+  /** Moves a project to a group or the ungrouped root. */
   async assignProjectToGroup(projectId: string, groupId: string | null): Promise<void> {
-    await assignProjectToGroup(this.database, projectId, groupId);
+    await this.projects.assignProjectToGroup(projectId, groupId);
   }
 
-  /**
-   * Deletes safe empty orphan project duplicates.
-   *
-   * @returns Number of removed project rows.
-   */
+  /** Deletes safe empty orphan project duplicates. */
   async deleteRedundantOrphanProjects(): Promise<number> {
-    return await deleteRedundantOrphanProjects(this.database);
+    return await this.projects.deleteRedundantOrphanProjects();
   }
 
-  /**
-   * Updates project hidden state.
-   *
-   * @param projectId Project identifier.
-   * @param isHidden Hidden flag.
-   *
-   * @returns Promise resolved when the update completes.
-   */
+  /** Updates project hidden state. */
   async setProjectHidden(projectId: string, isHidden: boolean): Promise<void> {
-    await setProjectHidden(this.database, projectId, isHidden);
+    await this.projects.setProjectHidden(projectId, isHidden);
   }
 
-  /**
-   * Updates a project display name.
-   *
-   * @param projectId Project identifier.
-   * @param displayName Display name, or `null` to reset.
-   *
-   * @returns Updated project, or `null` when missing.
-   */
+  /** Updates a project display name. */
   async updateProjectDisplayName(
     projectId: string,
     displayName: string | null
   ): Promise<CachedProject | null> {
-    return await updateProjectDisplayName(this.database, projectId, displayName);
+    return await this.projects.updateProjectDisplayName(projectId, displayName);
   }
 
-  /**
-   * Updates project preferences.
-   *
-   * @param projectId Project identifier.
-   * @param preferences Preferences to persist.
-   *
-   * @returns Updated project, or `null` when missing.
-   */
+  /** Updates project preferences. */
   async updateProjectPreferences(
     projectId: string,
     preferences: CachedProjectPreferences
   ): Promise<CachedProject | null> {
-    return await updateProjectPreferences(this.database, projectId, preferences);
+    return await this.projects.updateProjectPreferences(projectId, preferences);
   }
 
-  /**
-   * Deletes a cached project.
-   *
-   * @param projectId Project identifier.
-   *
-   * @returns Promise resolved when the row is deleted.
-   */
+  /** Deletes a cached project. */
   async deleteProject(projectId: string): Promise<void> {
-    await deleteProject(this.database, projectId);
+    await this.projects.deleteProject(projectId);
   }
 
-  /**
-   * Creates an application log entry.
-   *
-   * @param input Log payload.
-   *
-   * @returns Created log entry.
-   */
+  /** Creates an application log entry. */
   async createLog(input: CachedLogCreateInput): Promise<CachedLogEntry> {
-    return await createLog(this.database, input);
+    return await this.logs.createLog(input);
   }
 
-  /**
-   * Lists application logs.
-   *
-   * @param query Log pagination query.
-   *
-   * @returns Log page.
-   */
+  /** Lists application logs. */
   async listLogs(query: CachedLogListQuery): Promise<CachedLogPage> {
-    return await listLogs(this.database, query);
+    return await this.logs.listLogs(query);
   }
 
-  /**
-   * Deletes one application log entry.
-   *
-   * @param logId Log identifier.
-   *
-   * @returns Promise resolved when deletion completes.
-   */
+  /** Deletes an application log entry. */
   async deleteLog(logId: string): Promise<void> {
-    await deleteLog(this.database, logId);
+    await this.logs.deleteLog(logId);
   }
 
-  /**
-   * Deletes all application logs.
-   *
-   * @returns Promise resolved when deletion completes.
-   */
+  /** Deletes all application logs. */
   async clearLogs(): Promise<void> {
-    await clearLogs(this.database);
+    await this.logs.clearLogs();
   }
 
-  /**
-   * Deletes application logs older than the provided timestamp.
-   *
-   * @param createdBefore Exclusive timestamp cutoff.
-   *
-   * @returns Promise resolved when deletion completes.
-   */
+  /** Deletes application logs older than a timestamp. */
   async clearLogsOlderThan(createdBefore: string): Promise<void> {
-    await clearLogsOlderThan(this.database, createdBefore);
+    await this.logs.clearLogsOlderThan(createdBefore);
   }
 
-  /**
-   * Lists commands configured for one project.
-   *
-   * @param projectId Project identifier.
-   *
-   * @returns Cached project commands.
-   */
+  /** Lists commands configured for a project. */
   async listProjectCommands(projectId: string): Promise<CachedProjectCommand[]> {
-    return await listProjectCommands(this.database, projectId);
+    return await this.automation.listProjectCommands(projectId);
   }
 
-  /**
-   * Creates a command for a project.
-   *
-   * @param input Command input.
-   *
-   * @returns Created command.
-   */
+  /** Creates a project command. */
   async createProjectCommand(
     input: CachedProjectCommandCreateInput
   ): Promise<CachedProjectCommand> {
-    return await createProjectCommand(this.database, input);
+    return await this.automation.createProjectCommand(input);
   }
 
-  /**
-   * Reads one project command.
-   *
-   * @param commandId Command identifier.
-   *
-   * @returns Matching command.
-   */
+  /** Reads a project command. */
   async getProjectCommand(commandId: string): Promise<CachedProjectCommand> {
-    return await readProjectCommand(this.database, commandId);
+    return await this.automation.getProjectCommand(commandId);
   }
 
-  /**
-   * Updates a project command.
-   *
-   * @param commandId Command identifier.
-   * @param patch Command patch.
-   *
-   * @returns Updated command.
-   */
+  /** Updates a project command. */
   async updateProjectCommand(
     commandId: string,
     patch: CachedProjectCommandUpdateInput
   ): Promise<CachedProjectCommand> {
-    return await updateProjectCommand(this.database, commandId, patch);
+    return await this.automation.updateProjectCommand(commandId, patch);
   }
 
-  /**
-   * Reorders commands configured for one project.
-   *
-   * @param input Reorder input.
-   *
-   * @returns Commands in their persisted order.
-   */
+  /** Reorders commands configured for a project. */
   async reorderProjectCommands(
     input: CachedProjectCommandReorderInput
   ): Promise<CachedProjectCommand[]> {
-    return await reorderProjectCommands(this.database, input);
+    return await this.automation.reorderProjectCommands(input);
   }
 
-  /**
-   * Deletes a project command.
-   *
-   * @param commandId Command identifier.
-   *
-   * @returns Promise resolved when deletion completes.
-   */
+  /** Deletes a project command. */
   async deleteProjectCommand(commandId: string): Promise<void> {
-    await deleteProjectCommand(this.database, commandId);
+    await this.automation.deleteProjectCommand(commandId);
   }
 
-  /**
-   * Lists command authorization rules configured for one project.
-   *
-   * @param projectId Project identifier.
-   * @returns Cached project rules.
-   */
+  /** Lists command authorization rules for a project. */
   async listProjectCommandRules(projectId: string): Promise<CachedProjectCommandRule[]> {
-    return await listProjectCommandRules(this.database, projectId);
+    return await this.automation.listProjectCommandRules(projectId);
   }
 
-  /**
-   * Creates a project command authorization rule.
-   *
-   * @param input Rule input.
-   * @returns Created rule.
-   */
+  /** Creates a project command authorization rule. */
   async createProjectCommandRule(
     input: CachedProjectCommandRuleCreateInput
   ): Promise<CachedProjectCommandRule> {
-    return await createProjectCommandRule(this.database, input);
+    return await this.automation.createProjectCommandRule(input);
   }
 
-  /**
-   * Reads one project command authorization rule.
-   *
-   * @param ruleId Rule identifier.
-   * @returns Matching rule.
-   */
+  /** Reads a project command authorization rule. */
   async getProjectCommandRule(ruleId: string): Promise<CachedProjectCommandRule> {
-    return await readProjectCommandRule(this.database, ruleId);
+    return await this.automation.getProjectCommandRule(ruleId);
   }
 
-  /**
-   * Updates one project command authorization rule.
-   *
-   * @param ruleId Rule identifier.
-   * @param patch Rule update.
-   * @returns Updated rule.
-   */
+  /** Updates a project command authorization rule. */
   async updateProjectCommandRule(
     ruleId: string,
     patch: CachedProjectCommandRuleUpdateInput
   ): Promise<CachedProjectCommandRule> {
-    return await updateProjectCommandRule(this.database, ruleId, patch);
+    return await this.automation.updateProjectCommandRule(ruleId, patch);
   }
 
-  /**
-   * Deletes one project command authorization rule.
-   *
-   * @param ruleId Rule identifier.
-   * @returns Promise resolved when deletion completes.
-   */
+  /** Deletes a project command authorization rule. */
   async deleteProjectCommandRule(ruleId: string): Promise<void> {
-    await deleteProjectCommandRule(this.database, ruleId);
+    await this.automation.deleteProjectCommandRule(ruleId);
   }
 
-  /**
-   * Reads generated-file synchronization metadata for one project.
-   *
-   * @param projectId Project identifier.
-   * @returns File state, or `null` when no state exists.
-   */
+  /** Reads generated-file synchronization metadata for a project. */
   async getProjectCommandRuleFileState(
     projectId: string
   ): Promise<CachedProjectCommandRuleFileState | null> {
-    return await getProjectCommandRuleFileState(this.database, projectId);
+    return await this.automation.getProjectCommandRuleFileState(projectId);
   }
 
-  /**
-   * Stores generated-file synchronization metadata for one project.
-   *
-   * @param state New generated-file state.
-   * @returns Promise resolved when the state is stored.
-   */
+  /** Stores generated-file synchronization metadata for a project. */
   async saveProjectCommandRuleFileState(
     state: CachedProjectCommandRuleFileState
   ): Promise<void> {
-    await saveProjectCommandRuleFileState(this.database, state);
+    await this.automation.saveProjectCommandRuleFileState(state);
   }
 
-  /**
-   * Lists local tasks configured for one project.
-   *
-   * @param projectId Project identifier.
-   *
-   * @returns Cached project tasks.
-   */
+  /** Lists local tasks configured for a project. */
   async listProjectTasks(projectId: string): Promise<CachedProjectTask[]> {
-    return await listProjectTasks(this.database, projectId);
+    return await this.automation.listProjectTasks(projectId);
   }
 
-  /**
-   * Creates a local task for a project.
-   *
-   * @param input Task input.
-   *
-   * @returns Created task.
-   */
+  /** Creates a local project task. */
   async createProjectTask(input: CachedProjectTaskCreateInput): Promise<CachedProjectTask> {
-    return await createProjectTask(this.database, input);
+    return await this.automation.createProjectTask(input);
   }
 
-  /**
-   * Updates a local project task.
-   *
-   * @param taskId Task identifier.
-   * @param patch Task patch.
-   *
-   * @returns Updated task.
-   */
+  /** Updates a local project task. */
   async updateProjectTask(
     taskId: string,
     patch: CachedProjectTaskUpdateInput
   ): Promise<CachedProjectTask> {
-    return await updateProjectTask(this.database, taskId, patch);
+    return await this.automation.updateProjectTask(taskId, patch);
   }
 
-  /**
-   * Deletes a local project task.
-   *
-   * @param taskId Task identifier.
-   *
-   * @returns Promise resolved when deletion completes.
-   */
+  /** Deletes a local project task. */
   async deleteProjectTask(taskId: string): Promise<void> {
-    await deleteProjectTask(this.database, taskId);
+    await this.automation.deleteProjectTask(taskId);
   }
 
-  /**
-   * Inserts or updates cached thread metadata.
-   *
-   * @param threads Thread summaries.
-   *
-   * @returns Promise resolved when the write completes.
-   */
+  /** Inserts or updates cached thread metadata. */
   async upsertThreadIndex(threads: CachedThreadSummary[]): Promise<void> {
-    await upsertThreadIndex(this.database, threads);
+    await this.threads.upsertThreadIndex(threads);
   }
 
-  /**
-   * Updates a user-defined thread title.
-   *
-   * @param threadId Thread identifier.
-   * @param title Custom title.
-   *
-   * @returns Promise resolved when the update completes.
-   */
+  /** Updates a user-defined thread title. */
   async updateThreadTitle(threadId: string, title: string): Promise<void> {
-    await updateThreadTitle(this.database, threadId, title);
+    await this.threads.updateThreadTitle(threadId, title);
   }
 
-  /**
-   * Updates the local archive marker for a cached thread.
-   *
-   * @param threadId Thread identifier.
-   * @param isArchived Whether the thread is archived.
-   *
-   * @returns Promise resolved when the update completes.
-   */
+  /** Updates the local archive marker for a thread. */
   async updateThreadArchiveState(threadId: string, isArchived: boolean): Promise<void> {
-    await updateThreadArchiveState(this.database, threadId, isArchived);
+    await this.threads.updateThreadArchiveState(threadId, isArchived);
   }
 
-  /**
-   * Updates a Codex-generated thread title.
-   *
-   * @param threadId Thread identifier.
-   * @param title Codex title.
-   *
-   * @returns Promise resolved when the update completes.
-   */
+  /** Updates a Codex-generated thread title. */
   async updateThreadCodexTitle(threadId: string, title: string): Promise<void> {
-    await updateThreadCodexTitle(this.database, threadId, title);
+    await this.threads.updateThreadCodexTitle(threadId, title);
   }
 
-  /**
-   * Deletes a cached thread.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Promise resolved when deletion completes.
-   */
+  /** Deletes a cached thread. */
   async deleteThread(threadId: string): Promise<void> {
-    await deleteThread(this.database, threadId);
+    await this.threads.deleteThread(threadId);
   }
 
-  /**
-   * Deletes empty never-synced thread shells for one project.
-   *
-   * @param currentProjectPath Project path to clean.
-   * @param sourceId Optional source identifier.
-   *
-   * @returns Number of deleted thread rows.
-   */
+  /** Deletes empty never-synced thread shells for a project. */
   async deleteEmptyUnsyncedThreads(
     currentProjectPath: string,
     sourceId?: string | null
   ): Promise<number> {
-    return await deleteEmptyUnsyncedThreads(this.database, currentProjectPath, sourceId);
+    return await this.threads.deleteEmptyUnsyncedThreads(currentProjectPath, sourceId);
   }
 
-  /**
-   * Lists cached threads.
-   *
-   * @param query Thread list query.
-   *
-   * @returns Cached thread summaries.
-   */
+  /** Lists cached threads. */
   async listThreads(query: ThreadListCacheQuery): Promise<CachedThreadSummary[]> {
-    return await listThreads(this.database, query);
+    return await this.threads.listThreads(query);
   }
 
-  /**
-   * Aggregates token usage for one cached project.
-   *
-   * @param projectPath Project working directory.
-   * @param sourceId Source identifier, or `null` for an orphan project.
-   * @returns Aggregated cached token usage.
-   */
+  /** Aggregates token usage for a cached project. */
   async getProjectTokenUsageStatistics(
     projectPath: string,
     sourceId: string | null
   ): Promise<CachedProjectTokenUsageStatistics> {
-    return await getProjectTokenUsageStatistics(this.database, projectPath, sourceId);
+    return await this.threads.getProjectTokenUsageStatistics(projectPath, sourceId);
   }
 
-  /**
-   * Reads a cached thread snapshot.
-   *
-   * @param threadId Thread identifier.
-   * @param options Read options.
-   *
-   * @returns Cached snapshot, or `null`.
-   */
+  /** Reads a cached thread snapshot. */
   async getThread(
     threadId: string,
     options: CachedThreadReadOptions = {}
   ): Promise<CachedThreadSnapshot | null> {
-    return await getThread(this.database, threadId, options);
+    return await this.threads.getThread(threadId, options);
   }
 
-  /**
-   * Reads older cached turns.
-   *
-   * @param query Older-turn query.
-   *
-   * @returns Older turns and pagination state.
-   */
+  /** Reads older cached turns. */
   async getOlderTurns(query: CachedOlderTurnsQuery): Promise<CachedOlderTurnsResult> {
-    return await getOlderTurns(this.database, query);
+    return await this.threads.getOlderTurns(query);
   }
 
-  /**
-   * Saves a full thread snapshot.
-   *
-   * @param snapshot Thread snapshot.
-   *
-   * @returns Promise resolved when save completes.
-   */
+  /** Saves a full thread snapshot. */
   async saveThreadSnapshot(snapshot: CachedThreadSnapshot): Promise<void> {
-    await saveThreadSnapshot(this.database, snapshot);
+    await this.threads.saveThreadSnapshot(snapshot);
   }
 
-  /**
-   * Saves an incremental thread delta.
-   *
-   * @param delta Thread delta.
-   *
-   * @returns Promise resolved when save completes.
-   */
+  /** Saves an incremental thread delta. */
   async saveThreadDelta(delta: CachedThreadDelta): Promise<void> {
-    await saveThreadDelta(this.database, delta);
+    await this.threads.saveThreadDelta(delta);
   }
 
-  /**
-   * Saves the latest known thread token usage.
-   *
-   * @param usage Token usage snapshot.
-   *
-   * @returns Promise resolved when save completes.
-   */
+  /** Saves the latest known thread token usage. */
   async saveThreadTokenUsage(
     usage: CachedThreadTokenUsage,
     sourceId: string | null = null
   ): Promise<void> {
-    await saveThreadTokenUsage(this.database, usage, sourceId);
+    await this.threads.saveThreadTokenUsage(usage, sourceId);
   }
 
-  /**
-   * Stores one token usage snapshot when its values changed.
-   * Repeated values for the same source, thread, and turn are ignored.
-   *
-   * @param snapshot Token usage snapshot.
-   *
-   * @returns Promise resolved when the write completes.
-   */
+  /** Stores a distinct token usage snapshot. */
   async saveThreadTokenUsageSnapshot(snapshot: CachedThreadTokenUsageSnapshot): Promise<void> {
-    insertTokenUsageSnapshot(this.database, snapshot);
+    await this.threads.saveThreadTokenUsageSnapshot(snapshot);
   }
 
-  /**
-   * Saves the latest token usage and one distinct history snapshot atomically.
-   *
-   * @param usage Latest usage values for the thread.
-   * @param snapshot Immutable history snapshot.
-   * @returns Promise resolved when the write completes.
-   */
+  /** Saves latest token usage and a history snapshot atomically. */
   async saveThreadTokenUsageAndSnapshot(
     usage: CachedThreadTokenUsage,
     snapshot: CachedThreadTokenUsageSnapshot
   ): Promise<void> {
-    saveThreadTokenUsageAndSnapshot(this.database, usage, snapshot);
+    await this.threads.saveThreadTokenUsageAndSnapshot(usage, snapshot);
   }
 
-  /**
-   * Reads historical token usage snapshots for one thread.
-   *
-   * @param query Snapshot query.
-   * @returns Snapshots ordered from oldest to newest.
-   */
+  /** Reads historical token usage snapshots for a thread. */
   async listThreadTokenUsageSnapshots(
     query: CachedThreadTokenUsageSnapshotQuery
   ): Promise<CachedThreadTokenUsageSnapshot[]> {
-    return listTokenUsageSnapshots(this.database, query);
+    return await this.threads.listThreadTokenUsageSnapshots(query);
   }
 
-  /**
-   * Reads source-wide token usage snapshots with one baseline per thread.
-   *
-   * @param query Source-wide snapshot query.
-   * @returns Baselines and in-range snapshots ordered from oldest to newest.
-   */
+  /** Reads source-wide token usage snapshots with thread baselines. */
   async listSourceTokenUsageSnapshots(
     query: CachedSourceTokenUsageSnapshotQuery
   ): Promise<CachedThreadTokenUsageSnapshot[]> {
-    return listSourceTokenUsageSnapshots(this.database, query);
+    return await this.threads.listSourceTokenUsageSnapshots(query);
   }
 
-  /**
-   * Stores one source-scoped rate-limit snapshot when its values changed.
-   *
-   * @param snapshot Rate-limit snapshot.
-   * @returns Promise resolved when the write completes.
-   */
+  /** Stores a source-scoped rate-limit snapshot. */
   async saveUsageRateLimitSnapshot(snapshot: CachedUsageRateLimitSnapshot): Promise<void> {
-    insertUsageRateLimitSnapshot(this.database, snapshot);
+    await this.threads.saveUsageRateLimitSnapshot(snapshot);
   }
 
-  /**
-   * Reads historical source-scoped rate-limit snapshots.
-   *
-   * @param query Snapshot query.
-   * @returns Snapshots ordered from oldest to newest.
-   */
+  /** Reads historical source-scoped rate-limit snapshots. */
   async listUsageRateLimitSnapshots(
     query: CachedUsageRateLimitSnapshotQuery
   ): Promise<CachedUsageRateLimitSnapshot[]> {
-    return listUsageRateLimitSnapshots(this.database, query);
+    return await this.threads.listUsageRateLimitSnapshots(query);
   }
 
-  /**
-   * Upserts execution metadata for one turn.
-   *
-   * @param metadata Turn execution metadata.
-   * @returns Promise resolved when the write completes.
-   */
+  /** Upserts execution metadata for a turn. */
   async saveTurnExecutionMetadata(metadata: CachedTurnExecutionMetadata): Promise<void> {
-    upsertTurnExecutionMetadata(this.database, metadata);
+    await this.threads.saveTurnExecutionMetadata(metadata);
   }
 
-  /**
-   * Reads cached thread synchronization state.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Sync state, or `null`.
-   */
+  /** Reads cached thread synchronization state. */
   async getSyncState(threadId: string): Promise<CachedThreadSyncState | null> {
-    return await getSyncState(this.database, threadId);
+    return await this.threads.getSyncState(threadId);
   }
 
-  /**
-   * Flushes WAL state and closes the database.
-   *
-   * @returns Promise resolved when the database is closed.
-   */
+  /** Flushes WAL state and closes the database. */
   async close(): Promise<void> {
     this.database.pragma("wal_checkpoint(TRUNCATE)");
     this.database.close();
