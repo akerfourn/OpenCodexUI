@@ -196,9 +196,9 @@ describe("source-aware thread routing", () => {
       }
     });
 
-    expect(project.threadListStore.readSubAgentThreads("parent-1", "source-a"))
+    expect(project.threadListStore.subAgentStore.read("parent-1", "source-a"))
       .toMatchObject([{ id: "child-1" }]);
-    expect(project.threadListStore.readSubAgentThreads("parent-1", "source-b")).toEqual([]);
+    expect(project.threadListStore.subAgentStore.read("parent-1", "source-b")).toEqual([]);
     expect(root.collaborationStore.readThreadEvents("source-a", "child-1"))
       .toMatchObject([{ id: "event-1", prompt: "Review this module." }]);
     expect(root.collaborationStore.readThreadEvents("source-b", "child-1")).toEqual([]);

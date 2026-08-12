@@ -2,14 +2,12 @@ import Fuse from "fuse.js";
 import { makeAutoObservable } from "mobx";
 
 import type {
-  OpenCodexCollaborationEvent,
-  OpenCodexThread,
-  OpenCodexTurn
+  OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectStore } from "./ProjectStore";
 import type { RootStore } from "./RootStore";
-import { SubAgentThreadRegistry } from "./SubAgentThreadRegistry";
+import { SubAgentThreadStore } from "./SubAgentThreadStore";
 
 /**
  * Stores the thread list state for a single opened project.
@@ -33,8 +31,8 @@ export class ThreadListStore {
   hasArchivedThreads = false;
   /** Whether archived thread presence is being checked. */
   isCheckingArchivedThreads = false;
-  /** Source-aware sub-agent metadata and root membership registry. */
-  private readonly subAgentRegistry = new SubAgentThreadRegistry();
+  /** Source-aware sub-agent discovery and readonly timeline state. */
+  readonly subAgentStore: SubAgentThreadStore;
 
   /**
    * Creates the thread list store.
@@ -46,10 +44,11 @@ export class ThreadListStore {
     private readonly projectStore: ProjectStore,
     private readonly root: RootStore
   ) {
-    makeAutoObservable<ThreadListStore, "projectStore" | "root" | "subAgentRegistry">(this, {
+    this.subAgentStore = new SubAgentThreadStore(root);
+    makeAutoObservable<ThreadListStore, "projectStore" | "root" | "subAgentStore">(this, {
       projectStore: false,
       root: false,
-      subAgentRegistry: false
+      subAgentStore: false
     });
   }
 
@@ -251,102 +250,6 @@ export class ThreadListStore {
   }
 
   /**
-   * Lists readonly sub-agent threads spawned from a parent thread.
-   *
-   * @param parentThreadId Parent thread identifier.
-   * @param sourceId Source that owns the parent thread.
-   * @returns Sub-agent thread metadata.
-   */
-  async listSubAgentThreads(
-    parentThreadId: string,
-    sourceId: string | null
-  ): Promise<OpenCodexThread[]> {
-    const threads = await this.root.request<OpenCodexThread[]>({
-      type: "threads.subAgents.list",
-      sourceId,
-      parentThreadId
-    });
-
-    return this.subAgentRegistry.replaceRoot(sourceId, parentThreadId, threads);
-  }
-
-  /**
-   * Reads the currently loaded descendants for one source-aware root.
-   *
-   * @param parentThreadId Parent thread identifier.
-   * @param sourceId Source that owns the parent thread.
-   * @returns Loaded descendants, or an empty list.
-   */
-  readSubAgentThreads(parentThreadId: string, sourceId: string | null): OpenCodexThread[] {
-    return this.subAgentRegistry.readRoot(sourceId, parentThreadId);
-  }
-
-  /**
-   * Loads collaboration events required by a readonly sub-agent timeline.
-   *
-   * @param sourceId Source that owns the thread.
-   * @param threadId Thread used as the hierarchy root.
-   * @returns Persisted normalized collaboration events.
-   */
-  async loadCollaborationEvents(
-    sourceId: string,
-    threadId: string
-  ): Promise<OpenCodexCollaborationEvent[]> {
-    return await this.root.collaborationStore.loadThreadEvents(sourceId, threadId);
-  }
-
-  /**
-   * Reads collaboration events currently known for a readonly thread.
-   *
-   * @param sourceId Source that owns the thread.
-   * @param threadId Thread identifier.
-   * @returns Matching normalized events.
-   */
-  readCollaborationEvents(
-    sourceId: string,
-    threadId: string
-  ): OpenCodexCollaborationEvent[] {
-    return this.root.collaborationStore.readThreadEvents(sourceId, threadId);
-  }
-
-  /**
-   * Adds a newly announced sub-agent to every loaded ancestor list it belongs to.
-   *
-   * @param thread Newly discovered sub-agent thread.
-   */
-  recordSubAgentThread(thread: OpenCodexThread): void {
-    this.subAgentRegistry.upsert(thread);
-  }
-
-  /**
-   * Applies runtime agent statuses carried by collaboration events.
-   *
-   * @param sourceId Source that owns the target agents.
-   * @param statuses Status values keyed by thread id or agent path.
-   */
-  updateSubAgentStatuses(sourceId: string, statuses: Readonly<Record<string, string>>): void {
-    this.subAgentRegistry.updateStatuses(sourceId, statuses);
-  }
-
-  /**
-   * Reads a secondary thread without changing the selected chat.
-   *
-   * @param threadId Thread identifier.
-   * @param sourceId Source that owns the thread.
-   * @returns Thread metadata and turns.
-   */
-  async readThreadReadonly(
-    threadId: string,
-    sourceId: string | null
-  ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.root.request<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }>({
-      type: "threads.readReadonly",
-      threadId,
-      sourceId
-    });
-  }
-
-  /**
    * Applies a local thread title change.
    *
    * @param threadId Thread identifier.
@@ -440,7 +343,7 @@ export class ThreadListStore {
     this.archivingThreadId = null;
     this.hasArchivedThreads = false;
     this.isCheckingArchivedThreads = false;
-    this.subAgentRegistry.clear();
+    this.subAgentStore.clear();
   }
 
   /**

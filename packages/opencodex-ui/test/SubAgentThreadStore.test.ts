@@ -5,12 +5,56 @@ import type {
   OpenCodexClientTransport,
   OpenCodexCollaborationEvent,
   OpenCodexProject,
+  OpenCodexRequest,
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
 
 import { RootStore } from "../src/stores/RootStore";
 
 describe("sub-agent thread store", () => {
+  it("should list and cache descendants through an explicit source-aware request", async () => {
+    const child = createThread("child", "root", "source-a", 1);
+    const request = vi.fn(async (payload: OpenCodexRequest): Promise<unknown> => {
+      return payload.type === "threads.subAgents.list" ? [child] : [];
+    });
+    const root = createRootStore(request);
+    const project = root.projectsStore.openProjectTab(
+      createProject("project-a", "source-a"),
+      false
+    );
+
+    await expect(project.threadListStore.subAgentStore.list("root", "source-a"))
+      .resolves.toEqual([child]);
+    expect(project.threadListStore.subAgentStore.read("root", "source-a")).toEqual([child]);
+    expect(request).toHaveBeenCalledWith({
+      type: "threads.subAgents.list",
+      sourceId: "source-a",
+      parentThreadId: "root"
+    });
+  });
+
+  it("should read a secondary thread without changing the selected chat", async () => {
+    const child = createThread("child", "root", "source-a", 1);
+    const response = { thread: child, turns: [] };
+    const request = vi.fn(async (payload: OpenCodexRequest): Promise<unknown> => {
+      return payload.type === "threads.readReadonly" ? response : [];
+    });
+    const root = createRootStore(request);
+    const project = root.projectsStore.openProjectTab(
+      createProject("project-a", "source-a"),
+      false
+    );
+
+    await expect(project.threadListStore.subAgentStore.readThread("child", "source-a"))
+      .resolves.toEqual(response);
+    expect(project.selectedChatId).toBeNull();
+    expect(request).toHaveBeenCalledWith({
+      type: "threads.readReadonly",
+      threadId: "child",
+      sourceId: "source-a"
+    });
+  });
+
   it("should reconcile out-of-order live descendants and status updates", () => {
     const root = createRootStore();
     const project = root.projectsStore.openProjectTab(
@@ -28,11 +72,11 @@ describe("sub-agent thread store", () => {
     root.handleEvent({ type: "thread.discovered", thread: grandchild });
     root.handleEvent({ type: "thread.discovered", thread: child });
 
-    expect(project.threadListStore.readSubAgentThreads("root", "source-a").map(
+    expect(project.threadListStore.subAgentStore.read("root", "source-a").map(
       (thread) => thread.id
     )).toEqual(["child", "grandchild"]);
 
-    expect(project.threadListStore.readSubAgentThreads("root", "source-a")).toMatchObject([
+    expect(project.threadListStore.subAgentStore.read("root", "source-a")).toMatchObject([
       { id: "child", status: "idle" },
       { id: "grandchild", status: "running" }
     ]);
@@ -42,7 +86,7 @@ describe("sub-agent thread store", () => {
       thread: { ...child, agentNickname: "Updated child", status: "completed" }
     });
 
-    expect(project.threadListStore.readSubAgentThreads("root", "source-a")[0]).toMatchObject({
+    expect(project.threadListStore.subAgentStore.read("root", "source-a")[0]).toMatchObject({
       id: "child",
       agentNickname: "Updated child",
       status: "completed"
@@ -53,7 +97,7 @@ describe("sub-agent thread store", () => {
       thread: { ...grandchild, status: "completed" }
     });
 
-    expect(project.threadListStore.readSubAgentThreads("root", "source-a")[1]).toMatchObject({
+    expect(project.threadListStore.subAgentStore.read("root", "source-a")[1]).toMatchObject({
       id: "grandchild",
       status: "completed"
     });
@@ -79,10 +123,10 @@ describe("sub-agent thread store", () => {
       thread: createThread("shared", "root", "source-b", 1, "/workspace/project-b")
     });
 
-    expect(firstProject.threadListStore.readSubAgentThreads("root", "source-a"))
+    expect(firstProject.threadListStore.subAgentStore.read("root", "source-a"))
       .toMatchObject([{ id: "shared", sourceId: "source-a" }]);
-    expect(firstProject.threadListStore.readSubAgentThreads("root", "source-b")).toEqual([]);
-    expect(secondProject.threadListStore.readSubAgentThreads("root", "source-b"))
+    expect(firstProject.threadListStore.subAgentStore.read("root", "source-b")).toEqual([]);
+    expect(secondProject.threadListStore.subAgentStore.read("root", "source-b"))
       .toMatchObject([{ id: "shared", sourceId: "source-b" }]);
   });
 
@@ -98,7 +142,7 @@ describe("sub-agent thread store", () => {
     const observedSizes: number[] = [];
     const dispose = autorun(() => {
       observedSizes.push(
-        project.threadListStore.readSubAgentThreads("root", "source-a").length
+        project.threadListStore.subAgentStore.read("root", "source-a").length
       );
     });
 
@@ -112,16 +156,38 @@ describe("sub-agent thread store", () => {
       root.handleEvent({ type: "thread.discovered", thread: { ...thread } });
     }
 
-    expect(project.threadListStore.readSubAgentThreads("root", "source-a")).toHaveLength(128);
+    expect(project.threadListStore.subAgentStore.read("root", "source-a")).toHaveLength(128);
     expect(observedSizes.length).toBe(observationCountAfterDiscovery);
     dispose();
+  });
+
+  it("should clear loaded sub-agent hierarchies with the owning thread list", () => {
+    const root = createRootStore();
+    const project = root.projectsStore.openProjectTab(
+      createProject("project-a", "source-a"),
+      false
+    );
+
+    root.handleEvent({
+      type: "thread.discovered",
+      thread: createThread("child", "root", "source-a", 1)
+    });
+    expect(project.threadListStore.subAgentStore.read("root", "source-a")).toHaveLength(1);
+
+    project.threadListStore.clear();
+
+    expect(project.threadListStore.subAgentStore.read("root", "source-a")).toEqual([]);
   });
 });
 
 /** Creates a root store whose transport never performs external work. */
-function createRootStore(): RootStore {
+function createRootStore(
+  request: (payload: OpenCodexRequest) => Promise<unknown> = async () => []
+): RootStore {
   const transport: OpenCodexClientTransport = {
-    request: vi.fn(async () => []),
+    request: async <T>(payload: OpenCodexRequest): Promise<T> => {
+      return await request(payload) as T;
+    },
     onEvent: vi.fn(() => () => undefined)
   };
 

@@ -64,6 +64,7 @@ export function SubAgentThreadsDialog({
 }: SubAgentThreadsDialogProps) {
   const { t } = useTranslation();
   const threadListStore = projectStore.threadListStore;
+  const subAgentStore = threadListStore.subAgentStore;
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
     initialSelectedThreadId
   );
@@ -72,7 +73,7 @@ export function SubAgentThreadsDialog({
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const readonlyThreadViewsRef = useRef(new Map<string, ReadonlyThreadView>());
   const sourceId = parentThread.sourceId;
-  const threads = threadListStore.readSubAgentThreads(parentThread.id, sourceId);
+  const threads = subAgentStore.read(parentThread.id, sourceId);
   const treeNodes = buildSubAgentThreadTree(parentThread, threads, sourceId);
   const turnStores = useMemo(() => (
     threadView?.turns.map((turn) => new ChatTurnStore(turn)) ?? []
@@ -83,7 +84,7 @@ export function SubAgentThreadsDialog({
   const selectedThreadSourceId = currentThread?.sourceId ?? sourceId;
   const collaborationEvents = currentThread === null || selectedThreadSourceId === null
     ? []
-    : threadListStore.readCollaborationEvents(
+    : subAgentStore.readCollaborationEvents(
       selectedThreadSourceId,
       currentThread.id
     );
@@ -103,7 +104,7 @@ export function SubAgentThreadsDialog({
     setSelectedThreadId(initialSelectedThreadId);
     readonlyThreadViewsRef.current.clear();
 
-    void threadListStore.listSubAgentThreads(parentThread.id, sourceId)
+    void subAgentStore.list(parentThread.id, sourceId)
       .then((loadedThreads) => {
         if (isCancelled) {
           return;
@@ -126,7 +127,7 @@ export function SubAgentThreadsDialog({
           return;
         }
 
-        const cachedThreads = threadListStore.readSubAgentThreads(
+        const cachedThreads = subAgentStore.read(
           parentThread.id,
           sourceId
         );
@@ -150,7 +151,7 @@ export function SubAgentThreadsDialog({
     return () => {
       isCancelled = true;
     };
-  }, [initialSelectedThreadId, open, parentThread.id, sourceId, threadListStore]);
+  }, [initialSelectedThreadId, open, parentThread.id, sourceId, subAgentStore]);
 
   useEffect(() => {
     if (!open || selectedThreadId === null) {
@@ -169,7 +170,7 @@ export function SubAgentThreadsDialog({
     }
 
     if (sourceId !== null) {
-      void threadListStore
+      void subAgentStore
         .loadCollaborationEvents(sourceId, selectedThreadId)
         .catch(() => undefined);
     }
@@ -178,7 +179,7 @@ export function SubAgentThreadsDialog({
       return;
     }
 
-    void threadListStore.readThreadReadonly(selectedThreadId, sourceId)
+    void subAgentStore.readThread(selectedThreadId, sourceId)
       .then((nextThreadView) => {
         if (!isCancelled) {
           readonlyThreadViewsRef.current.set(viewKey, nextThreadView);
@@ -195,7 +196,7 @@ export function SubAgentThreadsDialog({
     return () => {
       isCancelled = true;
     };
-  }, [open, selectedThreadId, sourceId, threadListStore]);
+  }, [open, selectedThreadId, sourceId, subAgentStore]);
 
   function handleSelectThread(threadId: string): void {
     setSelectedThreadId(threadId);

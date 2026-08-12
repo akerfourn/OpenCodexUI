@@ -263,7 +263,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
       chatStore.setThread(updatedThread);
     }
 
-    projectStore.threadListStore.recordSubAgentThread(updatedThread);
+    projectStore.threadListStore.subAgentStore.recordThread(updatedThread);
   }
 
   /**
@@ -275,7 +275,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
     const projectStore = this.findProjectStoreForThread(thread.id, thread.sourceId)
       ?? this.projectsStore.ensureProjectStoreForThread(thread);
 
-    projectStore.threadListStore.recordSubAgentThread(thread);
+    projectStore.threadListStore.subAgentStore.recordThread(thread);
   }
 
   /**
@@ -289,7 +289,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
     statuses: Readonly<Record<string, string>>
   ): void {
     for (const projectStore of this.projectsStore.projectStoresById.values()) {
-      projectStore.threadListStore.updateSubAgentStatuses(sourceId, statuses);
+      projectStore.threadListStore.subAgentStore.updateStatuses(sourceId, statuses);
     }
   }
 
