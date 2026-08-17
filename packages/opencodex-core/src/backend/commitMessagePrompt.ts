@@ -25,15 +25,13 @@ export function buildCommitMessageGenerationPrompt(
 ): string {
   const language = params.language === "fr" ? "French" : "English";
   const trimmedInstruction = params.instruction.trim();
-  const diffCompleteness = params.stagedContext.isDiffTruncated ? "truncated" : "complete";
 
   const replacements: Record<string, string> = {
     "##LANG##": language,
     "##EXTRA_PROMPT##": trimmedInstruction,
-    "##DIFF_COMPLETENESS##": diffCompleteness,
     "##STAGED_STAT##": fence(params.stagedContext.stat),
     "##STAGED_STATUS##": fence(params.stagedContext.nameStatus),
-    "##STAGED_DIFF##": fence(params.stagedContext.diff)
+    "##STAGED_NUMSTAT##": fence(params.stagedContext.numStat)
   };
 
   let prompt = params.template;

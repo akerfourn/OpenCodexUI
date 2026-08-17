@@ -29,6 +29,7 @@ import {
 import {
   createCommitMessageTurnCompletionWaiter,
   readFinalAgentTextOrNull,
+  readTurnFailureMessageOrNull,
   type CommitMessageTurnCompletionResult
 } from "./commitMessageTurnCompletion.js";
 
@@ -183,9 +184,14 @@ export class CommitMessageService {
 
       turnId = turnResponse.turn.id;
       const result = await completed.promise;
+      const failureMessage = readTurnFailureMessageOrNull(result.turn);
       const completedTurnText = readFinalAgentTextOrNull(result.turn);
       const finalText = completedTurnText ?? result.streamedFinalText;
       this.logGenerationDiagnostics(result, completedTurnText !== null);
+
+      if (failureMessage !== null) {
+        throw new Error(failureMessage);
+      }
 
       if (finalText === null) {
         throw new Error("Commit message generation did not return a final answer.");

@@ -22,12 +22,11 @@ export type GitRepositoryActionContext = {
   clients: Pick<ClientPort, "ensureClient">;
 };
 
-/** Context passed to one-shot commit message generation. */
+/** Compact staged-change context passed to one-shot commit message generation. */
 export type OpenCodexStagedCommitContext = {
   stat: string;
   nameStatus: string;
-  diff: string;
-  isDiffTruncated: boolean;
+  numStat: string;
 };
 
 type PendingCommitMessageSource = {
@@ -39,8 +38,6 @@ type ListGitRemotes = (
   projectPath: string,
   sourceId: string | null
 ) => Promise<OpenCodexGitRemote[]>;
-
-const commitDiffBytesCap = 220_000;
 
 /**
  * Reads the current Git status and configured remotes for a project.
@@ -189,26 +186,23 @@ export async function createGitCommit(
  * @param context Git command runner and source client resolver.
  * @param projectPath Project working directory.
  * @param sourceId Source identifier.
- * @returns Staged files summary and a bounded diff.
+ * @returns Compact staged-file summaries suitable for an exploratory Codex turn.
  */
 export async function readStagedCommitContext(
   context: GitRepositoryActionContext,
   projectPath: string,
   sourceId: string | null
 ): Promise<OpenCodexStagedCommitContext> {
-  const [stat, nameStatus, diff] = await Promise.all([
+  const [stat, nameStatus, numStat] = await Promise.all([
     context.runGit(projectPath, sourceId, ["diff", "--cached", "--stat"]),
     context.runGit(projectPath, sourceId, ["diff", "--cached", "--name-status"]),
-    context.runGit(projectPath, sourceId, ["diff", "--cached"], {
-      outputBytesCap: commitDiffBytesCap
-    })
+    context.runGit(projectPath, sourceId, ["diff", "--cached", "--numstat"])
   ]);
 
   return {
     stat: stat.stdout,
     nameStatus: nameStatus.stdout,
-    diff: diff.stdout,
-    isDiffTruncated: diff.stdoutCapReached === true
+    numStat: numStat.stdout
   };
 }
 

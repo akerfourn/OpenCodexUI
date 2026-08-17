@@ -19,10 +19,12 @@ Extra instruction for this generation:
 
 ##EXTRA_PROMPT##
 
-Diff completeness: ##DIFF_COMPLETENESS##.
-
-If the staged diff is marked as truncated, be conservative and do not invent
-details that are not present in the provided context.
+The full staged diff is intentionally not preloaded, so large generated files
+do not exhaust the model context. The project workspace is available to you.
+Before producing the final JSON, inspect the staged changes when the summaries
+are insufficient. Prefer targeted commands such as
+`git diff --cached -- path/to/file` and do not run an unscoped full diff for
+large or generated files. Only use information from staged changes.
 
 Staged file summary:
 
@@ -32,6 +34,6 @@ Staged file status:
 
 ##STAGED_STATUS##
 
-Staged diff:
+Staged line counts:
 
-##STAGED_DIFF##
+##STAGED_NUMSTAT##

@@ -175,15 +175,14 @@ describe("GitService repository mutations", () => {
     expect(client.runs[0]).toMatchObject({ timeoutMs: 120_000 });
   });
 
-  it("should read staged summaries and a bounded diff in parallel", async () => {
+  it("should read compact staged summaries in parallel", async () => {
     const client = new FakeCodexClient([
       { exitCode: 0, stdout: " file | 2 ++\n", stderr: "" },
       { exitCode: 0, stdout: "M\tsrc/index.ts\n", stderr: "" },
       {
         exitCode: 0,
-        stdout: "diff --git a/src/index.ts b/src/index.ts\n+added line\n",
-        stderr: "",
-        stdoutCapReached: true
+        stdout: "1\t1\tsrc/index.ts\n",
+        stderr: ""
       }
     ]);
     const service = createGitService(client);
@@ -193,18 +192,13 @@ describe("GitService repository mutations", () => {
     expect(context).toEqual({
       stat: " file | 2 ++\n",
       nameStatus: "M\tsrc/index.ts\n",
-      diff: "diff --git a/src/index.ts b/src/index.ts\n+added line\n",
-      isDiffTruncated: true
+      numStat: "1\t1\tsrc/index.ts\n"
     });
     expect(client.runs.map((run) => run.command)).toEqual([
       ["git", "diff", "--cached", "--stat"],
       ["git", "diff", "--cached", "--name-status"],
-      ["git", "diff", "--cached"]
+      ["git", "diff", "--cached", "--numstat"]
     ]);
-    expect(client.runs[2]).toMatchObject({
-      timeoutMs: 30_000,
-      outputBytesCap: 220_000
-    });
   });
 });
 

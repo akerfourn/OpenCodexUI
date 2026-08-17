@@ -127,6 +127,54 @@ describe("GitRuntimeHandler", () => {
       await rm(temporaryDirectory, { recursive: true, force: true });
     }
   });
+
+  it("should surface the Codex turn failure message during commit generation", async () => {
+    const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), "opencodex-git-handler-"));
+    const defaultPromptPath = path.join(temporaryDirectory, "default.md");
+    const generationPromptPath = path.join(temporaryDirectory, "generation.md");
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "stat\n", stderr: "" },
+      { exitCode: 0, stdout: "name-status\n", stderr: "" },
+      { exitCode: 0, stdout: "1\t0\tfile.ts\n", stderr: "" }
+    ]);
+
+    client.startThread = async () => ({ thread: { id: "thread-1" } });
+    client.startTurn = async () => {
+      queueMicrotask(() => {
+        client.emitNotification({
+          method: "turn/completed",
+          params: {
+            threadId: "thread-1",
+            turn: createFailedCommitGenerationTurn()
+          }
+        });
+      });
+
+      return { turn: { id: "turn-1" } };
+    };
+
+    try {
+      await writeFile(defaultPromptPath, "Default commit prompt", "utf8");
+      await writeFile(generationPromptPath, "Generation template", "utf8");
+      const handler = createHandler({
+        userDataPath: path.join(temporaryDirectory, "user-data"),
+        defaultPromptPath,
+        generationPromptPath,
+        clients: { ensureClient: async () => client.asCodexClient() }
+      });
+
+      await expect(handler.generateGitCommitMessage(
+        "/workspace/project",
+        "source-1",
+        "",
+        "gpt-5",
+        null,
+        "en"
+      )).rejects.toThrow("Codex ran out of room in the model's context window.");
+    } finally {
+      await rm(temporaryDirectory, { recursive: true, force: true });
+    }
+  });
 });
 
 /** Creates a handler with a narrow deterministic default dependency set. */
@@ -156,10 +204,12 @@ type FakeProcessResponse = Pick<
   "exitCode" | "stdout" | "stderr"
 >;
 
-type FakeNotificationListener = (notification: {
+type FakeNotification = {
   method: string;
-  params: v2.ProcessExitedNotification;
-}) => void;
+  params: unknown;
+};
+
+type FakeNotificationListener = (notification: FakeNotification) => void;
 
 /** Provides only the app-server calls needed by GitService in these tests. */
 class FakeCodexClient {
@@ -180,6 +230,12 @@ class FakeCodexClient {
         this.listeners.delete(listener);
       }
     };
+  }
+
+  emitNotification(notification: FakeNotification): void {
+    for (const listener of this.listeners) {
+      listener(notification);
+    }
   }
 
   async request<TResponse>(method: string, params: unknown): Promise<TResponse> {
@@ -205,9 +261,7 @@ class FakeCodexClient {
         }
       };
 
-      for (const listener of this.listeners) {
-        listener(notification);
-      }
+      this.emitNotification(notification);
     });
 
     return {} as TResponse;
@@ -220,4 +274,22 @@ class FakeCodexClient {
   async startTurn(): Promise<unknown> {
     throw new Error("No fake turn response configured.");
   }
+}
+
+/** Creates one failed commit generation turn reported by Codex. */
+function createFailedCommitGenerationTurn(): v2.Turn {
+  return {
+    id: "turn-1",
+    items: [],
+    itemsView: "full",
+    status: "failed",
+    error: {
+      message: "Codex ran out of room in the model's context window.",
+      codexErrorInfo: null,
+      additionalDetails: null
+    },
+    startedAt: null,
+    completedAt: null,
+    durationMs: null
+  };
 }

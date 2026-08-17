@@ -80,6 +80,26 @@ export function readFinalAgentTextOrNull(turn: v2.Turn): string | null {
 }
 
 /**
+ * Reads the failure reported by a completed turn.
+ *
+ * @param turn Completed Codex turn.
+ * @returns User-facing failure message, or `null` for a successful turn.
+ */
+export function readTurnFailureMessageOrNull(turn: v2.Turn): string | null {
+  if (turn.status === "completed") {
+    return null;
+  }
+
+  const errorMessage = turn.error?.message.trim();
+
+  if (errorMessage !== undefined && errorMessage.length > 0) {
+    return errorMessage;
+  }
+
+  return `Commit message generation ${turn.status}.`;
+}
+
+/**
  * Extracts the completed turn matching the requested thread and turn.
  *
  * @param notification Codex notification.
