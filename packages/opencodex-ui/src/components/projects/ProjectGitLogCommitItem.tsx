@@ -16,12 +16,12 @@ import type { OpenCodexGitLogCommit } from "@open-codex-ui/opencodex-protocol";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitLogStore } from "../../stores/ProjectGitLogStore";
 import { ProjectGitLogCommitDetails } from "./ProjectGitLogCommitDetails";
 
 type ProjectGitLogCommitItemProps = {
   commit: OpenCodexGitLogCommit;
-  gitStore: ProjectGitStore;
+  logStore: ProjectGitLogStore;
 };
 
 /**
@@ -31,10 +31,10 @@ type ProjectGitLogCommitItemProps = {
  *
  * @returns Rendered commit item.
  */
-export function ProjectGitLogCommitItem({ commit, gitStore }: ProjectGitLogCommitItemProps) {
+export function ProjectGitLogCommitItem({ commit, logStore }: ProjectGitLogCommitItemProps) {
   const { t } = useTranslation();
-  const details = gitStore.getCommitDetails(commit.hash);
-  const isLoadingDetails = gitStore.loadingCommitDetailsHash === commit.hash;
+  const details = logStore.getCommitDetails(commit.hash);
+  const isLoadingDetails = logStore.loadingCommitDetailsHash === commit.hash;
   const authoredAt = formatCommitDate(commit.authoredAt);
   const refsContent = commit.refs.length > 0
     ? (
@@ -58,7 +58,7 @@ export function ProjectGitLogCommitItem({ commit, gitStore }: ProjectGitLogCommi
 
   function handleChange(_: unknown, isExpanded: boolean): void {
     if (isExpanded) {
-      void gitStore.loadCommitDetails(commit.hash);
+      void logStore.loadCommitDetails(commit.hash);
     }
   }
 

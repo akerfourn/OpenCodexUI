@@ -16,11 +16,14 @@ import {
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitReferencesStore } from "../../stores/ProjectGitReferencesStore";
+import type { ProjectGitStatusStore } from "../../stores/ProjectGitStatusStore";
 
 type ProjectGitActionsMenuProps = {
   anchorEl: HTMLElement | null;
-  gitStore: ProjectGitStore;
+  referencesStore: ProjectGitReferencesStore;
+  statusStore: ProjectGitStatusStore;
+  isAvailable: boolean;
   onClose(): void;
   onOpenBranch(): void;
   onOpenMerge(): void;
@@ -37,7 +40,9 @@ type ProjectGitActionsMenuProps = {
  */
 export function ProjectGitActionsMenu({
   anchorEl,
-  gitStore,
+  referencesStore,
+  statusStore,
+  isAvailable,
   onClose,
   onOpenBranch,
   onOpenMerge,
@@ -58,7 +63,7 @@ export function ProjectGitActionsMenu({
 
   function handleSelectPublishAction(): void {
     onClose();
-    void gitStore.publishBranch();
+    void referencesStore.publishBranch();
   }
 
   function handleSelectLogAction(): void {
@@ -80,7 +85,7 @@ export function ProjectGitActionsMenu({
       transformOrigin={{ horizontal: "right", vertical: "top" }}
     >
       <MenuItem
-        disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
+        disabled={!isAvailable || !statusStore.isRepository || statusStore.isLoading}
         onClick={handleSelectBranchAction}
       >
         <ListItemIcon>
@@ -89,7 +94,7 @@ export function ProjectGitActionsMenu({
         <ListItemText>{t("git.branchSwitcher")}</ListItemText>
       </MenuItem>
       <MenuItem
-        disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
+        disabled={!isAvailable || !statusStore.isRepository || statusStore.isLoading}
         onClick={handleSelectMergeAction}
       >
         <ListItemIcon>
@@ -98,7 +103,7 @@ export function ProjectGitActionsMenu({
         <ListItemText>{t("git.mergeBranch")}</ListItemText>
       </MenuItem>
       <MenuItem
-        disabled={!gitStore.isAvailable || !gitStore.status.isRepository || gitStore.isLoading}
+        disabled={!isAvailable || !statusStore.isRepository || statusStore.isLoading}
         onClick={handleSelectRemoteAction}
       >
         <ListItemIcon>
@@ -106,10 +111,10 @@ export function ProjectGitActionsMenu({
         </ListItemIcon>
         <ListItemText>{t("git.remoteConfigure")}</ListItemText>
       </MenuItem>
-      {gitStore.status.branchName !== null && gitStore.status.upstreamName === null ? (
-        <MenuItem disabled={!gitStore.canPublishBranch} onClick={handleSelectPublishAction}>
+      {statusStore.status.branchName !== null && statusStore.status.upstreamName === null ? (
+        <MenuItem disabled={!referencesStore.canPublishBranch} onClick={handleSelectPublishAction}>
           <ListItemIcon>
-            {gitStore.isPushing ? (
+            {referencesStore.isPushing ? (
               <CircularProgress color="inherit" size={18} />
             ) : (
               <PublishOutlinedIcon fontSize="small" />
@@ -119,7 +124,7 @@ export function ProjectGitActionsMenu({
         </MenuItem>
       ) : null}
       <MenuItem
-        disabled={!gitStore.isAvailable || !gitStore.status.isRepository}
+        disabled={!isAvailable || !statusStore.isRepository}
         onClick={handleSelectLogAction}
       >
         <ListItemIcon>

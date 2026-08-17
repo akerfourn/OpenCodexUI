@@ -21,11 +21,11 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexGitBranch } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitReferencesStore } from "../../stores/ProjectGitReferencesStore";
 import { ProjectBranchGroupX } from "./ProjectBranchGroup";
 
 type ProjectBranchSwitcherDialogProps = {
-  gitStore: ProjectGitStore;
+  referencesStore: ProjectGitReferencesStore;
   open: boolean;
   onClose(): void;
 };
@@ -38,7 +38,7 @@ type ProjectBranchSwitcherDialogProps = {
  * @returns Rendered dialog.
  */
 export function ProjectBranchSwitcherDialog({
-  gitStore,
+  referencesStore,
   open,
   onClose
 }: ProjectBranchSwitcherDialogProps) {
@@ -46,26 +46,26 @@ export function ProjectBranchSwitcherDialog({
   const [searchTerm, setSearchTerm] = useState("");
   const normalizedSearchTerm = searchTerm.trim();
   const filteredBranches = useMemo(
-    () => filterBranches(gitStore.branches, normalizedSearchTerm),
-    [gitStore.branches, normalizedSearchTerm]
+    () => filterBranches(referencesStore.branches, normalizedSearchTerm),
+    [referencesStore.branches, normalizedSearchTerm]
   );
   const localBranches = filteredBranches.filter((branch) => branch.kind === "local");
   const remoteBranches = filteredBranches.filter((branch) => branch.kind === "remote");
-  const canCreateBranch = canCreateBranchFromInput(gitStore.branches, normalizedSearchTerm);
+  const canCreateBranch = canCreateBranchFromInput(referencesStore.branches, normalizedSearchTerm);
 
   useEffect(() => {
     if (open) {
       setSearchTerm("");
-      void gitStore.loadBranches();
+      void referencesStore.loadBranches();
     }
-  }, [gitStore, open]);
+  }, [referencesStore, open]);
 
   function handleSearchChange(event: ChangeEvent<HTMLInputElement>): void {
     setSearchTerm(event.target.value);
   }
 
   async function handleCheckoutBranch(branch: OpenCodexGitBranch): Promise<void> {
-    const didCheckout = await gitStore.checkoutBranch(branch);
+    const didCheckout = await referencesStore.checkoutBranch(branch);
 
     if (didCheckout) {
       onClose();
@@ -73,7 +73,7 @@ export function ProjectBranchSwitcherDialog({
   }
 
   async function handleCreateBranch(): Promise<void> {
-    const didCreate = await gitStore.createBranch(normalizedSearchTerm);
+    const didCreate = await referencesStore.createBranch(normalizedSearchTerm);
 
     if (didCreate) {
       onClose();
@@ -91,15 +91,15 @@ export function ProjectBranchSwitcherDialog({
             size="small"
             label={t("git.branchSearch")}
             value={searchTerm}
-            disabled={gitStore.isCheckingOutBranch}
+            disabled={referencesStore.isCheckingOutBranch}
             onChange={handleSearchChange}
           />
 
-          {gitStore.branchErrorMessage !== null ? (
-            <Alert severity="error">{gitStore.branchErrorMessage}</Alert>
+          {referencesStore.branchErrorMessage !== null ? (
+            <Alert severity="error">{referencesStore.branchErrorMessage}</Alert>
           ) : null}
 
-          {gitStore.isLoadingBranches ? (
+          {referencesStore.isLoadingBranches ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
               <CircularProgress size={24} />
             </Box>
@@ -109,7 +109,7 @@ export function ProjectBranchSwitcherDialog({
                 <Button
                   variant="text"
                   size="small"
-                  disabled={gitStore.isCheckingOutBranch}
+                  disabled={referencesStore.isCheckingOutBranch}
                   onClick={handleCreateBranch}
                   sx={{ alignSelf: "flex-start" }}
                 >
@@ -120,14 +120,14 @@ export function ProjectBranchSwitcherDialog({
               <ProjectBranchGroupX
                 title={t("git.localBranches")}
                 branches={localBranches}
-                isBusy={gitStore.isCheckingOutBranch}
+                isBusy={referencesStore.isCheckingOutBranch}
                 onSelect={handleCheckoutBranch}
               />
               <Divider />
               <ProjectBranchGroupX
                 title={t("git.remoteBranches")}
                 branches={remoteBranches}
-                isBusy={gitStore.isCheckingOutBranch}
+                isBusy={referencesStore.isCheckingOutBranch}
                 onSelect={handleCheckoutBranch}
               />
             </Stack>

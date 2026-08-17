@@ -8,14 +8,14 @@ import { Box, Button, Divider, Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitChangesStore } from "../../stores/ProjectGitChangesStore";
 import { GitSectionHeader } from "./GitSectionHeader";
 import { ProjectGitFileRow } from "./ProjectGitFileRow";
 
 type ProjectGitFileSectionsProps = {
   canOpenFiles: boolean;
   gitLabelsKey: "git.simple" | "git.technical";
-  gitStore: ProjectGitStore;
+  changesStore: ProjectGitChangesStore;
   onOpenFile(path: string): void;
 };
 
@@ -29,7 +29,7 @@ type ProjectGitFileSectionsProps = {
 export function ProjectGitFileSections({
   canOpenFiles,
   gitLabelsKey,
-  gitStore,
+  changesStore,
   onOpenFile
 }: ProjectGitFileSectionsProps) {
   const { t } = useTranslation();
@@ -39,51 +39,51 @@ export function ProjectGitFileSections({
       <Stack spacing={1}>
         <GitSectionHeader
           title={t(`${gitLabelsKey}.changed`)}
-          count={gitStore.changedFilesCount}
+          count={changesStore.changedFilesCount}
           primaryActionLabel={t(`${gitLabelsKey}.stageSelected`)}
           secondaryActionLabel={t(`${gitLabelsKey}.stageAll`)}
-          tertiaryActionDisabled={gitStore.selectedChangedPaths.length === 0 || gitStore.isBusy}
+          tertiaryActionDisabled={changesStore.selectedChangedPaths.length === 0 || changesStore.isBusy}
           tertiaryActionLabel={t("git.deferSelected")}
-          primaryActionDisabled={gitStore.selectedChangedPaths.length === 0 || gitStore.isBusy}
-          secondaryActionDisabled={gitStore.changedFilesCount === 0 || gitStore.isBusy}
-          onPrimaryAction={gitStore.stageSelected}
-          onSecondaryAction={gitStore.stageAll}
-          onTertiaryAction={gitStore.deferSelected}
+          primaryActionDisabled={changesStore.selectedChangedPaths.length === 0 || changesStore.isBusy}
+          secondaryActionDisabled={changesStore.changedFilesCount === 0 || changesStore.isBusy}
+          onPrimaryAction={changesStore.stageSelected}
+          onSecondaryAction={changesStore.stageAll}
+          onTertiaryAction={changesStore.deferSelected}
         />
-        {gitStore.stageableChangedFiles.length === 0 ? (
+        {changesStore.stageableChangedFiles.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             {t(`${gitLabelsKey}.noChangedFiles`)}
           </Typography>
         ) : (
           <Stack className="git-file-list" spacing={0.25}>
-            {gitStore.stageableChangedFiles.map((file) => (
+            {changesStore.stageableChangedFiles.map((file) => (
               <ProjectGitFileRow
                 key={`changed:${file.path}`}
                 actionIcon={<KeyboardArrowDownOutlinedIcon fontSize="small" />}
                 actionLabel={t(`${gitLabelsKey}.stageFile`)}
                 canOpenFile={canOpenFiles}
-                checked={gitStore.selectedChangedPaths.includes(file.path)}
+                checked={changesStore.selectedChangedPaths.includes(file.path)}
                 deferDirectoryLabel={t("git.deferDirectory")}
                 deferFileLabel={t("git.deferFile")}
-                disabled={gitStore.isBusy}
+                disabled={changesStore.isBusy}
                 file={file}
-                onDeferDirectory={gitStore.deferPath}
-                onDeferFile={gitStore.deferPath}
-                onAction={gitStore.stagePath}
+                onDeferDirectory={changesStore.deferPath}
+                onDeferFile={changesStore.deferPath}
+                onAction={changesStore.stagePath}
                 onOpenFile={onOpenFile}
-                onToggle={gitStore.toggleChangedPath}
+                onToggle={changesStore.toggleChangedPath}
               />
             ))}
           </Stack>
         )}
       </Stack>
 
-      {gitStore.deferredChangedFiles.length > 0 ? (
+      {changesStore.deferredChangedFiles.length > 0 ? (
         <Stack className="git-deferred-section" spacing={1}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
               <Typography variant="subtitle2">
-                {t("git.deferred", { count: gitStore.deferredFilesCount })}
+                {t("git.deferred", { count: changesStore.deferredFilesCount })}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 {t("git.deferredDescription")}
@@ -91,24 +91,24 @@ export function ProjectGitFileSections({
             </Box>
             <Button
               size="small"
-              disabled={gitStore.isBusy}
-              onClick={gitStore.restoreAllDeferred}
+              disabled={changesStore.isBusy}
+              onClick={changesStore.restoreAllDeferred}
             >
               {t("git.restoreAllDeferred")}
             </Button>
           </Stack>
           <Stack className="git-file-list" spacing={0.25}>
-            {gitStore.deferredChangedFiles.map((file) => (
+            {changesStore.deferredChangedFiles.map((file) => (
               <ProjectGitFileRow
                 key={`deferred:${file.path}`}
                 actionIcon={<UnarchiveOutlinedIcon fontSize="small" />}
                 actionLabel={t("git.restoreDeferred")}
-                actionPath={gitStore.getDeferredPathFor(file.path) ?? file.path}
+                actionPath={changesStore.getDeferredPathFor(file.path) ?? file.path}
                 canOpenFile={canOpenFiles}
                 checked={false}
-                disabled={gitStore.isBusy}
+                disabled={changesStore.isBusy}
                 file={file}
-                onAction={gitStore.restoreDeferredPath}
+                onAction={changesStore.restoreDeferredPath}
                 onOpenFile={onOpenFile}
               />
             ))}
@@ -121,32 +121,32 @@ export function ProjectGitFileSections({
       <Stack spacing={1}>
         <GitSectionHeader
           title={t(`${gitLabelsKey}.staged`)}
-          count={gitStore.stagedFilesCount}
+          count={changesStore.stagedFilesCount}
           primaryActionLabel={t(`${gitLabelsKey}.unstageSelected`)}
           secondaryActionLabel={t(`${gitLabelsKey}.unstageAll`)}
-          primaryActionDisabled={gitStore.selectedStagedPaths.length === 0 || gitStore.isBusy}
-          secondaryActionDisabled={gitStore.stagedFilesCount === 0 || gitStore.isBusy}
-          onPrimaryAction={gitStore.unstageSelected}
-          onSecondaryAction={gitStore.unstageAll}
+          primaryActionDisabled={changesStore.selectedStagedPaths.length === 0 || changesStore.isBusy}
+          secondaryActionDisabled={changesStore.stagedFilesCount === 0 || changesStore.isBusy}
+          onPrimaryAction={changesStore.unstageSelected}
+          onSecondaryAction={changesStore.unstageAll}
         />
-        {gitStore.status.stagedFiles.length === 0 ? (
+        {changesStore.stagedFiles.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             {t(`${gitLabelsKey}.noStagedFiles`)}
           </Typography>
         ) : (
           <Stack className="git-file-list" spacing={0.25}>
-            {gitStore.status.stagedFiles.map((file) => (
+            {changesStore.stagedFiles.map((file) => (
               <ProjectGitFileRow
                 key={`staged:${file.path}`}
                 actionIcon={<KeyboardArrowUpOutlinedIcon fontSize="small" />}
                 actionLabel={t(`${gitLabelsKey}.unstageFile`)}
                 canOpenFile={canOpenFiles}
-                checked={gitStore.selectedStagedPaths.includes(file.path)}
-                disabled={gitStore.isBusy}
+                checked={changesStore.selectedStagedPaths.includes(file.path)}
+                disabled={changesStore.isBusy}
                 file={file}
-                onAction={gitStore.unstagePath}
+                onAction={changesStore.unstagePath}
                 onOpenFile={onOpenFile}
-                onToggle={gitStore.toggleStagedPath}
+                onToggle={changesStore.toggleStagedPath}
               />
             ))}
           </Stack>

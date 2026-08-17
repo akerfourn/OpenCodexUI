@@ -10,7 +10,12 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectStore } from "../src/stores/ProjectStore";
+import type { ProjectGitCommitStore } from "../src/stores/ProjectGitCommitStore";
+import type { ProjectGitChangesStore } from "../src/stores/ProjectGitChangesStore";
+import type { ProjectGitReferencesStore } from "../src/stores/ProjectGitReferencesStore";
 import type { ProjectGitStore } from "../src/stores/ProjectGitStore";
+import type { ProjectGitStatusStore } from "../src/stores/ProjectGitStatusStore";
+import type { ProjectGitTagStore } from "../src/stores/ProjectGitTagStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 vi.mock("react-i18next", () => ({
@@ -46,7 +51,7 @@ describe("ProjectGitFileSections", () => {
       <ProjectGitFileSectionsX
         canOpenFiles={false}
         gitLabelsKey="git.technical"
-        gitStore={createGitStore()}
+        changesStore={createChangesStore()}
         onOpenFile={vi.fn()}
       />
     );
@@ -66,11 +71,8 @@ describe("ProjectGitFileSections", () => {
       <ProjectGitFileSectionsX
         canOpenFiles={false}
         gitLabelsKey="git.technical"
-        gitStore={createGitStore({
-          status: createStatus({
-            changedFiles: [],
-            stagedFiles: []
-          }),
+        changesStore={createChangesStore({
+          stagedFiles: [],
           changedFilesCount: 0,
           deferredChangedFiles: [],
           deferredFilesCount: 0,
@@ -93,7 +95,7 @@ describe("ProjectGitCommitSection", () => {
       <ProjectGitCommitSectionX
         generateTooltip="git.technical.generateMessage"
         gitLabelsKey="git.technical"
-        gitStore={createGitStore({
+        commitStore={createCommitStore({
           canCommit: true,
           canGenerateCommitMessage: true,
           commitMessage: "release the change"
@@ -113,7 +115,7 @@ describe("ProjectGitCommitSection", () => {
       <ProjectGitCommitSectionX
         generateTooltip="git.technical.generateMessage"
         gitLabelsKey="git.technical"
-        gitStore={createGitStore({
+        commitStore={createCommitStore({
           canCommit: false,
           canGenerateCommitMessage: false,
           isCommitting: true
@@ -136,10 +138,13 @@ describe("ProjectGitPanel", () => {
         projectStore={createProjectStore(
           createGitStore({
             isAvailable: false,
-            status: createStatus({
-              isRepository: false,
-              changedFiles: [],
-              stagedFiles: []
+            statusStore: createStatusStore({
+              status: createStatus({
+                isRepository: false,
+                changedFiles: [],
+                stagedFiles: []
+              }),
+              isRepository: false
             })
           })
         )}
@@ -186,36 +191,64 @@ function createStatus(overrides: Partial<OpenCodexGitStatus> = {}): OpenCodexGit
 /** Creates the minimal Git store surface consumed by the refactored components. */
 function createGitStore(overrides: Partial<ProjectGitStore> = {}): ProjectGitStore {
   return {
-    status: createStatus(),
+    statusStore: createStatusStore(),
+    changesStore: createChangesStore(),
+    commitStore: createCommitStore(),
+    referencesStore: createReferencesStore(),
+    isAvailable: true,
+    errorMessage: null,
+    tagStore: createTagStore(),
+    ...overrides
+  } as unknown as ProjectGitStore;
+}
+
+/** Creates the references store surface consumed by the Git panel. */
+function createReferencesStore(
+  overrides: Partial<ProjectGitReferencesStore> = {}
+): ProjectGitReferencesStore {
+  return {
+    canPull: false,
+    canPush: false,
+    canPublishBranch: false,
+    isPulling: false,
+    isPushing: false,
+    publishBranch: vi.fn(),
+    push: vi.fn(),
+    pull: vi.fn(),
+    ...overrides
+  } as unknown as ProjectGitReferencesStore;
+}
+
+/** Creates the commit store surface consumed by the commit section tests. */
+function createCommitStore(
+  overrides: Partial<ProjectGitCommitStore> = {}
+): ProjectGitCommitStore {
+  return {
     commitMessage: "commit message",
+    isCommitting: false,
+    isGeneratingCommitMessage: false,
+    canCommit: true,
+    canGenerateCommitMessage: true,
+    setCommitMessage: vi.fn(),
+    commit: vi.fn(),
+    ...overrides
+  } as unknown as ProjectGitCommitStore;
+}
+
+/** Creates the changed-file store surface consumed by file section tests. */
+function createChangesStore(
+  overrides: Partial<ProjectGitChangesStore> = {}
+): ProjectGitChangesStore {
+  return {
     changedFilesCount: 1,
     stageableChangedFiles: [createFile("src/changed.ts", "modified")],
     deferredChangedFiles: [createFile("src/deferred.ts", "modified")],
     deferredFilesCount: 1,
     stagedFilesCount: 1,
+    stagedFiles: [createFile("src/staged.ts", "added")],
     selectedChangedPaths: [],
     selectedStagedPaths: [],
     isBusy: false,
-    isAvailable: true,
-    isLoading: false,
-    isInitializingRepository: false,
-    isCommitting: false,
-    isGeneratingCommitMessage: false,
-    canCommit: true,
-    canGenerateCommitMessage: true,
-    canPull: false,
-    canPush: false,
-    isPulling: false,
-    isPushing: false,
-    hasLoaded: true,
-    errorMessage: null,
-    tagErrorMessage: null,
-    selectedReferenceTagName: null,
-    commitsSinceReferenceTag: null,
-    refresh: vi.fn(),
-    initializeRepository: vi.fn(),
-    push: vi.fn(),
-    pull: vi.fn(),
     stageSelected: vi.fn(),
     stageAll: vi.fn(),
     deferSelected: vi.fn(),
@@ -229,10 +262,32 @@ function createGitStore(overrides: Partial<ProjectGitStore> = {}): ProjectGitSto
     unstageAll: vi.fn(),
     unstagePath: vi.fn(),
     toggleStagedPath: vi.fn(),
-    setCommitMessage: vi.fn(),
-    commit: vi.fn(),
     ...overrides
-  } as unknown as ProjectGitStore;
+  } as unknown as ProjectGitChangesStore;
+}
+
+/** Creates the status store surface consumed by the Git panel. */
+function createStatusStore(
+  overrides: Partial<ProjectGitStatusStore> = {}
+): ProjectGitStatusStore {
+  return {
+    status: createStatus(),
+    hasLoaded: true,
+    isLoading: false,
+    isInitializingRepository: false,
+    isRepository: true,
+    refresh: vi.fn(),
+    initializeRepository: vi.fn(),
+    ...overrides
+  } as unknown as ProjectGitStatusStore;
+}
+
+/** Creates the tag store surface passed through the panel to tag components. */
+function createTagStore(overrides: Partial<ProjectGitTagStore> = {}): ProjectGitTagStore {
+  return {
+    tagErrorMessage: null,
+    ...overrides
+  } as ProjectGitTagStore;
 }
 
 /** Creates the project store surface read by the Git panel. */

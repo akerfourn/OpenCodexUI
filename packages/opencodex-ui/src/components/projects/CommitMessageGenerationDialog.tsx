@@ -16,10 +16,10 @@ import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitCommitStore } from "../../stores/ProjectGitCommitStore";
 
 type CommitMessageGenerationDialogProps = {
-  gitStore: ProjectGitStore;
+  commitStore: ProjectGitCommitStore;
   open: boolean;
   onClose(): void;
 };
@@ -31,14 +31,14 @@ type CommitMessageGenerationDialogProps = {
  * @returns Rendered dialog.
  */
 export function CommitMessageGenerationDialog({
-  gitStore,
+  commitStore,
   open,
   onClose
 }: CommitMessageGenerationDialogProps) {
   const { t } = useTranslation();
   const [instruction, setInstruction] = useState("");
-  const modelLabel = gitStore.commitGenerationModelLabel ?? t("commitPrompt.defaultModel");
-  const reasoningEffort = gitStore.commitGenerationReasoningEffortLabel;
+  const modelLabel = commitStore.commitGenerationModelLabel ?? t("commitPrompt.defaultModel");
+  const reasoningEffort = commitStore.commitGenerationReasoningEffortLabel;
   const reasoningLabel = reasoningEffort === null
     ? t("commitPrompt.defaultReasoning")
     : t(`reasoningEffort.${reasoningEffort}`, { defaultValue: reasoningEffort });
@@ -58,11 +58,11 @@ export function CommitMessageGenerationDialog({
   }
 
   function handleGenerate(): void {
-    if (!gitStore.canGenerateCommitMessage) {
+    if (!commitStore.canGenerateCommitMessage) {
       return;
     }
 
-    void gitStore.generateCommitMessage(instruction);
+    void commitStore.generateCommitMessage(instruction);
     onClose();
   }
 
@@ -95,7 +95,7 @@ export function CommitMessageGenerationDialog({
         </Button>
         <Button
           variant="contained"
-          disabled={!gitStore.canGenerateCommitMessage}
+          disabled={!commitStore.canGenerateCommitMessage}
           onClick={handleGenerate}
         >
           {t("git.generateMessage")}

@@ -144,7 +144,7 @@ describe("ProjectThreadEventsStore", () => {
       "completed",
       undefined
     );
-    expect(project.gitStore.refresh).not.toHaveBeenCalled();
+    expect(project.gitStore.statusStore.refresh).not.toHaveBeenCalled();
   });
 
   it("should refresh only the active turn's source project Git store", () => {
@@ -172,8 +172,8 @@ describe("ProjectThreadEventsStore", () => {
     );
     expect(secondChat.activeTurnId).toBeNull();
     expect(callOrder).toEqual(["turn.completed", "git.refresh"]);
-    expect(secondProject.gitStore.refresh).toHaveBeenCalledTimes(1);
-    expect(firstProject.gitStore.refresh).not.toHaveBeenCalled();
+    expect(secondProject.gitStore.statusStore.refresh).toHaveBeenCalledTimes(1);
+    expect(firstProject.gitStore.statusStore.refresh).not.toHaveBeenCalled();
   });
 });
 
@@ -189,7 +189,9 @@ type FakeChat = {
 
 type FakeProject = {
   gitStore: {
-    refresh: ReturnType<typeof vi.fn>;
+    statusStore: {
+      refresh: ReturnType<typeof vi.fn>;
+    };
   };
 };
 
@@ -233,7 +235,9 @@ function createFixture(callOrder: string[] = []): Fixture {
     chatsByRoute.set(routeKey(sourceId, threadId), chat);
     projectsByRoute.set(routeKey(sourceId, threadId), {
       gitStore: {
-        refresh: vi.fn(() => callOrder.push("git.refresh"))
+        statusStore: {
+          refresh: vi.fn(() => callOrder.push("git.refresh"))
+        }
       }
     });
     return chat;

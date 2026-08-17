@@ -48,6 +48,10 @@ type ProjectGitPanelProps = {
 export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const { t } = useTranslation();
   const gitStore = projectStore.gitStore;
+  const changesStore = gitStore.changesStore;
+  const commitStore = gitStore.commitStore;
+  const referencesStore = gitStore.referencesStore;
+  const tagStore = gitStore.tagStore;
   const projectPath = projectStore.projectPath;
   const sourceId = projectStore.project.sourceId;
   const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
@@ -67,11 +71,11 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const [gitActionsAnchor, setGitActionsAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    void gitStore.refresh();
+    void gitStore.statusStore.refresh();
   }, [gitStore, projectPath, sourceId]);
 
   function handleRefresh(): void {
-    void gitStore.refresh();
+    void gitStore.statusStore.refresh();
   }
 
   function handleOpenGitActions(event: MouseEvent<HTMLButtonElement>): void {
@@ -83,7 +87,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   }
 
   function handleInitializeRepository(): void {
-    void gitStore.initializeRepository();
+    void gitStore.statusStore.initializeRepository();
   }
 
   function handleOpenBranchDialog(): void {
@@ -135,18 +139,18 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   }
 
   function handlePush(): void {
-    void gitStore.push();
+    void referencesStore.push();
   }
 
   function handlePull(): void {
-    void gitStore.pull();
+    void referencesStore.pull();
   }
 
   function handleOpenFile(path: string): void {
     store.openExternalLink(path);
   }
 
-  const generateTooltip = gitStore.canGenerateCommitMessage
+  const generateTooltip = commitStore.canGenerateCommitMessage
     ? t(`${gitLabelsKey}.generateMessage`)
     : t(`${gitLabelsKey}.generateMessageUnavailable`);
 
@@ -159,19 +163,19 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         sx={{ alignItems: "flex-start" }}
       >
         <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-          {gitStore.status.branchName !== null ? (
+          {gitStore.statusStore.status.branchName !== null ? (
             <Typography variant="caption" color="text.secondary" noWrap>
-              {gitStore.status.branchName}
+              {gitStore.statusStore.status.branchName}
             </Typography>
           ) : (
             <Typography variant="caption" color="text.secondary" noWrap>
               {t("git.noBranch")}
             </Typography>
           )}
-          {gitStore.status.isRepository ? (
+          {gitStore.statusStore.isRepository ? (
             <ProjectGitReferenceTagRowX
               dense
-              gitStore={gitStore}
+              tagStore={tagStore}
               onOpenSelector={handleOpenTagDialog}
             />
           ) : null}
@@ -181,7 +185,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
             <IconButton
               aria-label={t("git.actions")}
               size="small"
-              disabled={!gitStore.isAvailable || !gitStore.status.isRepository}
+              disabled={!gitStore.isAvailable || !gitStore.statusStore.isRepository}
               onClick={handleOpenGitActions}
               sx={{ height: 26, width: 26 }}
             >
@@ -194,7 +198,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
             <IconButton
               aria-label={t("git.refresh")}
               size="small"
-              disabled={!gitStore.isAvailable || gitStore.isLoading}
+              disabled={!gitStore.isAvailable || gitStore.statusStore.isLoading}
               onClick={handleRefresh}
               sx={{ height: 26, width: 26 }}
             >
@@ -205,7 +209,9 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
       </Stack>
       <ProjectGitActionsMenuX
         anchorEl={gitActionsAnchor}
-        gitStore={gitStore}
+        referencesStore={referencesStore}
+        statusStore={gitStore.statusStore}
+        isAvailable={gitStore.isAvailable}
         onClose={handleCloseGitActions}
         onOpenBranch={handleOpenBranchDialog}
         onOpenMerge={handleOpenMergeDialog}
@@ -213,23 +219,23 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         onOpenLog={handleOpenLogDialog}
       />
 
-      {gitStore.isLoading ? <LinearProgress /> : null}
+      {gitStore.statusStore.isLoading ? <LinearProgress /> : null}
 
       <Stack className="git-panel-content" spacing={1.5}>
         {!gitStore.isAvailable ? (
           <Alert severity="warning">{t("git.sourceUnavailable")}</Alert>
         ) : null}
 
-        {gitStore.isAvailable && gitStore.hasLoaded && !gitStore.status.isRepository ? (
+        {gitStore.isAvailable && gitStore.statusStore.hasLoaded && !gitStore.statusStore.isRepository ? (
           <Alert
             severity="info"
             action={
               <Button
                 color="inherit"
                 size="small"
-                disabled={gitStore.isInitializingRepository}
+                disabled={gitStore.statusStore.isInitializingRepository}
                 startIcon={
-                  gitStore.isInitializingRepository
+                  gitStore.statusStore.isInitializingRepository
                     ? <CircularProgress color="inherit" size={14} />
                     : undefined
                 }
@@ -247,61 +253,61 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
           <Alert severity="error">{gitStore.errorMessage}</Alert>
         ) : null}
 
-        {gitStore.status.isRepository ? (
+        {gitStore.statusStore.isRepository ? (
           <>
-            {gitStore.status.upstreamName !== null ? (
+            {gitStore.statusStore.status.upstreamName !== null ? (
               <Stack direction="row" spacing={1}>
-                {gitStore.status.behindCount > 0 ? (
+                {gitStore.statusStore.status.behindCount > 0 ? (
                   <Button
                     variant="outlined"
                     size="small"
-                    disabled={!gitStore.canPull}
+                    disabled={!referencesStore.canPull}
                     startIcon={
-                      gitStore.isPulling
+                      referencesStore.isPulling
                         ? <CircularProgress color="inherit" size={14} />
                         : undefined
                     }
                     onClick={handlePull}
                   >
-                    {t("git.pullChanges", { count: gitStore.status.behindCount })}
+                    {t("git.pullChanges", { count: gitStore.statusStore.status.behindCount })}
                   </Button>
                 ) : null}
-                {gitStore.status.aheadCount > 0 ? (
+                {gitStore.statusStore.status.aheadCount > 0 ? (
                   <Button
                     variant="outlined"
                     size="small"
-                    disabled={!gitStore.canPush}
+                    disabled={!referencesStore.canPush}
                     startIcon={
-                      gitStore.isPushing
+                      referencesStore.isPushing
                         ? <CircularProgress color="inherit" size={14} />
                         : undefined
                     }
                     onClick={handlePush}
                   >
-                    {t("git.pushChanges", { count: gitStore.status.aheadCount })}
+                    {t("git.pushChanges", { count: gitStore.statusStore.status.aheadCount })}
                   </Button>
                 ) : null}
               </Stack>
             ) : null}
 
-            {gitStore.tagErrorMessage !== null ? (
-              <Alert severity="error">{gitStore.tagErrorMessage}</Alert>
+            {tagStore.tagErrorMessage !== null ? (
+              <Alert severity="error">{tagStore.tagErrorMessage}</Alert>
             ) : null}
 
             <ProjectGitFileSectionsX
               canOpenFiles={canOpenFiles}
               gitLabelsKey={gitLabelsKey}
-              gitStore={gitStore}
+              changesStore={changesStore}
               onOpenFile={handleOpenFile}
             />
 
-            {gitStore.stagedFilesCount > 0 ? (
+            {changesStore.stagedFilesCount > 0 ? (
               <>
                 <Divider />
                 <ProjectGitCommitSectionX
                   generateTooltip={generateTooltip}
                   gitLabelsKey={gitLabelsKey}
-                  gitStore={gitStore}
+                  commitStore={commitStore}
                   onOpenGenerateDialog={handleOpenGenerateDialog}
                 />
               </>
@@ -310,32 +316,32 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         ) : null}
       </Stack>
       <CommitMessageGenerationDialogX
-        gitStore={gitStore}
+        commitStore={commitStore}
         open={isGenerateDialogOpen}
         onClose={handleCloseGenerateDialog}
       />
       <ProjectBranchSwitcherDialogX
-        gitStore={gitStore}
+        referencesStore={referencesStore}
         open={isBranchDialogOpen}
         onClose={handleCloseBranchDialog}
       />
       <ProjectBranchMergeDialogX
-        gitStore={gitStore}
+        referencesStore={referencesStore}
         open={isMergeDialogOpen}
         onClose={handleCloseMergeDialog}
       />
       <ProjectTagSelectorDialogX
-        gitStore={gitStore}
+        tagStore={tagStore}
         open={isTagDialogOpen}
         onClose={handleCloseTagDialog}
       />
       <ProjectGitRemoteDialogX
-        gitStore={gitStore}
+        referencesStore={referencesStore}
         open={isRemoteDialogOpen}
         onClose={handleCloseRemoteDialog}
       />
       <ProjectGitLogDialogX
-        gitStore={gitStore}
+        logStore={gitStore.logStore}
         open={isLogDialogOpen}
         onClose={handleCloseLogDialog}
       />

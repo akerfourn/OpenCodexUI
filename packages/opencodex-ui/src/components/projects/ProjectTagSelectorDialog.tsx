@@ -30,11 +30,11 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexGitTag } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitTagStore } from "../../stores/ProjectGitTagStore";
 import { ProjectTagListItem } from "./ProjectTagListItem";
 
 type ProjectTagSelectorDialogProps = {
-  gitStore: ProjectGitStore;
+  tagStore: ProjectGitTagStore;
   open: boolean;
   onClose(): void;
 };
@@ -47,7 +47,7 @@ type ProjectTagSelectorDialogProps = {
  * @returns Rendered dialog.
  */
 export function ProjectTagSelectorDialog({
-  gitStore,
+  tagStore,
   open,
   onClose
 }: ProjectTagSelectorDialogProps) {
@@ -59,24 +59,24 @@ export function ProjectTagSelectorDialog({
   const [isForceConfirmed, setIsForceConfirmed] = useState(false);
   const normalizedSearchTerm = searchTerm.trim();
   const filteredTags = useMemo(
-    () => filterTags(gitStore.tags, normalizedSearchTerm),
-    [gitStore.tags, normalizedSearchTerm]
+    () => filterTags(tagStore.tags, normalizedSearchTerm),
+    [tagStore.tags, normalizedSearchTerm]
   );
-  const canCreateTag = canCreateTagFromInput(gitStore.tags, normalizedSearchTerm);
+  const canCreateTag = canCreateTagFromInput(tagStore.tags, normalizedSearchTerm);
 
   useEffect(() => {
     if (open) {
       setSearchTerm("");
-      void gitStore.loadTags();
+      void tagStore.loadTags();
     }
-  }, [gitStore, open]);
+  }, [tagStore, open]);
 
   function handleSearchChange(event: ChangeEvent<HTMLInputElement>): void {
     setSearchTerm(event.target.value);
   }
 
   async function handleSelectTag(tagName: string): Promise<void> {
-    const didSelect = await gitStore.selectReferenceTag(tagName);
+    const didSelect = await tagStore.selectReferenceTag(tagName);
 
     if (didSelect) {
       onClose();
@@ -84,7 +84,7 @@ export function ProjectTagSelectorDialog({
   }
 
   async function handleCreateTag(): Promise<void> {
-    const didCreate = await gitStore.createTag(normalizedSearchTerm);
+    const didCreate = await tagStore.createTag(normalizedSearchTerm);
 
     if (didCreate) {
       onClose();
@@ -92,15 +92,15 @@ export function ProjectTagSelectorDialog({
   }
 
   function handleFetchTags(): void {
-    void gitStore.fetchTags();
+    void tagStore.fetchTags();
   }
 
   function handlePushTags(): void {
-    void gitStore.pushTags();
+    void tagStore.pushTags();
   }
 
   function handlePushTag(tagName: string): void {
-    void gitStore.pushTag(tagName);
+    void tagStore.pushTag(tagName);
   }
 
   function handleOpenTagMenu(event: MouseEvent<HTMLButtonElement>, tagName: string): void {
@@ -125,7 +125,7 @@ export function ProjectTagSelectorDialog({
   }
 
   function handleCloseForcePush(): void {
-    if (gitStore.pushingTagName !== null) {
+    if (tagStore.pushingTagName !== null) {
       return;
     }
 
@@ -142,18 +142,18 @@ export function ProjectTagSelectorDialog({
       return;
     }
 
-    const didPush = await gitStore.pushTag(forceTagName, true);
+    const didPush = await tagStore.pushTag(forceTagName, true);
 
     if (didPush) {
       handleCloseForcePush();
     }
   }
 
-  const isTagOperationBusy = gitStore.pushingTagName !== null ||
-    gitStore.isPushingAllTags ||
-    gitStore.isFetchingTags ||
-    gitStore.isLoadingTags ||
-    gitStore.isCreatingTag;
+  const isTagOperationBusy = tagStore.pushingTagName !== null ||
+    tagStore.isPushingAllTags ||
+    tagStore.isFetchingTags ||
+    tagStore.isLoadingTags ||
+    tagStore.isCreatingTag;
 
   return (
     <>
@@ -168,10 +168,10 @@ export function ProjectTagSelectorDialog({
                 <IconButton
                   aria-label={t("git.fetchTags")}
                   size="small"
-                  disabled={!gitStore.isAvailable || !gitStore.status.isRepository || isTagOperationBusy}
+                  disabled={!tagStore.isAvailable || !tagStore.isRepository || isTagOperationBusy}
                   onClick={handleFetchTags}
                 >
-                  {gitStore.isFetchingTags ? (
+                  {tagStore.isFetchingTags ? (
                     <CircularProgress size={18} />
                   ) : (
                     <SyncOutlinedIcon fontSize="small" />
@@ -184,10 +184,10 @@ export function ProjectTagSelectorDialog({
                 <IconButton
                   aria-label={t("git.pushTags")}
                   size="small"
-                  disabled={!gitStore.canPushTags || gitStore.isPushingAllTags}
+                  disabled={!tagStore.canPushTags || tagStore.isPushingAllTags}
                   onClick={handlePushTags}
                 >
-                  {gitStore.isPushingAllTags ? (
+                  {tagStore.isPushingAllTags ? (
                     <CircularProgress size={18} />
                   ) : (
                     <PublishOutlinedIcon fontSize="small" />
@@ -205,18 +205,18 @@ export function ProjectTagSelectorDialog({
               size="small"
               label={t("git.tagSearch")}
               value={searchTerm}
-              disabled={gitStore.isCreatingTag || gitStore.isLoadingTagReference || isTagOperationBusy}
+              disabled={tagStore.isCreatingTag || tagStore.isLoadingTagReference || isTagOperationBusy}
               onChange={handleSearchChange}
             />
 
-            {gitStore.tagErrorMessage !== null ? (
-              <Alert severity="error">{gitStore.tagErrorMessage}</Alert>
+            {tagStore.tagErrorMessage !== null ? (
+              <Alert severity="error">{tagStore.tagErrorMessage}</Alert>
             ) : null}
-            {gitStore.tagSyncErrorMessage !== null ? (
-              <Alert severity="warning">{gitStore.tagSyncErrorMessage}</Alert>
+            {tagStore.tagSyncErrorMessage !== null ? (
+              <Alert severity="warning">{tagStore.tagSyncErrorMessage}</Alert>
             ) : null}
 
-            {gitStore.isLoadingTags || gitStore.isFetchingTags ? (
+            {tagStore.isLoadingTags || tagStore.isFetchingTags ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
                 <CircularProgress size={24} />
               </Box>
@@ -226,7 +226,7 @@ export function ProjectTagSelectorDialog({
                   <Button
                     variant="text"
                     size="small"
-                    disabled={gitStore.isCreatingTag}
+                    disabled={tagStore.isCreatingTag}
                     onClick={handleCreateTag}
                     sx={{ alignSelf: "flex-start" }}
                   >
@@ -244,11 +244,11 @@ export function ProjectTagSelectorDialog({
                       <ProjectTagListItem
                         key={tag.fullName}
                         tag={tag}
-                        remoteName={gitStore.tagsRemoteName}
+                        remoteName={tagStore.tagsRemoteName}
                         isOperationBusy={isTagOperationBusy}
-                        canPush={gitStore.canPushTag(tag)}
-                        isPushing={gitStore.isPushingTag(tag.name)}
-                        isSelected={tag.name === gitStore.selectedReferenceTagName}
+                        canPush={tagStore.canPushTag(tag)}
+                        isPushing={tagStore.isPushingTag(tag.name)}
+                        isSelected={tag.name === tagStore.selectedReferenceTagName}
                         onSelect={() => void handleSelectTag(tag.name)}
                         onPush={() => handlePushTag(tag.name)}
                         onOpenMenu={handleOpenTagMenu}
@@ -271,7 +271,7 @@ export function ProjectTagSelectorDialog({
         onClose={handleCloseTagMenu}
       >
         <MenuItem
-          disabled={tagMenuName === null || gitStore.tagsRemoteName === null || isTagOperationBusy}
+          disabled={tagMenuName === null || tagStore.tagsRemoteName === null || isTagOperationBusy}
           onClick={handleRequestForcePush}
         >
           {t("git.forcePushTag")}
@@ -290,7 +290,7 @@ export function ProjectTagSelectorDialog({
             <Typography variant="body2">
               {t("git.forcePushTagDescription", {
                 name: forceTagName ?? "",
-                remote: gitStore.tagsRemoteName ?? "origin"
+                remote: tagStore.tagsRemoteName ?? "origin"
               })}
             </Typography>
             <Alert severity="warning">

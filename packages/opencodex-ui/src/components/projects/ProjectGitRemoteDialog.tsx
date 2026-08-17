@@ -17,10 +17,10 @@ import { observer } from "mobx-react-lite";
 import { type ChangeEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitReferencesStore } from "../../stores/ProjectGitReferencesStore";
 
 type ProjectGitRemoteDialogProps = {
-  gitStore: ProjectGitStore;
+  referencesStore: ProjectGitReferencesStore;
   open: boolean;
   onClose(): void;
 };
@@ -32,27 +32,27 @@ type ProjectGitRemoteDialogProps = {
  * @returns Rendered remote configuration dialog.
  */
 export function ProjectGitRemoteDialog({
-  gitStore,
+  referencesStore,
   open,
   onClose
 }: ProjectGitRemoteDialogProps) {
   const { t } = useTranslation();
   const [remoteName, setRemoteName] = useState("origin");
   const [remoteUrl, setRemoteUrl] = useState("");
-  const primaryRemote = gitStore.primaryRemote;
+  const primaryRemote = referencesStore.primaryRemote;
   const canSave = remoteName.trim().length > 0 &&
     remoteUrl.trim().length > 0 &&
-    !gitStore.isSavingRemote;
+    !referencesStore.isSavingRemote;
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    void gitStore.loadRemotes();
+    void referencesStore.loadRemotes();
     setRemoteName(primaryRemote?.name ?? "origin");
     setRemoteUrl(primaryRemote?.pushUrl ?? primaryRemote?.fetchUrl ?? "");
-  }, [gitStore, open]);
+  }, [referencesStore, open]);
 
   function handleNameChange(event: ChangeEvent<HTMLInputElement>): void {
     setRemoteName(event.target.value);
@@ -63,7 +63,7 @@ export function ProjectGitRemoteDialog({
   }
 
   async function handleSubmit(): Promise<void> {
-    const didSave = await gitStore.upsertRemote(remoteName, remoteUrl);
+    const didSave = await referencesStore.upsertRemote(remoteName, remoteUrl);
 
     if (didSave) {
       onClose();
@@ -96,34 +96,34 @@ export function ProjectGitRemoteDialog({
             </Typography>
             {currentRemoteContent}
           </Stack>
-          {gitStore.remoteErrorMessage !== null ? (
-            <Alert severity="error">{gitStore.remoteErrorMessage}</Alert>
+          {referencesStore.remoteErrorMessage !== null ? (
+            <Alert severity="error">{referencesStore.remoteErrorMessage}</Alert>
           ) : null}
           <TextField
             label={t("git.remoteName")}
             value={remoteName}
             autoFocus
             fullWidth
-            disabled={gitStore.isSavingRemote}
+            disabled={referencesStore.isSavingRemote}
             onChange={handleNameChange}
           />
           <TextField
             label={t("git.remoteUrl")}
             value={remoteUrl}
             fullWidth
-            disabled={gitStore.isSavingRemote}
+            disabled={referencesStore.isSavingRemote}
             onChange={handleUrlChange}
           />
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button disabled={gitStore.isSavingRemote} onClick={onClose}>
+        <Button disabled={referencesStore.isSavingRemote} onClick={onClose}>
           {t("git.close")}
         </Button>
         <Button
           variant="contained"
           disabled={!canSave}
-          startIcon={gitStore.isSavingRemote ? <CircularProgress color="inherit" size={14} /> : undefined}
+          startIcon={referencesStore.isSavingRemote ? <CircularProgress color="inherit" size={14} /> : undefined}
           onClick={handleSubmit}
         >
           {t("git.remoteSave")}

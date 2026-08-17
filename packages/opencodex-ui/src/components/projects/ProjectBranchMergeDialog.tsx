@@ -20,11 +20,11 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexGitBranch } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitReferencesStore } from "../../stores/ProjectGitReferencesStore";
 import { ProjectBranchGroupX } from "./ProjectBranchGroup";
 
 type ProjectBranchMergeDialogProps = {
-  gitStore: ProjectGitStore;
+  referencesStore: ProjectGitReferencesStore;
   open: boolean;
   onClose(): void;
 };
@@ -36,7 +36,7 @@ type ProjectBranchMergeDialogProps = {
  * @returns Rendered dialog.
  */
 export function ProjectBranchMergeDialog({
-  gitStore,
+  referencesStore,
   open,
   onClose
 }: ProjectBranchMergeDialogProps) {
@@ -44,23 +44,23 @@ export function ProjectBranchMergeDialog({
   const [searchTerm, setSearchTerm] = useState("");
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const mergeableBranches = useMemo(
-    () => filterMergeableBranches(gitStore.branches, normalizedSearchTerm),
-    [gitStore.branches, normalizedSearchTerm]
+    () => filterMergeableBranches(referencesStore.branches, normalizedSearchTerm),
+    [referencesStore.branches, normalizedSearchTerm]
   );
 
   useEffect(() => {
     if (open) {
       setSearchTerm("");
-      void gitStore.loadBranches();
+      void referencesStore.loadBranches();
     }
-  }, [gitStore, open]);
+  }, [referencesStore, open]);
 
   function handleSearchChange(event: ChangeEvent<HTMLInputElement>): void {
     setSearchTerm(event.target.value);
   }
 
   async function handleMergeBranch(branch: OpenCodexGitBranch): Promise<void> {
-    const didMerge = await gitStore.mergeBranch(branch);
+    const didMerge = await referencesStore.mergeBranch(branch);
 
     if (didMerge) {
       onClose();
@@ -78,15 +78,15 @@ export function ProjectBranchMergeDialog({
             size="small"
             label={t("git.mergeBranchSearch")}
             value={searchTerm}
-            disabled={gitStore.isMergingBranch}
+            disabled={referencesStore.isMergingBranch}
             onChange={handleSearchChange}
           />
 
-          {gitStore.branchErrorMessage !== null ? (
-            <Alert severity="error">{gitStore.branchErrorMessage}</Alert>
+          {referencesStore.branchErrorMessage !== null ? (
+            <Alert severity="error">{referencesStore.branchErrorMessage}</Alert>
           ) : null}
 
-          {gitStore.isLoadingBranches ? (
+          {referencesStore.isLoadingBranches ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
               <CircularProgress size={24} />
             </Box>
@@ -94,7 +94,7 @@ export function ProjectBranchMergeDialog({
             <ProjectBranchGroupX
               title={t("git.localBranches")}
               branches={mergeableBranches}
-              isBusy={gitStore.isMergingBranch}
+              isBusy={referencesStore.isMergingBranch}
               onSelect={handleMergeBranch}
             />
           )}

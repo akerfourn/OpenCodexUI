@@ -6,10 +6,10 @@ import { Box, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitTagStore } from "../../stores/ProjectGitTagStore";
 
 type ProjectGitReferenceTagRowProps = {
-  gitStore: ProjectGitStore;
+  tagStore: ProjectGitTagStore;
   dense?: boolean;
   onOpenSelector(): void;
 };
@@ -22,14 +22,14 @@ type ProjectGitReferenceTagRowProps = {
  * @returns Rendered tag row.
  */
 export function ProjectGitReferenceTagRow({
-  gitStore,
+  tagStore,
   dense = false,
   onOpenSelector
 }: ProjectGitReferenceTagRowProps) {
   const { t } = useTranslation();
-  const tagLabel = readTagLabel(gitStore, t("git.noReferenceTag"));
-  const tagDetails = gitStore.commitsSinceReferenceTag !== null
-    ? t("git.commitsSinceTag", { count: gitStore.commitsSinceReferenceTag })
+  const tagLabel = readTagLabel(tagStore, t("git.noReferenceTag"));
+  const tagDetails = tagStore.commitsSinceReferenceTag !== null
+    ? t("git.commitsSinceTag", { count: tagStore.commitsSinceReferenceTag })
     : null;
 
   if (dense) {
@@ -39,13 +39,13 @@ export function ProjectGitReferenceTagRow({
         <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
           {tagDetails === null ? tagLabel : `${tagLabel} · ${tagDetails}`}
         </Typography>
-        {gitStore.isLoadingTagReference ? <CircularProgress size={12} /> : null}
+        {tagStore.isLoadingTagReference ? <CircularProgress size={12} /> : null}
         <Tooltip title={t("git.tagSelector")}>
           <span className="git-panel-header-action">
             <IconButton
               aria-label={t("git.tagSelector")}
               size="small"
-              disabled={!gitStore.isAvailable || !gitStore.status.isRepository}
+              disabled={!tagStore.isAvailable || !tagStore.isRepository}
               onClick={onOpenSelector}
               sx={{ height: 22, width: 22 }}
             >
@@ -75,13 +75,13 @@ export function ProjectGitReferenceTagRow({
           </Typography>
         ) : null}
       </Box>
-      {gitStore.isLoadingTagReference ? <CircularProgress size={14} /> : null}
+      {tagStore.isLoadingTagReference ? <CircularProgress size={14} /> : null}
       <Tooltip title={t("git.tagSelector")}>
         <span>
           <IconButton
             aria-label={t("git.tagSelector")}
             size="small"
-            disabled={!gitStore.isAvailable || !gitStore.status.isRepository}
+            disabled={!tagStore.isAvailable || !tagStore.isRepository}
             onClick={onOpenSelector}
             sx={{ height: 26, width: 26 }}
           >
@@ -95,6 +95,6 @@ export function ProjectGitReferenceTagRow({
 
 export const ProjectGitReferenceTagRowX = observer(ProjectGitReferenceTagRow);
 
-function readTagLabel(gitStore: ProjectGitStore, fallback: string): string {
-  return gitStore.selectedReferenceTagName ?? fallback;
+function readTagLabel(tagStore: ProjectGitTagStore, fallback: string): string {
+  return tagStore.selectedReferenceTagName ?? fallback;
 }

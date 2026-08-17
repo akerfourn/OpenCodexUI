@@ -116,7 +116,7 @@ export class ProjectThreadLiveEventHandler {
             event.threadId,
             event.sourceId
           );
-          void projectStore?.gitStore.refresh();
+          void projectStore?.gitStore.statusStore.refresh();
         }
 
         return true;

@@ -9,18 +9,19 @@ import type {
   OpenCodexProject
 } from "@open-codex-ui/opencodex-protocol";
 
+import type { ProjectGitLogStore } from "../src/stores/ProjectGitLogStore";
 import { ProjectGitStore } from "../src/stores/ProjectGitStore";
 import type { ProjectStore } from "../src/stores/ProjectStore";
 import type { RootStore } from "../src/stores/RootStore";
 
-describe("ProjectGitStore Git log history", () => {
+describe("ProjectGitLogStore Git log history", () => {
   it("should load the first page with the exact request and reset loading state", async () => {
     const fixture = createFixture();
     const commits = [createCommit("commit-1"), createCommit("commit-2")];
     const page: OpenCodexGitLogPage = { commits, hasMore: true };
     fixture.request.mockResolvedValueOnce(page);
 
-    await fixture.gitStore.loadGitLog(true);
+    await fixture.logStore.loadGitLog(true);
 
     expect(fixture.request).toHaveBeenCalledTimes(1);
     expect(fixture.request).toHaveBeenCalledWith({
@@ -30,10 +31,10 @@ describe("ProjectGitStore Git log history", () => {
       limit: 50,
       skip: 0
     });
-    expect(fixture.gitStore.logCommits).toEqual(commits);
-    expect(fixture.gitStore.hasMoreLogCommits).toBe(true);
-    expect(fixture.gitStore.hasLoadedLog).toBe(true);
-    expect(fixture.gitStore.isLoadingLog).toBe(false);
+    expect(fixture.logStore.logCommits).toEqual(commits);
+    expect(fixture.logStore.hasMoreLogCommits).toBe(true);
+    expect(fixture.logStore.hasLoadedLog).toBe(true);
+    expect(fixture.logStore.isLoadingLog).toBe(false);
   });
 
   it("should append the next page by length and deduplicate hashes across pages", async () => {
@@ -44,8 +45,8 @@ describe("ProjectGitStore Git log history", () => {
       .mockResolvedValueOnce({ commits: firstPage, hasMore: true })
       .mockResolvedValueOnce({ commits: nextPage, hasMore: false });
 
-    await fixture.gitStore.loadGitLog(true);
-    await fixture.gitStore.loadMoreGitLog();
+    await fixture.logStore.loadGitLog(true);
+    await fixture.logStore.loadMoreGitLog();
 
     expect(fixture.request).toHaveBeenNthCalledWith(2, {
       type: "git.log",
@@ -54,30 +55,30 @@ describe("ProjectGitStore Git log history", () => {
       limit: 50,
       skip: firstPage.length
     });
-    expect(fixture.gitStore.logCommits).toEqual([
+    expect(fixture.logStore.logCommits).toEqual([
       firstPage[0],
       firstPage[1],
       nextPage[1]
     ]);
-    expect(fixture.gitStore.hasMoreLogCommits).toBe(false);
-    expect(fixture.gitStore.isLoadingLog).toBe(false);
+    expect(fixture.logStore.hasMoreLogCommits).toBe(false);
+    expect(fixture.logStore.isLoadingLog).toBe(false);
   });
 
   it("should replace the log and clear cached commit details on reset", async () => {
     const fixture = createFixture();
     const previousCommit = createCommit("old-commit");
     const replacementCommit = createCommit("new-commit");
-    fixture.gitStore.logCommits = [previousCommit];
-    fixture.gitStore.commitDetailsByHash.set("old-commit", createDetails("old-commit"));
+    fixture.logStore.logCommits = [previousCommit];
+    fixture.logStore.commitDetailsByHash.set("old-commit", createDetails("old-commit"));
     fixture.request.mockResolvedValueOnce({
       commits: [replacementCommit],
       hasMore: false
     });
 
-    await fixture.gitStore.loadGitLog(true);
+    await fixture.logStore.loadGitLog(true);
 
-    expect(fixture.gitStore.logCommits).toEqual([replacementCommit]);
-    expect(fixture.gitStore.commitDetailsByHash.size).toBe(0);
+    expect(fixture.logStore.logCommits).toEqual([replacementCommit]);
+    expect(fixture.logStore.commitDetailsByHash.size).toBe(0);
   });
 
   it("should trim, request, cache and reuse commit details by hash", async () => {
@@ -85,7 +86,7 @@ describe("ProjectGitStore Git log history", () => {
     const details = createDetails("commit-1");
     fixture.request.mockResolvedValueOnce(details);
 
-    await fixture.gitStore.loadCommitDetails("  commit-1  ");
+    await fixture.logStore.loadCommitDetails("  commit-1  ");
 
     expect(fixture.request).toHaveBeenCalledTimes(1);
     expect(fixture.request).toHaveBeenCalledWith({
@@ -94,10 +95,10 @@ describe("ProjectGitStore Git log history", () => {
       sourceId: "source-1",
       hash: "commit-1"
     });
-    expect(fixture.gitStore.commitDetailsByHash.get("commit-1")).toEqual(details);
-    expect(fixture.gitStore.loadingCommitDetailsHash).toBe(null);
+    expect(fixture.logStore.commitDetailsByHash.get("commit-1")).toEqual(details);
+    expect(fixture.logStore.loadingCommitDetailsHash).toBe(null);
 
-    await fixture.gitStore.loadCommitDetails("commit-1");
+    await fixture.logStore.loadCommitDetails("commit-1");
 
     expect(fixture.request).toHaveBeenCalledTimes(1);
     expect(fixture.request).toHaveBeenCalledWith({
@@ -111,120 +112,120 @@ describe("ProjectGitStore Git log history", () => {
   it("should guard Git log loading when the source is unavailable", async () => {
     const fixture = createFixture({ sourceReady: false });
 
-    await fixture.gitStore.loadGitLog(true);
+    await fixture.logStore.loadGitLog(true);
 
     expect(fixture.request).not.toHaveBeenCalled();
-    expect(fixture.gitStore.logCommits).toEqual([]);
-    expect(fixture.gitStore.isLoadingLog).toBe(false);
+    expect(fixture.logStore.logCommits).toEqual([]);
+    expect(fixture.logStore.isLoadingLog).toBe(false);
   });
 
   it("should guard Git log loading when the project is not a repository", async () => {
     const fixture = createFixture({ isRepository: false });
 
-    await fixture.gitStore.loadGitLog(true);
+    await fixture.logStore.loadGitLog(true);
 
     expect(fixture.request).not.toHaveBeenCalled();
-    expect(fixture.gitStore.logCommits).toEqual([]);
+    expect(fixture.logStore.logCommits).toEqual([]);
   });
 
   it("should guard commit details when the hash is empty", async () => {
     const fixture = createFixture();
 
-    await fixture.gitStore.loadCommitDetails("   ");
+    await fixture.logStore.loadCommitDetails("   ");
 
     expect(fixture.request).not.toHaveBeenCalled();
-    expect(fixture.gitStore.loadingCommitDetailsHash).toBe(null);
+    expect(fixture.logStore.loadingCommitDetailsHash).toBe(null);
   });
 
   it("should guard commit details when the source is unavailable", async () => {
     const fixture = createFixture({ sourceReady: false });
 
-    await fixture.gitStore.loadCommitDetails("commit-1");
+    await fixture.logStore.loadCommitDetails("commit-1");
 
     expect(fixture.request).not.toHaveBeenCalled();
-    expect(fixture.gitStore.loadingCommitDetailsHash).toBe(null);
+    expect(fixture.logStore.loadingCommitDetailsHash).toBe(null);
   });
 
   it("should guard commit details when the project is not a repository", async () => {
     const fixture = createFixture({ isRepository: false });
 
-    await fixture.gitStore.loadCommitDetails("commit-1");
+    await fixture.logStore.loadCommitDetails("commit-1");
 
     expect(fixture.request).not.toHaveBeenCalled();
-    expect(fixture.gitStore.loadingCommitDetailsHash).toBe(null);
+    expect(fixture.logStore.loadingCommitDetailsHash).toBe(null);
   });
 
   it("should guard commit details when the hash is already cached", async () => {
     const fixture = createFixture();
-    fixture.gitStore.commitDetailsByHash.set("commit-1", createDetails("commit-1"));
+    fixture.logStore.commitDetailsByHash.set("commit-1", createDetails("commit-1"));
 
-    await fixture.gitStore.loadCommitDetails("commit-1");
+    await fixture.logStore.loadCommitDetails("commit-1");
 
     expect(fixture.request).not.toHaveBeenCalled();
-    expect(fixture.gitStore.loadingCommitDetailsHash).toBe(null);
+    expect(fixture.logStore.loadingCommitDetailsHash).toBe(null);
   });
 
   it("should look up commit details by exact hash without trimming", () => {
     const fixture = createFixture();
     const details = createDetails("commit-1");
-    fixture.gitStore.commitDetailsByHash.set("commit-1", details);
+    fixture.logStore.commitDetailsByHash.set("commit-1", details);
 
-    expect(fixture.gitStore.getCommitDetails("commit-1")).toEqual(details);
-    expect(fixture.gitStore.getCommitDetails(" commit-1 ")).toBe(null);
-    expect(fixture.gitStore.getCommitDetails("missing")).toBe(null);
+    expect(fixture.logStore.getCommitDetails("commit-1")).toEqual(details);
+    expect(fixture.logStore.getCommitDetails(" commit-1 ")).toBe(null);
+    expect(fixture.logStore.getCommitDetails("missing")).toBe(null);
   });
 
   it("should guard Git log loading while another log request is active", async () => {
     const fixture = createFixture();
-    fixture.gitStore.isLoadingLog = true;
+    fixture.logStore.isLoadingLog = true;
 
-    await fixture.gitStore.loadGitLog(true);
+    await fixture.logStore.loadGitLog(true);
 
     expect(fixture.request).not.toHaveBeenCalled();
-    expect(fixture.gitStore.isLoadingLog).toBe(true);
+    expect(fixture.logStore.isLoadingLog).toBe(true);
   });
 
   it("should expose log errors and reset the log loading flag", async () => {
     const fixture = createFixture();
     fixture.request.mockRejectedValueOnce(new Error("log failed"));
 
-    await fixture.gitStore.loadGitLog(true);
+    await fixture.logStore.loadGitLog(true);
 
-    expect(fixture.gitStore.logErrorMessage).toBe("log failed");
-    expect(fixture.gitStore.hasLoadedLog).toBe(true);
-    expect(fixture.gitStore.isLoadingLog).toBe(false);
+    expect(fixture.logStore.logErrorMessage).toBe("log failed");
+    expect(fixture.logStore.hasLoadedLog).toBe(true);
+    expect(fixture.logStore.isLoadingLog).toBe(false);
   });
 
   it("should expose commit detail errors and reset the detail loading flag", async () => {
     const fixture = createFixture();
     fixture.request.mockRejectedValueOnce(new Error("details failed"));
 
-    await fixture.gitStore.loadCommitDetails("commit-1");
+    await fixture.logStore.loadCommitDetails("commit-1");
 
-    expect(fixture.gitStore.logErrorMessage).toBe("details failed");
-    expect(fixture.gitStore.loadingCommitDetailsHash).toBe(null);
-    expect(fixture.gitStore.commitDetailsByHash.size).toBe(0);
+    expect(fixture.logStore.logErrorMessage).toBe("details failed");
+    expect(fixture.logStore.loadingCommitDetailsHash).toBe(null);
+    expect(fixture.logStore.commitDetailsByHash.size).toBe(0);
   });
 
   it("should clear all historical log fields", () => {
     const fixture = createFixture();
-    fixture.gitStore.logCommits = [createCommit("commit-1")];
-    fixture.gitStore.commitDetailsByHash.set("commit-1", createDetails("commit-1"));
-    fixture.gitStore.hasLoadedLog = true;
-    fixture.gitStore.hasMoreLogCommits = true;
-    fixture.gitStore.isLoadingLog = true;
-    fixture.gitStore.loadingCommitDetailsHash = "commit-1";
-    fixture.gitStore.logErrorMessage = "old error";
+    fixture.logStore.logCommits = [createCommit("commit-1")];
+    fixture.logStore.commitDetailsByHash.set("commit-1", createDetails("commit-1"));
+    fixture.logStore.hasLoadedLog = true;
+    fixture.logStore.hasMoreLogCommits = true;
+    fixture.logStore.isLoadingLog = true;
+    fixture.logStore.loadingCommitDetailsHash = "commit-1";
+    fixture.logStore.logErrorMessage = "old error";
 
-    fixture.gitStore.clearLog();
+    fixture.logStore.clearLog();
 
-    expect(fixture.gitStore.logCommits).toEqual([]);
-    expect(fixture.gitStore.commitDetailsByHash.size).toBe(0);
-    expect(fixture.gitStore.hasLoadedLog).toBe(false);
-    expect(fixture.gitStore.hasMoreLogCommits).toBe(false);
-    expect(fixture.gitStore.isLoadingLog).toBe(false);
-    expect(fixture.gitStore.loadingCommitDetailsHash).toBe(null);
-    expect(fixture.gitStore.logErrorMessage).toBe(null);
+    expect(fixture.logStore.logCommits).toEqual([]);
+    expect(fixture.logStore.commitDetailsByHash.size).toBe(0);
+    expect(fixture.logStore.hasLoadedLog).toBe(false);
+    expect(fixture.logStore.hasMoreLogCommits).toBe(false);
+    expect(fixture.logStore.isLoadingLog).toBe(false);
+    expect(fixture.logStore.loadingCommitDetailsHash).toBe(null);
+    expect(fixture.logStore.logErrorMessage).toBe(null);
   });
 
   it("should expose observable history state and bind detached log methods", async () => {
@@ -235,23 +236,23 @@ describe("ProjectGitStore Git log history", () => {
       .mockResolvedValueOnce({ commits: [commit], hasMore: false })
       .mockResolvedValueOnce(details);
 
-    expect(isObservableProp(fixture.gitStore, "logCommits")).toBe(true);
-    expect(isObservableProp(fixture.gitStore, "commitDetailsByHash")).toBe(true);
-    expect(isObservableProp(fixture.gitStore, "hasLoadedLog")).toBe(true);
-    expect(isObservableProp(fixture.gitStore, "hasMoreLogCommits")).toBe(true);
-    expect(isObservableProp(fixture.gitStore, "isLoadingLog")).toBe(true);
-    expect(isObservableProp(fixture.gitStore, "loadingCommitDetailsHash")).toBe(true);
-    expect(isObservableProp(fixture.gitStore, "logErrorMessage")).toBe(true);
+    expect(isObservableProp(fixture.logStore, "logCommits")).toBe(true);
+    expect(isObservableProp(fixture.logStore, "commitDetailsByHash")).toBe(true);
+    expect(isObservableProp(fixture.logStore, "hasLoadedLog")).toBe(true);
+    expect(isObservableProp(fixture.logStore, "hasMoreLogCommits")).toBe(true);
+    expect(isObservableProp(fixture.logStore, "isLoadingLog")).toBe(true);
+    expect(isObservableProp(fixture.logStore, "loadingCommitDetailsHash")).toBe(true);
+    expect(isObservableProp(fixture.logStore, "logErrorMessage")).toBe(true);
 
-    const loadGitLog = fixture.gitStore.loadGitLog;
-    const loadCommitDetails = fixture.gitStore.loadCommitDetails;
+    const loadGitLog = fixture.logStore.loadGitLog;
+    const loadCommitDetails = fixture.logStore.loadCommitDetails;
     await loadGitLog(true);
     await loadCommitDetails("commit-1");
 
-    expect(fixture.gitStore.logCommits).toEqual([commit]);
-    expect(fixture.gitStore.commitDetailsByHash.get("commit-1")).toEqual(details);
-    expect(fixture.gitStore.isLoadingLog).toBe(false);
-    expect(fixture.gitStore.loadingCommitDetailsHash).toBe(null);
+    expect(fixture.logStore.logCommits).toEqual([commit]);
+    expect(fixture.logStore.commitDetailsByHash.get("commit-1")).toEqual(details);
+    expect(fixture.logStore.isLoadingLog).toBe(false);
+    expect(fixture.logStore.loadingCommitDetailsHash).toBe(null);
   });
 });
 
@@ -262,6 +263,7 @@ type FixtureOptions = {
 
 type Fixture = {
   gitStore: ProjectGitStore;
+  logStore: ProjectGitLogStore;
   request: ReturnType<typeof vi.fn>;
 };
 
@@ -286,11 +288,23 @@ function createFixture(options: FixtureOptions = {}): Fixture {
     projectPath: project.path,
     isCodexSourceReady: options.sourceReady ?? true
   } as unknown as ProjectStore;
-  const root = { request } as unknown as RootStore;
+  const root = {
+    request,
+    appStore: {
+      settingsStore: {
+        settings: {
+          commitMessageModel: null,
+          commitMessageReasoningEffort: "medium",
+          commitMessageLanguage: "en"
+        }
+      }
+    }
+  } as unknown as RootStore;
   const gitStore = new ProjectGitStore(projectStore, root);
-  gitStore.status = createStatus(options.isRepository ?? true);
+  gitStore.statusStore.status = createStatus(options.isRepository ?? true);
+  const logStore = gitStore.logStore;
 
-  return { gitStore, request };
+  return { gitStore, logStore, request };
 }
 
 /** Creates the repository status required for the log guards. */

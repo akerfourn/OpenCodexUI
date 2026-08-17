@@ -6,12 +6,12 @@ import { Button, IconButton, LinearProgress, Stack, TextField, Tooltip } from "@
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitCommitStore } from "../../stores/ProjectGitCommitStore";
 
 type ProjectGitCommitSectionProps = {
   generateTooltip: string;
   gitLabelsKey: "git.simple" | "git.technical";
-  gitStore: ProjectGitStore;
+  commitStore: ProjectGitCommitStore;
   onOpenGenerateDialog(): void;
 };
 
@@ -25,22 +25,22 @@ type ProjectGitCommitSectionProps = {
 export function ProjectGitCommitSection({
   generateTooltip,
   gitLabelsKey,
-  gitStore,
+  commitStore,
   onOpenGenerateDialog
 }: ProjectGitCommitSectionProps) {
   const { t } = useTranslation();
 
   return (
     <Stack spacing={1}>
-      {gitStore.isGeneratingCommitMessage ? <LinearProgress /> : null}
+      {commitStore.isGeneratingCommitMessage ? <LinearProgress /> : null}
       <TextField
         label={t(`${gitLabelsKey}.commitMessage`)}
-        value={gitStore.commitMessage}
+        value={commitStore.commitMessage}
         minRows={3}
         multiline
         fullWidth
-        disabled={gitStore.isCommitting || gitStore.isGeneratingCommitMessage}
-        onChange={(event) => gitStore.setCommitMessage(event.target.value)}
+        disabled={commitStore.isCommitting || commitStore.isGeneratingCommitMessage}
+        onChange={(event) => commitStore.setCommitMessage(event.target.value)}
       />
       <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
         <Tooltip title={generateTooltip}>
@@ -48,7 +48,7 @@ export function ProjectGitCommitSection({
             <IconButton
               aria-label={t(`${gitLabelsKey}.generateMessage`)}
               size="small"
-              disabled={!gitStore.canGenerateCommitMessage}
+              disabled={!commitStore.canGenerateCommitMessage}
               onClick={onOpenGenerateDialog}
             >
               <AutoAwesomeOutlinedIcon fontSize="small" />
@@ -57,8 +57,8 @@ export function ProjectGitCommitSection({
         </Tooltip>
         <Button
           variant="contained"
-          disabled={!gitStore.canCommit}
-          onClick={() => void gitStore.commit()}
+          disabled={!commitStore.canCommit}
+          onClick={() => void commitStore.commit()}
         >
           {t(`${gitLabelsKey}.commit`)}
         </Button>

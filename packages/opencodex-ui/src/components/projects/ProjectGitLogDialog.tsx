@@ -19,11 +19,11 @@ import type { UIEvent } from "react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitStore } from "../../stores/ProjectGitStore";
+import type { ProjectGitLogStore } from "../../stores/ProjectGitLogStore";
 import { ProjectGitLogCommitItemX } from "./ProjectGitLogCommitItem";
 
 type ProjectGitLogDialogProps = {
-  gitStore: ProjectGitStore;
+  logStore: ProjectGitLogStore;
   open: boolean;
   onClose(): void;
 };
@@ -35,18 +35,18 @@ type ProjectGitLogDialogProps = {
  *
  * @returns Rendered Git log dialog.
  */
-export function ProjectGitLogDialog({ gitStore, open, onClose }: ProjectGitLogDialogProps) {
+export function ProjectGitLogDialog({ logStore, open, onClose }: ProjectGitLogDialogProps) {
   const { t } = useTranslation();
-  const canLoadMore = gitStore.hasMoreLogCommits && !gitStore.isLoadingLog;
-  const isInitialLoading = gitStore.isLoadingLog && gitStore.logCommits.length === 0;
-  const emptyContent = gitStore.hasLoadedLog && gitStore.logCommits.length === 0 && gitStore.logErrorMessage === null
+  const canLoadMore = logStore.hasMoreLogCommits && !logStore.isLoadingLog;
+  const isInitialLoading = logStore.isLoadingLog && logStore.logCommits.length === 0;
+  const emptyContent = logStore.hasLoadedLog && logStore.logCommits.length === 0 && logStore.logErrorMessage === null
     ? (
         <Typography variant="body2" color="text.secondary">
           {t("git.logEmpty")}
         </Typography>
       )
     : null;
-  const loadMoreContent = gitStore.hasMoreLogCommits
+  const loadMoreContent = logStore.hasMoreLogCommits
     ? (
         <Button
           size="small"
@@ -54,23 +54,23 @@ export function ProjectGitLogDialog({ gitStore, open, onClose }: ProjectGitLogDi
           disabled={!canLoadMore}
           onClick={handleLoadMore}
         >
-          {gitStore.isLoadingLog ? t("git.logLoading") : t("git.logLoadMore")}
+          {logStore.isLoadingLog ? t("git.logLoading") : t("git.logLoadMore")}
         </Button>
       )
     : null;
 
   useEffect(() => {
-    if (open && !gitStore.hasLoadedLog) {
-      void gitStore.loadGitLog(true);
+    if (open && !logStore.hasLoadedLog) {
+      void logStore.loadGitLog(true);
     }
-  }, [gitStore, open]);
+  }, [logStore, open]);
 
   function handleRefresh(): void {
-    void gitStore.loadGitLog(true);
+    void logStore.loadGitLog(true);
   }
 
   function handleLoadMore(): void {
-    void gitStore.loadMoreGitLog();
+    void logStore.loadMoreGitLog();
   }
 
   function handleScroll(event: UIEvent<HTMLDivElement>): void {
@@ -78,7 +78,7 @@ export function ProjectGitLogDialog({ gitStore, open, onClose }: ProjectGitLogDi
     const remainingDistance = element.scrollHeight - element.scrollTop - element.clientHeight;
 
     if (remainingDistance < 160 && canLoadMore) {
-      void gitStore.loadMoreGitLog();
+      void logStore.loadMoreGitLog();
     }
   }
 
@@ -92,8 +92,8 @@ export function ProjectGitLogDialog({ gitStore, open, onClose }: ProjectGitLogDi
       </DialogTitle>
       <DialogContent dividers onScroll={handleScroll} sx={{ minHeight: 420 }}>
         <Stack spacing={1}>
-          {gitStore.logErrorMessage !== null ? (
-            <Alert severity="error">{gitStore.logErrorMessage}</Alert>
+          {logStore.logErrorMessage !== null ? (
+            <Alert severity="error">{logStore.logErrorMessage}</Alert>
           ) : null}
           {isInitialLoading ? (
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
@@ -104,11 +104,11 @@ export function ProjectGitLogDialog({ gitStore, open, onClose }: ProjectGitLogDi
             </Stack>
           ) : null}
           {emptyContent}
-          {gitStore.logCommits.map((commit) => (
+          {logStore.logCommits.map((commit) => (
             <ProjectGitLogCommitItemX
               key={commit.hash}
               commit={commit}
-              gitStore={gitStore}
+              logStore={logStore}
             />
           ))}
           {loadMoreContent !== null ? (
@@ -119,7 +119,7 @@ export function ProjectGitLogDialog({ gitStore, open, onClose }: ProjectGitLogDi
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleRefresh} disabled={gitStore.isLoadingLog}>
+        <Button onClick={handleRefresh} disabled={logStore.isLoadingLog}>
           {t("git.logRefresh")}
         </Button>
         <Button onClick={onClose}>{t("git.close")}</Button>
