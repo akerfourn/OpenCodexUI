@@ -1,10 +1,7 @@
 import { makeAutoObservable } from "mobx";
 
 import type {
-  OpenCodexActivity,
   OpenCodexEvent,
-  OpenCodexMessage,
-  OpenCodexMessagePhase,
   OpenCodexThread,
   OpenCodexThreadTokenUsage,
   OpenCodexTurn
@@ -15,11 +12,15 @@ import type { ProjectStore } from "./ProjectStore";
 import type { ProjectsStore } from "./ProjectsStore";
 import type { RootStore } from "./RootStore";
 import type { RootChildStore } from "./RootChildStore";
+import { ProjectThreadLiveEventHandler } from "./ProjectThreadLiveEventHandler";
 
 /**
  * Applies thread and chat runtime events to their owning project stores.
  */
 export class ProjectThreadEventsStore implements RootChildStore {
+  /** Handler for incremental runtime updates to loaded threads. */
+  private readonly liveEventHandler: ProjectThreadLiveEventHandler;
+
   /**
    * Creates the thread event router.
    *
@@ -30,9 +31,20 @@ export class ProjectThreadEventsStore implements RootChildStore {
     private readonly projectsStore: ProjectsStore,
     private readonly root: RootStore
   ) {
-    makeAutoObservable<ProjectThreadEventsStore, "projectsStore" | "root">(this, {
+    this.liveEventHandler = new ProjectThreadLiveEventHandler({
+      findChatStoreByThreadId: (threadId, sourceId) =>
+        projectsStore.findChatStoreByThreadId(threadId, sourceId),
+      findProjectStoreForThread: (threadId, sourceId) =>
+        projectsStore.findProjectStoreForThread(threadId, sourceId)
+    });
+
+    makeAutoObservable<
+      ProjectThreadEventsStore,
+      "projectsStore" | "root" | "liveEventHandler"
+    >(this, {
       projectsStore: false,
-      root: false
+      root: false,
+      liveEventHandler: false
     });
   }
 
@@ -102,36 +114,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
         this.applyThreadDeleted(event.threadId, event.sourceId);
         return;
       case "thread.tokenUsage.updated":
-        this.applyThreadTokenUsage(event.usage, event.sourceId);
-        return;
       case "message.started":
-        this.applyMessageStarted(event.threadId, event.message, event.sourceId);
-        return;
       case "message.delta":
-        this.appendAssistantDelta(
-          event.threadId,
-          event.turnId,
-          event.messageId,
-          event.delta,
-          event.phase ?? null,
-          event.sourceId
-        );
-        return;
       case "activity.updated":
-        this.applyActivityUpdated(event.threadId, event.activity, event.sourceId);
-        return;
       case "turn.started":
-        this.applyTurnStarted(event.threadId, event.turnId, event.sourceId);
-        return;
       case "turn.completed":
-        this.applyTurnCompleted(
-          event.threadId,
-          event.turnId,
-          event.durationMs,
-          event.turnStatus,
-          event.errorMessage,
-          event.sourceId
-        );
+        this.liveEventHandler.handleEvent(event);
         return;
       default:
         return;
@@ -439,149 +427,6 @@ export class ProjectThreadEventsStore implements RootChildStore {
 
     for (const projectStore of this.projectsStore.projectStoresById.values()) {
       projectStore.removeThread(threadId);
-    }
-  }
-
-  /**
-   * Applies token usage to the owning chat.
-   *
-   * @param usage Token usage payload.
-   * @param sourceId Optional source carried by the event.
-   */
-  private applyThreadTokenUsage(
-    usage: OpenCodexThreadTokenUsage,
-    sourceId?: string | null
-  ): void {
-    const chatStore = this.findChatStore(usage.threadId, sourceId);
-
-    if (chatStore === null) {
-      return;
-    }
-
-    chatStore.applyTokenUsage(usage);
-  }
-
-  /**
-   * Applies a newly started message item.
-   *
-   * @param threadId Thread identifier.
-   * @param message Started message item.
-   * @param sourceId Optional source carried by the event.
-   */
-  private applyMessageStarted(
-    threadId: string,
-    message: OpenCodexMessage,
-    sourceId?: string | null
-  ): void {
-    const chatStore = this.findChatStore(threadId, sourceId);
-
-    if (chatStore === null) {
-      return;
-    }
-
-    chatStore.applyMessageStarted(message);
-  }
-
-  /**
-   * Appends streamed assistant text to a message item.
-   *
-   * @param threadId Thread identifier.
-   * @param turnId Turn identifier.
-   * @param itemId Message item identifier.
-   * @param delta Text delta.
-   * @param phase Optional assistant phase.
-   * @param sourceId Optional source carried by the event.
-   */
-  private appendAssistantDelta(
-    threadId: string,
-    turnId: string,
-    itemId: string,
-    delta: string,
-    phase: OpenCodexMessagePhase | null,
-    sourceId?: string | null
-  ): void {
-    const chatStore = this.findChatStore(threadId, sourceId);
-
-    if (chatStore === null) {
-      return;
-    }
-
-    chatStore.appendAssistantDelta(turnId, itemId, delta, phase);
-  }
-
-  /**
-   * Applies a reasoning/activity item update.
-   *
-   * @param threadId Thread identifier.
-   * @param activity Activity item.
-   * @param sourceId Optional source carried by the event.
-   */
-  private applyActivityUpdated(
-    threadId: string,
-    activity: OpenCodexActivity,
-    sourceId?: string | null
-  ): void {
-    const chatStore = this.findChatStore(threadId, sourceId);
-
-    if (chatStore === null) {
-      return;
-    }
-
-    chatStore.applyActivityUpdated(activity);
-  }
-
-  /**
-   * Marks a turn as started in the owning chat.
-   *
-   * @param threadId Thread identifier.
-   * @param turnId Turn identifier.
-   * @param sourceId Optional source carried by the event.
-   */
-  private applyTurnStarted(
-    threadId: string,
-    turnId: string,
-    sourceId?: string | null
-  ): void {
-    const chatStore = this.findChatStore(threadId, sourceId);
-
-    if (chatStore === null) {
-      return;
-    }
-
-    chatStore.applyTurnStarted(turnId);
-  }
-
-  /**
-   * Marks a turn as completed and refreshes Git when it was active.
-   *
-   * @param threadId Thread identifier.
-   * @param turnId Turn identifier.
-   * @param durationMs Optional duration in milliseconds.
-   * @param turnStatus Terminal status reported by Codex, when available.
-   * @param errorMessage Error reported by Codex, when available.
-   * @param sourceId Optional source carried by the event.
-   */
-  private applyTurnCompleted(
-    threadId: string,
-    turnId: string,
-    durationMs: number | null,
-    turnStatus: string | undefined,
-    errorMessage: string | undefined,
-    sourceId?: string | null
-  ): void {
-    const chatStore = this.findChatStore(threadId, sourceId);
-
-    if (chatStore === null) {
-      return;
-    }
-
-    const shouldRefreshGit = chatStore.activeTurnId === turnId;
-
-    chatStore.applyTurnCompleted(turnId, durationMs, turnStatus, errorMessage);
-
-    if (shouldRefreshGit) {
-      const projectStore = this.findProjectStoreForThread(threadId, sourceId);
-      void projectStore?.gitStore.refresh();
     }
   }
 
