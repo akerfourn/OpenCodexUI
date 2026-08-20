@@ -13,8 +13,8 @@ describe("ChatStore composer model settings", () => {
   it("should preserve draft and attachments in the chat store", () => {
     const chatStore = createChatStore({});
 
-    chatStore.setComposerDraft("draft", "**draft**", []);
-    chatStore.addComposerAttachments([{
+    chatStore.composer.setDraft("draft", "**draft**", []);
+    chatStore.composer.addAttachments([{
       id: "image-1",
       kind: "image",
       source: "localPath",
@@ -22,9 +22,9 @@ describe("ChatStore composer model settings", () => {
       name: "image.png"
     }]);
 
-    expect(chatStore.composerDraft).toBe("draft");
-    expect(chatStore.composerDraftMarkdown).toBe("**draft**");
-    expect(chatStore.composerAttachments).toEqual([expect.objectContaining({
+    expect(chatStore.composer.draft).toBe("draft");
+    expect(chatStore.composer.draftMarkdown).toBe("**draft**");
+    expect(chatStore.composer.attachments).toEqual([expect.objectContaining({
       id: "image-1",
       value: "/tmp/image.png"
     })]);
@@ -39,10 +39,10 @@ describe("ChatStore composer model settings", () => {
       isPinnedToBottom: false
     };
 
-    chatStore.setTimelineViewState(state);
+    chatStore.timeline.setTimelineViewState(state);
     state.scrollTop = 0;
 
-    expect(chatStore.timelineViewState).toEqual({
+    expect(chatStore.timeline.timelineViewState).toEqual({
       visibleTurnCount: 20,
       turnCount: 25,
       scrollTop: 480,
@@ -56,8 +56,8 @@ describe("ChatStore composer model settings", () => {
       reasoningEffort: "medium"
     });
 
-    expect(chatStore.selectedModel).toBe("gpt-5.5");
-    expect(chatStore.reasoningEffort).toBe("medium");
+    expect(chatStore.composer.selectedModel).toBe("gpt-5.5");
+    expect(chatStore.composer.reasoningEffort).toBe("medium");
   });
 
   it("should keep explicit user settings when thread metadata refreshes", () => {
@@ -66,15 +66,15 @@ describe("ChatStore composer model settings", () => {
       reasoningEffort: "medium"
     });
 
-    chatStore.setSelectedModel("gpt-5.4-mini");
-    chatStore.setReasoningEffort("high");
+    chatStore.composer.setModel("gpt-5.4-mini");
+    chatStore.composer.setReasoningEffort("high");
     chatStore.setThread(createThread({
       model: "gpt-5.5",
       reasoningEffort: "low"
     }));
 
-    expect(chatStore.selectedModel).toBe("gpt-5.4-mini");
-    expect(chatStore.reasoningEffort).toBe("high");
+    expect(chatStore.composer.selectedModel).toBe("gpt-5.4-mini");
+    expect(chatStore.composer.reasoningEffort).toBe("high");
   });
 
   it("should update visible thread metadata when the user changes settings", () => {
@@ -89,7 +89,7 @@ describe("ChatStore composer model settings", () => {
       rootStore
     );
 
-    chatStore.setReasoningEffort("high");
+    chatStore.composer.setReasoningEffort("high");
 
     expect(chatStore.thread.reasoningEffort).toBe("high");
     expect(projectStore.upsertThread).toHaveBeenCalledWith(expect.objectContaining({
@@ -115,8 +115,8 @@ describe("ChatStore composer model settings", () => {
       reasoningEffort: "xhigh"
     }));
 
-    expect(chatStore.selectedModel).toBe("gpt-5.4-mini");
-    expect(chatStore.reasoningEffort).toBe("xhigh");
+    expect(chatStore.composer.selectedModel).toBe("gpt-5.4-mini");
+    expect(chatStore.composer.reasoningEffort).toBe("xhigh");
   });
 
   it("should use the first listed model when the thread has no model", () => {
@@ -125,8 +125,8 @@ describe("ChatStore composer model settings", () => {
       reasoningEffort: null
     });
 
-    expect(chatStore.selectedModel).toBe("gpt-5.5");
-    expect(chatStore.reasoningEffort).toBe("medium");
+    expect(chatStore.composer.selectedModel).toBe("gpt-5.5");
+    expect(chatStore.composer.reasoningEffort).toBe("medium");
   });
 
   it("should repair a thread source from the project source", () => {
@@ -149,7 +149,7 @@ describe("ChatStore composer model settings", () => {
       rootStore
     );
 
-    const wasAccepted = await chatStore.sendMessage("hello");
+    const wasAccepted = await chatStore.actions.send("hello");
 
     expect(wasAccepted).toBe(true);
     expect(rootStore.request).toHaveBeenCalledWith(expect.objectContaining({

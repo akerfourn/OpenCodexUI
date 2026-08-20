@@ -83,8 +83,8 @@ function registerMainWindowFocusRefresh(store: RootStore): void {
     const activeChatStore = store.activeChatStore;
     const activeProjectStore = store.activeProjectStore;
 
-    if (activeChatStore?.canRefresh === true) {
-      activeChatStore.refresh();
+    if (activeChatStore?.actions.canRefresh === true) {
+      activeChatStore.actions.refresh();
     }
 
     if (activeProjectStore !== null && !activeProjectStore.threadListStore.isLoadingThreads) {

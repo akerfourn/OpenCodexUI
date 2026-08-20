@@ -10,7 +10,8 @@ import {
   type UIEvent
 } from "react";
 
-import type { ChatStore, ChatTimelineViewState } from "../../stores/ChatStore";
+import type { ChatStore } from "../../stores/ChatStore";
+import type { ChatTimelineViewState } from "../../stores/ChatTimelineStore";
 import {
   INITIAL_VISIBLE_TURN_COUNT,
   resolveRestoredVisibleTurnCount,
@@ -45,8 +46,10 @@ export function useChatTimelineScroll(chatStore: ChatStore): ChatTimelineScrollS
   const contentRef = useRef<HTMLDivElement | null>(null);
   const previousScrollStateRef = useRef<{ height: number; top: number } | null>(null);
   const shouldStickToBottomRef = useRef(true);
-  const previousOlderMessagesRevealVersionRef = useRef(chatStore.olderMessagesPrependVersion);
-  const previousTurnCountRef = useRef(chatStore.turns.length);
+  const previousOlderMessagesRevealVersionRef = useRef(
+    chatStore.timeline.olderMessagesPrependVersion
+  );
+  const previousTurnCountRef = useRef(chatStore.timeline.turns.length);
   const resizeFrameRef = useRef<number | null>(null);
   const restorationFrameRef = useRef<number | null>(null);
   const pendingTimelineRestorationRef = useRef<ChatTimelineViewState | null>(null);
@@ -54,11 +57,14 @@ export function useChatTimelineScroll(chatStore: ChatStore): ChatTimelineScrollS
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [visibleTurnCount, setVisibleTurnCount] = useState(INITIAL_VISIBLE_TURN_COUNT);
   visibleTurnCountRef.current = visibleTurnCount;
-  const hiddenOlderTurnCount = Math.max(chatStore.turnStores.length - visibleTurnCount, 0);
+  const hiddenOlderTurnCount = Math.max(
+    chatStore.timeline.turnStores.length - visibleTurnCount,
+    0
+  );
 
   useEffect(() => {
-    previousTurnCountRef.current = chatStore.turns.length;
-    const savedViewState = chatStore.timelineViewState;
+    previousTurnCountRef.current = chatStore.timeline.turns.length;
+    const savedViewState = chatStore.timeline.timelineViewState;
 
     if (savedViewState === null) {
       setVisibleTurnCount(INITIAL_VISIBLE_TURN_COUNT);
@@ -78,7 +84,7 @@ export function useChatTimelineScroll(chatStore: ChatStore): ChatTimelineScrollS
         const restoredVisibleTurnCount = resolveRestoredVisibleTurnCount(
           pendingState.visibleTurnCount,
           pendingState.turnCount,
-          chatStore.turnStores.length
+          chatStore.timeline.turnStores.length
         );
 
         if (restoredVisibleTurnCount !== visibleTurnCountRef.current) {
@@ -120,9 +126,9 @@ export function useChatTimelineScroll(chatStore: ChatStore): ChatTimelineScrollS
         return;
       }
 
-      chatStore.setTimelineViewState({
+      chatStore.timeline.setTimelineViewState({
         visibleTurnCount: visibleTurnCountRef.current,
-        turnCount: chatStore.turnStores.length,
+        turnCount: chatStore.timeline.turnStores.length,
         scrollTop: container.scrollTop,
         isPinnedToBottom: shouldStickToBottomRef.current
       });
@@ -193,7 +199,7 @@ export function useChatTimelineScroll(chatStore: ChatStore): ChatTimelineScrollS
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [chatStore.thread.id, chatStore.scrollToBottomVersion]);
+  }, [chatStore.thread.id, chatStore.timeline.scrollToBottomVersion]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -221,31 +227,31 @@ export function useChatTimelineScroll(chatStore: ChatStore): ChatTimelineScrollS
     shouldStickToBottomRef.current = isPinnedToBottom;
     setShowScrollToBottom(!isPinnedToBottom);
     previousScrollStateRef.current = null;
-  }, [chatStore.olderMessagesPrependVersion, visibleTurnCount]);
+  }, [chatStore.timeline.olderMessagesPrependVersion, visibleTurnCount]);
 
   useLayoutEffect(() => {
     const didPrependOlderMessages = (
-      previousOlderMessagesRevealVersionRef.current !== chatStore.olderMessagesPrependVersion
+      previousOlderMessagesRevealVersionRef.current !== chatStore.timeline.olderMessagesPrependVersion
     );
     const previousTurnCount = previousTurnCountRef.current;
 
-    previousOlderMessagesRevealVersionRef.current = chatStore.olderMessagesPrependVersion;
-    previousTurnCountRef.current = chatStore.turns.length;
+    previousOlderMessagesRevealVersionRef.current = chatStore.timeline.olderMessagesPrependVersion;
+    previousTurnCountRef.current = chatStore.timeline.turns.length;
 
     if (!didPrependOlderMessages) {
       return;
     }
 
-    const addedTurnCount = Math.max(chatStore.turns.length - previousTurnCount, 0);
+    const addedTurnCount = Math.max(chatStore.timeline.turns.length - previousTurnCount, 0);
 
     if (addedTurnCount === 0) {
       return;
     }
 
     setVisibleTurnCount((currentCount) => (
-      Math.min(chatStore.turns.length, currentCount + addedTurnCount)
+      Math.min(chatStore.timeline.turns.length, currentCount + addedTurnCount)
     ));
-  }, [chatStore.olderMessagesPrependVersion, chatStore.turns.length]);
+  }, [chatStore.timeline.olderMessagesPrependVersion, chatStore.timeline.turns.length]);
 
   /**
    * Scrolls to the latest message and pins the timeline there.
@@ -278,7 +284,7 @@ export function useChatTimelineScroll(chatStore: ChatStore): ChatTimelineScrollS
 
     if (
       container.scrollTop > 80 ||
-      chatStore.isLoadingOlderMessages
+      chatStore.timeline.isLoadingOlderMessages
     ) {
       return;
     }
@@ -289,12 +295,12 @@ export function useChatTimelineScroll(chatStore: ChatStore): ChatTimelineScrollS
         top: container.scrollTop
       };
       setVisibleTurnCount((currentCount) => (
-        Math.min(chatStore.turns.length, currentCount + TURN_WINDOW_INCREMENT)
+        Math.min(chatStore.timeline.turns.length, currentCount + TURN_WINDOW_INCREMENT)
       ));
       return;
     }
 
-    if (!chatStore.hasMoreOlderMessages) {
+    if (!chatStore.timeline.hasMoreOlderMessages) {
       return;
     }
 
@@ -302,7 +308,7 @@ export function useChatTimelineScroll(chatStore: ChatStore): ChatTimelineScrollS
       height: container.scrollHeight,
       top: container.scrollTop
     };
-    chatStore.loadOlderMessages();
+    chatStore.timeline.loadOlderMessages();
   }
 
   return {

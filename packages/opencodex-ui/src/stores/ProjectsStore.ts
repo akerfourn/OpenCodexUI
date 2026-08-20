@@ -87,7 +87,7 @@ export class ProjectsStore implements RootChildStore {
   reconcileReasoningEfforts(): void {
     for (const projectStore of this.projectStoresById.values()) {
       for (const chatStore of projectStore.chatsById.values()) {
-        chatStore.reconcileReasoningEffort();
+        chatStore.composer.reconcileReasoningEffort();
       }
     }
   }

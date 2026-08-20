@@ -63,9 +63,9 @@ export function ChatMessageList({
   const { t } = useTranslation();
   const lastMessageRef = useRef<HTMLElement | null>(null);
   const currentThread = chatStore.thread;
-  const editableItem = chatStore.editableLastUserItemIdentity;
+  const editableItem = chatStore.actions.editableLastUserItemIdentity;
   const [editedMessage, setEditedMessage] = useState<string | null>(null);
-  const isWorking = chatStore.isWorking || chatStore.isStartingTurn;
+  const isWorking = chatStore.runtime.isWorking || chatStore.runtime.isStartingTurn;
   const sourceId = chatStore.sourceId;
   const collaborationEvents = sourceId === null
     ? []
@@ -104,7 +104,7 @@ export function ChatMessageList({
     handleScroll,
     handleScrollToBottom
   } = useChatTimelineScroll(chatStore);
-  const visibleTurnStores = getVisibleTurns(chatStore.turnStores, visibleTurnCount);
+  const visibleTurnStores = getVisibleTurns(chatStore.timeline.turnStores, visibleTurnCount);
 
   function handleStartEdit(content: string): void {
     setEditedMessage(content);
@@ -119,15 +119,15 @@ export function ChatMessageList({
   }
 
   function handleModelChange(value: string | null): void {
-    chatStore.setSelectedModel(value);
+    chatStore.composer.setModel(value);
   }
 
   function handleEffortChange(value: OpenCodexReasoningEffort): void {
-    chatStore.setReasoningEffort(value);
+    chatStore.composer.setReasoningEffort(value);
   }
 
   function handleServiceTierChange(value: string | null): void {
-    chatStore.setSelectedServiceTier(value);
+    chatStore.composer.setServiceTier(value);
   }
 
   function handleSubmitEdit(event: FormEvent<HTMLFormElement>): void {
@@ -150,16 +150,16 @@ export function ChatMessageList({
     }
 
     const submittedMessage = editedMessage;
-    const submittedAttachments = chatStore.editableLastUserItem?.attachments ?? [];
-    const submittedModel = chatStore.selectedModel;
-    const submittedReasoningEffort = chatStore.reasoningEffort;
-    const submittedServiceTier = chatStore.selectedServiceTier;
+    const submittedAttachments = chatStore.actions.editableLastUserItem?.attachments ?? [];
+    const submittedModel = chatStore.composer.selectedModel;
+    const submittedReasoningEffort = chatStore.composer.reasoningEffort;
+    const submittedServiceTier = chatStore.composer.selectedServiceTier;
 
     flushSync(() => {
       setEditedMessage(null);
     });
 
-    const wasAccepted = chatStore.editLastTurn(
+    const wasAccepted = chatStore.actions.editLast(
       submittedMessage,
       submittedAttachments,
       submittedModel,
@@ -215,7 +215,7 @@ export function ChatMessageList({
             width: "100%"
           }}
         >
-          {chatStore.isLoadingOlderMessages ? (
+          {chatStore.timeline.isLoadingOlderMessages ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
               <CircularProgress size={18} thickness={5} />
             </Box>
@@ -230,7 +230,7 @@ export function ChatMessageList({
             <ChatTurnViewX
               key={turnStore.id}
               turnStore={turnStore}
-              activeTurnId={chatStore.activeTurnId}
+              activeTurnId={chatStore.runtime.activeTurnId}
               isWorking={isWorking}
               isLastTurn={index === visibleTurnStores.length - 1}
               editableItem={editableItem}
@@ -322,12 +322,12 @@ export function ChatMessageList({
             }}
           >
             <ModelSettingsFields
-              selectedModel={chatStore.selectedModel}
-              reasoningEffort={chatStore.reasoningEffort}
-              reasoningEfforts={store.appStore.getReasoningEffortOptions(chatStore.selectedModel)}
-              selectedServiceTier={chatStore.selectedServiceTier}
+              selectedModel={chatStore.composer.selectedModel}
+              reasoningEffort={chatStore.composer.reasoningEffort}
+              reasoningEfforts={store.appStore.getReasoningEffortOptions(chatStore.composer.selectedModel)}
+              selectedServiceTier={chatStore.composer.selectedServiceTier}
               modelOptions={store.appStore.modelOptions}
-              serviceTierOptions={store.appStore.getServiceTierOptions(chatStore.selectedModel)}
+              serviceTierOptions={store.appStore.getServiceTierOptions(chatStore.composer.selectedModel)}
               onModelChange={handleModelChange}
               onReasoningEffortChange={handleEffortChange}
               onServiceTierChange={handleServiceTierChange}

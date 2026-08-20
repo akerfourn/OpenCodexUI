@@ -57,7 +57,7 @@ export function ChatView({ store, projectStore, onOpenSubAgentDialog }: ChatView
 
   const currentThread = chatStore.thread;
   const isLoadingCurrentThread = projectStore.threadListStore.loadingThreadId === currentThread.id
-    && chatStore.turns.length === 0;
+    && chatStore.timeline.turns.length === 0;
   const messageContent = isLoadingCurrentThread ? (
     <ChatLoadingState label={t("chat.loading")} />
   ) : (
@@ -91,9 +91,9 @@ export function ChatView({ store, projectStore, onOpenSubAgentDialog }: ChatView
           projectStore={projectStore}
           modelOptions={store.appStore.modelOptions}
           isWorking={
-            chatStore.isWorking ||
-            chatStore.isStartingTurn ||
-            chatStore.isRecovering ||
+            chatStore.runtime.isWorking ||
+            chatStore.runtime.isStartingTurn ||
+            chatStore.runtime.isRecovering ||
             projectStore.threadListStore.loadingThreadId !== null
           }
         />

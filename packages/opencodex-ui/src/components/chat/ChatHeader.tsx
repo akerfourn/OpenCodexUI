@@ -44,7 +44,7 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
   ) : null;
 
   function handleRenameOpen(): void {
-    if (isReadOnlyProject || chatStore.isRenaming) {
+    if (isReadOnlyProject || chatStore.actions.isRenaming) {
       return;
     }
 
@@ -62,22 +62,22 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
   }
 
   function handleRenameSubmit(): void {
-    if (renameValue.trim().length > 0 && !chatStore.isRenaming) {
-      chatStore.rename(renameValue);
+    if (renameValue.trim().length > 0 && !chatStore.actions.isRenaming) {
+      chatStore.actions.rename(renameValue);
       setIsRenameModalOpen(false);
       setRenameValue("");
     }
   }
 
   function handleRefreshThread(): void {
-    chatStore.refresh();
+    chatStore.actions.refresh();
   }
 
   return (
     <>
       <Box component="header" className="chat-header" sx={{ position: "relative" }}>
         <Box className="chat-title" sx={{ minWidth: 0, flex: "1 1 auto" }}>
-          <ThreadContextUsageIndicator usage={chatStore.tokenUsage} />
+          <ThreadContextUsageIndicator usage={chatStore.timeline.tokenUsage} />
           <Typography variant="h6" component="h2" noWrap>
             {title}
           </Typography>
@@ -86,7 +86,7 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
             aria-label={t("header.rename")}
             title={t("header.rename")}
             size="small"
-            disabled={isReadOnlyProject || chatStore.isRenaming}
+            disabled={isReadOnlyProject || chatStore.actions.isRenaming}
             onClick={handleRenameOpen}
           >
             <EditOutlinedIcon fontSize="small" />
@@ -97,10 +97,14 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
               aria-label={t("header.refresh")}
               title={t("header.refresh")}
               size="small"
-              disabled={isReadOnlyProject || chatStore.isRefreshing || chatStore.isSyncing}
+              disabled={
+                isReadOnlyProject ||
+                chatStore.runtime.isRefreshing ||
+                chatStore.runtime.isSyncing
+              }
               onClick={handleRefreshThread}
             >
-              {chatStore.isRefreshing || chatStore.isSyncing ? (
+              {chatStore.runtime.isRefreshing || chatStore.runtime.isSyncing ? (
                 <CircularProgress size={18} thickness={5} />
               ) : (
                 <RefreshOutlinedIcon fontSize="small" />

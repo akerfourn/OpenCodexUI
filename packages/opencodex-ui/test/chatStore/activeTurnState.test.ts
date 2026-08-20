@@ -25,27 +25,27 @@ describe("ChatStore active turn state", () => {
     const rootStore = createRootStore();
     const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
 
-    chatStore.isWorking = true;
-    chatStore.activeTurnId = "turn-active";
-    chatStore.rename("Renamed thread");
+    chatStore.runtime.isWorking = true;
+    chatStore.runtime.activeTurnId = "turn-active";
+    chatStore.actions.rename("Renamed thread");
     await flushPromises();
 
     expect(chatStore.thread.title).toBe("Renamed thread");
-    expect(chatStore.isWorking).toBe(true);
-    expect(chatStore.activeTurnId).toBe("turn-active");
-    expect(chatStore.isRenaming).toBe(false);
+    expect(chatStore.runtime.isWorking).toBe(true);
+    expect(chatStore.runtime.activeTurnId).toBe("turn-active");
+    expect(chatStore.actions.isRenaming).toBe(false);
   });
 
   it("should preserve an active turn when the backend confirms a rename", () => {
     const chatStore = createChatStore({});
 
-    chatStore.isWorking = true;
-    chatStore.activeTurnId = "turn-active";
+    chatStore.runtime.isWorking = true;
+    chatStore.runtime.activeTurnId = "turn-active";
     chatStore.applyRename("Renamed thread");
 
     expect(chatStore.thread.title).toBe("Renamed thread");
-    expect(chatStore.isWorking).toBe(true);
-    expect(chatStore.activeTurnId).toBe("turn-active");
+    expect(chatStore.runtime.isWorking).toBe(true);
+    expect(chatStore.runtime.activeTurnId).toBe("turn-active");
   });
 
   it("should roll back a failed rename without stopping the active turn", async () => {
@@ -54,9 +54,9 @@ describe("ChatStore active turn state", () => {
     vi.mocked(rootStore.request).mockRejectedValueOnce(new Error("Rename failed"));
     const chatStore = new ChatStore(createThread({}), projectStore, rootStore);
 
-    chatStore.isWorking = true;
-    chatStore.activeTurnId = "turn-active";
-    chatStore.rename("Renamed thread");
+    chatStore.runtime.isWorking = true;
+    chatStore.runtime.activeTurnId = "turn-active";
+    chatStore.actions.rename("Renamed thread");
     await flushPromises();
 
     expect(chatStore.thread.title).toBe("Thread");
@@ -65,9 +65,9 @@ describe("ChatStore active turn state", () => {
       title: "Thread",
       customTitle: "Thread"
     });
-    expect(chatStore.isWorking).toBe(true);
-    expect(chatStore.activeTurnId).toBe("turn-active");
-    expect(chatStore.isRenaming).toBe(false);
+    expect(chatStore.runtime.isWorking).toBe(true);
+    expect(chatStore.runtime.activeTurnId).toBe("turn-active");
+    expect(chatStore.actions.isRenaming).toBe(false);
     expect(rootStore.appStore.errorMessage).toBe("Rename failed");
   });
 
@@ -80,34 +80,106 @@ describe("ChatStore active turn state", () => {
     vi.mocked(rootStore.request).mockReturnValueOnce(firstRequest);
     const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
 
-    chatStore.rename("First title");
-    chatStore.rename("Second title");
+    chatStore.actions.rename("First title");
+    chatStore.actions.rename("Second title");
 
     expect(rootStore.request).toHaveBeenCalledTimes(1);
     expect(chatStore.thread.title).toBe("First title");
-    expect(chatStore.isRenaming).toBe(true);
+    expect(chatStore.actions.isRenaming).toBe(true);
 
     resolveFirstRequest?.();
     await flushPromises();
 
-    expect(chatStore.isRenaming).toBe(false);
+    expect(chatStore.actions.isRenaming).toBe(false);
 
-    chatStore.rename("Second title");
+    chatStore.actions.rename("Second title");
     await flushPromises();
 
     expect(chatStore.thread.title).toBe("Second title");
-    expect(chatStore.isRenaming).toBe(false);
+    expect(chatStore.actions.isRenaming).toBe(false);
   });
 
   it("should attach token usage to the matching turn even when it arrives first", () => {
     const chatStore = createChatStore({});
     const usage = createTokenUsage("turn-usage");
 
-    chatStore.applyTokenUsage(usage);
-    chatStore.setTurns([createTurn("turn-usage", "completed")]);
+    chatStore.timeline.applyTokenUsage(usage);
+    chatStore.timeline.setTurns([createTurn("turn-usage", "completed")]);
 
-    expect(chatStore.tokenUsage).toEqual(usage);
-    expect(chatStore.turns[0]?.tokenUsage).toEqual(usage);
+    expect(chatStore.timeline.tokenUsage).toEqual(usage);
+    expect(chatStore.timeline.turns[0]?.tokenUsage).toEqual(usage);
+  });
+
+  it("should use the current pending turn when multiple pending turns share a message", () => {
+    const chatStore = createChatStore({});
+    const olderPendingTurn = createPendingTurn("pending:older", "duplicate message");
+    const currentPendingTurn = createPendingTurn("pending:current", "duplicate message");
+
+    chatStore.timeline.setTurns([olderPendingTurn, currentPendingTurn]);
+    chatStore.runtime.pendingTurnId = currentPendingTurn.id;
+
+    chatStore.applyMessageStarted({
+      id: "message-started",
+      threadId: "thread-1",
+      role: "user",
+      content: "duplicate message",
+      status: "completed",
+      createdAt: null
+    });
+
+    expect(chatStore.runtime.pendingTurnId).toBe(currentPendingTurn.id);
+    expect(chatStore.timeline.turns.map((turn) => turn.id)).toEqual([
+      olderPendingTurn.id,
+      currentPendingTurn.id
+    ]);
+  });
+
+  it("should retain a historical pending id when no matching pending turn exists", () => {
+    const chatStore = createChatStore({});
+    const otherPendingTurn = createPendingTurn("pending:other", "other message");
+
+    chatStore.timeline.setTurns([otherPendingTurn]);
+    chatStore.runtime.pendingTurnId = "pending:historical";
+
+    chatStore.applyTurnStarted("turn-created");
+
+    expect(chatStore.runtime.pendingTurnId).toBe("pending:historical");
+    expect(chatStore.timeline.turns.map((turn) => turn.id)).toEqual([
+      otherPendingTurn.id,
+      "turn-created"
+    ]);
+    chatStore.dispose();
+  });
+
+  it("should retain a historical pending id when the real turn already exists", () => {
+    const chatStore = createChatStore({});
+    const pendingTurn = createPendingTurn("pending:historical", "message");
+    const existingTurn = createTurn("turn-existing", "completed");
+
+    chatStore.timeline.setTurns([pendingTurn, existingTurn]);
+    chatStore.runtime.pendingTurnId = pendingTurn.id;
+
+    chatStore.applyTurnStarted(existingTurn.id);
+
+    expect(chatStore.runtime.pendingTurnId).toBe(pendingTurn.id);
+    expect(chatStore.timeline.turns.map((turn) => turn.id)).toEqual([existingTurn.id]);
+    expect(chatStore.timeline.turns[0]?.status).toBe("running");
+    chatStore.dispose();
+  });
+
+  it("should clear pending id only when the pending turn is promoted directly", () => {
+    const chatStore = createChatStore({});
+    const pendingTurn = createPendingTurn("pending:direct", "message");
+
+    chatStore.timeline.setTurns([pendingTurn]);
+    chatStore.runtime.pendingTurnId = pendingTurn.id;
+
+    chatStore.applyTurnStarted("turn-promoted");
+
+    expect(chatStore.runtime.pendingTurnId).toBeNull();
+    expect(chatStore.timeline.turns.map((turn) => turn.id)).toEqual(["turn-promoted"]);
+    expect(chatStore.timeline.turns[0]?.status).toBe("running");
+    chatStore.dispose();
   });
 
   it("should keep the active turn running when a stale completed event arrives", () => {
@@ -115,40 +187,40 @@ describe("ChatStore active turn state", () => {
     const oldTurn = createTurn("turn-old", "completed");
     const activeTurn = createTurn("turn-active", "running");
 
-    chatStore.setTurns([oldTurn, activeTurn]);
-    chatStore.isWorking = true;
-    chatStore.activeTurnId = "turn-active";
+    chatStore.timeline.setTurns([oldTurn, activeTurn]);
+    chatStore.runtime.isWorking = true;
+    chatStore.runtime.activeTurnId = "turn-active";
 
     chatStore.applyTurnCompleted("turn-old", 1234);
 
-    expect(chatStore.isWorking).toBe(true);
-    expect(chatStore.activeTurnId).toBe("turn-active");
-    expect(chatStore.pendingTurnId).toBeNull();
-    expect(chatStore.turns.find((turn) => turn.id === "turn-old")?.durationMs).toBe(1234);
+    expect(chatStore.runtime.isWorking).toBe(true);
+    expect(chatStore.runtime.activeTurnId).toBe("turn-active");
+    expect(chatStore.runtime.pendingTurnId).toBeNull();
+    expect(chatStore.timeline.turns.find((turn) => turn.id === "turn-old")?.durationMs).toBe(1234);
   });
 
   it("should clear the active turn when its completed event arrives", () => {
     const chatStore = createChatStore({});
     const activeTurn = createTurn("turn-active", "running");
 
-    chatStore.setTurns([activeTurn]);
-    chatStore.isWorking = true;
-    chatStore.activeTurnId = "turn-active";
+    chatStore.timeline.setTurns([activeTurn]);
+    chatStore.runtime.isWorking = true;
+    chatStore.runtime.activeTurnId = "turn-active";
 
     chatStore.applyTurnCompleted("turn-active", 1234);
 
-    expect(chatStore.isWorking).toBe(false);
-    expect(chatStore.activeTurnId).toBeNull();
-    expect(chatStore.turns.find((turn) => turn.id === "turn-active")?.durationMs).toBe(1234);
+    expect(chatStore.runtime.isWorking).toBe(false);
+    expect(chatStore.runtime.activeTurnId).toBeNull();
+    expect(chatStore.timeline.turns.find((turn) => turn.id === "turn-active")?.durationMs).toBe(1234);
   });
 
   it("should preserve a completed turn error for the chat UI", () => {
     const chatStore = createChatStore({});
     const activeTurn = createTurn("turn-active", "running");
 
-    chatStore.setTurns([activeTurn]);
-    chatStore.isWorking = true;
-    chatStore.activeTurnId = "turn-active";
+    chatStore.timeline.setTurns([activeTurn]);
+    chatStore.runtime.isWorking = true;
+    chatStore.runtime.activeTurnId = "turn-active";
 
     chatStore.applyTurnCompleted(
       "turn-active",
@@ -157,7 +229,7 @@ describe("ChatStore active turn state", () => {
       "Selected model is at capacity. Please try a different model."
     );
 
-    expect(chatStore.turns.find((turn) => turn.id === "turn-active")).toMatchObject({
+    expect(chatStore.timeline.turns.find((turn) => turn.id === "turn-active")).toMatchObject({
       status: "failed",
       errorMessage: "Selected model is at capacity. Please try a different model."
     });
@@ -177,9 +249,9 @@ describe("ChatStore active turn state", () => {
         createdAt: null,
         attachments: []
       });
-      chatStore.setTurns([turn]);
+      chatStore.timeline.setTurns([turn]);
 
-      expect(chatStore.editableLastUserItem).toEqual({
+      expect(chatStore.actions.editableLastUserItem).toEqual({
         turnId: "turn-terminal",
         itemId: "user-message",
         content: "hello",
@@ -200,14 +272,14 @@ describe("ChatStore active turn state", () => {
       createdAt: null,
       attachments: []
     });
-    chatStore.setTurns([activeTurn]);
-    chatStore.isWorking = true;
-    chatStore.activeTurnId = "turn-active";
+    chatStore.timeline.setTurns([activeTurn]);
+    chatStore.runtime.isWorking = true;
+    chatStore.runtime.activeTurnId = "turn-active";
 
     chatStore.applyTurnCompleted("turn-active", 1234, "interrupted");
 
-    expect(chatStore.turns.find((turn) => turn.id === "turn-active")?.status).toBe("interrupted");
-    expect(chatStore.editableLastUserItem?.itemId).toBe("user-message");
+    expect(chatStore.timeline.turns.find((turn) => turn.id === "turn-active")?.status).toBe("interrupted");
+    expect(chatStore.actions.editableLastUserItem?.itemId).toBe("user-message");
   });
 
   it("should keep a running turn active even when a final answer item exists", () => {
@@ -237,9 +309,9 @@ describe("ChatStore active turn state", () => {
       createdAt: null,
       attachments: []
     });
-    chatStore.setTurns([runningTurn]);
+    chatStore.timeline.setTurns([runningTurn]);
 
-    expect(chatStore.editableLastUserItem).toBeNull();
+    expect(chatStore.actions.editableLastUserItem).toBeNull();
   });
 
   it("should stop working and resync when runtime polling reports an idle thread", async () => {
@@ -262,8 +334,8 @@ describe("ChatStore active turn state", () => {
       type: "threads.runtimeStatus.read",
       threadId: "thread-1"
     });
-    expect(chatStore.isWorking).toBe(false);
-    expect(chatStore.activeTurnId).toBeNull();
+    expect(chatStore.runtime.isWorking).toBe(false);
+    expect(chatStore.runtime.activeTurnId).toBeNull();
     expect(projectStore.openThread).toHaveBeenCalledWith("thread-1");
   });
 
@@ -292,15 +364,15 @@ describe("ChatStore active turn state", () => {
       createdAt: null,
       attachments: []
     });
-    chatStore.setTurns([turn]);
+    chatStore.timeline.setTurns([turn]);
 
-    const wasAccepted = chatStore.editLastTurn("after");
+    const wasAccepted = chatStore.actions.editLast("after");
     await flushPromises();
 
     expect(wasAccepted).toBe(true);
-    expect(chatStore.turns).toEqual([turn]);
-    expect(chatStore.isEditingLastTurn).toBe(false);
-    expect(chatStore.isStartingTurn).toBe(false);
+    expect(chatStore.timeline.turns).toEqual([turn]);
+    expect(chatStore.runtime.isEditingLastTurn).toBe(false);
+    expect(chatStore.runtime.isStartingTurn).toBe(false);
     expect(rootStore.appStore.errorMessage).toBe("Edit failed");
   });
 
@@ -308,43 +380,51 @@ describe("ChatStore active turn state", () => {
     const rootStore = createRootStore();
     const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
 
-    chatStore.recover();
+    chatStore.actions.recover();
 
     expect(rootStore.request).toHaveBeenCalledWith({
       type: "threads.recover",
       threadId: "thread-1"
     });
-    expect(chatStore.isRecovering).toBe(true);
-    expect(chatStore.isSyncing).toBe(true);
+    expect(chatStore.runtime.isRecovering).toBe(true);
+    expect(chatStore.runtime.isSyncing).toBe(true);
 
-    chatStore.completeRecovery();
+    chatStore.runtime.completeRecovery(false);
 
-    expect(chatStore.isRecovering).toBe(false);
-    expect(chatStore.isSyncing).toBe(false);
-    expect(chatStore.isWorking).toBe(false);
-    expect(chatStore.activeTurnId).toBeNull();
+    expect(chatStore.runtime.isRecovering).toBe(false);
+    expect(chatStore.runtime.isSyncing).toBe(false);
+    expect(chatStore.runtime.isWorking).toBe(false);
+    expect(chatStore.runtime.activeTurnId).toBeNull();
   });
 
   it("should not clear active turns when pending project UI state is reset", () => {
     const activeChat = {
-      isLoadingOlderMessages: true,
-      isSyncing: true,
-      isRefreshing: true,
-      isWorking: true,
-      isStartingTurn: true,
-      isEditingLastTurn: true,
-      isRecovering: false,
-      activeTurnId: "turn-active"
+      timeline: {
+        isLoadingOlderMessages: true
+      },
+      runtime: {
+        isSyncing: true,
+        isRefreshing: true,
+        isWorking: true,
+        isStartingTurn: true,
+        isEditingLastTurn: true,
+        isRecovering: false,
+        activeTurnId: "turn-active"
+      }
     };
     const recoveringChat = {
-      isLoadingOlderMessages: true,
-      isSyncing: true,
-      isRefreshing: true,
-      isWorking: true,
-      isStartingTurn: false,
-      isEditingLastTurn: false,
-      isRecovering: true,
-      activeTurnId: "turn-recovering"
+      timeline: {
+        isLoadingOlderMessages: true
+      },
+      runtime: {
+        isSyncing: true,
+        isRefreshing: true,
+        isWorking: true,
+        isStartingTurn: false,
+        isEditingLastTurn: false,
+        isRecovering: true,
+        activeTurnId: "turn-recovering"
+      }
     };
     const projectsStore = {
       projectStoresById: new Map([
@@ -366,20 +446,42 @@ describe("ChatStore active turn state", () => {
     eventsStore.resetPendingProjectStates();
 
     expect(activeChat).toMatchObject({
-      isLoadingOlderMessages: false,
-      isSyncing: true,
-      isRefreshing: false,
-      isWorking: true,
-      isStartingTurn: true,
-      isEditingLastTurn: true,
-      isRecovering: false,
-      activeTurnId: "turn-active"
+      timeline: {
+        isLoadingOlderMessages: false
+      },
+      runtime: {
+        isSyncing: true,
+        isRefreshing: false,
+        isWorking: true,
+        isStartingTurn: true,
+        isEditingLastTurn: true,
+        isRecovering: false,
+        activeTurnId: "turn-active"
+      }
     });
     expect(recoveringChat).toMatchObject({
-      isSyncing: true,
-      isRecovering: true,
-      isWorking: true,
-      activeTurnId: "turn-recovering"
+      timeline: {
+        isLoadingOlderMessages: false
+      },
+      runtime: {
+        isSyncing: true,
+        isRecovering: true,
+        isWorking: true,
+        activeTurnId: "turn-recovering"
+      }
     });
   });
 });
+
+/** Creates a pending turn with a user item for pending-id transition tests. */
+function createPendingTurn(id: string, content: string) {
+  const turn = createTurn(id, "running");
+  turn.items.push({
+    id: `${id}:user`,
+    role: "user",
+    content,
+    status: "completed",
+    createdAt: null
+  });
+  return turn;
+}

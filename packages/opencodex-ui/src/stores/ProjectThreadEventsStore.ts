@@ -142,8 +142,8 @@ export class ProjectThreadEventsStore implements RootChildStore {
       projectStore.threadListStore.loadingThreadId = null;
 
       for (const chatStore of projectStore.chatsById.values()) {
-        chatStore.isLoadingOlderMessages = false;
-        chatStore.isRefreshing = false;
+        chatStore.timeline.isLoadingOlderMessages = false;
+        chatStore.runtime.isRefreshing = false;
       }
     }
   }
@@ -162,11 +162,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
       return false;
     }
 
-    chatStore.isStartingTurn = false;
-    chatStore.isSyncing = true;
-    chatStore.isRecovering = true;
-    chatStore.isRefreshing = false;
-    chatStore.isWorking = true;
+    chatStore.runtime.applyRecoverableThreadError();
 
     const projectStore = this.findProjectStoreForThread(threadId);
 
@@ -223,7 +219,10 @@ export class ProjectThreadEventsStore implements RootChildStore {
     const shouldActivateProject = this.projectsStore.consumePendingNotificationRoute(thread);
     const openedThread = projectStore.upsertThread(thread);
     const chatStore = projectStore.getOrCreateChat(openedThread);
-    const shouldMergeTurns = projectStore.selectedChatId === openedThread.id && chatStore.turns.length > 0;
+    const shouldMergeTurns = (
+      projectStore.selectedChatId === openedThread.id &&
+      chatStore.timeline.turns.length > 0
+    );
 
     projectStore.threadListStore.isCreatingThread = false;
     projectStore.threadListStore.loadingThreadId = null;
@@ -233,7 +232,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
     }
     this.root.approvalsStore.attachPendingApprovalsToChat(chatStore);
     chatStore.applyOpenedSnapshot(turns, source, hasMoreOlderMessages, shouldMergeTurns);
-    chatStore.applyTokenUsage(tokenUsage);
+    chatStore.timeline.applyTokenUsage(tokenUsage);
   }
 
   /**
@@ -301,7 +300,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
       return;
     }
 
-    chatStore.applyTurnsPrepended(turns, hasMoreOlderMessages);
+    chatStore.timeline.applyTurnsPrepended(turns, hasMoreOlderMessages);
   }
 
   /**
@@ -324,7 +323,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
       return;
     }
 
-    chatStore.applyTurnsSynced(turns, hasMoreOlderMessages);
+    chatStore.timeline.applyTurnsSynced(turns, hasMoreOlderMessages);
   }
 
   /**
@@ -345,7 +344,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
       return;
     }
 
-    chatStore.setSyncing(isSyncing);
+    chatStore.runtime.setSyncing(isSyncing);
   }
 
   /**
@@ -366,7 +365,13 @@ export class ProjectThreadEventsStore implements RootChildStore {
       return;
     }
 
-    chatStore.setRecovering(isRecovering);
+    chatStore.runtime.setRecovering(isRecovering);
+
+    const projectStore = this.findProjectStoreForThread(threadId, sourceId);
+
+    if (projectStore !== null) {
+      projectStore.threadListStore.loadingThreadId = null;
+    }
   }
 
   /**

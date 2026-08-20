@@ -49,7 +49,7 @@ export class ProjectThreadLiveEventHandler {
         );
 
         if (chatStore !== null) {
-          chatStore.applyTokenUsage(event.usage);
+          chatStore.timeline.applyTokenUsage(event.usage);
         }
 
         return true;
@@ -67,7 +67,7 @@ export class ProjectThreadLiveEventHandler {
         const chatStore = this.ports.findChatStoreByThreadId(event.threadId, event.sourceId);
 
         if (chatStore !== null) {
-          chatStore.appendAssistantDelta(
+          chatStore.timeline.appendAssistantDelta(
             event.turnId,
             event.messageId,
             event.delta,
@@ -81,7 +81,11 @@ export class ProjectThreadLiveEventHandler {
         const chatStore = this.ports.findChatStoreByThreadId(event.threadId, event.sourceId);
 
         if (chatStore !== null) {
-          chatStore.applyActivityUpdated(event.activity);
+          chatStore.timeline.applyActivityUpdated(
+            event.activity,
+            chatStore.runtime.activeTurnId,
+            chatStore.runtime.pendingTurnId
+          );
         }
 
         return true;
@@ -102,7 +106,7 @@ export class ProjectThreadLiveEventHandler {
           return true;
         }
 
-        const shouldRefreshGit = chatStore.activeTurnId === event.turnId;
+        const shouldRefreshGit = chatStore.runtime.activeTurnId === event.turnId;
 
         chatStore.applyTurnCompleted(
           event.turnId,

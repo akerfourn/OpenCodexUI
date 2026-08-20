@@ -100,7 +100,11 @@ export const CloseProjectDialogX = observer(CloseProjectDialog);
  */
 function hasRunningChat(projectStore: ProjectStore): boolean {
   for (const chatStore of projectStore.chatsById.values()) {
-    if (chatStore.isWorking || chatStore.isStartingTurn || chatStore.isRecovering) {
+    if (
+      chatStore.runtime.isWorking ||
+      chatStore.runtime.isStartingTurn ||
+      chatStore.runtime.isRecovering
+    ) {
       return true;
     }
   }

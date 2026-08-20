@@ -172,7 +172,7 @@ export class ProjectStore {
    */
   get hasRunningChatIndicator(): boolean {
     return Array.from(this.chatsById.values()).some((chatStore) => (
-      chatStore.hasRunningTurnIndicator
+      chatStore.runtime.hasRunningTurnIndicator
     ));
   }
 
@@ -183,7 +183,7 @@ export class ProjectStore {
    */
   get hasUnseenChatIndicator(): boolean {
     return Array.from(this.chatsById.values()).some((chatStore) => (
-      chatStore.hasUnseenTurnIndicator
+      chatStore.runtime.hasUnseenTurnIndicator
     ));
   }
 
@@ -193,7 +193,7 @@ export class ProjectStore {
    * @returns `true` when at least one chat sync is active.
    */
   get hasSyncingChat(): boolean {
-    return Array.from(this.chatsById.values()).some((chatStore) => chatStore.isSyncing);
+    return Array.from(this.chatsById.values()).some((chatStore) => chatStore.runtime.isSyncing);
   }
 
   /**
@@ -363,11 +363,11 @@ export class ProjectStore {
       return "idle";
     }
 
-    if (chatStore.hasRunningTurnIndicator) {
+    if (chatStore.runtime.hasRunningTurnIndicator) {
       return "running";
     }
 
-    if (chatStore.hasUnseenTurnIndicator) {
+    if (chatStore.runtime.hasUnseenTurnIndicator) {
       return "unseen";
     }
 

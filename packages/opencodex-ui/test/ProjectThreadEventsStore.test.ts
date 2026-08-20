@@ -28,13 +28,13 @@ describe("ProjectThreadEventsStore", () => {
       phase: "commentary"
     });
 
-    expect(secondChat.appendAssistantDelta).toHaveBeenCalledWith(
+    expect(secondChat.timeline.appendAssistantDelta).toHaveBeenCalledWith(
       "turn-b",
       "message-b",
       "Only source B",
       "commentary"
     );
-    expect(fixture.chat("source-a", "shared-thread").appendAssistantDelta)
+    expect(fixture.chat("source-a", "shared-thread").timeline.appendAssistantDelta)
       .not.toHaveBeenCalled();
   });
 
@@ -51,8 +51,27 @@ describe("ProjectThreadEventsStore", () => {
       usage
     });
 
-    expect(secondChat.applyTokenUsage).toHaveBeenCalledWith(usage);
-    expect(firstChat.applyTokenUsage).not.toHaveBeenCalled();
+    expect(secondChat.timeline.applyTokenUsage).toHaveBeenCalledWith(usage);
+    expect(firstChat.timeline.applyTokenUsage).not.toHaveBeenCalled();
+  });
+
+  it("should clear recovery loading only for the matching source project", () => {
+    const fixture = createFixture();
+    const firstChat = fixture.addChat("source-a", "shared-thread");
+    const secondChat = fixture.addChat("source-b", "shared-thread");
+    const firstProject = fixture.project("source-a", "shared-thread");
+    const secondProject = fixture.project("source-b", "shared-thread");
+
+    fixture.router.handleEvent({
+      type: "thread.recovery.started",
+      sourceId: "source-b",
+      threadId: "shared-thread"
+    });
+
+    expect(secondChat.runtime.setRecovering).toHaveBeenCalledWith(true);
+    expect(firstChat.runtime.setRecovering).not.toHaveBeenCalled();
+    expect(secondProject.threadListStore.loadingThreadId).toBeNull();
+    expect(firstProject.threadListStore.loadingThreadId).toBe("shared-thread");
   });
 
   it("should apply a representative live event sequence in protocol order", () => {
@@ -107,14 +126,16 @@ describe("ProjectThreadEventsStore", () => {
     expect(chat.applyMessageStarted).toHaveBeenCalledWith(
       createMessage("thread-a", "user-message", "turn-a")
     );
-    expect(chat.appendAssistantDelta).toHaveBeenCalledWith(
+    expect(chat.timeline.appendAssistantDelta).toHaveBeenCalledWith(
       "turn-a",
       "assistant-message",
       "Hello",
       "final_answer"
     );
-    expect(chat.applyActivityUpdated).toHaveBeenCalledWith(
-      createActivity("thread-a", "activity-a")
+    expect(chat.timeline.applyActivityUpdated).toHaveBeenCalledWith(
+      createActivity("thread-a", "activity-a"),
+      "turn-a",
+      null
     );
     expect(chat.applyTurnCompleted).toHaveBeenCalledWith(
       "turn-a",
@@ -170,7 +191,7 @@ describe("ProjectThreadEventsStore", () => {
       "completed",
       undefined
     );
-    expect(secondChat.activeTurnId).toBeNull();
+    expect(secondChat.runtime.activeTurnId).toBeNull();
     expect(callOrder).toEqual(["turn.completed", "git.refresh"]);
     expect(secondProject.gitStore.statusStore.refresh).toHaveBeenCalledTimes(1);
     expect(firstProject.gitStore.statusStore.refresh).not.toHaveBeenCalled();
@@ -178,16 +199,26 @@ describe("ProjectThreadEventsStore", () => {
 });
 
 type FakeChat = {
-  activeTurnId: string | null;
-  applyTokenUsage: ReturnType<typeof vi.fn>;
+  runtime: {
+    activeTurnId: string | null;
+    pendingTurnId: string | null;
+    setRecovering: ReturnType<typeof vi.fn>;
+  };
+  timeline: {
+    isLoadingOlderMessages: boolean;
+    applyTokenUsage: ReturnType<typeof vi.fn>;
+    appendAssistantDelta: ReturnType<typeof vi.fn>;
+    applyActivityUpdated: ReturnType<typeof vi.fn>;
+  };
   applyMessageStarted: ReturnType<typeof vi.fn>;
-  appendAssistantDelta: ReturnType<typeof vi.fn>;
-  applyActivityUpdated: ReturnType<typeof vi.fn>;
   applyTurnStarted: ReturnType<typeof vi.fn>;
   applyTurnCompleted: ReturnType<typeof vi.fn>;
 };
 
 type FakeProject = {
+  threadListStore: {
+    loadingThreadId: string | null;
+  };
   gitStore: {
     statusStore: {
       refresh: ReturnType<typeof vi.fn>;
@@ -221,19 +252,29 @@ function createFixture(callOrder: string[] = []): Fixture {
 
   function addChat(sourceId: string, threadId: string, activeTurnId: string | null = null): FakeChat {
     const chat: FakeChat = {
-      activeTurnId,
-      applyTokenUsage: vi.fn(() => callOrder.push("thread.tokenUsage.updated")),
+      runtime: {
+        activeTurnId,
+        pendingTurnId: null,
+        setRecovering: vi.fn()
+      },
+      timeline: {
+        isLoadingOlderMessages: false,
+        applyTokenUsage: vi.fn(() => callOrder.push("thread.tokenUsage.updated")),
+        appendAssistantDelta: vi.fn(() => callOrder.push("message.delta")),
+        applyActivityUpdated: vi.fn(() => callOrder.push("activity.updated"))
+      },
       applyMessageStarted: vi.fn(() => callOrder.push("message.started")),
-      appendAssistantDelta: vi.fn(() => callOrder.push("message.delta")),
-      applyActivityUpdated: vi.fn(() => callOrder.push("activity.updated")),
       applyTurnStarted: vi.fn(() => callOrder.push("turn.started")),
       applyTurnCompleted: vi.fn(() => {
         callOrder.push("turn.completed");
-        chat.activeTurnId = null;
+        chat.runtime.activeTurnId = null;
       })
     };
     chatsByRoute.set(routeKey(sourceId, threadId), chat);
     projectsByRoute.set(routeKey(sourceId, threadId), {
+      threadListStore: {
+        loadingThreadId: threadId
+      },
       gitStore: {
         statusStore: {
           refresh: vi.fn(() => callOrder.push("git.refresh"))

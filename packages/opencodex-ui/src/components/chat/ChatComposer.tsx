@@ -18,6 +18,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ChatStore } from "../../stores/ChatStore";
+import type { ChatComposerStore } from "../../stores/ChatComposerStore";
 import type { ProjectStore } from "../../stores/ProjectStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ChatAdvancedActionsMenu } from "./ChatAdvancedActionsMenu";
@@ -48,23 +49,24 @@ export function ChatComposer({
   isWorking
 }: ChatComposerProps) {
   const { t } = useTranslation();
-  const draft = chatStore.composerDraft;
-  const draftMarkdown = chatStore.composerDraftMarkdown;
-  const draftReferences = chatStore.composerDraftReferences;
-  const attachments = chatStore.composerAttachments;
-  const canSteer = chatStore.canSteerActiveTurn;
+  const composer = chatStore.composer;
+  const draft = composer.draft;
+  const draftMarkdown = composer.draftMarkdown;
+  const draftReferences = composer.draftReferences;
+  const attachments = composer.attachments;
+  const canSteer = chatStore.actions.canSteerActiveTurn;
   const isSteering = isWorking && canSteer;
   const canSubmit = (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
   const canShowSubmit = !isWorking || canSteer;
   const canAttachImages = !isWorking || canSteer;
   const sourceId = chatStore.sourceId;
-  const reasoningEfforts = store.appStore.getReasoningEffortOptions(chatStore.selectedModel);
-  const serviceTierOptions = store.appStore.getServiceTierOptions(chatStore.selectedModel);
+  const reasoningEfforts = store.appStore.getReasoningEffortOptions(composer.selectedModel);
+  const serviceTierOptions = store.appStore.getServiceTierOptions(composer.selectedModel);
   const areAdvancedActionsDisabled = (
     isWorking ||
-    chatStore.isStartingTurn ||
-    chatStore.isEditingLastTurn ||
-    chatStore.isRecovering ||
+    chatStore.runtime.isStartingTurn ||
+    chatStore.runtime.isEditingLastTurn ||
+    chatStore.runtime.isRecovering ||
     projectStore.isReadOnlyFromCache
   );
 
@@ -75,7 +77,7 @@ export function ChatComposer({
     markdown: string,
     references: OpenCodexComposerReference[]
   ): void {
-    chatStore.setComposerDraft(value, markdown, references);
+    composer.setDraft(value, markdown, references);
   }
 
   async function submitDraft(): Promise<void> {
@@ -84,13 +86,13 @@ export function ChatComposer({
     }
 
     const text = draftMarkdown.trim().length > 0 ? draftMarkdown : draft;
-    const wasAccepted = await chatStore.sendMessage(text, attachments, draftReferences);
+    const wasAccepted = await chatStore.actions.send(text, attachments, draftReferences);
 
     if (!wasAccepted) {
       return;
     }
 
-    chatStore.clearComposerDraft();
+    composer.clearDraft();
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
@@ -125,27 +127,27 @@ export function ChatComposer({
   }
 
   function handleModelChange(value: string | null): void {
-    chatStore.setSelectedModel(value);
+    composer.setModel(value);
   }
 
-  function handleEffortChange(value: ChatStore["reasoningEffort"]): void {
-    chatStore.setReasoningEffort(value);
+  function handleEffortChange(value: ChatComposerStore["reasoningEffort"]): void {
+    composer.setReasoningEffort(value);
   }
 
-  function handleServiceTierChange(value: ChatStore["selectedServiceTier"]): void {
-    chatStore.setSelectedServiceTier(value);
+  function handleServiceTierChange(value: ChatComposerStore["selectedServiceTier"]): void {
+    composer.setServiceTier(value);
   }
 
   function handleInterrupt(): void {
-    chatStore.interruptTurn();
+    chatStore.actions.interrupt();
   }
 
   function handleReview(): void {
-    chatStore.startReview();
+    chatStore.actions.review();
   }
 
   function handleCompact(): void {
-    chatStore.compactThread();
+    chatStore.actions.compact();
   }
 
   async function handleAttachImages(): Promise<void> {
@@ -155,11 +157,11 @@ export function ChatComposer({
       return;
     }
 
-    chatStore.addComposerAttachments(pickedAttachments);
+    composer.addAttachments(pickedAttachments);
   }
 
   function handleRemoveAttachment(attachmentId: string): void {
-    chatStore.removeComposerAttachment(attachmentId);
+    composer.removeAttachment(attachmentId);
   }
 
   const searchProjectFiles = useCallback(async (
@@ -212,7 +214,7 @@ export function ChatComposer({
   async function addImageFiles(imageFiles: File[]): Promise<void> {
     try {
       const pastedAttachments = await Promise.all(imageFiles.map(readImageAttachmentFromFile));
-      chatStore.addComposerAttachments(pastedAttachments);
+      composer.addAttachments(pastedAttachments);
     } catch {
       // Ignore unreadable clipboard files and leave the composer unchanged.
     }
@@ -236,10 +238,10 @@ export function ChatComposer({
       />
       <Stack className="composer-controls" direction="row" spacing={1}>
         <ModelSettingsFields
-          selectedModel={chatStore.selectedModel}
-          reasoningEffort={chatStore.reasoningEffort}
+          selectedModel={composer.selectedModel}
+          reasoningEffort={composer.reasoningEffort}
           reasoningEfforts={reasoningEfforts}
-          selectedServiceTier={chatStore.selectedServiceTier}
+          selectedServiceTier={composer.selectedServiceTier}
           modelOptions={modelOptions}
           serviceTierOptions={serviceTierOptions}
           onModelChange={handleModelChange}

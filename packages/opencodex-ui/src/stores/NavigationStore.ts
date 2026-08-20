@@ -181,7 +181,11 @@ export class NavigationStore {
     }
 
     for (const chatStore of projectStore.chatsById.values()) {
-      if (chatStore.isWorking || chatStore.isStartingTurn || chatStore.isRecovering) {
+      if (
+        chatStore.runtime.isWorking ||
+        chatStore.runtime.isStartingTurn ||
+        chatStore.runtime.isRecovering
+      ) {
         return true;
       }
     }

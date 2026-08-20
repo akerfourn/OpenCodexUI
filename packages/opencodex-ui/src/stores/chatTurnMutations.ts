@@ -1,235 +1,54 @@
 import type {
-  OpenCodexActivity,
   OpenCodexMessage,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ChatStore } from "./ChatStore";
+import type { ChatTimelineStore } from "./ChatTimelineStore";
 import {
   findFirstChangedTurnIndex,
-  toMessageStatus,
   toTurnItem
 } from "./chatTurnUtils";
 
 /**
  * Applies incoming turns while preserving live-only streamed items.
  *
- * @param chatStore Chat store to mutate.
+ * @param timeline Timeline store to mutate.
  * @param nextTurns Incoming turns.
  * @param strategy Replace or incremental merge mode.
  */
 export function applyThreadTurns(
-  chatStore: ChatStore,
+  timeline: ChatTimelineStore,
   nextTurns: OpenCodexTurn[],
   strategy: "replace" | "merge"
 ): void {
-  const mergedTurns = preserveLiveTurnItems(chatStore.turns, nextTurns);
+  const mergedTurns = preserveLiveTurnItems(timeline.turns, nextTurns);
 
-  if (strategy === "replace" || chatStore.turns.length === 0) {
-    chatStore.setTurns(mergedTurns);
+  if (strategy === "replace" || timeline.turns.length === 0) {
+    timeline.setTurns(mergedTurns);
     return;
   }
 
-  const firstChangedIndex = findFirstChangedTurnIndex(chatStore.turns, mergedTurns);
+  const firstChangedIndex = findFirstChangedTurnIndex(timeline.turns, mergedTurns);
 
   if (firstChangedIndex === null) {
     return;
   }
 
-  chatStore.setTurns([
-    ...chatStore.turns.slice(0, firstChangedIndex),
+  timeline.setTurns([
+    ...timeline.turns.slice(0, firstChangedIndex),
     ...mergedTurns.slice(firstChangedIndex)
   ]);
 }
 
 /**
- * Appends or updates an activity item inside the active turn.
- *
- * @param chatStore Chat store to mutate.
- * @param activity Live activity payload.
- */
-export function appendActivityItem(chatStore: ChatStore, activity: OpenCodexActivity): void {
-  if (
-    activity.content === undefined ||
-    activity.content.trim().length === 0 ||
-    isEmptyReasoningActivity(activity.kind, activity.content)
-  ) {
-    return;
-  }
-
-  const turnId = activity.title ?? chatStore.activeTurnId ?? chatStore.pendingTurnId;
-
-  if (turnId === null || turnId.length === 0) {
-    return;
-  }
-
-  const turn = findOrCreateTurn(chatStore, turnId);
-  const existing = turn.items.find((item) => item.id === activity.id);
-  turn.status = "running";
-
-  if (existing !== undefined) {
-    if (activity.summary !== undefined && activity.summary !== null) {
-      existing.summary = activity.summary;
-    }
-
-    if (activity.details !== undefined && activity.details !== null) {
-      existing.details = activity.details;
-    }
-
-    if (activity.plan !== undefined) {
-      existing.plan = activity.plan;
-    }
-
-    if (activity.kind === "fileChange" || activity.kind === "plan") {
-      existing.content = activity.content;
-      existing.status = toMessageStatus(activity.status);
-      return;
-    }
-
-    if (normalizeActivityContent(existing.content) === normalizeActivityContent(activity.content)) {
-      existing.status = toMessageStatus(activity.status);
-      return;
-    }
-
-    existing.content += activity.content;
-    existing.status = toMessageStatus(activity.status);
-    return;
-  }
-
-  turn.items.push({
-    id: activity.id,
-    role: "activity",
-    content: activity.content,
-    status: toMessageStatus(activity.status),
-    createdAt: new Date().toISOString(),
-    kind: activity.kind,
-    summary: activity.summary,
-    details: activity.details,
-    plan: activity.plan
-  });
-}
-
-/**
- * Detects empty serialized reasoning activities.
- *
- * @param kind Activity kind.
- * @param content Activity content.
- * @returns Whether the activity should be ignored.
- */
-function isEmptyReasoningActivity(kind: string, content: string): boolean {
-  if (kind !== "reasoning") {
-    return false;
-  }
-
-  const trimmedContent = content.trim();
-
-  if (trimmedContent.length === 0) {
-    return true;
-  }
-
-  if (!trimmedContent.startsWith("{")) {
-    return false;
-  }
-
-  try {
-    const payload = JSON.parse(trimmedContent) as unknown;
-    return isEmptyReasoningPayload(payload);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Checks whether a parsed reasoning payload has no displayable text.
- *
- * @param value Parsed reasoning payload.
- * @returns Whether summary and content are empty.
- */
-function isEmptyReasoningPayload(value: unknown): boolean {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-
-  const payload = value as {
-    type?: unknown;
-    summary?: unknown;
-    content?: unknown;
-  };
-
-  if (payload.type !== "reasoning") {
-    return false;
-  }
-
-  return readReasoningText(payload.summary).length === 0 &&
-    readReasoningText(payload.content).length === 0;
-}
-
-/**
- * Reads display text from a reasoning segment array.
- *
- * @param value Raw summary/content value.
- * @returns Concatenated reasoning text.
- */
-function readReasoningText(value: unknown): string {
-  if (!Array.isArray(value)) {
-    return "";
-  }
-
-  return value.map((entry) => readReasoningSegmentText(entry)).join("").trim();
-}
-
-/**
- * Reads text from one reasoning segment.
- *
- * @param value Raw segment.
- * @returns Segment text.
- */
-function readReasoningSegmentText(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return "";
-  }
-
-  const segment = value as {
-    text?: unknown;
-    type?: unknown;
-    summary?: unknown;
-    content?: unknown;
-  };
-
-  if (typeof segment.text === "string") {
-    return segment.text;
-  }
-
-  if (segment.type === "reasoning") {
-    return `${readReasoningText(segment.summary)}${readReasoningText(segment.content)}`;
-  }
-
-  return "";
-}
-
-/**
- * Normalizes activity text before duplicate comparison.
- *
- * @param content Raw activity content.
- * @returns Trimmed content with collapsed whitespace.
- */
-function normalizeActivityContent(content: string): string {
-  return content.trim().replace(/\s+/g, " ");
-}
-
-/**
  * Applies a completed turn duration to a stored turn.
  *
- * @param chatStore Chat store to mutate.
+ * @param timeline Timeline store to mutate.
  * @param turnId Turn identifier.
  * @param durationMs Duration in milliseconds, or `null`.
  */
 export function applyTurnDuration(
-  chatStore: ChatStore,
+  timeline: ChatTimelineStore,
   turnId: string,
   durationMs: number | null
 ): void {
@@ -237,7 +56,7 @@ export function applyTurnDuration(
     return;
   }
 
-  const turn = chatStore.turns.find((entry) => entry.id === turnId);
+  const turn = timeline.turns.find((entry) => entry.id === turnId);
 
   if (turn !== undefined) {
     turn.durationMs = durationMs;
@@ -247,64 +66,85 @@ export function applyTurnDuration(
 /**
  * Creates or reuses an optimistic pending user turn.
  *
- * @param chatStore Chat store to mutate.
+ * @param timeline Timeline store to mutate.
+ * @param threadId Owning thread identifier.
  * @param message Optimistic user message.
+ * @param pendingTurnId Current optimistic turn identifier.
+ * @returns Unchanged pending id when reused, or the newly created id.
  */
-export function upsertPendingUserTurn(chatStore: ChatStore, message: OpenCodexMessage): void {
-  const existingTurn = findPendingUserTurn(chatStore, message.content);
+export function upsertPendingUserTurn(
+  timeline: ChatTimelineStore,
+  threadId: string,
+  message: OpenCodexMessage,
+  pendingTurnId: string | null
+): string | null {
+  const existingTurn = findPendingUserTurn(timeline, message.content, pendingTurnId);
 
   if (existingTurn !== null) {
-    existingTurn.threadId = chatStore.thread.id;
-    return;
+    existingTurn.threadId = threadId;
+    return pendingTurnId;
   }
 
-  const turn = findOrCreateTurn(chatStore, `pending:${message.id}`);
+  const turn = findOrCreateTurn(timeline, threadId, `pending:${message.id}`);
   turn.items.push(toTurnItem(message));
-  chatStore.pendingTurnId = turn.id;
+  return turn.id;
 }
 
 /**
  * Moves an optimistic pending turn to the real Codex turn id.
  *
- * @param chatStore Chat store to mutate.
+ * @param timeline Timeline store to mutate.
+ * @param threadId Owning thread identifier.
+ * @param pendingTurnId Current optimistic turn identifier.
  * @param turnId Real turn id emitted by Codex.
+ * @returns Unchanged pending id unless the pending turn is renamed directly.
  */
-export function movePendingTurnToStartedTurn(chatStore: ChatStore, turnId: string): void {
-  const pendingTurn = findPendingTurn(chatStore);
-  const existingTurn = chatStore.turns.find((turn) => turn.id === turnId);
+export function movePendingTurnToStartedTurn(
+  timeline: ChatTimelineStore,
+  threadId: string,
+  pendingTurnId: string | null,
+  turnId: string
+): string | null {
+  const pendingTurn = findPendingTurn(timeline, pendingTurnId);
+  const existingTurn = timeline.turns.find((turn) => turn.id === turnId);
 
   if (pendingTurn === undefined) {
-    const turn = findOrCreateTurn(chatStore, turnId);
+    const turn = findOrCreateTurn(timeline, threadId, turnId);
     turn.status = "running";
     turn.startedAt = turn.startedAt ?? new Date().toISOString();
-    return;
+    return pendingTurnId;
   }
 
   if (existingTurn !== undefined) {
     existingTurn.items = [...pendingTurn.items, ...existingTurn.items];
     existingTurn.startedAt = existingTurn.startedAt ?? pendingTurn.startedAt ?? new Date().toISOString();
     existingTurn.status = "running";
-    chatStore.setTurns(chatStore.turns.filter((turn) => turn !== pendingTurn));
-    return;
+    timeline.setTurns(timeline.turns.filter((turn) => turn !== pendingTurn));
+    return pendingTurnId;
   }
 
   pendingTurn.id = turnId;
-  pendingTurn.threadId = chatStore.thread.id;
+  pendingTurn.threadId = threadId;
   pendingTurn.status = "running";
   pendingTurn.startedAt = pendingTurn.startedAt ?? new Date().toISOString();
-  chatStore.pendingTurnId = null;
-  chatStore.syncTurnStores();
+  timeline.syncTurnStores();
+  return null;
 }
 
 /**
  * Finds a turn or creates an empty one.
  *
- * @param chatStore Chat store to mutate.
+ * @param timeline Timeline store to mutate.
+ * @param threadId Owning thread identifier.
  * @param turnId Turn identifier.
  * @returns Existing or created turn.
  */
-export function findOrCreateTurn(chatStore: ChatStore, turnId: string): OpenCodexTurn {
-  const existing = chatStore.turns.find((turn) => turn.id === turnId);
+export function findOrCreateTurn(
+  timeline: ChatTimelineStore,
+  threadId: string,
+  turnId: string
+): OpenCodexTurn {
+  const existing = timeline.turns.find((turn) => turn.id === turnId);
 
   if (existing !== undefined) {
     return existing;
@@ -312,7 +152,7 @@ export function findOrCreateTurn(chatStore: ChatStore, turnId: string): OpenCode
 
   const created: OpenCodexTurn = {
     id: turnId,
-    threadId: chatStore.thread.id,
+    threadId,
     status: null,
     startedAt: null,
     completedAt: null,
@@ -320,33 +160,42 @@ export function findOrCreateTurn(chatStore: ChatStore, turnId: string): OpenCode
     items: []
   };
 
-  chatStore.appendTurn(created);
+  timeline.appendTurn(created);
   return created;
 }
 
 /**
  * Finds the current optimistic pending turn.
  *
- * @param chatStore Chat store to inspect.
+ * @param timeline Timeline store to inspect.
+ * @param pendingTurnId Current optimistic turn identifier.
  * @returns Pending turn, when present.
  */
-function findPendingTurn(chatStore: ChatStore): OpenCodexTurn | undefined {
-  if (chatStore.pendingTurnId !== null) {
-    return chatStore.turns.find((turn) => turn.id === chatStore.pendingTurnId);
+function findPendingTurn(
+  timeline: ChatTimelineStore,
+  pendingTurnId: string | null
+): OpenCodexTurn | undefined {
+  if (pendingTurnId !== null) {
+    return timeline.turns.find((turn) => turn.id === pendingTurnId);
   }
 
-  return chatStore.turns.find((turn) => turn.id.startsWith("pending:"));
+  return timeline.turns.find((turn) => turn.id.startsWith("pending:"));
 }
 
 /**
  * Finds a pending user turn with the same content.
  *
- * @param chatStore Chat store to inspect.
+ * @param timeline Timeline store to inspect.
  * @param content User message content.
+ * @param pendingTurnId Current optimistic turn identifier.
  * @returns Matching pending turn, or `null`.
  */
-function findPendingUserTurn(chatStore: ChatStore, content: string): OpenCodexTurn | null {
-  const pendingTurn = findPendingTurn(chatStore);
+function findPendingUserTurn(
+  timeline: ChatTimelineStore,
+  content: string,
+  pendingTurnId: string | null
+): OpenCodexTurn | null {
+  const pendingTurn = findPendingTurn(timeline, pendingTurnId);
 
   if (pendingTurn === undefined) {
     return null;

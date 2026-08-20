@@ -175,13 +175,13 @@ export class ThreadListStore {
     if (isChangingThread) {
       this.loadingThreadId = threadId;
 
-      if (chatStore !== null && chatStore.turns.length > 0) {
-        chatStore.isSyncing = true;
+      if (chatStore !== null && chatStore.timeline.turns.length > 0) {
+        chatStore.runtime.isSyncing = true;
       } else if (chatStore !== null) {
         chatStore.clearLoadedState();
       }
     } else if (chatStore !== null) {
-      chatStore.isSyncing = true;
+      chatStore.runtime.isSyncing = true;
     }
 
     void this.root.request({

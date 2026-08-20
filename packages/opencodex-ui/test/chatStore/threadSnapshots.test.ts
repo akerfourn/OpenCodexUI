@@ -8,10 +8,10 @@ describe("ChatStore thread snapshots", () => {
     const chatStore = createChatStore({});
     const existingTurn = createTurn("turn-existing", "completed");
 
-    chatStore.setTurns([existingTurn]);
+    chatStore.timeline.setTurns([existingTurn]);
     chatStore.applyOpenedSnapshot([existingTurn], "thread.opened", false, true);
 
-    expect(chatStore.scrollToBottomVersion).toBe(0);
+    expect(chatStore.timeline.scrollToBottomVersion).toBe(0);
   });
 
   it("should request the bottom scroll when opening a new thread snapshot", () => {
@@ -24,6 +24,6 @@ describe("ChatStore thread snapshots", () => {
       false
     );
 
-    expect(chatStore.scrollToBottomVersion).toBe(1);
+    expect(chatStore.timeline.scrollToBottomVersion).toBe(1);
   });
 });

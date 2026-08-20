@@ -33,8 +33,8 @@ describe("source-aware thread routing", () => {
       threadId: "shared-thread"
     });
 
-    expect(firstChat.isSyncing).toBe(false);
-    expect(secondChat.isSyncing).toBe(true);
+    expect(firstChat.runtime.isSyncing).toBe(false);
+    expect(secondChat.runtime.isSyncing).toBe(true);
     expect(firstThreadLookup).not.toHaveBeenCalled();
     expect(secondThreadLookup).not.toHaveBeenCalled();
 
@@ -75,7 +75,7 @@ describe("source-aware thread routing", () => {
       threadId: "orphan-thread"
     });
 
-    expect(chat.isSyncing).toBe(true);
+    expect(chat.runtime.isSyncing).toBe(true);
     expect(root.projectsStore.findChatStoreByThreadId("orphan-thread", null)).toBe(chat);
 
     project.clearMemory();
