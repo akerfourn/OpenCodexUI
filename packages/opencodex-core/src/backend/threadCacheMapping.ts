@@ -28,6 +28,21 @@ export function createCacheSignature(cacheEntry: ThreadTurnCacheEntry): string {
 }
 
 /**
+ * Reads recently loaded turns from the cache after they have been merged.
+ *
+ * @param cacheEntry In-memory cache entry.
+ * @param rawTurns Recently loaded raw turns.
+ * @returns Merged turn payloads ready to persist.
+ */
+export function readMergedTurns(cacheEntry: ThreadTurnCacheEntry, rawTurns: unknown[]): unknown[] {
+  return rawTurns
+    .map((turn) => readString(readObject(turn).id))
+    .filter((turnId) => turnId.length > 0)
+    .map((turnId) => cacheEntry.turnsById.get(turnId))
+    .filter((turn): turn is unknown => turn !== undefined);
+}
+
+/**
  * Creates a compact signature for one cached raw turn.
  *
  * @param turnId Turn identifier.
