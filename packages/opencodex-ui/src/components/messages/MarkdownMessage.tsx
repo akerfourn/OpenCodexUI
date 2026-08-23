@@ -13,7 +13,9 @@ import {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
+import rehypeKatex, { type Options as RehypeKatexOptions } from "rehype-katex";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 
 import {
   isMarkdownRenderPerformanceRecordingEnabled,
@@ -36,14 +38,24 @@ type MarkdownMessageProps = {
 
 type RenderedMarkdownProps = {
   markdown: string;
+  isStreaming: boolean;
   shouldHighlightSyntax: boolean;
   containerRef: RefObject<HTMLDivElement>;
   /** Opens one link rendered from the Markdown content. */
   onOpenLink(href: string): void;
 };
 
-const remarkPlugins = [remarkGfm];
-const highlightedRehypePlugins = [rehypeHighlight];
+const remarkPlugins = [remarkGfm, remarkMath];
+const rehypeKatexOptions: RehypeKatexOptions = {
+  strict: "ignore",
+  trust: false
+};
+const katexPlugin: [typeof rehypeKatex, RehypeKatexOptions] = [
+  rehypeKatex,
+  rehypeKatexOptions
+];
+const mathRehypePlugins = [katexPlugin];
+const highlightedRehypePlugins = [katexPlugin, rehypeHighlight];
 const plainRehypePlugins: [] = [];
 
 /**
@@ -65,6 +77,7 @@ export function MarkdownMessage({
   return (
     <RenderedMarkdownM
       markdown={renderedMarkdown}
+      isStreaming={isStreaming}
       shouldHighlightSyntax={shouldHighlightSyntax}
       containerRef={containerRef}
       onOpenLink={onOpenLink}
@@ -82,13 +95,16 @@ export const MarkdownMessageM = memo(MarkdownMessage);
  */
 function RenderedMarkdown({
   markdown,
+  isStreaming,
   shouldHighlightSyntax,
   containerRef,
   onOpenLink
 }: RenderedMarkdownProps) {
-  const rehypePlugins = shouldHighlightSyntax
-    ? highlightedRehypePlugins
-    : plainRehypePlugins;
+  const rehypePlugins = isStreaming
+    ? plainRehypePlugins
+    : shouldHighlightSyntax
+      ? highlightedRehypePlugins
+      : mathRehypePlugins;
   const renderStartedAt = isMarkdownRenderPerformanceRecordingEnabled()
     ? performance.now()
     : null;
@@ -134,6 +150,16 @@ function RenderedMarkdown({
           my: 1,
           borderCollapse: "collapse",
           borderSpacing: 0
+        },
+        "& .katex-display": {
+          maxWidth: "100%",
+          my: 1,
+          overflowX: "auto",
+          overflowY: "hidden",
+          py: 0.5
+        },
+        "& .katex": {
+          color: "inherit"
         },
         "& th, & td": {
           px: 1,

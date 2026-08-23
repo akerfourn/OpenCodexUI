@@ -36,6 +36,50 @@ describe("MarkdownMessage", () => {
     expect(markup).toContain("hljs-keyword");
   });
 
+  it("should render inline and display math with KaTeX", () => {
+    const markdown = [
+      "Inline equation: $E = mc^2$.",
+      "",
+      "$$",
+      "\\int_0^1 x^2 dx = \\frac{1}{3}",
+      "$$"
+    ].join("\n");
+
+    const markup = renderToStaticMarkup(
+      <MarkdownMessage markdown={markdown} onOpenLink={vi.fn()} />
+    );
+
+    expect(markup).toContain("katex");
+    expect(markup).toContain("katex-display");
+  });
+
+  it("should keep math-like text inside code blocks untouched", () => {
+    const markdown = [
+      "```js",
+      "const formula = '$x^2$';",
+      "```"
+    ].join("\n");
+
+    const markup = renderToStaticMarkup(
+      <MarkdownMessage markdown={markdown} onOpenLink={vi.fn()} />
+    );
+
+    expect(markup).toContain("language-js");
+    expect(markup).toContain("$x^2$");
+    expect(markup).not.toContain('class="katex');
+  });
+
+  it("should not fail the whole message when a formula is invalid", () => {
+    const markup = renderToStaticMarkup(
+      <MarkdownMessage
+        markdown="Invalid equation: $\\frac{1}{2$"
+        onOpenLink={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain("katex-error");
+  });
+
   it("should render an incomplete streamed code fence without failing", () => {
     const markup = renderToStaticMarkup(
       <MarkdownMessage
@@ -49,5 +93,18 @@ describe("MarkdownMessage", () => {
     expect(markup).toContain("<code");
     expect(markup).toContain("partial");
     expect(markup).not.toContain("hljs-keyword");
+  });
+
+  it("should leave streamed math unrendered until the message is complete", () => {
+    const markup = renderToStaticMarkup(
+      <MarkdownMessage
+        markdown="Still receiving: $E = mc^2$"
+        isStreaming
+        onOpenLink={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain("E = mc^2");
+    expect(markup).not.toContain('class="katex');
   });
 });
