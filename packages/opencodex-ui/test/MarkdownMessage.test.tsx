@@ -53,10 +53,27 @@ describe("MarkdownMessage", () => {
     expect(markup).toContain("katex-display");
   });
 
+  it("should render LaTeX-style inline and display delimiters", () => {
+    const markdown = [
+      "Inline equation: \\(d = v \\times t\\).",
+      "",
+      "\\[",
+      "E = mc^2",
+      "\\]"
+    ].join("\n");
+
+    const markup = renderToStaticMarkup(
+      <MarkdownMessage markdown={markdown} onOpenLink={vi.fn()} />
+    );
+
+    expect(markup).toContain("katex");
+    expect(markup).toContain("katex-display");
+  });
+
   it("should keep math-like text inside code blocks untouched", () => {
     const markdown = [
       "```js",
-      "const formula = '$x^2$';",
+      "const formula = '$x^2$ and \\(x^2\\)';",
       "```"
     ].join("\n");
 
@@ -66,6 +83,7 @@ describe("MarkdownMessage", () => {
 
     expect(markup).toContain("language-js");
     expect(markup).toContain("$x^2$");
+    expect(markup).toContain("\\(x^2\\)");
     expect(markup).not.toContain('class="katex');
   });
 

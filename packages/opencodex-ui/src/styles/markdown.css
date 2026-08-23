@@ -1,0 +1,20 @@
+/*
+ * KaTeX already provides the mathematical layout. These small overrides are
+ * scoped to rendered Markdown so the rest of the application keeps the
+ * library defaults.
+ */
+.markdown-message .katex {
+  color: inherit;
+}
+
+.markdown-message .katex-display {
+  max-width: 100%;
+  margin: 8px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+}
+
+.markdown-message .katex-display > .katex {
+  vertical-align: baseline;
+}

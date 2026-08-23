@@ -7,6 +7,7 @@ import {
   startTransition,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type RefObject
@@ -22,6 +23,7 @@ import {
   recordMarkdownRenderPerformance
 } from "../../performance/rendererPerformanceRecorder";
 import { InlineCode } from "./InlineCode";
+import { normalizeLatexDelimiters } from "./latexMarkdown";
 import { MarkdownLink } from "./MarkdownLink";
 import { PreBlock } from "./PreBlock";
 import {
@@ -105,6 +107,10 @@ function RenderedMarkdown({
     : shouldHighlightSyntax
       ? highlightedRehypePlugins
       : mathRehypePlugins;
+  const markdownForRendering = useMemo(
+    () => (isStreaming ? markdown : normalizeLatexDelimiters(markdown)),
+    [isStreaming, markdown]
+  );
   const renderStartedAt = isMarkdownRenderPerformanceRecordingEnabled()
     ? performance.now()
     : null;
@@ -112,6 +118,7 @@ function RenderedMarkdown({
   return (
     <Box
       ref={containerRef}
+      className="markdown-message"
       sx={{
         minWidth: 0,
         lineHeight: 1.45,
@@ -151,16 +158,6 @@ function RenderedMarkdown({
           borderCollapse: "collapse",
           borderSpacing: 0
         },
-        "& .katex-display": {
-          maxWidth: "100%",
-          my: 1,
-          overflowX: "auto",
-          overflowY: "hidden",
-          py: 0.5
-        },
-        "& .katex": {
-          color: "inherit"
-        },
         "& th, & td": {
           px: 1,
           py: 0.75,
@@ -188,7 +185,7 @@ function RenderedMarkdown({
           )
         }}
       >
-        {markdown}
+        {markdownForRendering}
       </ReactMarkdown>
       {renderStartedAt !== null ? (
         <MarkdownRenderTiming
