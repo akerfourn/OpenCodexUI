@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 
-import type { SubAgentThreadTreeNode } from "./subAgentThreadTree";
+import type { SubAgentThreadTreeNode } from "./subAgentThreadTreeModel";
 
 type SubAgentThreadTreeProps = {
   rootThread: OpenCodexThread;

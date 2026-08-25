@@ -33,7 +33,7 @@ import {
   createSourceThreadKey,
   findFirstSubAgentThreadId,
   type SubAgentThreadTreeNode
-} from "./subAgentThreadTree";
+} from "./subAgentThreadTreeModel";
 
 type SubAgentThreadsDialogProps = {
   open: boolean;

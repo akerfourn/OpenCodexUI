@@ -5,7 +5,7 @@ import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 import {
   buildSubAgentBreadcrumbs,
   buildSubAgentThreadTree
-} from "../src/components/threads/subAgentThreadTree";
+} from "../src/components/threads/subAgentThreadTreeModel";
 
 describe("sub-agent thread tree", () => {
   it("should preserve nested descendants instead of flattening them", () => {

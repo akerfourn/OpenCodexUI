@@ -10,7 +10,7 @@ import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 import {
   buildSubAgentBreadcrumbs,
   type SubAgentThreadBreadcrumb
-} from "./subAgentThreadTree";
+} from "./subAgentThreadTreeModel";
 import { resolveThreadLabel, translateAgentStatus } from "./SubAgentThreadTree";
 
 type SubAgentThreadHeaderProps = {

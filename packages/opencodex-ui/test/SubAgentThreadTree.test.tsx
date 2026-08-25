@@ -12,7 +12,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 import { SubAgentThreadTree } from "../src/components/threads/SubAgentThreadTree";
-import { buildSubAgentThreadTree } from "../src/components/threads/subAgentThreadTree";
+import { buildSubAgentThreadTree } from "../src/components/threads/subAgentThreadTreeModel";
 
 describe("SubAgentThreadTree", () => {
   it("should render hierarchy depth and agent metadata", () => {
