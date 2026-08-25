@@ -196,6 +196,29 @@ describe("ProjectGitStore commit workflow", () => {
     expect(fixture.gitStore.commitStore.isGeneratingCommitMessage).toBe(false);
   });
 
+  it("should use a one-shot model override without changing the configured model", async () => {
+    const fixture = createProjectGitCommitFixture();
+    fixture.request.mockResolvedValueOnce({ message: "feat: generated with another model" });
+
+    await fixture.gitStore.commitStore.generateCommitMessage(
+      "instruction",
+      "gpt-5.6-luna",
+      "low"
+    );
+
+    expect(fixture.request).toHaveBeenCalledWith({
+      type: "git.commitMessage.generate",
+      projectPath: "/workspace/project",
+      sourceId: "source-1",
+      instruction: "instruction",
+      model: "gpt-5.6-luna",
+      reasoningEffort: "low",
+      language: "fr"
+    });
+    expect(fixture.root.appStore.settingsStore.settings.commitMessageModel).toBe("gpt-5.5");
+    expect(fixture.root.appStore.settingsStore.settings.commitMessageReasoningEffort).toBe("high");
+  });
+
   it("should expose generation errors and preserve the previous message", async () => {
     const fixture = createProjectGitCommitFixture();
     fixture.request.mockRejectedValueOnce(new Error("generation failed"));

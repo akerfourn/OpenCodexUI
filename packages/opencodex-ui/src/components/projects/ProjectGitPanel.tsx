@@ -316,7 +316,9 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         ) : null}
       </Stack>
       <CommitMessageGenerationDialogX
+        appStore={store.appStore}
         commitStore={commitStore}
+        modelOptions={store.appStore.commitMessageModelOptions}
         open={isGenerateDialogOpen}
         onClose={handleCloseGenerateDialog}
       />

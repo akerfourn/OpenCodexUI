@@ -6,7 +6,8 @@ import { makeAutoObservable, runInAction } from "mobx";
 import type {
   OpenCodexCommitMessageGenerationResult,
   OpenCodexGitCommitResult,
-  OpenCodexGitStatus
+  OpenCodexGitStatus,
+  OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
 import { readErrorMessage } from "./gitErrorMessage";
@@ -61,14 +62,24 @@ export class ProjectGitCommitStore {
     );
   }
 
-  /** Model configured for commit message generation. */
-  get commitGenerationModelLabel(): string | null {
+  /** Model configured as the default for commit message generation. */
+  get commitGenerationModel(): string | null {
     return this.parent.settingsStore.settings.commitMessageModel;
   }
 
-  /** Reasoning effort configured for commit message generation. */
-  get commitGenerationReasoningEffortLabel(): string | null {
+  /** Human-readable model label used by the commit-generation dialog. */
+  get commitGenerationModelLabel(): string | null {
+    return this.commitGenerationModel;
+  }
+
+  /** Reasoning effort configured as the default for commit message generation. */
+  get commitGenerationReasoningEffort(): OpenCodexReasoningEffort | null {
     return this.parent.settingsStore.settings.commitMessageReasoningEffort;
+  }
+
+  /** Human-readable reasoning label used by the commit-generation dialog. */
+  get commitGenerationReasoningEffortLabel(): string | null {
+    return this.commitGenerationReasoningEffort;
   }
 
   /**
@@ -124,9 +135,15 @@ export class ProjectGitCommitStore {
    * Generates a commit message from staged changes.
    *
    * @param instruction Optional user instruction.
+   * @param model One-shot model override, or `null` to use the configured model.
+   * @param reasoningEffort One-shot reasoning override, or `null` to use the configured effort.
    * @returns Promise resolved when generation completes.
    */
-  async generateCommitMessage(instruction: string): Promise<void> {
+  async generateCommitMessage(
+    instruction: string,
+    model: string | null = this.commitGenerationModel,
+    reasoningEffort: OpenCodexReasoningEffort | null = this.commitGenerationReasoningEffort
+  ): Promise<void> {
     if (!this.canGenerateCommitMessage) {
       return;
     }
@@ -140,8 +157,8 @@ export class ProjectGitCommitStore {
         projectPath: this.parent.projectPath,
         sourceId: this.parent.sourceId,
         instruction,
-        model: this.parent.settingsStore.settings.commitMessageModel,
-        reasoningEffort: this.parent.settingsStore.settings.commitMessageReasoningEffort,
+        model,
+        reasoningEffort,
         language: this.parent.settingsStore.settings.commitMessageLanguage
       });
 
