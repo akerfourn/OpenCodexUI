@@ -8,8 +8,8 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { useTranslation } from "react-i18next";
 
-import type { ChatStore } from "../../stores/ChatStore";
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ChatStore } from "../../stores/chat/ChatStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { RenameModal } from "../dialogs/RenameModal";
 import { ThreadContextUsageIndicator } from "./ThreadContextUsageIndicator";
 

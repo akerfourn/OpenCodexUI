@@ -7,8 +7,8 @@ import type {
   OpenCodexThreadTokenUsage
 } from "@open-codex-ui/opencodex-protocol";
 
-import { ProjectThreadEventsStore } from "../src/stores/ProjectThreadEventsStore";
-import type { ProjectsStore } from "../src/stores/ProjectsStore";
+import { ProjectThreadEventsStore } from "../src/stores/project/threads/ProjectThreadEventsStore";
+import type { ProjectsStore } from "../src/stores/project/ProjectsStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("ProjectThreadEventsStore", () => {

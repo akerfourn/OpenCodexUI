@@ -3,7 +3,7 @@ import type {
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ChatSubTurn } from "../../stores/chatTurnStructure";
+import type { ChatSubTurn } from "../../stores/chat/chatTurnStructure";
 
 /** One normal activity or enriched collaboration card in reasoning order. */
 export type ReasoningTimelineEntry =

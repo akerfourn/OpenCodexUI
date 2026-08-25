@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { OpenCodexApprovalDecision } from "@open-codex-ui/opencodex-protocol";
 
-import { cloneApprovalDecision } from "../src/stores/ApprovalsStore";
+import { cloneApprovalDecision } from "../src/stores/app/ApprovalsStore";
 
 describe("ApprovalsStore", () => {
   it("should clone observable exec policy decisions before transport", () => {

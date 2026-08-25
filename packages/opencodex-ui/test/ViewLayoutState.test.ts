@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 
 import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
 
-import { HomeStore } from "../src/stores/HomeStore";
-import { ProjectStore } from "../src/stores/ProjectStore";
+import { HomeStore } from "../src/stores/app/HomeStore";
+import { ProjectStore } from "../src/stores/project/ProjectStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("view layout state", () => {

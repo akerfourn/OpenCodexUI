@@ -15,7 +15,7 @@ import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ProjectContextFolderAddDialogX } from "./ProjectContextFolderAddDialog";
 import { ProjectContextFolderRowX } from "./ProjectContextFolderRow";
 

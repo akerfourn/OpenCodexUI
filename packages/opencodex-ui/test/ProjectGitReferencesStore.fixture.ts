@@ -11,8 +11,8 @@ import type {
   OpenCodexRequest
 } from "@open-codex-ui/opencodex-protocol";
 
-import { ProjectGitStore } from "../src/stores/ProjectGitStore";
-import type { ProjectStore } from "../src/stores/ProjectStore";
+import { ProjectGitStore } from "../src/stores/project/git/ProjectGitStore";
+import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 /** Options used to seed one real Git store and its dynamic project context. */

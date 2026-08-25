@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexGitBranch } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectGitReferencesStore } from "../../stores/ProjectGitReferencesStore";
+import type { ProjectGitReferencesStore } from "../../stores/project/git/ProjectGitReferencesStore";
 import { ProjectBranchGroupX } from "./ProjectBranchGroup";
 
 type ProjectBranchMergeDialogProps = {

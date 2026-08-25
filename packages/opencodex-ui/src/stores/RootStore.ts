@@ -11,23 +11,23 @@ import type {
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
 
-import { AppStore } from "./AppStore";
-import { ApprovalsStore } from "./ApprovalsStore";
-import { ChatEventLogStore } from "./ChatEventLogStore";
-import { CollaborationStore } from "./CollaborationStore";
-import type { ChatStore } from "./ChatStore";
-import { CommitPromptStore } from "./CommitPromptStore";
-import { HomeStore } from "./HomeStore";
-import { LogsStore } from "./LogsStore";
-import { NavigationStore } from "./NavigationStore";
-import { PluginsStore } from "./PluginsStore";
-import type { ProjectStore } from "./ProjectStore";
-import { ProjectsStore } from "./ProjectsStore";
-import { ProjectGroupsStore } from "./ProjectGroupsStore";
-import { SourcesStore } from "./SourcesStore";
-import { UsageStore } from "./UsageStore";
+import { AppStore } from "./app/AppStore";
+import { ApprovalsStore } from "./app/ApprovalsStore";
+import { ChatEventLogStore } from "./chat/ChatEventLogStore";
+import { CollaborationStore } from "./collaboration/CollaborationStore";
+import type { ChatStore } from "./chat/ChatStore";
+import { CommitPromptStore } from "./app/CommitPromptStore";
+import { HomeStore } from "./app/HomeStore";
+import { LogsStore } from "./app/LogsStore";
+import { NavigationStore } from "./app/NavigationStore";
+import { PluginsStore } from "./app/PluginsStore";
+import type { ProjectStore } from "./project/ProjectStore";
+import { ProjectsStore } from "./project/ProjectsStore";
+import { ProjectGroupsStore } from "./project/ProjectGroupsStore";
+import { SourcesStore } from "./app/SourcesStore";
+import { UsageStore } from "./app/UsageStore";
 
-export { HOME_TAB_ID, type OpenCodexAppTab } from "./NavigationStore";
+export { HOME_TAB_ID, type OpenCodexAppTab } from "./app/NavigationStore";
 
 /**
  * Root store for the desktop UI.

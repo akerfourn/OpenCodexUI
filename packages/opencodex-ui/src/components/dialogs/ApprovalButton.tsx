@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexApprovalDecision } from "@open-codex-ui/opencodex-protocol";
 
-import type { ApprovalsStore } from "../../stores/ApprovalsStore";
+import type { ApprovalsStore } from "../../stores/app/ApprovalsStore";
 
 type ApprovalButtonProps = {
   store: ApprovalsStore;

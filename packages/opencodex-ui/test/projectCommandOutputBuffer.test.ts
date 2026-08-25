@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { consumeProjectCommandOutput } from "../src/stores/projectCommandOutputBuffer";
+import { consumeProjectCommandOutput } from "../src/stores/project/projectCommandOutputBuffer";
 
 describe("project command output buffer", () => {
   it("should retain an incomplete line for the next delta", () => {

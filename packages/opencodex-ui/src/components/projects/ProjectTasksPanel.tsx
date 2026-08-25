@@ -22,8 +22,8 @@ import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectTaskStatusFilter } from "../../stores/ProjectTasksStore";
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ProjectTaskStatusFilter } from "../../stores/project/ProjectTasksStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ProjectTaskDialogX } from "./ProjectTaskDialog";
 import { ProjectTaskRow } from "./ProjectTaskRow";
 

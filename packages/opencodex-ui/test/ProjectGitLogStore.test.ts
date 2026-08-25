@@ -9,9 +9,9 @@ import type {
   OpenCodexProject
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectGitLogStore } from "../src/stores/ProjectGitLogStore";
-import { ProjectGitStore } from "../src/stores/ProjectGitStore";
-import type { ProjectStore } from "../src/stores/ProjectStore";
+import type { ProjectGitLogStore } from "../src/stores/project/git/ProjectGitLogStore";
+import { ProjectGitStore } from "../src/stores/project/git/ProjectGitStore";
+import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("ProjectGitLogStore Git log history", () => {

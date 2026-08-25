@@ -16,8 +16,8 @@ import {
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitReferencesStore } from "../../stores/ProjectGitReferencesStore";
-import type { ProjectGitStatusStore } from "../../stores/ProjectGitStatusStore";
+import type { ProjectGitReferencesStore } from "../../stores/project/git/ProjectGitReferencesStore";
+import type { ProjectGitStatusStore } from "../../stores/project/git/ProjectGitStatusStore";
 
 type ProjectGitActionsMenuProps = {
   anchorEl: HTMLElement | null;

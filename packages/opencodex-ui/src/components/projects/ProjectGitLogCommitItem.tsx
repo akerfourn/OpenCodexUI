@@ -16,7 +16,7 @@ import type { OpenCodexGitLogCommit } from "@open-codex-ui/opencodex-protocol";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitLogStore } from "../../stores/ProjectGitLogStore";
+import type { ProjectGitLogStore } from "../../stores/project/git/ProjectGitLogStore";
 import { ProjectGitLogCommitDetails } from "./ProjectGitLogCommitDetails";
 
 type ProjectGitLogCommitItemProps = {

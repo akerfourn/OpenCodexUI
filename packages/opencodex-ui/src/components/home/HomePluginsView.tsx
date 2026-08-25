@@ -18,7 +18,7 @@ import type { ChangeEvent } from "react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { PluginInstallFilter } from "../../stores/PluginsStore";
+import type { PluginInstallFilter } from "../../stores/app/PluginsStore";
 import type { RootStore } from "../../stores/RootStore";
 import { HomePluginDetailDialogX } from "./HomePluginDetailDialog";
 import { HomePluginListItem } from "./HomePluginListItem";

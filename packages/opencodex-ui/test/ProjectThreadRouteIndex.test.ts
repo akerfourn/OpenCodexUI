@@ -6,7 +6,7 @@ import type {
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
 
-import { ProjectThreadRouteIndex } from "../src/stores/ProjectThreadRouteIndex";
+import { ProjectThreadRouteIndex } from "../src/stores/project/threads/ProjectThreadRouteIndex";
 import { RootStore } from "../src/stores/RootStore";
 
 describe("ProjectThreadRouteIndex", () => {

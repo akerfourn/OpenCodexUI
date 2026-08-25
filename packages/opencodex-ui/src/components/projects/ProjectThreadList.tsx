@@ -35,7 +35,7 @@ import { useState, type ChangeEvent, type FormEvent, type MouseEvent } from "rea
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ThreadButtonX } from "../threads/ThreadButton";
 import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 import { UsageLimitsWidgetX } from "../usage/UsageLimitsWidget";

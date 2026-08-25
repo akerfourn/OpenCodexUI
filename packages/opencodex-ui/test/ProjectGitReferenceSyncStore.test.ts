@@ -1,7 +1,7 @@
 import { isComputedProp, isObservableProp } from "mobx";
 import { describe, expect, it } from "vitest";
 
-import type { ProjectGitReferencesStore } from "../src/stores/ProjectGitReferencesStore";
+import type { ProjectGitReferencesStore } from "../src/stores/project/git/ProjectGitReferencesStore";
 import {
   createBranch,
   createDeferred,

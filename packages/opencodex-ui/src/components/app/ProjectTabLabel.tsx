@@ -8,7 +8,7 @@ import { observer } from "mobx-react-lite";
 import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 
 type ProjectTabLabelProps = {
   projectStore: ProjectStore;

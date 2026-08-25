@@ -11,8 +11,8 @@ import type {
 import {
   AppLifecycleStore,
   type AppLifecycleRequestPort
-} from "../src/stores/AppLifecycleStore";
-import { AppStore } from "../src/stores/AppStore";
+} from "../src/stores/app/AppLifecycleStore";
+import { AppStore } from "../src/stores/app/AppStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("AppLifecycleStore", () => {

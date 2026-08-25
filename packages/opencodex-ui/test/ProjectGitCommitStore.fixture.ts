@@ -10,9 +10,9 @@ import type {
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
 
-import { ProjectGitStore } from "../src/stores/ProjectGitStore";
-import { ProjectGitStatusStore } from "../src/stores/ProjectGitStatusStore";
-import type { ProjectStore } from "../src/stores/ProjectStore";
+import { ProjectGitStore } from "../src/stores/project/git/ProjectGitStore";
+import { ProjectGitStatusStore } from "../src/stores/project/git/ProjectGitStatusStore";
+import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 const storesWithStubbedRefresh = new WeakSet<ProjectGitStatusStore>();

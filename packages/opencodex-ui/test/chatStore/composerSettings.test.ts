@@ -1,7 +1,7 @@
 /** Covers chat-local composer and model settings. */
 import { describe, expect, it } from "vitest";
 
-import { ChatStore } from "../../src/stores/ChatStore";
+import { ChatStore } from "../../src/stores/chat/ChatStore";
 import {
   createChatStore,
   createProjectStore,

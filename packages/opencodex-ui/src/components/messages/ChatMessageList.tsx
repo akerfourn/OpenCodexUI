@@ -32,7 +32,7 @@ import type {
   OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ChatStore } from "../../stores/ChatStore";
+import type { ChatStore } from "../../stores/chat/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ModelSettingsFields } from "../chat/ModelSettingsFields";
 import { ChatTurnViewX } from "./ChatTurnView";

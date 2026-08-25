@@ -7,7 +7,7 @@ import type {
 
 import {
   AppSettingsStore
-} from "../src/stores/AppSettingsStore";
+} from "../src/stores/app/AppSettingsStore";
 
 describe("AppSettingsStore", () => {
   it("should update settings optimistically before sending the persisted patch", () => {

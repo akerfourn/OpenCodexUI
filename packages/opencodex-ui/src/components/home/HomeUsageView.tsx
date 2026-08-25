@@ -25,7 +25,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
-import { readUsageLabel, readUsageLimitId } from "../../stores/UsageStore";
+import { readUsageLabel, readUsageLimitId } from "../../stores/app/UsageStore";
 import { formatUsageResetDate, formatUsageResetRelative } from "../usage/usageTimeFormat";
 
 type HomeUsageViewProps = {

@@ -23,7 +23,7 @@ import {
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { PluginsStore } from "../../stores/PluginsStore";
+import type { PluginsStore } from "../../stores/app/PluginsStore";
 
 type HomePluginDetailDialogProps = {
   store: PluginsStore;

@@ -21,8 +21,8 @@ import type {
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectStore } from "../../stores/ProjectStore";
-import { ChatTurnStore } from "../../stores/ChatTurnStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
+import { ChatTurnStore } from "../../stores/chat/ChatTurnStore";
 import { ChatTurnViewX } from "../messages/ChatTurnView";
 import { CollaborationEventList } from "../messages/CollaborationEventCard";
 import { buildCollaborationTimeline } from "../messages/collaborationTimeline";

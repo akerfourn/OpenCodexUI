@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { OpenCodexTurn, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
-import { buildChatTurnStructure } from "../src/stores/chatTurnStructure";
+import { buildChatTurnStructure } from "../src/stores/chat/chatTurnStructure";
 
 describe("chat turn structure", () => {
   it("should group user messages with their following reasoning items", () => {

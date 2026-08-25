@@ -8,8 +8,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexProjectCommand } from "@open-codex-ui/opencodex-protocol";
-import type { ProjectCommandRunView } from "../../stores/ProjectCommandsStore";
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ProjectCommandRunView } from "../../stores/project/ProjectCommandsStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ProjectCommandCardX } from "./ProjectCommandCard";
 import { ProjectCommandDialogX } from "./ProjectCommandDialog";
 import { ProjectCommandLogsDialogX } from "./ProjectCommandLogsDialog";

@@ -24,7 +24,7 @@ import {
   projectRulePresets,
   type ProjectRuleFormInput,
   type ProjectRulesStore
-} from "../../stores/ProjectRulesStore";
+} from "../../stores/project/ProjectRulesStore";
 
 type ProjectRuleDialogProps = {
   rule: OpenCodexProjectCommandRule | null;

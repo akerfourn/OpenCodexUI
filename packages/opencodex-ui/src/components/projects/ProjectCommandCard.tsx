@@ -13,7 +13,7 @@ import type { OpenCodexProjectCommand } from "@open-codex-ui/opencodex-protocol"
 import type {
   ProjectCommandRunView,
   ProjectCommandsStore
-} from "../../stores/ProjectCommandsStore";
+} from "../../stores/project/ProjectCommandsStore";
 import { ProjectCommandRunRowX } from "./ProjectCommandRunRow";
 
 type ProjectCommandCardProps = {

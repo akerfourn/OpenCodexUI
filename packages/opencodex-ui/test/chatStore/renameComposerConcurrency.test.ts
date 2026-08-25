@@ -1,7 +1,7 @@
 /** Covers rollback of an optimistic rename while composer settings change. */
 import { describe, expect, it, vi } from "vitest";
 
-import { ChatStore } from "../../src/stores/ChatStore";
+import { ChatStore } from "../../src/stores/chat/ChatStore";
 import {
   createProjectStore,
   createRootStore,

@@ -23,7 +23,7 @@ import type { ReactNode } from "react";
 
 import type { OpenCodexApproval } from "@open-codex-ui/opencodex-protocol";
 
-import type { ApprovalsStore } from "../../stores/ApprovalsStore";
+import type { ApprovalsStore } from "../../stores/app/ApprovalsStore";
 import { CopyIconButton } from "../common/CopyIconButton";
 import { ApprovalDetailRow } from "./ApprovalDetailRow";
 import { ApprovalButton } from "./ApprovalButton";

@@ -6,7 +6,7 @@ import type {
   OpenCodexRequest
 } from "@open-codex-ui/opencodex-protocol";
 
-import { CollaborationStore } from "../src/stores/CollaborationStore";
+import { CollaborationStore } from "../src/stores/collaboration/CollaborationStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("CollaborationStore", () => {

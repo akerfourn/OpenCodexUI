@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import type { OpenCodexProjectCommandRun } from "@open-codex-ui/opencodex-protocol";
 
-import { ProjectCommandRunsStore } from "../src/stores/ProjectCommandRunsStore";
+import { ProjectCommandRunsStore } from "../src/stores/project/ProjectCommandRunsStore";
 
 describe("ProjectCommandRunsStore", () => {
   it("should make a started run idempotent", () => {

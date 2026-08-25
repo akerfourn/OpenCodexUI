@@ -9,7 +9,7 @@ import {
   buildReasoningTimelineEntries,
   assignCollaborationEvents
 } from "../src/components/messages/collaborationReasoningTimeline";
-import { ChatTurnStore } from "../src/stores/ChatTurnStore";
+import { ChatTurnStore } from "../src/stores/chat/ChatTurnStore";
 
 describe("ChatTurnView", () => {
   it("should replace a correlated activity at its position before the final answer", () => {

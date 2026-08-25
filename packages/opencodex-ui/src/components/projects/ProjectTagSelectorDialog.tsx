@@ -30,7 +30,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexGitTag } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectGitTagStore } from "../../stores/ProjectGitTagStore";
+import type { ProjectGitTagStore } from "../../stores/project/git/ProjectGitTagStore";
 import { ProjectTagListItem } from "./ProjectTagListItem";
 
 type ProjectTagSelectorDialogProps = {

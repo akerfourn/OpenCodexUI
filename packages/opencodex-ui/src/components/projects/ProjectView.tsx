@@ -5,7 +5,7 @@ import { observer } from "mobx-react-lite";
 import { useCallback, useState } from "react";
 
 import type { RootStore } from "../../stores/RootStore";
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ChatViewX } from "../chat/ChatView";
 import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
 import { ProjectSidePanel } from "./ProjectSidePanel";

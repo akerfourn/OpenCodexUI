@@ -9,7 +9,7 @@ import {
   mergeDeferredPaths,
   normalizeDeferredPath,
   removeDeferredPath
-} from "../src/stores/gitDeferredPaths";
+} from "../src/stores/project/git/gitDeferredPaths";
 
 describe("Git deferred paths", () => {
   it("should match a deferred directory without matching a similarly named sibling", () => {

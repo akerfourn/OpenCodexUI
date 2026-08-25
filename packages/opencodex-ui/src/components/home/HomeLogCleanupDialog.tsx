@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexLogRetentionUnit } from "@open-codex-ui/opencodex-protocol";
 
-import type { LogsStore } from "../../stores/LogsStore";
+import type { LogsStore } from "../../stores/app/LogsStore";
 
 type HomeLogCleanupDialogProps = {
   store: LogsStore;

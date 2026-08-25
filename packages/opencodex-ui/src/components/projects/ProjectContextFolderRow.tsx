@@ -23,7 +23,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexProjectContextFolder } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectContextStore } from "../../stores/ProjectContextStore";
+import type { ProjectContextStore } from "../../stores/project/ProjectContextStore";
 import { ProjectContextFolderDeleteDialog } from "./ProjectContextFolderDeleteDialog";
 import { ProjectContextFolderRenameDialog } from "./ProjectContextFolderRenameDialog";
 

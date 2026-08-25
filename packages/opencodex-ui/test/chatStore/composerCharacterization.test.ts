@@ -6,7 +6,7 @@ import type {
   OpenCodexImageAttachment
 } from "@open-codex-ui/opencodex-protocol";
 
-import { ChatStore } from "../../src/stores/ChatStore";
+import { ChatStore } from "../../src/stores/chat/ChatStore";
 import {
   createChatStore,
   createProjectStore,

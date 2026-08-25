@@ -12,7 +12,7 @@ import {
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectCommandRunView } from "../../stores/ProjectCommandsStore";
+import type { ProjectCommandRunView } from "../../stores/project/ProjectCommandsStore";
 
 type ProjectCommandLogsDialogProps = {
   run: ProjectCommandRunView | null;

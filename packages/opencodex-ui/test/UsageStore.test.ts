@@ -11,7 +11,7 @@ import type {
   OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
 
-import { UsageStore } from "../src/stores/UsageStore";
+import { UsageStore } from "../src/stores/app/UsageStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 afterEach(() => {

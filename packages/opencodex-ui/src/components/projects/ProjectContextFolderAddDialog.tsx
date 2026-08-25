@@ -18,7 +18,7 @@ import { observer } from "mobx-react-lite";
 import { type ChangeEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectContextStore } from "../../stores/ProjectContextStore";
+import type { ProjectContextStore } from "../../stores/project/ProjectContextStore";
 
 type ProjectContextFolderAddDialogProps = {
   contextStore: ProjectContextStore;

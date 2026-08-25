@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { cloneProjectPreferences } from "../src/stores/projectPreferencesDto";
+import { cloneProjectPreferences } from "../src/stores/project/projectPreferencesDto";
 
 describe("project preferences DTO", () => {
   it("should clone nested context folders into plain objects", () => {

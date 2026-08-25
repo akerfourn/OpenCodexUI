@@ -6,7 +6,7 @@ import { Button, IconButton, LinearProgress, Stack, TextField, Tooltip } from "@
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitCommitStore } from "../../stores/ProjectGitCommitStore";
+import type { ProjectGitCommitStore } from "../../stores/project/git/ProjectGitCommitStore";
 
 type ProjectGitCommitSectionProps = {
   generateTooltip: string;

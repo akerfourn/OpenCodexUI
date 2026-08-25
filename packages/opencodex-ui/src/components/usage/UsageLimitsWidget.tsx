@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexUsageWindow } from "@open-codex-ui/opencodex-protocol";
 
-import type { UsageStore } from "../../stores/UsageStore";
+import type { UsageStore } from "../../stores/app/UsageStore";
 import { UsageWindowBar } from "./UsageWindowBar";
 import { formatUsageReset } from "./usageTimeFormat";
 

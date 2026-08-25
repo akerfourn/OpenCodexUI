@@ -9,8 +9,8 @@ import type {
   OpenCodexCollaborationEvent,
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
-import type { ChatTurnStore } from "../../stores/ChatTurnStore";
-import type { ChatSubTurn } from "../../stores/chatTurnStructure";
+import type { ChatTurnStore } from "../../stores/chat/ChatTurnStore";
+import type { ChatSubTurn } from "../../stores/chat/chatTurnStructure";
 
 import { ChatSubTurnViewX } from "./ChatSubTurnView";
 import { assignCollaborationEvents } from "./collaborationReasoningTimeline";

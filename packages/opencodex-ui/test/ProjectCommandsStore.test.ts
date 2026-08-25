@@ -9,8 +9,8 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { autorun } from "mobx";
 
-import type { ProjectStore } from "../src/stores/ProjectStore";
-import { ProjectCommandsStore } from "../src/stores/ProjectCommandsStore";
+import type { ProjectStore } from "../src/stores/project/ProjectStore";
+import { ProjectCommandsStore } from "../src/stores/project/ProjectCommandsStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("ProjectCommandsStore run lifecycle", () => {

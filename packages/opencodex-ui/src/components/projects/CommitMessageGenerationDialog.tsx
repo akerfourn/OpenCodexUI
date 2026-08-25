@@ -20,8 +20,8 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexReasoningEffort } from "@open-codex-ui/opencodex-protocol";
 
-import type { AppStore } from "../../stores/AppStore";
-import type { ProjectGitCommitStore } from "../../stores/ProjectGitCommitStore";
+import type { AppStore } from "../../stores/app/AppStore";
+import type { ProjectGitCommitStore } from "../../stores/project/git/ProjectGitCommitStore";
 import { SettingMenuButton } from "../chat/SettingMenuButton";
 
 type CommitMessageGenerationDialogProps = {

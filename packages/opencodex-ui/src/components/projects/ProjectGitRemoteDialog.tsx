@@ -17,7 +17,7 @@ import { observer } from "mobx-react-lite";
 import { type ChangeEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitReferencesStore } from "../../stores/ProjectGitReferencesStore";
+import type { ProjectGitReferencesStore } from "../../stores/project/git/ProjectGitReferencesStore";
 
 type ProjectGitRemoteDialogProps = {
   referencesStore: ProjectGitReferencesStore;

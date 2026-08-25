@@ -9,13 +9,13 @@ import type {
   OpenCodexGitStatus
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectStore } from "../src/stores/ProjectStore";
-import type { ProjectGitCommitStore } from "../src/stores/ProjectGitCommitStore";
-import type { ProjectGitChangesStore } from "../src/stores/ProjectGitChangesStore";
-import type { ProjectGitReferencesStore } from "../src/stores/ProjectGitReferencesStore";
-import type { ProjectGitStore } from "../src/stores/ProjectGitStore";
-import type { ProjectGitStatusStore } from "../src/stores/ProjectGitStatusStore";
-import type { ProjectGitTagStore } from "../src/stores/ProjectGitTagStore";
+import type { ProjectStore } from "../src/stores/project/ProjectStore";
+import type { ProjectGitCommitStore } from "../src/stores/project/git/ProjectGitCommitStore";
+import type { ProjectGitChangesStore } from "../src/stores/project/git/ProjectGitChangesStore";
+import type { ProjectGitReferencesStore } from "../src/stores/project/git/ProjectGitReferencesStore";
+import type { ProjectGitStore } from "../src/stores/project/git/ProjectGitStore";
+import type { ProjectGitStatusStore } from "../src/stores/project/git/ProjectGitStatusStore";
+import type { ProjectGitTagStore } from "../src/stores/project/git/ProjectGitTagStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 vi.mock("react-i18next", () => ({

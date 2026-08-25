@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 
-import { AppSettingsStore } from "../src/stores/AppSettingsStore";
-import { SourcesStore } from "../src/stores/SourcesStore";
+import { AppSettingsStore } from "../src/stores/app/AppSettingsStore";
+import { SourcesStore } from "../src/stores/app/SourcesStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("SourcesStore settings synchronization", () => {

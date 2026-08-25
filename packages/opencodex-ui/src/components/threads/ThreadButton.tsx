@@ -31,7 +31,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ChatEventLogDialogX } from "../dialogs/ChatEventLogDialog";
 import type { OpenSubAgentDialog } from "./subAgentDialog";

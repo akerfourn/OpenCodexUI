@@ -7,8 +7,8 @@ import type {
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
-import { ChatStore } from "../../src/stores/ChatStore";
-import type { ProjectStore } from "../../src/stores/ProjectStore";
+import { ChatStore } from "../../src/stores/chat/ChatStore";
+import type { ProjectStore } from "../../src/stores/project/ProjectStore";
 import type { RootStore } from "../../src/stores/RootStore";
 
 /** Creates a chat store with deterministic project and root collaborators. */

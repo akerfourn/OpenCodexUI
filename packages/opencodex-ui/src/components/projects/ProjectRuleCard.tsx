@@ -24,7 +24,7 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexProjectCommandRule } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectRulesStore } from "../../stores/ProjectRulesStore";
+import type { ProjectRulesStore } from "../../stores/project/ProjectRulesStore";
 
 type ProjectRuleCardProps = {
   rule: OpenCodexProjectCommandRule;

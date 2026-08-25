@@ -14,7 +14,7 @@ import {
   getReasoningEffortOptions,
   getServiceTierOptions,
   resolveReasoningEffort
-} from "../src/stores/modelSelection";
+} from "../src/stores/app/modelSelection";
 
 const fastTier: OpenCodexModelServiceTier = {
   id: "fast",

@@ -22,7 +22,7 @@ import type { OpenCodexProjectCommand } from "@open-codex-ui/opencodex-protocol"
 import type {
   ProjectCommandFormInput,
   ProjectCommandsStore
-} from "../../stores/ProjectCommandsStore";
+} from "../../stores/project/ProjectCommandsStore";
 import { ProjectCommandDeleteDialog } from "./ProjectCommandDeleteDialog";
 
 type ProjectCommandDialogProps = {

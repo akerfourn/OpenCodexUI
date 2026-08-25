@@ -12,7 +12,7 @@ import { List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@m
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { HomeSection } from "../../stores/HomeStore";
+import type { HomeSection } from "../../stores/app/HomeStore";
 import type { RootStore } from "../../stores/RootStore";
 import { UsageLimitsWidgetX } from "../usage/UsageLimitsWidget";
 

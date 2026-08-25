@@ -8,7 +8,7 @@ import { Box, Button, Divider, Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitChangesStore } from "../../stores/ProjectGitChangesStore";
+import type { ProjectGitChangesStore } from "../../stores/project/git/ProjectGitChangesStore";
 import { GitSectionHeader } from "./GitSectionHeader";
 import { ProjectGitFileRow } from "./ProjectGitFileRow";
 

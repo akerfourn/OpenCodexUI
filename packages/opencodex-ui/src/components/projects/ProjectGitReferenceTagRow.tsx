@@ -6,7 +6,7 @@ import { Box, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitTagStore } from "../../stores/ProjectGitTagStore";
+import type { ProjectGitTagStore } from "../../stores/project/git/ProjectGitTagStore";
 
 type ProjectGitReferenceTagRowProps = {
   tagStore: ProjectGitTagStore;

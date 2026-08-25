@@ -2,7 +2,7 @@
 import type { OpenCodexThreadRuntimeStatus } from "@open-codex-ui/opencodex-protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ChatStore } from "../../src/stores/ChatStore";
+import { ChatStore } from "../../src/stores/chat/ChatStore";
 import {
   createProjectStore,
   createRootStore,

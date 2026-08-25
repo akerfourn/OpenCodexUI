@@ -7,9 +7,9 @@ import type {
   OpenCodexProjectPreferences
 } from "@open-codex-ui/opencodex-protocol";
 
-import { ProjectGitStore } from "../src/stores/ProjectGitStore";
-import type { ProjectGitTagStore } from "../src/stores/ProjectGitTagStore";
-import type { ProjectStore } from "../src/stores/ProjectStore";
+import { ProjectGitStore } from "../src/stores/project/git/ProjectGitStore";
+import type { ProjectGitTagStore } from "../src/stores/project/git/ProjectGitTagStore";
+import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 export type FixtureOptions = {

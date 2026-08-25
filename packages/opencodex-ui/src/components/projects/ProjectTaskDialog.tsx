@@ -31,7 +31,7 @@ import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectTasksStore } from "../../stores/ProjectTasksStore";
+import type { ProjectTasksStore } from "../../stores/project/ProjectTasksStore";
 import { MarkdownMessageM } from "../messages/MarkdownMessage";
 import { ProjectTaskDeleteDialog } from "./ProjectTaskDeleteDialog";
 

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createClientProject,
   resolveProjectOpenSourceId
-} from "../src/stores/projectMapping";
+} from "../src/stores/project/projectMapping";
 
 describe("project mapping helpers", () => {
   afterEach(() => {

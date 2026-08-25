@@ -6,7 +6,7 @@ import type {
   OpenCodexThread,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
-import type { ChatSubTurn } from "../../stores/chatTurnStructure";
+import type { ChatSubTurn } from "../../stores/chat/chatTurnStructure";
 
 import { AssistantTurnBlockX } from "./AssistantTurnBlock";
 import { MessageRowM } from "./MessageRow";

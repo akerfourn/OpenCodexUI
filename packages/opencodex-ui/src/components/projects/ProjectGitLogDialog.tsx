@@ -19,7 +19,7 @@ import type { UIEvent } from "react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ProjectGitLogStore } from "../../stores/ProjectGitLogStore";
+import type { ProjectGitLogStore } from "../../stores/project/git/ProjectGitLogStore";
 import { ProjectGitLogCommitItemX } from "./ProjectGitLogCommitItem";
 
 type ProjectGitLogDialogProps = {

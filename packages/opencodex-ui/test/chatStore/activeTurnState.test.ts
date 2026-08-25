@@ -1,10 +1,10 @@
 /** Covers active-turn lifecycle, recovery, editing, and runtime polling. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ChatStore } from "../../src/stores/ChatStore";
-import { ProjectThreadEventsStore } from "../../src/stores/ProjectThreadEventsStore";
-import { hasActiveRunningTurn } from "../../src/stores/chatTurnUtils";
-import type { ProjectsStore } from "../../src/stores/ProjectsStore";
+import { ChatStore } from "../../src/stores/chat/ChatStore";
+import { ProjectThreadEventsStore } from "../../src/stores/project/threads/ProjectThreadEventsStore";
+import { hasActiveRunningTurn } from "../../src/stores/chat/chatTurnUtils";
+import type { ProjectsStore } from "../../src/stores/project/ProjectsStore";
 import type { RootStore } from "../../src/stores/RootStore";
 import {
   createChatStore,

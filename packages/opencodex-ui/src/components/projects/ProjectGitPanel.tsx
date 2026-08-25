@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { CommitMessageGenerationDialogX } from "./CommitMessageGenerationDialog";
 import { ProjectBranchMergeDialogX } from "./ProjectBranchMergeDialog";
 import { ProjectBranchSwitcherDialogX } from "./ProjectBranchSwitcherDialog";

@@ -17,9 +17,9 @@ import type {
   OpenCodexSkillSearchResult
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ChatStore } from "../../stores/ChatStore";
-import type { ChatComposerStore } from "../../stores/ChatComposerStore";
-import type { ProjectStore } from "../../stores/ProjectStore";
+import type { ChatStore } from "../../stores/chat/ChatStore";
+import type { ChatComposerStore } from "../../stores/chat/ChatComposerStore";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ChatAdvancedActionsMenu } from "./ChatAdvancedActionsMenu";
 import { ComposerAttachmentList } from "./ComposerAttachmentList";

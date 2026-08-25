@@ -10,8 +10,8 @@ import {
   type UIEvent
 } from "react";
 
-import type { ChatStore } from "../../stores/ChatStore";
-import type { ChatTimelineViewState } from "../../stores/ChatTimelineStore";
+import type { ChatStore } from "../../stores/chat/ChatStore";
+import type { ChatTimelineViewState } from "../../stores/chat/ChatTimelineStore";
 import {
   INITIAL_VISIBLE_TURN_COUNT,
   resolveRestoredVisibleTurnCount,
