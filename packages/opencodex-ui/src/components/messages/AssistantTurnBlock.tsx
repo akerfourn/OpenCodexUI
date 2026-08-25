@@ -31,6 +31,13 @@ import {
 import { MessageRowM } from "./MessageRow";
 import { CollaborationEventCard } from "./CollaborationEventCard";
 import { buildReasoningTimelineEntries } from "./collaborationReasoningTimeline";
+import { ActivityKindIcon } from "./ActivityKindIcon";
+import { PlanActivityRow } from "./PlanActivityRow";
+import {
+  isStructuredPlanItem,
+  readLatestStructuredPlan,
+  shouldShowPersistentPlan
+} from "./assistantTurnPlan";
 
 type AssistantTurnBlockProps = {
   turn: OpenCodexTurn;
@@ -68,10 +75,17 @@ export function AssistantTurnBlock({
   const [expanded, setExpanded] = useState(false);
   const [isFullActiveHistoryVisible, setIsFullActiveHistoryVisible] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const persistentPlan = useMemo(
+    () => readLatestStructuredPlan(preludeItems),
+    [preludeItems]
+  );
   const timelineEntries = useMemo(
-    () => buildReasoningTimelineEntries(preludeItems, collaborationEvents),
+    () => buildReasoningTimelineEntries(preludeItems, collaborationEvents).filter((entry) => (
+      entry.type === "collaboration" || !isStructuredPlanItem(entry.item)
+    )),
     [collaborationEvents, preludeItems]
   );
+  const showPersistentPlan = shouldShowPersistentPlan(turn, isRunning, persistentPlan);
   const blockRef = isLast ? lastMessageRef : undefined;
   const runningStartedAt = turn.startedAt ?? readFirstCreatedAt(preludeItems);
   const displayedDurationMs = isRunning
@@ -239,6 +253,27 @@ export function AssistantTurnBlock({
         </AccordionSummary>
         {detailsContent}
       </Accordion>
+      {showPersistentPlan && persistentPlan !== null ? (
+        <Box
+          component="section"
+          sx={{
+            bgcolor: "background.paper",
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 1.5,
+            mt: 1,
+            p: 1.25,
+            minWidth: 0,
+            width: "100%",
+            maxWidth: "100%"
+          }}
+        >
+          <PlanActivityRow
+            plan={persistentPlan}
+            icon={<ActivityKindIcon kind="plan" />}
+          />
+        </Box>
+      ) : null}
     </Box>
   );
 }
