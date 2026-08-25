@@ -1,7 +1,7 @@
 import type { OpenCodexEvent } from "@open-codex-ui/opencodex-protocol";
 
-import type { OpenCodexClientPool } from "../OpenCodexClientPool.js";
-import type { RuntimeNotificationCoordinator } from "../RuntimeNotificationCoordinator.js";
+import type { OpenCodexClientPool } from "./OpenCodexClientPool.js";
+import type { RuntimeNotificationCoordinator } from "./RuntimeNotificationCoordinator.js";
 import type { RuntimeEventPort } from "./runtimePorts.js";
 
 /** Dependencies used by the client-close lifecycle callback. */

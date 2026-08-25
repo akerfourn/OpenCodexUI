@@ -8,8 +8,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ThreadRuntimeHandler,
   type ThreadRuntimeHandlerOptions
-} from "../src/backend/ThreadRuntimeHandler";
-import type { ThreadConversationService } from "../src/backend/ThreadConversationService";
+} from "../src/backend/threads/ThreadRuntimeHandler";
+import type { ThreadConversationService } from "../src/backend/threads/ThreadConversationService";
 import { RuntimeEventDispatcher } from "../src/backend/runtime/RuntimeEventDispatcher";
 import type {
   ClientPort,

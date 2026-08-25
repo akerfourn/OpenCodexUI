@@ -9,7 +9,7 @@ import { ThreadTurnCache } from "../src/ThreadTurnCache";
 import {
   RuntimeNotificationCoordinator,
   type RuntimeNotificationCoordinatorOptions
-} from "../src/backend/RuntimeNotificationCoordinator";
+} from "../src/backend/runtime/RuntimeNotificationCoordinator";
 import type {
   RuntimeEventPort,
   RuntimeSettingsPort

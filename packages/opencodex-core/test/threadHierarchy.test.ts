@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   filterDescendantThreads,
   filterMainThreads
-} from "../src/backend/threadHierarchy";
+} from "../src/backend/threads/threadHierarchy";
 
 describe("thread hierarchy helpers", () => {
   it("should follow structured parents while preserving order and rejecting cycles", () => {

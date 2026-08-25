@@ -1,20 +1,20 @@
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 
-import type { ApplicationLogService } from "../ApplicationLogService.js";
-import type { ApprovalService } from "../ApprovalService.js";
-import type { CodexUpdateService } from "../CodexUpdateService.js";
-import type { GitRuntimeHandler } from "../GitRuntimeHandler.js";
-import type { HostIntegrationService } from "../HostIntegrationService.js";
-import type { ModelCatalogService } from "../ModelCatalogService.js";
-import type { OpenCodexClientPool } from "../OpenCodexClientPool.js";
-import type { PluginService } from "../PluginService.js";
-import type { ProjectAutomationRuntimeHandler } from "../ProjectAutomationRuntimeHandler.js";
-import type { ProjectSearchService } from "../ProjectSearchService.js";
-import type { ProjectRuntimeHandler } from "../ProjectRuntimeHandler.js";
-import type { RuntimeErrorCoordinator } from "../RuntimeErrorCoordinator.js";
-import type { RuntimeNotificationCoordinator } from "../RuntimeNotificationCoordinator.js";
-import type { ThreadRuntimeHandler } from "../ThreadRuntimeHandler.js";
-import type { UsageRuntimeService } from "../UsageRuntimeService.js";
+import type { ApplicationLogService } from "../support/ApplicationLogService.js";
+import type { ApprovalService } from "../support/ApprovalService.js";
+import type { CodexUpdateService } from "../sources/CodexUpdateService.js";
+import type { GitRuntimeHandler } from "../git/GitRuntimeHandler.js";
+import type { HostIntegrationService } from "../support/HostIntegrationService.js";
+import type { ModelCatalogService } from "../support/ModelCatalogService.js";
+import type { OpenCodexClientPool } from "./OpenCodexClientPool.js";
+import type { PluginService } from "../support/PluginService.js";
+import type { ProjectAutomationRuntimeHandler } from "../projects/ProjectAutomationRuntimeHandler.js";
+import type { ProjectSearchService } from "../projects/ProjectSearchService.js";
+import type { ProjectRuntimeHandler } from "../projects/ProjectRuntimeHandler.js";
+import type { RuntimeErrorCoordinator } from "./RuntimeErrorCoordinator.js";
+import type { RuntimeNotificationCoordinator } from "./RuntimeNotificationCoordinator.js";
+import type { ThreadRuntimeHandler } from "../threads/ThreadRuntimeHandler.js";
+import type { UsageRuntimeService } from "../usage/UsageRuntimeService.js";
 import type { RuntimeEventDispatcher } from "./RuntimeEventDispatcher.js";
 import type { RuntimeSettingsStore } from "./RuntimeSettingsStore.js";
 

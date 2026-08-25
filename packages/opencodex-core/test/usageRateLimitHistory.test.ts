@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import type { OpenCodexUsageSnapshot } from "@open-codex-ui/opencodex-protocol";
 
-import { createUsageRateLimitHistorySnapshot } from "../src/backend/usageRateLimitHistory";
+import { createUsageRateLimitHistorySnapshot } from "../src/backend/usage/usageRateLimitHistory";
 
 describe("usage rate-limit history mapping", () => {
   it("should preserve raw fields and normalize the source association", () => {

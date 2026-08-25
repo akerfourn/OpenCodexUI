@@ -14,7 +14,7 @@ import {
 } from "./activityItemMapping.js";
 import { createActivity, readPlanSnapshot } from "./activityHelpers.js";
 import { createId, readObject, readString } from "./primitives.js";
-import { sanitizeTerminalOutput } from "../backend/terminalOutput.js";
+import { sanitizeTerminalOutput } from "../backend/threads/terminalOutput.js";
 
 /**
  * Creates a streaming activity record from a Codex notification.

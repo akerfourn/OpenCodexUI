@@ -8,7 +8,7 @@ import {
 import {
   THREAD_LIST_PAGE_SIZE,
   THREAD_SUB_AGENT_SOURCE_KINDS
-} from "../src/backend/constants";
+} from "../src/backend/shared/constants";
 
 describe("ThreadConversationService hierarchy operations", () => {
   it("should list two online pages with source-aware cache and reconciliation ordering", async () => {

@@ -7,7 +7,7 @@ import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { SourceUpdateRuntimeHandler } from "../src/backend/SourceUpdateRuntimeHandler";
+import { SourceUpdateRuntimeHandler } from "../src/backend/sources/SourceUpdateRuntimeHandler";
 
 describe("SourceUpdateRuntimeHandler", () => {
   it("should check the release with force and emit sources with the current default", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mapPolicyCheckResult } from "../src/backend/projectCommandRulePolicy";
+import { mapPolicyCheckResult } from "../src/backend/projects/projectCommandRulePolicy";
 
 describe("projectCommandRulePolicy", () => {
   it("should map Codex prefix matches and decisions", () => {

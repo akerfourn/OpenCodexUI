@@ -6,7 +6,7 @@ import {
   readExitedStatus,
   readProcessExited,
   readProcessOutputDelta
-} from "../src/backend/projectCommandNotifications";
+} from "../src/backend/projects/projectCommandNotifications";
 
 describe("project command notifications", () => {
   it("should normalize a process output delta", () => {

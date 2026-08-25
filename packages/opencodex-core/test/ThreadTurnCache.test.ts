@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache } from "../src/ThreadTurnCache";
-import { createCacheSignature } from "../src/backend/threadCacheMapping";
+import { createCacheSignature } from "../src/backend/threads/threadCacheMapping";
 
 describe("ThreadTurnCache", () => {
   it("should preserve structured sub-agent ancestry across partial metadata refreshes", () => {

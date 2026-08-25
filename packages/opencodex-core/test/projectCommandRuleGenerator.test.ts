@@ -4,7 +4,7 @@ import {
   hashProjectCommandRules,
   renderProjectCommandRules,
   tokenizeCommandLine
-} from "../src/backend/projectCommandRuleGenerator";
+} from "../src/backend/projects/projectCommandRuleGenerator";
 import type { OpenCodexProjectCommandRule } from "@open-codex-ui/opencodex-protocol";
 
 const enabledRule: OpenCodexProjectCommandRule = {

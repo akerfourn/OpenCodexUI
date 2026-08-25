@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildManagedConfigBlock,
   replaceManagedBlock
-} from "../src/backend/ProjectContextService";
+} from "../src/backend/projects/ProjectContextService";
 
 describe("ProjectContextService", () => {
   it("should generate a read-only external context profile", () => {

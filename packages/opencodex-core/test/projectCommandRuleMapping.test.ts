@@ -1,7 +1,7 @@
 import type { CachedProjectCommandRule } from "@open-codex-ui/opencodex-cache";
 import { describe, expect, it } from "vitest";
 
-import { errorMessage, toProtocolRule } from "../src/backend/projectCommandRuleMapping";
+import { errorMessage, toProtocolRule } from "../src/backend/projects/projectCommandRuleMapping";
 
 describe("project command rule mapping helpers", () => {
   it("should map every cached field and isolate mutable arrays", () => {

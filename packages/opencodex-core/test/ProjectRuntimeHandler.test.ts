@@ -4,7 +4,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { ProjectRuntimeHandler } from "../src/backend/ProjectRuntimeHandler";
+import { ProjectRuntimeHandler } from "../src/backend/projects/ProjectRuntimeHandler";
 
 describe("ProjectRuntimeHandler", () => {
   it("should keep cacheless project reads and adapters deterministic", async () => {

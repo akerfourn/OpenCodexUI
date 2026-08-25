@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ProjectPathService,
   type ProjectPathServiceOptions
-} from "../src/backend/ProjectPathService";
+} from "../src/backend/projects/ProjectPathService";
 
 describe("ProjectPathService", () => {
   it("should delegate local paths to the host and normalize the ensured result", async () => {

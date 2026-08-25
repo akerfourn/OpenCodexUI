@@ -10,7 +10,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { ApplicationLogService } from "../src/backend/ApplicationLogService";
+import { ApplicationLogService } from "../src/backend/support/ApplicationLogService";
 
 describe("ApplicationLogService", () => {
   it("should keep cacheless reads and writes deterministic", async () => {

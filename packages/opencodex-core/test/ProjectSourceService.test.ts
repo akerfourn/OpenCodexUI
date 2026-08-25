@@ -19,10 +19,10 @@ const toolVersionMocks = vi.hoisted(() => ({
   readCodexVersionStatus: vi.fn()
 }));
 
-vi.mock("../src/backend/toolVersionDetection", () => toolVersionMocks);
+vi.mock("../src/backend/sources/toolVersionDetection", () => toolVersionMocks);
 
 import type { OpenCodexBackendOptions as CoreBackendOptions } from "../src/types";
-import { ProjectSourceService } from "../src/backend/ProjectSourceService";
+import { ProjectSourceService } from "../src/backend/projects/ProjectSourceService";
 
 describe("ProjectSourceService", () => {
   it.each(["wsl", "ssh"] as const)(

@@ -1,0 +1,489 @@
+import type { CodexNotification } from "@open-codex-ui/codex-rpc";
+import type {
+  OpenCodexThread,
+  OpenCodexTurnExecutionMetadata
+} from "@open-codex-ui/opencodex-protocol";
+
+import type { ThreadTurnCache } from "../../ThreadTurnCache.js";
+import { readObject, readString } from "../../mapping.js";
+import type { CollaborationService } from "../collaboration/CollaborationService.js";
+import type { NotificationService } from "../support/NotificationService.js";
+import type { ProjectCommandService } from "../projects/ProjectCommandService.js";
+import { StreamingNotificationBatcher } from "./StreamingNotificationBatcher.js";
+import type { ThreadCacheService } from "../threads/ThreadCacheService.js";
+import type { ThreadConversationService } from "../threads/ThreadConversationService.js";
+import type { ThreadRuntimeHandler } from "../threads/ThreadRuntimeHandler.js";
+import { mapThreadTokenUsageNotification } from "../threads/threadTokenUsageMapping.js";
+import type { RuntimeEventPort, RuntimeSettingsPort } from "./runtimePorts.js";
+import type { UsageRuntimeService } from "../usage/UsageRuntimeService.js";
+
+/** Dependencies used by the notification coordination pipeline. */
+export type RuntimeNotificationCoordinatorOptions = {
+  /** Reads the current runtime settings. */
+  settings: Pick<RuntimeSettingsPort, "getSettings">;
+  /** Reports receipt of one raw notification and its estimated payload size. */
+  onRawReceived?(method: string, estimatedBytes: number): void;
+  /** Reports synchronous processing time for one normalized notification. */
+  onProcessed?(method: string, durationMs: number): void;
+  /** Reports synchronous live-cache processing time when advanced metrics are enabled. */
+  onLiveCacheProcessed?(method: string, durationMs: number): void;
+  /** Checks whether notifications for a thread are temporarily suppressed. */
+  threads: Pick<ThreadRuntimeHandler, "isThreadIgnored">;
+  /** Records one raw notification in the runtime-owned event log. */
+  events: Pick<RuntimeEventPort, "emit" | "recordRawNotification">;
+  /** Handles rate-limit updates and turn completion in the usage runtime service. */
+  usage: Pick<UsageRuntimeService, "handleRateLimitsUpdated" | "handleTurnCompleted">;
+  /** Cache service used for token and execution metadata persistence. */
+  threadCacheService: Pick<
+    ThreadCacheService,
+    "writeTokenUsage" | "writeTurnExecutionMetadata"
+  >;
+  /** In-memory thread and turn cache. */
+  threadTurnCache: ThreadTurnCache;
+  /** Collaboration notification adapter. */
+  collaborationService: Pick<CollaborationService, "handleNotification"> &
+    Partial<Pick<
+      CollaborationService,
+      "getSpawnExecutionMetadata" | "resolveSpawnExecutionMetadata"
+    >>;
+  /** Conversation notification adapter. */
+  threadConversationService: Pick<
+    ThreadConversationService,
+    "recordStartedThread" | "recordNotification"
+  >;
+  /** Project-command notification adapter. */
+  projectCommandService: Pick<ProjectCommandService, "handleNotification">;
+  /** UI notification adapter. */
+  notificationService: Pick<NotificationService, "handleNotification">;
+};
+
+/**
+ * Owns the ordered processing pipeline for raw and streamed Codex notifications.
+ *
+ * The coordinator delegates thread suppression and usage accounting to their
+ * owning services while retaining callbacks only for lifecycle and metrics concerns.
+ */
+export class RuntimeNotificationCoordinator {
+  /** Combines high-frequency streaming notifications before processing them. */
+  private readonly streamingNotificationBatcher: StreamingNotificationBatcher;
+  /** Active turn identifiers grouped by Codex source. */
+  private readonly activeTurnIdsBySourceId = new Map<string, Set<string>>();
+
+  /**
+   * Creates a notification coordinator and its streaming batcher.
+   *
+   * @param options Narrow service ports and runtime callbacks.
+   */
+  constructor(
+    /** Service adapters and runtime callbacks used by the pipeline. */
+    private readonly options: RuntimeNotificationCoordinatorOptions
+  ) {
+    this.streamingNotificationBatcher = new StreamingNotificationBatcher({
+      process: (notification, sourceId) => this.processNotification(notification, sourceId)
+    });
+  }
+
+  /**
+   * Handles a raw notification received from one Codex source.
+   *
+   * @param notification Raw Codex notification.
+   * @param sourceId Source that produced the notification.
+   * @returns Nothing.
+   */
+  handleNotification(notification: CodexNotification, sourceId: string): void {
+    this.options.onRawReceived?.(
+      notification.method,
+      estimateNotificationBytes(notification.params)
+    );
+    const threadId = readString(readObject(notification.params).threadId);
+
+    if (threadId.length > 0 && this.options.threads.isThreadIgnored(threadId)) {
+      return;
+    }
+
+    this.options.events.recordRawNotification(notification, sourceId);
+
+    if (this.streamingNotificationBatcher.handleNotification(notification, sourceId)) {
+      return;
+    }
+
+    this.processNotification(notification, sourceId);
+  }
+
+  /**
+   * Flushes all pending streamed notifications.
+   *
+   * @returns Nothing.
+   */
+  flushAll(): void {
+    this.streamingNotificationBatcher.flushAll();
+  }
+
+  /**
+   * Flushes pending streamed notifications for one source.
+   *
+   * @param sourceId Source whose pending notifications should be processed.
+   * @returns Nothing.
+   */
+  flushSource(sourceId: string): void {
+    this.streamingNotificationBatcher.flushSource(sourceId);
+  }
+
+  /**
+   * Checks whether a source currently owns an active turn.
+   *
+   * @param sourceId Source identifier.
+   * @returns Whether at least one turn is active for the source.
+   */
+  hasActiveTurn(sourceId: string): boolean {
+    return (this.activeTurnIdsBySourceId.get(sourceId)?.size ?? 0) > 0;
+  }
+
+  /**
+   * Clears active-turn state when a source client closes.
+   *
+   * @param sourceId Source identifier.
+   * @returns Nothing.
+   */
+  clearSourceActiveTurns(sourceId: string): void {
+    this.activeTurnIdsBySourceId.delete(sourceId);
+  }
+
+  /**
+   * Processes one immediate or already-batched notification.
+   *
+   * @param notification Notification ready for backend processing.
+   * @param sourceId Source that produced the notification.
+   * @returns Nothing.
+   * @throws Synchronous errors from downstream services.
+   */
+  private processNotification(notification: CodexNotification, sourceId: string): void {
+    const startedAt = performance.now();
+
+    try {
+      this.recordLiveCacheNotification(notification);
+      void this.options.collaborationService.handleNotification(notification, sourceId);
+
+      if (notification.method === "thread/started") {
+        const thread = readObject(notification.params).thread;
+        void this.options.threadConversationService.recordStartedThread(thread, sourceId);
+      }
+
+      this.recordTurnExecutionNotification(notification, sourceId);
+      this.trackActiveTurnNotification(notification, sourceId);
+      this.options.projectCommandService.handleNotification(notification);
+      this.options.notificationService.handleNotification(notification, sourceId);
+
+      if (notification.method === "account/rateLimits/updated") {
+        this.options.usage.handleRateLimitsUpdated(sourceId, notification.params);
+      }
+
+      if (notification.method === "thread/tokenUsage/updated") {
+        this.handleTokenUsageNotification(notification, sourceId);
+      }
+
+      if (notification.method === "turn/completed") {
+        this.options.usage.handleTurnCompleted(sourceId);
+      }
+    } finally {
+      this.options.onProcessed?.(
+        notification.method,
+        performance.now() - startedAt
+      );
+    }
+  }
+
+  /**
+   * Records live notification data and optional cache timing metrics.
+   *
+   * @param notification Notification ready for cache processing.
+   * @returns Nothing.
+   */
+  private recordLiveCacheNotification(notification: CodexNotification): void {
+    const settings = this.options.settings.getSettings();
+    const shouldMeasure = settings.developerMode &&
+      settings.advancedPerformanceMonitoringEnabled;
+
+    if (!shouldMeasure) {
+      this.options.threadConversationService.recordNotification(notification);
+      return;
+    }
+
+    const startedAt = performance.now();
+    this.options.threadConversationService.recordNotification(notification);
+    this.options.onLiveCacheProcessed?.(
+      notification.method,
+      performance.now() - startedAt
+    );
+  }
+
+  /**
+   * Records execution metadata from turn-start and model-reroute notifications.
+   *
+   * @param notification Notification ready for cache processing.
+   * @param sourceId Source that produced the notification.
+   * @returns Nothing.
+   */
+  private recordTurnExecutionNotification(
+    notification: CodexNotification,
+    sourceId: string
+  ): void {
+    const params = readObject(notification.params);
+    const threadId = readString(params.threadId);
+
+    if (threadId.length === 0) {
+      return;
+    }
+
+    if (notification.method === "turn/started") {
+      const turnId = readString(readObject(params.turn).id);
+
+      if (turnId.length === 0) {
+        return;
+      }
+
+      const thread = this.options.threadTurnCache.get(threadId)?.thread;
+      const current = this.options.threadTurnCache.getTurnExecutionMetadata(threadId, turnId);
+      const spawnMetadata = this.options.collaborationService.getSpawnExecutionMetadata?.(
+        sourceId,
+        threadId,
+        thread?.parentThreadId ?? null,
+        thread?.subAgentSource?.agentPath ?? null
+      ) ?? null;
+      const metadata: OpenCodexTurnExecutionMetadata = {
+        requestedModel: current?.requestedModel ?? spawnMetadata?.model ?? null,
+        effectiveModel: current?.effectiveModel ?? spawnMetadata?.model ?? thread?.model ?? null,
+        requestedReasoningEffort:
+          current?.requestedReasoningEffort ?? spawnMetadata?.reasoningEffort ?? null,
+        effectiveReasoningEffort:
+          current?.effectiveReasoningEffort ??
+          spawnMetadata?.reasoningEffort ??
+          thread?.reasoningEffort ??
+          null,
+        serviceTier: current?.serviceTier ?? null
+      };
+
+      if (current === null || !executionMetadataEqual(current, metadata)) {
+        void this.options.threadCacheService.writeTurnExecutionMetadata(
+          sourceId,
+          threadId,
+          turnId,
+          metadata
+        );
+      }
+
+      if (spawnMetadata === null && thread !== undefined && thread.parentThreadId !== null) {
+        this.resolveSpawnExecutionMetadata(
+          sourceId,
+          threadId,
+          turnId,
+          thread,
+          current
+        );
+      }
+      return;
+    }
+
+    if (notification.method !== "model/rerouted") {
+      return;
+    }
+
+    const turnId = readString(params.turnId);
+    const toModel = readString(params.toModel);
+
+    if (turnId.length === 0 || toModel.length === 0) {
+      return;
+    }
+
+    const current = this.options.threadTurnCache.getTurnExecutionMetadata(threadId, turnId);
+    const metadata: OpenCodexTurnExecutionMetadata = {
+      requestedModel: current?.requestedModel ?? null,
+      effectiveModel: toModel,
+      requestedReasoningEffort: current?.requestedReasoningEffort ?? null,
+      effectiveReasoningEffort: current?.effectiveReasoningEffort ?? null,
+      serviceTier: current?.serviceTier ?? null
+    };
+    void this.options.threadCacheService.writeTurnExecutionMetadata(
+      sourceId,
+      threadId,
+      turnId,
+      metadata
+    );
+  }
+
+  /**
+   * Enriches a child turn after its spawn event is recovered from persisted history.
+   *
+   * @param sourceId Source that produced the turn.
+   * @param threadId Child thread identifier.
+   * @param turnId Turn identifier.
+   * @param thread Known child thread metadata.
+   * @param initialMetadata Metadata written during the immediate turn-start path.
+   */
+  private resolveSpawnExecutionMetadata(
+    sourceId: string,
+    threadId: string,
+    turnId: string,
+    thread: OpenCodexThread,
+    initialMetadata: OpenCodexTurnExecutionMetadata | null
+  ): void {
+    if (this.options.collaborationService.resolveSpawnExecutionMetadata === undefined) {
+      return;
+    }
+
+    void this.options.collaborationService.resolveSpawnExecutionMetadata(
+      sourceId,
+      threadId,
+      thread.parentThreadId,
+      thread.subAgentSource?.agentPath ?? null
+    ).then((spawnMetadata) => {
+      if (spawnMetadata === null) {
+        return;
+      }
+
+      const current = this.options.threadTurnCache.getTurnExecutionMetadata(threadId, turnId)
+        ?? initialMetadata;
+      const metadata: OpenCodexTurnExecutionMetadata = {
+        requestedModel: current?.requestedModel ?? spawnMetadata.model,
+        effectiveModel: current?.effectiveModel ?? spawnMetadata.model,
+        requestedReasoningEffort:
+          current?.requestedReasoningEffort ?? spawnMetadata.reasoningEffort,
+        effectiveReasoningEffort:
+          current?.effectiveReasoningEffort ?? spawnMetadata.reasoningEffort,
+        serviceTier: current?.serviceTier ?? null
+      };
+
+      if (current === null || !executionMetadataEqual(current, metadata)) {
+        void this.options.threadCacheService.writeTurnExecutionMetadata(
+          sourceId,
+          threadId,
+          turnId,
+          metadata
+        );
+      }
+    }).catch(() => undefined);
+  }
+
+  /**
+   * Updates the in-memory and persisted token usage snapshot.
+   *
+   * @param notification Token usage notification.
+   * @param sourceId Source that produced the notification.
+   * @returns Nothing.
+   */
+  private handleTokenUsageNotification(
+    notification: CodexNotification,
+    sourceId: string
+  ): void {
+    const usage = mapThreadTokenUsageNotification(notification.params);
+
+    if (usage === null) {
+      return;
+    }
+
+    const cacheEntry = this.options.threadTurnCache.get(usage.threadId);
+
+    if (cacheEntry !== null) {
+      cacheEntry.tokenUsage = usage;
+    }
+
+    void this.options.threadCacheService.writeTokenUsage(sourceId, usage);
+    this.options.events.emit({ type: "thread.tokenUsage.updated", sourceId, usage });
+  }
+
+  /**
+   * Updates source-scoped active turn state for a turn boundary notification.
+   *
+   * @param notification Notification ready for processing.
+   * @param sourceId Source that produced the notification.
+   * @returns Nothing.
+   */
+  private trackActiveTurnNotification(notification: CodexNotification, sourceId: string): void {
+    const params = readObject(notification.params);
+
+    if (notification.method === "turn/started") {
+      const turnId = readString(readObject(params.turn).id);
+
+      if (turnId.length > 0) {
+        this.addActiveTurn(sourceId, turnId);
+      }
+      return;
+    }
+
+    if (notification.method === "turn/completed") {
+      const turnId = readString(readObject(params.turn).id);
+
+      if (turnId.length > 0) {
+        this.removeActiveTurn(sourceId, turnId);
+      }
+    }
+  }
+
+  /**
+   * Adds one turn identifier to a source's active set.
+   *
+   * @param sourceId Source identifier.
+   * @param turnId Turn identifier.
+   * @returns Nothing.
+   */
+  private addActiveTurn(sourceId: string, turnId: string): void {
+    const activeTurnIds = this.activeTurnIdsBySourceId.get(sourceId) ?? new Set<string>();
+    activeTurnIds.add(turnId);
+    this.activeTurnIdsBySourceId.set(sourceId, activeTurnIds);
+  }
+
+  /**
+   * Removes one turn identifier from a source's active set.
+   *
+   * @param sourceId Source identifier.
+   * @param turnId Turn identifier.
+   * @returns Nothing.
+   */
+  private removeActiveTurn(sourceId: string, turnId: string): void {
+    const activeTurnIds = this.activeTurnIdsBySourceId.get(sourceId);
+
+    if (activeTurnIds === undefined) {
+      return;
+    }
+
+    activeTurnIds.delete(turnId);
+
+    if (activeTurnIds.size === 0) {
+      this.activeTurnIdsBySourceId.delete(sourceId);
+    }
+  }
+}
+
+/** Compares execution metadata before issuing a redundant cache write. */
+function executionMetadataEqual(
+  current: OpenCodexTurnExecutionMetadata,
+  next: OpenCodexTurnExecutionMetadata
+): boolean {
+  return current.requestedModel === next.requestedModel &&
+    current.effectiveModel === next.effectiveModel &&
+    current.requestedReasoningEffort === next.requestedReasoningEffort &&
+    current.effectiveReasoningEffort === next.effectiveReasoningEffort &&
+    current.serviceTier === next.serviceTier;
+}
+
+/**
+ * Estimates streamed notification volume without serializing or retaining content.
+ *
+ * @param value Raw notification parameters.
+ * @returns Total length of known high-volume string fields.
+ */
+function estimateNotificationBytes(value: unknown): number {
+  const params = readObject(value);
+  const fieldNames = ["delta", "deltaBase64", "diff", "message", "output"];
+  let estimatedBytes = 0;
+
+  for (const fieldName of fieldNames) {
+    const fieldValue = params[fieldName];
+
+    if (typeof fieldValue === "string") {
+      estimatedBytes += fieldValue.length;
+    }
+  }
+
+  return estimatedBytes;
+}

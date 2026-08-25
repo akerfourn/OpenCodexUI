@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCommitMessageGenerationPrompt } from "../src/backend/commitMessagePrompt";
+import { buildCommitMessageGenerationPrompt } from "../src/backend/commit/commitMessagePrompt";
 
 describe("buildCommitMessageGenerationPrompt", () => {
   it("should interpolate compact staged summaries", () => {

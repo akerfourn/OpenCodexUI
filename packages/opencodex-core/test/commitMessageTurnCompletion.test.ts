@@ -1,7 +1,7 @@
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import { describe, expect, it } from "vitest";
 
-import { readTurnFailureMessageOrNull } from "../src/backend/commitMessageTurnCompletion";
+import { readTurnFailureMessageOrNull } from "../src/backend/commit/commitMessageTurnCompletion";
 
 describe("readTurnFailureMessageOrNull", () => {
   it("should return the Codex error message when generation fails", () => {

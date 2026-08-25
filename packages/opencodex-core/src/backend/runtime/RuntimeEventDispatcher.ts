@@ -7,7 +7,7 @@ import type {
 import {
   ThreadEventLogService,
   type ThreadEventLogMutation
-} from "../ThreadEventLogService.js";
+} from "../threads/ThreadEventLogService.js";
 import type { RuntimeEventPort } from "./runtimePorts.js";
 
 /** Dependencies used by the runtime event dispatcher. */

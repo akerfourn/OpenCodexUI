@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   SourceCatalogService,
   type SourceCatalogServiceOptions
-} from "../src/backend/SourceCatalogService";
+} from "../src/backend/sources/SourceCatalogService";
 
 describe("SourceCatalogService", () => {
   it("should initialize and persist a generated default source when settings are unset", async () => {

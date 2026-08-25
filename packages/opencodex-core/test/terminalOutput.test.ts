@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { sanitizeTerminalOutput } from "../src/backend/terminalOutput";
+import { sanitizeTerminalOutput } from "../src/backend/threads/terminalOutput";
 
 describe("terminal output normalization", () => {
   it("should remove ANSI cursor and clear-line sequences", () => {

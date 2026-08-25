@@ -4,7 +4,7 @@
 import type { CodexNotification } from "@open-codex-ui/codex-rpc";
 import { describe, expect, it } from "vitest";
 
-import { ThreadEventLogService } from "../src/backend/ThreadEventLogService";
+import { ThreadEventLogService } from "../src/backend/threads/ThreadEventLogService";
 
 describe("ThreadEventLogService", () => {
   it("should keep turn completion metadata without retaining turn content", () => {

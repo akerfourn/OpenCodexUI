@@ -10,7 +10,7 @@ import type {
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ThreadRuntimeHandler } from "../../ThreadRuntimeHandler.js";
+import type { ThreadRuntimeHandler } from "../../threads/ThreadRuntimeHandler.js";
 import type {
   CollaborationApi as CollaborationApiContract,
   EventLogApi as EventLogApiContract,

@@ -1,6 +1,6 @@
 import type {
   ProjectAutomationRuntimeHandler
-} from "../../ProjectAutomationRuntimeHandler.js";
+} from "../../projects/ProjectAutomationRuntimeHandler.js";
 import type {
   AutomationApi as AutomationApiContract,
   CommandsApi as CommandsApiContract,

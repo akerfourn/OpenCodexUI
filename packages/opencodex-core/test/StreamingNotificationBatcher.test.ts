@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   STREAMING_NOTIFICATION_BATCH_MS,
   StreamingNotificationBatcher
-} from "../src/backend/StreamingNotificationBatcher";
+} from "../src/backend/runtime/StreamingNotificationBatcher";
 import { createActivityFromNotification } from "../src/mapping/activity";
 
 describe("StreamingNotificationBatcher", () => {

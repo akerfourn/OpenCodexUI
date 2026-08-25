@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ThreadNotificationSuppressionRegistry } from "../src/backend/ThreadNotificationSuppressionRegistry";
+import { ThreadNotificationSuppressionRegistry } from "../src/backend/threads/ThreadNotificationSuppressionRegistry";
 
 describe("ThreadNotificationSuppressionRegistry", () => {
   it("should isolate idempotent suppression by thread identifier", () => {

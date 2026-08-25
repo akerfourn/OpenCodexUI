@@ -10,8 +10,8 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { fallbackModels } from "../src/backend/codexReaders";
-import { ModelCatalogService } from "../src/backend/ModelCatalogService";
+import { fallbackModels } from "../src/backend/shared/codexReaders";
+import { ModelCatalogService } from "../src/backend/support/ModelCatalogService";
 
 describe("ModelCatalogService", () => {
   it("should return and persist fresh models after requesting the canonical source", async () => {

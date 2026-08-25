@@ -1,7 +1,7 @@
 import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import type { ProjectRuntimeHandler } from "../src/backend/ProjectRuntimeHandler";
+import type { ProjectRuntimeHandler } from "../src/backend/projects/ProjectRuntimeHandler";
 import {
   CodexUpdatesApi,
   GroupsApi,

@@ -19,7 +19,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ProjectAutomationRuntimeHandler,
   type ProjectAutomationRuntimeHandlerOptions
-} from "../src/backend/ProjectAutomationRuntimeHandler";
+} from "../src/backend/projects/ProjectAutomationRuntimeHandler";
 
 describe("ProjectAutomationRuntimeHandler", () => {
   it("should construct without a cache and preserve a stable notification adapter", async () => {

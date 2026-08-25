@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { readModels } from "../src/backend/codexReaders";
+import { readModels } from "../src/backend/shared/codexReaders";
 
 describe("Codex model readers", () => {
   it("should preserve model-specific reasoning efforts and defaults", () => {

@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { ThreadTurnCache } from "../src/ThreadTurnCache";
-import { ThreadSourceResolver } from "../src/backend/ThreadSourceResolver";
+import { ThreadSourceResolver } from "../src/backend/threads/ThreadSourceResolver";
 
 describe("ThreadSourceResolver", () => {
   it("should return null without writing when no source or fallback exists", async () => {

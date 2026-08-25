@@ -11,7 +11,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { ProjectCacheDataService } from "../src/backend/ProjectCacheDataService";
+import { ProjectCacheDataService } from "../src/backend/projects/ProjectCacheDataService";
 
 describe("ProjectCacheDataService", () => {
   it("should return zero statistics and an empty task list without a cache", async () => {

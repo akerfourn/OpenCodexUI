@@ -9,9 +9,9 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache } from "../src/ThreadTurnCache";
-import type { CollaborationService } from "../src/backend/CollaborationService";
-import { ThreadConversationService } from "../src/backend/ThreadConversationService";
-import type { ThreadCacheService } from "../src/backend/ThreadCacheService";
+import type { CollaborationService } from "../src/backend/collaboration/CollaborationService";
+import { ThreadConversationService } from "../src/backend/threads/ThreadConversationService";
+import type { ThreadCacheService } from "../src/backend/threads/ThreadCacheService";
 
 describe("ThreadConversationService turn actions", () => {
   it("starts a new thread with the stable cache and event order", async () => {

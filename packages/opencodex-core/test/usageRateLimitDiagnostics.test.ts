@@ -8,7 +8,7 @@ import type {
   OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
 
-import { UsageRateLimitDiagnostics } from "../src/backend/usageRateLimitDiagnostics";
+import { UsageRateLimitDiagnostics } from "../src/backend/usage/usageRateLimitDiagnostics";
 
 describe("UsageRateLimitDiagnostics", () => {
   it("should not write duplicate snapshots from repeated reads", () => {

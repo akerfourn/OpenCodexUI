@@ -8,7 +8,7 @@ import type {
 } from "@open-codex-ui/opencodex-cache";
 import { describe, expect, it, vi } from "vitest";
 
-import { ProjectCommandService } from "../src/backend/ProjectCommandService";
+import { ProjectCommandService } from "../src/backend/projects/ProjectCommandService";
 
 describe("ProjectCommandService", () => {
   it("should preserve the run, output, and exit event sequence", async () => {

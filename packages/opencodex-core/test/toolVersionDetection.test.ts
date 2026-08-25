@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   isCodexCliVersionSupported,
   readCommandLinkTarget
-} from "../src/backend/toolVersionDetection";
+} from "../src/backend/sources/toolVersionDetection";
 
 describe("toolVersionDetection", () => {
   it("should reject Codex CLI versions older than 0.147.0", () => {

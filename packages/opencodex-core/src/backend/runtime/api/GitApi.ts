@@ -15,7 +15,7 @@ import type {
   OpenCodexToolVersionStatus
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { GitRuntimeHandler } from "../../GitRuntimeHandler.js";
+import type { GitRuntimeHandler } from "../../git/GitRuntimeHandler.js";
 import type {
   CommitMessageApi as CommitMessageApiContract,
   GitApi as GitApiContract

@@ -11,7 +11,7 @@ import type {
 import {
   buildUsageHistory,
   normalizeHistoryQuery
-} from "../src/backend/usageHistory";
+} from "../src/backend/usage/usageHistory";
 
 describe("usage history", () => {
   it("should derive instant and cumulative tokens from total thread counters", () => {

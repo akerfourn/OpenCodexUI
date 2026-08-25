@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   filterSearchableProjectFiles,
   isSearchableProjectFilePath
-} from "../src/backend/fileSearchFilters";
+} from "../src/backend/projects/fileSearchFilters";
 
 describe("file search filters", () => {
   it("should reject files inside VCS implementation directories", () => {

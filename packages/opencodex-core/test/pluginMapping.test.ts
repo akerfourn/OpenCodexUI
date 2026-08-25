@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mapPluginListResponse } from "../src/backend/pluginMapping";
+import { mapPluginListResponse } from "../src/backend/support/pluginMapping";
 
 describe("plugin mapping", () => {
   it("should normalize experimental plugin list responses", () => {

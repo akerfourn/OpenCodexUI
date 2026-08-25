@@ -10,9 +10,9 @@ const detectionMocks = vi.hoisted(() => ({
   readCodexVersionStatus: vi.fn()
 }));
 
-vi.mock("../src/backend/toolVersionDetection", () => detectionMocks);
+vi.mock("../src/backend/sources/toolVersionDetection", () => detectionMocks);
 
-import { SourceDetectionService } from "../src/backend/SourceDetectionService";
+import { SourceDetectionService } from "../src/backend/sources/SourceDetectionService";
 
 describe("SourceDetectionService", () => {
   it("should persist a ready status before returning it", async () => {

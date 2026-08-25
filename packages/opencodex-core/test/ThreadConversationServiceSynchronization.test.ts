@@ -9,9 +9,9 @@ import type {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ThreadTurnCache } from "../src/ThreadTurnCache";
-import type { CollaborationService } from "../src/backend/CollaborationService";
-import { ThreadConversationService } from "../src/backend/ThreadConversationService";
-import type { ThreadCacheService } from "../src/backend/ThreadCacheService";
+import type { CollaborationService } from "../src/backend/collaboration/CollaborationService";
+import { ThreadConversationService } from "../src/backend/threads/ThreadConversationService";
+import type { ThreadCacheService } from "../src/backend/threads/ThreadCacheService";
 
 describe("ThreadConversationService synchronization", () => {
   afterEach(() => {

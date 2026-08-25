@@ -5,7 +5,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { RuntimeErrorCoordinator } from "../src/backend/RuntimeErrorCoordinator";
+import { RuntimeErrorCoordinator } from "../src/backend/runtime/RuntimeErrorCoordinator";
 import type {
   ApplicationLogPort,
   RuntimeEventPort,

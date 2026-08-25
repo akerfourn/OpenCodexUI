@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache, type ThreadTurnCacheEntry } from "../src/ThreadTurnCache";
-import { recordLiveNotification } from "../src/backend/liveTurnNotifications";
+import { recordLiveNotification } from "../src/backend/threads/liveTurnNotifications";
 import { MAX_LIVE_TEXT_BUFFER_CHUNKS } from "../src/liveTurnTextBuffer";
 
 describe("live turn cache", () => {

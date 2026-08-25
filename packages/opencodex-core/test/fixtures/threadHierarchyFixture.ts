@@ -6,8 +6,8 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ThreadTurnCache } from "../../src/ThreadTurnCache";
-import { ThreadConversationService } from "../../src/backend/ThreadConversationService";
-import type { ThreadCacheService } from "../../src/backend/ThreadCacheService";
+import { ThreadConversationService } from "../../src/backend/threads/ThreadConversationService";
+import type { ThreadCacheService } from "../../src/backend/threads/ThreadCacheService";
 
 /** Configures cache rows and Codex responses for hierarchy tests. */
 export type ThreadHierarchyFixtureOptions = {

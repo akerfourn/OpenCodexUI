@@ -4,7 +4,7 @@ import {
   createShellCommand,
   isWindowsPath,
   sanitizePathSegment
-} from "../src/backend/projectCommandExecution";
+} from "../src/backend/projects/projectCommandExecution";
 
 describe("project command execution helpers", () => {
   it("should build a POSIX shell command", () => {

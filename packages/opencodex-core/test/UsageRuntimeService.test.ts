@@ -10,8 +10,8 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { UsageRuntimeService } from "../src/backend/UsageRuntimeService";
-import type { UsageRuntimeServiceOptions } from "../src/backend/UsageRuntimeService";
+import { UsageRuntimeService } from "../src/backend/usage/UsageRuntimeService";
+import type { UsageRuntimeServiceOptions } from "../src/backend/usage/UsageRuntimeService";
 
 describe("UsageRuntimeService", () => {
   it("should read canonical usage, emit it, and persist the original payload", async () => {

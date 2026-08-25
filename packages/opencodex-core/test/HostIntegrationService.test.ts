@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   HostIntegrationService,
   type HostIntegrationServiceOptions
-} from "../src/backend/HostIntegrationService";
+} from "../src/backend/support/HostIntegrationService";
 
 describe("HostIntegrationService", () => {
   it("should delegate host pickers and return safe defaults when unavailable", async () => {

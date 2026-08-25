@@ -1,9 +1,9 @@
 /** Covers usage and rate-limit mapping from Codex payloads. */
 import { describe, expect, it } from "vitest";
 
-import { mapThreadTokenUsageNotification } from "../src/backend/threadTokenUsageMapping";
-import { correctUsageLimitNotification } from "../src/backend/usageCorrections";
-import { mapUsageLimitsNotification, mapUsageLimitsResponse } from "../src/backend/usageMapping";
+import { mapThreadTokenUsageNotification } from "../src/backend/threads/threadTokenUsageMapping";
+import { correctUsageLimitNotification } from "../src/backend/usage/usageCorrections";
+import { mapUsageLimitsNotification, mapUsageLimitsResponse } from "../src/backend/usage/usageMapping";
 
 describe("usage mapping", () => {
   it("should preserve usage limit ids from rate-limit response keys", () => {

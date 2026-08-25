@@ -1,4 +1,4 @@
-import type { ProjectRuntimeHandler } from "../../ProjectRuntimeHandler.js";
+import type { ProjectRuntimeHandler } from "../../projects/ProjectRuntimeHandler.js";
 import type {
   CodexUpdatesApi as CodexUpdatesApiContract,
   GroupsApi as GroupsApiContract,

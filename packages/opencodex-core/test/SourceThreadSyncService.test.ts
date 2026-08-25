@@ -9,8 +9,8 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { THREAD_SOURCE_KINDS } from "../src/backend/constants";
-import { SourceThreadSyncService } from "../src/backend/SourceThreadSyncService";
+import { THREAD_SOURCE_KINDS } from "../src/backend/shared/constants";
+import { SourceThreadSyncService } from "../src/backend/sources/SourceThreadSyncService";
 
 describe("SourceThreadSyncService", () => {
   it("should read a ready source, write its index, and clean up afterwards", async () => {

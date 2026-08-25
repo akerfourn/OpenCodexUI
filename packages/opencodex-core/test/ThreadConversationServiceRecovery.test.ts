@@ -10,9 +10,9 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import { ThreadTurnCache } from "../src/ThreadTurnCache";
-import type { CollaborationService } from "../src/backend/CollaborationService";
-import { ThreadConversationService } from "../src/backend/ThreadConversationService";
-import { ThreadCacheService } from "../src/backend/ThreadCacheService";
+import type { CollaborationService } from "../src/backend/collaboration/CollaborationService";
+import { ThreadConversationService } from "../src/backend/threads/ThreadConversationService";
+import { ThreadCacheService } from "../src/backend/threads/ThreadCacheService";
 import type {
   ProjectSourcePort,
   RuntimeEventPort,

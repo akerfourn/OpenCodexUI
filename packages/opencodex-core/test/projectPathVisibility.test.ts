@@ -5,7 +5,7 @@ import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
 import { describe, expect, it, vi } from "vitest";
 
-import { ProjectPathVisibilityValidator } from "../src/backend/projectPathVisibility";
+import { ProjectPathVisibilityValidator } from "../src/backend/projects/projectPathVisibility";
 
 describe("ProjectPathVisibilityValidator", () => {
   it("should use Codex filesystem metadata for custom sources", async () => {

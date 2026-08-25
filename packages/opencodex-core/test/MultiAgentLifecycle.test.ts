@@ -11,7 +11,7 @@ import {
 } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexEvent } from "@open-codex-ui/opencodex-protocol";
 
-import { CollaborationService } from "../src/backend/CollaborationService";
+import { CollaborationService } from "../src/backend/collaboration/CollaborationService";
 
 const temporaryDirectories: string[] = [];
 

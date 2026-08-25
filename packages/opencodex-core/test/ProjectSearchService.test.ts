@@ -2,7 +2,7 @@ import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 import type { OpenCodexFileSearchResult } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { ProjectSearchService } from "../src/backend/ProjectSearchService";
+import { ProjectSearchService } from "../src/backend/projects/ProjectSearchService";
 
 describe("ProjectSearchService", () => {
   it("should return no results without resolving a client for an invalid root", async () => {

@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   GitRuntimeHandler,
   type GitRuntimeHandlerOptions
-} from "../src/backend/GitRuntimeHandler";
+} from "../src/backend/git/GitRuntimeHandler";
 
 describe("GitRuntimeHandler", () => {
   it("should delegate Git status to the source client", async () => {

@@ -5,7 +5,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it } from "vitest";
 
-import { THREAD_MAIN_SOURCE_KINDS } from "../src/backend/constants";
+import { THREAD_MAIN_SOURCE_KINDS } from "../src/backend/shared/constants";
 import {
   CatalogCodexClient,
   createFixture,

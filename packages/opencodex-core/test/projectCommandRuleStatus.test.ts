@@ -12,7 +12,7 @@ import {
   getRulesFilePath,
   isSupportedSource,
   resolveFileStatus
-} from "../src/backend/projectCommandRuleStatus";
+} from "../src/backend/projects/projectCommandRuleStatus";
 
 describe("project command rule status helpers", () => {
   it("should resolve the managed file below the project rules directory", () => {

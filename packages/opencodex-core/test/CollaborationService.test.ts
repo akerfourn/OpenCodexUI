@@ -10,7 +10,7 @@ import type {
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
 
-import { CollaborationService } from "../src/backend/CollaborationService";
+import { CollaborationService } from "../src/backend/collaboration/CollaborationService";
 import type { RuntimeEventPort } from "../src/backend/runtime/runtimePorts";
 
 const temporaryDirectories: string[] = [];

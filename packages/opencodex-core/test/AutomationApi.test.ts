@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ProjectAutomationRuntimeHandler } from "../src/backend/ProjectAutomationRuntimeHandler";
+import type { ProjectAutomationRuntimeHandler } from "../src/backend/projects/ProjectAutomationRuntimeHandler";
 import { AutomationApi, CommandsApi, RulesApi } from "../src/backend/runtime/api/AutomationApi";
 
 describe("automation runtime APIs", () => {

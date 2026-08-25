@@ -5,7 +5,7 @@ import type { CodexNotification } from "@open-codex-ui/codex-rpc";
 import type { OpenCodexEvent } from "@open-codex-ui/opencodex-protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { NotificationService } from "../src/backend/NotificationService";
+import { NotificationService } from "../src/backend/support/NotificationService";
 import type { RuntimeEventPort } from "../src/backend/runtime/runtimePorts";
 
 describe("NotificationService", () => {

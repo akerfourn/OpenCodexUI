@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   isMissingRolloutError,
   isUnmaterializedThreadError
-} from "../src/backend/errors";
+} from "../src/backend/shared/errors";
 
 describe("backend error classification", () => {
   it("should identify unmaterialized thread turn-list errors", () => {

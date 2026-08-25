@@ -17,13 +17,13 @@ import type {
   OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
 
-import type { ApplicationLogService } from "../../ApplicationLogService.js";
-import type { ApprovalService } from "../../ApprovalService.js";
-import type { HostIntegrationService } from "../../HostIntegrationService.js";
-import type { ModelCatalogService } from "../../ModelCatalogService.js";
-import type { PluginService } from "../../PluginService.js";
-import type { ProjectSearchService } from "../../ProjectSearchService.js";
-import type { UsageRuntimeService } from "../../UsageRuntimeService.js";
+import type { ApplicationLogService } from "../../support/ApplicationLogService.js";
+import type { ApprovalService } from "../../support/ApprovalService.js";
+import type { HostIntegrationService } from "../../support/HostIntegrationService.js";
+import type { ModelCatalogService } from "../../support/ModelCatalogService.js";
+import type { PluginService } from "../../support/PluginService.js";
+import type { ProjectSearchService } from "../../projects/ProjectSearchService.js";
+import type { UsageRuntimeService } from "../../usage/UsageRuntimeService.js";
 import type { RuntimeSettingsPort } from "../runtimePorts.js";
 import type {
   ApprovalsApi as ApprovalsApiContract,
