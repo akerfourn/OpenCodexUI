@@ -1,8 +1,11 @@
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 
-import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexThread,
+  OpenCodexTurnExecutionMetadata
+} from "@open-codex-ui/opencodex-protocol";
 
-import { mapThread, readObject } from "../mapping.js";
+import { mapThread, readObject, readString } from "../mapping.js";
 import type { ThreadTurnCache, ThreadTurnCacheEntry } from "../ThreadTurnCache.js";
 import { isUnmaterializedThreadError } from "./errors.js";
 import {
@@ -36,7 +39,7 @@ export type ThreadTurnSyncServiceOptions = {
   threadCacheService: Pick<
     ThreadCacheService,
     "readSnapshot" | "readTurns" | "writeIndex" | "writeDelta"
-  >;
+  > & Partial<Pick<ThreadCacheService, "writeTurnExecutionMetadata">>;
   /** Emits synchronization lifecycle and content events. */
   events: Pick<RuntimeEventPort, "emit">;
   /** Resolves source-scoped Codex clients. */
@@ -49,7 +52,8 @@ export type ThreadTurnSyncServiceOptions = {
   /** Loads the latest turn page and its full item payloads. */
   pageLoader: Pick<ThreadTurnPageLoader, "readLatest">;
   /** Reconciles collaboration data after source-backed turns are loaded. */
-  collaborationService: Pick<CollaborationService, "reconcileTurns">;
+  collaborationService: Pick<CollaborationService, "reconcileTurns"> &
+    Partial<Pick<CollaborationService, "resolveSpawnExecutionMetadata">>;
   /** Writes timing diagnostics using the owning backend logger. */
   logThreadTiming(message: string, details: ThreadTurnSyncTimingDetails): void;
 };
@@ -311,6 +315,60 @@ export class ThreadTurnSyncService {
     }
 
     await this.options.collaborationService.reconcileTurns(thread.sourceId, thread.id, turns);
+    await this.enrichSpawnExecutionMetadata(thread, turns);
+  }
+
+  /**
+   * Applies persisted spawn settings to historical child turns when available.
+   *
+   * @param thread Child thread owning the loaded turns.
+   * @param turns Raw turns being synchronized.
+   */
+  private async enrichSpawnExecutionMetadata(
+    thread: OpenCodexThread,
+    turns: readonly unknown[]
+  ): Promise<void> {
+    if (
+      this.options.collaborationService.resolveSpawnExecutionMetadata === undefined ||
+      this.options.threadCacheService.writeTurnExecutionMetadata === undefined ||
+      thread.sourceId === null ||
+      thread.parentThreadId === null
+    ) {
+      return;
+    }
+
+    const spawnMetadata = await this.options.collaborationService.resolveSpawnExecutionMetadata(
+      thread.sourceId,
+      thread.id,
+      thread.parentThreadId,
+      thread.subAgentSource?.agentPath ?? null
+    );
+
+    if (spawnMetadata === null) {
+      return;
+    }
+
+    for (const turnValue of turns) {
+      const turnId = readString(readObject(turnValue).id);
+
+      if (turnId.length === 0) {
+        continue;
+      }
+
+      const metadata: OpenCodexTurnExecutionMetadata = {
+        requestedModel: spawnMetadata.model,
+        effectiveModel: spawnMetadata.model,
+        requestedReasoningEffort: spawnMetadata.reasoningEffort,
+        effectiveReasoningEffort: spawnMetadata.reasoningEffort,
+        serviceTier: null
+      };
+      await this.options.threadCacheService.writeTurnExecutionMetadata(
+        thread.sourceId,
+        thread.id,
+        turnId,
+        metadata
+      );
+    }
   }
 }
 

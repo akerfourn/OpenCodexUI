@@ -87,6 +87,7 @@ export const enConversation = {
       imageGeneration: "Image generation",
       imageView: "Image view",
       mcpTool: "MCP tool",
+      modelRerouted: "Model change",
       plan: "Plan",
       reasoning: "Reasoning",
       reviewEnd: "Exited review mode",

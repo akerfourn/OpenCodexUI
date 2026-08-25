@@ -22,6 +22,67 @@ afterEach(() => {
 });
 
 describe("CollaborationService", () => {
+  it("should associate spawn settings with the child thread and agent path", async () => {
+    const service = new CollaborationService({
+      cacheRepository: null,
+      events: createEventPort()
+    });
+
+    await service.handleNotification({
+      method: "rawResponseItem/completed",
+      params: {
+        threadId: "parent-1",
+        turnId: "turn-1",
+        item: {
+          type: "function_call",
+          namespace: "collaboration",
+          name: "spawn_agent",
+          call_id: "call-1",
+          arguments: JSON.stringify({
+            target: "/root/reviewer",
+            model: "gpt-5.6-luna",
+            reasoning_effort: "high"
+          })
+        }
+      }
+    }, "source-1");
+
+    expect(service.getSpawnExecutionMetadata(
+      "source-1",
+      "child-1",
+      "parent-1",
+      "/root/reviewer"
+    )).toEqual({
+      model: "gpt-5.6-luna",
+      reasoningEffort: "high"
+    });
+
+    await service.handleNotification({
+      method: "item/completed",
+      params: {
+        threadId: "parent-1",
+        turnId: "turn-1",
+        item: {
+          type: "subAgentActivity",
+          id: "call-1",
+          kind: "started",
+          agentThreadId: "child-1",
+          agentPath: "/root/reviewer"
+        }
+      }
+    }, "source-1");
+
+    expect(service.getSpawnExecutionMetadata(
+      "source-1",
+      "child-1",
+      "parent-1",
+      "/root/reviewer"
+    )).toEqual({
+      model: "gpt-5.6-luna",
+      reasoningEffort: "high"
+    });
+  });
+
   it("should merge out-of-order live spawn evidence and restore its prompt", async () => {
     const repository = createRepository();
     const emittedEvents: OpenCodexEvent[] = [];
@@ -82,6 +143,15 @@ describe("CollaborationService", () => {
     const reconnectedService = new CollaborationService({
       cacheRepository: repository,
       events: createEventPort()
+    });
+    await expect(reconnectedService.resolveSpawnExecutionMetadata(
+      "source-1",
+      "child-1",
+      "parent-1",
+      "/root/reviewer"
+    )).resolves.toEqual({
+      model: "gpt-5.6-luna",
+      reasoningEffort: "high"
     });
     const events = await reconnectedService.listEvents({
       sourceId: "source-1",

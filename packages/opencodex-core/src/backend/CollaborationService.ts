@@ -24,16 +24,105 @@ export type CollaborationServiceOptions = {
   logger?: (message: string) => void;
 };
 
+/** Model settings requested while spawning a child thread. */
+export type SpawnExecutionMetadata = {
+  model: string | null;
+  reasoningEffort: string | null;
+};
+
 /**
  * Persists and exposes normalized multi-agent collaboration state.
  */
 export class CollaborationService {
+  /** Spawn settings indexed by the source-aware child thread identifier. */
+  private readonly spawnMetadataByThread = new Map<string, SpawnExecutionMetadata>();
+  /** Spawn settings indexed by the source-aware parent and agent path. */
+  private readonly spawnMetadataByPath = new Map<string, SpawnExecutionMetadata>();
+
   /**
    * Creates a collaboration service.
    *
    * @param options Cache, runtime event port, and diagnostic dependencies.
    */
   constructor(private readonly options: CollaborationServiceOptions) {}
+
+  /**
+   * Returns spawn settings already observed for one child thread.
+   *
+   * The lookup is synchronous on purpose: live collaboration notifications are
+   * registered before their asynchronous cache write, so a child `turn/started`
+   * notification can use the settings without waiting for SQLite.
+   *
+   * @param sourceId Source that owns the parent and child threads.
+   * @param threadId Child thread identifier.
+   * @param parentThreadId Parent thread identifier, when known.
+   * @param agentPath Child agent path, when known.
+   * @returns Spawn settings, or `null` when no model setting is known.
+   */
+  getSpawnExecutionMetadata(
+    sourceId: string,
+    threadId: string,
+    parentThreadId: string | null,
+    agentPath: string | null
+  ): SpawnExecutionMetadata | null {
+    const direct = threadId.length > 0
+      ? this.spawnMetadataByThread.get(createSpawnThreadKey(sourceId, threadId)) ?? null
+      : null;
+    const byPath = parentThreadId !== null && agentPath !== null
+      ? this.spawnMetadataByPath.get(createSpawnPathKey(sourceId, parentThreadId, agentPath)) ?? null
+      : null;
+    const merged = mergeSpawnExecutionMetadata(direct, byPath);
+
+    return hasSpawnExecutionMetadata(merged) ? merged : null;
+  }
+
+  /**
+   * Resolves spawn settings from the in-memory registry and persisted history.
+   *
+   * @param sourceId Source that owns the parent and child threads.
+   * @param threadId Child thread identifier.
+   * @param parentThreadId Parent thread identifier, when known.
+   * @param agentPath Child agent path, when known.
+   * @returns Spawn settings, or `null` when unavailable.
+   */
+  async resolveSpawnExecutionMetadata(
+    sourceId: string,
+    threadId: string,
+    parentThreadId: string | null,
+    agentPath: string | null
+  ): Promise<SpawnExecutionMetadata | null> {
+    const immediate = this.getSpawnExecutionMetadata(
+      sourceId,
+      threadId,
+      parentThreadId,
+      agentPath
+    );
+
+    if (immediate !== null || this.options.cacheRepository === null) {
+      return immediate;
+    }
+
+    if (parentThreadId === null && threadId.length === 0) {
+      return null;
+    }
+
+    try {
+      const events = await this.options.cacheRepository.listCollaborationEvents(
+        parentThreadId === null
+          ? { sourceId, receiverThreadId: threadId }
+          : { sourceId, threadId: parentThreadId }
+      );
+
+      for (const event of events) {
+        this.rememberSpawnEvent(event);
+      }
+
+      return this.getSpawnExecutionMetadata(sourceId, threadId, parentThreadId, agentPath);
+    } catch (error) {
+      this.options.logger?.(`spawn execution metadata lookup failed: ${String(error)}`);
+      return null;
+    }
+  }
 
   /**
    * Normalizes one live App Server notification when it carries collaboration data.
@@ -127,6 +216,7 @@ export class CollaborationService {
         sourceId,
         rootThreadId
       });
+      existingEvents.forEach((event) => this.rememberSpawnEvent(event));
       const concreteReceivers = readConcreteSpawnReceivers(existingEvents);
 
       for (const thread of threads) {
@@ -159,6 +249,7 @@ export class CollaborationService {
     }
 
     const events = await this.options.cacheRepository.listCollaborationEvents(query);
+    events.forEach((event) => this.rememberSpawnEvent(event));
     return suppressSupersededStructuralEvents(events).map(toProtocolEvent);
   }
 
@@ -172,10 +263,13 @@ export class CollaborationService {
     event: OpenCodexCollaborationEvent,
     shouldEmit: boolean
   ): Promise<void> {
+    this.rememberSpawnEvent(event);
+
     try {
       const persisted = this.options.cacheRepository === null
         ? event
         : await this.options.cacheRepository.upsertCollaborationEvent(event);
+      this.rememberSpawnEvent(persisted);
 
       if (shouldEmit) {
         this.options.events.emit({
@@ -188,6 +282,86 @@ export class CollaborationService {
       this.options.logger?.(`collaboration cache write failed: ${String(error)}`);
     }
   }
+
+  /**
+   * Adds spawn model evidence to the source-aware in-memory association index.
+   *
+   * @param event Normalized collaboration event.
+   */
+  private rememberSpawnEvent(event: OpenCodexCollaborationEvent): void {
+    if (event.action !== "spawn") {
+      return;
+    }
+
+    let metadata: SpawnExecutionMetadata = {
+      model: event.model,
+      reasoningEffort: event.reasoningEffort
+    };
+
+    for (const agentPath of event.receiverAgentPaths) {
+      metadata = mergeSpawnExecutionMetadata(
+        metadata,
+        this.spawnMetadataByPath.get(
+          createSpawnPathKey(event.sourceId, event.threadId, agentPath)
+        ) ?? null
+      );
+    }
+
+    if (!hasSpawnExecutionMetadata(metadata)) {
+      return;
+    }
+
+    for (const receiverThreadId of event.receiverThreadIds) {
+      this.mergeSpawnMetadata(
+        this.spawnMetadataByThread,
+        createSpawnThreadKey(event.sourceId, receiverThreadId),
+        metadata
+      );
+    }
+
+    for (const agentPath of event.receiverAgentPaths) {
+      this.mergeSpawnMetadata(
+        this.spawnMetadataByPath,
+        createSpawnPathKey(event.sourceId, event.threadId, agentPath),
+        metadata
+      );
+    }
+  }
+
+  /** Merges newly observed settings without discarding known values. */
+  private mergeSpawnMetadata(
+    target: Map<string, SpawnExecutionMetadata>,
+    key: string,
+    metadata: SpawnExecutionMetadata
+  ): void {
+    target.set(key, mergeSpawnExecutionMetadata(target.get(key) ?? null, metadata));
+  }
+}
+
+/** Creates a source-aware key for a child thread association. */
+function createSpawnThreadKey(sourceId: string, threadId: string): string {
+  return `${sourceId}\u0000thread\u0000${threadId}`;
+}
+
+/** Creates a source-aware key for a parent/path association. */
+function createSpawnPathKey(sourceId: string, parentThreadId: string, agentPath: string): string {
+  return `${sourceId}\u0000path\u0000${parentThreadId}\u0000${agentPath}`;
+}
+
+/** Merges two optional child-thread execution metadata values. */
+function mergeSpawnExecutionMetadata(
+  current: SpawnExecutionMetadata | null,
+  next: SpawnExecutionMetadata | null
+): SpawnExecutionMetadata {
+  return {
+    model: next?.model ?? current?.model ?? null,
+    reasoningEffort: next?.reasoningEffort ?? current?.reasoningEffort ?? null
+  };
+}
+
+/** Checks whether spawn metadata contains at least one useful setting. */
+function hasSpawnExecutionMetadata(metadata: SpawnExecutionMetadata): boolean {
+  return metadata.model !== null || metadata.reasoningEffort !== null;
 }
 
 /**

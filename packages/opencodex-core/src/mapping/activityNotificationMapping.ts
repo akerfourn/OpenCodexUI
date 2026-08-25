@@ -121,6 +121,21 @@ export function createActivityFromNotification(notification: CodexNotification):
     );
   }
 
+  if (notification.method === "model/rerouted") {
+    const content = summarizeModelReroute(params);
+
+    return createActivity(
+      createId("model-rerouted"),
+      threadId,
+      "modelRerouted",
+      turnId,
+      content,
+      "completed",
+      content,
+      summarizeActivityDetails(params)
+    );
+  }
+
   if (notification.method === "hook/started" || notification.method === "hook/completed") {
     return createHookActivity(notification.method, params, threadId, turnId);
   }
@@ -219,6 +234,19 @@ function summarizeDiffActivity(diff: string): string {
   }
 
   return `Diff mis à jour: ${changedFileCount} fichiers modifiés`;
+}
+
+/** Summarizes a model reroute without retaining the raw notification payload. */
+function summarizeModelReroute(params: Record<string, unknown>): string {
+  const fromModel = readString(params.fromModel);
+  const toModel = readString(params.toModel);
+  const reason = readString(params.reason);
+  const transition = fromModel.length > 0 && toModel.length > 0
+    ? `${fromModel} → ${toModel}`
+    : toModel || fromModel || "modèle non identifié";
+  const reasonLabel = reason.length > 0 ? `\nRaison : ${reason}` : "";
+
+  return `Modèle rerouté : ${transition}${reasonLabel}`;
 }
 
 /**

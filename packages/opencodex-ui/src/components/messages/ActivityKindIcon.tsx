@@ -11,6 +11,7 @@ import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
+import SwapHorizOutlinedIcon from "@mui/icons-material/SwapHorizOutlined";
 import TerminalOutlinedIcon from "@mui/icons-material/TerminalOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
@@ -90,6 +91,10 @@ function renderActivityKindIcon(kind?: string): ReactNode {
 
   if (kind === "hookPrompt") {
     return <CodeOutlinedIcon fontSize="small" />;
+  }
+
+  if (kind === "modelRerouted") {
+    return <SwapHorizOutlinedIcon fontSize="small" />;
   }
 
   return <MoreHorizOutlinedIcon fontSize="small" />;
@@ -180,6 +185,10 @@ function getActivityKindLabel(
 
   if (kind === "hookPrompt") {
     return translate("message.activityType.hook");
+  }
+
+  if (kind === "modelRerouted") {
+    return translate("message.activityType.modelRerouted");
   }
 
   return translate("message.activityType.activity");

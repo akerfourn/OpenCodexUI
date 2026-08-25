@@ -22,7 +22,10 @@ export type ThreadRuntimeNotificationAdapters = {
     "writeTokenUsage" | "writeTurnExecutionMetadata"
   >;
   readonly threadTurnCache: ThreadTurnCache;
-  readonly collaborationService: Pick<CollaborationService, "handleNotification">;
+  readonly collaborationService: Pick<
+    CollaborationService,
+    "handleNotification" | "getSpawnExecutionMetadata" | "resolveSpawnExecutionMetadata"
+  >;
   readonly threadConversationService: Pick<
     ThreadConversationService,
     "recordStartedThread" | "recordNotification"

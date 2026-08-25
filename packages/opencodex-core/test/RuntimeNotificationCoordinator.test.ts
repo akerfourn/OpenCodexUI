@@ -175,6 +175,52 @@ describe("RuntimeNotificationCoordinator", () => {
     expect(context.coordinator.hasActiveTurn("source-b")).toBe(false);
   });
 
+  it("should attach spawn model settings to a child turn", () => {
+    const writeTurnExecutionMetadata = vi.fn().mockResolvedValue(undefined);
+    const context = createContext({
+      threadCacheService: {
+        writeTokenUsage: vi.fn().mockResolvedValue(undefined),
+        writeTurnExecutionMetadata
+      },
+      collaborationService: {
+        handleNotification: () => Promise.resolve(),
+        getSpawnExecutionMetadata: () => ({
+          model: "gpt-5.6-luna",
+          reasoningEffort: "high"
+        })
+      }
+    });
+    const childThread = createThread("child-1");
+    childThread.parentThreadId = "parent-1";
+    childThread.subAgentSource = {
+      kind: "threadSpawn",
+      parentThreadId: "parent-1",
+      depth: 1,
+      agentPath: "/root/reviewer",
+      agentNickname: null,
+      agentRole: "reviewer",
+      label: null
+    };
+    context.options.threadTurnCache.getOrCreate(childThread);
+
+    context.coordinator.handleNotification(
+      createTurnStartedNotification("child-1", "turn-1"),
+      "source-1"
+    );
+
+    expect(writeTurnExecutionMetadata).toHaveBeenCalledWith(
+      "source-1",
+      "child-1",
+      "turn-1",
+      expect.objectContaining({
+        requestedModel: "gpt-5.6-luna",
+        effectiveModel: "gpt-5.6-luna",
+        requestedReasoningEffort: "high",
+        effectiveReasoningEffort: "high"
+      })
+    );
+  });
+
   it("should complete usage handling after notification handling and active-turn removal", () => {
     const context = createContext({
       usage: {

@@ -85,6 +85,7 @@ export const frConversation = {
       imageGeneration: "Génération d’image",
       imageView: "Lecture d’image",
       mcpTool: "Outil MCP",
+      modelRerouted: "Changement de modèle",
       plan: "Plan",
       reasoning: "Réflexion",
       reviewEnd: "Sortie du mode review",

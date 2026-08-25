@@ -110,6 +110,25 @@ describe("activity mapping", () => {
     });
   });
 
+  it("should expose model reroutes as visible turn activities", () => {
+    expect(createActivityFromNotification({
+      method: "model/rerouted",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        fromModel: "gpt-5.6-sol",
+        toModel: "gpt-5.6-luna",
+        reason: "capacity"
+      }
+    })).toMatchObject({
+      threadId: "thread-1",
+      title: "turn-1",
+      kind: "modelRerouted",
+      content: "Modèle rerouté : gpt-5.6-sol → gpt-5.6-luna\nRaison : capacity",
+      status: "completed"
+    });
+  });
+
   it("should map structured command execution items to activities", () => {
     expect(
       createActivityFromNotification({
