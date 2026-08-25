@@ -1,10 +1,10 @@
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
-import { DEFAULT_SOURCE_NAME, LEGACY_DEFAULT_SOURCE_ID } from "../constants.js";
+import { DEFAULT_SOURCE_NAME, LEGACY_DEFAULT_SOURCE_ID } from "../shared/constants.js";
 import {
   createDefaultLocalSourceSettings,
   serializeSourceSettings
-} from "../sourceSettings.js";
+} from "../sources/sourceSettings.js";
 import { addColumnIfMissing } from "./helpers.js";
 
 /**

@@ -65,12 +65,12 @@ import type {
   SourceCacheRepository
 } from "./types/repositoryTooling.js";
 import { runMigrations } from "./sqlite/migrations.js";
-import { SqliteAutomationCacheRepository } from "./sqlite/repositories/SqliteAutomationCacheRepository.js";
-import { SqliteCollaborationCacheRepository } from "./sqlite/repositories/SqliteCollaborationCacheRepository.js";
-import { SqliteLogCacheRepository } from "./sqlite/repositories/SqliteLogCacheRepository.js";
-import { SqliteProjectCacheRepository } from "./sqlite/repositories/SqliteProjectCacheRepository.js";
-import { SqliteSourceCacheRepository } from "./sqlite/repositories/SqliteSourceCacheRepository.js";
-import { SqliteThreadCacheRepository } from "./sqlite/repositories/SqliteThreadCacheRepository.js";
+import { SqliteAutomationCacheRepository } from "./sqlite/automation/SqliteAutomationCacheRepository.js";
+import { SqliteCollaborationCacheRepository } from "./sqlite/collaboration/SqliteCollaborationCacheRepository.js";
+import { SqliteLogCacheRepository } from "./sqlite/logs/SqliteLogCacheRepository.js";
+import { SqliteProjectCacheRepository } from "./sqlite/projects/SqliteProjectCacheRepository.js";
+import { SqliteSourceCacheRepository } from "./sqlite/sources/SqliteSourceCacheRepository.js";
+import { SqliteThreadCacheRepository } from "./sqlite/threads/SqliteThreadCacheRepository.js";
 
 export type SqliteOpenCodexCacheRepositoryOptions = {
   directory: string;

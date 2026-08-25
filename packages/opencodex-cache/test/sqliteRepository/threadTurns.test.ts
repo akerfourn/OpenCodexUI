@@ -8,7 +8,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createOpenCodexSqliteCacheRepository } from "../../src/SqliteOpenCodexCacheRepository";
-import { parseTurnRows, stringifyTurn } from "../../src/sqlite/turnSerialization";
+import { parseTurnRows, stringifyTurn } from "../../src/sqlite/threads/turnSerialization";
 import type { OpenCodexCacheRepository } from "../../src/types";
 
 describe("SQLite thread turns", () => {

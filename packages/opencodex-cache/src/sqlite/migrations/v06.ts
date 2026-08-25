@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
-import { LEGACY_DEFAULT_SOURCE_ID } from "../constants.js";
+import { LEGACY_DEFAULT_SOURCE_ID } from "../shared/constants.js";
 
 /**
  * Replaces the legacy default source identifier with a generated UUID.

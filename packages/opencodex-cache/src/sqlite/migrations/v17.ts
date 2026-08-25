@@ -4,7 +4,7 @@ import {
   normalizeNullableText,
   normalizeSourceColor,
   serializeSourceSettings
-} from "../sourceSettings.js";
+} from "../sources/sourceSettings.js";
 
 /**
  * Splits legacy local/custom command settings into explicit source kinds.

@@ -4,7 +4,7 @@ import {
   createDefaultCustomSourceSettings,
   createDefaultLocalSourceSettings,
   serializeSourceSettings
-} from "../sourceSettings.js";
+} from "../sources/sourceSettings.js";
 
 /**
  * Migrates source command columns into the JSON settings document.
