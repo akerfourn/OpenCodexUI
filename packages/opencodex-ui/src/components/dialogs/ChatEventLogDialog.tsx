@@ -135,6 +135,13 @@ export function ChatEventLogDialog({
               {t("chatEventLog.description")}
             </Typography>
           </Box>
+          {eventLogStore.entries.length > 0 ? (
+            <CopyIconButton
+              value={serializeEventLog(eventLogStore.entries, sourceId, threadId)}
+              label={t("chatEventLog.copyDiagnostic")}
+              copiedLabel={t("message.copied")}
+            />
+          ) : null}
           <IconButton
             aria-label={t("chatEventLog.refresh")}
             title={t("chatEventLog.refresh")}
@@ -173,7 +180,9 @@ function ChatEventLogRow({
   const { t } = useTranslation();
   const stageLabel = entry.stage === "received"
     ? t("chatEventLog.received")
-    : t("chatEventLog.uiEmitted");
+    : entry.stage === "client-requested"
+      ? t("chatEventLog.clientRequested")
+      : t("chatEventLog.uiEmitted");
   const timeLabel = formatTime(entry.occurredAt);
   const countLabel = entry.count > 1
     ? t("chatEventLog.occurrences", { count: entry.count })
@@ -273,6 +282,39 @@ function serializeEventMetadata(entry: OpenCodexThreadEventLogEntry): string {
     lastOccurredAt: entry.lastOccurredAt,
     count: entry.count,
     details: entry.details
+  }, null, 2);
+}
+
+/**
+ * Serializes the complete bounded event trace for manual diagnostics.
+ *
+ * @param entries Retained metadata-only entries.
+ * @param sourceId Source identifier associated with the dialog.
+ * @param threadId Thread identifier associated with the dialog.
+ * @returns Human-readable JSON trace.
+ */
+function serializeEventLog(
+  entries: OpenCodexThreadEventLogEntry[],
+  sourceId: string | null,
+  threadId: string
+): string {
+  return JSON.stringify({
+    sourceId,
+    threadId,
+    entries: entries.map((entry) => ({
+      id: entry.id,
+      sequence: entry.sequence,
+      stage: entry.stage,
+      eventName: entry.eventName,
+      sourceId: entry.sourceId,
+      threadId: entry.threadId,
+      turnId: entry.turnId,
+      itemId: entry.itemId,
+      occurredAt: entry.occurredAt,
+      lastOccurredAt: entry.lastOccurredAt,
+      count: entry.count,
+      details: entry.details
+    }))
   }, null, 2);
 }
 

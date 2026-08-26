@@ -19,9 +19,10 @@ export const frConversation = {
   chatEventLog: {
     close: "Fermer",
     count: "Occurrences",
+    copyDiagnostic: "Copier le diagnostic",
     copyMetadata: "Copier les métadonnées",
     description:
-      "Métadonnées des événements reçus et transmis à l’interface. Le contenu des messages et des commandes n’est pas enregistré.",
+      "Métadonnées des événements reçus de Codex, des requêtes envoyées à Codex et des événements transmis à l’interface. Le contenu des messages et des commandes n’est pas enregistré.",
     empty: "Aucun événement enregistré pour ce chat.",
     item: "Élément",
     lastOccurredAt: "Dernier passage",
@@ -39,7 +40,8 @@ export const frConversation = {
     title: "Journal des événements — {{thread}}",
     truncated: "Les événements les plus anciens ne sont plus disponibles.",
     turn: "Tour",
-    uiEmitted: "Transmis à l’interface"
+    uiEmitted: "Transmis à l’interface",
+    clientRequested: "Requête envoyée"
   },
   composer: {
     advanced: {

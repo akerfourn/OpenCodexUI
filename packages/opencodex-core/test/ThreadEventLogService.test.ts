@@ -51,6 +51,33 @@ describe("ThreadEventLogService", () => {
     expect(service.read("source-2", "thread-1").entries[0]?.sourceId).toBe("source-2");
   });
 
+  it("should retain outgoing turn requests as content-free metadata", () => {
+    const service = createService();
+    const mutation = service.recordClientRequest(
+      "source-1",
+      "thread-1",
+      "turn.steer",
+      "turn-1",
+      {
+        inputTextLength: 42,
+        attachmentCount: 0
+      }
+    );
+
+    expect(mutation.entry).toMatchObject({
+      stage: "client-requested",
+      eventName: "turn.steer",
+      sourceId: "source-1",
+      threadId: "thread-1",
+      turnId: "turn-1",
+      details: {
+        inputTextLength: 42,
+        attachmentCount: 0
+      }
+    });
+    expect(JSON.stringify(mutation)).not.toContain("private user content");
+  });
+
   it("should coalesce adjacent high-frequency events and sum their lengths", () => {
     const service = createService();
     const firstMutation = service.recordNotification(createDelta("first"), "source-1");

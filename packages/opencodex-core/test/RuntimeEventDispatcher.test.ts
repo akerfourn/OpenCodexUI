@@ -71,4 +71,32 @@ describe("RuntimeEventDispatcher", () => {
     expect(dispatcher.readThreadEventLog("thread-1", "source-2", 50).entries[0])
       .toEqual(expect.objectContaining({ sourceId: "source-2" }));
   });
+
+  it("should record outgoing turn requests in the source-scoped journal", () => {
+    const emittedEvents: OpenCodexEvent[] = [];
+    const dispatcher = new RuntimeEventDispatcher({
+      emitToHost: (event) => emittedEvents.push(event)
+    });
+
+    dispatcher.recordClientRequest(
+      "source-1",
+      "thread-1",
+      "turn.steer",
+      "turn-1",
+      { inputTextLength: 12 }
+    );
+
+    expect(emittedEvents).toHaveLength(1);
+    expect(emittedEvents[0]).toMatchObject({
+      type: "thread.eventLog.updated",
+      sourceId: "source-1",
+      threadId: "thread-1",
+      entry: {
+        stage: "client-requested",
+        eventName: "turn.steer",
+        turnId: "turn-1",
+        details: { inputTextLength: 12 }
+      }
+    });
+  });
 });

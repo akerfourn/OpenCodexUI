@@ -1,7 +1,9 @@
 import type { CodexNotification } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexEvent,
-  OpenCodexThreadEventLogPage
+  OpenCodexThreadEventLogPage,
+  OpenCodexThreadEventLogRequestType,
+  OpenCodexThreadEventLogValue
 } from "@open-codex-ui/opencodex-protocol";
 
 import {
@@ -58,6 +60,34 @@ export class RuntimeEventDispatcher implements RuntimeEventPort {
    */
   recordRawNotification(notification: CodexNotification, sourceId: string): void {
     this.notifyThreadEventLog(this.threadEventLogService.recordNotification(notification, sourceId));
+  }
+
+  /**
+   * Records an outgoing turn request and forwards its journal update.
+   *
+   * @param sourceId Source that receives the request.
+   * @param threadId Thread targeted by the request.
+   * @param requestType Client request name.
+   * @param turnId Active turn targeted by steering, or `null` for a new turn.
+   * @param details Safe scalar request metadata.
+   * @returns Nothing.
+   */
+  recordClientRequest(
+    sourceId: string,
+    threadId: string,
+    requestType: OpenCodexThreadEventLogRequestType,
+    turnId: string | null,
+    details: Record<string, OpenCodexThreadEventLogValue> = {}
+  ): void {
+    this.notifyThreadEventLog(
+      this.threadEventLogService.recordClientRequest(
+        sourceId,
+        threadId,
+        requestType,
+        turnId,
+        details
+      )
+    );
   }
 
   /**

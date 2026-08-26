@@ -328,6 +328,7 @@ function createEventPort(
   return {
     emit,
     recordRawNotification: () => undefined,
+    recordClientRequest: () => undefined,
     readThreadEventLog: () => ({ entries: [], truncated: false })
   };
 }

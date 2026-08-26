@@ -8,6 +8,8 @@ import type {
   OpenCodexReasoningEffort,
   OpenCodexThread,
   OpenCodexThreadEventLogPage,
+  OpenCodexThreadEventLogRequestType,
+  OpenCodexThreadEventLogValue,
   OpenCodexThreadRuntimeStatus,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
@@ -420,6 +422,26 @@ export class ThreadRuntimeHandler {
    */
   recordRawNotification(notification: CodexNotification, sourceId: string): void {
     this.notifications.recordRaw(notification, sourceId);
+  }
+
+  /**
+   * Records an outgoing turn request in the bounded event log.
+   *
+   * @param sourceId Source that receives the request.
+   * @param threadId Thread targeted by the request.
+   * @param requestType Client request name.
+   * @param turnId Active turn targeted by steering, or `null` for a new turn.
+   * @param details Safe scalar request metadata.
+   * @returns Nothing.
+   */
+  recordClientRequest(
+    sourceId: string,
+    threadId: string,
+    requestType: OpenCodexThreadEventLogRequestType,
+    turnId: string | null,
+    details: Record<string, OpenCodexThreadEventLogValue> = {}
+  ): void {
+    this.notifications.recordClientRequest(sourceId, threadId, requestType, turnId, details);
   }
 
   /**

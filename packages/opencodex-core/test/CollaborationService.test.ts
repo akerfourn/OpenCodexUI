@@ -321,6 +321,7 @@ function createEventPort(emit: (event: OpenCodexEvent) => void = () => undefined
   return {
     emit,
     recordRawNotification: () => undefined,
+    recordClientRequest: () => undefined,
     readThreadEventLog: () => ({ entries: [], truncated: false })
   };
 }

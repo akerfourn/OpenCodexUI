@@ -37,7 +37,7 @@ export type ThreadConversationServiceOptions = {
   threadTurnCache: ThreadTurnCache;
   threadCacheService: ThreadCacheService;
   settings: Pick<RuntimeSettingsPort, "getSettings">;
-  events: Pick<RuntimeEventPort, "emit">;
+  events: Pick<RuntimeEventPort, "emit" | "recordClientRequest">;
   clients: Pick<ClientPort, "ensureClient">;
   projects: Pick<
     ProjectSourcePort,

@@ -224,7 +224,13 @@ export type OpenCodexLogEntry = {
 /**
  * Processing stage recorded by the per-chat Codex event trace.
  */
-export type OpenCodexThreadEventLogStage = "received" | "ui-emitted";
+export type OpenCodexThreadEventLogStage =
+  | "received"
+  | "ui-emitted"
+  | "client-requested";
+
+/** Supported client requests retained by the per-chat Codex event trace. */
+export type OpenCodexThreadEventLogRequestType = "turn.start" | "turn.steer";
 
 /**
  * Scalar metadata value retained by the per-chat Codex event trace.

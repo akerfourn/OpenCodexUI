@@ -4,6 +4,8 @@ import type {
   OpenCodexEvent,
   OpenCodexSettings,
   OpenCodexThread,
+  OpenCodexThreadEventLogRequestType,
+  OpenCodexThreadEventLogValue,
   OpenCodexTurnExecutionMetadata
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it } from "vitest";
@@ -76,6 +78,20 @@ describe("ThreadConversationService turn actions", () => {
       effectiveReasoningEffort: "high",
       serviceTier: "priority"
     }]);
+    expect(fixture.clientRequests).toEqual([{
+      sourceId: "source-1",
+      threadId: "thread-new",
+      requestType: "turn.start",
+      turnId: null,
+      details: {
+        inputTextLength: 5,
+        attachmentCount: 0,
+        referenceCount: 0,
+        model: "gpt-requested",
+        reasoningEffort: "high",
+        serviceTier: "priority"
+      }
+    }]);
   });
 
   it("resumes an existing thread before starting its next turn", async () => {
@@ -140,6 +156,17 @@ describe("ThreadConversationService turn actions", () => {
       expectedTurnId: "turn-active"
     });
     expect(fixture.calls).toEqual(["ensureClient", "steerTurn", "writeDelta"]);
+    expect(fixture.clientRequests).toEqual([{
+      sourceId: "source-1",
+      threadId: "thread-1",
+      requestType: "turn.steer",
+      turnId: "turn-active",
+      details: {
+        inputTextLength: 5,
+        attachmentCount: 0,
+        referenceCount: 0
+      }
+    }]);
     expect(fixture.deltaTurns).toEqual([expect.objectContaining({
       id: "turn-active",
       items: [expect.objectContaining({
@@ -243,6 +270,13 @@ type Fixture = {
   thread: OpenCodexThread;
   calls: string[];
   events: OpenCodexEvent[];
+  clientRequests: Array<{
+    sourceId: string;
+    threadId: string;
+    requestType: OpenCodexThreadEventLogRequestType;
+    turnId: string | null;
+    details: Record<string, OpenCodexThreadEventLogValue>;
+  }>;
   openedThreads: OpenCodexEvent[];
   indexedThreads: OpenCodexThread[];
   ensureSourceIds: Array<string | null>;
@@ -263,6 +297,7 @@ function createFixture(
   const thread = options.thread ?? createThread();
   const calls: string[] = [];
   const events: OpenCodexEvent[] = [];
+  const clientRequests: Fixture["clientRequests"] = [];
   const openedThreads: OpenCodexEvent[] = [];
   const indexedThreads: OpenCodexThread[] = [];
   const ensureSourceIds: Array<string | null> = [];
@@ -316,6 +351,15 @@ function createFixture(
         if (event.type === "thread.opened") {
           openedThreads.push(event);
         }
+      },
+      recordClientRequest: (
+        sourceId: string,
+        threadId: string,
+        requestType: OpenCodexThreadEventLogRequestType,
+        turnId: string | null,
+        details: Record<string, OpenCodexThreadEventLogValue> = {}
+      ) => {
+        clientRequests.push({ sourceId, threadId, requestType, turnId, details });
       }
     },
     clients: {
@@ -352,6 +396,7 @@ function createFixture(
     thread,
     calls,
     events,
+    clientRequests,
     openedThreads,
     indexedThreads,
     ensureSourceIds,

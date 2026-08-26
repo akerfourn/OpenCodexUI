@@ -214,8 +214,9 @@ function createFixture(options: FixtureOptions = {}): Fixture {
   const threadTurnCache = new ThreadTurnCache();
   const events: OpenCodexEvent[] = [];
   const client = new PaginationCodexClient(options);
-  const eventPort: Pick<RuntimeEventPort, "emit"> = {
-    emit: (event) => events.push(event)
+  const eventPort: Pick<RuntimeEventPort, "emit" | "recordClientRequest"> = {
+    emit: (event) => events.push(event),
+    recordClientRequest: () => undefined
   };
   const settings: Pick<RuntimeSettingsPort, "getSettings"> = {
     getSettings: () => createSettings()

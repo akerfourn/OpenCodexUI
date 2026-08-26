@@ -5,6 +5,7 @@ import type { CodexNotification } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexEvent,
   OpenCodexThreadEventLogEntry,
+  OpenCodexThreadEventLogRequestType,
   OpenCodexThreadEventLogStage,
   OpenCodexThreadEventLogValue
 } from "@open-codex-ui/opencodex-protocol";
@@ -76,6 +77,36 @@ export class ThreadEventLogService {
     }
 
     return this.appendEntry("received", notification.method, target);
+  }
+
+  /**
+   * Records metadata for an outgoing turn request.
+   *
+   * The request body is intentionally not accepted here. Callers can retain
+   * only scalar metadata such as input length and attachment count, keeping
+   * the trace useful for routing diagnostics without storing user content.
+   *
+   * @param sourceId Source that receives the request.
+   * @param threadId Thread targeted by the request.
+   * @param requestType Client request name.
+   * @param turnId Active turn targeted by steering, or `null` for a new turn.
+   * @param details Safe scalar request metadata.
+   * @returns Stored journal mutation.
+   */
+  recordClientRequest(
+    sourceId: string,
+    threadId: string,
+    requestType: OpenCodexThreadEventLogRequestType,
+    turnId: string | null,
+    details: Record<string, OpenCodexThreadEventLogValue> = {}
+  ): ThreadEventLogMutation {
+    return this.appendEntry("client-requested", requestType, {
+      sourceId,
+      threadId,
+      turnId,
+      itemId: null,
+      details: { ...details }
+    });
   }
 
   /**

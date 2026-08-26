@@ -222,8 +222,9 @@ function createReadFixture(options: ReadFixtureOptions = {}): ReadFixture {
     },
     readThreads: async () => []
   } as unknown as ThreadCacheService;
-  const eventsPort: Pick<RuntimeEventPort, "emit"> = {
-    emit: (event) => events.push(event)
+  const eventsPort: Pick<RuntimeEventPort, "emit" | "recordClientRequest"> = {
+    emit: (event) => events.push(event),
+    recordClientRequest: () => undefined
   };
   const settings: Pick<RuntimeSettingsPort, "getSettings"> = {
     getSettings: () => ({ language: "en" } as OpenCodexSettings)

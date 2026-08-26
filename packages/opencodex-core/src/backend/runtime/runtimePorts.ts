@@ -5,7 +5,9 @@ import type {
   OpenCodexLogEntry,
   OpenCodexProject,
   OpenCodexSettings,
-  OpenCodexThreadEventLogPage
+  OpenCodexThreadEventLogPage,
+  OpenCodexThreadEventLogRequestType,
+  OpenCodexThreadEventLogValue
 } from "@open-codex-ui/opencodex-protocol";
 
 /** Provides access to the mutable settings owned by the backend runtime. */
@@ -22,6 +24,14 @@ export interface RuntimeEventPort {
   emit(event: OpenCodexEvent): void;
   /** Records one raw Codex notification in the thread event journal. */
   recordRawNotification(notification: CodexNotification, sourceId: string): void;
+  /** Records one outgoing turn request in the thread event journal. */
+  recordClientRequest(
+    sourceId: string,
+    threadId: string,
+    requestType: OpenCodexThreadEventLogRequestType,
+    turnId: string | null,
+    details?: Record<string, OpenCodexThreadEventLogValue>
+  ): void;
   /** Reads the bounded event journal for one thread. */
   readThreadEventLog(
     threadId: string,

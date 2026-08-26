@@ -22,9 +22,10 @@ export const enConversation = {
   chatEventLog: {
     close: "Close",
     count: "Occurrences",
+    copyDiagnostic: "Copy diagnostic trace",
     copyMetadata: "Copy metadata",
     description:
-      "Metadata for events received from Codex and sent to the UI. Message and command content is not stored.",
+      "Metadata for events received from Codex, requests sent to Codex, and events sent to the UI. Message and command content is not stored.",
     empty: "No events recorded for this chat.",
     item: "Item",
     lastOccurredAt: "Last occurrence",
@@ -41,7 +42,8 @@ export const enConversation = {
     title: "Event log — {{thread}}",
     truncated: "The oldest events are no longer available.",
     turn: "Turn",
-    uiEmitted: "Sent to the UI"
+    uiEmitted: "Sent to the UI",
+    clientRequested: "Client request"
   },
   composer: {
     advanced: {

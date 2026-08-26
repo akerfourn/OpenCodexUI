@@ -6,6 +6,7 @@ import type {
   OpenCodexImageAttachment,
   OpenCodexMessage,
   OpenCodexReasoningEffort,
+  OpenCodexThreadEventLogValue,
   OpenCodexTurn,
   OpenCodexTurnExecutionMetadata
 } from "@open-codex-ui/opencodex-protocol";
@@ -47,7 +48,7 @@ export type ThreadTurnActionsServiceOptions = {
   /** Reads the current settings snapshot. */
   settings: Pick<RuntimeSettingsPort, "getSettings">;
   /** Emits backend events. */
-  events: Pick<RuntimeEventPort, "emit">;
+  events: Pick<RuntimeEventPort, "emit" | "recordClientRequest">;
   /** Resolves source-scoped Codex clients. */
   clients: Pick<ClientPort, "ensureClient">;
   /** Resolves sources used by existing and newly created threads. */
@@ -142,6 +143,18 @@ export class ThreadTurnActionsService {
       message
     });
 
+    this.options.events.recordClientRequest(
+      resolvedSource.id,
+      targetThreadId,
+      "turn.start",
+      null,
+      createTurnRequestDetails(trimmedText, attachments, references, {
+        model: model ?? null,
+        reasoningEffort: requestedReasoningEffort,
+        serviceTier: serviceTier ?? null
+      })
+    );
+
     const turnResponse = await client.startTurn({
       threadId: targetThreadId,
       input,
@@ -211,6 +224,13 @@ export class ThreadTurnActionsService {
     }
 
     const client = await this.options.clients.ensureClient(sourceId);
+    this.options.events.recordClientRequest(
+      sourceId,
+      threadId,
+      "turn.steer",
+      turnId,
+      createTurnRequestDetails(trimmedText, attachments, references)
+    );
     const response = await client.steerTurn({
       threadId,
       input,
@@ -468,4 +488,27 @@ export class ThreadTurnActionsService {
     return normalizeProjectPath(projectPath)
       ?? normalizeProjectPath(this.options.backendOptions.projectPath);
   }
+}
+
+/**
+ * Builds content-free metadata for a turn request.
+ *
+ * @param text Trimmed user text.
+ * @param attachments Image attachments selected by the user.
+ * @param references Composer references selected by the user.
+ * @param extra Additional scalar metadata for a new turn.
+ * @returns Safe request metadata.
+ */
+function createTurnRequestDetails(
+  text: string,
+  attachments: OpenCodexImageAttachment[],
+  references: OpenCodexComposerReference[],
+  extra: Record<string, OpenCodexThreadEventLogValue> = {}
+): Record<string, OpenCodexThreadEventLogValue> {
+  return {
+    inputTextLength: text.length,
+    attachmentCount: attachments.length,
+    referenceCount: references.length,
+    ...extra
+  };
 }

@@ -3,7 +3,9 @@ import type {
   OpenCodexCollaborationEvent,
   OpenCodexCollaborationQuery,
   OpenCodexEvent,
-  OpenCodexThreadEventLogPage
+  OpenCodexThreadEventLogPage,
+  OpenCodexThreadEventLogRequestType,
+  OpenCodexThreadEventLogValue
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { ThreadTurnCache } from "../../ThreadTurnCache.js";
@@ -74,6 +76,23 @@ export class ThreadRuntimeNotifications {
   /** Records a raw notification in the bounded event log. */
   recordRaw(notification: CodexNotification, sourceId: string): void {
     this.options.events.recordRawNotification(notification, sourceId);
+  }
+
+  /** Records an outgoing turn request in the bounded event log. */
+  recordClientRequest(
+    sourceId: string,
+    threadId: string,
+    requestType: OpenCodexThreadEventLogRequestType,
+    turnId: string | null,
+    details: Record<string, OpenCodexThreadEventLogValue> = {}
+  ): void {
+    this.options.events.recordClientRequest(
+      sourceId,
+      threadId,
+      requestType,
+      turnId,
+      details
+    );
   }
 
   /** Emits a backend event through the runtime event port. */
