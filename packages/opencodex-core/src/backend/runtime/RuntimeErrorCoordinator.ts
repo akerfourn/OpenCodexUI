@@ -36,7 +36,7 @@ export class RuntimeErrorCoordinator {
    *
    * @param request Request that failed.
    * @param error Unknown thrown value.
-   * @returns Never returns because it rethrows the normalized error.
+   * @returns Never returns because it rethrows the normalized message as an Error.
    */
   handleRequestError(request: OpenCodexRequest, error: unknown): never {
     const normalized = normalizeError(error, this.options.settings.getSettings().language);
@@ -57,7 +57,9 @@ export class RuntimeErrorCoordinator {
       });
     }
 
-    throw normalized;
+    // Electron IPC serializes thrown values. Throw an Error instance so the
+    // renderer receives the actual message instead of "[object Object]".
+    throw new Error(normalized.message);
   }
 
   /**

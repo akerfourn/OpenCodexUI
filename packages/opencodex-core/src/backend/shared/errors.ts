@@ -19,7 +19,7 @@ export type BackendLabels = {
  *
  * @param error Raw failure.
  * @param labels Localized backend labels.
- * @returns Error with a user-facing message and optional details.
+ * @returns Serializable normalized error payload with an optional detail value.
  */
 export function normalizeError(
   error: unknown,

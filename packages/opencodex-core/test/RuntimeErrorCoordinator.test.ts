@@ -35,10 +35,8 @@ describe("RuntimeErrorCoordinator", () => {
 
     const thrown = captureThrown(() => coordinator.handleRequestError(request, processError));
 
-    expect(thrown).toEqual({
-      message: "Codex stopped.",
-      details: "Check that Codex CLI is installed and that codexCommand points to the right executable."
-    });
+    expect(thrown).toBeInstanceOf(Error);
+    expect(thrown).toMatchObject({ message: "Codex stopped." });
     expect(operations).toEqual([
       "log:Codex stopped.",
       "emit:error",
@@ -188,6 +186,29 @@ describe("RuntimeErrorCoordinator", () => {
     });
   });
 
+  it("should rethrow a Git-style failure as an Error that can cross IPC", () => {
+    const emit = vi.fn<(event: OpenCodexEvent) => void>();
+    const persistLog = vi.fn();
+    const coordinator = createCoordinator({ persistLog, emit });
+    const gitError = new Error("fatal: unable to access remote repository");
+    const request = {
+      type: "git.status",
+      projectPath: "/workspace/project",
+      sourceId: "source-1"
+    } satisfies OpenCodexRequest;
+
+    const thrown = captureThrown(() => coordinator.handleRequestError(request, gitError));
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect(thrown).toMatchObject({ message: gitError.message });
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({
+      type: "error",
+      message: gitError.message,
+      sourceId: "source-1"
+    }));
+    expect(persistLog).toHaveBeenCalledWith("error", gitError.message, gitError.stack);
+  });
+
   it("should report a recovery rejection as a second client error", async () => {
     const recoveryFailure = "recovery failed";
     const emit = vi.fn<(event: OpenCodexEvent) => void>();
@@ -261,7 +282,7 @@ function createEventPort(
   };
 }
 
-/** Captures the plain normalized value thrown by request error handling. */
+/** Captures the value thrown by request error handling. */
 function captureThrown(callback: () => never): unknown {
   try {
     callback();
