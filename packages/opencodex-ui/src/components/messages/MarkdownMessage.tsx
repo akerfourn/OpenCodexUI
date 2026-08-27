@@ -34,6 +34,8 @@ import {
 type MarkdownMessageProps = {
   markdown: string;
   isStreaming?: boolean;
+  /** Requires a modifier key before opening links in the rendered Markdown. */
+  requireModifiedClick?: boolean;
   /** Opens one link rendered from the Markdown content. */
   onOpenLink(href: string): void;
 };
@@ -43,6 +45,8 @@ type RenderedMarkdownProps = {
   isStreaming: boolean;
   shouldHighlightSyntax: boolean;
   containerRef: RefObject<HTMLDivElement>;
+  /** Requires a modifier key before opening links in the rendered Markdown. */
+  requireModifiedClick: boolean;
   /** Opens one link rendered from the Markdown content. */
   onOpenLink(href: string): void;
 };
@@ -70,6 +74,7 @@ const plainRehypePlugins: [] = [];
 export function MarkdownMessage({
   markdown,
   isStreaming = false,
+  requireModifiedClick = false,
   onOpenLink
 }: MarkdownMessageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +87,7 @@ export function MarkdownMessage({
       isStreaming={isStreaming}
       shouldHighlightSyntax={shouldHighlightSyntax}
       containerRef={containerRef}
+      requireModifiedClick={requireModifiedClick}
       onOpenLink={onOpenLink}
     />
   );
@@ -100,6 +106,7 @@ function RenderedMarkdown({
   isStreaming,
   shouldHighlightSyntax,
   containerRef,
+  requireModifiedClick,
   onOpenLink
 }: RenderedMarkdownProps) {
   const rehypePlugins = isStreaming
@@ -179,7 +186,11 @@ function RenderedMarkdown({
           pre: PreBlock,
           code: InlineCode,
           a: ({ href, children }) => (
-            <MarkdownLink href={href} onOpenLink={onOpenLink}>
+            <MarkdownLink
+              href={href}
+              requireModifiedClick={requireModifiedClick}
+              onOpenLink={onOpenLink}
+            >
               {children}
             </MarkdownLink>
           )

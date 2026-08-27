@@ -9,8 +9,16 @@ vi.mock("react-i18next", () => ({
 }));
 
 import { MarkdownMessage } from "../src/components/messages/MarkdownMessage";
+import { shouldOpenMarkdownLink } from "../src/components/messages/MarkdownLink";
 
 describe("MarkdownMessage", () => {
+  it("should require a control or meta click when configured", () => {
+    expect(shouldOpenMarkdownLink({ ctrlKey: false, metaKey: false }, true)).toBe(false);
+    expect(shouldOpenMarkdownLink({ ctrlKey: true, metaKey: false }, true)).toBe(true);
+    expect(shouldOpenMarkdownLink({ ctrlKey: false, metaKey: true }, true)).toBe(true);
+    expect(shouldOpenMarkdownLink({ ctrlKey: false, metaKey: false }, false)).toBe(true);
+  });
+
   it("should render completed links, lists, tables and highlighted code", () => {
     const markdown = [
       "- first item",

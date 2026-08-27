@@ -143,7 +143,11 @@ export function MessageRow({
             overflowWrap: "anywhere"
           }}
         >
-          <MarkdownMessageM markdown={content} onOpenLink={onOpenLink} />
+          <MarkdownMessageM
+            markdown={content}
+            requireModifiedClick
+            onOpenLink={onOpenLink}
+          />
           {attachments.length > 0 ? <ImageAttachmentPreviewGrid attachments={attachments} /> : null}
         </Paper>
         <Box
@@ -259,6 +263,7 @@ export function MessageRow({
             <MarkdownMessageM
               markdown={content}
               isStreaming={isStreaming}
+              requireModifiedClick
               onOpenLink={onOpenLink}
             />
           </Box>
@@ -268,6 +273,7 @@ export function MessageRow({
           <MarkdownMessageM
             markdown={content}
             isStreaming={isStreaming}
+            requireModifiedClick
             onOpenLink={onOpenLink}
           />
           {attachments.length > 0 ? <ImageAttachmentPreviewGrid attachments={attachments} /> : null}
