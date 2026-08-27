@@ -1,7 +1,13 @@
-import type { OpenCodexActivity } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexActivity,
+  OpenCodexTurn
+} from "@open-codex-ui/opencodex-protocol";
 
 import type { ChatTimelineStore } from "./ChatTimelineStore";
-import { findOrCreateTurn } from "./chatTurnMutations";
+import {
+  findOrCreateTurn,
+  movePlanItemsToLatestSubTurn
+} from "./chatTurnMutations";
 import { toMessageStatus } from "./chatTurnUtils";
 
 /**
@@ -31,7 +37,7 @@ export function appendActivityItem(
   }
 
   const turn = findOrCreateTurn(timeline, threadId, turnId);
-  const existing = turn.items.find((item) => item.id === activity.id);
+  const existing = findExistingActivityItem(turn, activity);
   turn.status = "running";
 
   if (existing !== undefined) {
@@ -50,6 +56,11 @@ export function appendActivityItem(
     if (activity.kind === "fileChange" || activity.kind === "plan") {
       existing.content = activity.content;
       existing.status = toMessageStatus(activity.status);
+
+      if (activity.kind === "plan") {
+        turn.items = movePlanItemsToLatestSubTurn(turn).items;
+      }
+
       return;
     }
 
@@ -74,6 +85,34 @@ export function appendActivityItem(
     details: activity.details,
     plan: activity.plan
   });
+
+  if (activity.kind === "plan") {
+    turn.items = movePlanItemsToLatestSubTurn(turn).items;
+  }
+}
+
+/**
+ * Finds the activity item that a live update should replace.
+ *
+ * Plan notifications are snapshots of one plan per turn. When Codex omits
+ * or changes the generated plan id, the existing plan kind remains the safest
+ * association available.
+ *
+ * @param turn Turn containing the activity.
+ * @param activity Incoming activity update.
+ * @returns Matching item, or `undefined` when it is new.
+ */
+function findExistingActivityItem(
+  turn: OpenCodexTurn,
+  activity: OpenCodexActivity
+): OpenCodexTurn["items"][number] | undefined {
+  if (activity.kind !== "plan") {
+    return turn.items.find((item) => item.id === activity.id);
+  }
+
+  return turn.items.find((item) => (
+    item.id === activity.id && item.role === "activity" && item.kind === "plan"
+  )) ?? turn.items.find((item) => item.role === "activity" && item.kind === "plan");
 }
 
 /**

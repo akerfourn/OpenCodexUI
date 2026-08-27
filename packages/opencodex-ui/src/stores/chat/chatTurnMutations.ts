@@ -87,6 +87,7 @@ export function upsertPendingUserTurn(
 
   const turn = findOrCreateTurn(timeline, threadId, `pending:${message.id}`);
   turn.items.push(toTurnItem(message));
+  turn.items = movePlanItemsToLatestSubTurn(turn).items;
   return turn.id;
 }
 
@@ -132,6 +133,50 @@ export function movePendingTurnToStartedTurn(
 }
 
 /**
+ * Moves plan activities into the sub-turn opened by the latest user item.
+ *
+ * Codex keeps the same turn id when a user steers an active turn. The UI uses
+ * user items to split that turn into sub-turns, so an in-place plan update
+ * must be repositioned when a later steer exists.
+ *
+ * @param turn Turn whose plan activities should be normalized.
+ * @returns The original turn when no repositioning is needed, or a copy with
+ * the plan activities moved after the latest user item.
+ */
+export function movePlanItemsToLatestSubTurn(turn: OpenCodexTurn): OpenCodexTurn {
+  const latestUserIndex = findLastUserItemIndex(turn.items);
+
+  if (latestUserIndex < 0) {
+    return turn;
+  }
+
+  const hasPlanBeforeLatestUser = turn.items.some((item, index) => (
+    index < latestUserIndex && isPlanItem(item)
+  ));
+
+  if (!hasPlanBeforeLatestUser) {
+    return turn;
+  }
+
+  const planItems = turn.items.filter(isPlanItem);
+  const itemsWithoutPlans = turn.items.filter((item) => !isPlanItem(item));
+  const latestUserIndexWithoutPlans = findLastUserItemIndex(itemsWithoutPlans);
+
+  if (latestUserIndexWithoutPlans < 0) {
+    return turn;
+  }
+
+  return {
+    ...turn,
+    items: [
+      ...itemsWithoutPlans.slice(0, latestUserIndexWithoutPlans + 1),
+      ...planItems,
+      ...itemsWithoutPlans.slice(latestUserIndexWithoutPlans + 1)
+    ]
+  };
+}
+
+/**
  * Finds a turn or creates an empty one.
  *
  * @param timeline Timeline store to mutate.
@@ -162,6 +207,32 @@ export function findOrCreateTurn(
 
   timeline.appendTurn(created);
   return created;
+}
+
+/**
+ * Finds the last user item in a turn.
+ *
+ * @param items Turn items to inspect.
+ * @returns Index of the last user item, or `-1` when none exists.
+ */
+function findLastUserItemIndex(items: OpenCodexTurn["items"]): number {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (items[index]?.role === "user") {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+/**
+ * Checks whether a turn item is a structured plan activity.
+ *
+ * @param item Turn item to inspect.
+ * @returns Whether the item represents a plan.
+ */
+function isPlanItem(item: OpenCodexTurn["items"][number]): boolean {
+  return item.role === "activity" && item.kind === "plan";
 }
 
 /**

@@ -1,6 +1,7 @@
 /** Covers replacement and enrichment of live activity items. */
 import { describe, expect, it } from "vitest";
 
+import { buildChatTurnStructure } from "../../src/stores/chat/chatTurnStructure";
 import {
   createChatStore,
   createCommandActivity,
@@ -52,5 +53,69 @@ describe("ChatStore live activities", () => {
         ]
       }
     });
+  });
+
+  it("should move a plan to the latest reasoning block after steering", () => {
+    const chatStore = createChatStore({});
+    const turn = {
+      id: "turn-1",
+      threadId: "thread-1",
+      status: "running",
+      startedAt: null,
+      completedAt: null,
+      durationMs: null,
+      items: [
+        {
+          id: "user-1",
+          role: "user" as const,
+          content: "Initial request",
+          status: "completed" as const,
+          createdAt: null
+        },
+        {
+          id: "reasoning-1",
+          role: "assistant" as const,
+          phase: "commentary" as const,
+          content: "First reasoning block",
+          status: "completed" as const,
+          createdAt: null
+        }
+      ]
+    };
+
+    chatStore.timeline.setTurns([turn]);
+    chatStore.timeline.applyActivityUpdated(createPlanActivity(
+      "inProgress: Initial plan",
+      [{ step: "Initial plan", status: "inProgress" }]
+    ), "turn-1", null);
+    chatStore.timeline.createOptimisticSteerItem("turn-1", "Continue", []);
+
+    let structure = buildChatTurnStructure(chatStore.timeline.turns[0]!);
+    expect(structure.subTurns).toHaveLength(2);
+    expect(structure.subTurns[0]?.reasoningItems.some((item) => item.kind === "plan"))
+      .toBe(false);
+    expect(structure.subTurns[1]?.reasoningItems.some((item) => item.kind === "plan"))
+      .toBe(true);
+
+    chatStore.timeline.applyActivityUpdated({
+      ...createPlanActivity(
+        "completed: Initial plan\ninProgress: Follow-up",
+        [
+          { step: "Initial plan", status: "completed" },
+          { step: "Follow-up", status: "inProgress" }
+        ]
+      ),
+      id: "plan-after-steer"
+    }, "turn-1", null);
+
+    structure = buildChatTurnStructure(chatStore.timeline.turns[0]!);
+    expect(structure.subTurns[0]?.reasoningItems.some((item) => item.kind === "plan"))
+      .toBe(false);
+    expect(structure.subTurns[1]?.reasoningItems).toEqual([
+      expect.objectContaining({
+        kind: "plan",
+        content: "completed: Initial plan\ninProgress: Follow-up"
+      })
+    ]);
   });
 });

@@ -21,6 +21,7 @@ import {
   applyThreadTurns,
   applyTurnDuration,
   findOrCreateTurn,
+  movePlanItemsToLatestSubTurn,
   movePendingTurnToStartedTurn,
   upsertPendingUserTurn
 } from "./chatTurnMutations";
@@ -114,7 +115,9 @@ export class ChatTimelineStore {
    * @param turns Raw turns.
    */
   setTurns(turns: OpenCodexTurn[]): void {
-    this.turns = turns.map((turn) => this.attachKnownTokenUsage(turn));
+    this.turns = turns.map((turn) => this.attachKnownTokenUsage(
+      movePlanItemsToLatestSubTurn(turn)
+    ));
     this.syncTurnStores();
   }
 
@@ -124,7 +127,7 @@ export class ChatTimelineStore {
    * @param turn Raw turn.
    */
   appendTurn(turn: OpenCodexTurn): void {
-    const enrichedTurn = this.attachKnownTokenUsage(turn);
+    const enrichedTurn = this.attachKnownTokenUsage(movePlanItemsToLatestSubTurn(turn));
     this.turns.push(enrichedTurn);
     this.upsertTurnStore(enrichedTurn);
   }
@@ -367,6 +370,7 @@ export class ChatTimelineStore {
       createdAt: new Date().toISOString(),
       attachments
     });
+    turn.items = movePlanItemsToLatestSubTurn(turn).items;
     this.scrollToBottomVersion += 1;
     return itemId;
   }
@@ -385,6 +389,7 @@ export class ChatTimelineStore {
     }
 
     turn.items = turn.items.filter((item) => item.id !== itemId);
+    turn.items = movePlanItemsToLatestSubTurn(turn).items;
   }
 
   /**

@@ -1,6 +1,7 @@
 /** Characterizes timeline merging, streaming, pagination, and reading state. */
 import { describe, expect, it } from "vitest";
 
+import { buildChatTurnStructure } from "../../src/stores/chat/chatTurnStructure";
 import {
   createChatStore,
   createTokenUsage,
@@ -133,6 +134,65 @@ describe("ChatStore timeline characterization", () => {
       status: "streaming",
       phase: "commentary"
     });
+  });
+
+  it("should keep a plan in the latest sub-turn when sync returns an old item order", () => {
+    const chatStore = createChatStore({});
+    const snapshotTurn = createTurn("turn-1", "running");
+
+    snapshotTurn.items = [
+      {
+        id: "user-1",
+        role: "user",
+        content: "Initial request",
+        status: "completed",
+        createdAt: null
+      },
+      {
+        id: "reasoning-1",
+        role: "assistant",
+        phase: "commentary",
+        content: "First reasoning block",
+        status: "completed",
+        createdAt: null
+      },
+      {
+        id: "plan-turn-1",
+        role: "activity",
+        kind: "plan",
+        content: "Initial plan",
+        status: "streaming",
+        createdAt: null,
+        plan: null
+      },
+      {
+        id: "steer-1",
+        role: "user",
+        kind: "steer",
+        content: "Continue",
+        status: "completed",
+        createdAt: null
+      },
+      {
+        id: "reasoning-2",
+        role: "assistant",
+        phase: "commentary",
+        content: "Follow-up reasoning block",
+        status: "streaming",
+        createdAt: null
+      }
+    ];
+
+    chatStore.timeline.setTurns([snapshotTurn]);
+
+    const structure = buildChatTurnStructure(chatStore.timeline.turns[0]!);
+    expect(structure.subTurns[0]?.reasoningItems.map((item) => item.id)).toEqual([
+      "reasoning-1"
+    ]);
+    expect(structure.subTurns[1]?.reasoningItems.map((item) => item.id)).toEqual([
+      "plan-turn-1",
+      "reasoning-2"
+    ]);
   });
 
   it("should prepend older turns while updating pagination and scroll versions", () => {
