@@ -31,6 +31,7 @@ describe("PlanActivityRow", () => {
     expect(markup).toContain("message.planStatus.completed");
     expect(markup).toContain("message.planStatus.inProgress");
     expect(markup).toContain("message.planStatus.pending");
+    expect(markup).toContain('role="progressbar"');
     expect(markup).not.toContain('type="checkbox"');
   });
 

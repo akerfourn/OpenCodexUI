@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, CircularProgress, Typography } from "@mui/material";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
 import IndeterminateCheckBoxIcon from "@mui/icons-material/IndeterminateCheckBox";
@@ -53,6 +53,30 @@ export function PlanActivityRow({ plan, icon }: PlanActivityRowProps) {
           const MarkerIcon = isCompleted
             ? CheckBoxIcon
             : isInProgress ? IndeterminateCheckBoxIcon : CheckBoxOutlineBlankIcon;
+          const markerColor = isCompleted
+            ? "success.main"
+            : isInProgress ? "primary.main" : "text.disabled";
+          const marker = isInProgress ? (
+            <CircularProgress
+              aria-hidden="true"
+              size={14}
+              thickness={5}
+              sx={{
+                color: markerColor,
+                flex: "0 0 auto",
+                mt: "2px"
+              }}
+            />
+          ) : (
+            <MarkerIcon
+              aria-hidden="true"
+              sx={{
+                color: markerColor,
+                fontSize: "1rem",
+                flex: "0 0 auto"
+              }}
+            />
+          );
 
           return (
             <Box
@@ -68,16 +92,7 @@ export function PlanActivityRow({ plan, icon }: PlanActivityRowProps) {
                 textDecoration: isCompleted ? "line-through" : "none"
               }}
             >
-              <MarkerIcon
-                aria-hidden="true"
-                sx={{
-                  color: isCompleted
-                    ? "success.main"
-                    : isInProgress ? "primary.main" : "text.disabled",
-                  fontSize: "1rem",
-                  flex: "0 0 auto"
-                }}
-              />
+              {marker}
               <Typography component="span" variant="body2" sx={{ minWidth: 0 }}>
                 {step.step}
               </Typography>
