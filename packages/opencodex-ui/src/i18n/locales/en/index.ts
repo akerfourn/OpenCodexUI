@@ -3,6 +3,7 @@ import type { frTranslation } from "../fr/index.js";
 
 import { enApp } from "./app.js";
 import { enAutomation } from "./automation.js";
+import { enCommon } from "./common.js";
 import { enConversation } from "./conversation.js";
 import { enGit } from "./git.js";
 import { enNavigation } from "./navigation.js";
@@ -14,6 +15,7 @@ import { enUsage } from "./usage.js";
 export const enTranslation = {
   ...enApp,
   ...enAutomation,
+  ...enCommon,
   ...enConversation,
   ...enGit,
   ...enNavigation,

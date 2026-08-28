@@ -302,9 +302,9 @@ export function MessageRow({
             </Box>
             <Box sx={{ display: "flex", gap: 0.5 }}>
               {hasTurnDetails ? (
-                <Tooltip title={t("message.turnDetails")}>
+                <Tooltip title={t("turnDetails.title")}>
                   <IconButton
-                    aria-label={t("message.turnDetails")}
+                    aria-label={t("turnDetails.title")}
                     size="small"
                     onClick={() => setTurnDetailsOpen(true)}
                     sx={{
