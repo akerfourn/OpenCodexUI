@@ -65,6 +65,7 @@ export const enConversation = {
     model: "Model",
     removeAttachment: "Remove image",
     reasoning: "Reasoning",
+    resize: "Resize message field",
     serviceTier: "Speed",
     serviceTierDefault: "Auto",
     send: "Send",

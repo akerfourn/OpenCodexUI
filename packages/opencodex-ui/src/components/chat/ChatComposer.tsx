@@ -226,6 +226,7 @@ export function ChatComposer({
         value={draft}
         placeholder={t("composer.messagePlaceholder")}
         canOpenFileLinks={canOpenFileLinks}
+        resizeLabel={t("composer.resize")}
         onChange={handleDraftChange}
         onSearchFiles={searchProjectFiles}
         onSearchSkills={searchProjectSkills}

@@ -113,6 +113,44 @@
   outline: 1px solid var(--vscode-focusBorder);
 }
 
+.composer-editor-shell-resizable {
+  position: relative;
+}
+
+.composer-editor-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.55;
+  touch-action: none;
+  user-select: none;
+}
+
+.composer-editor-resize-handle:hover,
+.composer-editor-resize-handle:focus-visible {
+  color: var(--vscode-focusBorder);
+  opacity: 1;
+}
+
+.composer-editor-resize-handle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.is-resizing-composer,
+.is-resizing-composer * {
+  cursor: ns-resize !important;
+  user-select: none !important;
+}
+
 .composer-input-wrapper {
   position: relative;
   width: 100%;
@@ -259,4 +297,3 @@
 .composer-icon-button-stop.MuiIconButton-root .MuiSvgIcon-root {
   color: inherit;
 }
-

@@ -63,6 +63,7 @@ export const frConversation = {
     model: "Modèle",
     removeAttachment: "Retirer l'image",
     reasoning: "Raisonnement",
+    resize: "Redimensionner la zone de message",
     serviceTier: "Vitesse",
     serviceTierDefault: "Auto",
     send: "Envoyer",

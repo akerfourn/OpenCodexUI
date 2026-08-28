@@ -10,6 +10,7 @@ import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { LinkNode } from "@lexical/link";
+import DragHandleRoundedIcon from "@mui/icons-material/DragHandleRounded";
 import {
   $getNodeByKey,
   $getRoot,
@@ -42,11 +43,18 @@ import {
   type ComposerReferenceSuggestion,
   type ReferenceTriggerState
 } from "./composerReferences";
+import {
+  COMPOSER_MIN_HEIGHT_PX,
+  isComposerEditorAtBottom,
+  readComposerMaxHeight
+} from "./composerResize";
+import { useComposerResize } from "./useComposerResize";
 
 type ComposerPlainTextInputProps = {
   value: string;
   placeholder: string;
   canOpenFileLinks: boolean;
+  resizeLabel: string;
   onChange(value: string, markdown: string, references: OpenCodexComposerReference[]): void;
   onSearchFiles(query: string): Promise<OpenCodexFileSearchResult[]>;
   onSearchSkills(query: string): Promise<OpenCodexSkillSearchResult[]>;
@@ -64,6 +72,7 @@ export function ComposerPlainTextInput({
   value,
   placeholder,
   canOpenFileLinks,
+  resizeLabel,
   onChange,
   onSearchFiles,
   onSearchSkills,
@@ -79,6 +88,14 @@ export function ComposerPlainTextInput({
   const [cancelledTriggerKey, setCancelledTriggerKey] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [suggestions, setSuggestions] = useState<ComposerReferenceSuggestion[]>([]);
+  const {
+    editorHeight,
+    manualEditorHeight,
+    isEditorResizeEnabled,
+    scrollEditorToBottom,
+    handleEditorResizeStart,
+    handleEditorResizeKeyDown
+  } = useComposerResize(editorRef, value);
   const initialConfig = useMemo<InitialConfigType>(() => ({
     namespace: "OpenCodexComposer",
     nodes: [LinkNode],
@@ -148,22 +165,12 @@ export function ComposerPlainTextInput({
       }
 
       scrollEditorToBottom();
+      shouldStickToBottomRef.current = true;
     });
   }
 
   function handleEditorScroll(event: UIEvent<HTMLDivElement>): void {
-    shouldStickToBottomRef.current = isEditorAtBottom(event.currentTarget);
-  }
-
-  function scrollEditorToBottom(): void {
-    const editorElement = editorRef.current;
-
-    if (editorElement === null || editorElement.scrollHeight <= editorElement.clientHeight) {
-      return;
-    }
-
-    editorElement.scrollTop = editorElement.scrollHeight;
-    shouldStickToBottomRef.current = true;
+    shouldStickToBottomRef.current = isComposerEditorAtBottom(event.currentTarget);
   }
 
   function handleEditorKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -294,6 +301,25 @@ export function ComposerPlainTextInput({
       {placeholder}
     </span>
   );
+  const resizeHandle = isEditorResizeEnabled ? (
+    <div
+      className="composer-editor-resize-handle"
+      role="separator"
+      aria-label={resizeLabel}
+      aria-orientation="horizontal"
+      aria-valuemin={COMPOSER_MIN_HEIGHT_PX}
+      aria-valuemax={readComposerMaxHeight(window.innerHeight)}
+      aria-valuenow={manualEditorHeight ?? editorHeight}
+      tabIndex={0}
+      onKeyDown={handleEditorResizeKeyDown}
+      onPointerDown={handleEditorResizeStart}
+    >
+      <DragHandleRoundedIcon fontSize="small" />
+    </div>
+  ) : null;
+  const editorShellClassName = isEditorResizeEnabled
+    ? "composer-editor-shell composer-editor-shell-resizable"
+    : "composer-editor-shell";
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
@@ -303,12 +329,14 @@ export function ComposerPlainTextInput({
           highlightedIndex={highlightedIndex}
           onSelect={insertReference}
         />
-        <div className="composer-editor-shell">
+        <div className={editorShellClassName}>
+          {resizeHandle}
           <PlainTextPlugin
             contentEditable={(
               <ContentEditable
                 ref={editorRef}
                 className="composer-editor"
+                style={manualEditorHeight === null ? undefined : { height: manualEditorHeight }}
                 aria-label={placeholder}
                 spellCheck
                 onClick={handleEditorClick}
@@ -361,19 +389,3 @@ export function ComposerPlainTextInput({
 function isSkillLink(link: HTMLAnchorElement): boolean {
   return link.relList.contains("opencodex-skill") || isSkillUrl(link.getAttribute("href") ?? "");
 }
-
-/**
- * Checks whether the composer is close enough to its bottom edge to keep following new content.
- *
- * @param editorElement Composer content-editable element.
- * @returns `true` when the bottom of the current content is visible.
- */
-function isEditorAtBottom(editorElement: HTMLDivElement): boolean {
-  const remainingScroll = (
-    editorElement.scrollHeight - editorElement.scrollTop - editorElement.clientHeight
-  );
-
-  return remainingScroll <= COMPOSER_BOTTOM_SCROLL_THRESHOLD_PX;
-}
-
-const COMPOSER_BOTTOM_SCROLL_THRESHOLD_PX = 4;
