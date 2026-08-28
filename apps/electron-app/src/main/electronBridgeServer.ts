@@ -36,6 +36,7 @@ type ElectronBridgeServerOptions = {
   userDataPath: string;
   saveSettings(settings: OpenCodexSettings): Promise<void>;
   openUsageHistory(sourceId: string): void;
+  onSettingsUpdated(settings: OpenCodexSettings): void;
 };
 
 /**
@@ -49,6 +50,7 @@ export class ElectronBridgeServer {
   private readonly desktopNotificationService: DesktopNotificationService;
   private readonly logger: (message: string) => void;
   private readonly openUsageHistoryWindow: (sourceId: string) => void;
+  private readonly onSettingsUpdated: (settings: OpenCodexSettings) => void;
   private window: BrowserWindow | null = null;
   private isDisposed = false;
 
@@ -62,6 +64,7 @@ export class ElectronBridgeServer {
     const logger = (message: string) => console.log(`[OpenCodexUI] ${message}`);
     this.logger = logger;
     this.openUsageHistoryWindow = options.openUsageHistory;
+    this.onSettingsUpdated = options.onSettingsUpdated;
 
     this.runtime = new OpenCodexBackendRuntime({
       settings: options.settings,
@@ -172,6 +175,7 @@ export class ElectronBridgeServer {
         this.performanceMonitoringService.setSettings(settings);
         this.desktopNotificationService.setSettings(settings);
         this.closeDeveloperToolsWhenDisabled(settings);
+        this.onSettingsUpdated(settings);
       }
 
       return response;

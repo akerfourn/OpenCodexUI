@@ -5,11 +5,15 @@ import path from "node:path";
 
 import { BrowserWindow } from "electron";
 
+import type { ContextMenuLanguage } from "./contextMenuLocale.js";
+import { registerContextMenu } from "./contextMenu.js";
+
 type CreateWindowOptions = {
   preloadPath: string;
   rendererPath: string;
   devServerUrl?: string | null;
   iconPath?: string | null;
+  contextMenuLanguage?: ContextMenuLanguage;
   windowKind?: "main" | "usage-history";
   rendererQuery?: Record<string, string>;
 };
@@ -48,6 +52,7 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
     window.setTitle(title);
   });
   window.setTitle(title);
+  registerContextMenu(window, options.contextMenuLanguage);
 
   window.webContents.on("before-input-event", (event, input) => {
     const isDevToolsShortcut = input.key === "F12" || (

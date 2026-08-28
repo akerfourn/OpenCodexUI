@@ -2,7 +2,12 @@
  * Keeps the Lexical composer aligned with the parent plain-text value.
  */
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $createParagraphNode, $createTextNode, $getRoot } from "lexical";
+import {
+  $createParagraphNode,
+  $createTextNode,
+  $getRoot,
+  CLEAR_HISTORY_COMMAND
+} from "lexical";
 import { useEffect } from "react";
 
 type ComposerPlainTextValuePluginProps = {
@@ -41,6 +46,7 @@ export function ComposerPlainTextValuePlugin({ value }: ComposerPlainTextValuePl
       },
       { tag: "external-value" }
     );
+    editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined);
   }, [editor, value]);
 
   return null;

@@ -6,6 +6,7 @@ import type { InitialConfigType } from "@lexical/react/LexicalComposer";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { EditorRefPlugin } from "@lexical/react/LexicalEditorRefPlugin";
+import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { LinkNode } from "@lexical/link";
@@ -318,6 +319,7 @@ export function ComposerPlainTextInput({
             placeholder={placeholderContent}
             ErrorBoundary={LexicalErrorBoundary}
           />
+          <HistoryPlugin />
           <OnChangePlugin
             ignoreHistoryMergeTagChange
             ignoreSelectionChange={false}

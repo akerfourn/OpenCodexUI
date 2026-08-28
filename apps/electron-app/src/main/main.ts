@@ -6,13 +6,21 @@ import { existsSync } from "node:fs";
 
 import { app, BrowserWindow, Menu } from "electron";
 
+import type { OpenCodexLanguage } from "@open-codex-ui/opencodex-protocol";
+
 import { createWindow } from "./createWindow.js";
+import {
+  resolveContextMenuLanguage,
+  type ContextMenuLanguage
+} from "./contextMenuLocale.js";
+import { setContextMenuLanguage } from "./contextMenu.js";
 import { ElectronBridgeServer } from "./electronBridgeServer.js";
 import { SettingsStore } from "./settingsStore.js";
 
 let bridgeServer: ElectronBridgeServer | null = null;
 let mainWindow: BrowserWindow | null = null;
 let usageHistoryWindow: BrowserWindow | null = null;
+let contextMenuLanguage: ContextMenuLanguage = "fr";
 let isDisposing = false;
 let isDisposed = false;
 
@@ -34,11 +42,13 @@ async function main(): Promise<void> {
   const userDataPath = app.getPath("userData");
   const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? null;
   const iconPath = resolveWindowIconPath();
+  contextMenuLanguage = resolveContextMenuLanguage(settings.language, app.getLocale());
   const window = createWindow({
     preloadPath: path.join(__dirname, "preload.cjs"),
     rendererPath: path.join(__dirname, "..", "renderer"),
     devServerUrl,
-    iconPath
+    iconPath,
+    contextMenuLanguage
   });
   mainWindow = window;
   window.on("closed", () => {
@@ -53,6 +63,9 @@ async function main(): Promise<void> {
     appVersion: app.getVersion(),
     userDataPath,
     saveSettings: (nextSettings) => settingsStore.save(nextSettings),
+    onSettingsUpdated: (nextSettings) => {
+      applyContextMenuLanguage(nextSettings.language);
+    },
     openUsageHistory: (sourceId) => {
       openUsageHistoryWindow({
         sourceId,
@@ -72,7 +85,8 @@ async function main(): Promise<void> {
         preloadPath: path.join(__dirname, "preload.cjs"),
         rendererPath: path.join(__dirname, "..", "renderer"),
         devServerUrl,
-        iconPath
+        iconPath,
+        contextMenuLanguage
       });
       mainWindow = nextWindow;
       nextWindow.on("closed", () => {
@@ -175,6 +189,7 @@ function openUsageHistoryWindow(options: {
     rendererPath: options.rendererPath,
     devServerUrl: options.devServerUrl,
     iconPath: options.iconPath,
+    contextMenuLanguage,
     windowKind: "usage-history",
     rendererQuery: {
       view: "usage-history",
@@ -187,6 +202,32 @@ function openUsageHistoryWindow(options: {
       usageHistoryWindow = null;
     }
   });
+}
+
+/**
+ * Applies a changed application language to all currently open windows.
+ *
+ * @param language Persisted OpenCodexUI language setting.
+ * @returns Nothing.
+ */
+function applyContextMenuLanguage(language: OpenCodexLanguage): void {
+  contextMenuLanguage = resolveContextMenuLanguage(language, app.getLocale());
+  updateWindowContextMenuLanguage(mainWindow);
+  updateWindowContextMenuLanguage(usageHistoryWindow);
+}
+
+/**
+ * Updates one window when it has a registered native context menu.
+ *
+ * @param window Window to update, or null when it is closed.
+ * @returns Nothing.
+ */
+function updateWindowContextMenuLanguage(window: BrowserWindow | null): void {
+  if (window === null || window.isDestroyed()) {
+    return;
+  }
+
+  setContextMenuLanguage(window, contextMenuLanguage);
 }
 
 /**
