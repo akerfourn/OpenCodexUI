@@ -31,8 +31,54 @@ describe("ChatGoalStore", () => {
       sourceId: "source-1"
     });
     expect(chatStore.goal.goal).toEqual(goal);
+    expect(chatStore.goal.hasStarted).toBe(true);
     expect(chatStore.goal.hasLoaded).toBe(true);
     expect(chatStore.goal.isLoading).toBe(false);
+  });
+
+  it("should keep a saved definition paused until it is explicitly started", async () => {
+    const rootStore = createRootStore();
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+    const draft = { ...createGoal(), status: "paused" as const, tokensUsed: 0 };
+    const started = { ...draft, status: "active" as const, updatedAt: 3 };
+    vi.mocked(rootStore.request)
+      .mockResolvedValueOnce(draft)
+      .mockResolvedValueOnce(started);
+
+    await expect(chatStore.goal.save({
+      objective: "Finish the task",
+      status: "paused",
+      tokenBudget: null
+    })).resolves.toBe(true);
+
+    expect(chatStore.goal.goal?.status).toBe("paused");
+    expect(chatStore.goal.hasStarted).toBe(false);
+
+    await expect(chatStore.goal.updateStatus("active")).resolves.toBe(true);
+
+    expect(chatStore.goal.goal?.status).toBe("active");
+    expect(chatStore.goal.hasStarted).toBe(true);
+  });
+
+  it("should share an in-flight read between the header and dialog", async () => {
+    const rootStore = createRootStore();
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+    let resolveGoal: (goal: OpenCodexThreadGoal) => void = () => undefined;
+    const pendingGoal = new Promise<OpenCodexThreadGoal>((resolve) => {
+      resolveGoal = resolve;
+    });
+    vi.mocked(rootStore.request).mockReturnValueOnce(pendingGoal);
+
+    const firstLoad = chatStore.goal.load();
+    const secondLoad = chatStore.goal.load(true);
+
+    expect(rootStore.request).toHaveBeenCalledTimes(1);
+
+    resolveGoal(createGoal());
+    await Promise.all([firstLoad, secondLoad]);
+
+    expect(chatStore.goal.goal?.objective).toBe("Finish the task");
+    expect(chatStore.goal.hasLoaded).toBe(true);
   });
 
   it("should release the saving state and retain an error after a failed mutation", async () => {

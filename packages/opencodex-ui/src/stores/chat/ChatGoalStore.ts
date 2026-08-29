@@ -24,6 +24,10 @@ const GOAL_STATUSES: readonly OpenCodexThreadGoalStatus[] = [
 export class ChatGoalStore {
   /** Goal currently known by the renderer. */
   goal: OpenCodexThreadGoal | null = null;
+  /** Whether this goal has been explicitly started during the current UI session. */
+  hasStarted = false;
+  /** In-flight goal read shared by the header and the goal dialog. */
+  private loadingPromise: Promise<void> | null = null;
   /** Whether a goal read is currently in flight. */
   isLoading = false;
   /** Whether a goal mutation is currently in flight. */
@@ -38,9 +42,10 @@ export class ChatGoalStore {
     private readonly chatStore: ChatStore,
     private readonly root: RootStore
   ) {
-    makeAutoObservable<ChatGoalStore, "chatStore" | "root">(this, {
+    makeAutoObservable<ChatGoalStore, "chatStore" | "root" | "loadingPromise">(this, {
       chatStore: false,
-      root: false
+      root: false,
+      loadingPromise: false
     }, { autoBind: true });
   }
 
@@ -51,15 +56,35 @@ export class ChatGoalStore {
    * @returns Promise resolved when the read finishes.
    */
   async load(force = false): Promise<void> {
-    if (this.isLoading || (this.hasLoaded && !force)) {
+    if (this.loadingPromise !== null) {
+      await this.loadingPromise;
       return;
     }
 
+    if (this.hasLoaded && !force) {
+      return;
+    }
+
+    const loadingPromise = this.loadFromSource();
+    this.loadingPromise = loadingPromise;
+
+    try {
+      await loadingPromise;
+    } finally {
+      if (this.loadingPromise === loadingPromise) {
+        this.loadingPromise = null;
+      }
+    }
+  }
+
+  /** Reads the goal snapshot for the current source. */
+  private async loadFromSource(): Promise<void> {
     const sourceId = this.chatStore.sourceId;
 
     if (sourceId === null) {
       runInAction(() => {
         this.goal = null;
+        this.hasStarted = false;
         this.error = null;
         this.hasLoaded = true;
       });
@@ -77,7 +102,11 @@ export class ChatGoalStore {
       });
 
       runInAction(() => {
-        this.goal = isOpenCodexThreadGoal(goal) ? goal : null;
+        const normalizedGoal = isOpenCodexThreadGoal(goal) ? goal : null;
+        this.goal = normalizedGoal;
+        this.hasStarted = normalizedGoal === null
+          ? false
+          : this.hasStarted || isStartedGoalStatus(normalizedGoal.status);
         this.hasLoaded = true;
       });
     } catch (error: unknown) {
@@ -122,6 +151,7 @@ export class ChatGoalStore {
 
       runInAction(() => {
         this.goal = goal;
+        this.hasStarted = this.hasStarted || isStartedGoalStatus(goal.status);
         this.hasLoaded = true;
       });
       return true;
@@ -163,6 +193,7 @@ export class ChatGoalStore {
       if (result.cleared) {
         runInAction(() => {
           this.goal = null;
+          this.hasStarted = false;
           this.hasLoaded = true;
         });
       }
@@ -187,6 +218,7 @@ export class ChatGoalStore {
     }
 
     this.goal = goal;
+    this.hasStarted = this.hasStarted || isStartedGoalStatus(goal.status);
     this.error = null;
     this.hasLoaded = true;
   }
@@ -198,9 +230,15 @@ export class ChatGoalStore {
     }
 
     this.goal = null;
+    this.hasStarted = false;
     this.error = null;
     this.hasLoaded = true;
   }
+}
+
+/** Identifies statuses that prove the goal has started processing. */
+function isStartedGoalStatus(status: OpenCodexThreadGoalStatus): boolean {
+  return status !== "paused";
 }
 
 /** Checks the response shape before it enters observable UI state. */

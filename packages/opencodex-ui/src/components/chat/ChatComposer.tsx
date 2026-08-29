@@ -4,7 +4,7 @@
 import AssistantDirectionRoundedIcon from "@mui/icons-material/AssistantDirectionRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { IconButton, Stack, Tooltip } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
@@ -25,6 +25,7 @@ import { ChatAdvancedActionsMenu } from "./ChatAdvancedActionsMenu";
 import { ComposerAttachmentList } from "./ComposerAttachmentList";
 import { ComposerPlainTextInput } from "./ComposerPlainTextInput";
 import { ModelSettingsFields } from "./ModelSettingsFields";
+import { ChatGoalDialogX } from "../dialogs/ChatGoalDialog";
 
 type ChatComposerProps = {
   store: RootStore;
@@ -49,6 +50,7 @@ export function ChatComposer({
   isWorking
 }: ChatComposerProps) {
   const { t } = useTranslation();
+  const [isGoalDialogOpen, setIsGoalDialogOpen] = useState(false);
   const composer = chatStore.composer;
   const draft = composer.draft;
   const draftMarkdown = composer.draftMarkdown;
@@ -71,6 +73,7 @@ export function ChatComposer({
   );
 
   const canOpenFileLinks = canOpenProjectFileLinks(store, sourceId);
+  const manageGoalDisabled = chatStore.isReadOnlyFromCache || sourceId === null;
 
   function handleDraftChange(
     value: string,
@@ -148,6 +151,14 @@ export function ChatComposer({
 
   function handleCompact(): void {
     chatStore.actions.compact();
+  }
+
+  function handleManageGoal(): void {
+    setIsGoalDialogOpen(true);
+  }
+
+  function handleGoalDialogClose(): void {
+    setIsGoalDialogOpen(false);
   }
 
   async function handleAttachImages(): Promise<void> {
@@ -253,8 +264,10 @@ export function ChatComposer({
         <ChatAdvancedActionsMenu
           disabled={areAdvancedActionsDisabled}
           attachImagesDisabled={!canAttachImages}
+          manageGoalDisabled={manageGoalDisabled}
           onReview={handleReview}
           onCompact={handleCompact}
+          onManageGoal={handleManageGoal}
           onAttachImages={() => {
             void handleAttachImages();
           }}
@@ -288,6 +301,11 @@ export function ChatComposer({
           </Tooltip>
         ) : null}
       </Stack>
+      <ChatGoalDialogX
+        open={isGoalDialogOpen}
+        chatStore={chatStore}
+        onClose={handleGoalDialogClose}
+      />
     </form>
   );
 }

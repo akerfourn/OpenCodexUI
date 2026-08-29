@@ -37,6 +37,7 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
   const [objective, setObjective] = useState("");
   const [tokenBudget, setTokenBudget] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [savingAction, setSavingAction] = useState<"save" | "start" | null>(null);
   const goal = goalStore.goal;
   const canMutate = !chatStore.isReadOnlyFromCache && chatStore.sourceId !== null;
 
@@ -72,29 +73,54 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
   }
 
   async function handleSave(): Promise<void> {
-    const trimmedObjective = objective.trim();
+    const formValues = readGoalFormValues(objective, tokenBudget);
 
-    if (trimmedObjective.length === 0) {
-      setValidationError(t("goal.objectiveRequired"));
-      return;
-    }
-
-    const parsedBudget = readTokenBudget(tokenBudget);
-
-    if (parsedBudget.error) {
-      setValidationError(t("goal.budgetInvalid"));
+    if (formValues.error !== null) {
+      setValidationError(t(`goal.${formValues.error}`));
       return;
     }
 
     setValidationError(null);
-    const saved = await goalStore.save({
-      objective: trimmedObjective,
-      status: goal?.status ?? "active",
-      tokenBudget: parsedBudget.value
-    });
+    setSavingAction("save");
 
-    if (saved) {
-      applyGoalToForm(goalStore.goal);
+    try {
+      const saved = await goalStore.save({
+        objective: formValues.values.objective,
+        status: goal?.status === "active" ? "active" : "paused",
+        tokenBudget: formValues.values.tokenBudget
+      });
+
+      if (saved) {
+        applyGoalToForm(goalStore.goal);
+      }
+    } finally {
+      setSavingAction(null);
+    }
+  }
+
+  async function handleStart(): Promise<void> {
+    const formValues = readGoalFormValues(objective, tokenBudget);
+
+    if (formValues.error !== null) {
+      setValidationError(t(`goal.${formValues.error}`));
+      return;
+    }
+
+    setValidationError(null);
+    setSavingAction("start");
+
+    try {
+      const started = await goalStore.save({
+        objective: formValues.values.objective,
+        status: "active",
+        tokenBudget: formValues.values.tokenBudget
+      });
+
+      if (started) {
+        applyGoalToForm(goalStore.goal);
+      }
+    } finally {
+      setSavingAction(null);
     }
   }
 
@@ -119,11 +145,9 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
     await goalStore.updateStatus("paused");
   }
 
-  async function handleResume(): Promise<void> {
-    await goalStore.updateStatus("active");
-  }
-
   const isBusy = goalStore.isLoading || goalStore.isSaving;
+  const canStart = goal === null || goal.status !== "active";
+  const startLabel = goalStore.hasStarted ? t("goal.resume") : t("goal.start");
 
   return (
     <Dialog open={open} fullWidth maxWidth="sm" onClose={onClose}>
@@ -147,7 +171,9 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
             </Stack>
           ) : null}
 
-          {goal !== null ? <ChatGoalSummary goal={goal} /> : null}
+          {goal !== null ? (
+            <ChatGoalSummary goal={goal} hasStarted={goalStore.hasStarted} />
+          ) : null}
 
           <TextField
             label={t("goal.objective")}
@@ -175,6 +201,7 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
 
           {goal?.status === "active" ? (
             <Button
+              type="button"
               startIcon={<PauseCircleOutlineIcon />}
               onClick={handlePause}
               disabled={!canMutate || isBusy}
@@ -182,18 +209,6 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
               sx={{ alignSelf: "flex-start" }}
             >
               {t("goal.pause")}
-            </Button>
-          ) : null}
-
-          {goal?.status === "paused" ? (
-            <Button
-              startIcon={<PlayArrowIcon />}
-              onClick={handleResume}
-              disabled={!canMutate || isBusy}
-              variant="outlined"
-              sx={{ alignSelf: "flex-start" }}
-            >
-              {t("goal.resume")}
             </Button>
           ) : null}
 
@@ -209,6 +224,7 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
       <DialogActions>
         {goal !== null ? (
           <Button
+            type="button"
             color="error"
             startIcon={<DeleteOutlineIcon />}
             onClick={handleClear}
@@ -218,14 +234,26 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
           </Button>
         ) : null}
         <Box sx={{ flex: 1 }} />
-        <Button onClick={onClose}>{t("goal.close")}</Button>
+        <Button type="button" onClick={onClose}>{t("goal.close")}</Button>
         <Button
-          variant="contained"
+          type="button"
+          variant="outlined"
           onClick={() => void handleSave()}
           disabled={!canMutate || isBusy}
         >
-          {goalStore.isSaving ? <CircularProgress size={18} color="inherit" /> : t("goal.save")}
+          {savingAction === "save" ? <CircularProgress size={18} color="inherit" /> : t("goal.save")}
         </Button>
+        {canStart ? (
+          <Button
+            type="button"
+            variant="contained"
+            startIcon={<PlayArrowIcon />}
+            onClick={() => void handleStart()}
+            disabled={!canMutate || isBusy}
+          >
+            {savingAction === "start" ? <CircularProgress size={18} color="inherit" /> : startLabel}
+          </Button>
+        ) : null}
       </DialogActions>
     </Dialog>
   );
@@ -246,6 +274,38 @@ export function readTokenBudget(value: string): { value: number | null; error: b
   }
 
   return { value: parsedValue, error: false };
+}
+
+type GoalFormValues = {
+  objective: string;
+  tokenBudget: number | null;
+};
+
+type GoalFormResult =
+  | { values: GoalFormValues; error: null }
+  | { values: null; error: "objectiveRequired" | "budgetInvalid" };
+
+/** Validates and normalizes the two editable goal fields before a mutation. */
+function readGoalFormValues(objective: string, tokenBudget: string): GoalFormResult {
+  const trimmedObjective = objective.trim();
+
+  if (trimmedObjective.length === 0) {
+    return { values: null, error: "objectiveRequired" };
+  }
+
+  const parsedBudget = readTokenBudget(tokenBudget);
+
+  if (parsedBudget.error) {
+    return { values: null, error: "budgetInvalid" };
+  }
+
+  return {
+    values: {
+      objective: trimmedObjective,
+      tokenBudget: parsedBudget.value
+    },
+    error: null
+  };
 }
 
 export const ChatGoalDialogX = observer(ChatGoalDialog);
