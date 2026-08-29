@@ -11,6 +11,7 @@ describe("composer resize helpers", () => {
   it("should_resolve_the_maximum_height_from_half_the_viewport", () => {
     expect(readComposerMaxHeight(900)).toBe(450);
     expect(readComposerMaxHeight(180)).toBe(COMPOSER_MIN_HEIGHT_PX);
+    expect(readComposerMaxHeight(180, 200)).toBe(200);
   });
 
   it("should_clamp_requested_heights_to_the_composer_bounds", () => {
@@ -18,6 +19,7 @@ describe("composer resize helpers", () => {
     expect(clampComposerHeight(320.4, 450)).toBe(320);
     expect(clampComposerHeight(700, 450)).toBe(450);
     expect(clampComposerHeight(320, 80)).toBe(COMPOSER_MIN_HEIGHT_PX);
+    expect(clampComposerHeight(120, 450, 200)).toBe(200);
   });
 
   it("should_detect_when_the_editor_is_close_to_the_bottom", () => {

@@ -1,5 +1,6 @@
 /** Provides a small editor for the native Codex goal attached to a chat. */
 import { useEffect, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Alert,
@@ -19,22 +20,46 @@ import PauseCircleOutlineIcon from "@mui/icons-material/PauseCircleOutlineOutlin
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexThreadGoal } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexFileSearchResult,
+  OpenCodexSkillSearchResult,
+  OpenCodexThreadGoal
+} from "@open-codex-ui/opencodex-protocol";
 
 import type { ChatStore } from "../../stores/chat/ChatStore";
+import { ComposerPlainTextInput } from "../chat/ComposerPlainTextInput";
 import { ChatGoalSummary } from "./ChatGoalSummary";
 
 type ChatGoalDialogProps = {
   open: boolean;
   chatStore: ChatStore;
+  canOpenFileLinks: boolean;
+  onSearchFiles(query: string): Promise<OpenCodexFileSearchResult[]>;
+  onSearchSkills(query: string): Promise<OpenCodexSkillSearchResult[]>;
+  onOpenFileLink(href: string): void;
   onClose(): void;
 };
 
+/** Maximum objective length accepted by Codex's native goal implementation. */
+export const MAX_GOAL_OBJECTIVE_CHARACTERS = 4_000;
+
+/** Initial height of the goal editor before the user resizes it manually. */
+const GOAL_EDITOR_MIN_HEIGHT_PX = 200;
+
 /** Renders and edits the native goal state for one chat. */
-export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps) {
+export function ChatGoalDialog({
+  open,
+  chatStore,
+  canOpenFileLinks,
+  onSearchFiles,
+  onSearchSkills,
+  onOpenFileLink,
+  onClose
+}: ChatGoalDialogProps) {
   const { t } = useTranslation();
   const goalStore = chatStore.goal;
   const [objective, setObjective] = useState("");
+  const [objectiveMarkdown, setObjectiveMarkdown] = useState("");
   const [tokenBudget, setTokenBudget] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [savingAction, setSavingAction] = useState<"save" | "start" | null>(null);
@@ -64,7 +89,10 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
   }, [goalStore, open]);
 
   function applyGoalToForm(currentGoal: OpenCodexThreadGoal | null): void {
-    setObjective(currentGoal?.objective ?? "");
+    const nextObjective = currentGoal?.objective ?? "";
+
+    setObjective(nextObjective);
+    setObjectiveMarkdown(nextObjective);
     setTokenBudget(
       currentGoal?.tokenBudget === null || currentGoal?.tokenBudget === undefined
         ? ""
@@ -73,10 +101,12 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
   }
 
   async function handleSave(): Promise<void> {
-    const formValues = readGoalFormValues(objective, tokenBudget);
+    const formValues = readGoalFormValues(objectiveMarkdown, tokenBudget);
 
     if (formValues.error !== null) {
-      setValidationError(t(`goal.${formValues.error}`));
+      setValidationError(t(`goal.${formValues.error}`, {
+        max: MAX_GOAL_OBJECTIVE_CHARACTERS
+      }));
       return;
     }
 
@@ -84,25 +114,23 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
     setSavingAction("save");
 
     try {
-      const saved = await goalStore.save({
+      await goalStore.save({
         objective: formValues.values.objective,
         status: goal?.status === "active" ? "active" : "paused",
         tokenBudget: formValues.values.tokenBudget
       });
-
-      if (saved) {
-        applyGoalToForm(goalStore.goal);
-      }
     } finally {
       setSavingAction(null);
     }
   }
 
   async function handleStart(): Promise<void> {
-    const formValues = readGoalFormValues(objective, tokenBudget);
+    const formValues = readGoalFormValues(objectiveMarkdown, tokenBudget);
 
     if (formValues.error !== null) {
-      setValidationError(t(`goal.${formValues.error}`));
+      setValidationError(t(`goal.${formValues.error}`, {
+        max: MAX_GOAL_OBJECTIVE_CHARACTERS
+      }));
       return;
     }
 
@@ -110,15 +138,11 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
     setSavingAction("start");
 
     try {
-      const started = await goalStore.save({
+      await goalStore.save({
         objective: formValues.values.objective,
         status: "active",
         tokenBudget: formValues.values.tokenBudget
       });
-
-      if (started) {
-        applyGoalToForm(goalStore.goal);
-      }
     } finally {
       setSavingAction(null);
     }
@@ -137,6 +161,7 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
 
     if (cleared) {
       setObjective("");
+      setObjectiveMarkdown("");
       setTokenBudget("");
     }
   }
@@ -145,9 +170,30 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
     await goalStore.updateStatus("paused");
   }
 
+  /** Updates the visible value and the Markdown payload produced by references. */
+  function handleObjectiveChange(value: string, markdown: string): void {
+    setObjective(value);
+    setObjectiveMarkdown(markdown);
+    setValidationError(null);
+  }
+
+  /** Keeps Enter available for line breaks instead of submitting the parent form. */
+  function handleObjectiveKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (event.key === "Enter") {
+      event.stopPropagation();
+    }
+  }
+
   const isBusy = goalStore.isLoading || goalStore.isSaving;
   const canStart = goal === null || goal.status !== "active";
   const startLabel = goalStore.hasStarted ? t("goal.resume") : t("goal.start");
+  const objectiveCharacterCount = countGoalCharacters(objectiveMarkdown.trim());
+  const isObjectiveTooLong = objectiveCharacterCount > MAX_GOAL_OBJECTIVE_CHARACTERS;
+  const objectiveCharacterCountText = t("goal.objectiveCharacters", {
+    count: objectiveCharacterCount,
+    max: MAX_GOAL_OBJECTIVE_CHARACTERS
+  });
+  const objectiveCounterColor = isObjectiveTooLong ? "error.main" : "text.secondary";
 
   return (
     <Dialog open={open} fullWidth maxWidth="sm" onClose={onClose}>
@@ -175,17 +221,40 @@ export function ChatGoalDialog({ open, chatStore, onClose }: ChatGoalDialogProps
             <ChatGoalSummary goal={goal} hasStarted={goalStore.hasStarted} />
           ) : null}
 
-          <TextField
-            label={t("goal.objective")}
-            value={objective}
-            onChange={(event) => setObjective(event.target.value)}
-            placeholder={t("goal.objectivePlaceholder")}
-            helperText={t("goal.objectiveHint")}
-            multiline
-            minRows={3}
-            fullWidth
-            disabled={!canMutate || isBusy}
-          />
+          <Box>
+            <Typography component="div" variant="body2" sx={{ mb: 0.75 }}>
+              {t("goal.objective")}
+            </Typography>
+            <ComposerPlainTextInput
+              value={objective}
+              placeholder={t("goal.objectivePlaceholder")}
+              canOpenFileLinks={canOpenFileLinks}
+              resizeLabel={t("composer.resize")}
+              disabled={!canMutate || isBusy}
+              renderSuggestionsInPortal
+              wrapperClassName="goal-objective-editor"
+              editorMinHeight={GOAL_EDITOR_MIN_HEIGHT_PX}
+              onChange={handleObjectiveChange}
+              onSearchFiles={onSearchFiles}
+              onSearchSkills={onSearchSkills}
+              onOpenFileLink={onOpenFileLink}
+              onKeyDown={handleObjectiveKeyDown}
+            />
+            <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                sx={{ color: objectiveCounterColor, display: "block", textAlign: "right" }}
+              >
+                {objectiveCharacterCountText}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {t("goal.objectiveHint")}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {t("goal.objectiveCharacterHint")}
+              </Typography>
+            </Stack>
+          </Box>
 
           <TextField
             label={t("goal.tokenBudget")}
@@ -283,14 +352,21 @@ type GoalFormValues = {
 
 type GoalFormResult =
   | { values: GoalFormValues; error: null }
-  | { values: null; error: "objectiveRequired" | "budgetInvalid" };
+  | {
+      values: null;
+      error: "objectiveRequired" | "objectiveTooLong" | "budgetInvalid";
+    };
 
 /** Validates and normalizes the two editable goal fields before a mutation. */
-function readGoalFormValues(objective: string, tokenBudget: string): GoalFormResult {
+export function readGoalFormValues(objective: string, tokenBudget: string): GoalFormResult {
   const trimmedObjective = objective.trim();
 
   if (trimmedObjective.length === 0) {
     return { values: null, error: "objectiveRequired" };
+  }
+
+  if (countGoalCharacters(trimmedObjective) > MAX_GOAL_OBJECTIVE_CHARACTERS) {
+    return { values: null, error: "objectiveTooLong" };
   }
 
   const parsedBudget = readTokenBudget(tokenBudget);
@@ -306,6 +382,11 @@ function readGoalFormValues(objective: string, tokenBudget: string): GoalFormRes
     },
     error: null
   };
+}
+
+/** Counts Unicode code points, matching Codex's native character limit semantics. */
+export function countGoalCharacters(value: string): number {
+  return Array.from(value).length;
 }
 
 export const ChatGoalDialogX = observer(ChatGoalDialog);

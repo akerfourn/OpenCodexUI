@@ -169,6 +169,10 @@
   word-break: break-word;
 }
 
+.goal-objective-editor .composer-editor {
+  min-height: 200px;
+}
+
 .composer-editor p {
   margin: 0;
 }
@@ -210,6 +214,11 @@
   max-height: 260px;
   overflow: auto;
   border: 1px solid var(--vscode-panel-border);
+}
+
+.composer-file-suggestions-portaled {
+  position: static;
+  width: 100%;
 }
 
 .composer-controls {

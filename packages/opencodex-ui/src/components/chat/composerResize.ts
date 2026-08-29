@@ -13,8 +13,11 @@ const COMPOSER_BOTTOM_SCROLL_THRESHOLD_PX = 4;
  * @param viewportHeight Current viewport height in pixels.
  * @returns Maximum editor height in pixels.
  */
-export function readComposerMaxHeight(viewportHeight: number): number {
-  return Math.max(COMPOSER_MIN_HEIGHT_PX, Math.floor(viewportHeight * 0.5));
+export function readComposerMaxHeight(
+  viewportHeight: number,
+  minHeight = COMPOSER_MIN_HEIGHT_PX
+): number {
+  return Math.max(minHeight, Math.floor(viewportHeight * 0.5));
 }
 
 /**
@@ -22,14 +25,19 @@ export function readComposerMaxHeight(viewportHeight: number): number {
  *
  * @param value Requested height in pixels.
  * @param maxHeight Maximum allowed height in pixels.
+ * @param minHeight Minimum allowed height in pixels.
  * @returns Rounded height between the minimum and maximum bounds.
  */
-export function clampComposerHeight(value: number, maxHeight: number): number {
-  const resolvedMaxHeight = Math.max(COMPOSER_MIN_HEIGHT_PX, maxHeight);
+export function clampComposerHeight(
+  value: number,
+  maxHeight: number,
+  minHeight = COMPOSER_MIN_HEIGHT_PX
+): number {
+  const resolvedMaxHeight = Math.max(minHeight, maxHeight);
   const roundedValue = Math.round(value);
 
   return Math.min(
-    Math.max(roundedValue, COMPOSER_MIN_HEIGHT_PX),
+    Math.max(roundedValue, minHeight),
     resolvedMaxHeight
   );
 }

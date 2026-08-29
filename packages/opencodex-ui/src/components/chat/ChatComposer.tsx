@@ -304,6 +304,10 @@ export function ChatComposer({
       <ChatGoalDialogX
         open={isGoalDialogOpen}
         chatStore={chatStore}
+        canOpenFileLinks={canOpenFileLinks}
+        onSearchFiles={searchProjectFiles}
+        onSearchSkills={searchProjectSkills}
+        onOpenFileLink={handleOpenFileLink}
         onClose={handleGoalDialogClose}
       />
     </form>

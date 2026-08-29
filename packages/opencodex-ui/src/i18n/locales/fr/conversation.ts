@@ -34,9 +34,13 @@ export const frConversation = {
     loading: "Chargement du goal...",
     noSource: "Ce chat n’a pas de source Codex active.",
     objective: "Objectif",
+    objectiveCharacterHint:
+      "Le compteur inclut le Markdown utilisé pour les références de fichiers.",
+    objectiveCharacters: "{{count}} / {{max}} caractères",
     objectiveHint: "Vous pouvez indiquer un fichier de spécification, par exemple docs/GOAL.md.",
     objectivePlaceholder: "Finaliser la migration décrite dans docs/GOAL.md",
     objectiveRequired: "L’objectif est requis.",
+    objectiveTooLong: "L’objectif est limité à {{max}} caractères.",
     open: "Définir ou gérer le goal",
     pause: "Mettre en pause",
     paused: "En pause",

@@ -2,7 +2,12 @@
 import type { OpenCodexThreadGoal } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
-import { readTokenBudget } from "../../src/components/dialogs/ChatGoalDialog";
+import {
+  countGoalCharacters,
+  MAX_GOAL_OBJECTIVE_CHARACTERS,
+  readGoalFormValues,
+  readTokenBudget
+} from "../../src/components/dialogs/ChatGoalDialog";
 import { ChatStore } from "../../src/stores/chat/ChatStore";
 import {
   createProjectStore,
@@ -15,6 +20,20 @@ describe("ChatGoalStore", () => {
     expect(readTokenBudget(" ")).toEqual({ value: null, error: false });
     expect(readTokenBudget("20000")).toEqual({ value: 20_000, error: false });
     expect(readTokenBudget("0")).toEqual({ value: null, error: true });
+  });
+
+  it("should count Unicode code points for the native goal limit", () => {
+    expect(countGoalCharacters("é😀")).toBe(2);
+    expect(countGoalCharacters("a".repeat(MAX_GOAL_OBJECTIVE_CHARACTERS))).toBe(
+      MAX_GOAL_OBJECTIVE_CHARACTERS
+    );
+  });
+
+  it("should reject an objective beyond the native goal limit", () => {
+    expect(readGoalFormValues("a".repeat(MAX_GOAL_OBJECTIVE_CHARACTERS + 1), "")).toEqual({
+      values: null,
+      error: "objectiveTooLong"
+    });
   });
 
   it("should load a native goal for the chat source", async () => {

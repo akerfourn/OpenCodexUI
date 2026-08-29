@@ -11,6 +11,7 @@ import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { LinkNode } from "@lexical/link";
 import DragHandleRoundedIcon from "@mui/icons-material/DragHandleRounded";
+import Popper from "@mui/material/Popper";
 import {
   $getNodeByKey,
   $getRoot,
@@ -55,6 +56,10 @@ type ComposerPlainTextInputProps = {
   placeholder: string;
   canOpenFileLinks: boolean;
   resizeLabel: string;
+  disabled?: boolean;
+  renderSuggestionsInPortal?: boolean;
+  wrapperClassName?: string;
+  editorMinHeight?: number;
   onChange(value: string, markdown: string, references: OpenCodexComposerReference[]): void;
   onSearchFiles(query: string): Promise<OpenCodexFileSearchResult[]>;
   onSearchSkills(query: string): Promise<OpenCodexSkillSearchResult[]>;
@@ -73,6 +78,10 @@ export function ComposerPlainTextInput({
   placeholder,
   canOpenFileLinks,
   resizeLabel,
+  disabled = false,
+  renderSuggestionsInPortal = false,
+  wrapperClassName,
+  editorMinHeight = COMPOSER_MIN_HEIGHT_PX,
   onChange,
   onSearchFiles,
   onSearchSkills,
@@ -95,7 +104,7 @@ export function ComposerPlainTextInput({
     scrollEditorToBottom,
     handleEditorResizeStart,
     handleEditorResizeKeyDown
-  } = useComposerResize(editorRef, value);
+  } = useComposerResize(editorRef, value, editorMinHeight);
   const initialConfig = useMemo<InitialConfigType>(() => ({
     namespace: "OpenCodexComposer",
     nodes: [LinkNode],
@@ -182,6 +191,10 @@ export function ComposerPlainTextInput({
   }
 
   function handleEditorClick(event: MouseEvent<HTMLDivElement>): void {
+    if (disabled) {
+      return;
+    }
+
     const target = event.target;
 
     if (!(target instanceof HTMLElement)) {
@@ -301,14 +314,14 @@ export function ComposerPlainTextInput({
       {placeholder}
     </span>
   );
-  const resizeHandle = isEditorResizeEnabled ? (
+  const resizeHandle = !disabled && isEditorResizeEnabled ? (
     <div
       className="composer-editor-resize-handle"
       role="separator"
       aria-label={resizeLabel}
       aria-orientation="horizontal"
-      aria-valuemin={COMPOSER_MIN_HEIGHT_PX}
-      aria-valuemax={readComposerMaxHeight(window.innerHeight)}
+      aria-valuemin={editorMinHeight}
+      aria-valuemax={readComposerMaxHeight(window.innerHeight, editorMinHeight)}
       aria-valuenow={manualEditorHeight ?? editorHeight}
       tabIndex={0}
       onKeyDown={handleEditorResizeKeyDown}
@@ -320,15 +333,38 @@ export function ComposerPlainTextInput({
   const editorShellClassName = isEditorResizeEnabled
     ? "composer-editor-shell composer-editor-shell-resizable"
     : "composer-editor-shell";
+  const inputWrapperClassName = wrapperClassName === undefined
+    ? "composer-input-wrapper"
+    : `composer-input-wrapper ${wrapperClassName}`;
+  const suggestionsAnchor = editorRef.current;
+  const hasSuggestions = !disabled && suggestions.length > 0;
+  const suggestionsContent = disabled ? null : (
+    <ComposerFileSuggestions
+      suggestions={suggestions}
+      highlightedIndex={highlightedIndex}
+      isPortaled={renderSuggestionsInPortal}
+      onSelect={insertReference}
+    />
+  );
+  const suggestionsView = renderSuggestionsInPortal ? (
+    <Popper
+      open={hasSuggestions && suggestionsAnchor !== null}
+      anchorEl={suggestionsAnchor}
+      placement="top-start"
+      modifiers={[{ name: "offset", options: { offset: [0, 8] } }]}
+      sx={{
+        width: suggestionsAnchor?.getBoundingClientRect().width,
+        zIndex: (theme) => theme.zIndex.modal + 1
+      }}
+    >
+      {suggestionsContent}
+    </Popper>
+  ) : suggestionsContent;
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className="composer-input-wrapper">
-        <ComposerFileSuggestions
-          suggestions={suggestions}
-          highlightedIndex={highlightedIndex}
-          onSelect={insertReference}
-        />
+      <div className={inputWrapperClassName}>
+        {suggestionsView}
         <div className={editorShellClassName}>
           {resizeHandle}
           <PlainTextPlugin
@@ -338,6 +374,8 @@ export function ComposerPlainTextInput({
                 className="composer-editor"
                 style={manualEditorHeight === null ? undefined : { height: manualEditorHeight }}
                 aria-label={placeholder}
+                aria-disabled={disabled}
+                contentEditable={!disabled}
                 spellCheck
                 onClick={handleEditorClick}
                 onKeyDown={handleEditorKeyDown}
@@ -355,9 +393,9 @@ export function ComposerPlainTextInput({
           />
           <ComposerPlainTextValuePlugin value={value} />
           <ComposerFileSuggestionKeyPlugin
-            hasActiveTrigger={activeTrigger !== null}
+            hasActiveTrigger={!disabled && activeTrigger !== null}
             highlightedIndex={highlightedIndex}
-            suggestions={suggestions}
+            suggestions={disabled ? [] : suggestions}
             onSelect={insertReference}
           />
           <EditorRefPlugin editorRef={lexicalEditorRef} />

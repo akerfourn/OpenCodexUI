@@ -45,16 +45,18 @@ export interface ComposerResizeState {
  *
  * @param editorRef Reference to the Lexical content-editable element.
  * @param value Current plain-text composer value.
+ * @param minHeight Minimum editor height in pixels.
  * @returns Height state and handlers for the resize affordance.
  */
 export function useComposerResize(
   editorRef: RefObject<HTMLDivElement | null>,
-  value: string
+  value: string,
+  minHeight = COMPOSER_MIN_HEIGHT_PX
 ): ComposerResizeState {
   const manualEditorHeightRef = useRef<number | null>(null);
   const editorResizeSessionRef = useRef<EditorResizeSession | null>(null);
   const resizeScrollSnapshotRef = useRef<ResizeScrollSnapshot | null>(null);
-  const [editorHeight, setEditorHeight] = useState(COMPOSER_MIN_HEIGHT_PX);
+  const [editorHeight, setEditorHeight] = useState(minHeight);
   const [manualEditorHeight, setManualEditorHeight] = useState<number | null>(null);
   const [isEditorExpanded, setIsEditorExpanded] = useState(false);
   const [isResizingEditor, setIsResizingEditor] = useState(false);
@@ -76,7 +78,7 @@ export function useComposerResize(
       ));
 
       if (manualEditorHeightRef.current === null) {
-        setIsEditorExpanded(nextHeight > COMPOSER_MIN_HEIGHT_PX + 1);
+        setIsEditorExpanded(nextHeight > minHeight + 1);
       }
     });
     resizeObserver.observe(editor);
@@ -84,7 +86,7 @@ export function useComposerResize(
     return () => {
       resizeObserver.disconnect();
     };
-  }, [editorRef]);
+  }, [editorRef, minHeight]);
 
   useEffect(() => {
     function handleViewportResize(): void {
@@ -96,7 +98,8 @@ export function useComposerResize(
 
       const nextHeight = clampComposerHeight(
         currentHeight,
-        readComposerMaxHeight(window.innerHeight)
+        readComposerMaxHeight(window.innerHeight, minHeight),
+        minHeight
       );
 
       if (nextHeight === currentHeight) {
@@ -112,7 +115,7 @@ export function useComposerResize(
     return () => {
       window.removeEventListener("resize", handleViewportResize);
     };
-  }, []);
+  }, [minHeight]);
 
   useEffect(() => {
     if (!isResizingEditor) {
@@ -129,7 +132,8 @@ export function useComposerResize(
       const requestedHeight = session.startHeight - (event.clientY - session.startY);
       const nextHeight = clampComposerHeight(
         requestedHeight,
-        readComposerMaxHeight(window.innerHeight)
+        readComposerMaxHeight(window.innerHeight, minHeight),
+        minHeight
       );
 
       applyManualEditorHeight(nextHeight);
@@ -152,7 +156,7 @@ export function useComposerResize(
       window.removeEventListener("pointercancel", handlePointerEnd);
       editorResizeSessionRef.current = null;
     };
-  }, [isResizingEditor]);
+  }, [isResizingEditor, minHeight]);
 
   useEffect(() => {
     if (value.length > 0) {
@@ -231,7 +235,8 @@ export function useComposerResize(
 
     const startHeight = clampComposerHeight(
       editor.getBoundingClientRect().height,
-      readComposerMaxHeight(window.innerHeight)
+      readComposerMaxHeight(window.innerHeight, minHeight),
+      minHeight
     );
 
     event.preventDefault();
@@ -255,7 +260,7 @@ export function useComposerResize(
     }
 
     const currentHeight = manualEditorHeight ?? editorHeight;
-    const maxHeight = readComposerMaxHeight(window.innerHeight);
+    const maxHeight = readComposerMaxHeight(window.innerHeight, minHeight);
     const pageStep = COMPOSER_RESIZE_KEYBOARD_STEP_PX * COMPOSER_RESIZE_PAGE_STEP_COUNT;
     let nextHeight: number;
 
@@ -273,7 +278,7 @@ export function useComposerResize(
         nextHeight = currentHeight - pageStep;
         break;
       case "Home":
-        nextHeight = COMPOSER_MIN_HEIGHT_PX;
+        nextHeight = minHeight;
         break;
       case "End":
         nextHeight = maxHeight;
@@ -284,7 +289,7 @@ export function useComposerResize(
 
     event.preventDefault();
     captureResizeScrollPosition();
-    applyManualEditorHeight(clampComposerHeight(nextHeight, maxHeight));
+    applyManualEditorHeight(clampComposerHeight(nextHeight, maxHeight, minHeight));
   }
 
   /**

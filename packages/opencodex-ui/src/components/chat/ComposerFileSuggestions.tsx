@@ -11,6 +11,7 @@ import type { ComposerReferenceSuggestion } from "./composerReferences";
 type ComposerFileSuggestionsProps = {
   suggestions: ComposerReferenceSuggestion[];
   highlightedIndex: number;
+  isPortaled?: boolean;
   onSelect(suggestion: ComposerReferenceSuggestion): void;
 };
 
@@ -23,6 +24,7 @@ type ComposerFileSuggestionsProps = {
 export function ComposerFileSuggestions({
   suggestions,
   highlightedIndex,
+  isPortaled = false,
   onSelect
 }: ComposerFileSuggestionsProps) {
   const activeItemRef = useRef<HTMLDivElement | null>(null);
@@ -37,8 +39,12 @@ export function ComposerFileSuggestions({
     return null;
   }
 
+  const className = isPortaled
+    ? "composer-file-suggestions composer-file-suggestions-portaled"
+    : "composer-file-suggestions";
+
   return (
-    <Paper className="composer-file-suggestions" elevation={6}>
+    <Paper className={className} elevation={6}>
       <List dense disablePadding>
         {suggestions.map((suggestion, index) => (
           <ListItemButton
