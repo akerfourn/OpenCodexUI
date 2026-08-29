@@ -151,6 +151,15 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
+   * Checks whether any Codex source currently owns an active turn.
+   *
+   * @returns Whether at least one turn is active across all sources.
+   */
+  hasActiveTurns(): boolean {
+    return this.services.notificationCoordinator.hasActiveTurns();
+  }
+
+  /**
    * Releases runtime resources.
    *
    * @returns Promise resolved when resources are disposed.

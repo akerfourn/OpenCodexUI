@@ -140,6 +140,21 @@ export class RuntimeNotificationCoordinator {
   }
 
   /**
+   * Checks whether any Codex source currently owns an active turn.
+   *
+   * @returns Whether at least one turn is active across all sources.
+   */
+  hasActiveTurns(): boolean {
+    for (const activeTurnIds of this.activeTurnIdsBySourceId.values()) {
+      if (activeTurnIds.size > 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Clears active-turn state when a source client closes.
    *
    * @param sourceId Source identifier.

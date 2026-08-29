@@ -4,11 +4,12 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
 
-import { app, BrowserWindow, Menu } from "electron";
+import { app, BrowserWindow, dialog, Menu } from "electron";
 
 import type { OpenCodexLanguage } from "@open-codex-ui/opencodex-protocol";
 
 import { createWindow } from "./createWindow.js";
+import { buildAppCloseConfirmationOptions } from "./appCloseConfirmation.js";
 import {
   resolveContextMenuLanguage,
   type ContextMenuLanguage
@@ -23,6 +24,7 @@ let usageHistoryWindow: BrowserWindow | null = null;
 let contextMenuLanguage: ContextMenuLanguage = "fr";
 let isDisposing = false;
 let isDisposed = false;
+let isCloseConfirmationOpen = false;
 
 app.setName("OpenCodexUI");
 app.setAppUserModelId("io.opencodexui.app");
@@ -50,12 +52,7 @@ async function main(): Promise<void> {
     iconPath,
     contextMenuLanguage
   });
-  mainWindow = window;
-  window.on("closed", () => {
-    if (mainWindow === window) {
-      mainWindow = null;
-    }
-  });
+  attachMainWindow(window);
 
   bridgeServer = new ElectronBridgeServer({
     settings,
@@ -88,12 +85,7 @@ async function main(): Promise<void> {
         iconPath,
         contextMenuLanguage
       });
-      mainWindow = nextWindow;
-      nextWindow.on("closed", () => {
-        if (mainWindow === nextWindow) {
-          mainWindow = null;
-        }
-      });
+      attachMainWindow(nextWindow);
       bridgeServer?.attachWindow(nextWindow);
     }
   });
@@ -106,12 +98,12 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", (event) => {
-  if (isDisposed) {
+  if (isDisposed || isDisposing) {
     return;
   }
 
   event.preventDefault();
-  void disposeAndExit(0);
+  requestApplicationClose(mainWindow);
 });
 
 process.once("SIGTERM", () => {
@@ -150,6 +142,63 @@ async function disposeAndExit(code: number): Promise<void> {
     isDisposed = true;
     app.exit(code);
   }
+}
+
+/**
+ * Attaches lifecycle handlers to the main application window.
+ *
+ * @param window Main application window.
+ * @returns Nothing.
+ */
+function attachMainWindow(window: BrowserWindow): void {
+  mainWindow = window;
+  window.on("close", (event) => {
+    if (isDisposed || isDisposing) {
+      return;
+    }
+
+    event.preventDefault();
+    requestApplicationClose(window);
+  });
+  window.on("closed", () => {
+    if (mainWindow === window) {
+      mainWindow = null;
+    }
+  });
+}
+
+/**
+ * Starts one guarded, localized application-close confirmation.
+ *
+ * @param window Window used as the native dialog parent, when available.
+ * @returns Nothing.
+ */
+function requestApplicationClose(window: BrowserWindow | null): void {
+  if (isDisposed || isDisposing || isCloseConfirmationOpen) {
+    return;
+  }
+
+  if (window === null || window.isDestroyed()) {
+    void disposeAndExit(0);
+    return;
+  }
+
+  isCloseConfirmationOpen = true;
+  const hasActiveTurns = bridgeServer?.hasActiveTurns() ?? false;
+  const options = buildAppCloseConfirmationOptions(contextMenuLanguage, hasActiveTurns);
+
+  void dialog.showMessageBox(window, options)
+    .then((result) => {
+      if (result.response === 0) {
+        void disposeAndExit(0);
+      }
+    })
+    .catch((error: unknown) => {
+      console.error(`[OpenCodexUI] close confirmation failed: ${String(error)}`);
+    })
+    .finally(() => {
+      isCloseConfirmationOpen = false;
+    });
 }
 
 /**

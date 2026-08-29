@@ -146,6 +146,15 @@ export class ElectronBridgeServer {
   }
 
   /**
+   * Checks whether the backend still has work running before application shutdown.
+   *
+   * @returns Whether at least one Codex turn is active across all sources.
+   */
+  hasActiveTurns(): boolean {
+    return this.runtime.hasActiveTurns();
+  }
+
+  /**
    * Registers the IPC handler used by the renderer to send backend requests.
    *
    * @returns Nothing.

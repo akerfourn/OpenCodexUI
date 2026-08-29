@@ -165,14 +165,17 @@ describe("RuntimeNotificationCoordinator", () => {
 
     expect(context.coordinator.hasActiveTurn("source-a")).toBe(true);
     expect(context.coordinator.hasActiveTurn("source-b")).toBe(true);
+    expect(context.coordinator.hasActiveTurns()).toBe(true);
 
     context.coordinator.handleNotification(createTurnCompletedNotification("thread-a", "turn-a"), "source-a");
 
     expect(context.coordinator.hasActiveTurn("source-a")).toBe(false);
     expect(context.coordinator.hasActiveTurn("source-b")).toBe(true);
+    expect(context.coordinator.hasActiveTurns()).toBe(true);
 
     context.coordinator.clearSourceActiveTurns("source-b");
     expect(context.coordinator.hasActiveTurn("source-b")).toBe(false);
+    expect(context.coordinator.hasActiveTurns()).toBe(false);
   });
 
   it("should attach spawn model settings to a child turn", () => {
