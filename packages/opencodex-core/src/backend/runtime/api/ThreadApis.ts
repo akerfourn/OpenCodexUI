@@ -6,6 +6,8 @@ import type {
   OpenCodexReasoningEffort,
   OpenCodexThread,
   OpenCodexThreadEventLogPage,
+  OpenCodexThreadGoal,
+  OpenCodexThreadGoalPatch,
   OpenCodexThreadRuntimeStatus,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
@@ -25,6 +27,9 @@ export type ThreadsHandler = Pick<
   | "deleteThread"
   | "unarchiveThread"
   | "openThread"
+  | "readThreadGoal"
+  | "setThreadGoal"
+  | "clearThreadGoal"
   | "listSubAgentThreads"
   | "readThreadReadonly"
   | "loadOlderThreadMessages"
@@ -93,6 +98,31 @@ export class ThreadsApi implements ThreadsApiContract {
     sourceId: string | null = null
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     return await this.handler.openThread(threadId, sourceId);
+  }
+
+  /** Reads the native goal attached to a thread. */
+  async readGoal(
+    threadId: string,
+    sourceId: string | null = null
+  ): Promise<OpenCodexThreadGoal | null> {
+    return await this.handler.readThreadGoal(threadId, sourceId);
+  }
+
+  /** Creates or updates the native goal attached to a thread. */
+  async setGoal(
+    threadId: string,
+    sourceId: string | null,
+    patch: OpenCodexThreadGoalPatch
+  ): Promise<OpenCodexThreadGoal> {
+    return await this.handler.setThreadGoal(threadId, sourceId, patch);
+  }
+
+  /** Clears the native goal attached to a thread. */
+  async clearGoal(
+    threadId: string,
+    sourceId: string | null = null
+  ): Promise<{ cleared: boolean }> {
+    return await this.handler.clearThreadGoal(threadId, sourceId);
   }
 
   /** Lists sub-agent threads spawned by a parent thread. */

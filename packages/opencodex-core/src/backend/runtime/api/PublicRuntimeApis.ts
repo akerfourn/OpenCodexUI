@@ -46,6 +46,8 @@ import type {
   OpenCodexSourceSettingsPatch,
   OpenCodexThread,
   OpenCodexThreadEventLogPage,
+  OpenCodexThreadGoal,
+  OpenCodexThreadGoalPatch,
   OpenCodexThreadRuntimeStatus,
   OpenCodexToolVersionStatus,
   OpenCodexTurn,
@@ -157,6 +159,19 @@ export interface ThreadsApi {
     threadId: string,
     sourceId?: string | null
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }>;
+  readGoal(
+    threadId: string,
+    sourceId?: string | null
+  ): Promise<OpenCodexThreadGoal | null>;
+  setGoal(
+    threadId: string,
+    sourceId: string | null,
+    patch: OpenCodexThreadGoalPatch
+  ): Promise<OpenCodexThreadGoal>;
+  clearGoal(
+    threadId: string,
+    sourceId?: string | null
+  ): Promise<{ cleared: boolean }>;
   listSubAgents(parentThreadId: string, sourceId: string | null): Promise<OpenCodexThread[]>;
   readReadonly(
     threadId: string,

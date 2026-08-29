@@ -5,11 +5,13 @@ import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import { Box, CircularProgress, IconButton, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import { useTranslation } from "react-i18next";
 
 import type { ChatStore } from "../../stores/chat/ChatStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
+import { ChatGoalDialogX } from "../dialogs/ChatGoalDialog";
 import { RenameModal } from "../dialogs/RenameModal";
 import { ThreadContextUsageIndicator } from "./ThreadContextUsageIndicator";
 
@@ -28,6 +30,7 @@ type ChatHeaderProps = {
 export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
   const { t } = useTranslation();
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [isGoalDialogOpen, setIsGoalDialogOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const currentThread = chatStore.thread;
   const isReadOnlyProject = projectStore.isReadOnlyFromCache;
@@ -73,6 +76,14 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
     chatStore.actions.refresh();
   }
 
+  function handleGoalOpen(): void {
+    setIsGoalDialogOpen(true);
+  }
+
+  function handleGoalClose(): void {
+    setIsGoalDialogOpen(false);
+  }
+
   return (
     <>
       <Box component="header" className="chat-header" sx={{ position: "relative" }}>
@@ -94,6 +105,15 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
           <Box className="chat-title-spacer" />
           <Box className="chat-header-actions">
             <IconButton
+              aria-label={t("goal.open")}
+              title={t("goal.open")}
+              size="small"
+              color={chatStore.goal.goal === null ? "default" : "primary"}
+              onClick={handleGoalOpen}
+            >
+              <FlagOutlinedIcon fontSize="small" />
+            </IconButton>
+            <IconButton
               aria-label={t("header.refresh")}
               title={t("header.refresh")}
               size="small"
@@ -114,6 +134,11 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
         </Box>
       </Box>
       {renameModal}
+      <ChatGoalDialogX
+        open={isGoalDialogOpen}
+        chatStore={chatStore}
+        onClose={handleGoalClose}
+      />
     </>
   );
 }

@@ -230,7 +230,12 @@ export type OpenCodexThreadEventLogStage =
   | "client-requested";
 
 /** Supported client requests retained by the per-chat Codex event trace. */
-export type OpenCodexThreadEventLogRequestType = "turn.start" | "turn.steer";
+export type OpenCodexThreadEventLogRequestType =
+  | "turn.start"
+  | "turn.steer"
+  | "thread.goal.get"
+  | "thread.goal.set"
+  | "thread.goal.clear";
 
 /**
  * Scalar metadata value retained by the per-chat Codex event trace.

@@ -16,6 +16,7 @@ import type { ProjectStore } from "../project/ProjectStore";
 import type { RootStore } from "../RootStore";
 import { ChatActionsStore } from "./ChatActionsStore";
 import { ChatComposerStore } from "./ChatComposerStore";
+import { ChatGoalStore } from "./ChatGoalStore";
 import { ChatRuntimeStore } from "./ChatRuntimeStore";
 import { ChatTimelineStore } from "./ChatTimelineStore";
 import { hasActiveRunningTurn } from "./chatTurnUtils";
@@ -39,6 +40,8 @@ export class ChatStore {
   readonly timeline: ChatTimelineStore;
   /** Runtime flags, transitions, and status polling for this chat. */
   readonly runtime: ChatRuntimeStore;
+  /** Native Codex goal state and actions for this chat. */
+  readonly goal: ChatGoalStore;
 
   /**
    * Creates a chat store for the provided thread.
@@ -55,6 +58,7 @@ export class ChatStore {
     this.timeline = new ChatTimelineStore(this, projectStore, root);
     this.runtime = new ChatRuntimeStore(this);
     this.actions = new ChatActionsStore(this, projectStore, root);
+    this.goal = new ChatGoalStore(this, root);
     makeAutoObservable<
       ChatStore,
       | "projectStore"
@@ -63,13 +67,15 @@ export class ChatStore {
       | "composer"
       | "timeline"
       | "runtime"
+      | "goal"
     >(this, {
       projectStore: false,
       root: false,
       actions: false,
       composer: false,
       timeline: false,
-      runtime: false
+      runtime: false,
+      goal: false
     });
   }
 

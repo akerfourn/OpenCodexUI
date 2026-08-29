@@ -10,6 +10,8 @@ import type {
   OpenCodexThreadEventLogPage,
   OpenCodexThreadEventLogRequestType,
   OpenCodexThreadEventLogValue,
+  OpenCodexThreadGoal,
+  OpenCodexThreadGoalPatch,
   OpenCodexThreadRuntimeStatus,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
@@ -348,6 +350,54 @@ export class ThreadRuntimeHandler {
    */
   async readThreadRuntimeStatus(threadId: string): Promise<OpenCodexThreadRuntimeStatus> {
     return await this.threadConversationService.readThreadRuntimeStatus(threadId);
+  }
+
+  /**
+   * Reads the native Codex goal attached to a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param sourceIdOverride Source identifier known by the caller, or `null`.
+   * @returns Native goal, or `null` when none is configured.
+   */
+  async readThreadGoal(
+    threadId: string,
+    sourceIdOverride: string | null = null
+  ): Promise<OpenCodexThreadGoal | null> {
+    return await this.threadConversationService.readThreadGoal(threadId, sourceIdOverride);
+  }
+
+  /**
+   * Creates or updates the native Codex goal attached to a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param sourceIdOverride Source identifier known by the caller, or `null`.
+   * @param patch Goal fields to update.
+   * @returns Resulting native goal.
+   */
+  async setThreadGoal(
+    threadId: string,
+    sourceIdOverride: string | null,
+    patch: OpenCodexThreadGoalPatch
+  ): Promise<OpenCodexThreadGoal> {
+    return await this.threadConversationService.setThreadGoal(
+      threadId,
+      sourceIdOverride,
+      patch
+    );
+  }
+
+  /**
+   * Clears the native Codex goal attached to a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param sourceIdOverride Source identifier known by the caller, or `null`.
+   * @returns Whether a goal was cleared.
+   */
+  async clearThreadGoal(
+    threadId: string,
+    sourceIdOverride: string | null = null
+  ): Promise<{ cleared: boolean }> {
+    return await this.threadConversationService.clearThreadGoal(threadId, sourceIdOverride);
   }
 
   /**

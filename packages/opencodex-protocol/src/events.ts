@@ -16,6 +16,7 @@ import type {
   OpenCodexSource,
   OpenCodexThread,
   OpenCodexThreadEventLogEntry,
+  OpenCodexThreadGoal,
   OpenCodexThreadTokenUsage,
   OpenCodexTurn,
   OpenCodexUsageSnapshot
@@ -57,6 +58,13 @@ export type OpenCodexEvent =
       tokenUsage?: OpenCodexThreadTokenUsage | null;
     }
   | { type: "thread.created"; thread: OpenCodexThread; turns: OpenCodexTurn[] }
+  | {
+      type: "thread.goal.updated";
+      sourceId?: string | null;
+      threadId: string;
+      goal: OpenCodexThreadGoal;
+    }
+  | { type: "thread.goal.cleared"; sourceId?: string | null; threadId: string }
   | { type: "thread.discovered"; thread: OpenCodexThread }
   | { type: "thread.metadata.updated"; thread: OpenCodexThread }
   | {

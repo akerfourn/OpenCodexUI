@@ -17,6 +17,8 @@ import type {
   OpenCodexSourceColor,
   OpenCodexSourceSettingsPatch,
   OpenCodexSettings,
+  OpenCodexThreadGoalPatch,
+  OpenCodexThreadGoalStatus,
   OpenCodexThreadScope,
   OpenCodexUsageHistoryAggregation
 } from "./messages";
@@ -100,6 +102,16 @@ export type OpenCodexRequest =
       archived?: boolean;
     }
   | { type: "threads.open"; threadId: string; sourceId?: string | null }
+  | { type: "threads.goal.read"; threadId: string; sourceId?: string | null }
+  | {
+      type: "threads.goal.set";
+      threadId: string;
+      sourceId?: string | null;
+      objective?: OpenCodexThreadGoalPatch["objective"];
+      status?: OpenCodexThreadGoalStatus | null;
+      tokenBudget?: OpenCodexThreadGoalPatch["tokenBudget"];
+    }
+  | { type: "threads.goal.clear"; threadId: string; sourceId?: string | null }
   | {
       type: "threads.eventLog.read";
       threadId: string;

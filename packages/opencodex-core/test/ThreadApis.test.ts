@@ -19,6 +19,9 @@ describe("thread runtime APIs", () => {
       "delete",
       "restore",
       "open",
+      "readGoal",
+      "setGoal",
+      "clearGoal",
       "listSubAgents",
       "readReadonly",
       "loadOlderMessages",
@@ -45,6 +48,9 @@ describe("thread runtime APIs", () => {
     await api.list("currentProject", "/workspace/project", "source-1", "needle", true);
     await api.restore("thread-1");
     await api.readReadonly("thread-1", "source-1");
+    await api.readGoal("thread-1", "source-1");
+    await api.setGoal("thread-1", "source-1", { objective: "Finish the task" });
+    await api.clearGoal("thread-1", "source-1");
 
     expect(handler.listThreads).toHaveBeenCalledWith(
       "currentProject",
@@ -55,6 +61,13 @@ describe("thread runtime APIs", () => {
     );
     expect(handler.unarchiveThread).toHaveBeenCalledWith("thread-1");
     expect(handler.readThreadReadonly).toHaveBeenCalledWith("thread-1", "source-1");
+    expect(handler.readThreadGoal).toHaveBeenCalledWith("thread-1", "source-1");
+    expect(handler.setThreadGoal).toHaveBeenCalledWith(
+      "thread-1",
+      "source-1",
+      { objective: "Finish the task" }
+    );
+    expect(handler.clearThreadGoal).toHaveBeenCalledWith("thread-1", "source-1");
   });
 
   it("forwards collaboration and event-log reads through their focused APIs", async () => {
@@ -85,6 +98,18 @@ function createThreadsHandler(): ThreadsHandler {
     openThread: vi.fn(async () => ({ thread: {} as never, turns: [] })),
     listSubAgentThreads: vi.fn(async () => []),
     readThreadReadonly: vi.fn(async () => ({ thread: {} as never, turns: [] })),
+    readThreadGoal: vi.fn(async () => null),
+    setThreadGoal: vi.fn(async () => ({
+      threadId: "thread-1",
+      objective: "Finish the task",
+      status: "active",
+      tokenBudget: null,
+      tokensUsed: 0,
+      timeUsedSeconds: 0,
+      createdAt: 0,
+      updatedAt: 0
+    })),
+    clearThreadGoal: vi.fn(async () => ({ cleared: true })),
     loadOlderThreadMessages: vi.fn(async () => ({ turns: [], hasMoreOlderMessages: false })),
     recoverThread: vi.fn(async () => ({ ok: true as const })),
     createThread: vi.fn(async () => ({ thread: {} as never, turns: [] })),

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   OpenCodexActivity,
   OpenCodexMessage,
+  OpenCodexThreadGoal,
   OpenCodexThreadTokenUsage
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -53,6 +54,30 @@ describe("ProjectThreadEventsStore", () => {
 
     expect(secondChat.timeline.applyTokenUsage).toHaveBeenCalledWith(usage);
     expect(firstChat.timeline.applyTokenUsage).not.toHaveBeenCalled();
+  });
+
+  it("should route native goal events only to the chat owned by their source", () => {
+    const fixture = createFixture();
+    const firstChat = fixture.addChat("source-a", "shared-thread");
+    const secondChat = fixture.addChat("source-b", "shared-thread");
+    const goal = createGoal("shared-thread");
+
+    fixture.router.handleEvent({
+      type: "thread.goal.updated",
+      sourceId: "source-b",
+      threadId: "shared-thread",
+      goal
+    });
+    fixture.router.handleEvent({
+      type: "thread.goal.cleared",
+      sourceId: "source-b",
+      threadId: "shared-thread"
+    });
+
+    expect(secondChat.goal.applyGoal).toHaveBeenCalledWith(goal);
+    expect(secondChat.goal.clearFromEvent).toHaveBeenCalledWith("shared-thread");
+    expect(firstChat.goal.applyGoal).not.toHaveBeenCalled();
+    expect(firstChat.goal.clearFromEvent).not.toHaveBeenCalled();
   });
 
   it("should clear recovery loading only for the matching source project", () => {
@@ -210,6 +235,10 @@ type FakeChat = {
     appendAssistantDelta: ReturnType<typeof vi.fn>;
     applyActivityUpdated: ReturnType<typeof vi.fn>;
   };
+  goal: {
+    applyGoal: ReturnType<typeof vi.fn>;
+    clearFromEvent: ReturnType<typeof vi.fn>;
+  };
   applyMessageStarted: ReturnType<typeof vi.fn>;
   applyTurnStarted: ReturnType<typeof vi.fn>;
   applyTurnCompleted: ReturnType<typeof vi.fn>;
@@ -262,6 +291,10 @@ function createFixture(callOrder: string[] = []): Fixture {
         applyTokenUsage: vi.fn(() => callOrder.push("thread.tokenUsage.updated")),
         appendAssistantDelta: vi.fn(() => callOrder.push("message.delta")),
         applyActivityUpdated: vi.fn(() => callOrder.push("activity.updated"))
+      },
+      goal: {
+        applyGoal: vi.fn(),
+        clearFromEvent: vi.fn()
       },
       applyMessageStarted: vi.fn(() => callOrder.push("message.started")),
       applyTurnStarted: vi.fn(() => callOrder.push("turn.started")),
@@ -362,5 +395,19 @@ function createActivity(threadId: string, id: string): OpenCodexActivity {
     details: null,
     plan: null,
     status: "running"
+  };
+}
+
+/** Creates the minimal native goal DTO used by the source-routing test. */
+function createGoal(threadId: string): OpenCodexThreadGoal {
+  return {
+    threadId,
+    objective: "Complete the task",
+    status: "active",
+    tokenBudget: null,
+    tokensUsed: 0,
+    timeUsedSeconds: 0,
+    createdAt: 1,
+    updatedAt: 1
   };
 }

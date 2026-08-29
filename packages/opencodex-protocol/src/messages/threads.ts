@@ -47,6 +47,34 @@ export type OpenCodexThread = {
   status?: string;
 };
 
+/** Lifecycle status reported by the native Codex goal runtime. */
+export type OpenCodexThreadGoalStatus =
+  | "active"
+  | "paused"
+  | "blocked"
+  | "usageLimited"
+  | "budgetLimited"
+  | "complete";
+
+/** Native Codex goal state attached to one thread. */
+export type OpenCodexThreadGoal = {
+  threadId: string;
+  objective: string;
+  status: OpenCodexThreadGoalStatus;
+  tokenBudget: number | null;
+  tokensUsed: number;
+  timeUsedSeconds: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+/** Optional fields accepted when creating or updating a native goal. */
+export type OpenCodexThreadGoalPatch = {
+  objective?: string | null;
+  status?: OpenCodexThreadGoalStatus | null;
+  tokenBudget?: number | null;
+};
+
 /**
  * Message role used by flattened message and turn item DTOs.
  */

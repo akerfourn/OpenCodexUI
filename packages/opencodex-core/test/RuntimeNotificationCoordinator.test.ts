@@ -311,6 +311,43 @@ describe("RuntimeNotificationCoordinator", () => {
     }));
   });
 
+  it("should emit normalized native goal updates and clears", () => {
+    const context = createContext();
+    const goal = {
+      threadId: "thread-1",
+      objective: "Finish the task",
+      status: "active",
+      tokenBudget: 20_000,
+      tokensUsed: 100,
+      timeUsedSeconds: 4,
+      createdAt: 1,
+      updatedAt: 2
+    } as const;
+
+    context.coordinator.handleNotification({
+      method: "thread/goal/updated",
+      params: { threadId: "thread-1", turnId: null, goal }
+    }, "source-1");
+    context.coordinator.handleNotification({
+      method: "thread/goal/cleared",
+      params: { threadId: "thread-1" }
+    }, "source-1");
+
+    expect(context.emittedGoalEvents).toEqual([
+      {
+        type: "thread.goal.updated",
+        sourceId: "source-1",
+        threadId: "thread-1",
+        goal
+      },
+      {
+        type: "thread.goal.cleared",
+        sourceId: "source-1",
+        threadId: "thread-1"
+      }
+    ]);
+  });
+
   it("should report processed timing when synchronous processing fails", () => {
     const context = createContext({
       projectCommandService: {
@@ -341,6 +378,7 @@ type Context = {
   timeline: string[];
   processedMethods: string[];
   emittedTokenUsage: unknown;
+  emittedGoalEvents: unknown[];
 };
 
 /** Creates a coordinator with deterministic adapters that expose call order. */
@@ -350,6 +388,7 @@ function createContext(
   const timeline: string[] = [];
   const processedMethods: string[] = [];
   let emittedTokenUsage: unknown;
+  const emittedGoalEvents: unknown[] = [];
   const threadTurnCache = new ThreadTurnCache();
   const options: RuntimeNotificationCoordinatorOptions = {
     settings: createSettingsPort(createSettings()),
@@ -369,6 +408,10 @@ function createContext(
     events: createEventPort((event) => {
       if (event.type === "thread.tokenUsage.updated") {
         emittedTokenUsage = event;
+      }
+
+      if (event.type === "thread.goal.updated" || event.type === "thread.goal.cleared") {
+        emittedGoalEvents.push(event);
       }
     }, () => {
       timeline.push("raw");
@@ -421,7 +464,8 @@ function createContext(
     processedMethods,
     get emittedTokenUsage() {
       return emittedTokenUsage;
-    }
+    },
+    emittedGoalEvents
   };
 }
 

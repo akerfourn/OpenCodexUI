@@ -345,6 +345,47 @@ describe("CodexAppServerClient", () => {
       }
     });
   });
+
+  it("should expose the native goal endpoints with their generated payloads", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+
+    respondToRequests(fakeProcess, (request) => {
+      if (request.method === "initialize") {
+        fakeProcess.stdout.write(`{"id":${request.id},"result":{}}\n`);
+        return;
+      }
+
+      const result = request.method === "thread/goal/get"
+        ? { goal: null }
+        : request.method === "thread/goal/clear"
+          ? { cleared: true }
+          : {
+              goal: {
+                threadId: "thread-1",
+                objective: "Finish the task",
+                status: "active",
+                tokenBudget: 20_000,
+                tokensUsed: 0,
+                timeUsedSeconds: 0,
+                createdAt: 1,
+                updatedAt: 1
+              }
+            };
+
+      fakeProcess.stdout.write(`${JSON.stringify({ id: request.id, result })}\n`);
+    });
+
+    await client.start();
+    await expect(client.getThreadGoal("thread-1")).resolves.toEqual({ goal: null });
+    await expect(client.setThreadGoal({
+      threadId: "thread-1",
+      objective: "Finish the task",
+      status: "active",
+      tokenBudget: 20_000
+    })).resolves.toMatchObject({ goal: { objective: "Finish the task" } });
+    await expect(client.clearThreadGoal("thread-1")).resolves.toEqual({ cleared: true });
+  });
 });
 
 /**

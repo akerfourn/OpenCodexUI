@@ -21,6 +21,10 @@ import type { ThreadRollbackParams } from "./generated/v2/ThreadRollbackParams";
 import type { ThreadRollbackResponse } from "./generated/v2/ThreadRollbackResponse";
 import type { ThreadCompactStartResponse } from "./generated/v2/ThreadCompactStartResponse";
 import type { ThreadSetNameResponse } from "./generated/v2/ThreadSetNameResponse";
+import type { ThreadGoalClearResponse } from "./generated/v2/ThreadGoalClearResponse";
+import type { ThreadGoalGetResponse } from "./generated/v2/ThreadGoalGetResponse";
+import type { ThreadGoalSetParams } from "./generated/v2/ThreadGoalSetParams";
+import type { ThreadGoalSetResponse } from "./generated/v2/ThreadGoalSetResponse";
 import type { ThreadStartParams } from "./generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "./generated/v2/ThreadStartResponse";
 import type { ThreadUnarchiveResponse } from "./generated/v2/ThreadUnarchiveResponse";
@@ -377,6 +381,36 @@ export class CodexAppServerClient {
    */
   async renameThread(threadId: string, name: string): Promise<ThreadSetNameResponse> {
     return this.request<ThreadSetNameResponse>("thread/name/set", { threadId, name });
+  }
+
+  /**
+   * Reads the native goal attached to a thread.
+   *
+   * @param threadId Identifier of the thread to inspect.
+   * @returns Promise resolved with the goal, or `null` when no goal exists.
+   */
+  async getThreadGoal(threadId: string): Promise<ThreadGoalGetResponse> {
+    return this.request<ThreadGoalGetResponse>("thread/goal/get", { threadId });
+  }
+
+  /**
+   * Creates or updates the native goal attached to a thread.
+   *
+   * @param params Native goal fields accepted by the app-server.
+   * @returns Promise resolved with the resulting goal.
+   */
+  async setThreadGoal(params: ThreadGoalSetParams): Promise<ThreadGoalSetResponse> {
+    return this.request<ThreadGoalSetResponse>("thread/goal/set", params);
+  }
+
+  /**
+   * Removes the native goal attached to a thread.
+   *
+   * @param threadId Identifier of the thread to clear.
+   * @returns Promise resolved with the clear result.
+   */
+  async clearThreadGoal(threadId: string): Promise<ThreadGoalClearResponse> {
+    return this.request<ThreadGoalClearResponse>("thread/goal/clear", { threadId });
   }
 }
 

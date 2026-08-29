@@ -92,6 +92,14 @@ export function readBackendEventTarget(event: OpenCodexEvent): EventLogTarget | 
     case "thread.renamed":
     case "thread.deleted":
       return createTarget(event.sourceId ?? null, event.threadId, null, null);
+    case "thread.goal.updated":
+      return createTarget(event.sourceId ?? null, event.threadId, null, null, {
+        status: event.goal.status,
+        tokenBudget: event.goal.tokenBudget,
+        tokensUsed: event.goal.tokensUsed
+      });
+    case "thread.goal.cleared":
+      return createTarget(event.sourceId ?? null, event.threadId, null, null);
     case "thread.tokenUsage.updated":
       return createTarget(event.sourceId ?? null, event.usage.threadId, event.usage.turnId, null, {
         totalTokens: event.usage.total.totalTokens,

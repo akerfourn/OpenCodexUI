@@ -5,6 +5,8 @@ import type {
   OpenCodexImageAttachment,
   OpenCodexReasoningEffort,
   OpenCodexThread,
+  OpenCodexThreadGoal,
+  OpenCodexThreadGoalPatch,
   OpenCodexThreadRuntimeStatus,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
@@ -19,6 +21,7 @@ import { ThreadCacheService } from "./ThreadCacheService.js";
 import { ThreadCatalogService } from "./ThreadCatalogService.js";
 import { ThreadCreationService } from "./ThreadCreationService.js";
 import { ThreadHierarchyService } from "./ThreadHierarchyService.js";
+import { ThreadGoalService } from "./ThreadGoalService.js";
 import { ThreadReadService } from "./ThreadReadService.js";
 import { ThreadSourceResolver } from "./ThreadSourceResolver.js";
 import { ThreadTurnPageLoader } from "./ThreadTurnPageLoader.js";
@@ -72,6 +75,9 @@ export class ThreadConversationService {
   /** Executes source-aware Codex thread and turn actions. */
   private readonly threadTurnActionsService: ThreadTurnActionsService;
 
+  /** Accesses native app-server goal state for source-owned threads. */
+  private readonly threadGoalService: ThreadGoalService;
+
   /**
    * Creates a thread conversation service.
    *
@@ -81,6 +87,11 @@ export class ThreadConversationService {
     this.threadSourceResolver = new ThreadSourceResolver({
       threadTurnCache: options.threadTurnCache,
       threadCacheService: options.threadCacheService
+    });
+    this.threadGoalService = new ThreadGoalService({
+      sourceResolver: this.threadSourceResolver,
+      clients: options.clients,
+      events: options.events
     });
     this.threadHierarchyService = new ThreadHierarchyService({
       clients: options.clients,
@@ -226,6 +237,50 @@ export class ThreadConversationService {
    */
   async readThreadRuntimeStatus(threadId: string): Promise<OpenCodexThreadRuntimeStatus> {
     return await this.threadReadService.readThreadRuntimeStatus(threadId);
+  }
+
+  /**
+   * Reads the native Codex goal attached to a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param sourceIdOverride Source identifier known by the caller, or `null`.
+   * @returns Native goal, or `null` when none is configured.
+   */
+  async readThreadGoal(
+    threadId: string,
+    sourceIdOverride: string | null = null
+  ): Promise<OpenCodexThreadGoal | null> {
+    return await this.threadGoalService.read(threadId, sourceIdOverride);
+  }
+
+  /**
+   * Creates or updates the native Codex goal attached to a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param sourceIdOverride Source identifier known by the caller, or `null`.
+   * @param patch Goal fields to update.
+   * @returns Resulting native goal.
+   */
+  async setThreadGoal(
+    threadId: string,
+    sourceIdOverride: string | null,
+    patch: OpenCodexThreadGoalPatch
+  ): Promise<OpenCodexThreadGoal> {
+    return await this.threadGoalService.set(threadId, sourceIdOverride, patch);
+  }
+
+  /**
+   * Clears the native Codex goal attached to a thread.
+   *
+   * @param threadId Thread identifier.
+   * @param sourceIdOverride Source identifier known by the caller, or `null`.
+   * @returns Whether a goal was cleared.
+   */
+  async clearThreadGoal(
+    threadId: string,
+    sourceIdOverride: string | null = null
+  ): Promise<{ cleared: boolean }> {
+    return await this.threadGoalService.clear(threadId, sourceIdOverride);
   }
 
   /**

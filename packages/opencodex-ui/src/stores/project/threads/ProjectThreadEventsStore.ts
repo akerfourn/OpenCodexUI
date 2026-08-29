@@ -70,6 +70,12 @@ export class ProjectThreadEventsStore implements RootChildStore {
           event.type === "thread.opened" ? event.tokenUsage ?? null : null
         );
         return;
+      case "thread.goal.updated":
+        this.applyThreadGoal(event.threadId, event.goal, event.sourceId);
+        return;
+      case "thread.goal.cleared":
+        this.clearThreadGoal(event.threadId, event.sourceId);
+        return;
       case "thread.metadata.updated":
         this.applyThreadMetadata(event.thread);
         return;
@@ -416,6 +422,20 @@ export class ProjectThreadEventsStore implements RootChildStore {
     }
 
     projectStore.renameThread(threadId, name);
+  }
+
+  /** Applies a native goal update to the matching loaded chat. */
+  private applyThreadGoal(
+    threadId: string,
+    goal: Extract<OpenCodexEvent, { type: "thread.goal.updated" }>["goal"],
+    sourceId?: string | null
+  ): void {
+    this.findChatStore(threadId, sourceId)?.goal.applyGoal(goal);
+  }
+
+  /** Clears native goal state on the matching loaded chat. */
+  private clearThreadGoal(threadId: string, sourceId?: string | null): void {
+    this.findChatStore(threadId, sourceId)?.goal.clearFromEvent(threadId);
   }
 
   /**

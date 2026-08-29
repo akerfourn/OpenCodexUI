@@ -13,6 +13,10 @@ import { StreamingNotificationBatcher } from "./StreamingNotificationBatcher.js"
 import type { ThreadCacheService } from "../threads/ThreadCacheService.js";
 import type { ThreadConversationService } from "../threads/ThreadConversationService.js";
 import type { ThreadRuntimeHandler } from "../threads/ThreadRuntimeHandler.js";
+import {
+  mapThreadGoalClearedNotification,
+  mapThreadGoalUpdatedNotification
+} from "../threads/threadGoalMapping.js";
 import { mapThreadTokenUsageNotification } from "../threads/threadTokenUsageMapping.js";
 import type { RuntimeEventPort, RuntimeSettingsPort } from "./runtimePorts.js";
 import type { UsageRuntimeService } from "../usage/UsageRuntimeService.js";
@@ -195,6 +199,14 @@ export class RuntimeNotificationCoordinator {
 
       if (notification.method === "thread/tokenUsage/updated") {
         this.handleTokenUsageNotification(notification, sourceId);
+      }
+
+      if (notification.method === "thread/goal/updated") {
+        this.handleThreadGoalUpdatedNotification(notification, sourceId);
+      }
+
+      if (notification.method === "thread/goal/cleared") {
+        this.handleThreadGoalClearedNotification(notification, sourceId);
       }
 
       if (notification.method === "turn/completed") {
@@ -404,6 +416,43 @@ export class RuntimeNotificationCoordinator {
 
     void this.options.threadCacheService.writeTokenUsage(sourceId, usage);
     this.options.events.emit({ type: "thread.tokenUsage.updated", sourceId, usage });
+  }
+
+  /** Emits a normalized UI event for a native goal update. */
+  private handleThreadGoalUpdatedNotification(
+    notification: CodexNotification,
+    sourceId: string
+  ): void {
+    const goalUpdate = mapThreadGoalUpdatedNotification(notification.params);
+
+    if (goalUpdate === null) {
+      return;
+    }
+
+    this.options.events.emit({
+      type: "thread.goal.updated",
+      sourceId,
+      threadId: goalUpdate.threadId,
+      goal: goalUpdate.goal
+    });
+  }
+
+  /** Emits a normalized UI event for a native goal clear. */
+  private handleThreadGoalClearedNotification(
+    notification: CodexNotification,
+    sourceId: string
+  ): void {
+    const threadId = mapThreadGoalClearedNotification(notification.params);
+
+    if (threadId === null) {
+      return;
+    }
+
+    this.options.events.emit({
+      type: "thread.goal.cleared",
+      sourceId,
+      threadId
+    });
   }
 
   /**

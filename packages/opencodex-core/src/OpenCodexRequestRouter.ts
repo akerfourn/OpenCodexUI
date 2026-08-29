@@ -126,6 +126,16 @@ export class OpenCodexRequestRouter {
         );
       case "threads.open":
         return this.runtime.threads.open(request.threadId, request.sourceId ?? null);
+      case "threads.goal.read":
+        return this.runtime.threads.readGoal(request.threadId, request.sourceId ?? null);
+      case "threads.goal.set":
+        return this.runtime.threads.setGoal(request.threadId, request.sourceId ?? null, {
+          objective: request.objective,
+          status: request.status,
+          tokenBudget: request.tokenBudget
+        });
+      case "threads.goal.clear":
+        return this.runtime.threads.clearGoal(request.threadId, request.sourceId ?? null);
       case "threads.eventLog.read":
         return this.runtime.eventLog.read(
           request.threadId,
