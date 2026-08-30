@@ -11,10 +11,11 @@ vi.mock("react-i18next", () => ({
 }));
 
 import { ProjectComposePanel } from "../src/components/projects/ProjectComposePanel";
+import { readComposeServiceCapabilities } from "../src/components/projects/ProjectComposeServiceDialog";
 import { ProjectComposeServiceDetails } from "../src/components/projects/ProjectComposeServiceDetails";
 
 describe("ProjectComposePanel", () => {
-  it("should show service state text and expanded runtime details", () => {
+  it("should show compact service states that open a detail dialog", () => {
     const snapshot = createSnapshot();
     const unknownService = {
       ...snapshot.services[0],
@@ -60,43 +61,46 @@ describe("ProjectComposePanel", () => {
     expect(markup).toContain("web");
     expect(markup).toContain("docker.compose.status.running");
     expect(markup).toContain('aria-label="web: docker.compose.status.running"');
-    expect(markup).toContain('aria-controls="project-compose-details-web-0"');
-    expect(markup).toContain('role="region"');
-    expect(markup).toContain('id="project-compose-details-web-0-heading"');
+    expect(markup).toContain('aria-haspopup="dialog"');
     expect(markup).toContain("project-compose-status-indicator");
-    expect(markup).toContain("sample-web-1");
-    expect(markup).toContain("docker.compose.actions.restart");
+    expect(markup).toContain("is-running");
     expect(markup).toContain('aria-label="api: docker.compose.status.unknown"');
-    expect(markup).toContain('aria-expanded="false"');
-    expect(markup).not.toContain('aria-controls="project-compose-details-api');
   });
 
-  it("should only offer lifecycle actions for safe service states", () => {
+  it("should render structured container details for the modal", () => {
     const snapshot = createSnapshot();
-    const unknownService = {
-      ...snapshot.services[0],
-      name: "api",
-      state: "unknown" as const,
-      containers: []
-    };
 
     const markup = renderToStaticMarkup(
       <ProjectComposeServiceDetails
-        service={unknownService}
-        isPending={false}
-        isAvailable
-        detailsId="project-compose-details-api-0"
-        onStart={vi.fn()}
-        onStop={vi.fn()}
-        onRestart={vi.fn()}
-        onLogs={vi.fn()}
+        service={snapshot.services[0]}
       />
     );
 
-    expect(markup).not.toContain("docker.compose.actions.start");
-    expect(markup).not.toContain("docker.compose.actions.stop");
-    expect(markup).not.toContain("docker.compose.actions.restart");
-    expect(markup).toContain("docker.compose.actions.logs");
+    expect(markup).toContain("sample-web-1");
+    expect(markup).toContain("docker.compose.containerState.running");
+    expect(markup).toContain("docker.compose.healthStatus.healthy");
+    expect(markup).toContain("127.0.0.1:3000 → 3000/tcp");
+  });
+
+  it("should only expose lifecycle actions safe for the service state", () => {
+    const snapshot = createSnapshot();
+    const runningService = snapshot.services[0];
+    const stoppedService = { ...runningService, state: "stopped" as const };
+    const unknownService = { ...runningService, state: "unknown" as const };
+
+    expect(readComposeServiceCapabilities(runningService)).toEqual({
+      canStart: false,
+      canStop: true,
+      hasContainers: true
+    });
+    expect(readComposeServiceCapabilities(stoppedService)).toMatchObject({
+      canStart: true,
+      canStop: false
+    });
+    expect(readComposeServiceCapabilities(unknownService)).toMatchObject({
+      canStart: false,
+      canStop: false
+    });
   });
 });
 
@@ -115,7 +119,12 @@ function createSnapshot(): OpenCodexDockerComposeSnapshot {
         state: "running",
         health: "healthy",
         exitCode: 0,
-        publishers: []
+        publishers: [{
+          url: "127.0.0.1",
+          targetPort: 3000,
+          publishedPort: 3000,
+          protocol: "tcp"
+        }]
       }]
     }]
   };

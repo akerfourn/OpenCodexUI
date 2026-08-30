@@ -1,158 +1,196 @@
 /**
- * Renders the expanded details for one Docker Compose service.
+ * Renders detailed runtime information for one Docker Compose service.
  */
-import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
-import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
-import StopOutlinedIcon from "@mui/icons-material/StopOutlined";
-import SubjectOutlinedIcon from "@mui/icons-material/SubjectOutlined";
-import { Button, Divider, Stack, Typography } from "@mui/material";
-import { observer } from "mobx-react-lite";
+import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexDockerComposeSnapshot } from "@open-codex-ui/opencodex-protocol";
 
 type ComposeService = OpenCodexDockerComposeSnapshot["services"][number];
+type ComposeContainer = ComposeService["containers"][number];
 
 type ProjectComposeServiceDetailsProps = {
   service: ComposeService;
-  isPending: boolean;
-  isAvailable?: boolean;
-  detailsId?: string;
-  onStart(serviceName: string): void;
-  onStop(serviceName: string): void;
-  onRestart(serviceName: string): void;
-  onLogs(serviceName: string): void;
 };
 
-/** Renders service containers, health, ports, and lifecycle actions. */
+/** Renders service and container state without exposing sensitive Docker data. */
 export function ProjectComposeServiceDetails({
-  service,
-  isPending,
-  isAvailable = true,
-  detailsId,
-  onStart,
-  onStop,
-  onRestart,
-  onLogs
+  service
 }: ProjectComposeServiceDetailsProps) {
   const { t } = useTranslation();
-  const canStart = service.state === "stopped" || service.state === "missing";
-  const canStop = service.state === "running" ||
-    service.state === "unhealthy" ||
-    service.state === "partial";
-
-  function handleStart(): void {
-    onStart(service.name);
-  }
-
-  function handleStop(): void {
-    onStop(service.name);
-  }
-
-  function handleRestart(): void {
-    onRestart(service.name);
-  }
-
-  function handleLogs(): void {
-    onLogs(service.name);
-  }
-
-  const startAction = canStart ? (
-    <Button
-      size="small"
-      variant="outlined"
-      startIcon={<PlayArrowOutlinedIcon />}
-      disabled={!isAvailable || isPending}
-      onClick={handleStart}
-    >
-      {t("docker.compose.actions.start")}
-    </Button>
-  ) : null;
-  const lifecycleActions = canStop ? (
-    <>
-      <Button
-        size="small"
-        variant="outlined"
-        startIcon={<StopOutlinedIcon />}
-        disabled={!isAvailable || isPending}
-        onClick={handleStop}
-      >
-        {t("docker.compose.actions.stop")}
-      </Button>
-      <Button
-        size="small"
-        variant="outlined"
-        startIcon={<RestartAltOutlinedIcon />}
-        disabled={!isAvailable || isPending}
-        onClick={handleRestart}
-      >
-        {t("docker.compose.actions.restart")}
-      </Button>
-    </>
-  ) : null;
 
   return (
-    <Stack
-      id={detailsId}
-      className="project-compose-service-details"
-      role="region"
-      aria-labelledby={detailsId === undefined ? undefined : `${detailsId}-heading`}
-      spacing={1}
-    >
-      <Typography
-        id={detailsId === undefined ? undefined : `${detailsId}-heading`}
-        component="h3"
-        variant="subtitle2"
-      >
-        {service.name}
-      </Typography>
-      <Stack direction="row" spacing={0.75} sx={{ flexWrap: "wrap" }}>
-        {startAction}
-        {lifecycleActions}
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<SubjectOutlinedIcon />}
-          disabled={!isAvailable || isPending}
-          onClick={handleLogs}
-        >
-          {t("docker.compose.actions.logs")}
-        </Button>
-      </Stack>
+    <Stack spacing={2.5}>
+      <Box className="project-compose-dialog-summary">
+        <Box>
+          <Typography variant="overline" color="text.secondary">
+            {t("docker.compose.state")}
+          </Typography>
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+            {t(`docker.compose.status.${service.state}`)}
+          </Typography>
+        </Box>
+        <Box>
+          <Typography variant="overline" color="text.secondary">
+            {t("docker.compose.containers")}
+          </Typography>
+          <Typography variant="body1" sx={{ fontWeight: 600 }}>
+            {t("docker.compose.containerCount", { count: service.containers.length })}
+          </Typography>
+        </Box>
+      </Box>
+
       {service.containers.length === 0 ? (
-        <Typography variant="caption" color="text.secondary">
-          {t("docker.compose.noContainers")}
-        </Typography>
-      ) : service.containers.map((container) => (
-        <Stack key={container.name} spacing={0.4} className="project-compose-container">
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {container.name}
+        <Paper variant="outlined" className="project-compose-empty-containers">
+          <Typography color="text.secondary">
+            {t("docker.compose.noContainers")}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {t("docker.compose.state")}: {container.state}
-            {container.health.length > 0 ? ` · ${t("docker.compose.health")}: ${container.health}` : ""}
-            {container.exitCode !== null ? ` · ${t("docker.compose.exitCode", { code: container.exitCode })}` : ""}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {t("docker.compose.ports")}: {formatPublishers(container.publishers)}
-          </Typography>
+        </Paper>
+      ) : (
+        <Stack spacing={1.5}>
+          {service.containers.map((container) => (
+            <ComposeContainerCard key={container.name} container={container} />
+          ))}
         </Stack>
-      ))}
-      <Divider />
+      )}
     </Stack>
   );
 }
 
-/** Formats published ports without exposing an unbounded backend value. */
-function formatPublishers(publishers: ComposeService["containers"][number]["publishers"]): string {
-  if (publishers.length === 0) {
-    return "—";
-  }
+type ComposeContainerCardProps = {
+  container: ComposeContainer;
+};
 
-  return publishers.map((publisher) => {
-    const host = publisher.url.length > 0 ? publisher.url : "localhost";
-    return `${host}:${publisher.publishedPort}->${publisher.targetPort}/${publisher.protocol}`;
-  }).join(", ");
+/** Renders one container using the bounded display DTO from the backend. */
+function ComposeContainerCard({ container }: ComposeContainerCardProps) {
+  const { t } = useTranslation();
+  const healthLabel = translateHealth(container.health, t);
+  const stateLabel = translateContainerState(container.state, t);
+
+  return (
+    <Paper variant="outlined" className="project-compose-container-card">
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+        <Typography variant="subtitle1" sx={{ flex: "1 1 auto", fontWeight: 600 }}>
+          {container.name}
+        </Typography>
+        <Chip size="small" variant="outlined" label={stateLabel} />
+        {healthLabel === null ? null : (
+          <Chip
+            size="small"
+            color={readHealthColor(container.health)}
+            variant="outlined"
+            label={healthLabel}
+          />
+        )}
+      </Stack>
+
+      <Box component="dl" className="project-compose-container-metadata">
+        <Typography component="dt" variant="caption" color="text.secondary">
+          {t("docker.compose.state")}
+        </Typography>
+        <Typography component="dd" variant="body2">
+          {stateLabel}
+        </Typography>
+        <Typography component="dt" variant="caption" color="text.secondary">
+          {t("docker.compose.health")}
+        </Typography>
+        <Typography component="dd" variant="body2">
+          {healthLabel ?? "—"}
+        </Typography>
+        <Typography component="dt" variant="caption" color="text.secondary">
+          {t("docker.compose.exitCodeLabel")}
+        </Typography>
+        <Typography component="dd" variant="body2">
+          {container.exitCode}
+        </Typography>
+      </Box>
+
+      <Box>
+        <Typography variant="caption" color="text.secondary">
+          {t("docker.compose.ports")}
+        </Typography>
+        {container.publishers.length === 0 ? (
+          <Typography variant="body2">{t("docker.compose.noPublishedPorts")}</Typography>
+        ) : (
+          <Stack component="ul" spacing={0.5} className="project-compose-port-list">
+            {container.publishers.map((publisher, index) => (
+              <Typography
+                component="li"
+                variant="body2"
+                key={`${publisher.url}-${publisher.publishedPort}-${publisher.targetPort}-${index}`}
+              >
+                <Box component="code" className="project-compose-port">
+                  {formatPublisher(publisher)}
+                </Box>
+              </Typography>
+            ))}
+          </Stack>
+        )}
+      </Box>
+    </Paper>
+  );
 }
 
-export const ProjectComposeServiceDetailsX = observer(ProjectComposeServiceDetails);
+/** Formats one published port without combining unrelated bindings. */
+function formatPublisher(publisher: ComposeContainer["publishers"][number]): string {
+  const host = publisher.url.length > 0 ? publisher.url : "localhost";
+  return `${host}:${publisher.publishedPort} → ${publisher.targetPort}/${publisher.protocol}`;
+}
+
+/** Translates the finite container states currently reported by Compose. */
+function translateContainerState(
+  state: string,
+  t: ReturnType<typeof useTranslation>["t"]
+): string {
+  switch (state.toLowerCase()) {
+    case "created":
+      return t("docker.compose.containerState.created");
+    case "running":
+      return t("docker.compose.containerState.running");
+    case "restarting":
+      return t("docker.compose.containerState.restarting");
+    case "removing":
+      return t("docker.compose.containerState.removing");
+    case "paused":
+      return t("docker.compose.containerState.paused");
+    case "exited":
+      return t("docker.compose.containerState.exited");
+    case "dead":
+      return t("docker.compose.containerState.dead");
+    default:
+      return state.length > 0 ? state : t("docker.compose.status.unknown");
+  }
+}
+
+/** Translates a known health state while preserving future Docker values. */
+function translateHealth(
+  health: string,
+  t: ReturnType<typeof useTranslation>["t"]
+): string | null {
+  switch (health.toLowerCase()) {
+    case "healthy":
+      return t("docker.compose.healthStatus.healthy");
+    case "unhealthy":
+      return t("docker.compose.healthStatus.unhealthy");
+    case "starting":
+      return t("docker.compose.healthStatus.starting");
+    case "":
+      return null;
+    default:
+      return health;
+  }
+}
+
+/** Selects a semantic chip color for known health states. */
+function readHealthColor(health: string): "success" | "warning" | "error" | "default" {
+  switch (health.toLowerCase()) {
+    case "healthy":
+      return "success";
+    case "starting":
+      return "warning";
+    case "unhealthy":
+      return "error";
+    default:
+      return "default";
+  }
+}

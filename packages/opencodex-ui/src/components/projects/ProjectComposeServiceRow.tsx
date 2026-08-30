@@ -7,29 +7,20 @@ import { useTranslation } from "react-i18next";
 
 import type { OpenCodexDockerComposeSnapshot } from "@open-codex-ui/opencodex-protocol";
 
+import { ProjectComposeStatusIndicator } from "./ProjectComposeStatusIndicator";
+
 type ComposeService = OpenCodexDockerComposeSnapshot["services"][number];
 
 type ProjectComposeServiceRowProps = {
   service: ComposeService;
   isSelected: boolean;
-  detailsId?: string;
   onSelect(serviceName: string): void;
 };
 
-const statusColors: Record<ComposeService["state"], string> = {
-  running: "#56d364",
-  unhealthy: "#f85149",
-  partial: "#d29922",
-  stopped: "#8b949e",
-  missing: "#8b949e",
-  unknown: "#8b949e"
-};
-
-/** Renders one service with a text-and-color status and expandable details. */
+/** Renders one service with a text-and-color status that opens its dialog. */
 export function ProjectComposeServiceRow({
   service,
   isSelected,
-  detailsId,
   onSelect
 }: ProjectComposeServiceRowProps) {
   const { t } = useTranslation();
@@ -46,16 +37,11 @@ export function ProjectComposeServiceRow({
     >
       <ButtonBase
         className="project-compose-service-select"
-        aria-expanded={isSelected}
-        aria-controls={isSelected ? detailsId : undefined}
+        aria-haspopup="dialog"
         aria-label={`${service.name}: ${statusLabel}`}
         onClick={handleSelect}
       >
-        <Box
-          aria-hidden="true"
-          className="project-compose-status-indicator"
-          sx={{ backgroundColor: statusColors[service.state] }}
-        />
+        <ProjectComposeStatusIndicator state={service.state} />
         <Box sx={{ minWidth: 0, flex: "1 1 auto", textAlign: "left" }}>
           <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
             {service.name}

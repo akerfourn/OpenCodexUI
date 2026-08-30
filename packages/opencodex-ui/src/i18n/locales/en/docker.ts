@@ -41,12 +41,30 @@ export const enDocker = {
         start: "Start",
         stop: "Stop"
       },
+      closeDetails: "Close details",
       composeFile: "Compose file: {{file}}",
+      containerCount_one: "{{count}} container",
+      containerCount_other: "{{count}} containers",
+      containerState: {
+        created: "Created",
+        dead: "Dead",
+        exited: "Exited",
+        paused: "Paused",
+        removing: "Removing",
+        restarting: "Restarting",
+        running: "Running"
+      },
       containers: "Containers",
       description: "Docker Compose services for this project.",
       empty: "No Compose service was detected.",
       exitCode: "Exit code: {{code}}",
+      exitCodeLabel: "Exit code",
       health: "Health",
+      healthStatus: {
+        healthy: "Healthy",
+        starting: "Starting",
+        unhealthy: "Unhealthy"
+      },
       loading: "Detecting Docker Compose…",
       logs: {
         close: "Close",
@@ -58,7 +76,9 @@ export const enDocker = {
       },
       name: "Name",
       noContainers: "No containers",
+      noPublishedPorts: "No published ports",
       ports: "Ports",
+      serviceDetails: "Docker Compose service details",
       sourceUnavailable: "This project's source is inactive.",
       state: "State",
       status: {

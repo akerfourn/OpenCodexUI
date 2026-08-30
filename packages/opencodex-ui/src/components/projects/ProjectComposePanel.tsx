@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ProjectComposeLogsDialogX } from "./ProjectComposeLogsDialog";
-import { ProjectComposeServiceDetailsX } from "./ProjectComposeServiceDetails";
+import { ProjectComposeServiceDialogX } from "./ProjectComposeServiceDialog";
 import { ProjectComposeServiceRowX } from "./ProjectComposeServiceRow";
 
 type ProjectComposePanelProps = {
@@ -60,12 +60,11 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
   }
 
   function handleSelect(serviceName: string): void {
-    if (composeStore.selectedServiceName === serviceName) {
-      composeStore.clearSelection();
-      return;
-    }
-
     composeStore.selectService(serviceName);
+  }
+
+  function handleCloseDetails(): void {
+    composeStore.clearSelection();
   }
 
   function handleStart(serviceName: string): void {
@@ -86,34 +85,16 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
 
   const selectedService = composeStore.selectedService;
   const isAvailable = composeStore.isAvailable;
-  const serviceRows = composeStore.services.map((service, serviceIndex) => {
-    const detailsId = getComposeServiceDetailsId(service.name, serviceIndex);
-    const isSelected = selectedService?.name === service.name;
-    const details = isSelected ? (
-      <ProjectComposeServiceDetailsX
-        service={service}
-        isPending={composeStore.isServicePending(service.name)}
-        isAvailable={isAvailable}
-        detailsId={detailsId}
-        onStart={handleStart}
-        onStop={handleStop}
-        onRestart={handleRestart}
-        onLogs={handleLogs}
-      />
-    ) : null;
-
-    return (
-      <Box key={service.name}>
-        <ProjectComposeServiceRowX
-          service={service}
-          isSelected={composeStore.selectedServiceName === service.name}
-          detailsId={detailsId}
-          onSelect={handleSelect}
-        />
-        {details}
-      </Box>
-    );
-  });
+  const serviceRows = composeStore.services.map((service) => (
+    <ProjectComposeServiceRowX
+      key={service.name}
+      service={service}
+      isSelected={composeStore.selectedServiceName === service.name}
+      onSelect={handleSelect}
+    />
+  ));
+  const isSelectedServicePending = selectedService !== null &&
+    composeStore.isServicePending(selectedService.name);
 
   return (
     <section className="project-compose-panel">
@@ -180,15 +161,19 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
         {serviceRows}
       </Stack>
 
+      <ProjectComposeServiceDialogX
+        service={selectedService}
+        isPending={isSelectedServicePending}
+        isAvailable={isAvailable}
+        onClose={handleCloseDetails}
+        onStart={handleStart}
+        onStop={handleStop}
+        onRestart={handleRestart}
+        onLogs={handleLogs}
+      />
       <ProjectComposeLogsDialogX store={composeStore} />
     </section>
   );
 }
 
 export const ProjectComposePanelX = observer(ProjectComposePanel);
-
-/** Builds a stable, HTML-safe id for a service's detail region. */
-function getComposeServiceDetailsId(serviceName: string, serviceIndex: number): string {
-  const encodedServiceName = encodeURIComponent(serviceName).replace(/%/g, "-");
-  return `project-compose-details-${encodedServiceName}-${serviceIndex}`;
-}

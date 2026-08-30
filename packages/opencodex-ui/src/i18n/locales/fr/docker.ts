@@ -39,12 +39,30 @@ export const frDocker = {
         start: "Lancer",
         stop: "Arrêter"
       },
+      closeDetails: "Fermer les détails",
       composeFile: "Fichier Compose : {{file}}",
+      containerCount_one: "{{count}} conteneur",
+      containerCount_other: "{{count}} conteneurs",
+      containerState: {
+        created: "Créé",
+        dead: "Inactif",
+        exited: "Arrêté",
+        paused: "En pause",
+        removing: "Suppression en cours",
+        restarting: "Redémarrage en cours",
+        running: "En cours"
+      },
       containers: "Conteneurs",
       description: "Services Docker Compose de ce projet.",
       empty: "Aucun service Compose n’a été détecté.",
       exitCode: "Code de sortie : {{code}}",
+      exitCodeLabel: "Code de sortie",
       health: "Santé",
+      healthStatus: {
+        healthy: "Sain",
+        starting: "Démarrage en cours",
+        unhealthy: "Dégradé"
+      },
       loading: "Détection de Docker Compose…",
       logs: {
         close: "Fermer",
@@ -56,7 +74,9 @@ export const frDocker = {
       },
       name: "Nom",
       noContainers: "Aucun conteneur",
+      noPublishedPorts: "Aucun port publié",
       ports: "Ports",
+      serviceDetails: "Détails du service Docker Compose",
       sourceUnavailable: "La source de ce projet est inactive.",
       state: "État",
       status: {

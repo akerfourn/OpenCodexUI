@@ -1,0 +1,188 @@
+.project-compose-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-compose-header {
+  flex: 0 0 auto;
+  align-items: center;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 10px 12px;
+}
+
+.project-compose-error {
+  flex: 0 0 auto;
+  margin: 10px 12px 0;
+}
+
+.project-compose-content {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 12px;
+}
+
+.project-compose-service-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 94%, var(--vscode-focusBorder));
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.project-compose-service-row:hover,
+.project-compose-service-row.is-selected {
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 88%, var(--vscode-focusBorder));
+}
+
+.project-compose-service-select {
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 8px;
+  justify-content: flex-start;
+  padding: 8px;
+  text-align: left;
+}
+
+.project-compose-service-select:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: -2px;
+}
+
+.project-compose-status-indicator {
+  --project-compose-status-color: #7f8b99;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 50%;
+  background: var(--project-compose-status-color);
+  box-shadow: 0 0 0 1px color-mix(
+    in srgb,
+    var(--project-compose-status-color) 42%,
+    transparent
+  );
+}
+
+.project-compose-status-indicator.is-running {
+  --project-compose-status-color: #3ea981;
+  animation: project-compose-running-pulse 2.8s ease-in-out infinite;
+}
+
+.project-compose-status-indicator.is-unhealthy {
+  --project-compose-status-color: #d95d5d;
+}
+
+.project-compose-status-indicator.is-partial {
+  --project-compose-status-color: #c58b35;
+}
+
+.project-compose-status-indicator.is-stopped,
+.project-compose-status-indicator.is-missing,
+.project-compose-status-indicator.is-unknown {
+  --project-compose-status-color: #7f8b99;
+}
+
+@keyframes project-compose-running-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.94);
+    box-shadow: 0 0 0 0 color-mix(
+      in srgb,
+      var(--project-compose-status-color) 34%,
+      transparent
+    );
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+    box-shadow: 0 0 0 5px color-mix(
+      in srgb,
+      var(--project-compose-status-color) 0%,
+      transparent
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-compose-status-indicator.is-running {
+    animation: none;
+  }
+}
+
+.project-compose-dialog-title {
+  padding: 16px 20px;
+}
+
+.project-compose-dialog-title .project-compose-status-indicator {
+  width: 12px;
+  height: 12px;
+  flex-basis: 12px;
+}
+
+.project-compose-dialog-content {
+  padding: 20px;
+}
+
+.project-compose-dialog-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 92%, var(--vscode-focusBorder));
+}
+
+.project-compose-empty-containers,
+.project-compose-container-card {
+  padding: 16px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 97%, transparent);
+}
+
+.project-compose-container-metadata {
+  display: grid;
+  grid-template-columns: minmax(90px, max-content) minmax(0, 1fr);
+  gap: 5px 14px;
+  margin: 14px 0;
+}
+
+.project-compose-container-metadata dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.project-compose-port-list {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-compose-port {
+  display: inline-block;
+  max-width: 100%;
+  border-radius: 5px;
+  padding: 2px 6px;
+  background: color-mix(in srgb, var(--vscode-editor-background) 82%, var(--vscode-focusBorder));
+  overflow-wrap: anywhere;
+}
+
+.project-compose-dialog-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 16px;
+}
+
+@media (max-width: 600px) {
+  .project-compose-dialog-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
