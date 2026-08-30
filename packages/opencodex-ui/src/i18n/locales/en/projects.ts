@@ -30,6 +30,7 @@ export const enProjects = {
   projectTools: {
     closePanel: "Collapse tools panel",
     commands: "Commands",
+    compose: "Compose",
     context: "Context folders",
     git: "Git",
     openPanel: "Open tools panel",

@@ -8,7 +8,7 @@ import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ChatViewX } from "../chat/ChatView";
 import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
-import { ProjectSidePanel } from "./ProjectSidePanel";
+import { ProjectSidePanelX } from "./ProjectSidePanel";
 import { ProjectThreadListX } from "./ProjectThreadList";
 import { ProjectWorkspaceLayout } from "./ProjectWorkspaceLayout";
 import { SubAgentThreadsDialogX } from "../threads/SubAgentThreadsDialog";
@@ -81,7 +81,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
             </section>
           )}
           sidePanel={(
-            <ProjectSidePanel
+            <ProjectSidePanelX
               store={store}
               projectStore={projectStore}
               isCollapsed={layoutStore.isSidePanelCollapsed}

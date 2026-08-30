@@ -5,6 +5,7 @@ import { ApprovalService } from "../support/ApprovalService.js";
 import { CodexUpdateService } from "../sources/CodexUpdateService.js";
 import { GitRuntimeHandler } from "../git/GitRuntimeHandler.js";
 import { DockerHostService } from "../docker/DockerHostService.js";
+import { DockerComposeService } from "../docker/DockerComposeService.js";
 import { HostIntegrationService } from "../support/HostIntegrationService.js";
 import { ModelCatalogService } from "../support/ModelCatalogService.js";
 import { OpenCodexClientPool } from "./OpenCodexClientPool.js";
@@ -153,6 +154,7 @@ export function createBackendServiceGraph(
   const dockerHostService = new DockerHostService(new DockerClient({
     executor: new LocalDockerCommandExecutor()
   }));
+  const dockerComposeService = new DockerComposeService({ clients: clientPool });
 
   const projectAutomationRuntimeHandler = new ProjectAutomationRuntimeHandler({
     cache: cacheRepository,
@@ -207,6 +209,7 @@ export function createBackendServiceGraph(
     threadRuntimeHandler,
     gitRuntimeHandler,
     dockerHostService,
+    dockerComposeService,
     projectAutomationRuntimeHandler,
     approvalService,
     pluginService,

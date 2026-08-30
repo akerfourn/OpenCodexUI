@@ -7,20 +7,28 @@ import FolderCopyOutlinedIcon from "@mui/icons-material/FolderCopyOutlined";
 import KeyboardTabOutlinedIcon from "@mui/icons-material/KeyboardTabOutlined";
 import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
 import TerminalOutlinedIcon from "@mui/icons-material/TerminalOutlined";
+import ViewModuleOutlinedIcon from "@mui/icons-material/ViewModuleOutlined";
 import { Box, IconButton, Tab, Tabs, Tooltip } from "@mui/material";
-import { useState, type ReactElement } from "react";
+import { observer } from "mobx-react-lite";
+import { useEffect, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ProjectCommandsPanelX } from "./ProjectCommandsPanel";
+import { ProjectComposePanelX } from "./ProjectComposePanel";
 import { ProjectContextPanelX } from "./ProjectContextPanel";
 import { ProjectGitPanelX } from "./ProjectGitPanel";
 import { ProjectRulesPanelX } from "./ProjectRulesPanel";
 import { ProjectSidePanelTabLabel } from "./ProjectSidePanelTabLabel";
 import { ProjectTasksPanelX } from "./ProjectTasksPanel";
 
-type ProjectSidePanelTab = "git" | "commands" | "rules" | "context" | "tasks";
+type ProjectSidePanelTab = "git" | "commands" | "rules" | "context" | "tasks" | "compose";
+type ProjectSidePanelTabDefinition = {
+  value: ProjectSidePanelTab;
+  label: string;
+  icon: ReactElement;
+};
 
 type ProjectSidePanelProps = {
   store: RootStore;
@@ -43,39 +51,73 @@ export function ProjectSidePanel({
   onCollapsedChange
 }: ProjectSidePanelProps) {
   const { t } = useTranslation();
+  const composeStore = projectStore.composeStore;
   const [selectedTab, setSelectedTab] = useState<ProjectSidePanelTab>("git");
+  const projectPath = projectStore.project?.path;
+  const sourceId = projectStore.project?.sourceId;
+  const hasComposeFile = sourceId !== null && sourceId !== undefined &&
+    composeStore?.isAvailable === true && readHasComposeFile(composeStore);
+
+  useEffect(() => {
+    if (composeStore !== undefined &&
+      typeof composeStore.invalidateIfUnavailable === "function") {
+      composeStore.invalidateIfUnavailable();
+    }
+  }, [composeStore, composeStore?.isAvailable, projectPath, sourceId]);
+
+  useEffect(() => {
+    if (composeStore !== undefined && sourceId !== null && sourceId !== undefined &&
+      composeStore.isAvailable && !composeStore.hasLoaded && !composeStore.isLoading) {
+      void composeStore.load();
+    }
+  }, [composeStore, composeStore?.isAvailable, projectPath, sourceId]);
+
+  useEffect(() => {
+    if (selectedTab === "compose" && !hasComposeFile) {
+      setSelectedTab("git");
+    }
+  }, [hasComposeFile, selectedTab]);
   const gitLabel = t("projectTools.git");
   const commandsLabel = t("projectTools.commands");
   const rulesLabel = t("projectTools.rules");
   const contextLabel = t("projectTools.context");
   const tasksLabel = t("projectTools.tasks");
-  const tabs = [
+  const composeLabel = t("projectTools.compose");
+  const tabs: ProjectSidePanelTabDefinition[] = [
     {
-      value: "git" as const,
+      value: "git",
       label: gitLabel,
       icon: <AccountTreeOutlinedIcon fontSize="small" />
     },
     {
-      value: "commands" as const,
+      value: "commands",
       label: commandsLabel,
       icon: <TerminalOutlinedIcon fontSize="small" />
     },
     {
-      value: "rules" as const,
+      value: "rules",
       label: rulesLabel,
       icon: <RuleOutlinedIcon fontSize="small" />
     },
     {
-      value: "context" as const,
+      value: "context",
       label: contextLabel,
       icon: <FolderCopyOutlinedIcon fontSize="small" />
     },
     {
-      value: "tasks" as const,
+      value: "tasks",
       label: tasksLabel,
       icon: <ChecklistOutlinedIcon fontSize="small" />
     }
   ];
+
+  if (hasComposeFile) {
+    tabs.push({
+      value: "compose",
+      label: composeLabel,
+      icon: <ViewModuleOutlinedIcon fontSize="small" />
+    });
+  }
 
   function handleTabChange(_event: React.SyntheticEvent, value: ProjectSidePanelTab): void {
     setSelectedTab(value);
@@ -110,6 +152,10 @@ export function ProjectSidePanel({
 
   if (selectedTab === "tasks") {
     panelContent = <ProjectTasksPanelX projectStore={projectStore} />;
+  }
+
+  if (selectedTab === "compose" && composeStore !== undefined && hasComposeFile) {
+    panelContent = <ProjectComposePanelX projectStore={projectStore} />;
   }
 
   if (isCollapsed) {
@@ -186,4 +232,16 @@ export function ProjectSidePanel({
       {panelContent}
     </aside>
   );
+}
+
+export const ProjectSidePanelX = observer(ProjectSidePanel);
+
+/** Returns whether a project store has a detected Compose file. */
+function readHasComposeFile(composeStore: ProjectStore["composeStore"] | undefined): boolean {
+  if (composeStore === undefined) {
+    return false;
+  }
+
+  const composeFile = composeStore.snapshot?.composeFile;
+  return (composeFile !== null && composeFile !== undefined) || composeStore.hasComposeFile;
 }

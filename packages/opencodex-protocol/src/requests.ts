@@ -215,6 +215,32 @@ export type OpenCodexRequest =
   | { type: "docker.host.container.stop"; containerId: string }
   | { type: "docker.host.container.restart"; containerId: string }
   | { type: "docker.host.container.logs.read"; containerId: string; tail?: number }
+  | { type: "docker.compose.snapshot.read"; projectPath: string; sourceId: string }
+  | {
+      type: "docker.compose.service.up";
+      projectPath: string;
+      sourceId: string;
+      serviceName: string;
+    }
+  | {
+      type: "docker.compose.service.stop";
+      projectPath: string;
+      sourceId: string;
+      serviceName: string;
+    }
+  | {
+      type: "docker.compose.service.restart";
+      projectPath: string;
+      sourceId: string;
+      serviceName: string;
+    }
+  | {
+      type: "docker.compose.service.logs.read";
+      projectPath: string;
+      sourceId: string;
+      serviceName: string;
+      tail?: number;
+    }
   | { type: "git.version" }
   | { type: "git.status"; projectPath: string; sourceId: string | null }
   | { type: "git.init"; projectPath: string; sourceId: string | null }

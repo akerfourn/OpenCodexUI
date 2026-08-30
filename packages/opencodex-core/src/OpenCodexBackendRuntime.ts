@@ -11,6 +11,7 @@ import type {
   CollaborationApi,
   CodexUpdatesApi,
   DockerApi,
+  DockerComposeApi,
   EventLogApi,
   GitApi,
   GroupsApi,
@@ -119,6 +120,11 @@ export class OpenCodexBackendRuntime {
   /** Public host-local Docker API. */
   get docker(): DockerApi {
     return this.apis.docker;
+  }
+
+  /** Public source-scoped Docker Compose API. */
+  get dockerCompose(): DockerComposeApi {
+    return this.apis.dockerCompose;
   }
 
   /** Public application-log API. */

@@ -280,6 +280,33 @@ export class OpenCodexRequestRouter {
         return this.runtime.docker.restart(request.containerId);
       case "docker.host.container.logs.read":
         return this.runtime.docker.readLogs(request.containerId, request.tail);
+      case "docker.compose.snapshot.read":
+        return this.runtime.dockerCompose.readSnapshot(request.projectPath, request.sourceId);
+      case "docker.compose.service.up":
+        return this.runtime.dockerCompose.up(
+          request.projectPath,
+          request.sourceId,
+          request.serviceName
+        );
+      case "docker.compose.service.stop":
+        return this.runtime.dockerCompose.stop(
+          request.projectPath,
+          request.sourceId,
+          request.serviceName
+        );
+      case "docker.compose.service.restart":
+        return this.runtime.dockerCompose.restart(
+          request.projectPath,
+          request.sourceId,
+          request.serviceName
+        );
+      case "docker.compose.service.logs.read":
+        return this.runtime.dockerCompose.readLogs(
+          request.projectPath,
+          request.sourceId,
+          request.serviceName,
+          request.tail
+        );
       case "git.version":
         return this.runtime.git.readVersion();
       case "git.status":

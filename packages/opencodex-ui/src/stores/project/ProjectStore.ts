@@ -10,6 +10,7 @@ import type {
 
 import { ChatStore } from "../chat/ChatStore";
 import { ProjectCommandsStore } from "./ProjectCommandsStore";
+import { ProjectComposeStore } from "./ProjectComposeStore";
 import { ProjectContextStore } from "./ProjectContextStore";
 import { ProjectGitStore } from "./git/ProjectGitStore";
 import { ProjectRulesStore } from "./ProjectRulesStore";
@@ -33,6 +34,7 @@ export class ProjectStore {
   readonly threadListStore: ThreadListStore;
   readonly gitStore: ProjectGitStore;
   readonly commandsStore: ProjectCommandsStore;
+  readonly composeStore: ProjectComposeStore;
   readonly contextStore: ProjectContextStore;
   readonly rulesStore: ProjectRulesStore;
   readonly tasksStore: ProjectTasksStore;
@@ -52,6 +54,7 @@ export class ProjectStore {
     this.threadListStore = new ThreadListStore(this, root);
     this.gitStore = new ProjectGitStore(this, root);
     this.commandsStore = new ProjectCommandsStore(this, root);
+    this.composeStore = new ProjectComposeStore(this, root);
     this.contextStore = new ProjectContextStore(this, root);
     this.rulesStore = new ProjectRulesStore(this, root);
     this.tasksStore = new ProjectTasksStore(this, root);
@@ -221,8 +224,13 @@ export class ProjectStore {
    * @returns Nothing.
    */
   setProject(project: OpenCodexProject): void {
+    const projectIdentityChanged = this.project.path !== project.path ||
+      this.project.sourceId !== project.sourceId;
     this.project = project;
     this.gitStore.applyProjectPreferences(project.preferences);
+    if (projectIdentityChanged) {
+      this.composeStore.reset();
+    }
     this.repairStoredThreadSources();
   }
 
@@ -460,6 +468,7 @@ export class ProjectStore {
 
     this.chatsById.clear();
     this.commandsStore.dispose();
+    this.composeStore.reset();
     this.threadListStore.clear();
     this.selectedChatId = null;
   }

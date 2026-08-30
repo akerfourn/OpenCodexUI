@@ -7,6 +7,8 @@ import type {
   OpenCodexCommitPrompt,
   OpenCodexDockerContainerLogs,
   OpenCodexDockerHostSnapshot,
+  OpenCodexDockerComposeLogs,
+  OpenCodexDockerComposeSnapshot,
   OpenCodexComposerReference,
   OpenCodexCodexReleaseCheck,
   OpenCodexFileSearchResult,
@@ -378,6 +380,20 @@ export interface DockerApi {
   stop(containerId: string): Promise<{ ok: true }>;
   restart(containerId: string): Promise<{ ok: true }>;
   readLogs(containerId: string, tail?: number): Promise<OpenCodexDockerContainerLogs>;
+}
+
+/** Public source-scoped Docker Compose operations for a project. */
+export interface DockerComposeApi {
+  readSnapshot(projectPath: string, sourceId: string): Promise<OpenCodexDockerComposeSnapshot>;
+  up(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }>;
+  stop(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }>;
+  restart(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }>;
+  readLogs(
+    projectPath: string,
+    sourceId: string,
+    serviceName: string,
+    tail?: number
+  ): Promise<OpenCodexDockerComposeLogs>;
 }
 
 /** Public persisted application-log operations. */

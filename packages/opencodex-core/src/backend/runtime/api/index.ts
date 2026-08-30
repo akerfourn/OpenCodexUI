@@ -6,6 +6,7 @@ export type {
   CommandsApi,
   CommitMessageApi,
   DockerApi,
+  DockerComposeApi,
   EventLogApi,
   GitApi,
   GroupsApi,

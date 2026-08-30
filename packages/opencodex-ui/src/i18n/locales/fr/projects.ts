@@ -29,6 +29,7 @@ export const frProjects = {
   projectTools: {
     closePanel: "Réduire le panneau d'outils",
     commands: "Commandes",
+    compose: "Compose",
     context: "Dossiers de contexte",
     git: "Git",
     openPanel: "Ouvrir le panneau d'outils",
