@@ -1,6 +1,7 @@
 import type { OpenCodexBackendOptions } from "../../../types.js";
 import type { BackendServiceGraph } from "../BackendServiceGraph.js";
 import { AutomationApi } from "./AutomationApi.js";
+import { DockerApi } from "./DockerApi.js";
 import { GitApi } from "./GitApi.js";
 import {
   CodexUpdatesApi,
@@ -57,6 +58,8 @@ export class BackendRuntimeApis {
   readonly automation: AutomationApi;
   /** Git and commit-message operations. */
   readonly git: GitApi;
+  /** Host-local Docker operations. */
+  readonly docker: DockerApi;
   /** Application log operations. */
   readonly logs: LogsApi;
   /** Usage-limit and usage-history operations. */
@@ -92,6 +95,7 @@ export class BackendRuntimeApis {
     this.eventLog = new EventLogApi(services.threadRuntimeHandler);
     this.automation = new AutomationApi(services.projectAutomationRuntimeHandler);
     this.git = new GitApi(services.gitRuntimeHandler);
+    this.docker = new DockerApi(services.dockerHostService);
     this.logs = new LogsApi(services.applicationLogService);
     this.usage = new UsageApi(services.usageRuntimeService);
     this.models = new ModelsApi(services.modelCatalogService, services.settings);

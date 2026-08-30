@@ -3,6 +3,7 @@ import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type { ApplicationLogService } from "../support/ApplicationLogService.js";
 import type { ApprovalService } from "../support/ApprovalService.js";
 import type { CodexUpdateService } from "../sources/CodexUpdateService.js";
+import type { DockerHostService } from "../docker/DockerHostService.js";
 import type { GitRuntimeHandler } from "../git/GitRuntimeHandler.js";
 import type { HostIntegrationService } from "../support/HostIntegrationService.js";
 import type { ModelCatalogService } from "../support/ModelCatalogService.js";
@@ -36,6 +37,8 @@ export type BackendServiceGraph = {
   readonly threadRuntimeHandler: ThreadRuntimeHandler;
   /** Git and commit-message operations. */
   readonly gitRuntimeHandler: GitRuntimeHandler;
+  /** Host-local Docker operations. */
+  readonly dockerHostService: DockerHostService;
   /** Project commands, rules, and tasks. */
   readonly projectAutomationRuntimeHandler: ProjectAutomationRuntimeHandler;
   /** Approval request and response handling. */

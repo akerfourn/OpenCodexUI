@@ -1,7 +1,10 @@
+import { DockerClient, LocalDockerCommandExecutor } from "@open-codex-ui/docker-client";
+
 import { ApplicationLogService } from "../support/ApplicationLogService.js";
 import { ApprovalService } from "../support/ApprovalService.js";
 import { CodexUpdateService } from "../sources/CodexUpdateService.js";
 import { GitRuntimeHandler } from "../git/GitRuntimeHandler.js";
+import { DockerHostService } from "../docker/DockerHostService.js";
 import { HostIntegrationService } from "../support/HostIntegrationService.js";
 import { ModelCatalogService } from "../support/ModelCatalogService.js";
 import { OpenCodexClientPool } from "./OpenCodexClientPool.js";
@@ -147,6 +150,9 @@ export function createBackendServiceGraph(
     usage: usageRuntimeService,
     logger: options.logger
   });
+  const dockerHostService = new DockerHostService(new DockerClient({
+    executor: new LocalDockerCommandExecutor()
+  }));
 
   const projectAutomationRuntimeHandler = new ProjectAutomationRuntimeHandler({
     cache: cacheRepository,
@@ -200,6 +206,7 @@ export function createBackendServiceGraph(
     projectRuntimeHandler,
     threadRuntimeHandler,
     gitRuntimeHandler,
+    dockerHostService,
     projectAutomationRuntimeHandler,
     approvalService,
     pluginService,

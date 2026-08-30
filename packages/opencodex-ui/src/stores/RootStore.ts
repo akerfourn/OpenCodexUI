@@ -17,6 +17,7 @@ import { ChatEventLogStore } from "./chat/ChatEventLogStore";
 import { CollaborationStore } from "./collaboration/CollaborationStore";
 import type { ChatStore } from "./chat/ChatStore";
 import { CommitPromptStore } from "./app/CommitPromptStore";
+import { DockerHostStore } from "./app/DockerHostStore";
 import { HomeStore } from "./app/HomeStore";
 import { LogsStore } from "./app/LogsStore";
 import { NavigationStore } from "./app/NavigationStore";
@@ -38,6 +39,7 @@ export class RootStore {
   readonly chatEventLogStore = new ChatEventLogStore(this);
   readonly collaborationStore = new CollaborationStore(this);
   readonly commitPromptStore = new CommitPromptStore(this);
+  readonly dockerHostStore = new DockerHostStore(this);
   readonly homeStore = new HomeStore();
   readonly logsStore = new LogsStore(this);
   readonly navigationStore = new NavigationStore(this);

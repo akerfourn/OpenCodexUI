@@ -2,6 +2,7 @@
  * Preserves the historical entry point for shared protocol messages.
  */
 export * from "./messages/automation.js";
+export * from "./messages/docker.js";
 export * from "./messages/foundations.js";
 export * from "./messages/git.js";
 export * from "./messages/plugins.js";

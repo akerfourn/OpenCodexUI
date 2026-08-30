@@ -210,6 +210,11 @@ export type OpenCodexRequest =
       pluginName: string;
     }
   | { type: "plugins.uninstall"; sourceId: string | null; pluginId: string }
+  | { type: "docker.host.snapshot.read" }
+  | { type: "docker.host.container.start"; containerId: string }
+  | { type: "docker.host.container.stop"; containerId: string }
+  | { type: "docker.host.container.restart"; containerId: string }
+  | { type: "docker.host.container.logs.read"; containerId: string; tail?: number }
   | { type: "git.version" }
   | { type: "git.status"; projectPath: string; sourceId: string | null }
   | { type: "git.init"; projectPath: string; sourceId: string | null }

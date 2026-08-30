@@ -6,6 +6,7 @@ import { observer } from "mobx-react-lite";
 import type { RootStore } from "../../stores/RootStore";
 import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
 import { HomeCommitViewX } from "./HomeCommitView";
+import { HomeDockerViewX } from "./HomeDockerView";
 import { HomeLogsViewX } from "./HomeLogsView";
 import { HomePluginsViewX } from "./HomePluginsView";
 import { HomeProjectsViewX } from "./HomeProjectsView";
@@ -38,6 +39,10 @@ export function HomeView({ store }: HomeViewProps) {
 
   if (store.homeStore.selectedSection === "commit") {
     mainContent = <HomeCommitViewX store={store} />;
+  }
+
+  if (store.homeStore.selectedSection === "docker") {
+    mainContent = <HomeDockerViewX store={store} />;
   }
 
   if (store.homeStore.selectedSection === "plugins") {

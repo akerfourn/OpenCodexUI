@@ -3,6 +3,7 @@
  */
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import DonutSmallOutlinedIcon from "@mui/icons-material/DonutSmallOutlined";
+import DnsOutlinedIcon from "@mui/icons-material/DnsOutlined";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
@@ -52,6 +53,11 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
     selectSection("sources");
   }
 
+  function selectDocker(): void {
+    selectSection("docker");
+    void store.dockerHostStore.load();
+  }
+
   function selectCommit(): void {
     selectSection("commit");
     void store.commitPromptStore.load();
@@ -93,6 +99,12 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
             <StorageOutlinedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary={t("home.sources")} />
+        </ListItemButton>
+        <ListItemButton selected={selectedSection === "docker"} onClick={selectDocker}>
+          <ListItemIcon>
+            <DnsOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("home.docker")} />
         </ListItemButton>
         <ListItemButton selected={selectedSection === "commit"} onClick={selectCommit}>
           <ListItemIcon>

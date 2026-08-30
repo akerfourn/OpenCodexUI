@@ -23,6 +23,7 @@ export const frNavigation = {
     deleteProjectDescription: "Cette action supprime uniquement l'entrée locale du cache OpenCodexUI. Les conversations Codex ne sont pas supprimées.",
     deleteProjectFromCache: "Supprimer du cache",
     deleteProjectTitle: "Supprimer {{project}} du cache ?",
+    docker: "Docker",
     noProjectSearchResults: "Aucun projet ne correspond à cette recherche.",
     noRecentProjects: "Aucun projet récent pour le moment.",
     organizeProject: "Organiser {{project}}",

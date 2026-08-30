@@ -8,6 +8,7 @@ export type HomeSection =
   | "sources"
   | "plugins"
   | "commit"
+  | "docker"
   | "usage"
   | "logs"
   | "settings";

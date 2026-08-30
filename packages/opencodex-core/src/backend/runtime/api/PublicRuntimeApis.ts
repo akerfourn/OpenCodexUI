@@ -5,6 +5,8 @@ import type {
   OpenCodexCommitMessageGenerationResult,
   OpenCodexCommitMessageLanguage,
   OpenCodexCommitPrompt,
+  OpenCodexDockerContainerLogs,
+  OpenCodexDockerHostSnapshot,
   OpenCodexComposerReference,
   OpenCodexCodexReleaseCheck,
   OpenCodexFileSearchResult,
@@ -367,6 +369,15 @@ export interface GitApi {
   push(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
   publishCurrentBranch(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
   pull(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
+}
+
+/** Public operations for existing containers in the desktop host Docker context. */
+export interface DockerApi {
+  readSnapshot(): Promise<OpenCodexDockerHostSnapshot>;
+  start(containerId: string): Promise<{ ok: true }>;
+  stop(containerId: string): Promise<{ ok: true }>;
+  restart(containerId: string): Promise<{ ok: true }>;
+  readLogs(containerId: string, tail?: number): Promise<OpenCodexDockerContainerLogs>;
 }
 
 /** Public persisted application-log operations. */

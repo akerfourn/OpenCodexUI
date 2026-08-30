@@ -2,6 +2,7 @@ import { frApp } from "./app.js";
 import { frAutomation } from "./automation.js";
 import { frCommon } from "./common.js";
 import { frConversation } from "./conversation.js";
+import { frDocker } from "./docker.js";
 import { frGit } from "./git.js";
 import { frNavigation } from "./navigation.js";
 import { frProjects } from "./projects.js";
@@ -14,6 +15,7 @@ export const frTranslation = {
   ...frAutomation,
   ...frCommon,
   ...frConversation,
+  ...frDocker,
   ...frGit,
   ...frNavigation,
   ...frProjects,

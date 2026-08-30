@@ -270,6 +270,16 @@ export class OpenCodexRequestRouter {
         });
       case "plugins.uninstall":
         return this.runtime.plugins.uninstall(request.sourceId, request.pluginId);
+      case "docker.host.snapshot.read":
+        return this.runtime.docker.readSnapshot();
+      case "docker.host.container.start":
+        return this.runtime.docker.start(request.containerId);
+      case "docker.host.container.stop":
+        return this.runtime.docker.stop(request.containerId);
+      case "docker.host.container.restart":
+        return this.runtime.docker.restart(request.containerId);
+      case "docker.host.container.logs.read":
+        return this.runtime.docker.readLogs(request.containerId, request.tail);
       case "git.version":
         return this.runtime.git.readVersion();
       case "git.status":

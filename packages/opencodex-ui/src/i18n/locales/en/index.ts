@@ -5,6 +5,7 @@ import { enApp } from "./app.js";
 import { enAutomation } from "./automation.js";
 import { enCommon } from "./common.js";
 import { enConversation } from "./conversation.js";
+import { enDocker } from "./docker.js";
 import { enGit } from "./git.js";
 import { enNavigation } from "./navigation.js";
 import { enProjects } from "./projects.js";
@@ -17,6 +18,7 @@ export const enTranslation = {
   ...enAutomation,
   ...enCommon,
   ...enConversation,
+  ...enDocker,
   ...enGit,
   ...enNavigation,
   ...enProjects,

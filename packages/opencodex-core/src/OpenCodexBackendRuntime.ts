@@ -10,6 +10,7 @@ import type {
   AutomationApi,
   CollaborationApi,
   CodexUpdatesApi,
+  DockerApi,
   EventLogApi,
   GitApi,
   GroupsApi,
@@ -113,6 +114,11 @@ export class OpenCodexBackendRuntime {
   /** Public Git API. */
   get git(): GitApi {
     return this.apis.git;
+  }
+
+  /** Public host-local Docker API. */
+  get docker(): DockerApi {
+    return this.apis.docker;
   }
 
   /** Public application-log API. */

@@ -26,6 +26,7 @@ export const enNavigation = {
     deleteProjectDescription: "This only removes the local OpenCodexUI cache entry. Codex conversations are not deleted.",
     deleteProjectFromCache: "Remove from cache",
     deleteProjectTitle: "Remove {{project}} from cache?",
+    docker: "Docker",
     noProjectSearchResults: "No project matches this search.",
     noRecentProjects: "No recent projects yet.",
     organizeProject: "Organize {{project}}",

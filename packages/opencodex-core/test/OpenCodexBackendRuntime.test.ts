@@ -35,6 +35,7 @@ describe("OpenCodexBackendRuntime", () => {
     expect(runtime.projects).toBe(runtime.projects);
     expect(runtime.threads).toBe(runtime.threads);
     expect(runtime.automation.commands).toBe(runtime.automation.commands);
+    expect(runtime.docker).toBe(runtime.docker);
     expect(runtime.git.commitMessage).toBe(runtime.git.commitMessage);
 
     const normalized = await runtime.settings.update({

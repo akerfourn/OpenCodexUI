@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@open-codex-ui/codex-rpc": "file:../codex-rpc",
+    "@open-codex-ui/docker-client": "file:../docker-client",
     "@open-codex-ui/opencodex-cache": "file:../opencodex-cache",
     "@open-codex-ui/opencodex-protocol": "file:../opencodex-protocol"
   }

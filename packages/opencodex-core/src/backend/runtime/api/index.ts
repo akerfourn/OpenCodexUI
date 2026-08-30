@@ -5,6 +5,7 @@ export type {
   CodexUpdatesApi,
   CommandsApi,
   CommitMessageApi,
+  DockerApi,
   EventLogApi,
   GitApi,
   GroupsApi,
