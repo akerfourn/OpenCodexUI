@@ -34,8 +34,8 @@ import { buildReasoningTimelineEntries } from "./collaborationReasoningTimeline"
 import { ActivityKindIcon } from "./ActivityKindIcon";
 import { PlanActivityRow } from "./PlanActivityRow";
 import {
-  isStructuredPlanItem,
   readLatestStructuredPlan,
+  shouldIncludeActivityItemInTimeline,
   shouldShowPersistentPlan
 } from "./assistantTurnPlan";
 
@@ -79,13 +79,14 @@ export function AssistantTurnBlock({
     () => readLatestStructuredPlan(preludeItems),
     [preludeItems]
   );
+  const showPersistentPlan = shouldShowPersistentPlan(isRunning, persistentPlan);
   const timelineEntries = useMemo(
     () => buildReasoningTimelineEntries(preludeItems, collaborationEvents).filter((entry) => (
-      entry.type === "collaboration" || !isStructuredPlanItem(entry.item)
+      entry.type === "collaboration"
+      || shouldIncludeActivityItemInTimeline(entry.item, showPersistentPlan)
     )),
-    [collaborationEvents, preludeItems]
+    [collaborationEvents, preludeItems, showPersistentPlan]
   );
-  const showPersistentPlan = shouldShowPersistentPlan(turn, isRunning, persistentPlan);
   const blockRef = isLast ? lastMessageRef : undefined;
   const runningStartedAt = turn.startedAt ?? readFirstCreatedAt(preludeItems);
   const displayedDurationMs = isRunning

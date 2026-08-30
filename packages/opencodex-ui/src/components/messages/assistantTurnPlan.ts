@@ -1,6 +1,5 @@
 import type {
   OpenCodexPlanSnapshot,
-  OpenCodexTurn,
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -29,26 +28,16 @@ export function isStructuredPlanItem(
 
 /** Determines whether a plan should remain visible below the activity stream. */
 export function shouldShowPersistentPlan(
-  turn: OpenCodexTurn,
   isRunning: boolean,
   plan: OpenCodexPlanSnapshot | null
 ): boolean {
-  if (plan === null) {
-    return false;
-  }
-
-  return isRunning || !isPlanComplete(plan) || !isTurnFinished(turn);
+  return isRunning && plan !== null;
 }
 
-/** Checks whether every explicit plan step has reached the completed state. */
-function isPlanComplete(plan: OpenCodexPlanSnapshot): boolean {
-  return plan.steps.length > 0 && plan.steps.every((step) => step.status === "completed");
-}
-
-/** Checks whether the turn has a terminal status or completion timestamp. */
-function isTurnFinished(turn: OpenCodexTurn): boolean {
-  return turn.completedAt !== null
-    || turn.status === "completed"
-    || turn.status === "failed"
-    || turn.status === "interrupted";
+/** Keeps structured plans in history only when they are not already pinned. */
+export function shouldIncludeActivityItemInTimeline(
+  item: OpenCodexTurnItem,
+  isPersistentPlanVisible: boolean
+): boolean {
+  return !isPersistentPlanVisible || !isStructuredPlanItem(item);
 }

@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import type {
   OpenCodexPlanSnapshot,
-  OpenCodexTurn,
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
 import {
   isStructuredPlanItem,
   readLatestStructuredPlan,
+  shouldIncludeActivityItemInTimeline,
   shouldShowPersistentPlan
 } from "../src/components/messages/assistantTurnPlan";
 
@@ -35,20 +35,6 @@ function createItem(
   };
 }
 
-function createTurn(overrides: Partial<OpenCodexTurn> = {}): OpenCodexTurn {
-  return {
-    id: "turn-1",
-    threadId: "thread-1",
-    status: "completed",
-    errorMessage: null,
-    startedAt: null,
-    completedAt: "2026-08-25T10:00:00.000Z",
-    durationMs: 1_000,
-    items: [],
-    ...overrides
-  };
-}
-
 describe("assistant turn plan", () => {
   it("returns the most recent structured plan", () => {
     const firstPlan = createPlan();
@@ -72,18 +58,29 @@ describe("assistant turn plan", () => {
       steps: [{ step: "Terminer", status: "completed" }]
     });
 
-    expect(shouldShowPersistentPlan(createTurn(), true, completedPlan)).toBe(true);
+    expect(shouldShowPersistentPlan(true, completedPlan)).toBe(true);
   });
 
-  it("keeps an incomplete plan visible after a terminal turn", () => {
-    expect(shouldShowPersistentPlan(createTurn(), false, createPlan())).toBe(true);
+  it("moves an incomplete plan back into history after the turn stops", () => {
+    expect(shouldShowPersistentPlan(false, createPlan())).toBe(false);
   });
 
-  it("hides a completed plan after the turn is terminal", () => {
+  it("moves a completed plan back into history after the turn stops", () => {
     const completedPlan = createPlan({
       steps: [{ step: "Terminer", status: "completed" }]
     });
 
-    expect(shouldShowPersistentPlan(createTurn(), false, completedPlan)).toBe(false);
+    expect(shouldShowPersistentPlan(false, completedPlan)).toBe(false);
+  });
+
+  it("does not show a persistent plan when no structured plan exists", () => {
+    expect(shouldShowPersistentPlan(true, null)).toBe(false);
+  });
+
+  it("moves a historical plan into the collapsible activity timeline", () => {
+    const planItem = createItem("plan-1", createPlan());
+
+    expect(shouldIncludeActivityItemInTimeline(planItem, true)).toBe(false);
+    expect(shouldIncludeActivityItemInTimeline(planItem, false)).toBe(true);
   });
 });
