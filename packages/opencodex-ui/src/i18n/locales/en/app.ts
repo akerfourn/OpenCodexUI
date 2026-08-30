@@ -107,6 +107,10 @@ export const enApp = {
     performanceMonitoring: "Monitor performance slowdowns",
     performanceMonitoringDescription: "Automatically detects slowdowns and creates a local diagnostic without recording chat content."
   },
+  shutdown: {
+    detail: "Stopping Codex processes and finalizing local data.",
+    title: "Closing the application…"
+  },
   theme: {
     dark: "Dark",
     label: "Theme",

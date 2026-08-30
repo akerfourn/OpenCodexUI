@@ -155,6 +155,15 @@ export class ElectronBridgeServer {
   }
 
   /**
+   * Notifies the renderer that application shutdown has been confirmed.
+   *
+   * @returns Nothing.
+   */
+  emitShutdownStarted(): void {
+    this.emit({ type: "app.shutdown.started" });
+  }
+
+  /**
    * Registers the IPC handler used by the renderer to send backend requests.
    *
    * @returns Nothing.

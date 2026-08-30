@@ -89,6 +89,7 @@ function createRootStore(
     appStore: {
       errorMessage: null,
       warningMessage: null,
+      isShuttingDown: false,
       shouldShowOnboarding: false,
       clearErrorMessage: vi.fn(),
       clearWarningMessage: vi.fn()

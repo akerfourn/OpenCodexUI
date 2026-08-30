@@ -31,6 +31,7 @@ import type { OpenCodexCollaborationEvent } from "./collaboration";
  */
 export type OpenCodexEvent =
   | { type: "connection.status"; status: "starting" | "ready" | "stopped" | "error"; message?: string }
+  | { type: "app.shutdown.started" }
   | {
       type: "app.bootstrap";
       settings: OpenCodexSettings;

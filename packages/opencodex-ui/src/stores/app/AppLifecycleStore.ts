@@ -40,6 +40,8 @@ export class AppLifecycleStore {
   gitVersionStatus: OpenCodexToolVersionStatus | null = null;
   /** Whether a Git executable diagnostic is currently in flight. */
   isLoadingGitVersion = false;
+  /** Whether the desktop host is currently releasing application resources. */
+  isShuttingDown = false;
 
   /**
    * Creates the application lifecycle store.
@@ -60,6 +62,7 @@ export class AppLifecycleStore {
       isPrerelease: observable,
       gitVersionStatus: observable,
       isLoadingGitVersion: observable,
+      isShuttingDown: observable,
       bootstrap: action,
       loadGitVersion: action,
       handleEvent: action
@@ -127,6 +130,9 @@ export class AppLifecycleStore {
       case "app.bootstrap":
         this.applyBootstrap(event.settings, event.projectPath, event.appVersion);
         this.isPrerelease = event.isPrerelease;
+        return;
+      case "app.shutdown.started":
+        this.isShuttingDown = true;
         return;
       case "projects.updated":
         this.isBootstrapping = false;

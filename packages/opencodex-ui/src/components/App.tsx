@@ -6,6 +6,7 @@ import { Box, Button, Snackbar } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
+import { AppShutdownOverlay } from "./app/AppShutdownOverlay";
 import { AppTabsX } from "./app/AppTabs";
 import { ApprovalDialogX } from "./dialogs/ApprovalDialog";
 import { HomeViewX } from "./home/HomeView";
@@ -32,6 +33,7 @@ export function App({ store }: AppProps) {
   const notificationMessage = errorMessage ?? warningMessage;
   const activeTabId = store.navigationStore.activeTabId;
   const activeProjectStore = store.navigationStore.activeProjectStore;
+  const shutdownOverlay = <AppShutdownOverlay open={store.appStore.isShuttingDown} />;
 
   function handleCloseNotification(): void {
     if (errorMessage !== null) {
@@ -81,6 +83,7 @@ export function App({ store }: AppProps) {
       <Box component="main" className="app-shell">
         <OnboardingViewX store={store} />
         {snackbar}
+        {shutdownOverlay}
       </Box>
     );
   }
@@ -95,6 +98,7 @@ export function App({ store }: AppProps) {
       <ProjectTrustDialogX store={store.projectsStore.trustStore} />
       <CloseProjectDialogX store={store} />
       {snackbar}
+      {shutdownOverlay}
     </Box>
   );
 }

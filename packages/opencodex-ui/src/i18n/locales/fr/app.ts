@@ -104,6 +104,10 @@ export const frApp = {
     performanceMonitoring: "Surveiller les ralentissements",
     performanceMonitoringDescription: "Détecte automatiquement les ralentissements et crée un diagnostic local sans enregistrer le contenu des chats."
   },
+  shutdown: {
+    detail: "Arrêt des processus Codex et finalisation des données locales.",
+    title: "Fermeture de l’application…"
+  },
   theme: {
     dark: "Sombre",
     label: "Thème",
@@ -116,4 +120,3 @@ export const frApp = {
     label: "Onglets de l'application"
   },
 } as const;
-

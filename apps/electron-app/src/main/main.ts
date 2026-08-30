@@ -26,6 +26,9 @@ let isDisposing = false;
 let isDisposed = false;
 let isCloseConfirmationOpen = false;
 
+const SHUTDOWN_RENDER_DELAY_MS = 100;
+const SHUTDOWN_CLEANUP_TIMEOUT_MS = 5_000;
+
 app.setName("OpenCodexUI");
 app.setAppUserModelId("io.opencodexui.app");
 
@@ -135,7 +138,28 @@ async function disposeAndExit(code: number): Promise<void> {
   isDisposing = true;
 
   try {
-    await bridgeServer?.dispose();
+    let cleanupTimedOut = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const cleanupTimeout = new Promise<void>((resolve) => {
+      timeoutId = setTimeout(() => {
+        cleanupTimedOut = true;
+        resolve();
+      }, SHUTDOWN_CLEANUP_TIMEOUT_MS);
+    });
+
+    try {
+      await Promise.race([bridgeServer?.dispose() ?? Promise.resolve(), cleanupTimeout]);
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    if (cleanupTimedOut) {
+      console.error(
+        `[OpenCodexUI] cleanup exceeded ${SHUTDOWN_CLEANUP_TIMEOUT_MS}ms; forcing exit`
+      );
+    }
   } catch (error) {
     console.error(`[OpenCodexUI] cleanup failed during shutdown: ${String(error)}`);
   } finally {
@@ -188,8 +212,10 @@ function requestApplicationClose(window: BrowserWindow | null): void {
   const options = buildAppCloseConfirmationOptions(contextMenuLanguage, hasActiveTurns);
 
   void dialog.showMessageBox(window, options)
-    .then((result) => {
+    .then(async (result) => {
       if (result.response === 0) {
+        bridgeServer?.emitShutdownStarted();
+        await waitForShutdownRender();
         void disposeAndExit(0);
       }
     })
@@ -199,6 +225,17 @@ function requestApplicationClose(window: BrowserWindow | null): void {
     .finally(() => {
       isCloseConfirmationOpen = false;
     });
+}
+
+/**
+ * Gives the renderer one paint opportunity for the shutdown state.
+ *
+ * @returns Promise resolved after the short render grace period.
+ */
+function waitForShutdownRender(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, SHUTDOWN_RENDER_DELAY_MS);
+  });
 }
 
 /**

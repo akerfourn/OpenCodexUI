@@ -93,6 +93,14 @@ describe("AppLifecycleStore", () => {
     expect(store.isBootstrapping).toBe(false);
   });
 
+  it("should enter the terminal shutdown state when the host starts closing", () => {
+    const store = new AppLifecycleStore(createRequestPort());
+
+    store.handleEvent({ type: "app.shutdown.started" });
+
+    expect(store.isShuttingDown).toBe(true);
+  });
+
   it("should store a successful Git diagnostic and always finish loading", async () => {
     const pending = createDeferred<OpenCodexToolVersionStatus>();
     const request = vi.fn(async (_request: OpenCodexRequest) => pending.promise);
@@ -145,6 +153,7 @@ describe("AppLifecycleStore", () => {
     expect(isObservableProp(store, "connectionStatus")).toBe(true);
     expect(isObservableProp(store, "isBootstrapping")).toBe(true);
     expect(isObservableProp(store, "gitVersionStatus")).toBe(true);
+    expect(isObservableProp(store, "isShuttingDown")).toBe(true);
 
   });
 });
