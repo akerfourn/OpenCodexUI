@@ -262,7 +262,7 @@
   min-width: 0;
   min-height: 0;
   height: 100%;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
   background: var(--vscode-sideBar-background);
 }
@@ -277,41 +277,82 @@
 
 .project-side-panel-tabs {
   display: flex;
+  flex: 0 0 52px;
   align-items: center;
-  flex: 0 0 auto;
-  border-bottom: 1px solid var(--vscode-panel-border);
+  box-sizing: border-box;
+  width: 52px;
+  flex-direction: column;
+  order: 1;
+  border-left: 1px solid var(--vscode-panel-border);
+  padding: 8px 4px;
 }
 
 .project-side-panel-tabs .MuiTabs-root {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-.project-side-panel-tabs .MuiTabs-root {
-  min-height: 30px;
+  width: 100%;
 }
 
 .project-side-panel-tabs .MuiTabs-list {
+  align-items: center;
+  gap: 8px;
   width: 100%;
 }
 
 .project-side-panel-tabs .MuiTab-root {
-  flex: 1 1 54px;
-  max-width: 84px;
-  min-width: 54px;
-  min-height: 30px;
-  padding: 3px 4px;
+  flex: 0 0 36px;
+  width: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 88%, var(--vscode-focusBorder));
   text-transform: none;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.project-side-panel-tabs .MuiTabs-indicator {
+  display: none;
+}
+
+.project-side-panel-tabs .MuiTab-root:hover,
+.project-side-panel-tabs .MuiTab-root:focus-visible,
+.project-side-panel-rail .MuiIconButton-root:hover,
+.project-side-panel-rail .MuiIconButton-root:focus-visible,
+.project-side-panel-collapse-button:hover,
+.project-side-panel-collapse-button:focus-visible {
+  border-color: var(--vscode-focusBorder);
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 72%, var(--vscode-focusBorder));
+}
+
+.project-side-panel-tabs .MuiTab-root.Mui-selected,
+.project-side-panel-rail .MuiIconButton-root.is-active {
+  border-color: color-mix(in srgb, var(--vscode-focusBorder) 65%, transparent);
+  color: var(--vscode-focusBorder);
+  background: color-mix(in srgb, var(--vscode-focusBorder) 18%, var(--vscode-sideBar-background));
 }
 
 .project-side-panel-collapse-button {
   flex: 0 0 auto;
-  margin-right: 5px;
-  margin-left: 2px;
-  border-left: 1px solid var(--vscode-panel-border);
-  border-radius: 0;
-  color: var(--vscode-descriptionForeground);
-  padding-left: 8px;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 88%, var(--vscode-focusBorder));
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
 }
 
 .project-side-panel-collapse-button:hover,
@@ -335,14 +376,18 @@
   width: 36px;
   height: 36px;
   border: 1px solid transparent;
+  box-sizing: border-box;
   color: var(--vscode-foreground);
   background: color-mix(in srgb, var(--vscode-sideBar-background) 88%, var(--vscode-focusBorder));
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
 }
 
 .project-side-panel-rail .MuiIconButton-root:hover,
 .project-side-panel-rail .MuiIconButton-root:focus-visible {
   border-color: var(--vscode-focusBorder);
-  background: color-mix(in srgb, var(--vscode-sideBar-background) 72%, var(--vscode-focusBorder));
 }
 
 .project-side-panel-expand-icon {
@@ -355,4 +400,3 @@
   justify-content: center;
   line-height: 1;
 }
-

@@ -129,8 +129,13 @@ export function ProjectSidePanel({
             <Tooltip key={tab.value} title={tab.label} placement="left">
               <IconButton
                 size="small"
-                color={selectedTab === tab.value ? "primary" : "default"}
+                className={
+                  selectedTab === tab.value
+                    ? "project-side-panel-tool-button is-active"
+                    : "project-side-panel-tool-button"
+                }
                 aria-label={tab.label}
+                aria-pressed={selectedTab === tab.value}
                 onClick={() => handleCollapsedTabClick(tab.value)}
               >
                 {tab.icon}
@@ -145,8 +150,19 @@ export function ProjectSidePanel({
   return (
     <aside className="project-side-panel">
       <Box className="project-side-panel-tabs">
+        <Tooltip title={t("projectTools.closePanel")} placement="left">
+          <IconButton
+            className="project-side-panel-collapse-button"
+            size="small"
+            aria-label={t("projectTools.closePanel")}
+            onClick={handleCollapse}
+          >
+            <KeyboardTabOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
         <Tabs
           value={selectedTab}
+          orientation="vertical"
           variant="scrollable"
           scrollButtons="auto"
           aria-label={t("projectTools.tabs")}
@@ -166,16 +182,6 @@ export function ProjectSidePanel({
             />
           ))}
         </Tabs>
-        <Tooltip title={t("projectTools.closePanel")} placement="left">
-          <IconButton
-            className="project-side-panel-collapse-button"
-            size="small"
-            aria-label={t("projectTools.closePanel")}
-            onClick={handleCollapse}
-          >
-            <KeyboardTabOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
       </Box>
       {panelContent}
     </aside>
