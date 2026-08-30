@@ -89,4 +89,34 @@ describe("RendererPerformanceMonitor", () => {
 
     monitor.dispose();
   });
+
+  it("should attribute backend request latency without retaining request payloads", () => {
+    vi.useFakeTimers();
+    const reportPerformanceSample = vi.fn();
+    const settings = {
+      ...defaultSettings,
+      developerMode: true,
+      advancedPerformanceMonitoringEnabled: true
+    };
+
+    vi.stubGlobal("document", { visibilityState: "visible" });
+    vi.stubGlobal("window", {
+      openCodexUI: { reportPerformanceSample }
+    });
+
+    const monitor = new RendererPerformanceMonitor(() => settings);
+
+    monitor.recordRequest("plugins.search", 12);
+    monitor.recordRequest("plugins.search", 35);
+    vi.advanceTimersByTime(1_000);
+
+    expect(reportPerformanceSample).toHaveBeenCalledWith(expect.objectContaining({
+      requestCount: 2,
+      maxRequestDurationMs: 35,
+      requestTypeCounts: { "plugins.search": 2 },
+      requestTypeMaxDurationMs: { "plugins.search": 35 }
+    }));
+
+    monitor.dispose();
+  });
 });

@@ -4,6 +4,7 @@
 import type {
   OpenCodexEvent,
   OpenCodexMarkdownRenderPerformanceMetric,
+  OpenCodexRequest,
   OpenCodexRendererPerformanceSample,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
@@ -22,6 +23,10 @@ export class RendererPerformanceMonitor {
   private processedEventCount = 0;
   private estimatedEventBytes = 0;
   private maxEventHandlingDurationMs = 0;
+  private requestCount = 0;
+  private maxRequestDurationMs = 0;
+  private requestTypeCounts: Record<string, number> = {};
+  private requestTypeMaxDurationMs: Record<string, number> = {};
   private eventTypeCounts: Record<string, number> = {};
   private eventTypeMaxDurationMs: Record<string, number> = {};
   private plainMarkdownRenderCount = 0;
@@ -69,6 +74,26 @@ export class RendererPerformanceMonitor {
       this.eventTypeCounts[event.type] = (this.eventTypeCounts[event.type] ?? 0) + 1;
       this.eventTypeMaxDurationMs[event.type] = Math.max(
         this.eventTypeMaxDurationMs[event.type] ?? 0,
+        durationMs
+      );
+    }
+  }
+
+  /** Records one renderer-to-backend request without retaining its payload. */
+  recordRequest(requestType: OpenCodexRequest["type"], durationMs: number): void {
+    const settings = this.getSettings();
+
+    if (!settings.performanceMonitoringEnabled) {
+      return;
+    }
+
+    this.requestCount += 1;
+    this.maxRequestDurationMs = Math.max(this.maxRequestDurationMs, durationMs);
+
+    if (settings.developerMode && settings.advancedPerformanceMonitoringEnabled) {
+      this.requestTypeCounts[requestType] = (this.requestTypeCounts[requestType] ?? 0) + 1;
+      this.requestTypeMaxDurationMs[requestType] = Math.max(
+        this.requestTypeMaxDurationMs[requestType] ?? 0,
         durationMs
       );
     }
@@ -179,12 +204,16 @@ export class RendererPerformanceMonitor {
       maxLongTaskDurationMs: this.maxLongTaskDurationMs,
       processedEventCount: this.processedEventCount,
       estimatedEventBytes: this.estimatedEventBytes,
-      maxEventHandlingDurationMs: this.maxEventHandlingDurationMs
+      maxEventHandlingDurationMs: this.maxEventHandlingDurationMs,
+      requestCount: this.requestCount,
+      maxRequestDurationMs: this.maxRequestDurationMs
     };
 
     if (isAdvanced) {
       sample.eventTypeCounts = { ...this.eventTypeCounts };
       sample.eventTypeMaxDurationMs = { ...this.eventTypeMaxDurationMs };
+      sample.requestTypeCounts = { ...this.requestTypeCounts };
+      sample.requestTypeMaxDurationMs = { ...this.requestTypeMaxDurationMs };
       sample.markdown = {
         plainRenderCount: this.plainMarkdownRenderCount,
         plainRenderDurationMs: this.plainMarkdownRenderDurationMs,
@@ -235,6 +264,10 @@ export class RendererPerformanceMonitor {
     this.processedEventCount = 0;
     this.estimatedEventBytes = 0;
     this.maxEventHandlingDurationMs = 0;
+    this.requestCount = 0;
+    this.maxRequestDurationMs = 0;
+    this.requestTypeCounts = {};
+    this.requestTypeMaxDurationMs = {};
     this.eventTypeCounts = {};
     this.eventTypeMaxDurationMs = {};
     this.plainMarkdownRenderCount = 0;

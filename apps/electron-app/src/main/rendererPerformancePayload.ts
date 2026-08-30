@@ -62,6 +62,34 @@ export function readRendererPerformanceSample(
     isDocumentVisible,
     ...numbers
   };
+  const optionalNumericFields = ["requestCount", "maxRequestDurationMs"] as const;
+
+  for (const field of optionalNumericFields) {
+    const fieldValue = sample[field];
+
+    if (fieldValue === undefined) {
+      continue;
+    }
+
+    if (typeof fieldValue !== "number" || !Number.isFinite(fieldValue) || fieldValue < 0) {
+      return null;
+    }
+
+    result[field] = Math.min(fieldValue, 1_000_000_000);
+  }
+
+  const requestTypeCounts = readBoundedNumberRecord(sample.requestTypeCounts);
+
+  if (requestTypeCounts !== null) {
+    result.requestTypeCounts = requestTypeCounts;
+  }
+
+  const requestTypeMaxDurationMs = readBoundedNumberRecord(sample.requestTypeMaxDurationMs);
+
+  if (requestTypeMaxDurationMs !== null) {
+    result.requestTypeMaxDurationMs = requestTypeMaxDurationMs;
+  }
+
   const eventTypeCounts = readBoundedNumberRecord(sample.eventTypeCounts);
 
   if (eventTypeCounts !== null) {

@@ -93,7 +93,11 @@ export function HomePluginListItem({
     >
       <ListItemButton onClick={handleOpen} sx={{ pr: 18 }}>
         <ListItemAvatar>
-          <Avatar src={plugin.logoUrl ?? undefined} variant="rounded">
+          <Avatar
+            src={plugin.logoUrl ?? undefined}
+            variant="rounded"
+            slotProps={{ img: { loading: "lazy", decoding: "async" } }}
+          >
             {plugin.displayName.slice(0, 1).toUpperCase()}
           </Avatar>
         </ListItemAvatar>

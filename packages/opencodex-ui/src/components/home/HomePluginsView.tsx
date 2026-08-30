@@ -1,72 +1,62 @@
-/**
- * Renders the experimental Codex plugin marketplace.
- */
+/** Renders bounded, explicit plugin discovery for one Codex source. */
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import {
   Alert,
   Box,
+  Button,
   LinearProgress,
-  MenuItem,
   Stack,
-  TextField,
-  Typography,
-  IconButton,
-  Tooltip
+  Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import type { ChangeEvent } from "react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { PluginInstallFilter } from "../../stores/app/PluginsStore";
 import type { RootStore } from "../../stores/RootStore";
 import { HomePluginDetailDialogX } from "./HomePluginDetailDialog";
+import { HomePluginFiltersX } from "./HomePluginFilters";
 import { HomePluginListItem } from "./HomePluginListItem";
 
 type HomePluginsViewProps = {
   store: RootStore;
 };
 
-/**
- * Renders Home plugin management.
- *
- * @param props Component props.
- * @returns Rendered plugin view.
- */
+/** Renders Home plugin management without mounting the complete remote catalog. */
 export function HomePluginsView({ store }: HomePluginsViewProps) {
   const { t } = useTranslation();
   const pluginsStore = store.pluginsStore;
   const sources = store.sourcesStore.sources;
+  const defaultSourceId = store.appStore.settingsStore.settings.defaultSourceId;
+  const selectedSource = store.sourcesStore.findSource(pluginsStore.selectedSourceId);
+  const selectedSourceStatus = selectedSource?.codex.status;
 
   useEffect(() => {
-    pluginsStore.selectDefaultSource(sources, store.appStore.settingsStore.settings.defaultSourceId);
-  }, [pluginsStore, sources, store.appStore.settingsStore.settings.defaultSourceId]);
+    pluginsStore.selectDefaultSource(sources, defaultSourceId);
+    void pluginsStore.ensureInstalledLoaded();
+  }, [pluginsStore, sources, defaultSourceId, selectedSourceStatus]);
 
-  function handleSourceChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    pluginsStore.setSelectedSourceId(event.target.value);
+  function handleLoadCatalog(): void {
+    void pluginsStore.loadCatalog();
   }
 
-  function handleSearchChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    pluginsStore.setSearchTerm(event.target.value);
+  function handleLoadMore(): void {
+    void pluginsStore.loadMoreCatalogPlugins();
   }
 
-  function handleCategoryChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    pluginsStore.setSelectedCategory(event.target.value);
-  }
-
-  function handleInstallFilterChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
-    pluginsStore.setInstallFilter(event.target.value as PluginInstallFilter);
-  }
-
-  function handleRefresh(): void {
-    void pluginsStore.load();
+  function handleRefreshCatalog(): void {
+    void pluginsStore.refreshCatalog();
   }
 
   const hasSource = pluginsStore.selectedSourceId !== null;
-  const selectedSourceValue = pluginsStore.selectedSourceId ?? "";
-  const selectedSource = store.sourcesStore.findSource(pluginsStore.selectedSourceId);
-  const isSelectedSourceReady = selectedSource?.codex.status === "ready";
+  const isSelectedSourceReady = selectedSourceStatus === "ready";
   const canUseSelectedSource = hasSource && isSelectedSourceReady;
+  const visiblePlugins = pluginsStore.visiblePlugins;
+  const shouldShowEmptyState = canUseSelectedSource &&
+    pluginsStore.hasLoadedInstalled &&
+    !pluginsStore.isLoading &&
+    visiblePlugins.length === 0 &&
+    (pluginsStore.hasLoadedCatalog || pluginsStore.installFilter === "installed");
 
   return (
     <Stack className="home-content-panel" spacing={2}>
@@ -79,72 +69,23 @@ export function HomePluginsView({ store }: HomePluginsViewProps) {
             {t("plugins.description")}
           </Typography>
         </Box>
-        <Tooltip title={t("plugins.refresh")}>
-          <span>
-            <IconButton
-              aria-label={t("plugins.refresh")}
-              disabled={!canUseSelectedSource || pluginsStore.isLoading}
-              onClick={handleRefresh}
-            >
-              <RefreshOutlinedIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
+        <Button
+          variant="outlined"
+          startIcon={<RefreshOutlinedIcon />}
+          disabled={!canUseSelectedSource || pluginsStore.isLoading}
+          onClick={handleRefreshCatalog}
+        >
+          {t("plugins.refreshCatalog")}
+        </Button>
       </Box>
 
       <Alert severity="info">{t("plugins.experimentalNotice")}</Alert>
 
-      <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
-        <TextField
-          select
-          size="small"
-          label={t("plugins.source")}
-          value={selectedSourceValue}
-          disabled={sources.length === 0}
-          sx={{ minWidth: 220 }}
-          onChange={handleSourceChange}
-        >
-          {sources.map((source) => (
-            <MenuItem key={source.id} value={source.id}>
-              {source.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          size="small"
-          label={t("plugins.search")}
-          value={pluginsStore.searchTerm}
-          fullWidth
-          onChange={handleSearchChange}
-        />
-        <TextField
-          select
-          size="small"
-          label={t("plugins.filter")}
-          value={pluginsStore.installFilter}
-          sx={{ minWidth: 160 }}
-          onChange={handleInstallFilterChange}
-        >
-          <MenuItem value="all">{t("plugins.filters.all")}</MenuItem>
-          <MenuItem value="installed">{t("plugins.filters.installed")}</MenuItem>
-          <MenuItem value="available">{t("plugins.filters.available")}</MenuItem>
-        </TextField>
-        <TextField
-          select
-          size="small"
-          label={t("plugins.category")}
-          value={pluginsStore.selectedCategory}
-          sx={{ minWidth: 180 }}
-          onChange={handleCategoryChange}
-        >
-          <MenuItem value="">{t("plugins.categories.all")}</MenuItem>
-          {pluginsStore.categories.map((category) => (
-            <MenuItem key={category} value={category}>
-              {category}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
+      <HomePluginFiltersX
+        store={pluginsStore}
+        sources={sources}
+        canUseSelectedSource={canUseSelectedSource}
+      />
 
       {pluginsStore.isLoading ? <LinearProgress /> : null}
 
@@ -166,15 +107,34 @@ export function HomePluginsView({ store }: HomePluginsViewProps) {
         </Typography>
       ) : null}
 
-      {canUseSelectedSource && pluginsStore.visiblePlugins.length === 0 && !pluginsStore.isLoading ? (
+      {canUseSelectedSource && !pluginsStore.hasLoadedCatalog ? (
+        <Alert
+          severity="info"
+          action={(
+            <Button
+              color="inherit"
+              size="small"
+              startIcon={<SearchOutlinedIcon />}
+              disabled={pluginsStore.isLoading}
+              onClick={handleLoadCatalog}
+            >
+              {t("plugins.loadCatalog")}
+            </Button>
+          )}
+        >
+          {t("plugins.catalogNotLoaded")}
+        </Alert>
+      ) : null}
+
+      {shouldShowEmptyState ? (
         <Typography variant="body2" color="text.secondary">
           {t("plugins.empty")}
         </Typography>
       ) : null}
 
-      {canUseSelectedSource ? (
+      {canUseSelectedSource && visiblePlugins.length > 0 ? (
         <Stack spacing={1}>
-          {pluginsStore.visiblePlugins.map((plugin) => (
+          {visiblePlugins.map((plugin) => (
             <HomePluginListItem
               key={`${plugin.marketplaceName}:${plugin.name}:${plugin.id}`}
               plugin={plugin}
@@ -185,6 +145,18 @@ export function HomePluginsView({ store }: HomePluginsViewProps) {
             />
           ))}
         </Stack>
+      ) : null}
+
+      {canUseSelectedSource && pluginsStore.hasMoreCatalogPlugins ? (
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <Button disabled={pluginsStore.isLoadingCatalog} onClick={handleLoadMore}>
+            {t("plugins.loadMore")}
+          </Button>
+        </Box>
+      ) : null}
+
+      {pluginsStore.hasReachedCatalogDisplayLimit ? (
+        <Alert severity="info">{t("plugins.refineSearch")}</Alert>
       ) : null}
 
       <HomePluginDetailDialogX store={pluginsStore} />

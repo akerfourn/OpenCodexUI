@@ -254,6 +254,17 @@ export class OpenCodexRequestRouter {
         );
       case "plugins.list":
         return this.runtime.plugins.list(request.sourceId);
+      case "plugins.installed":
+        return this.runtime.plugins.installed(request.sourceId);
+      case "plugins.search":
+        return this.runtime.plugins.search(
+          request.sourceId,
+          request.searchTerm,
+          request.cursor ?? null,
+          request.limit
+        );
+      case "plugins.refresh":
+        return this.runtime.plugins.refresh(request.sourceId);
       case "plugins.read":
         return this.runtime.plugins.read({
           sourceId: request.sourceId,

@@ -2,13 +2,16 @@ import type {
   OpenCodexApprovalDecision,
   OpenCodexFileSearchResult,
   OpenCodexImageAttachment,
+  OpenCodexInstalledPluginListResult,
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
   OpenCodexModel,
   OpenCodexPluginDetail,
+  OpenCodexPluginCatalogRefreshResult,
   OpenCodexPluginInstallResult,
   OpenCodexPluginListResult,
+  OpenCodexPluginSearchResult,
   OpenCodexSettings,
   OpenCodexSkillSearchResult,
   OpenCodexUsageHistory,
@@ -124,7 +127,10 @@ export class ModelsApi implements ModelsApiContract {
   }
 }
 
-type PluginsApiService = Pick<PluginService, "list" | "read" | "install" | "uninstall">;
+type PluginsApiService = Pick<
+  PluginService,
+  "list" | "installed" | "search" | "refresh" | "read" | "install" | "uninstall"
+>;
 
 /** Exposes plugin marketplace operations. */
 export class PluginsApi implements PluginsApiContract {
@@ -134,6 +140,26 @@ export class PluginsApi implements PluginsApiContract {
   /** Lists plugins visible from a Codex source. */
   async list(sourceId: string | null): Promise<OpenCodexPluginListResult> {
     return await this.service.list(sourceId);
+  }
+
+  /** Lists only installed plugins for a Codex source. */
+  async installed(sourceId: string | null): Promise<OpenCodexInstalledPluginListResult> {
+    return await this.service.installed(sourceId);
+  }
+
+  /** Searches one bounded page of the Codex plugin catalog. */
+  async search(
+    sourceId: string | null,
+    searchTerm: string,
+    cursor?: string | null,
+    limit?: number
+  ): Promise<OpenCodexPluginSearchResult> {
+    return await this.service.search(sourceId, searchTerm, cursor, limit);
+  }
+
+  /** Explicitly refreshes the remote Codex plugin catalog. */
+  async refresh(sourceId: string | null): Promise<OpenCodexPluginCatalogRefreshResult> {
+    return await this.service.refresh(sourceId);
   }
 
   /** Reads detailed metadata for one plugin. */

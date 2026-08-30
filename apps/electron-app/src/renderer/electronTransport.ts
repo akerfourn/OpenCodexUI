@@ -30,8 +30,14 @@ export class ElectronOpenCodexTransport implements OpenCodexClientTransport {
    * @param request Backend request to execute.
    * @returns Promise resolved with the backend response payload.
    */
-  request<TResponse = unknown>(request: OpenCodexRequest): Promise<TResponse> {
-    return window.openCodexUI.request<TResponse>(request);
+  async request<TResponse = unknown>(request: OpenCodexRequest): Promise<TResponse> {
+    const startedAt = performance.now();
+
+    try {
+      return await window.openCodexUI.request<TResponse>(request);
+    } finally {
+      this.performanceMonitor?.recordRequest(request.type, performance.now() - startedAt);
+    }
   }
 
   /**

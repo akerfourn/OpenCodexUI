@@ -5,9 +5,11 @@ import type {
   OpenCodexPluginDetail,
   OpenCodexPluginHookSummary,
   OpenCodexPluginInstallPolicy,
+  OpenCodexInstalledPluginListResult,
   OpenCodexPluginListResult,
   OpenCodexPluginMarketplace,
   OpenCodexPluginSkillSummary,
+  OpenCodexPluginSearchResult,
   OpenCodexPluginSourceType,
   OpenCodexPluginSummary
 } from "@open-codex-ui/opencodex-protocol";
@@ -34,6 +36,53 @@ export function mapPluginListResponse(
     featuredPluginIds,
     categories: readCategories(marketplaces),
     loadErrors: response.marketplaceLoadErrors.map((error) => error.message)
+  };
+}
+
+/**
+ * Maps the lightweight installed-plugin response to a flat UI list.
+ *
+ * @param response Raw Codex installed-plugin response.
+ * @param sourceId Source that produced the response.
+ * @returns Installed plugins without the complete remote catalog.
+ */
+export function mapInstalledPluginListResponse(
+  response: v2.PluginInstalledResponse,
+  sourceId: string | null
+): OpenCodexInstalledPluginListResult {
+  const marketplaces = response.marketplaces.map((marketplace) => (
+    mapPluginMarketplace(marketplace, [])
+  ));
+
+  return {
+    sourceId,
+    plugins: marketplaces.flatMap((marketplace) => marketplace.plugins),
+    loadErrors: response.marketplaceLoadErrors.map((error) => error.message)
+  };
+}
+
+/**
+ * Maps one bounded Codex plugin search page.
+ *
+ * @param response Raw Codex search response.
+ * @param sourceId Source that produced the response.
+ * @returns Search page preserving its continuation cursor.
+ */
+export function mapPluginSearchResponse(
+  response: v2.PluginSearchResponse,
+  sourceId: string | null
+): OpenCodexPluginSearchResult {
+  return {
+    sourceId,
+    plugins: response.data.map((entry) => mapPluginSummary(
+      entry.plugin,
+      entry.marketplaceName,
+      entry.marketplaceName,
+      entry.marketplacePath,
+      []
+    )),
+    nextCursor: response.nextCursor,
+    loadErrors: []
   };
 }
 

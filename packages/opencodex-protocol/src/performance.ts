@@ -30,6 +30,10 @@ export type OpenCodexRendererPerformanceSample = {
   processedEventCount: number;
   estimatedEventBytes: number;
   maxEventHandlingDurationMs: number;
+  requestCount?: number;
+  maxRequestDurationMs?: number;
+  requestTypeCounts?: Record<string, number>;
+  requestTypeMaxDurationMs?: Record<string, number>;
   eventTypeCounts?: Record<string, number>;
   eventTypeMaxDurationMs?: Record<string, number>;
   markdown?: OpenCodexRendererMarkdownPerformanceSample;

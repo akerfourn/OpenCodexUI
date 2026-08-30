@@ -38,6 +38,8 @@ export const enSupport = {
       all: "All"
     },
     category: "Category",
+    catalogNotLoaded: "The remote catalog is not loaded automatically so the application remains " +
+      "responsive.",
     close: "Close",
     description: "Explore plugins exposed by Codex for the selected source.",
     empty: "No plugin matches the current filters.",
@@ -54,6 +56,8 @@ export const enSupport = {
     installed: "Installed",
     installedByDefault: "Installed by default",
     integrations: "Integrations",
+    loadCatalog: "Browse catalog",
+    loadMore: "Show more",
     mcpServer: "MCP server",
     needsAuth: "Authentication required",
     noDescription: "No description available.",
@@ -61,6 +65,8 @@ export const enSupport = {
     noSkills: "No declared skill.",
     noSource: "No Codex source available.",
     refresh: "Refresh plugins",
+    refreshCatalog: "Update catalog",
+    refineSearch: "The display limit has been reached. Refine your search to explore other plugins.",
     search: "Search plugins",
     skills: "Skills",
     source: "Source",

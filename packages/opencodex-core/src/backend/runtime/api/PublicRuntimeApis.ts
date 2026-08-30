@@ -22,13 +22,16 @@ import type {
   OpenCodexGitTagFetchResult,
   OpenCodexGitTagListResult,
   OpenCodexImageAttachment,
+  OpenCodexInstalledPluginListResult,
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
   OpenCodexModel,
   OpenCodexPluginDetail,
+  OpenCodexPluginCatalogRefreshResult,
   OpenCodexPluginInstallResult,
   OpenCodexPluginListResult,
+  OpenCodexPluginSearchResult,
   OpenCodexProject,
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRule,
@@ -439,6 +442,14 @@ export type PluginTarget = {
 /** Public plugin marketplace operations. */
 export interface PluginsApi {
   list(sourceId: string | null): Promise<OpenCodexPluginListResult>;
+  installed(sourceId: string | null): Promise<OpenCodexInstalledPluginListResult>;
+  search(
+    sourceId: string | null,
+    searchTerm: string,
+    cursor?: string | null,
+    limit?: number
+  ): Promise<OpenCodexPluginSearchResult>;
+  refresh(sourceId: string | null): Promise<OpenCodexPluginCatalogRefreshResult>;
   read(target: PluginTarget): Promise<OpenCodexPluginDetail>;
   install(target: PluginTarget): Promise<OpenCodexPluginInstallResult>;
   uninstall(sourceId: string | null, pluginId: string): Promise<{ ok: true }>;

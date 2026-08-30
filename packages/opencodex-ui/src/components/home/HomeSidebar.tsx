@@ -65,10 +65,6 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
 
   function selectPlugins(): void {
     selectSection("plugins");
-    store.pluginsStore.selectDefaultSource(
-      store.sourcesStore.sources,
-      store.appStore.settingsStore.settings.defaultSourceId
-    );
   }
 
   function selectUsage(): void {

@@ -35,6 +35,8 @@ export const frSupport = {
       all: "Toutes"
     },
     category: "Catégorie",
+    catalogNotLoaded: "Le catalogue distant n'est pas chargé automatiquement afin de préserver " +
+      "la réactivité de l'application.",
     close: "Fermer",
     description: "Explorez les plugins exposés par Codex pour la source sélectionnée.",
     empty: "Aucun plugin ne correspond aux filtres.",
@@ -52,6 +54,8 @@ export const frSupport = {
     installed: "Installé",
     installedByDefault: "Installé par défaut",
     integrations: "Intégrations",
+    loadCatalog: "Parcourir le catalogue",
+    loadMore: "Afficher plus",
     mcpServer: "Serveur MCP",
     needsAuth: "Authentification requise",
     noDescription: "Aucune description disponible.",
@@ -59,6 +63,9 @@ export const frSupport = {
     noSkills: "Aucun skill déclaré.",
     noSource: "Aucune source Codex disponible.",
     refresh: "Rafraîchir les plugins",
+    refreshCatalog: "Mettre à jour le catalogue",
+    refineSearch: "La limite d'affichage est atteinte. Affinez la recherche pour explorer " +
+      "d'autres plugins.",
     search: "Rechercher des plugins",
     skills: "Skills",
     source: "Source",
@@ -67,4 +74,3 @@ export const frSupport = {
     uninstall: "Désinstaller"
   },
 } as const;
-

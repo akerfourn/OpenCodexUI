@@ -110,6 +110,33 @@ export type OpenCodexPluginListResult = {
 };
 
 /**
+ * Bounded plugin search page returned by Codex.
+ */
+export type OpenCodexPluginSearchResult = {
+  sourceId: string | null;
+  plugins: OpenCodexPluginSummary[];
+  nextCursor: string | null;
+  loadErrors: string[];
+};
+
+/**
+ * Installed plugins returned without loading the complete remote catalog.
+ */
+export type OpenCodexInstalledPluginListResult = {
+  sourceId: string | null;
+  plugins: OpenCodexPluginSummary[];
+  loadErrors: string[];
+};
+
+/**
+ * Result of an explicit remote plugin catalog refresh.
+ */
+export type OpenCodexPluginCatalogRefreshResult = {
+  ok: true;
+  loadErrors: string[];
+};
+
+/**
  * Result returned after installing a plugin.
  */
 export type OpenCodexPluginInstallResult = {

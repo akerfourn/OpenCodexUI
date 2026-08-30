@@ -74,3 +74,32 @@ describe("OpenCodexRequestRouter Docker Compose routes", () => {
     );
   });
 });
+
+describe("OpenCodexRequestRouter plugin routes", () => {
+  it("should keep plugin discovery bounded and source-aware", async () => {
+    const plugins = {
+      installed: vi.fn(async () => ({ plugins: [] })),
+      search: vi.fn(async () => ({ plugins: [], nextCursor: null })),
+      refresh: vi.fn(async () => ({ ok: true as const, loadErrors: [] }))
+    };
+    const runtime = {
+      plugins,
+      handleRequestError: vi.fn()
+    } as unknown as OpenCodexBackendRuntime;
+    const router = new OpenCodexRequestRouter(runtime);
+
+    await router.handleRequest({ type: "plugins.installed", sourceId: "source-a" });
+    await router.handleRequest({
+      type: "plugins.search",
+      sourceId: "source-a",
+      searchTerm: "github",
+      cursor: "cursor-a",
+      limit: 25
+    });
+    await router.handleRequest({ type: "plugins.refresh", sourceId: "source-a" });
+
+    expect(plugins.installed).toHaveBeenCalledWith("source-a");
+    expect(plugins.search).toHaveBeenCalledWith("source-a", "github", "cursor-a", 25);
+    expect(plugins.refresh).toHaveBeenCalledWith("source-a");
+  });
+});

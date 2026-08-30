@@ -28,6 +28,10 @@ describe("renderer performance payload readers", () => {
       ...Object.fromEntries(numericFields.map((field) => [field, MAX_METRIC + 1])),
       eventTypeCounts: { "message.delta": MAX_METRIC + 1 },
       eventTypeMaxDurationMs: { "message.delta": 7 },
+      requestCount: MAX_METRIC + 1,
+      maxRequestDurationMs: 12,
+      requestTypeCounts: { "plugins.search": 2 },
+      requestTypeMaxDurationMs: { "plugins.search": 11 },
       markdown: createMarkdownSample(),
       unknownField: "discarded"
     });
@@ -43,6 +47,10 @@ describe("renderer performance payload readers", () => {
       processedEventCount: MAX_METRIC,
       estimatedEventBytes: MAX_METRIC,
       maxEventHandlingDurationMs: MAX_METRIC,
+      requestCount: MAX_METRIC,
+      maxRequestDurationMs: 12,
+      requestTypeCounts: { "plugins.search": 2 },
+      requestTypeMaxDurationMs: { "plugins.search": 11 },
       eventTypeCounts: { "message.delta": MAX_METRIC },
       eventTypeMaxDurationMs: { "message.delta": 7 },
       markdown: createMarkdownSample()

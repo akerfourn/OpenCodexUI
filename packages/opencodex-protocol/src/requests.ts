@@ -195,6 +195,15 @@ export type OpenCodexRequest =
     }
   | { type: "discord.reconnect" }
   | { type: "plugins.list"; sourceId: string | null }
+  | { type: "plugins.installed"; sourceId: string | null }
+  | {
+      type: "plugins.search";
+      sourceId: string | null;
+      searchTerm: string;
+      cursor?: string | null;
+      limit?: number;
+    }
+  | { type: "plugins.refresh"; sourceId: string | null }
   | {
       type: "plugins.read";
       sourceId: string | null;
