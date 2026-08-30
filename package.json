@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "npm run dev -w apps/electron-app",
     "build": "npm run build:packages && npm run build -w apps/electron-app",
-    "build:packages": "npm run build -w @open-codex-ui/codex-rpc && npm run build -w @open-codex-ui/opencodex-protocol && npm run build -w @open-codex-ui/opencodex-cache && npm run build -w @open-codex-ui/opencodex-core && npm run build -w @open-codex-ui/opencodex-ui",
+    "build:packages": "npm run build -w @open-codex-ui/codex-rpc && npm run build -w @open-codex-ui/opencodex-protocol && npm run build -w @open-codex-ui/opencodex-cache && npm run build -w @open-codex-ui/docker-client && npm run build -w @open-codex-ui/opencodex-core && npm run build -w @open-codex-ui/opencodex-ui",
     "dist": "npm run build:packages && npm run dist -w apps/electron-app",
     "dist:dir": "npm run build:packages && npm run dist:dir -w apps/electron-app",
     "icons": "npm run icons -w apps/electron-app",

@@ -16,6 +16,7 @@ This file applies to the whole repository.
 - Keep package responsibilities explicit:
   - `packages/opencodex-protocol`: shared UI/backend contracts.
   - `packages/codex-rpc`: Codex app-server RPC client and generated RPC types.
+  - `packages/docker-client`: stateless typed Docker and Docker Compose CLI client.
   - `packages/opencodex-cache`: SQLite persistence, migrations, and cache
     normalization.
   - `packages/opencodex-core`: backend orchestration, sources, cache, and Codex
