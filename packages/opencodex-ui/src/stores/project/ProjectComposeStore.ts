@@ -4,6 +4,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
+  OpenCodexDockerComposeContainer,
   OpenCodexDockerComposeLogs,
   OpenCodexDockerComposeSnapshot
 } from "@open-codex-ui/opencodex-protocol";
@@ -102,6 +103,11 @@ export class ProjectComposeStore {
   /** Returns the services from the latest snapshot. */
   get services(): OpenCodexDockerComposeSnapshot["services"] {
     return this.snapshot?.services ?? [];
+  }
+
+  /** Returns whether at least one known Compose container is not stopped. */
+  get hasNonStoppedContainer(): boolean {
+    return this.services.some((service) => service.containers.some(isNonStoppedContainer));
   }
 
   /** Returns the currently selected service, if any. */
@@ -385,4 +391,9 @@ const composeActionRequestTypes: Record<
 /** Converts an unknown request failure to a safe local message. */
 function readErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Docker Compose request failed.";
+}
+
+/** Matches the terminal states treated as stopped by the Compose backend. */
+function isNonStoppedContainer(container: OpenCodexDockerComposeContainer): boolean {
+  return !["created", "exited", "dead", "stopped"].includes(container.state.toLowerCase());
 }

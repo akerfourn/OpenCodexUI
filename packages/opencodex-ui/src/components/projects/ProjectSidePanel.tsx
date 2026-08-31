@@ -20,6 +20,7 @@ import { ProjectComposePanelX } from "./ProjectComposePanel";
 import { ProjectContextPanelX } from "./ProjectContextPanel";
 import { ProjectGitPanelX } from "./ProjectGitPanel";
 import { ProjectRulesPanelX } from "./ProjectRulesPanel";
+import { ProjectSidePanelTabIndicator } from "./ProjectSidePanelTabIndicator";
 import { ProjectSidePanelTabLabel } from "./ProjectSidePanelTabLabel";
 import { ProjectTasksPanelX } from "./ProjectTasksPanel";
 
@@ -28,6 +29,7 @@ type ProjectSidePanelTabDefinition = {
   value: ProjectSidePanelTab;
   label: string;
   icon: ReactElement;
+  hasActivity: boolean;
 };
 
 type ProjectSidePanelProps = {
@@ -57,6 +59,9 @@ export function ProjectSidePanel({
   const sourceId = projectStore.project?.sourceId;
   const hasComposeFile = sourceId !== null && sourceId !== undefined &&
     composeStore?.isAvailable === true && readHasComposeFile(composeStore);
+  const hasPendingCommitMessage = projectStore.gitStore?.commitStore?.hasDraftMessage === true;
+  const hasActiveCommandRun = projectStore.commandsStore?.hasActiveRun === true;
+  const hasNonStoppedComposeContainer = composeStore?.hasNonStoppedContainer === true;
 
   useEffect(() => {
     if (composeStore !== undefined &&
@@ -87,27 +92,32 @@ export function ProjectSidePanel({
     {
       value: "git",
       label: gitLabel,
-      icon: <AccountTreeOutlinedIcon fontSize="small" />
+      icon: <AccountTreeOutlinedIcon fontSize="small" />,
+      hasActivity: hasPendingCommitMessage
     },
     {
       value: "commands",
       label: commandsLabel,
-      icon: <TerminalOutlinedIcon fontSize="small" />
+      icon: <TerminalOutlinedIcon fontSize="small" />,
+      hasActivity: hasActiveCommandRun
     },
     {
       value: "rules",
       label: rulesLabel,
-      icon: <RuleOutlinedIcon fontSize="small" />
+      icon: <RuleOutlinedIcon fontSize="small" />,
+      hasActivity: false
     },
     {
       value: "context",
       label: contextLabel,
-      icon: <FolderCopyOutlinedIcon fontSize="small" />
+      icon: <FolderCopyOutlinedIcon fontSize="small" />,
+      hasActivity: false
     },
     {
       value: "tasks",
       label: tasksLabel,
-      icon: <ChecklistOutlinedIcon fontSize="small" />
+      icon: <ChecklistOutlinedIcon fontSize="small" />,
+      hasActivity: false
     }
   ];
 
@@ -115,7 +125,8 @@ export function ProjectSidePanel({
     tabs.push({
       value: "compose",
       label: composeLabel,
-      icon: <ViewModuleOutlinedIcon fontSize="small" />
+      icon: <ViewModuleOutlinedIcon fontSize="small" />,
+      hasActivity: hasNonStoppedComposeContainer
     });
   }
 
@@ -184,7 +195,10 @@ export function ProjectSidePanel({
                 aria-pressed={selectedTab === tab.value}
                 onClick={() => handleCollapsedTabClick(tab.value)}
               >
-                {tab.icon}
+                <ProjectSidePanelTabIndicator
+                  icon={tab.icon}
+                  hasActivity={tab.hasActivity}
+                />
               </IconButton>
             </Tooltip>
           ))}
@@ -222,7 +236,8 @@ export function ProjectSidePanel({
               label={
                 <ProjectSidePanelTabLabel
                   label={tab.label}
-                  icon={tab.icon as ReactElement}
+                  icon={tab.icon}
+                  hasActivity={tab.hasActivity}
                 />
               }
             />

@@ -317,6 +317,12 @@
     color 140ms ease;
 }
 
+.project-side-panel-tabs .MuiTab-root,
+.project-side-panel-rail .MuiIconButton-root {
+  position: relative;
+  overflow: visible;
+}
+
 .project-side-panel-tabs .MuiTabs-indicator {
   display: none;
 }
@@ -399,4 +405,25 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
+}
+
+.project-side-panel-tab-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  position: static;
+}
+
+.project-side-panel-tab-indicator .MuiBadge-badge {
+  top: 0;
+  right: 0;
+  min-width: 10px;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1px solid var(--vscode-sideBar-background);
+  transform: none;
 }

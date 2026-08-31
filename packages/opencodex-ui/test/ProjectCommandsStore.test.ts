@@ -112,6 +112,29 @@ describe("ProjectCommandsStore run lifecycle", () => {
     expect(store.canRunCommand(parallelCommand)).toBe(true);
   });
 
+  it("should expose whether a command run is active", () => {
+    const { store } = createStoreFixture();
+    const run = createRun();
+
+    expect(store.hasActiveRun).toBe(false);
+
+    startRun(store, run);
+
+    expect(store.hasActiveRun).toBe(true);
+
+    store.handleEvent({
+      type: "projectCommand.exited",
+      projectId: "project-1",
+      commandId: run.commandId,
+      runId: run.id,
+      status: "exited",
+      exitCode: 0,
+      exitedAt: "2026-07-14T00:01:00.000Z"
+    });
+
+    expect(store.hasActiveRun).toBe(false);
+  });
+
   it("should send the command run payload and retain the accepted run", async () => {
     const run = createRun();
     const command = createCommand();

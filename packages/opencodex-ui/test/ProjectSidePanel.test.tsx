@@ -65,6 +65,37 @@ describe("ProjectSidePanel", () => {
     expect(markup).toContain('aria-pressed="true"');
   });
 
+  it("should mark Git, commands, and Compose tools with active work", () => {
+    const projectStore = {
+      gitStore: {
+        commitStore: { hasDraftMessage: true }
+      },
+      commandsStore: {
+        hasActiveRun: true
+      },
+      composeStore: {
+        hasComposeFile: true,
+        isAvailable: true,
+        hasNonStoppedContainer: true
+      },
+      project: {
+        path: "/workspace/project",
+        sourceId: "source-1"
+      }
+    } as unknown as ProjectStore;
+
+    const markup = renderToStaticMarkup(
+      <ProjectSidePanel
+        store={{} as RootStore}
+        projectStore={projectStore}
+        isCollapsed={true}
+        onCollapsedChange={vi.fn()}
+      />
+    );
+
+    expect(markup.match(/project-side-panel-tab-indicator is-active/gu)).toHaveLength(3);
+  });
+
   it("should expose Compose only when a Compose file is detected", () => {
     const projectStore = {
       composeStore: {

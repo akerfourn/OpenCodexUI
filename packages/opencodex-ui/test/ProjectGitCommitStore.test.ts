@@ -86,6 +86,16 @@ describe("ProjectGitStore commit workflow", () => {
     expect(fixture.gitStore.commitStore.isCommitting).toBe(false);
   });
 
+  it("should expose only non-blank commit messages as drafts", () => {
+    const fixture = createProjectGitCommitFixture();
+
+    fixture.gitStore.commitStore.commitMessage = "  ";
+    expect(fixture.gitStore.commitStore.hasDraftMessage).toBe(false);
+
+    fixture.gitStore.commitStore.commitMessage = "release changes";
+    expect(fixture.gitStore.commitStore.hasDraftMessage).toBe(true);
+  });
+
   it("should commit with the exact payload, refresh status, and load tags", async () => {
     const fixture = createProjectGitCommitFixture({ stubStatusRefresh: false });
     const statusAfterCommit = createStatus({ stagedFiles: [] });

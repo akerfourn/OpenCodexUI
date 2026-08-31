@@ -100,6 +100,18 @@ describe("ProjectComposeStore", () => {
     }
   });
 
+  it("should report whether a Compose container is not stopped", async () => {
+    const store = createStore(vi.fn(async () => createSnapshot("running")));
+
+    await store.load();
+
+    expect(store.hasNonStoppedContainer).toBe(true);
+
+    store.snapshot = createSnapshot("stopped");
+
+    expect(store.hasNonStoppedContainer).toBe(false);
+  });
+
   it("should refresh the snapshot after a service action", async () => {
     const refreshedSnapshot = createSnapshot("stopped");
     const request = vi.fn(async (value: OpenCodexRequest) => {

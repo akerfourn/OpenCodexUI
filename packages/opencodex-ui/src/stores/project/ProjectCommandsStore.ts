@@ -45,6 +45,17 @@ export class ProjectCommandsStore {
     return this.commandRunsStore.runsByCommandId;
   }
 
+  /** Returns whether a command launch or command run is currently active. */
+  get hasActiveRun(): boolean {
+    if (this.isRunningCommand) {
+      return true;
+    }
+
+    return Array.from(this.runsByCommandId.values()).some((runs) =>
+      runs.some((run) => run.status === "running")
+    );
+  }
+
   /**
    * Replaces the run map while preserving the historical writable property.
    *

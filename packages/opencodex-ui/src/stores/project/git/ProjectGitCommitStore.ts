@@ -45,11 +45,16 @@ export class ProjectGitCommitStore {
   get canCommit(): boolean {
     return (
       this.parent.changesStore.stagedFilesCount > 0 &&
-      this.commitMessage.trim().length > 0 &&
+      this.hasDraftMessage &&
       !this.isCommitting &&
       !this.isGeneratingCommitMessage &&
       !this.parent.changesStore.isBusy
     );
+  }
+
+  /** Returns whether the editor contains a commit message not submitted yet. */
+  get hasDraftMessage(): boolean {
+    return this.commitMessage.trim().length > 0;
   }
 
   /** Whether a commit message can be generated for staged files. */
