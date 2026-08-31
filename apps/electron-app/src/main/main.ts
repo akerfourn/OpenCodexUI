@@ -6,7 +6,10 @@ import { existsSync } from "node:fs";
 
 import { app, BrowserWindow, dialog, Menu } from "electron";
 
-import type { OpenCodexLanguage } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexApplicationCloseRequest,
+  OpenCodexLanguage
+} from "@open-codex-ui/opencodex-protocol";
 
 import { createWindow } from "./createWindow.js";
 import { buildAppCloseConfirmationOptions } from "./appCloseConfirmation.js";
@@ -66,6 +69,7 @@ async function main(): Promise<void> {
     onSettingsUpdated: (nextSettings) => {
       applyContextMenuLanguage(nextSettings.language);
     },
+    onApplicationCloseResponse: handleApplicationCloseResponse,
     openUsageHistory: (sourceId) => {
       openUsageHistoryWindow({
         sourceId,
@@ -210,6 +214,44 @@ function requestApplicationClose(window: BrowserWindow | null): void {
   isCloseConfirmationOpen = true;
   const hasActiveTurns = bridgeServer?.hasActiveTurns() ?? false;
   const hasPendingProjectActivity = bridgeServer?.hasPendingProjectActivity() ?? false;
+  const closeRequest: OpenCodexApplicationCloseRequest = {
+    hasActiveTurns,
+    hasPendingProjectActivity
+  };
+
+  if (bridgeServer?.emitApplicationCloseRequested(closeRequest) === true) {
+    return;
+  }
+
+  showNativeCloseConfirmation(window, hasActiveTurns, hasPendingProjectActivity);
+}
+
+/** Handles the renderer's answer to the custom close confirmation dialog. */
+function handleApplicationCloseResponse(shouldClose: boolean): void {
+  if (!isCloseConfirmationOpen) {
+    return;
+  }
+
+  if (!shouldClose) {
+    isCloseConfirmationOpen = false;
+    return;
+  }
+
+  void completeApplicationClose()
+    .catch((error: unknown) => {
+      console.error(`[OpenCodexUI] close confirmation failed: ${String(error)}`);
+    })
+    .finally(() => {
+      isCloseConfirmationOpen = false;
+    });
+}
+
+/** Shows the native dialog used only when the renderer cannot answer. */
+function showNativeCloseConfirmation(
+  window: BrowserWindow,
+  hasActiveTurns: boolean,
+  hasPendingProjectActivity: boolean
+): void {
   const options = buildAppCloseConfirmationOptions(
     contextMenuLanguage,
     hasActiveTurns,
@@ -219,9 +261,7 @@ function requestApplicationClose(window: BrowserWindow | null): void {
   void dialog.showMessageBox(window, options)
     .then(async (result) => {
       if (result.response === 0) {
-        bridgeServer?.emitShutdownStarted();
-        await waitForShutdownRender();
-        void disposeAndExit(0);
+        await completeApplicationClose();
       }
     })
     .catch((error: unknown) => {
@@ -230,6 +270,13 @@ function requestApplicationClose(window: BrowserWindow | null): void {
     .finally(() => {
       isCloseConfirmationOpen = false;
     });
+}
+
+/** Starts the common renderer shutdown transition after confirmation. */
+async function completeApplicationClose(): Promise<void> {
+  bridgeServer?.emitShutdownStarted();
+  await waitForShutdownRender();
+  await disposeAndExit(0);
 }
 
 /**

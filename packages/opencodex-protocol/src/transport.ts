@@ -9,6 +9,12 @@ export type OpenCodexRendererActivityState = {
   hasPendingProjectActivity: boolean;
 };
 
+/** State displayed by the renderer before the native application closes. */
+export type OpenCodexApplicationCloseRequest = {
+  hasActiveTurns: boolean;
+  hasPendingProjectActivity: boolean;
+};
+
 export interface OpenCodexClientTransport {
   /**
    * Sends a backend request through the transport.
@@ -32,4 +38,19 @@ export interface OpenCodexClientTransport {
    * @param state Content-free activity state.
    */
   reportApplicationActivity?(state: OpenCodexRendererActivityState): void;
+  /**
+   * Subscribes to close requests initiated by the native application host.
+   *
+   * @param listener Callback invoked with the current close context.
+   * @returns Cleanup callback that removes the close-request subscription.
+   */
+  onApplicationCloseRequested?(
+    listener: (request: OpenCodexApplicationCloseRequest) => void
+  ): () => void;
+  /**
+   * Sends the renderer's close-confirmation response to the native host.
+   *
+   * @param shouldClose Whether the application may close.
+   */
+  respondToApplicationClose?(shouldClose: boolean): void;
 }

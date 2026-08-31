@@ -2,6 +2,7 @@
  * Adapts the preload API to the transport contract expected by the UI store.
  */
 import type {
+  OpenCodexApplicationCloseRequest,
   OpenCodexClientTransport,
   OpenCodexEvent,
   OpenCodexRendererActivityState,
@@ -44,6 +45,18 @@ export class ElectronOpenCodexTransport implements OpenCodexClientTransport {
   /** Reports content-free UI activity to the native application host. */
   reportApplicationActivity(state: OpenCodexRendererActivityState): void {
     window.openCodexUI.reportApplicationActivity(state);
+  }
+
+  /** Subscribes to close requests sent by the native application host. */
+  onApplicationCloseRequested(
+    listener: (request: OpenCodexApplicationCloseRequest) => void
+  ): () => void {
+    return window.openCodexUI.onApplicationCloseRequested(listener);
+  }
+
+  /** Answers a close request sent by the native application host. */
+  respondToApplicationClose(shouldClose: boolean): void {
+    window.openCodexUI.respondToApplicationClose(shouldClose);
   }
 
   /**

@@ -4,6 +4,7 @@
 import { makeAutoObservable } from "mobx";
 
 import type {
+  OpenCodexApplicationCloseRequest,
   OpenCodexClientTransport,
   OpenCodexEvent,
   OpenCodexImageAttachment,
@@ -48,6 +49,7 @@ export class RootStore {
   readonly projectGroupsStore = new ProjectGroupsStore(this);
   readonly sourcesStore = new SourcesStore(this);
   readonly usageStore = new UsageStore(this);
+  applicationCloseRequest: OpenCodexApplicationCloseRequest | null = null;
   /**
    * Creates a root store instance.
    *
@@ -56,6 +58,9 @@ export class RootStore {
   constructor(private readonly transport: OpenCodexClientTransport) {
     makeAutoObservable(this);
     this.transport.onEvent((event) => this.handleEvent(event));
+    this.transport.onApplicationCloseRequested?.((request) => {
+      this.applyApplicationCloseRequest(request);
+    });
   }
 
   request<T = unknown>(request: OpenCodexRequest): Promise<T> {
@@ -111,6 +116,17 @@ export class RootStore {
   }
 
   /**
+   * Answers a close request displayed by the renderer.
+   *
+   * @param shouldClose Whether the native host may continue shutdown.
+   * @returns Nothing.
+   */
+  respondToApplicationClose(shouldClose: boolean): void {
+    this.applicationCloseRequest = null;
+    this.transport.respondToApplicationClose?.(shouldClose);
+  }
+
+  /**
    * Bootstraps the store by requesting initial backend state.
    *
    * @returns Promise resolved when the operation completes.
@@ -148,6 +164,11 @@ export class RootStore {
     if (event.type === "error") {
       this.applyErrorEvent(event);
     }
+  }
+
+  /** Stores a native close request so the renderer can present it. */
+  private applyApplicationCloseRequest(request: OpenCodexApplicationCloseRequest): void {
+    this.applicationCloseRequest = request;
   }
 
   /**

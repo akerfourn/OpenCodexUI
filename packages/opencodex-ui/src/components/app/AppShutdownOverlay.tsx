@@ -35,10 +35,10 @@ export function AppShutdownOverlay({ open }: AppShutdownOverlayProps) {
       >
         <CircularProgress color="inherit" size={42} />
         <Typography component="p" variant="h6">
-          {t("app.shutdown.title")}
+          {t("shutdown.title")}
         </Typography>
         <Typography color="inherit" component="p" variant="body2">
-          {t("app.shutdown.detail")}
+          {t("shutdown.detail")}
         </Typography>
       </Stack>
     </Backdrop>

@@ -4,6 +4,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 import type {
+  OpenCodexApplicationCloseRequest,
   OpenCodexEvent,
   OpenCodexRendererActivityState,
   OpenCodexRendererPerformanceSample,
@@ -35,6 +36,29 @@ contextBridge.exposeInMainWorld("openCodexUI", {
    */
   reportApplicationActivity(state: OpenCodexRendererActivityState): void {
     ipcRenderer.send("opencodex:application-activity", state);
+  },
+  /**
+   * Subscribes to close requests sent by the native main process.
+   *
+   * @param listener Callback invoked with the close context.
+   * @returns Cleanup function that removes the IPC listener.
+   */
+  onApplicationCloseRequested(
+    listener: (request: OpenCodexApplicationCloseRequest) => void
+  ): () => void {
+    const wrappedListener = (
+      _event: Electron.IpcRendererEvent,
+      request: OpenCodexApplicationCloseRequest
+    ): void => {
+      listener(request);
+    };
+
+    ipcRenderer.on("opencodex:application-close-requested", wrappedListener);
+    return () => ipcRenderer.off("opencodex:application-close-requested", wrappedListener);
+  },
+  /** Sends the renderer's answer to a native close request. */
+  respondToApplicationClose(shouldClose: boolean): void {
+    ipcRenderer.send("opencodex:application-close-response", shouldClose);
   },
   /**
    * Subscribes to backend events emitted by the main process.

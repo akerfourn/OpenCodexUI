@@ -107,6 +107,17 @@ export const enApp = {
     performanceMonitoring: "Monitor performance slowdowns",
     performanceMonitoringDescription: "Automatically detects slowdowns and creates a local diagnostic without recording chat content."
   },
+  closeConfirmation: {
+    activeTurns: "One or more Codex turns are still running.",
+    activeTurnsDetail: "Closing the application will interrupt work currently handled by Codex.",
+    description: "Review the items below before leaving the application.",
+    pendingProjectActivity: "Project activity is still running or pending.",
+    pendingProjectActivityDetail: "A command, container, or commit draft may remain active or unfinished.",
+    quit: "Quit",
+    quitAnyway: "Quit anyway",
+    title: "Quit OpenCodexUI?",
+    noPendingWork: "No active work was detected, but the application will close."
+  },
   shutdown: {
     detail: "Stopping Codex processes and finalizing local data.",
     title: "Closing the application…"

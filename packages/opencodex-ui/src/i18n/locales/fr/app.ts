@@ -104,6 +104,17 @@ export const frApp = {
     performanceMonitoring: "Surveiller les ralentissements",
     performanceMonitoringDescription: "Détecte automatiquement les ralentissements et crée un diagnostic local sans enregistrer le contenu des chats."
   },
+  closeConfirmation: {
+    activeTurns: "Un ou plusieurs tours Codex sont encore en cours.",
+    activeTurnsDetail: "La fermeture interrompra le travail actuellement exécuté par Codex.",
+    description: "Vérifiez les éléments ci-dessous avant de quitter l'application.",
+    pendingProjectActivity: "Une activité de projet est encore en cours ou en attente.",
+    pendingProjectActivityDetail: "Une commande, un conteneur ou un brouillon de commit peut rester en cours ou non traité.",
+    quit: "Quitter",
+    quitAnyway: "Quitter malgré tout",
+    title: "Fermer OpenCodexUI ?",
+    noPendingWork: "Aucun travail actif n'a été détecté, mais l'application va être fermée."
+  },
   shutdown: {
     detail: "Arrêt des processus Codex et finalisation des données locales.",
     title: "Fermeture de l’application…"

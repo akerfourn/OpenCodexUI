@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type {
+  OpenCodexApplicationCloseRequest,
   OpenCodexClientTransport,
   OpenCodexProject
 } from "@open-codex-ui/opencodex-protocol";
@@ -24,6 +25,35 @@ describe("RootStore project activity", () => {
     expect(reportApplicationActivity).toHaveBeenCalledWith({
       hasPendingProjectActivity: true
     });
+  });
+
+  it("should expose and answer a native application close request", () => {
+    let closeRequestListener: ((request: OpenCodexApplicationCloseRequest) => void) | null = null;
+    const respondToApplicationClose = vi.fn();
+    const root = new RootStore({
+      request: vi.fn(async () => undefined),
+      onEvent: vi.fn(() => () => undefined),
+      onApplicationCloseRequested: (listener) => {
+        closeRequestListener = listener;
+        return () => undefined;
+      },
+      respondToApplicationClose
+    });
+
+    closeRequestListener?.({
+      hasActiveTurns: true,
+      hasPendingProjectActivity: false
+    });
+
+    expect(root.applicationCloseRequest).toEqual({
+      hasActiveTurns: true,
+      hasPendingProjectActivity: false
+    });
+
+    root.respondToApplicationClose(false);
+
+    expect(root.applicationCloseRequest).toBeNull();
+    expect(respondToApplicationClose).toHaveBeenCalledWith(false);
   });
 });
 

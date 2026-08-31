@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 
 import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
 import { AppShutdownOverlay } from "./app/AppShutdownOverlay";
+import { AppCloseConfirmationDialogX } from "./app/AppCloseConfirmationDialog";
 import { AppTabsX } from "./app/AppTabs";
 import { ApprovalDialogX } from "./dialogs/ApprovalDialog";
 import { HomeViewX } from "./home/HomeView";
@@ -36,6 +37,7 @@ export function App({ store }: AppProps) {
   const activeProjectStore = store.navigationStore.activeProjectStore;
   const hasPendingProjectActivity = store.hasPendingProjectActivity;
   const shutdownOverlay = <AppShutdownOverlay open={store.appStore.isShuttingDown} />;
+  const closeConfirmation = <AppCloseConfirmationDialogX store={store} />;
 
   useEffect(() => {
     store.reportApplicationActivity?.();
@@ -89,6 +91,7 @@ export function App({ store }: AppProps) {
       <Box component="main" className="app-shell">
         <OnboardingViewX store={store} />
         {snackbar}
+        {closeConfirmation}
         {shutdownOverlay}
       </Box>
     );
@@ -104,6 +107,7 @@ export function App({ store }: AppProps) {
       <ProjectTrustDialogX store={store.projectsStore.trustStore} />
       <CloseProjectDialogX store={store} />
       {snackbar}
+      {closeConfirmation}
       {shutdownOverlay}
     </Box>
   );

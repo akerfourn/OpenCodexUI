@@ -10,6 +10,7 @@ import path from "node:path";
 import { createOpenCodexSqliteCacheRepository } from "@open-codex-ui/opencodex-cache";
 import { OpenCodexBackendRuntime, OpenCodexRequestRouter } from "@open-codex-ui/opencodex-core";
 import type {
+  OpenCodexApplicationCloseRequest,
   OpenCodexEvent,
   OpenCodexRequest,
   OpenCodexSettings
@@ -38,6 +39,7 @@ type ElectronBridgeServerOptions = {
   saveSettings(settings: OpenCodexSettings): Promise<void>;
   openUsageHistory(sourceId: string): void;
   onSettingsUpdated(settings: OpenCodexSettings): void;
+  onApplicationCloseResponse(shouldClose: boolean): void;
 };
 
 /**
@@ -52,6 +54,7 @@ export class ElectronBridgeServer {
   private readonly logger: (message: string) => void;
   private readonly openUsageHistoryWindow: (sourceId: string) => void;
   private readonly onSettingsUpdated: (settings: OpenCodexSettings) => void;
+  private readonly onApplicationCloseResponse: (shouldClose: boolean) => void;
   private window: BrowserWindow | null = null;
   private pendingProjectActivity = false;
   private isDisposed = false;
@@ -67,6 +70,7 @@ export class ElectronBridgeServer {
     this.logger = logger;
     this.openUsageHistoryWindow = options.openUsageHistory;
     this.onSettingsUpdated = options.onSettingsUpdated;
+    this.onApplicationCloseResponse = options.onApplicationCloseResponse;
 
     this.runtime = new OpenCodexBackendRuntime({
       settings: options.settings,
@@ -166,6 +170,23 @@ export class ElectronBridgeServer {
   }
 
   /**
+   * Asks the main renderer to confirm application shutdown.
+   *
+   * @param request Activity summary to display in the renderer dialog.
+   * @returns Whether the request was sent to a live renderer window.
+   */
+  emitApplicationCloseRequested(request: OpenCodexApplicationCloseRequest): boolean {
+    const window = this.window;
+
+    if (window === null || window.isDestroyed() || window.webContents.isDestroyed()) {
+      return false;
+    }
+
+    window.webContents.send("opencodex:application-close-requested", request);
+    return true;
+  }
+
+  /**
    * Notifies the renderer that application shutdown has been confirmed.
    *
    * @returns Nothing.
@@ -182,6 +203,7 @@ export class ElectronBridgeServer {
   register(): void {
     ipcMain.on("opencodex:performance-sample", this.handlePerformanceSample);
     ipcMain.on("opencodex:application-activity", this.handleApplicationActivity);
+    ipcMain.on("opencodex:application-close-response", this.handleApplicationCloseResponse);
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
       if (request.type === "app.openDevTools") {
         return this.openDeveloperTools();
@@ -226,6 +248,7 @@ export class ElectronBridgeServer {
     ipcMain.removeHandler("opencodex:request");
     ipcMain.off("opencodex:performance-sample", this.handlePerformanceSample);
     ipcMain.off("opencodex:application-activity", this.handleApplicationActivity);
+    ipcMain.off("opencodex:application-close-response", this.handleApplicationCloseResponse);
     this.window = null;
     this.desktopNotificationService.dispose();
     this.performanceMonitoringService.dispose();
@@ -325,6 +348,27 @@ export class ElectronBridgeServer {
 
     if (state !== null) {
       this.pendingProjectActivity = state.hasPendingProjectActivity;
+    }
+  };
+
+  /**
+   * Accepts a validated renderer answer to an application-close request.
+   *
+   * @param event Electron IPC event carrying the response.
+   * @param value Untrusted renderer payload.
+   */
+  private readonly handleApplicationCloseResponse = (
+    event: IpcMainEvent,
+    value: unknown
+  ): void => {
+    const window = this.window;
+
+    if (window === null || event.sender.id !== window.webContents.id) {
+      return;
+    }
+
+    if (typeof value === "boolean") {
+      this.onApplicationCloseResponse(value);
     }
   };
 
