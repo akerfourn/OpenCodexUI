@@ -89,6 +89,28 @@ export class RootStore {
   }
 
   /**
+   * Returns whether an opened project has pending activity in its tool panel.
+   *
+   * @returns `true` when at least one project should display an activity marker.
+   */
+  get hasPendingProjectActivity(): boolean {
+    return this.navigationStore.projectTabStores.some((projectStore) => (
+      projectStore.hasSidePanelActivity
+    ));
+  }
+
+  /**
+   * Reports the current content-free activity state to the host process.
+   *
+   * @returns Nothing.
+   */
+  reportApplicationActivity(): void {
+    this.transport.reportApplicationActivity?.({
+      hasPendingProjectActivity: this.hasPendingProjectActivity
+    });
+  }
+
+  /**
    * Bootstraps the store by requesting initial backend state.
    *
    * @returns Promise resolved when the operation completes.

@@ -101,6 +101,7 @@ function createRootStore(
     },
     approvalsStore: {},
     projectsStore: { trustStore: {} },
-    openLogsHome: vi.fn()
+    openLogsHome: vi.fn(),
+    reportApplicationActivity: vi.fn()
   } as unknown as RootStore;
 }

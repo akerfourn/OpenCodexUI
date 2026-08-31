@@ -1,5 +1,6 @@
 import type {
   OpenCodexEvent,
+  OpenCodexRendererActivityState,
   OpenCodexRendererPerformanceSample,
   OpenCodexRequest
 } from "@open-codex-ui/opencodex-protocol";
@@ -9,6 +10,7 @@ declare global {
     openCodexUI: {
       request<TResponse = unknown>(request: OpenCodexRequest): Promise<TResponse>;
       reportPerformanceSample(sample: OpenCodexRendererPerformanceSample): void;
+      reportApplicationActivity(state: OpenCodexRendererActivityState): void;
       onEvent(listener: (event: OpenCodexEvent) => void): () => void;
     };
   }

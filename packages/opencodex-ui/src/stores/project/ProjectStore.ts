@@ -200,6 +200,21 @@ export class ProjectStore {
   }
 
   /**
+   * Returns whether one visible project tool needs attention.
+   *
+   * @returns `true` when Git, commands, or Compose should display an activity marker.
+   */
+  get hasSidePanelActivity(): boolean {
+    const hasComposeActivity = this.composeStore.isAvailable &&
+      this.composeStore.hasComposeFile &&
+      this.composeStore.hasNonStoppedContainer;
+
+    return this.gitStore.commitStore.hasDraftMessage ||
+      this.commandsStore.hasActiveRun ||
+      hasComposeActivity;
+  }
+
+  /**
    * Returns the aggregated work indicator for this project.
    *
    * @returns Project indicator state.

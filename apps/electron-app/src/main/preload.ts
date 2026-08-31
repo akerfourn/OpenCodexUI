@@ -5,6 +5,7 @@ import { contextBridge, ipcRenderer } from "electron";
 
 import type {
   OpenCodexEvent,
+  OpenCodexRendererActivityState,
   OpenCodexRendererPerformanceSample,
   OpenCodexRequest
 } from "@open-codex-ui/opencodex-protocol";
@@ -26,6 +27,14 @@ contextBridge.exposeInMainWorld("openCodexUI", {
    */
   reportPerformanceSample(sample: OpenCodexRendererPerformanceSample): void {
     ipcRenderer.send("opencodex:performance-sample", sample);
+  },
+  /**
+   * Reports content-free renderer activity used by the native close confirmation.
+   *
+   * @param state Current application activity state.
+   */
+  reportApplicationActivity(state: OpenCodexRendererActivityState): void {
+    ipcRenderer.send("opencodex:application-activity", state);
   },
   /**
    * Subscribes to backend events emitted by the main process.

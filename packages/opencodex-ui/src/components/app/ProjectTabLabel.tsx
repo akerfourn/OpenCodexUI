@@ -3,7 +3,7 @@
  */
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
-import { Box, CircularProgress, IconButton, Typography } from "@mui/material";
+import { Badge, Box, CircularProgress, IconButton, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -26,6 +26,24 @@ export function ProjectTabLabel({ projectStore, onClose }: ProjectTabLabelProps)
   const { t } = useTranslation();
   const indicatorState = projectStore.indicatorState;
   const iconClassName = indicatorState === "unseen" ? "work-indicator-pulse" : undefined;
+  const projectIcon = indicatorState === "running" ? (
+    <CircularProgress size={16} thickness={5} />
+  ) : (
+    <FolderOutlinedIcon className={iconClassName} fontSize="small" />
+  );
+  const projectIconWithActivity = projectStore.hasSidePanelActivity ? (
+    <Badge
+      className="project-tab-activity-indicator is-active"
+      color="error"
+      data-testid="project-tab-activity-marker"
+      overlap="circular"
+      variant="dot"
+    >
+      {projectIcon}
+    </Badge>
+  ) : (
+    <span className="project-tab-activity-indicator">{projectIcon}</span>
+  );
 
   function handleClose(event: MouseEvent<HTMLButtonElement>): void {
     event.stopPropagation();
@@ -34,11 +52,7 @@ export function ProjectTabLabel({ projectStore, onClose }: ProjectTabLabelProps)
 
   return (
     <Box className="project-tab-label">
-      {indicatorState === "running" ? (
-        <CircularProgress size={16} thickness={5} />
-      ) : (
-        <FolderOutlinedIcon className={iconClassName} fontSize="small" />
-      )}
+      {projectIconWithActivity}
       <Typography component="span" variant="body2" noWrap>
         {projectStore.displayName}
       </Typography>

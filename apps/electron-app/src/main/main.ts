@@ -209,7 +209,12 @@ function requestApplicationClose(window: BrowserWindow | null): void {
 
   isCloseConfirmationOpen = true;
   const hasActiveTurns = bridgeServer?.hasActiveTurns() ?? false;
-  const options = buildAppCloseConfirmationOptions(contextMenuLanguage, hasActiveTurns);
+  const hasPendingProjectActivity = bridgeServer?.hasPendingProjectActivity() ?? false;
+  const options = buildAppCloseConfirmationOptions(
+    contextMenuLanguage,
+    hasActiveTurns,
+    hasPendingProjectActivity
+  );
 
   void dialog.showMessageBox(window, options)
     .then(async (result) => {

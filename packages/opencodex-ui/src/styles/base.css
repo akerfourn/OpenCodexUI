@@ -114,6 +114,7 @@ textarea {
 .app-tabs .MuiTab-root {
   padding-top: 4px;
   padding-bottom: 4px;
+  overflow: visible;
 }
 
 .project-tab-label {
@@ -122,6 +123,31 @@ textarea {
   min-width: 0;
   align-items: center;
   gap: 6px;
+  overflow: visible;
+}
+
+.project-tab-activity-indicator {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  position: relative;
+}
+
+.project-tab-activity-indicator .MuiBadge-badge {
+  top: -3px;
+  right: -3px;
+  min-width: 8px;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--vscode-sideBar-background);
+  border-radius: 50%;
+  transform: none;
 }
 
 .work-indicator-pulse {
@@ -217,4 +243,3 @@ textarea {
   flex: 1 1 auto;
   overflow: hidden;
 }
-

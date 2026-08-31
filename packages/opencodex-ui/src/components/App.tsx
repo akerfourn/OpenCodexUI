@@ -3,6 +3,7 @@
  */
 import { observer } from "mobx-react-lite";
 import { Box, Button, Snackbar } from "@mui/material";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
@@ -33,7 +34,12 @@ export function App({ store }: AppProps) {
   const notificationMessage = errorMessage ?? warningMessage;
   const activeTabId = store.navigationStore.activeTabId;
   const activeProjectStore = store.navigationStore.activeProjectStore;
+  const hasPendingProjectActivity = store.hasPendingProjectActivity;
   const shutdownOverlay = <AppShutdownOverlay open={store.appStore.isShuttingDown} />;
+
+  useEffect(() => {
+    store.reportApplicationActivity?.();
+  }, [hasPendingProjectActivity, store]);
 
   function handleCloseNotification(): void {
     if (errorMessage !== null) {

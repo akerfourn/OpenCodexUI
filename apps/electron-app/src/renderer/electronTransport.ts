@@ -4,6 +4,7 @@
 import type {
   OpenCodexClientTransport,
   OpenCodexEvent,
+  OpenCodexRendererActivityState,
   OpenCodexRequest
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -38,6 +39,11 @@ export class ElectronOpenCodexTransport implements OpenCodexClientTransport {
     } finally {
       this.performanceMonitor?.recordRequest(request.type, performance.now() - startedAt);
     }
+  }
+
+  /** Reports content-free UI activity to the native application host. */
+  reportApplicationActivity(state: OpenCodexRendererActivityState): void {
+    window.openCodexUI.reportApplicationActivity(state);
   }
 
   /**

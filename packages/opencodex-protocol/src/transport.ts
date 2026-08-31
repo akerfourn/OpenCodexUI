@@ -4,6 +4,11 @@
 import type { OpenCodexEvent } from "./events";
 import type { OpenCodexRequest } from "./requests";
 
+/** Content-free renderer state used by the native application lifecycle. */
+export type OpenCodexRendererActivityState = {
+  hasPendingProjectActivity: boolean;
+};
+
 export interface OpenCodexClientTransport {
   /**
    * Sends a backend request through the transport.
@@ -21,4 +26,10 @@ export interface OpenCodexClientTransport {
    * @returns Cleanup callback that removes the event subscription.
    */
   onEvent(listener: (event: OpenCodexEvent) => void): () => void;
+  /**
+   * Reports renderer activity that cannot be queried from the native main process.
+   *
+   * @param state Content-free activity state.
+   */
+  reportApplicationActivity?(state: OpenCodexRendererActivityState): void;
 }

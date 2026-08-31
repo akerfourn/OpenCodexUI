@@ -27,6 +27,7 @@ import {
 } from "./projectSystemActions.js";
 import { openExternalLink } from "./externalLinkOpener.js";
 import { pickImageFiles } from "./imageAttachmentPicker.js";
+import { readRendererActivityState } from "./rendererActivityPayload.js";
 import { readRendererPerformanceSample } from "./rendererPerformancePayload.js";
 
 type ElectronBridgeServerOptions = {
@@ -52,6 +53,7 @@ export class ElectronBridgeServer {
   private readonly openUsageHistoryWindow: (sourceId: string) => void;
   private readonly onSettingsUpdated: (settings: OpenCodexSettings) => void;
   private window: BrowserWindow | null = null;
+  private pendingProjectActivity = false;
   private isDisposed = false;
 
   /**
@@ -155,6 +157,15 @@ export class ElectronBridgeServer {
   }
 
   /**
+   * Checks whether the renderer reports pending activity in any project tool panel.
+   *
+   * @returns Whether at least one project has pending tool activity.
+   */
+  hasPendingProjectActivity(): boolean {
+    return this.pendingProjectActivity;
+  }
+
+  /**
    * Notifies the renderer that application shutdown has been confirmed.
    *
    * @returns Nothing.
@@ -170,6 +181,7 @@ export class ElectronBridgeServer {
    */
   register(): void {
     ipcMain.on("opencodex:performance-sample", this.handlePerformanceSample);
+    ipcMain.on("opencodex:application-activity", this.handleApplicationActivity);
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
       if (request.type === "app.openDevTools") {
         return this.openDeveloperTools();
@@ -213,6 +225,7 @@ export class ElectronBridgeServer {
     this.isDisposed = true;
     ipcMain.removeHandler("opencodex:request");
     ipcMain.off("opencodex:performance-sample", this.handlePerformanceSample);
+    ipcMain.off("opencodex:application-activity", this.handleApplicationActivity);
     this.window = null;
     this.desktopNotificationService.dispose();
     this.performanceMonitoringService.dispose();
@@ -289,6 +302,29 @@ export class ElectronBridgeServer {
 
     if (sample !== null) {
       this.performanceMonitoringService.recordRendererSample(sample);
+    }
+  };
+
+  /**
+   * Accepts the renderer's content-free application activity state.
+   *
+   * @param event Electron IPC event carrying the state.
+   * @param value Untrusted renderer payload.
+   */
+  private readonly handleApplicationActivity = (
+    event: IpcMainEvent,
+    value: unknown
+  ): void => {
+    const window = this.window;
+
+    if (window === null || event.sender.id !== window.webContents.id) {
+      return;
+    }
+
+    const state = readRendererActivityState(value);
+
+    if (state !== null) {
+      this.pendingProjectActivity = state.hasPendingProjectActivity;
     }
   };
 
