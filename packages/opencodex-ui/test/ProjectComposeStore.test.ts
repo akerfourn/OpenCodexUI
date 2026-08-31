@@ -81,6 +81,25 @@ describe("ProjectComposeStore", () => {
     expect(store.hasComposeFile).toBe(true);
   });
 
+  it("should record the successful snapshot time and clear it on reset", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-31T12:00:00.000Z"));
+
+    try {
+      const store = createStore(vi.fn(async () => createSnapshot()));
+
+      await store.load();
+
+      expect(store.lastLoadedAt).toBe(Date.parse("2026-08-31T12:00:00.000Z"));
+
+      store.reset();
+
+      expect(store.lastLoadedAt).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("should refresh the snapshot after a service action", async () => {
     const refreshedSnapshot = createSnapshot("stopped");
     const request = vi.fn(async (value: OpenCodexRequest) => {

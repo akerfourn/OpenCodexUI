@@ -31,6 +31,8 @@ export class ProjectComposeStore {
   hasLoaded = false;
   /** Whether a Compose snapshot request is active. */
   isLoading = false;
+  /** Unix timestamp of the last successfully applied Compose snapshot. */
+  lastLoadedAt: number | null = null;
   /** Whether logs for the selected service are being read. */
   isLoadingLogs = false;
   /** Whether the bounded selected-service log dialog is open. */
@@ -87,6 +89,7 @@ export class ProjectComposeStore {
     }
 
     const hasState = this.snapshot !== null || this.hasLoaded || this.isLoading ||
+      this.lastLoadedAt !== null ||
       this.pendingServiceNames.size > 0 || this.selectedServiceName !== null ||
       this.selectedLogs !== null || this.isLogsOpen || this.errorMessage !== null ||
       this.logsErrorMessage !== null;
@@ -242,6 +245,7 @@ export class ProjectComposeStore {
     this.snapshot = null;
     this.hasLoaded = false;
     this.isLoading = false;
+    this.lastLoadedAt = null;
     this.errorMessage = null;
     this.pendingServiceNames.clear();
     this.pendingServiceTokens.clear();
@@ -319,6 +323,7 @@ export class ProjectComposeStore {
         this.snapshot = snapshot;
         this.hasLoaded = true;
         this.isLoading = false;
+        this.lastLoadedAt = Date.now();
         this.clearSelectionIfMissing();
       });
     } catch (error: unknown) {

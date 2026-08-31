@@ -20,6 +20,7 @@ import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ProjectComposeLogsDialogX } from "./ProjectComposeLogsDialog";
 import { ProjectComposeServiceDialogX } from "./ProjectComposeServiceDialog";
 import { ProjectComposeServiceRowX } from "./ProjectComposeServiceRow";
+import { useProjectComposePolling } from "./useProjectComposePolling";
 
 type ProjectComposePanelProps = {
   projectStore: ProjectStore;
@@ -29,6 +30,8 @@ type ProjectComposePanelProps = {
 export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) {
   const { t } = useTranslation();
   const composeStore = projectStore.composeStore;
+
+  useProjectComposePolling(composeStore);
 
   useEffect(() => {
     if (typeof composeStore.invalidateIfUnavailable === "function") {
