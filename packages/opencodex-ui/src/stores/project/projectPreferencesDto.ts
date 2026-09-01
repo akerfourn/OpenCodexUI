@@ -22,6 +22,9 @@ export function cloneProjectPreferences(
       ...preferences.git,
       ...(preferences.git.deferredPaths !== undefined
         ? { deferredPaths: [...preferences.git.deferredPaths] }
+        : {}),
+      ...(preferences.git.commitProtectedBranches !== undefined
+        ? { commitProtectedBranches: [...preferences.git.commitProtectedBranches] }
         : {})
     };
   }

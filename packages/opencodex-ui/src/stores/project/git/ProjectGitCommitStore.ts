@@ -48,6 +48,8 @@ export class ProjectGitCommitStore {
       this.hasDraftMessage &&
       !this.isCommitting &&
       !this.isGeneratingCommitMessage &&
+      !this.parent.isUpdatingCommitProtectedBranches &&
+      !this.parent.isCurrentBranchCommitProtected &&
       !this.parent.changesStore.isBusy
     );
   }
@@ -118,6 +120,7 @@ export class ProjectGitCommitStore {
         type: "git.commit",
         projectPath: this.parent.projectPath,
         sourceId: this.parent.sourceId,
+        projectId: this.parent.projectId,
         message: this.commitMessage
       });
 

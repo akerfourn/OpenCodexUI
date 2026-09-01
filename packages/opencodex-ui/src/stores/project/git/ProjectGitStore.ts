@@ -1,7 +1,7 @@
 /**
  * Holds Git state for one opened project.
  */
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexGitStatus,
@@ -21,6 +21,12 @@ import { ProjectGitReferencesStore } from "./ProjectGitReferencesStore";
 import { ProjectGitStatusStore } from "./ProjectGitStatusStore";
 import { ProjectGitTagStore } from "./ProjectGitTagStore";
 import type { ProjectGitTagContext } from "./ProjectGitTagStore";
+import {
+  isCommitProtectedBranch,
+  normalizeCommitProtectedBranches
+} from "./gitCommitProtection";
+import { cloneProjectPreferences } from "../projectPreferencesDto";
+import { readErrorMessage } from "./gitErrorMessage";
 
 /**
  * Stores Git status and actions for a project.
@@ -38,6 +44,10 @@ export class ProjectGitStore {
   readonly logStore: ProjectGitLogStore;
   /** Local and remote Git tag state for this project. */
   readonly tagStore: ProjectGitTagStore;
+  /** Branches where OpenCodexUI must not create commits. */
+  commitProtectedBranches: string[] = [];
+  /** Whether protected-branch preferences are being persisted. */
+  isUpdatingCommitProtectedBranches = false;
   /** Last generic Git error shown by the panel. */
   errorMessage: string | null = null;
 
@@ -150,6 +160,16 @@ export class ProjectGitStore {
     return this.projectStore.project.preferences;
   }
 
+  /** Returns the branch currently reported by the latest Git status. */
+  get currentBranchName(): string | null {
+    return this.statusStore.status.branchName;
+  }
+
+  /** Whether the current branch is protected from OpenCodexUI commits. */
+  get isCurrentBranchCommitProtected(): boolean {
+    return isCommitProtectedBranch(this.currentBranchName, this.commitProtectedBranches);
+  }
+
   /** Returns the application settings service used by Git workflows. */
   get settingsStore(): AppSettingsStore {
     return this.root.appStore.settingsStore;
@@ -173,6 +193,65 @@ export class ProjectGitStore {
   applyProjectPreferences(preferences: OpenCodexProjectPreferences): void {
     this.changesStore.applyProjectPreferences(preferences);
     this.tagStore.applyProjectPreferences(preferences);
+    this.commitProtectedBranches = normalizeCommitProtectedBranches(
+      preferences.git?.commitProtectedBranches ?? []
+    );
+  }
+
+  /**
+   * Persists the branches protected from commits initiated by OpenCodexUI.
+   *
+   * @param branchNames Desired protected branch names.
+   * @returns Whether the preference update succeeded.
+   */
+  async updateCommitProtectedBranches(branchNames: readonly string[]): Promise<boolean> {
+    const nextBranchNames = normalizeCommitProtectedBranches(branchNames);
+
+    if (
+      this.isUpdatingCommitProtectedBranches ||
+      nextBranchNames.join("\u0000") === this.commitProtectedBranches.join("\u0000")
+    ) {
+      return !this.isUpdatingCommitProtectedBranches;
+    }
+
+    const previousBranchNames = [...this.commitProtectedBranches];
+    const currentPreferences = cloneProjectPreferences(this.projectPreferences);
+    const preferences: OpenCodexProjectPreferences = {
+      ...currentPreferences,
+      git: {
+        ...currentPreferences.git,
+        commitProtectedBranches: nextBranchNames
+      }
+    };
+
+    runInAction(() => {
+      this.commitProtectedBranches = nextBranchNames;
+      this.isUpdatingCommitProtectedBranches = true;
+      this.errorMessage = null;
+    });
+
+    try {
+      const project = await this.request<OpenCodexProject>({
+        type: "projects.preferences.update",
+        projectId: this.projectId,
+        patch: preferences
+      });
+
+      runInAction(() => {
+        this.setProject(project);
+      });
+      return true;
+    } catch (error) {
+      runInAction(() => {
+        this.commitProtectedBranches = previousBranchNames;
+        this.errorMessage = readErrorMessage(error);
+      });
+      return false;
+    } finally {
+      runInAction(() => {
+        this.isUpdatingCommitProtectedBranches = false;
+      });
+    }
   }
 
   /**

@@ -370,7 +370,12 @@ export interface GitApi {
   mergeBranch(projectPath: string, sourceId: string | null, branchName: string): Promise<OpenCodexGitStatus>;
   stage(projectPath: string, sourceId: string | null, paths: string[]): Promise<OpenCodexGitStatus>;
   unstage(projectPath: string, sourceId: string | null, paths: string[]): Promise<OpenCodexGitStatus>;
-  commit(projectPath: string, sourceId: string | null, message: string): Promise<OpenCodexGitCommitResult>;
+  commit(
+    projectPath: string,
+    sourceId: string | null,
+    message: string,
+    projectId: string
+  ): Promise<OpenCodexGitCommitResult>;
   push(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
   publishCurrentBranch(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
   pull(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;

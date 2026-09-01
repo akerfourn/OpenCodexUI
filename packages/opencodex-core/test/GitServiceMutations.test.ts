@@ -137,6 +137,47 @@ describe("GitService repository mutations", () => {
     ]);
   });
 
+  it("should reject a commit on a protected branch before running git commit", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "main\n", stderr: "" }
+    ]);
+    const service = createGitService(client);
+
+    await expect(service.commit(
+      "/workspace/project",
+      "source-1",
+      "release changes",
+      ["main"]
+    )).rejects.toThrow("protected branch");
+
+    expect(client.runs.map((run) => run.command)).toEqual([
+      ["git", "branch", "--show-current"]
+    ]);
+  });
+
+  it("should allow commits on unprotected branches", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "dev\n", stderr: "" },
+      { exitCode: 0, stdout: "[dev abc1234] release changes\n", stderr: "" }
+    ]);
+    const service = createGitService(client);
+
+    await expect(service.commit(
+      "/workspace/project",
+      "source-1",
+      "release changes",
+      ["main"]
+    )).resolves.toEqual({
+      ok: true,
+      output: "[dev abc1234] release changes\n"
+    });
+
+    expect(client.runs.map((run) => run.command)).toEqual([
+      ["git", "branch", "--show-current"],
+      ["git", "commit", "-m", "release changes"]
+    ]);
+  });
+
   it("should push commits with the bounded timeout and refresh status", async () => {
     const client = new FakeCodexClient([
       { exitCode: 0, stdout: "Everything up-to-date\n", stderr: "" },

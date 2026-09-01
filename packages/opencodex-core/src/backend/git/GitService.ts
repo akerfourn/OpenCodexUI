@@ -363,14 +363,22 @@ export class GitService {
    * @param projectPath Project working directory.
    * @param sourceId Source identifier.
    * @param message Commit message.
+   * @param protectedBranches Branches where OpenCodexUI commits are blocked.
    * @returns Commit result output.
    */
   async commit(
     projectPath: string,
     sourceId: string | null,
-    message: string
+    message: string,
+    protectedBranches: readonly string[] = []
   ): Promise<OpenCodexGitCommitResult> {
-    return await createGitCommit(this.repositoryContext, projectPath, sourceId, message);
+    return await createGitCommit(
+      this.repositoryContext,
+      projectPath,
+      sourceId,
+      message,
+      protectedBranches
+    );
   }
 
   /**

@@ -5,17 +5,19 @@ import type { ReactElement } from "react";
 type ProjectSidePanelTabIndicatorProps = {
   icon: ReactElement;
   hasActivity: boolean;
+  color?: "error" | "warning";
 };
 
 /**
- * Adds a small error-colored dot when a project tool needs attention.
+ * Adds a small colored dot when a project tool needs attention.
  *
  * @param props Icon and activity state to render.
  * @returns Icon with an optional activity marker.
  */
 export function ProjectSidePanelTabIndicator({
   icon,
-  hasActivity
+  hasActivity,
+  color = "error"
 }: ProjectSidePanelTabIndicatorProps) {
   if (!hasActivity) {
     return (
@@ -28,7 +30,7 @@ export function ProjectSidePanelTabIndicator({
   return (
     <Badge
       className="project-side-panel-tab-indicator is-active"
-      color="error"
+      color={color}
       overlap="circular"
       variant="dot"
     >

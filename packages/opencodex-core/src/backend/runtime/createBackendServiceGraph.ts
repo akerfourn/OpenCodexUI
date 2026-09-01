@@ -147,6 +147,7 @@ export function createBackendServiceGraph(
     generationPromptPath: options.generationCommitPromptPath,
     settings,
     clients: clientPool,
+    cacheRepository,
     threads: threadRuntimeHandler,
     usage: usageRuntimeService,
     logger: options.logger

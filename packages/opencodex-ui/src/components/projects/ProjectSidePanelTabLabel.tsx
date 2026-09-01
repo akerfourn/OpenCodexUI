@@ -10,6 +10,7 @@ type ProjectSidePanelTabLabelProps = {
   label: string;
   icon: ReactElement;
   hasActivity: boolean;
+  color?: "error" | "warning";
 };
 
 /**
@@ -22,12 +23,13 @@ type ProjectSidePanelTabLabelProps = {
 export function ProjectSidePanelTabLabel({
   label,
   icon,
-  hasActivity
+  hasActivity,
+  color
 }: ProjectSidePanelTabLabelProps) {
   return (
     <Tooltip title={label}>
       <span className="project-side-panel-tab-label" aria-hidden="true">
-        <ProjectSidePanelTabIndicator icon={icon} hasActivity={hasActivity} />
+        <ProjectSidePanelTabIndicator icon={icon} hasActivity={hasActivity} color={color} />
       </span>
     </Tooltip>
   );

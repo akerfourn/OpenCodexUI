@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   createFile,
   createProjectGitCommitFixture,
+  createProject,
   createStatus,
   createTagResult,
   flushPromises
@@ -53,6 +54,13 @@ describe("ProjectGitStore commit workflow", () => {
         expected: false
       },
       {
+        name: "protected branch preferences updating",
+        status: createStatus(),
+        message: "commit message",
+        protectedBranchesUpdating: true,
+        expected: false
+      },
+      {
         name: "valid staged message",
         status: createStatus(),
         message: "  commit message  ",
@@ -68,6 +76,8 @@ describe("ProjectGitStore commit workflow", () => {
         testCase.deferredPathsUpdating ?? false;
       fixture.gitStore.commitStore.isCommitting = testCase.committing ?? false;
       fixture.gitStore.commitStore.isGeneratingCommitMessage = testCase.generating ?? false;
+      fixture.gitStore.isUpdatingCommitProtectedBranches =
+        testCase.protectedBranchesUpdating ?? false;
 
       expect(fixture.gitStore.commitStore.canCommit, testCase.name).toBe(testCase.expected);
     }
@@ -96,6 +106,84 @@ describe("ProjectGitStore commit workflow", () => {
     expect(fixture.gitStore.commitStore.hasDraftMessage).toBe(true);
   });
 
+  it("should block commits only while the current branch is protected", () => {
+    const fixture = createProjectGitCommitFixture({
+      project: {
+        ...createProject(),
+        preferences: {
+          git: { commitProtectedBranches: ["main"] }
+        }
+      }
+    });
+    fixture.gitStore.commitStore.commitMessage = "release changes";
+
+    expect(fixture.gitStore.isCurrentBranchCommitProtected).toBe(true);
+    expect(fixture.gitStore.commitStore.canCommit).toBe(false);
+
+    fixture.applyStatus(createStatus({ branchName: "dev" }));
+
+    expect(fixture.gitStore.isCurrentBranchCommitProtected).toBe(false);
+    expect(fixture.gitStore.commitStore.canCommit).toBe(true);
+  });
+
+  it("should persist protected branches with the complete project preference payload", async () => {
+    const fixture = createProjectGitCommitFixture({
+      project: {
+        ...createProject(),
+        preferences: {
+          git: {
+            referenceTagName: "v1.0.0",
+            deferredPaths: ["dist"]
+          }
+        }
+      }
+    });
+    const updatedProject = {
+      ...createProject(),
+      preferences: {
+        git: {
+          referenceTagName: "v1.0.0",
+          deferredPaths: ["dist"],
+          commitProtectedBranches: ["main"]
+        }
+      }
+    };
+    fixture.request.mockResolvedValueOnce(updatedProject);
+
+    await expect(fixture.gitStore.updateCommitProtectedBranches([" main "])).resolves.toBe(true);
+
+    expect(fixture.request).toHaveBeenCalledWith({
+      type: "projects.preferences.update",
+      projectId: "project-1",
+      patch: {
+        git: {
+          referenceTagName: "v1.0.0",
+          deferredPaths: ["dist"],
+          commitProtectedBranches: ["main"]
+        }
+      }
+    });
+    expect(fixture.gitStore.commitProtectedBranches).toEqual(["main"]);
+  });
+
+  it("should restore protected branches and release the update state on failure", async () => {
+    const fixture = createProjectGitCommitFixture({
+      project: {
+        ...createProject(),
+        preferences: {
+          git: { commitProtectedBranches: ["main"] }
+        }
+      }
+    });
+    fixture.request.mockRejectedValueOnce(new Error("preferences failed"));
+
+    await expect(fixture.gitStore.updateCommitProtectedBranches(["dev"])).resolves.toBe(false);
+
+    expect(fixture.gitStore.commitProtectedBranches).toEqual(["main"]);
+    expect(fixture.gitStore.isUpdatingCommitProtectedBranches).toBe(false);
+    expect(fixture.gitStore.errorMessage).toBe("preferences failed");
+  });
+
   it("should commit with the exact payload, refresh status, and load tags", async () => {
     const fixture = createProjectGitCommitFixture({ stubStatusRefresh: false });
     const statusAfterCommit = createStatus({ stagedFiles: [] });
@@ -115,6 +203,7 @@ describe("ProjectGitStore commit workflow", () => {
       type: "git.commit",
       projectPath: "/workspace/project",
       sourceId: "source-1",
+      projectId: "project-1",
       message: "  release staged changes  "
     });
     expect(fixture.request).toHaveBeenNthCalledWith(2, {
@@ -146,6 +235,7 @@ describe("ProjectGitStore commit workflow", () => {
       type: "git.commit",
       projectPath: "/workspace/project",
       sourceId: "source-1",
+      projectId: "project-1",
       message: "keep this message"
     });
     expect(fixture.request).toHaveBeenCalledOnce();
@@ -169,6 +259,7 @@ describe("ProjectGitStore commit workflow", () => {
       type: "git.commit",
       projectPath: "/workspace/project",
       sourceId: "source-1",
+      projectId: "project-1",
       message: "message"
     });
     expect(fixture.request).toHaveBeenNthCalledWith(2, {

@@ -30,6 +30,7 @@ type ProjectSidePanelTabDefinition = {
   label: string;
   icon: ReactElement;
   hasActivity: boolean;
+  indicatorColor?: "error" | "warning";
 };
 
 type ProjectSidePanelProps = {
@@ -60,6 +61,7 @@ export function ProjectSidePanel({
   const hasComposeFile = sourceId !== null && sourceId !== undefined &&
     composeStore?.isAvailable === true && readHasComposeFile(composeStore);
   const hasPendingCommitMessage = projectStore.gitStore?.commitStore?.hasDraftMessage === true;
+  const hasProtectedCommitBranch = projectStore.gitStore?.isCurrentBranchCommitProtected === true;
   const hasActiveCommandRun = projectStore.commandsStore?.hasActiveRun === true;
   const hasNonStoppedComposeContainer = composeStore?.hasNonStoppedContainer === true;
 
@@ -93,7 +95,8 @@ export function ProjectSidePanel({
       value: "git",
       label: gitLabel,
       icon: <AccountTreeOutlinedIcon fontSize="small" />,
-      hasActivity: hasPendingCommitMessage
+      hasActivity: hasPendingCommitMessage || hasProtectedCommitBranch,
+      indicatorColor: hasPendingCommitMessage ? "error" : "warning"
     },
     {
       value: "commands",
@@ -198,6 +201,7 @@ export function ProjectSidePanel({
                 <ProjectSidePanelTabIndicator
                   icon={tab.icon}
                   hasActivity={tab.hasActivity}
+                  color={tab.indicatorColor}
                 />
               </IconButton>
             </Tooltip>
@@ -238,6 +242,7 @@ export function ProjectSidePanel({
                   label={tab.label}
                   icon={tab.icon}
                   hasActivity={tab.hasActivity}
+                  color={tab.indicatorColor}
                 />
               }
             />

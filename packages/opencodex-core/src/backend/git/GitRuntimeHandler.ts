@@ -1,3 +1,4 @@
+import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexCommitMessageGenerationResult,
   OpenCodexCommitMessageLanguage,
@@ -29,6 +30,8 @@ export type GitRuntimeHandlerOptions = {
   generationPromptPath?: string;
   settings: Pick<RuntimeSettingsPort, "getSettings">;
   clients: Pick<ClientPort, "ensureClient">;
+  /** Cache used to resolve project-local Git preferences for mutations. */
+  cacheRepository?: Pick<OpenCodexCacheRepository, "listProjects"> | null;
   threads: Pick<ThreadRuntimeHandler, "ignoreThreadNotifications" | "releaseThreadNotifications">;
   usage: Pick<UsageRuntimeService, "onCommitGenerationStarted" | "onCommitGenerationFinished">;
   logger?: (message: string) => void;
@@ -43,6 +46,8 @@ export type GitRuntimeHandlerOptions = {
 export class GitRuntimeHandler {
   /** Performs source-scoped Git operations through Codex clients. */
   private readonly gitService: GitService;
+  /** Reads persisted project preferences for protected-branch checks. */
+  private readonly cacheRepository: Pick<OpenCodexCacheRepository, "listProjects"> | null;
   /** Manages the editable commit prompt and one-shot message generation. */
   private readonly commitMessageService: CommitMessageService;
 
@@ -52,6 +57,7 @@ export class GitRuntimeHandler {
    * @param options Source client, prompt, thread, usage, and logging services.
    */
   constructor(options: GitRuntimeHandlerOptions) {
+    this.cacheRepository = options.cacheRepository ?? null;
     this.gitService = new GitService({
       clients: options.clients
     });
@@ -233,9 +239,48 @@ export class GitRuntimeHandler {
   async commitGitChanges(
     projectPath: string,
     sourceId: string | null,
-    message: string
+    message: string,
+    projectId: string
   ): Promise<OpenCodexGitCommitResult> {
-    return await this.gitService.commit(projectPath, sourceId, message);
+    const protectedBranches = await this.readCommitProtectedBranches(
+      projectId,
+      projectPath,
+      sourceId
+    );
+
+    return await this.gitService.commit(projectPath, sourceId, message, protectedBranches);
+  }
+
+  /**
+   * Resolves protected branches for the project targeted by a Git request.
+   *
+   * @param projectId Project identifier from the UI request.
+   * @param projectPath Project path from the UI request.
+   * @param sourceId Source identifier from the UI request.
+   * @returns Persisted protected branch names, or an empty list without a cache.
+   */
+  private async readCommitProtectedBranches(
+    projectId: string,
+    projectPath: string,
+    sourceId: string | null
+  ): Promise<string[]> {
+    if (this.cacheRepository === null) {
+      return [];
+    }
+
+    const project = (await this.cacheRepository.listProjects()).find((entry) => (
+      entry.id === projectId
+    ));
+
+    if (project === undefined) {
+      throw new Error(`Project not found: ${projectId}`);
+    }
+
+    if (project.path !== projectPath || project.sourceId !== sourceId) {
+      throw new Error("Git project context does not match the requested project.");
+    }
+
+    return project.preferences.git?.commitProtectedBranches ?? [];
   }
 
   /** Pushes local commits to the configured upstream. */

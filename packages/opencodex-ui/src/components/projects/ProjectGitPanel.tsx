@@ -2,6 +2,7 @@
  * Renders Git controls for one opened project.
  */
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import {
   Alert,
@@ -27,6 +28,7 @@ import { ProjectBranchMergeDialogX } from "./ProjectBranchMergeDialog";
 import { ProjectBranchSwitcherDialogX } from "./ProjectBranchSwitcherDialog";
 import { ProjectGitReferenceTagRowX } from "./ProjectGitReferenceTagRow";
 import { ProjectGitLogDialogX } from "./ProjectGitLogDialog";
+import { ProjectGitProtectedBranchesDialogX } from "./ProjectGitProtectedBranchesDialog";
 import { ProjectGitRemoteDialogX } from "./ProjectGitRemoteDialog";
 import { ProjectTagSelectorDialogX } from "./ProjectTagSelectorDialog";
 import { ProjectGitActionsMenuX } from "./ProjectGitActionsMenu";
@@ -68,6 +70,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const [isTagDialogOpen, setTagDialogOpen] = useState(false);
   const [isLogDialogOpen, setLogDialogOpen] = useState(false);
   const [isRemoteDialogOpen, setRemoteDialogOpen] = useState(false);
+  const [isProtectionDialogOpen, setProtectionDialogOpen] = useState(false);
   const [gitActionsAnchor, setGitActionsAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -104,6 +107,14 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
   function handleCloseMergeDialog(): void {
     setMergeDialogOpen(false);
+  }
+
+  function handleOpenProtectionDialog(): void {
+    setProtectionDialogOpen(true);
+  }
+
+  function handleCloseProtectionDialog(): void {
+    setProtectionDialogOpen(false);
   }
 
   function handleOpenTagDialog(): void {
@@ -153,6 +164,24 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const generateTooltip = commitStore.canGenerateCommitMessage
     ? t(`${gitLabelsKey}.generateMessage`)
     : t(`${gitLabelsKey}.generateMessageUnavailable`);
+  const currentBranchName = gitStore.currentBranchName;
+  const isCurrentBranchProtected = gitStore.isCurrentBranchCommitProtected;
+  const branchLabel = currentBranchName === null ? t("git.noBranch") : currentBranchName;
+  const branchContent = isCurrentBranchProtected ? (
+    <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", minWidth: 0 }}>
+      <LockOutlinedIcon color="warning" sx={{ fontSize: 14 }} />
+      <Typography variant="caption" color="warning.main" noWrap>
+        {branchLabel}
+      </Typography>
+    </Stack>
+  ) : (
+    <Typography variant="caption" color="text.secondary" noWrap>
+      {branchLabel}
+    </Typography>
+  );
+  const commitTooltip = isCurrentBranchProtected && currentBranchName !== null
+    ? t("git.commitProtectedBranchTooltip", { branch: currentBranchName })
+    : undefined;
 
   return (
     <section className="git-panel">
@@ -163,15 +192,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         sx={{ alignItems: "flex-start" }}
       >
         <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-          {gitStore.statusStore.status.branchName !== null ? (
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {gitStore.statusStore.status.branchName}
-            </Typography>
-          ) : (
-            <Typography variant="caption" color="text.secondary" noWrap>
-              {t("git.noBranch")}
-            </Typography>
-          )}
+          {branchContent}
           {gitStore.statusStore.isRepository ? (
             <ProjectGitReferenceTagRowX
               dense
@@ -214,6 +235,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         isAvailable={gitStore.isAvailable}
         onClose={handleCloseGitActions}
         onOpenBranch={handleOpenBranchDialog}
+        onOpenProtection={handleOpenProtectionDialog}
         onOpenMerge={handleOpenMergeDialog}
         onOpenRemote={handleOpenRemoteDialog}
         onOpenLog={handleOpenLogDialog}
@@ -255,6 +277,11 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
         {gitStore.statusStore.isRepository ? (
           <>
+            {isCurrentBranchProtected && currentBranchName !== null ? (
+              <Alert severity="warning" icon={<LockOutlinedIcon fontSize="inherit" />}>
+                {t("git.commitProtectedBranch", { branch: currentBranchName })}
+              </Alert>
+            ) : null}
             {gitStore.statusStore.status.upstreamName !== null ? (
               <Stack direction="row" spacing={1}>
                 {gitStore.statusStore.status.behindCount > 0 ? (
@@ -306,6 +333,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                 <Divider />
                 <ProjectGitCommitSectionX
                   generateTooltip={generateTooltip}
+                  commitTooltip={commitTooltip}
                   gitLabelsKey={gitLabelsKey}
                   commitStore={commitStore}
                   onOpenGenerateDialog={handleOpenGenerateDialog}
@@ -346,6 +374,12 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         logStore={gitStore.logStore}
         open={isLogDialogOpen}
         onClose={handleCloseLogDialog}
+      />
+      <ProjectGitProtectedBranchesDialogX
+        gitStore={gitStore}
+        referencesStore={referencesStore}
+        open={isProtectionDialogOpen}
+        onClose={handleCloseProtectionDialog}
       />
     </section>
   );

@@ -290,7 +290,13 @@ export type OpenCodexRequest =
   | { type: "git.merge"; projectPath: string; sourceId: string | null; branchName: string }
   | { type: "git.stage"; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.unstage"; projectPath: string; sourceId: string | null; paths: string[] }
-  | { type: "git.commit"; projectPath: string; sourceId: string | null; message: string }
+  | {
+      type: "git.commit";
+      projectPath: string;
+      sourceId: string | null;
+      projectId: string;
+      message: string;
+    }
   | { type: "git.pull"; projectPath: string; sourceId: string | null }
   | { type: "git.push"; projectPath: string; sourceId: string | null }
   | { type: "git.branch.publish"; projectPath: string; sourceId: string | null }

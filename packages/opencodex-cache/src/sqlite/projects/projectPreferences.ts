@@ -82,15 +82,40 @@ function normalizeGitPreferences(value: unknown): CachedProjectPreferences["git"
 
   const referenceTagName = normalizeNullableText(value.referenceTagName);
   const deferredPaths = normalizeDeferredPaths(value.deferredPaths);
+  const commitProtectedBranches = normalizeCommitProtectedBranches(value.commitProtectedBranches);
 
-  if (referenceTagName === undefined && deferredPaths.length === 0) {
+  if (
+    referenceTagName === undefined &&
+    deferredPaths.length === 0 &&
+    commitProtectedBranches.length === 0
+  ) {
     return undefined;
   }
 
   return {
     referenceTagName,
-    ...(deferredPaths.length > 0 ? { deferredPaths } : {})
+    ...(deferredPaths.length > 0 ? { deferredPaths } : {}),
+    ...(commitProtectedBranches.length > 0 ? { commitProtectedBranches } : {})
   };
+}
+
+/**
+ * Normalizes branch names protected from commits initiated by OpenCodexUI.
+ *
+ * @param value Unknown protected branch list.
+ * @returns Unique, trimmed branch names.
+ */
+function normalizeCommitProtectedBranches(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const branchNames = value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  return [...new Set(branchNames)].sort();
 }
 
 /**

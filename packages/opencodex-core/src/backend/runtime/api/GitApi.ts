@@ -252,9 +252,10 @@ export class GitApi implements GitApiContract {
   async commit(
     projectPath: string,
     sourceId: string | null,
-    message: string
+    message: string,
+    projectId: string
   ): Promise<OpenCodexGitCommitResult> {
-    return await this.handler.commitGitChanges(projectPath, sourceId, message);
+    return await this.handler.commitGitChanges(projectPath, sourceId, message, projectId);
   }
 
   /** Pushes local commits to the configured upstream. */

@@ -147,14 +147,16 @@ describe("project persistence", () => {
     const updatedProject = await repository.updateProjectPreferences(project.id, {
       git: {
         referenceTagName: "v1.2.0",
-        deferredPaths: ["src/experimental.ts", "notes/"]
+        deferredPaths: ["src/experimental.ts", "notes/"],
+        commitProtectedBranches: ["main", "dev", "main"]
       }
     });
 
     expect(updatedProject?.preferences).toEqual({
       git: {
         referenceTagName: "v1.2.0",
-        deferredPaths: ["notes", "src/experimental.ts"]
+        deferredPaths: ["notes", "src/experimental.ts"],
+        commitProtectedBranches: ["dev", "main"]
       }
     });
 
@@ -164,7 +166,8 @@ describe("project persistence", () => {
     expect(persistedProject?.preferences).toEqual({
       git: {
         referenceTagName: "v1.2.0",
-        deferredPaths: ["notes", "src/experimental.ts"]
+        deferredPaths: ["notes", "src/experimental.ts"],
+        commitProtectedBranches: ["dev", "main"]
       }
     });
   });

@@ -159,6 +159,8 @@ export type OpenCodexProjectPreferences = {
     referenceTagName?: string | null;
     /** Relative paths temporarily excluded from OpenCodexUI staging actions. */
     deferredPaths?: string[];
+    /** Branches where OpenCodexUI must not create commits. */
+    commitProtectedBranches?: string[];
   };
   context?: {
     permissionsProfileId?: string | null;

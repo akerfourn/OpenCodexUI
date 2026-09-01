@@ -376,7 +376,12 @@ export class OpenCodexRequestRouter {
       case "git.unstage":
         return this.runtime.git.unstage(request.projectPath, request.sourceId, request.paths);
       case "git.commit":
-        return this.runtime.git.commit(request.projectPath, request.sourceId, request.message);
+        return this.runtime.git.commit(
+          request.projectPath,
+          request.sourceId,
+          request.message,
+          request.projectId
+        );
       case "git.pull":
         return this.runtime.git.pull(request.projectPath, request.sourceId);
       case "git.push":

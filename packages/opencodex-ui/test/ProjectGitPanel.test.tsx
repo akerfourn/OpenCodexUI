@@ -40,6 +40,9 @@ vi.mock("../src/components/projects/ProjectGitRemoteDialog", () => ({
 vi.mock("../src/components/projects/ProjectGitLogDialog", () => ({
   ProjectGitLogDialogX: () => null
 }));
+vi.mock("../src/components/projects/ProjectGitProtectedBranchesDialog", () => ({
+  ProjectGitProtectedBranchesDialogX: () => null
+}));
 
 import { ProjectGitCommitSectionX } from "../src/components/projects/ProjectGitCommitSection";
 import { ProjectGitFileSectionsX } from "../src/components/projects/ProjectGitFileSections";
@@ -198,6 +201,8 @@ function createGitStore(overrides: Partial<ProjectGitStore> = {}): ProjectGitSto
     isAvailable: true,
     errorMessage: null,
     tagStore: createTagStore(),
+    currentBranchName: "main",
+    isCurrentBranchCommitProtected: false,
     ...overrides
   } as unknown as ProjectGitStore;
 }
@@ -207,6 +212,7 @@ function createReferencesStore(
   overrides: Partial<ProjectGitReferencesStore> = {}
 ): ProjectGitReferencesStore {
   return {
+    branches: [],
     canPull: false,
     canPush: false,
     canPublishBranch: false,

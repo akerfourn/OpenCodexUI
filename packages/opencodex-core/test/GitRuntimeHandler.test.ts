@@ -4,6 +4,7 @@ import path from "node:path";
 
 import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 import type {
+  OpenCodexProject,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
@@ -31,6 +32,37 @@ describe("GitRuntimeHandler", () => {
     expect(status.isRepository).toBe(false);
     expect(client.commands).toEqual([
       ["git", "rev-parse", "--is-inside-work-tree"]
+    ]);
+  });
+
+  it("should load project protection before committing", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "main\n", stderr: "" }
+    ]);
+    const project = {
+      id: "project-1",
+      sourceId: "source-1",
+      path: "/workspace/project",
+      preferences: {
+        git: { commitProtectedBranches: ["main"] }
+      }
+    } as OpenCodexProject;
+    const handler = createHandler({
+      clients: { ensureClient: async () => client.asCodexClient() },
+      cacheRepository: {
+        listProjects: async () => [project]
+      }
+    });
+
+    await expect(handler.commitGitChanges(
+      "/workspace/project",
+      "source-1",
+      "release changes",
+      "project-1"
+    )).rejects.toThrow("protected branch");
+
+    expect(client.commands).toEqual([
+      ["git", "branch", "--show-current"]
     ]);
   });
 

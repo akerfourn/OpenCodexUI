@@ -5,6 +5,7 @@ import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import CallMergeOutlinedIcon from "@mui/icons-material/CallMergeOutlined";
 import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import {
   CircularProgress,
@@ -26,6 +27,7 @@ type ProjectGitActionsMenuProps = {
   isAvailable: boolean;
   onClose(): void;
   onOpenBranch(): void;
+  onOpenProtection(): void;
   onOpenMerge(): void;
   onOpenRemote(): void;
   onOpenLog(): void;
@@ -45,6 +47,7 @@ export function ProjectGitActionsMenu({
   isAvailable,
   onClose,
   onOpenBranch,
+  onOpenProtection,
   onOpenMerge,
   onOpenRemote,
   onOpenLog
@@ -59,6 +62,11 @@ export function ProjectGitActionsMenu({
   function handleSelectMergeAction(): void {
     onClose();
     onOpenMerge();
+  }
+
+  function handleSelectProtectionAction(): void {
+    onClose();
+    onOpenProtection();
   }
 
   function handleSelectPublishAction(): void {
@@ -101,6 +109,15 @@ export function ProjectGitActionsMenu({
           <CallMergeOutlinedIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText>{t("git.mergeBranch")}</ListItemText>
+      </MenuItem>
+      <MenuItem
+        disabled={!isAvailable || !statusStore.isRepository || statusStore.isLoading}
+        onClick={handleSelectProtectionAction}
+      >
+        <ListItemIcon>
+          <LockOutlinedIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>{t("git.protectedBranches")}</ListItemText>
       </MenuItem>
       <MenuItem
         disabled={!isAvailable || !statusStore.isRepository || statusStore.isLoading}

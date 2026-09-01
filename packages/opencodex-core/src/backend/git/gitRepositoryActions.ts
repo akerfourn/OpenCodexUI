@@ -152,18 +152,32 @@ export async function unstageGitPaths(
  * @param projectPath Project working directory.
  * @param sourceId Source identifier.
  * @param message Commit message.
+ * @param protectedBranches Branches where OpenCodexUI commits are blocked.
  * @returns Successful commit result output.
  */
 export async function createGitCommit(
   context: GitRepositoryActionContext,
   projectPath: string,
   sourceId: string | null,
-  message: string
+  message: string,
+  protectedBranches: readonly string[] = []
 ): Promise<OpenCodexGitCommitResult> {
   const normalizedMessage = message.trim();
 
   if (normalizedMessage.length === 0) {
     throw new Error("Commit message is required.");
+  }
+
+  if (protectedBranches.length > 0) {
+    const currentBranchResponse = await context.runGit(projectPath, sourceId, [
+      "branch",
+      "--show-current"
+    ]);
+    const currentBranch = currentBranchResponse.stdout.trim();
+
+    if (protectedBranches.includes(currentBranch)) {
+      throw new Error(`Commits are blocked on the protected branch "${currentBranch}".`);
+    }
   }
 
   const response = await context.runGit(projectPath, sourceId, [

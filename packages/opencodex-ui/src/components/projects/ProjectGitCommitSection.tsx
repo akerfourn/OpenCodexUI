@@ -10,6 +10,7 @@ import type { ProjectGitCommitStore } from "../../stores/project/git/ProjectGitC
 
 type ProjectGitCommitSectionProps = {
   generateTooltip: string;
+  commitTooltip?: string;
   gitLabelsKey: "git.simple" | "git.technical";
   commitStore: ProjectGitCommitStore;
   onOpenGenerateDialog(): void;
@@ -24,11 +25,26 @@ type ProjectGitCommitSectionProps = {
  */
 export function ProjectGitCommitSection({
   generateTooltip,
+  commitTooltip,
   gitLabelsKey,
   commitStore,
   onOpenGenerateDialog
 }: ProjectGitCommitSectionProps) {
   const { t } = useTranslation();
+  const commitButton = (
+    <Button
+      variant="contained"
+      disabled={!commitStore.canCommit}
+      onClick={() => void commitStore.commit()}
+    >
+      {t(`${gitLabelsKey}.commit`)}
+    </Button>
+  );
+  const commitAction = commitTooltip === undefined ? commitButton : (
+    <Tooltip title={commitTooltip}>
+      <span>{commitButton}</span>
+    </Tooltip>
+  );
 
   return (
     <Stack spacing={1}>
@@ -55,13 +71,7 @@ export function ProjectGitCommitSection({
             </IconButton>
           </span>
         </Tooltip>
-        <Button
-          variant="contained"
-          disabled={!commitStore.canCommit}
-          onClick={() => void commitStore.commit()}
-        >
-          {t(`${gitLabelsKey}.commit`)}
-        </Button>
+        {commitAction}
       </Stack>
     </Stack>
   );
