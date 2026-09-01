@@ -102,6 +102,7 @@ describe("ChatActionsStore actions characterization", () => {
 
   it("should send a source-aware structured-clone-compatible turn request", async () => {
     const rootStore = createRootStore();
+    vi.mocked(rootStore.request).mockResolvedValueOnce({ turnId: "turn-sent" });
     const projectStore = createProjectStore();
     const chatStore = new ChatStore(
       createThread({ sourceId: null }),
@@ -162,6 +163,20 @@ describe("ChatActionsStore actions characterization", () => {
     expect(rootStore.appStore.errorMessage).toBe("Start failed");
   });
 
+  it("should reject a start response without a turn id", async () => {
+    const rootStore = createRootStore();
+    vi.mocked(rootStore.request).mockResolvedValueOnce({});
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+
+    await expect(chatStore.actions.send("hello")).resolves.toBe(true);
+    await flushPromises();
+
+    expect(chatStore.timeline.turns).toHaveLength(0);
+    expect(chatStore.runtime.isStartingTurn).toBe(false);
+    expect(chatStore.runtime.isWorking).toBe(false);
+    expect(rootStore.appStore.errorMessage).toBe("Codex did not return a turn identifier.");
+  });
+
   it("should append a steering item and send its payload when steering succeeds", async () => {
     const rootStore = createRootStore();
     rootStore.appStore.settingsStore.settings.allowTurnSteering = true;
@@ -212,7 +227,7 @@ describe("ChatActionsStore actions characterization", () => {
     const rootStore = createRootStore();
     vi.mocked(rootStore.request)
       .mockResolvedValueOnce({ threadId: "thread-recreated" })
-      .mockResolvedValueOnce({ ok: true });
+      .mockResolvedValueOnce({ threadId: "thread-recreated", turnId: "turn-edited" });
     const chatStore = createEditableChatStore(rootStore);
 
     expect(chatStore.actions.editLast("after", [], "gpt-5.5", "high")).toBe(true);
@@ -231,6 +246,8 @@ describe("ChatActionsStore actions characterization", () => {
       text: "after"
     }));
     expect(chatStore.timeline.turns.at(-1)?.items[0]?.content).toBe("after");
+    expect(chatStore.runtime.activeTurnId).toBe("turn-edited");
+    expect(chatStore.runtime.isWorking).toBe(true);
   });
 
   it("should keep the edited optimistic turn when its restarted start fails", async () => {

@@ -6,6 +6,9 @@ import { makeAutoObservable } from "mobx";
 import type { ChatStore } from "./ChatStore";
 import { ChatRuntimeStatusPoller } from "./ChatRuntimeStatusPoller";
 
+/** Outcome of observing a turn event before or after request confirmation. */
+export type TurnStartEventDisposition = "accepted" | "pending" | "ignored";
+
 /**
  * Owns turn lifecycle flags and the fallback runtime-status poller for a chat.
  *
@@ -31,6 +34,14 @@ export class ChatRuntimeStore {
   activeTurnId: string | null = null;
   /** Optimistic local turn id waiting for Codex confirmation. */
   pendingTurnId: string | null = null;
+  /** Monotonic identifier used to associate a start response with its request. */
+  private turnStartAttemptSequence = 0;
+  /** Currently pending request-bound start attempt. */
+  private pendingTurnStartAttemptId: number | null = null;
+  /** Whether live events must wait for the start request response. */
+  private awaitingTurnStartConfirmation = false;
+  /** User text expected from the request-bound start attempt. */
+  private pendingTurnStartMessageContent: string | null = null;
   /** Polls runtime status while a turn is active. */
   private readonly statusPoller: ChatRuntimeStatusPoller;
 
@@ -66,6 +77,7 @@ export class ChatRuntimeStore {
   /** Resets all transient runtime state before loading another snapshot. */
   reset(): void {
     this.stopStatusPolling();
+    this.clearTurnStartConfirmation();
     this.isWorking = false;
     this.isStartingTurn = false;
     this.isEditingLastTurn = false;
@@ -134,20 +146,75 @@ export class ChatRuntimeStore {
     this.startStatusPolling();
   }
 
-  /** Marks a start-turn request as pending. */
-  beginTurnStart(): void {
+  /**
+   * Marks a start-turn request as pending.
+   *
+   * Request-bound starts delay live event application until the backend
+   * response supplies the authoritative turn id. Advanced actions keep the
+   * legacy event-bound behavior because their responses do not expose one.
+   *
+   * @param awaitConfirmation Whether the request response owns turn identity.
+   * @param messageContent User text expected in the started message.
+   * @returns Attempt identifier when confirmation is required.
+   */
+  beginTurnStart(
+    awaitConfirmation: true,
+    messageContent?: string | null
+  ): number;
+  beginTurnStart(
+    awaitConfirmation?: false,
+    messageContent?: string | null
+  ): null;
+  beginTurnStart(
+    awaitConfirmation = false,
+    messageContent: string | null = null
+  ): number | null {
     this.isStartingTurn = true;
+
+    this.clearTurnStartConfirmation();
+
+    if (!awaitConfirmation) {
+      return null;
+    }
+
+    this.awaitingTurnStartConfirmation = true;
+    this.pendingTurnStartAttemptId = ++this.turnStartAttemptSequence;
+    this.pendingTurnStartMessageContent = messageContent;
+    return this.pendingTurnStartAttemptId;
   }
 
   /** Clears a start-turn request after an advanced action fails. */
   clearTurnStart(): void {
     this.isStartingTurn = false;
+    this.clearTurnStartConfirmation();
   }
 
-  /** Marks an edit-and-restart request as pending. */
-  beginLastTurnEdit(): void {
+  /**
+   * Marks an edit-and-restart request as pending.
+   *
+   * @param messageContent Replacement message content expected from Codex.
+   * @returns Attempt identifier used by the restart response.
+   */
+  beginLastTurnEdit(messageContent: string): number {
     this.isEditingLastTurn = true;
-    this.isStartingTurn = true;
+    return this.beginTurnStart(true, messageContent);
+  }
+
+  /** Whether live turn events are waiting for a request response. */
+  get isAwaitingTurnStartConfirmation(): boolean {
+    return this.awaitingTurnStartConfirmation;
+  }
+
+  /** Checks whether a failure belongs to the currently pending start attempt. */
+  isCurrentTurnStartAttempt(attemptId: number): boolean {
+    return this.pendingTurnStartAttemptId === attemptId;
+  }
+
+  /** Checks whether a started message belongs to the pending request. */
+  acceptsStartedMessage(content: string): boolean {
+    return !this.awaitingTurnStartConfirmation ||
+      this.pendingTurnStartMessageContent === null ||
+      this.pendingTurnStartMessageContent === content;
   }
 
   /** Clears a pending optimistic turn after its timeline entry was removed. */
@@ -166,7 +233,57 @@ export class ChatRuntimeStore {
 
   /** Clears the pre-confirmation flag after the backend reports a started message. */
   applyMessageStarted(): void {
-    this.isStartingTurn = false;
+    if (!this.awaitingTurnStartConfirmation) {
+      this.isStartingTurn = false;
+    }
+  }
+
+  /**
+   * Classifies a turn-started event against the current runtime state.
+   *
+   * @param turnId Turn identifier reported by Codex.
+   * @returns Event disposition for the owning chat.
+   */
+  observeTurnStarted(turnId: string): TurnStartEventDisposition {
+    if (turnId.length === 0) {
+      return "ignored";
+    }
+
+    if (this.activeTurnId !== null) {
+      return this.activeTurnId === turnId ? "accepted" : "ignored";
+    }
+
+    if (this.awaitingTurnStartConfirmation) {
+      return "pending";
+    }
+
+    this.acceptTurnStarted(turnId);
+    return "accepted";
+  }
+
+  /**
+   * Confirms a request-bound turn start using the backend response.
+   *
+   * @param attemptId Local start attempt identifier.
+   * @param turnId Authoritative turn identifier, when returned.
+   * @returns Confirmed turn id, or `null` when the response is stale/incomplete.
+   */
+  confirmTurnStart(attemptId: number, turnId: string | null): string | null {
+    if (
+      !this.awaitingTurnStartConfirmation ||
+      this.pendingTurnStartAttemptId !== attemptId
+    ) {
+      return null;
+    }
+
+    const normalizedTurnId = turnId?.trim() ?? "";
+
+    if (normalizedTurnId.length === 0) {
+      return null;
+    }
+
+    this.acceptTurnStarted(normalizedTurnId);
+    return normalizedTurnId;
   }
 
   /**
@@ -175,11 +292,7 @@ export class ChatRuntimeStore {
    * @param turnId Confirmed Codex turn identifier.
    */
   applyTurnStarted(turnId: string): void {
-    this.isStartingTurn = false;
-    this.isEditingLastTurn = false;
-    this.isWorking = true;
-    this.hasUnseenCompletedTurn = false;
-    this.activeTurnId = turnId;
+    this.acceptTurnStarted(turnId);
   }
 
   /**
@@ -213,6 +326,7 @@ export class ChatRuntimeStore {
 
   /** Clears optimistic runtime state after a failed initial turn request. */
   clearAfterStartFailure(): void {
+    this.clearTurnStartConfirmation();
     this.isStartingTurn = false;
     this.isWorking = false;
     this.activeTurnId = null;
@@ -222,6 +336,7 @@ export class ChatRuntimeStore {
 
   /** Clears edit state after an edit request fails before turn start. */
   clearAfterEditFailure(): void {
+    this.clearTurnStartConfirmation();
     this.pendingTurnId = null;
     this.isEditingLastTurn = false;
     this.isStartingTurn = false;
@@ -229,20 +344,26 @@ export class ChatRuntimeStore {
 
   /** Clears both edit and start flags after the restarted turn fails. */
   clearEditStart(): void {
+    this.clearTurnStartConfirmation();
     this.isStartingTurn = false;
     this.isEditingLastTurn = false;
   }
 
   /** Applies the state changes associated with an opened thread snapshot. */
   applyOpenedSnapshot(): void {
+    const preservePendingStart = this.awaitingTurnStartConfirmation;
     this.isRefreshing = false;
     this.isSyncing = false;
-    this.isEditingLastTurn = false;
-    this.pendingTurnId = null;
+
+    if (!preservePendingStart) {
+      this.isEditingLastTurn = false;
+      this.pendingTurnId = null;
+    }
   }
 
   /** Marks the runtime idle after a validated status response. */
   applyRuntimeIdle(shouldMarkUnseen: boolean): void {
+    this.clearTurnStartConfirmation();
     this.isWorking = false;
     this.isStartingTurn = false;
     this.isEditingLastTurn = false;
@@ -265,5 +386,22 @@ export class ChatRuntimeStore {
   /** Releases the timer and all poller-owned transient state. */
   dispose(): void {
     this.statusPoller.dispose();
+  }
+
+  /** Clears request-bound turn correlation state without changing runtime flags. */
+  private clearTurnStartConfirmation(): void {
+    this.pendingTurnStartAttemptId = null;
+    this.awaitingTurnStartConfirmation = false;
+    this.pendingTurnStartMessageContent = null;
+  }
+
+  /** Applies the runtime state for a turn whose id is authoritative. */
+  private acceptTurnStarted(turnId: string): void {
+    this.clearTurnStartConfirmation();
+    this.isStartingTurn = false;
+    this.isEditingLastTurn = false;
+    this.isWorking = true;
+    this.hasUnseenCompletedTurn = false;
+    this.activeTurnId = turnId;
   }
 }

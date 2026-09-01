@@ -67,7 +67,7 @@ export class ProjectThreadLiveEventHandler {
         const chatStore = this.ports.findChatStoreByThreadId(event.threadId, event.sourceId);
 
         if (chatStore !== null) {
-          chatStore.timeline.appendAssistantDelta(
+          chatStore.applyMessageDelta(
             event.turnId,
             event.messageId,
             event.delta,
@@ -81,11 +81,7 @@ export class ProjectThreadLiveEventHandler {
         const chatStore = this.ports.findChatStoreByThreadId(event.threadId, event.sourceId);
 
         if (chatStore !== null) {
-          chatStore.timeline.applyActivityUpdated(
-            event.activity,
-            chatStore.runtime.activeTurnId,
-            chatStore.runtime.pendingTurnId
-          );
+          chatStore.applyActivityUpdated(event.activity);
         }
 
         return true;

@@ -240,6 +240,8 @@ type FakeChat = {
     clearFromEvent: ReturnType<typeof vi.fn>;
   };
   applyMessageStarted: ReturnType<typeof vi.fn>;
+  applyMessageDelta: ReturnType<typeof vi.fn>;
+  applyActivityUpdated: ReturnType<typeof vi.fn>;
   applyTurnStarted: ReturnType<typeof vi.fn>;
   applyTurnCompleted: ReturnType<typeof vi.fn>;
 };
@@ -297,6 +299,16 @@ function createFixture(callOrder: string[] = []): Fixture {
         clearFromEvent: vi.fn()
       },
       applyMessageStarted: vi.fn(() => callOrder.push("message.started")),
+      applyMessageDelta: vi.fn((...args: unknown[]) => {
+        chat.timeline.appendAssistantDelta(...args);
+      }),
+      applyActivityUpdated: vi.fn((activity: OpenCodexActivity) => {
+        chat.timeline.applyActivityUpdated(
+          activity,
+          chat.runtime.activeTurnId,
+          chat.runtime.pendingTurnId
+        );
+      }),
       applyTurnStarted: vi.fn(() => callOrder.push("turn.started")),
       applyTurnCompleted: vi.fn(() => {
         callOrder.push("turn.completed");

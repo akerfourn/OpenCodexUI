@@ -5,7 +5,9 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexApproval,
+  OpenCodexActivity,
   OpenCodexMessage,
+  OpenCodexMessagePhase,
   OpenCodexReasoningEffort,
   OpenCodexThread,
   OpenCodexThreadRuntimeStatus,
@@ -17,6 +19,7 @@ import type { RootStore } from "../RootStore";
 import { ChatActionsStore } from "./ChatActionsStore";
 import { ChatComposerStore } from "./ChatComposerStore";
 import { ChatGoalStore } from "./ChatGoalStore";
+import { ChatLiveTurnEventsStore } from "./ChatLiveTurnEventsStore";
 import { ChatRuntimeStore } from "./ChatRuntimeStore";
 import { ChatTimelineStore } from "./ChatTimelineStore";
 import { hasActiveRunningTurn } from "./chatTurnUtils";
@@ -42,6 +45,8 @@ export class ChatStore {
   readonly runtime: ChatRuntimeStore;
   /** Native Codex goal state and actions for this chat. */
   readonly goal: ChatGoalStore;
+  /** Live event correlation and buffering for this chat. */
+  readonly liveEvents: ChatLiveTurnEventsStore;
 
   /**
    * Creates a chat store for the provided thread.
@@ -59,6 +64,7 @@ export class ChatStore {
     this.runtime = new ChatRuntimeStore(this);
     this.actions = new ChatActionsStore(this, projectStore, root);
     this.goal = new ChatGoalStore(this, root);
+    this.liveEvents = new ChatLiveTurnEventsStore(this.timeline, this.runtime);
     makeAutoObservable<
       ChatStore,
       | "projectStore"
@@ -68,6 +74,7 @@ export class ChatStore {
       | "timeline"
       | "runtime"
       | "goal"
+      | "liveEvents"
     >(this, {
       projectStore: false,
       root: false,
@@ -75,7 +82,8 @@ export class ChatStore {
       composer: false,
       timeline: false,
       runtime: false,
-      goal: false
+      goal: false,
+      liveEvents: false
     });
   }
 
@@ -183,6 +191,7 @@ export class ChatStore {
    * @returns Nothing.
    */
   clearLoadedState(): void {
+    this.discardPendingLiveEvents();
     this.timeline.clearLoadedState();
     this.runtime.reset();
   }
@@ -201,6 +210,11 @@ export class ChatStore {
     shouldMergeTurns: boolean
   ): void {
     this.runtime.applyOpenedSnapshot();
+
+    if (!this.runtime.isAwaitingTurnStartConfirmation) {
+      this.discardPendingLiveEvents();
+    }
+
     this.timeline.isLoadingOlderMessages = false;
     this.timeline.hasMoreOlderMessages = source === "thread.opened" ? hasMoreOlderMessages : false;
     this.timeline.applySnapshot(turns, shouldMergeTurns ? "merge" : "replace");
@@ -241,6 +255,10 @@ export class ChatStore {
    * @param message Started message item.
    */
   applyMessageStarted(message: OpenCodexMessage): void {
+    if (!this.runtime.acceptsStartedMessage(message.content)) {
+      return;
+    }
+
     this.runtime.applyMessageStarted();
     const pendingTurnId = this.timeline.applyMessageStarted(message, this.runtime.pendingTurnId);
     this.runtime.setPendingTurnId(pendingTurnId);
@@ -253,12 +271,41 @@ export class ChatStore {
    * @param turnId Started turn identifier.
    */
   applyTurnStarted(turnId: string): void {
-    this.runtime.applyTurnStarted(turnId);
-    const pendingTurnId = this.timeline.movePendingTurnToStartedTurn(
-      turnId,
-      this.runtime.pendingTurnId
-    );
-    this.runtime.finalizeTurnStarted(pendingTurnId);
+    this.liveEvents.applyTurnStarted(turnId);
+  }
+
+  /**
+   * Confirms a request-bound turn start and replays only its buffered events.
+   *
+   * @param attemptId Local attempt identifier returned by the runtime store.
+   * @param turnId Authoritative turn id returned by the backend.
+   */
+  confirmTurnStarted(attemptId: number, turnId: string | null): void {
+    const completion = this.liveEvents.confirmTurnStarted(attemptId, turnId);
+
+    if (completion !== null) {
+      this.applyTurnCompleted(
+        completion.turnId,
+        completion.durationMs,
+        completion.turnStatus,
+        completion.errorMessage
+      );
+    }
+  }
+
+  /** Applies a streamed assistant delta after checking turn ownership. */
+  applyMessageDelta(
+    turnId: string,
+    messageId: string,
+    delta: string,
+    phase: OpenCodexMessagePhase | null
+  ): void {
+    this.liveEvents.applyMessageDelta(turnId, messageId, delta, phase);
+  }
+
+  /** Applies a live activity update after checking turn ownership. */
+  applyActivityUpdated(activity: OpenCodexActivity): void {
+    this.liveEvents.applyActivityUpdated(activity);
   }
 
   /**
@@ -275,6 +322,11 @@ export class ChatStore {
     turnStatus?: string,
     errorMessage?: string
   ): void {
+    if (this.liveEvents.deferTurnCompletion({ turnId, durationMs, turnStatus, errorMessage })) {
+      return;
+    }
+
+    this.liveEvents.markTurnCompleted(turnId);
     this.timeline.applyTurnDuration(turnId, durationMs);
 
     const completedTurn = this.timeline.turns.find((turn) => turn.id === turnId);
@@ -294,6 +346,12 @@ export class ChatStore {
     const shouldMarkUnseen = !this.isVisibleChat();
 
     this.runtime.applyTurnCompleted(shouldMarkUnseen);
+    this.discardPendingLiveEvents();
+  }
+
+  /** Discards live events retained while a start request was unresolved. */
+  discardPendingLiveEvents(): void {
+    this.liveEvents.discard();
   }
 
   /**
@@ -379,6 +437,7 @@ export class ChatStore {
     const shouldMarkUnseen = !this.isVisibleChat();
 
     this.runtime.applyRuntimeIdle(shouldMarkUnseen);
+    this.discardPendingLiveEvents();
     this.runtime.beginRefresh();
     this.projectStore.openThread(this.thread.id);
   }

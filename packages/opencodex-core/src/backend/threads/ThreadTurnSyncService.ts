@@ -28,6 +28,13 @@ import type {
 /** Details passed to the backend thread timing logger. */
 export type ThreadTurnSyncTimingDetails = Record<string, string | number | boolean>;
 
+/** Latest thread metadata and turn page read without mutating shared cache state. */
+type LatestThreadLoad = {
+  thread: OpenCodexThread;
+  turns: unknown[];
+  olderCursor: string | null;
+};
+
 /** Dependencies required to synchronize source-owned thread turns. */
 export type ThreadTurnSyncServiceOptions = {
   /** Shared in-memory thread and turn state. */
@@ -62,6 +69,8 @@ export type ThreadTurnSyncServiceOptions = {
 export class ThreadTurnSyncService {
   /** Ports used to load, merge, persist, and publish thread turn synchronization. */
   private readonly options: ThreadTurnSyncServiceOptions;
+  /** Serializes background synchronizations so lifecycle events cannot overlap. */
+  private readonly synchronizationChains = new Map<string, Promise<void>>();
 
   /** Creates a thread turn synchronization service. */
   constructor(options: ThreadTurnSyncServiceOptions) {
@@ -80,6 +89,16 @@ export class ThreadTurnSyncService {
     sourceIdOverride: string | null = null
   ): Promise<void> {
     await delay(500);
+    return this.runSerialized(threadId, () => (
+      this.syncCompletedNow(threadId, sourceIdOverride)
+    ));
+  }
+
+  /** Synchronizes a completed turn once earlier work for the thread is idle. */
+  private async syncCompletedNow(
+    threadId: string,
+    sourceIdOverride: string | null
+  ): Promise<void> {
     const sourceId = sourceIdOverride
       ?? await this.options.sourceResolver.resolveThreadSourceId(threadId);
 
@@ -99,7 +118,7 @@ export class ThreadTurnSyncService {
       return;
     }
 
-    await this.syncCached(threadId, sourceId);
+    await this.syncCachedNow(threadId, sourceId);
   }
 
   /**
@@ -113,24 +132,24 @@ export class ThreadTurnSyncService {
     client: CodexAppServerClient,
     cacheEntry: ThreadTurnCacheEntry
   ): Promise<unknown[]> {
-    const response = await client.readThread(cacheEntry.thread.id, false);
-    const responseObject = readObject(response);
+    const revision = cacheEntry.revision;
+    const latest = await this.readLatest(client, cacheEntry);
 
-    const thread = {
-      ...mapThread(
-        responseObject.thread,
-        cacheEntry.thread.model,
-        cacheEntry.thread.reasoningEffort
-      ),
-      sourceId: cacheEntry.thread.sourceId
-    };
-    const nextEntry = this.options.threadTurnCache.getOrCreate(thread);
-    const latestTurns = await this.options.pageLoader.readLatest(client, cacheEntry.thread.id);
+    if (cacheEntry.revision !== revision) {
+      return [];
+    }
 
-    this.options.threadTurnCache.mergeLatestTurns(nextEntry, latestTurns.turns, latestTurns.olderCursor);
-    const mergedTurns = readMergedTurns(nextEntry, latestTurns.turns);
+    const nextEntry = this.options.threadTurnCache.getOrCreate(latest.thread);
+
+    this.options.threadTurnCache.mergeLatestTurns(nextEntry, latest.turns, latest.olderCursor);
+    const mergedTurns = readMergedTurns(nextEntry, latest.turns);
 
     await this.reconcileTurns(nextEntry.thread, mergedTurns);
+
+    if (cacheEntry.revision !== revision) {
+      return [];
+    }
+
     return mergedTurns;
   }
 
@@ -160,16 +179,34 @@ export class ThreadTurnSyncService {
     try {
       const previousThread = cacheEntry.thread;
       const previousSignature = createCacheSignature(cacheEntry);
-      let latestTurns: unknown[];
+      const revision = cacheEntry.revision;
+      let latest: LatestThreadLoad;
 
       try {
-        latestTurns = await this.loadLatest(client, cacheEntry);
+        latest = await this.readLatest(client, cacheEntry);
       } catch (error) {
         if (isUnmaterializedThreadError(error)) {
           return false;
         }
 
         throw error;
+      }
+
+      if (cacheEntry.revision !== revision) {
+        return false;
+      }
+
+      const nextEntry = this.options.threadTurnCache.getOrCreate(latest.thread);
+      this.options.threadTurnCache.mergeLatestTurns(
+        nextEntry,
+        latest.turns,
+        latest.olderCursor
+      );
+      const latestTurns = readMergedTurns(nextEntry, latest.turns);
+      await this.reconcileTurns(nextEntry.thread, latestTurns);
+
+      if (cacheEntry.revision !== revision) {
+        return false;
       }
 
       const nextSignature = createCacheSignature(cacheEntry);
@@ -180,7 +217,17 @@ export class ThreadTurnSyncService {
       }
 
       await this.options.threadCacheService.writeIndex([cacheEntry.thread]);
+
+      if (cacheEntry.revision !== revision) {
+        return false;
+      }
+
       await this.options.threadCacheService.writeDelta(cacheEntry, latestTurns);
+
+      if (cacheEntry.revision !== revision) {
+        return false;
+      }
+
       this.options.events.emit({
         type: "thread.turns.synced",
         sourceId: cacheEntry.thread.sourceId,
@@ -205,6 +252,36 @@ export class ThreadTurnSyncService {
   }
 
   /**
+   * Reads the latest thread page without mutating the shared cache entry.
+   *
+   * @param client Codex app-server client.
+   * @param cacheEntry In-memory thread cache entry used for fallback metadata.
+   * @returns Fresh metadata and latest turn page.
+   */
+  private async readLatest(
+    client: CodexAppServerClient,
+    cacheEntry: ThreadTurnCacheEntry
+  ): Promise<LatestThreadLoad> {
+    const response = await client.readThread(cacheEntry.thread.id, false);
+    const responseObject = readObject(response);
+    const thread = {
+      ...mapThread(
+        responseObject.thread,
+        cacheEntry.thread.model,
+        cacheEntry.thread.reasoningEffort
+      ),
+      sourceId: cacheEntry.thread.sourceId
+    };
+    const latestTurns = await this.options.pageLoader.readLatest(client, cacheEntry.thread.id);
+
+    return {
+      thread,
+      turns: latestTurns.turns,
+      olderCursor: latestTurns.olderCursor
+    };
+  }
+
+  /**
    * Synchronizes a cached thread from Codex without loading its full history.
    *
    * @param threadId Thread identifier.
@@ -214,6 +291,16 @@ export class ThreadTurnSyncService {
   async syncCached(
     threadId: string,
     sourceIdOverride: string | null = null
+  ): Promise<void> {
+    return this.runSerialized(threadId, () => (
+      this.syncCachedNow(threadId, sourceIdOverride)
+    ));
+  }
+
+  /** Synchronizes a cached thread inside the per-thread synchronization chain. */
+  private async syncCachedNow(
+    threadId: string,
+    sourceIdOverride: string | null
   ): Promise<void> {
     const syncStartedAt = Date.now();
 
@@ -271,6 +358,24 @@ export class ThreadTurnSyncService {
     if (didSyncTurns) {
       this.options.events.emit({ type: "thread.metadata.updated", thread: cacheEntry.thread });
     }
+  }
+
+  /** Queues one synchronization and keeps failures from poisoning later work. */
+  private runSerialized(
+    threadId: string,
+    operation: () => Promise<void>
+  ): Promise<void> {
+    const previous = this.synchronizationChains.get(threadId) ?? Promise.resolve();
+    const current = previous.catch(() => undefined).then(operation);
+    this.synchronizationChains.set(threadId, current);
+
+    void current.finally(() => {
+      if (this.synchronizationChains.get(threadId) === current) {
+        this.synchronizationChains.delete(threadId);
+      }
+    }).catch(() => undefined);
+
+    return current;
   }
 
   /**

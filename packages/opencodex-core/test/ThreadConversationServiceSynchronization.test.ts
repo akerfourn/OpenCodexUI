@@ -98,6 +98,40 @@ describe("ThreadConversationService synchronization", () => {
     expect(fixture.deltaTurns).toEqual([]);
   });
 
+  it("should discard a sync result that started before a destructive turn replacement", async () => {
+    vi.useFakeTimers();
+    let resolveLatestTurns: ((turns: unknown[]) => void) | null = null;
+    const latestTurns = new Promise<unknown[]>((resolve) => {
+      resolveLatestTurns = resolve;
+    });
+    const fixture = createFixture({
+      seedTurns: [createTurn("turn-old", "old")],
+      latestTurnsPromise: latestTurns
+    });
+
+    const synchronization = fixture.service.syncCompletedTurn("thread-1", "source-1");
+    await vi.advanceTimersByTimeAsync(500);
+    fixture.threadTurnCache.replaceThreadTurns(
+      createThread(),
+      [createTurn("turn-new", "new")]
+    );
+    resolveLatestTurns?.([createTurn("turn-old", "stale")]);
+
+    await synchronization;
+
+    const cacheEntry = fixture.threadTurnCache.get("thread-1");
+
+    expect(cacheEntry).not.toBeNull();
+    expect(cacheEntry === null ? [] : fixture.threadTurnCache.toTurns(cacheEntry)).toEqual([
+      expect.objectContaining({ id: "turn-new" })
+    ]);
+    expect(fixture.events.map((event) => event.type)).toEqual([
+      "thread.sync.started",
+      "thread.sync.completed"
+    ]);
+    expect(fixture.deltaTurns).toEqual([]);
+  });
+
   it("returns without a client or events when no source is known", async () => {
     vi.useFakeTimers();
     const fixture = createFixture({
@@ -151,6 +185,8 @@ type SynchronizationFixtureOptions = {
   seedThread?: boolean;
   /** Latest turns returned by Codex. */
   latestTurns?: unknown[];
+  /** Deferred latest turns used to reproduce a replacement race. */
+  latestTurnsPromise?: Promise<unknown[]>;
   /** Error raised while reading the latest turns. */
   latestTurnsError?: Error;
 };
@@ -172,6 +208,8 @@ type SynchronizationFixture = {
   reconciledThreads: Array<{ sourceId: string; threadId: string }>;
   /** Waits for a service event without polling or real timers. */
   waitForEvent(eventType: OpenCodexEvent["type"]): Promise<void>;
+  /** In-memory cache used to inspect replacement invalidation. */
+  threadTurnCache: ThreadTurnCache;
 };
 
 /** Creates a deterministic service with observable sync boundaries. */
@@ -256,7 +294,8 @@ function createFixture(
     indexedThreads,
     deltaTurns,
     reconciledThreads,
-    waitForEvent: (eventType) => registerEventWaiter(events, eventWaiters, eventType)
+    waitForEvent: (eventType) => registerEventWaiter(events, eventWaiters, eventType),
+    threadTurnCache
   };
 }
 
@@ -401,8 +440,12 @@ class SynchronizationCodexClient {
       throw this.options.latestTurnsError;
     }
 
+    const configuredTurns = this.options.latestTurnsPromise === undefined
+      ? this.options.latestTurns ?? []
+      : await this.options.latestTurnsPromise;
+
     return {
-      data: this.options.latestTurns ?? [],
+      data: configuredTurns,
       nextCursor: null
     };
   }

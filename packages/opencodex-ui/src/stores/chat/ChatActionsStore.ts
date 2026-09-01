@@ -194,10 +194,10 @@ export class ChatActionsStore {
       return this.steerActiveTurn(trimmedText, plainAttachments, plainReferences);
     }
 
-    this.parent.runtime.beginTurnStart();
+    const startAttemptId = this.parent.runtime.beginTurnStart(true, trimmedText);
     this.createOptimisticUserTurn(trimmedText, plainAttachments);
 
-    void this.root.request({
+    void this.root.request<{ turnId?: string }>({
       type: "turn.start",
       threadId: this.parent.thread.id,
       projectPath: this.projectStore.projectPath,
@@ -208,9 +208,15 @@ export class ChatActionsStore {
       model,
       reasoningEffort,
       serviceTier
+    }).then((result) => {
+      const turnId = requireTurnId(result);
+
+      runInAction(() => {
+        this.parent.confirmTurnStarted(startAttemptId, turnId);
+      });
     }).catch((error: unknown) => {
       runInAction(() => {
-        this.clearPendingTurnAfterStartFailure();
+        this.clearPendingTurnAfterStartFailure(startAttemptId);
         this.root.appStore.errorMessage = readChatErrorMessage(error);
       });
     });
@@ -266,7 +272,7 @@ export class ChatActionsStore {
       return false;
     }
 
-    this.parent.runtime.beginLastTurnEdit();
+    const startAttemptId = this.parent.runtime.beginLastTurnEdit(trimmedText);
     this.parent.timeline.setTurns(this.parent.timeline.turns.slice(0, -1));
     this.parent.runtime.clearPendingTurn();
     this.createOptimisticUserTurn(trimmedText, plainAttachments);
@@ -285,7 +291,7 @@ export class ChatActionsStore {
     }).then((result) => {
       const targetThreadId = result.threadId ?? this.parent.thread.id;
 
-      void this.root.request({
+      void this.root.request<{ turnId?: string }>({
         type: "turn.start",
         threadId: targetThreadId,
         projectPath: this.projectStore.projectPath,
@@ -296,9 +302,16 @@ export class ChatActionsStore {
         model,
         reasoningEffort,
         serviceTier
+      }).then((result) => {
+        const turnId = requireTurnId(result);
+
+        runInAction(() => {
+          this.parent.confirmTurnStarted(startAttemptId, turnId);
+        });
       }).catch((error: unknown) => {
         runInAction(() => {
           this.parent.runtime.clearEditStart();
+          this.parent.discardPendingLiveEvents();
           this.root.appStore.errorMessage = readChatErrorMessage(error);
         });
       });
@@ -306,6 +319,7 @@ export class ChatActionsStore {
       runInAction(() => {
         this.parent.timeline.setTurns(previousTurns);
         this.parent.runtime.clearAfterEditFailure();
+        this.parent.discardPendingLiveEvents();
         this.root.appStore.errorMessage = readChatErrorMessage(error);
       });
     });
@@ -419,6 +433,7 @@ export class ChatActionsStore {
     void this.root.request(request).catch((error: unknown) => {
       runInAction(() => {
         this.parent.runtime.clearTurnStart();
+        this.parent.discardPendingLiveEvents();
         this.root.appStore.errorMessage = readChatErrorMessage(error);
       });
     });
@@ -484,10 +499,15 @@ export class ChatActionsStore {
   /**
    * Clears optimistic turn state after a failed start-turn request.
    */
-  private clearPendingTurnAfterStartFailure(): void {
+  private clearPendingTurnAfterStartFailure(attemptId: number): void {
+    if (!this.parent.runtime.isCurrentTurnStartAttempt(attemptId)) {
+      return;
+    }
+
     const pendingTurnId = this.parent.runtime.pendingTurnId;
 
     this.parent.runtime.clearAfterStartFailure();
+    this.parent.discardPendingLiveEvents();
 
     if (pendingTurnId === null) {
       return;
@@ -495,4 +515,15 @@ export class ChatActionsStore {
 
     this.parent.timeline.removePendingTurn(pendingTurnId);
   }
+}
+
+/** Validates the turn identifier returned by a request-bound turn start. */
+function requireTurnId(result: { turnId?: string } | null | undefined): string {
+  const turnId = result?.turnId?.trim() ?? "";
+
+  if (turnId.length === 0) {
+    throw new Error("Codex did not return a turn identifier.");
+  }
+
+  return turnId;
 }

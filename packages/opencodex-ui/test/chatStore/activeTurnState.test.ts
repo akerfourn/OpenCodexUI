@@ -1,5 +1,6 @@
 /** Covers active-turn lifecycle, recovery, editing, and runtime polling. */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { OpenCodexActivity } from "@open-codex-ui/opencodex-protocol";
 
 import { ChatStore } from "../../src/stores/chat/ChatStore";
 import { ProjectThreadEventsStore } from "../../src/stores/project/threads/ProjectThreadEventsStore";
@@ -21,6 +22,112 @@ afterEach(() => {
 });
 
 describe("ChatStore active turn state", () => {
+  it("should replay only the request-confirmed turn events", async () => {
+    const rootStore = createRootStore();
+    let resolveStart: ((result: { turnId: string }) => void) | null = null;
+    const startRequest = new Promise<{ turnId: string }>((resolve) => {
+      resolveStart = resolve;
+    });
+    vi.mocked(rootStore.request).mockReturnValueOnce(startRequest);
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+
+    await expect(chatStore.actions.send("new request")).resolves.toBe(true);
+
+    chatStore.applyMessageStarted({
+      id: "old-user-message",
+      threadId: "thread-1",
+      role: "user",
+      content: "old request",
+      status: "completed",
+      createdAt: null
+    });
+    chatStore.applyTurnStarted("old-turn");
+    chatStore.applyMessageDelta("old-turn", "old-message", "old answer", "final_answer");
+    chatStore.applyActivityUpdated(createActivity("old-turn", "old-activity"));
+    chatStore.applyTurnCompleted("old-turn", 10, "completed");
+    chatStore.applyMessageDelta("new-turn", "new-message", "new answer", "final_answer");
+
+    expect(chatStore.runtime.isStartingTurn).toBe(true);
+    expect(chatStore.runtime.activeTurnId).toBeNull();
+    expect(chatStore.timeline.turns).toHaveLength(1);
+    expect(chatStore.timeline.turns[0]?.items).toHaveLength(1);
+
+    resolveStart?.({ turnId: "new-turn" });
+    await flushPromises();
+
+    expect(chatStore.runtime.activeTurnId).toBe("new-turn");
+    expect(chatStore.timeline.turns.map((turn) => turn.id)).toEqual(["new-turn"]);
+    expect(chatStore.timeline.turns[0]?.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ content: "new request" }),
+      expect.objectContaining({ content: "new answer" })
+    ]));
+    expect(chatStore.timeline.turns[0]?.items).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ content: "old answer" }),
+      expect.objectContaining({ id: "old-activity" })
+    ]));
+
+    chatStore.applyMessageDelta("old-turn", "late-old-message", "late old answer", "final_answer");
+    chatStore.applyActivityUpdated(createActivity("old-turn", "late-old-activity"));
+    chatStore.applyTurnStarted("old-turn");
+
+    expect(chatStore.timeline.turns[0]?.items).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ content: "late old answer" }),
+      expect.objectContaining({ id: "late-old-activity" })
+    ]));
+    expect(chatStore.runtime.activeTurnId).toBe("new-turn");
+
+    chatStore.dispose();
+  });
+
+  it("should ignore a late start event for a completed historical turn", () => {
+    const chatStore = createChatStore({});
+    const completedTurn = createTurn("old-turn", "running");
+
+    chatStore.timeline.setTurns([completedTurn]);
+    chatStore.runtime.isWorking = true;
+    chatStore.runtime.activeTurnId = completedTurn.id;
+    chatStore.applyTurnCompleted(completedTurn.id, 10, "completed");
+    chatStore.applyTurnStarted("old-turn");
+
+    expect(chatStore.runtime.activeTurnId).toBeNull();
+    expect(chatStore.runtime.isWorking).toBe(false);
+
+    chatStore.dispose();
+  });
+
+  it("should apply a completion received before request confirmation to the confirmed turn", async () => {
+    const rootStore = createRootStore();
+    let resolveStart: ((result: { turnId: string }) => void) | null = null;
+    const startRequest = new Promise<{ turnId: string }>((resolve) => {
+      resolveStart = resolve;
+    });
+    vi.mocked(rootStore.request).mockReturnValueOnce(startRequest);
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+
+    void chatStore.actions.send("quick request");
+    chatStore.applyTurnStarted("quick-turn");
+    chatStore.applyMessageDelta("quick-turn", "quick-message", "done", "final_answer");
+    chatStore.applyTurnCompleted("quick-turn", 42, "completed");
+
+    expect(chatStore.runtime.isStartingTurn).toBe(true);
+    expect(chatStore.runtime.isWorking).toBe(false);
+
+    resolveStart?.({ turnId: "quick-turn" });
+    await flushPromises();
+
+    expect(chatStore.runtime.isStartingTurn).toBe(false);
+    expect(chatStore.runtime.isWorking).toBe(false);
+    expect(chatStore.runtime.activeTurnId).toBeNull();
+    expect(chatStore.timeline.turns[0]).toMatchObject({
+      id: "quick-turn",
+      status: "completed",
+      durationMs: 42
+    });
+    expect(chatStore.timeline.turns[0]?.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ content: "done" })
+    ]));
+  });
+
   it("should preserve an active turn when a rename succeeds", async () => {
     const rootStore = createRootStore();
     const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
@@ -472,6 +579,18 @@ describe("ChatStore active turn state", () => {
     });
   });
 });
+
+/** Creates a live activity tagged with a specific Codex turn. */
+function createActivity(turnId: string, id: string): OpenCodexActivity {
+  return {
+    id,
+    threadId: "thread-1",
+    kind: "reasoning",
+    title: turnId,
+    content: `${id} content`,
+    status: "running"
+  };
+}
 
 /** Creates a pending turn with a user item for pending-id transition tests. */
 function createPendingTurn(id: string, content: string) {

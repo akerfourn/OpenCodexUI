@@ -29,6 +29,8 @@ import {
 
 export type ThreadTurnCacheEntry = {
   thread: OpenCodexThread;
+  /** Incremented whenever a destructive snapshot replacement invalidates readers. */
+  revision: number;
   turnsById: Map<string, unknown>;
   turnItemsById: Map<string, Map<string, Record<string, unknown>>>;
   liveTextBuffers: Map<string, LiveTurnTextBuffers>;
@@ -139,6 +141,7 @@ export class ThreadTurnCache {
 
     const created: ThreadTurnCacheEntry = {
       thread,
+      revision: 0,
       turnsById: new Map(),
       turnItemsById: new Map(),
       liveTextBuffers: new Map(),
@@ -396,6 +399,7 @@ export class ThreadTurnCache {
    */
   replaceFromSnapshot(snapshot: CachedThreadSnapshot): ThreadTurnCacheEntry {
     const entry = this.getOrCreate(snapshot.thread);
+    entry.revision += 1;
     entry.turnsById.clear();
     entry.turnItemsById.clear();
     entry.liveTextBuffers.clear();
@@ -416,6 +420,7 @@ export class ThreadTurnCache {
    */
   replaceThreadTurns(thread: OpenCodexThread, turns: unknown[]): ThreadTurnCacheEntry {
     const entry = this.getOrCreate(thread);
+    entry.revision += 1;
     entry.turnsById.clear();
     entry.turnItemsById.clear();
     entry.liveTextBuffers.clear();
