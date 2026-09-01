@@ -3,12 +3,19 @@
  */
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
-import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexProject,
+  OpenCodexProjectContextFolder,
+  OpenCodexProjectContextFolderPermission,
+  OpenCodexProjectContextEnvFilePermission
+} from "@open-codex-ui/opencodex-protocol";
 
 import { toError } from "../shared/errors.js";
 import type { ClientPort } from "../runtime/runtimePorts.js";
 
 const defaultProfileId = "opencodex-context";
+const defaultContextFolderPermission: OpenCodexProjectContextFolderPermission = "read";
+const defaultEnvFilePermission: OpenCodexProjectContextEnvFilePermission = "deny";
 const defaultBlockStart = "# BEGIN OpenCodexUI managed default permissions";
 const defaultBlockEnd = "# END OpenCodexUI managed default permissions";
 const blockStart = "# BEGIN OpenCodexUI managed context permissions";
@@ -57,7 +64,7 @@ export class ProjectContextService {
     const previousConfig = await this.readConfigFile(client, configPath);
     const managedBlock = buildManagedConfigBlock({
       projectPath: project.path,
-      externalPaths: enabledFolders.map((folder) => folder.path),
+      externalFolders: enabledFolders,
       profileId
     });
     const nextConfig = replaceManagedBlock(previousConfig, managedBlock, profileId);
@@ -194,7 +201,7 @@ export class ProjectContextService {
 
 type ManagedConfigBlockInput = {
   projectPath: string;
-  externalPaths: string[];
+  externalFolders: Array<Pick<OpenCodexProjectContextFolder, "path" | "permission" | "envFilePermission">>;
   profileId: string;
 };
 
@@ -205,9 +212,10 @@ type ManagedConfigBlockInput = {
  * @returns TOML block managed by OpenCodexUI.
  */
 export function buildManagedConfigBlock(input: ManagedConfigBlockInput): string {
-  const uniqueExternalPaths = Array.from(new Set(input.externalPaths))
-    .filter((path) => path !== input.projectPath);
-  const protectedPaths = [input.projectPath, ...uniqueExternalPaths];
+  const uniqueExternalFolders = input.externalFolders.filter((folder, index, folders) => (
+    folder.path !== input.projectPath &&
+    folders.findIndex((candidate) => candidate.path === folder.path) === index
+  ));
   const lines = [
     blockStart,
     `[permissions.${input.profileId}]`,
@@ -224,12 +232,17 @@ export function buildManagedConfigBlock(input: ManagedConfigBlockInput): string 
     `[permissions.${input.profileId}.filesystem]`
   );
 
-  for (const path of uniqueExternalPaths) {
-    lines.push(`${quoteTomlKey(path)} = "read"`);
+  for (const folder of uniqueExternalFolders) {
+    const permission = normalizeContextFolderPermission(folder.permission);
+    lines.push(`${quoteTomlKey(folder.path)} = "${permission}"`);
   }
 
-  for (const path of protectedPaths) {
-    lines.push(`${quoteTomlKey(joinSourcePath(path, "**", "*.env"))} = "deny"`);
+  for (const folder of uniqueExternalFolders) {
+    const permission = normalizeContextFolderPermission(folder.permission);
+    const envFilePermission = normalizeEnvFilePermission(folder.envFilePermission, permission);
+    lines.push(
+      `${quoteTomlKey(joinSourcePath(folder.path, "**", "*.env"))} = "${envFilePermission}"`
+    );
   }
 
   lines.push(blockEnd, "");
@@ -380,6 +393,36 @@ function findFirstTableIndex(config: string): number {
 function normalizeProfileId(value: string | null | undefined): string {
   const normalized = value?.trim();
   return normalized !== undefined && normalized.length > 0 ? normalized : defaultProfileId;
+}
+
+/**
+ * Normalizes the permission applied to external context `.env` files.
+ *
+ * @param value Optional permission value.
+ * @returns A supported permission, defaulting to deny.
+ */
+function normalizeContextFolderPermission(
+  value: OpenCodexProjectContextFolderPermission | null | undefined
+): OpenCodexProjectContextFolderPermission {
+  return value === "write" ? value : defaultContextFolderPermission;
+}
+
+/**
+ * Normalizes the permission applied to external context `.env` files.
+ *
+ * @param value Optional permission value.
+ * @param folderPermission Permission applied to the containing folder.
+ * @returns A supported permission compatible with the containing folder.
+ */
+function normalizeEnvFilePermission(
+  value: OpenCodexProjectContextEnvFilePermission | null | undefined,
+  folderPermission: OpenCodexProjectContextFolderPermission
+): OpenCodexProjectContextEnvFilePermission {
+  if (value === "write" && folderPermission === "read") {
+    return defaultEnvFilePermission;
+  }
+
+  return value === "read" || value === "write" ? value : defaultEnvFilePermission;
 }
 
 /**

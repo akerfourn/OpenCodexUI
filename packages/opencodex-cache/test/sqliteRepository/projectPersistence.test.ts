@@ -180,13 +180,17 @@ describe("project persistence", () => {
             id: "folder-1",
             path: "/tmp/project-docs",
             label: "Docs",
-            enabled: true
+            enabled: true,
+            permission: "write",
+            envFilePermission: "read"
           },
           {
             id: "folder-2",
             path: "/tmp/project-fixtures",
             label: null,
-            enabled: false
+            enabled: false,
+            permission: "read",
+            envFilePermission: "write"
           }
         ],
         lastSyncedAt: null
@@ -200,13 +204,17 @@ describe("project persistence", () => {
           id: "folder-1",
           path: "/tmp/project-docs",
           label: "Docs",
-          enabled: true
+          enabled: true,
+          permission: "write",
+          envFilePermission: "read"
         },
         {
           id: "folder-2",
           path: "/tmp/project-fixtures",
           label: null,
-          enabled: false
+          enabled: false,
+          permission: "read",
+          envFilePermission: "deny"
         }
       ],
       lastSyncedAt: null
@@ -216,6 +224,29 @@ describe("project persistence", () => {
     const persistedProject = projects.find((entry) => entry.id === project.id);
 
     expect(persistedProject?.preferences.context?.folders).toHaveLength(2);
+  });
+
+  it("should default legacy context preferences to denied env-file access", async () => {
+    const project = await repository.upsertProject("/tmp/legacy-project-context");
+
+    const updatedProject = await repository.updateProjectPreferences(project.id, {
+      context: {
+        folders: [
+          {
+            id: "folder-1",
+            path: "/tmp/project-docs",
+            label: null,
+            enabled: true
+          }
+        ],
+        lastSyncedAt: null
+      }
+    });
+
+    expect(updatedProject?.preferences.context?.folders?.[0]).toMatchObject({
+      permission: "read",
+      envFilePermission: "deny"
+    });
   });
 
   it("should keep projects hidden when the synced path is unavailable", async () => {
@@ -451,4 +482,3 @@ describe("project persistence", () => {
       .toBe("Projet conservé");
   });
 });
-

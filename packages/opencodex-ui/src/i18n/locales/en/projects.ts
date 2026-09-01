@@ -51,6 +51,17 @@ export const enProjects = {
     deleteTitle: "Remove this folder?",
     description: "Add folders Codex may read in addition to the current project.",
     empty: "No external folder configured.",
+    envFilePermission: ".env file access",
+    envFilePermissionDescription:
+      "Writing .env files is available only when the folder's general access allows writing.",
+    envFilePermissionDeny: "Deny access",
+    envFilePermissionRead: "Read only",
+    envFilePermissionWrite: "Read and write",
+    folderPermission: "Folder access",
+    folderPermissionDescription:
+      "This permission applies to files that are not .env files.",
+    folderPermissionRead: "Read only",
+    folderPermissionWrite: "Read and write",
     lastSynced: "Synced on {{date}}",
     manualPath: "Manual path",
     manualPathPlaceholder: "/path/to/folder",
@@ -62,6 +73,10 @@ export const enProjects = {
     renameTitle: "Rename folder",
     remove: "Remove folder",
     save: "Save",
+    permissions: "Edit access",
+    permissionsDescription:
+      "General access applies to non-.env files. .env files use the separate rule below.",
+    permissionsTitle: "Configure access",
     sourceUnavailable: "The project's Codex source is inactive.",
     sync: "Synchronize Codex configuration",
     toggle: "Enable folder",

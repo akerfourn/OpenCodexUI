@@ -50,6 +50,17 @@ export const frProjects = {
     deleteTitle: "Supprimer ce dossier ?",
     description: "Ajoutez des dossiers que Codex pourra lire en plus du projet courant.",
     empty: "Aucun dossier externe configuré.",
+    envFilePermission: "Accès aux fichiers .env",
+    envFilePermissionDescription:
+      "L'écriture des fichiers .env n'est disponible que si l'accès général du dossier est autorisé en écriture.",
+    envFilePermissionDeny: "Refuser l'accès",
+    envFilePermissionRead: "Lecture seule",
+    envFilePermissionWrite: "Lecture et écriture",
+    folderPermission: "Accès au dossier",
+    folderPermissionDescription:
+      "Cette permission s'applique aux fichiers qui ne sont pas des fichiers .env.",
+    folderPermissionRead: "Lecture seule",
+    folderPermissionWrite: "Lecture et écriture",
     lastSynced: "Synchronisé le {{date}}",
     manualPath: "Chemin manuel",
     manualPathPlaceholder: "/chemin/du/dossier",
@@ -61,6 +72,10 @@ export const frProjects = {
     renameTitle: "Renommer le dossier",
     remove: "Supprimer le dossier",
     save: "Enregistrer",
+    permissions: "Modifier les accès",
+    permissionsDescription:
+      "L'accès général s'applique aux fichiers non .env. Les fichiers .env utilisent la règle distincte ci-dessous.",
+    permissionsTitle: "Configurer les accès",
     sourceUnavailable: "La source Codex du projet est inactive.",
     sync: "Synchroniser la configuration Codex",
     toggle: "Activer le dossier",

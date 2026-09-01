@@ -167,6 +167,12 @@ export type OpenCodexProjectPreferences = {
   };
 };
 
+/** Permission applied to files in an external context folder. */
+export type OpenCodexProjectContextFolderPermission = "read" | "write";
+
+/** Permission applied to `.env` files inside external context folders. */
+export type OpenCodexProjectContextEnvFilePermission = "deny" | "read" | "write";
+
 /**
  * External context folder configured for one project.
  */
@@ -175,6 +181,8 @@ export type OpenCodexProjectContextFolder = {
   path: string;
   label: string | null;
   enabled: boolean;
+  permission?: OpenCodexProjectContextFolderPermission;
+  envFilePermission?: OpenCodexProjectContextEnvFilePermission;
 };
 
 /**

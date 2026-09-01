@@ -1,11 +1,12 @@
 /**
- * Renders one external read-only context folder row.
+ * Renders one external context folder row.
  */
 import CheckBoxOutlineBlankOutlinedIcon from "@mui/icons-material/CheckBoxOutlineBlankOutlined";
 import CheckBoxOutlinedIcon from "@mui/icons-material/CheckBoxOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import DriveFileRenameOutlineOutlinedIcon from "@mui/icons-material/DriveFileRenameOutlineOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
+import TuneOutlinedIcon from "@mui/icons-material/TuneOutlined";
 import {
   Box,
   Checkbox,
@@ -25,6 +26,7 @@ import type { OpenCodexProjectContextFolder } from "@open-codex-ui/opencodex-pro
 
 import type { ProjectContextStore } from "../../stores/project/ProjectContextStore";
 import { ProjectContextFolderDeleteDialog } from "./ProjectContextFolderDeleteDialog";
+import { ProjectContextFolderPermissionsDialogX } from "./ProjectContextFolderPermissionsDialog";
 import { ProjectContextFolderRenameDialog } from "./ProjectContextFolderRenameDialog";
 
 type ProjectContextFolderRowProps = {
@@ -46,6 +48,7 @@ export function ProjectContextFolderRow({
 }: ProjectContextFolderRowProps) {
   const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+  const [isPermissionsOpen, setPermissionsOpen] = useState(false);
   const [isRenameOpen, setRenameOpen] = useState(false);
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const folderName = folder.label ?? readFolderName(folder.path);
@@ -65,6 +68,15 @@ export function ProjectContextFolderRow({
   function handleOpenRename(): void {
     setRenameOpen(true);
     handleMenuClose();
+  }
+
+  function handleOpenPermissions(): void {
+    setPermissionsOpen(true);
+    handleMenuClose();
+  }
+
+  function handleClosePermissions(): void {
+    setPermissionsOpen(false);
   }
 
   function handleCloseRename(): void {
@@ -134,6 +146,12 @@ export function ProjectContextFolderRow({
         </span>
       </Tooltip>
       <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={handleMenuClose}>
+        <MenuItem disabled={disabled} onClick={handleOpenPermissions}>
+          <ListItemIcon>
+            <TuneOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          {t("contextFolders.permissions")}
+        </MenuItem>
         <MenuItem disabled={disabled} onClick={handleOpenRename}>
           <ListItemIcon>
             <DriveFileRenameOutlineOutlinedIcon fontSize="small" />
@@ -147,6 +165,13 @@ export function ProjectContextFolderRow({
           {t("contextFolders.remove")}
         </MenuItem>
       </Menu>
+      <ProjectContextFolderPermissionsDialogX
+        contextStore={contextStore}
+        folder={folder}
+        disabled={disabled}
+        open={isPermissionsOpen}
+        onClose={handleClosePermissions}
+      />
       <ProjectContextFolderRenameDialog
         open={isRenameOpen}
         disabled={disabled}

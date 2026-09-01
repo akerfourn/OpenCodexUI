@@ -50,6 +50,10 @@ export function cloneContextFolders(
     id: folder.id,
     path: folder.path,
     label: folder.label,
-    enabled: folder.enabled
+    enabled: folder.enabled,
+    ...(folder.permission !== undefined ? { permission: folder.permission } : {}),
+    ...(folder.envFilePermission !== undefined
+      ? { envFilePermission: folder.envFilePermission }
+      : {})
   }));
 }

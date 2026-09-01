@@ -1,9 +1,15 @@
 /**
  * Normalizes persisted project preferences.
  */
-import type { CachedProjectPreferences } from "../../types.js";
+import type {
+  CachedProjectContextEnvFilePermission,
+  CachedProjectContextFolderPermission,
+  CachedProjectPreferences
+} from "../../types.js";
 
 const defaultPermissionsProfileId = "opencodex-context";
+const defaultContextFolderPermission: CachedProjectContextFolderPermission = "read";
+const defaultEnvFilePermission: CachedProjectContextEnvFilePermission = "deny";
 type NormalizedContextFolder = NonNullable<
   NonNullable<CachedProjectPreferences["context"]>["folders"]
 >[number];
@@ -142,7 +148,11 @@ function normalizeContextPreferences(value: unknown): CachedProjectPreferences["
   const folders = normalizeContextFolders(value.folders);
   const lastSyncedAt = normalizeNullableText(value.lastSyncedAt);
 
-  if (folders.length === 0 && lastSyncedAt === undefined && permissionsProfileId === defaultPermissionsProfileId) {
+  if (
+    folders.length === 0 &&
+    lastSyncedAt === undefined &&
+    permissionsProfileId === defaultPermissionsProfileId
+  ) {
     return undefined;
   }
 
@@ -151,6 +161,20 @@ function normalizeContextPreferences(value: unknown): CachedProjectPreferences["
     folders,
     lastSyncedAt: lastSyncedAt ?? null
   };
+}
+
+/**
+ * Normalizes the permission applied to external context `.env` files.
+ *
+ * @param value Unknown permission value from persisted JSON.
+ * @returns A supported permission, or `undefined` when invalid or absent.
+ */
+function normalizeEnvFilePermission(value: unknown): CachedProjectContextEnvFilePermission | undefined {
+  if (value === "deny" || value === "read" || value === "write") {
+    return value;
+  }
+
+  return undefined;
 }
 
 /**
@@ -197,12 +221,33 @@ function normalizeContextFolder(
     return null;
   }
 
+  const permission = normalizeContextFolderPermission(value.permission) ?? defaultContextFolderPermission;
+  const envFilePermission = normalizeEnvFilePermission(value.envFilePermission) ?? defaultEnvFilePermission;
+
   return {
     id,
     path,
     label: normalizeNullableText(value.label) ?? null,
-    enabled: value.enabled !== false
+    enabled: value.enabled !== false,
+    permission,
+    envFilePermission: permission === "read" && envFilePermission === "write"
+      ? defaultEnvFilePermission
+      : envFilePermission
   };
+}
+
+/**
+ * Normalizes the permission applied to an external context folder.
+ *
+ * @param value Unknown permission value from persisted JSON.
+ * @returns A supported folder permission, or `undefined` when invalid or absent.
+ */
+function normalizeContextFolderPermission(value: unknown): CachedProjectContextFolderPermission | undefined {
+  if (value === "read" || value === "write") {
+    return value;
+  }
+
+  return undefined;
 }
 
 /**

@@ -10,13 +10,24 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   TextField,
   Typography
 } from "@mui/material";
+import type { SelectChangeEvent } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { type ChangeEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+
+import type {
+  OpenCodexProjectContextEnvFilePermission,
+  OpenCodexProjectContextFolderPermission
+} from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectContextStore } from "../../stores/project/ProjectContextStore";
 
@@ -39,6 +50,8 @@ export function ProjectContextFolderAddDialog({
 }: ProjectContextFolderAddDialogProps) {
   const { t } = useTranslation();
   const [folderPath, setFolderPath] = useState("");
+  const [folderPermission, setFolderPermission] = useState<OpenCodexProjectContextFolderPermission>("read");
+  const [envFilePermission, setEnvFilePermission] = useState<OpenCodexProjectContextEnvFilePermission>("deny");
   const normalizedPath = folderPath.trim();
   const isBusy = contextStore.isPickingFolder || contextStore.isSaving;
   const canAddManualPath = normalizedPath.length > 0 && !isBusy;
@@ -46,11 +59,41 @@ export function ProjectContextFolderAddDialog({
   useEffect(() => {
     if (open) {
       setFolderPath("");
+      setFolderPermission("read");
+      setEnvFilePermission("deny");
     }
   }, [open]);
 
   function handlePathChange(event: ChangeEvent<HTMLInputElement>): void {
     setFolderPath(event.target.value);
+  }
+
+  function handleFolderPermissionChange(event: SelectChangeEvent): void {
+    const permission = event.target.value;
+
+    if (!isFolderPermission(permission)) {
+      return;
+    }
+
+    setFolderPermission(permission);
+
+    if (permission === "read" && envFilePermission === "write") {
+      setEnvFilePermission("deny");
+    }
+  }
+
+  function handleEnvFilePermissionChange(event: SelectChangeEvent): void {
+    const permission = event.target.value;
+
+    if (!isEnvFilePermission(permission)) {
+      return;
+    }
+
+    if (permission === "write" && folderPermission === "read") {
+      return;
+    }
+
+    setEnvFilePermission(permission);
   }
 
   async function handlePickLocalFolder(): Promise<void> {
@@ -66,7 +109,10 @@ export function ProjectContextFolderAddDialog({
       return;
     }
 
-    await contextStore.addFolder(normalizedPath);
+    await contextStore.addFolder(normalizedPath, {
+      permission: folderPermission,
+      envFilePermission
+    });
     onClose();
   }
 
@@ -98,6 +144,39 @@ export function ProjectContextFolderAddDialog({
             placeholder={t("contextFolders.manualPathPlaceholder")}
             onChange={handlePathChange}
           />
+          <FormControl fullWidth size="small">
+            <InputLabel id="context-folder-permission-label">
+              {t("contextFolders.folderPermission")}
+            </InputLabel>
+            <Select
+              labelId="context-folder-permission-label"
+              label={t("contextFolders.folderPermission")}
+              value={folderPermission}
+              onChange={handleFolderPermissionChange}
+            >
+              <MenuItem value="read">{t("contextFolders.folderPermissionRead")}</MenuItem>
+              <MenuItem value="write">{t("contextFolders.folderPermissionWrite")}</MenuItem>
+            </Select>
+            <FormHelperText>{t("contextFolders.folderPermissionDescription")}</FormHelperText>
+          </FormControl>
+          <FormControl fullWidth size="small">
+            <InputLabel id="context-env-file-permission-label">
+              {t("contextFolders.envFilePermission")}
+            </InputLabel>
+            <Select
+              labelId="context-env-file-permission-label"
+              label={t("contextFolders.envFilePermission")}
+              value={envFilePermission}
+              onChange={handleEnvFilePermissionChange}
+            >
+              <MenuItem value="deny">{t("contextFolders.envFilePermissionDeny")}</MenuItem>
+              <MenuItem value="read">{t("contextFolders.envFilePermissionRead")}</MenuItem>
+              {folderPermission === "write" ? (
+                <MenuItem value="write">{t("contextFolders.envFilePermissionWrite")}</MenuItem>
+              ) : null}
+            </Select>
+            <FormHelperText>{t("contextFolders.envFilePermissionDescription")}</FormHelperText>
+          </FormControl>
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -122,3 +201,23 @@ export function ProjectContextFolderAddDialog({
 }
 
 export const ProjectContextFolderAddDialogX = observer(ProjectContextFolderAddDialog);
+
+/**
+ * Checks whether a select value is a supported context-folder permission.
+ *
+ * @param value Raw select value.
+ * @returns Whether the value is supported.
+ */
+function isFolderPermission(value: string): value is OpenCodexProjectContextFolderPermission {
+  return value === "read" || value === "write";
+}
+
+/**
+ * Checks whether a select value is a supported `.env` permission.
+ *
+ * @param value Raw select value.
+ * @returns Whether the value is supported.
+ */
+function isEnvFilePermission(value: string): value is OpenCodexProjectContextEnvFilePermission {
+  return value === "deny" || value === "read" || value === "write";
+}

@@ -83,12 +83,20 @@ export type CachedProjectPreferences = {
   };
 };
 
+/** Permission applied to files in an external context folder. */
+export type CachedProjectContextFolderPermission = "read" | "write";
+
+/** Permission applied to `.env` files inside external context folders. */
+export type CachedProjectContextEnvFilePermission = "deny" | "read" | "write";
+
 /**
- * External folder that should be exposed as read-only project context.
+ * External folder that should be exposed as project context.
  */
 export type CachedProjectContextFolder = {
   id: string;
   path: string;
   label: string | null;
   enabled: boolean;
+  permission?: CachedProjectContextFolderPermission;
+  envFilePermission?: CachedProjectContextEnvFilePermission;
 };

@@ -11,7 +11,9 @@ describe("project preferences DTO", () => {
       id: "folder-1",
       path: "/workspace/docs",
       label: "Docs",
-      enabled: true
+      enabled: true,
+      permission: "write",
+      envFilePermission: "read"
     };
     const preferences = {
       git: {

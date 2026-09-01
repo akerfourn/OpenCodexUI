@@ -10,7 +10,10 @@ describe("ProjectContextService", () => {
     const block = buildManagedConfigBlock({
       profileId: "opencodex-context",
       projectPath: "/workspace/app",
-      externalPaths: ["/workspace/docs"]
+      externalFolders: [
+        { path: "/workspace/app" },
+        { path: "/workspace/docs" }
+      ]
     });
 
     expect(block).toContain("[permissions.opencodex-context.workspace_roots]");
@@ -18,12 +21,31 @@ describe("ProjectContextService", () => {
     expect(block).toContain("\"/workspace/app\" = true");
     expect(block).not.toContain("\"/workspace/docs\" = true");
     expect(block).toContain("\"/workspace/docs\" = \"read\"");
-    expect(block).toContain("\"/workspace/app/**/*.env\" = \"deny\"");
+    expect(block).not.toContain("\"/workspace/app/**/*.env\" = \"deny\"");
     expect(block).toContain("\"/workspace/docs/**/*.env\" = \"deny\"");
     expect(block).not.toContain("\":minimal\" = \"read\"");
     expect(block).not.toContain("\"**/*.env\" = \"deny\"");
     expect(block).not.toContain("[permissions.opencodex-context.network]");
   });
+
+  it.each([
+    { permission: "read", envFilePermission: "read", expectedEnvPermission: "read" },
+    { permission: "write", envFilePermission: "write", expectedEnvPermission: "write" },
+    { permission: "read", envFilePermission: "write", expectedEnvPermission: "deny" }
+  ] as const)(
+    "should apply folder permission $permission and compatible env permission",
+    ({ permission, envFilePermission, expectedEnvPermission }) => {
+      const block = buildManagedConfigBlock({
+        profileId: "opencodex-context",
+        projectPath: "/workspace/app",
+        externalFolders: [{ path: "/workspace/docs", permission, envFilePermission }],
+      });
+
+      expect(block).toContain(`"/workspace/docs" = "${permission}"`);
+      expect(block).toContain(`"/workspace/docs/**/*.env" = "${expectedEnvPermission}"`);
+      expect(block).not.toContain("\"/workspace/app/**/*.env\"");
+    }
+  );
 
   it("should replace only the managed config block", () => {
     const previousConfig = [
@@ -38,7 +60,7 @@ describe("ProjectContextService", () => {
     const nextBlock = buildManagedConfigBlock({
       profileId: "opencodex-context",
       projectPath: "/workspace/app",
-      externalPaths: ["/workspace/docs"]
+      externalFolders: [{ path: "/workspace/docs" }]
     });
 
     const result = replaceManagedBlock(previousConfig, nextBlock, "opencodex-context");
@@ -56,7 +78,7 @@ describe("ProjectContextService", () => {
     const nextBlock = buildManagedConfigBlock({
       profileId: "opencodex-context",
       projectPath: "/workspace/app",
-      externalPaths: []
+      externalFolders: []
     });
 
     expect(() => {
@@ -68,7 +90,7 @@ describe("ProjectContextService", () => {
     const nextBlock = buildManagedConfigBlock({
       profileId: "opencodex-context",
       projectPath: "/workspace/app",
-      externalPaths: []
+      externalFolders: []
     });
 
     expect(() => {

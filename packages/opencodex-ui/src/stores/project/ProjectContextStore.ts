@@ -2,7 +2,9 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexProject,
+  OpenCodexProjectContextEnvFilePermission,
   OpenCodexProjectContextFolder,
+  OpenCodexProjectContextFolderPermission,
   OpenCodexProjectPreferences
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -14,9 +16,15 @@ import {
 } from "./projectPreferencesDto";
 
 const defaultPermissionsProfileId = "opencodex-context";
+const defaultContextFolderPermission: OpenCodexProjectContextFolderPermission = "read";
+const defaultEnvFilePermission: OpenCodexProjectContextEnvFilePermission = "deny";
+
+type ContextFolderPermissionOptions = Partial<
+  Pick<OpenCodexProjectContextFolder, "permission" | "envFilePermission">
+>;
 
 /**
- * Stores project-level external read-only context folders.
+ * Stores project-level external context folders and their permissions.
  */
 export class ProjectContextStore {
   /** Whether the native folder picker is currently open. */
@@ -52,6 +60,19 @@ export class ProjectContextStore {
     return this.projectStore.project.preferences.context?.permissionsProfileId ?? defaultPermissionsProfileId;
   }
 
+  /** Returns the effective permission applied to one external context folder. */
+  getFolderPermission(folder: OpenCodexProjectContextFolder): OpenCodexProjectContextFolderPermission {
+    return folder.permission ?? defaultContextFolderPermission;
+  }
+
+  /** Returns the effective `.env` permission compatible with one context folder. */
+  getFolderEnvFilePermission(folder: OpenCodexProjectContextFolder): OpenCodexProjectContextEnvFilePermission {
+    return normalizeEnvFilePermission(
+      folder.envFilePermission,
+      this.getFolderPermission(folder)
+    );
+  }
+
   /** Timestamp of the last successful local config sync. */
   get lastSyncedAt(): string | null {
     return this.projectStore.project.preferences.context?.lastSyncedAt ?? null;
@@ -71,9 +92,10 @@ export class ProjectContextStore {
    * Adds an external context folder or re-enables an existing one.
    *
    * @param path Folder path.
+   * @param options Optional permissions for a new or re-enabled folder.
    * @returns Promise resolved when preferences are persisted.
    */
-  async addFolder(path: string): Promise<void> {
+  async addFolder(path: string, options?: ContextFolderPermissionOptions): Promise<void> {
     const normalizedPath = path.trim();
 
     if (normalizedPath.length === 0) {
@@ -83,10 +105,20 @@ export class ProjectContextStore {
     const existingFolder = this.folders.find((folder) => folder.path === normalizedPath);
 
     if (existingFolder !== undefined) {
-      await this.updateFolder(existingFolder.id, { enabled: true });
+      const permissionPatch = options === undefined
+        ? {}
+        : {
+            permission: normalizeFolderPermission(options.permission ?? existingFolder.permission),
+            envFilePermission: normalizeEnvFilePermission(
+              options.envFilePermission ?? existingFolder.envFilePermission,
+              normalizeFolderPermission(options.permission ?? existingFolder.permission)
+            )
+          };
+      await this.updateFolder(existingFolder.id, { enabled: true, ...permissionPatch });
       return;
     }
 
+    const permission = normalizeFolderPermission(options?.permission);
     await this.persistContext({
       folders: [
         ...this.folders,
@@ -94,7 +126,9 @@ export class ProjectContextStore {
           id: createContextFolderId(),
           path: normalizedPath,
           label: null,
-          enabled: true
+          enabled: true,
+          permission,
+          envFilePermission: normalizeEnvFilePermission(options?.envFilePermission, permission)
         }
       ],
       lastSyncedAt: null
@@ -166,6 +200,32 @@ export class ProjectContextStore {
   }
 
   /**
+   * Changes both permissions for one context folder in one persistence request.
+   *
+   * @param folderId Context folder identifier.
+   * @param permission General filesystem permission.
+   * @param envFilePermission `.env` filesystem permission.
+   * @returns Promise resolved when the preferences are persisted.
+   */
+  async setFolderPermissions(
+    folderId: string,
+    permission: OpenCodexProjectContextFolderPermission,
+    envFilePermission: OpenCodexProjectContextEnvFilePermission
+  ): Promise<void> {
+    const folder = this.folders.find((candidate) => candidate.id === folderId);
+
+    if (folder === undefined) {
+      return;
+    }
+
+    const normalizedPermission = normalizeFolderPermission(permission);
+    await this.updateFolder(folderId, {
+      permission: normalizedPermission,
+      envFilePermission: normalizeEnvFilePermission(envFilePermission, normalizedPermission)
+    });
+  }
+
+  /**
    * Updates the display label for an external context folder.
    *
    * @param folderId Context folder identifier.
@@ -216,12 +276,22 @@ export class ProjectContextStore {
    */
   private async updateFolder(
     folderId: string,
-    patch: Partial<Pick<OpenCodexProjectContextFolder, "enabled" | "label" | "path">>
+    patch: Partial<
+      Pick<
+        OpenCodexProjectContextFolder,
+        "enabled" | "label" | "path" | "permission" | "envFilePermission"
+      >
+    >
   ): Promise<void> {
     await this.persistContext({
       folders: this.folders.map((folder) => (
         folder.id === folderId
-          ? { ...folder, ...patch }
+          ? {
+              ...folder,
+              permission: this.getFolderPermission(folder),
+              envFilePermission: this.getFolderEnvFilePermission(folder),
+              ...patch
+            }
           : folder
       )),
       lastSyncedAt: null
@@ -276,4 +346,34 @@ function createContextFolderId(): string {
   }
 
   return `context-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+/**
+ * Normalizes the general permission for an external context folder.
+ *
+ * @param value Optional permission value.
+ * @returns A supported permission, defaulting to read-only.
+ */
+function normalizeFolderPermission(
+  value: OpenCodexProjectContextFolderPermission | null | undefined
+): OpenCodexProjectContextFolderPermission {
+  return value === "write" ? value : defaultContextFolderPermission;
+}
+
+/**
+ * Normalizes an external folder's `.env` permission against its general access.
+ *
+ * @param value Optional `.env` permission value.
+ * @param folderPermission Effective permission for the containing folder.
+ * @returns A supported compatible permission, defaulting to deny.
+ */
+function normalizeEnvFilePermission(
+  value: OpenCodexProjectContextEnvFilePermission | null | undefined,
+  folderPermission: OpenCodexProjectContextFolderPermission
+): OpenCodexProjectContextEnvFilePermission {
+  if (value === "write" && folderPermission === "read") {
+    return defaultEnvFilePermission;
+  }
+
+  return value === "read" || value === "write" ? value : defaultEnvFilePermission;
 }
