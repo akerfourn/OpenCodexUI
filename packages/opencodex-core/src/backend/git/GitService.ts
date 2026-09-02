@@ -26,6 +26,7 @@ import {
   createTag as createGitTag,
   fetchTags as fetchGitTags,
   mergeBranch as mergeGitBranch,
+  mergeBranchTo as mergeGitBranchTo,
   publishCurrentBranch as publishGitCurrentBranch,
   pull as pullGit,
   push as pushGit,
@@ -321,6 +322,22 @@ export class GitService {
     branchName: string
   ): Promise<OpenCodexGitStatus> {
     return await mergeGitBranch(this.referenceContext, projectPath, sourceId, branchName);
+  }
+
+  /**
+   * Merges the current local branch into another local branch.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @param targetBranchName Local branch receiving the merge.
+   * @returns Refreshed status with the target branch checked out.
+   */
+  async mergeBranchTo(
+    projectPath: string,
+    sourceId: string | null,
+    targetBranchName: string
+  ): Promise<OpenCodexGitStatus> {
+    return await mergeGitBranchTo(this.referenceContext, projectPath, sourceId, targetBranchName);
   }
 
   /**

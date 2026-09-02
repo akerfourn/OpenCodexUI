@@ -128,6 +128,55 @@ describe("GitService branches", () => {
     ]);
   });
 
+  it("should merge the current branch into another local branch", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: "# branch.head feature/api\0", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" },
+      { exitCode: 0, stdout: "Switched to branch 'main'.\n", stderr: "" },
+      { exitCode: 0, stdout: "Already up to date.\n", stderr: "" },
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: "# branch.head main\0", stderr: "" },
+      { exitCode: 0, stdout: "", stderr: "" }
+    ]);
+    const service = createGitService(client);
+
+    const status = await service.mergeBranchTo("/workspace/project", "source-1", "main");
+
+    expect(status.branchName).toBe("main");
+    expect(client.commands).toEqual([
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"],
+      ["git", "show-ref", "--verify", "--quiet", "refs/heads/main"],
+      ["git", "checkout", "main"],
+      ["git", "merge", "feature/api"],
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"]
+    ]);
+  });
+
+  it("should reject merging to another branch when the worktree is dirty", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      {
+        exitCode: 0,
+        stdout: "# branch.head feature/api\0" +
+          "1 .M N... 100644 100644 100644 abc abc changed.ts\0",
+        stderr: ""
+      },
+      { exitCode: 0, stdout: "", stderr: "" }
+    ]);
+    const service = createGitService(client);
+
+    await expect(
+      service.mergeBranchTo("/workspace/project", "source-1", "main")
+    ).rejects.toThrow("uncommitted changes");
+    expect(client.commands).toHaveLength(3);
+  });
+
   it("should publish the current local branch and configure its upstream", async () => {
     const client = new FakeCodexClient([
       { exitCode: 0, stdout: "true\n", stderr: "" },

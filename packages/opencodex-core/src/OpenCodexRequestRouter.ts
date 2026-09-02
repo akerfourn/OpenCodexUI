@@ -371,6 +371,12 @@ export class OpenCodexRequestRouter {
         return this.runtime.git.createBranch(request.projectPath, request.sourceId, request.branchName);
       case "git.merge":
         return this.runtime.git.mergeBranch(request.projectPath, request.sourceId, request.branchName);
+      case "git.merge.to":
+        return this.runtime.git.mergeBranchTo(
+          request.projectPath,
+          request.sourceId,
+          request.targetBranchName
+        );
       case "git.stage":
         return this.runtime.git.stage(request.projectPath, request.sourceId, request.paths);
       case "git.unstage":

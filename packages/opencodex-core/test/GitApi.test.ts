@@ -32,6 +32,7 @@ describe("GitApi", () => {
       checkoutGitBranch: vi.fn(),
       createGitBranch: vi.fn(),
       mergeGitBranch: vi.fn(),
+      mergeGitBranchTo: vi.fn(),
       stageGitPaths: vi.fn(),
       unstageGitPaths: vi.fn(),
       commitGitChanges: vi.fn(),
@@ -57,6 +58,13 @@ describe("GitApi", () => {
       "release changes",
       "project-1"
     );
+
+    await api.mergeBranchTo("/project", "source-1", "release");
+    expect(handler.mergeGitBranchTo).toHaveBeenCalledWith(
+      "/project",
+      "source-1",
+      "release"
+    );
   });
 
   it("should expose commit-message operations below Git", async () => {
@@ -79,6 +87,7 @@ describe("GitApi", () => {
       checkoutGitBranch: vi.fn(),
       createGitBranch: vi.fn(),
       mergeGitBranch: vi.fn(),
+      mergeGitBranchTo: vi.fn(),
       stageGitPaths: vi.fn(),
       unstageGitPaths: vi.fn(),
       commitGitChanges: vi.fn(),

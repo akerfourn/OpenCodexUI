@@ -24,6 +24,7 @@ import type { ProjectGitReferencesStore } from "../../stores/project/git/Project
 import { ProjectBranchGroupX } from "./ProjectBranchGroup";
 
 type ProjectBranchMergeDialogProps = {
+  direction: "from" | "to";
   referencesStore: ProjectGitReferencesStore;
   open: boolean;
   onClose(): void;
@@ -36,6 +37,7 @@ type ProjectBranchMergeDialogProps = {
  * @returns Rendered dialog.
  */
 export function ProjectBranchMergeDialog({
+  direction,
   referencesStore,
   open,
   onClose
@@ -53,25 +55,38 @@ export function ProjectBranchMergeDialog({
       setSearchTerm("");
       void referencesStore.loadBranches();
     }
-  }, [referencesStore, open]);
+  }, [referencesStore, direction, open]);
 
   function handleSearchChange(event: ChangeEvent<HTMLInputElement>): void {
     setSearchTerm(event.target.value);
   }
 
   async function handleMergeBranch(branch: OpenCodexGitBranch): Promise<void> {
-    const didMerge = await referencesStore.mergeBranch(branch);
+    const didMerge = direction === "from"
+      ? await referencesStore.mergeBranch(branch)
+      : await referencesStore.mergeBranchTo(branch);
 
     if (didMerge) {
       onClose();
     }
   }
 
+  const mergeTitle = direction === "from"
+    ? t("git.mergeFromBranchTitle")
+    : t("git.mergeToBranchTitle");
+  const mergeDescription = direction === "from"
+    ? t("git.mergeFromBranchDescription")
+    : t("git.mergeToBranchDescription");
+  const mergeDescriptionSeverity: "info" | "warning" = direction === "from"
+    ? "info"
+    : "warning";
+
   return (
     <Dialog open={open} fullWidth maxWidth="sm" onClose={onClose}>
-      <DialogTitle>{t("git.mergeBranchTitle")}</DialogTitle>
+      <DialogTitle>{mergeTitle}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
+          <Alert severity={mergeDescriptionSeverity}>{mergeDescription}</Alert>
           <TextField
             autoFocus
             fullWidth

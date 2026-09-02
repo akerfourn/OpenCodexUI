@@ -66,7 +66,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     : "git.simple";
   const [isGenerateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [isBranchDialogOpen, setBranchDialogOpen] = useState(false);
-  const [isMergeDialogOpen, setMergeDialogOpen] = useState(false);
+  const [mergeDirection, setMergeDirection] = useState<"from" | "to" | null>(null);
   const [isTagDialogOpen, setTagDialogOpen] = useState(false);
   const [isLogDialogOpen, setLogDialogOpen] = useState(false);
   const [isRemoteDialogOpen, setRemoteDialogOpen] = useState(false);
@@ -101,12 +101,12 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     setBranchDialogOpen(false);
   }
 
-  function handleOpenMergeDialog(): void {
-    setMergeDialogOpen(true);
+  function handleOpenMergeDialog(direction: "from" | "to"): void {
+    setMergeDirection(direction);
   }
 
   function handleCloseMergeDialog(): void {
-    setMergeDialogOpen(false);
+    setMergeDirection(null);
   }
 
   function handleOpenProtectionDialog(): void {
@@ -355,11 +355,14 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         open={isBranchDialogOpen}
         onClose={handleCloseBranchDialog}
       />
-      <ProjectBranchMergeDialogX
-        referencesStore={referencesStore}
-        open={isMergeDialogOpen}
-        onClose={handleCloseMergeDialog}
-      />
+      {mergeDirection !== null ? (
+        <ProjectBranchMergeDialogX
+          direction={mergeDirection}
+          referencesStore={referencesStore}
+          open
+          onClose={handleCloseMergeDialog}
+        />
+      ) : null}
       <ProjectTagSelectorDialogX
         tagStore={tagStore}
         open={isTagDialogOpen}

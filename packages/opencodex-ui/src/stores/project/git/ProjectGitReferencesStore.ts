@@ -214,7 +214,17 @@ export class ProjectGitReferencesStore {
    * @returns Whether merge succeeded.
    */
   async mergeBranch(branch: OpenCodexGitBranch): Promise<boolean> {
-    return await this.applyMergeStatusRequest(branch.name);
+    return await this.applyMergeStatusRequest("git.merge", branch.name);
+  }
+
+  /**
+   * Merges the current branch into a selected local branch.
+   *
+   * @param branch Local branch receiving the merge.
+   * @returns Whether merge succeeded.
+   */
+  async mergeBranchTo(branch: OpenCodexGitBranch): Promise<boolean> {
+    return await this.applyMergeStatusRequest("git.merge.to", branch.name);
   }
 
   /**
@@ -452,7 +462,10 @@ export class ProjectGitReferencesStore {
    * @param branchName Branch name to merge.
    * @returns Whether merge succeeded.
    */
-  private async applyMergeStatusRequest(branchName: string): Promise<boolean> {
+  private async applyMergeStatusRequest(
+    type: "git.merge" | "git.merge.to",
+    branchName: string
+  ): Promise<boolean> {
     const normalizedBranchName = branchName.trim();
 
     if (!this.isAvailable || this.isMergingBranch || normalizedBranchName.length === 0) {
@@ -464,12 +477,19 @@ export class ProjectGitReferencesStore {
     this.parent.errorMessage = null;
 
     try {
-      const status = await this.parent.request<OpenCodexGitStatus>({
-        type: "git.merge",
-        projectPath: this.parent.projectPath,
-        sourceId: this.parent.sourceId,
-        branchName: normalizedBranchName
-      });
+      const status = type === "git.merge"
+        ? await this.parent.request<OpenCodexGitStatus>({
+          type,
+          projectPath: this.parent.projectPath,
+          sourceId: this.parent.sourceId,
+          branchName: normalizedBranchName
+        })
+        : await this.parent.request<OpenCodexGitStatus>({
+          type,
+          projectPath: this.parent.projectPath,
+          sourceId: this.parent.sourceId,
+          targetBranchName: normalizedBranchName
+        });
 
       runInAction(() => {
         this.applyStatus(status);
@@ -480,8 +500,13 @@ export class ProjectGitReferencesStore {
       }
       return true;
     } catch (error) {
+      const errorMessage = readErrorMessage(error);
+      if (type === "git.merge.to") {
+        await this.parent.statusStore.refresh();
+        await this.loadBranches();
+      }
       runInAction(() => {
-        this.branchErrorMessage = readErrorMessage(error);
+        this.branchErrorMessage = errorMessage;
       });
       return false;
     } finally {

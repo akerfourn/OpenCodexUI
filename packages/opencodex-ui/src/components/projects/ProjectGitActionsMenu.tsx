@@ -28,7 +28,7 @@ type ProjectGitActionsMenuProps = {
   onClose(): void;
   onOpenBranch(): void;
   onOpenProtection(): void;
-  onOpenMerge(): void;
+  onOpenMerge(direction: "from" | "to"): void;
   onOpenRemote(): void;
   onOpenLog(): void;
 };
@@ -59,9 +59,9 @@ export function ProjectGitActionsMenu({
     onOpenBranch();
   }
 
-  function handleSelectMergeAction(): void {
+  function handleSelectMergeAction(direction: "from" | "to"): void {
     onClose();
-    onOpenMerge();
+    onOpenMerge(direction);
   }
 
   function handleSelectProtectionAction(): void {
@@ -103,12 +103,21 @@ export function ProjectGitActionsMenu({
       </MenuItem>
       <MenuItem
         disabled={!isAvailable || !statusStore.isRepository || statusStore.isLoading}
-        onClick={handleSelectMergeAction}
+        onClick={() => handleSelectMergeAction("from")}
       >
         <ListItemIcon>
           <CallMergeOutlinedIcon fontSize="small" />
         </ListItemIcon>
-        <ListItemText>{t("git.mergeBranch")}</ListItemText>
+        <ListItemText>{t("git.mergeFromBranch")}</ListItemText>
+      </MenuItem>
+      <MenuItem
+        disabled={!isAvailable || !statusStore.isRepository || statusStore.isLoading}
+        onClick={() => handleSelectMergeAction("to")}
+      >
+        <ListItemIcon>
+          <CallMergeOutlinedIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>{t("git.mergeToBranch")}</ListItemText>
       </MenuItem>
       <MenuItem
         disabled={!isAvailable || !statusStore.isRepository || statusStore.isLoading}

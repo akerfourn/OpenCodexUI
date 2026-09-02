@@ -217,6 +217,15 @@ export class GitRuntimeHandler {
     return await this.gitService.mergeBranch(projectPath, sourceId, branchName);
   }
 
+  /** Merges the current local branch into another local branch. */
+  async mergeGitBranchTo(
+    projectPath: string,
+    sourceId: string | null,
+    targetBranchName: string
+  ): Promise<OpenCodexGitStatus> {
+    return await this.gitService.mergeBranchTo(projectPath, sourceId, targetBranchName);
+  }
+
   /** Stages selected Git paths. */
   async stageGitPaths(
     projectPath: string,

@@ -308,6 +308,33 @@ describe("ProjectGitReferencesStore Git references", () => {
     expect(fixture.gitStore.referencesStore.isMergingBranch).toBe(false);
   });
 
+  it("should merge the current branch into a trimmed target and refresh references", async () => {
+    const fixture = createProjectGitReferencesFixture();
+    const status = createStatus({ branchName: "release" });
+    const branches = [createBranch("main"), createBranch("release", { isCurrent: true })];
+    fixture.request
+      .mockResolvedValueOnce(status)
+      .mockResolvedValueOnce(branches)
+      .mockResolvedValueOnce(createTagResult());
+
+    const merge = fixture.gitStore.referencesStore.mergeBranchTo({
+      ...createBranch("release"),
+      name: "  release  "
+    });
+    expect(fixture.gitStore.referencesStore.isMergingBranch).toBe(true);
+    await merge;
+
+    expect(fixture.request).toHaveBeenNthCalledWith(1, {
+      type: "git.merge.to",
+      projectPath: "/workspace/project",
+      sourceId: "source-1",
+      targetBranchName: "release"
+    });
+    expect(requestTypes(fixture)).toEqual(["git.merge.to", "git.branches", "git.tags"]);
+    expect(fixture.gitStore.statusStore.status).toEqual(status);
+    expect(fixture.gitStore.referencesStore.isMergingBranch).toBe(false);
+  });
+
   it.each([
     {
       name: "an empty branch",
@@ -344,6 +371,32 @@ describe("ProjectGitReferencesStore Git references", () => {
     expect(result).toBe(false);
     expect(requestTypes(fixture)).toEqual(["git.merge"]);
     expect(fixture.gitStore.referencesStore.branchErrorMessage).toBe("merge failed");
+    expect(fixture.gitStore.referencesStore.isMergingBranch).toBe(false);
+  });
+
+  it("should refresh status and branches after a merge-to failure", async () => {
+    const fixture = createProjectGitReferencesFixture();
+    const refreshedStatus = createStatus({ branchName: "release" });
+    const refreshedBranches = [createBranch("release", { isCurrent: true })];
+    fixture.request
+      .mockRejectedValueOnce(new Error("merge-to failed"))
+      .mockResolvedValueOnce(refreshedStatus)
+      .mockResolvedValueOnce(createTagResult())
+      .mockResolvedValueOnce(refreshedBranches);
+
+    const result = await fixture.gitStore.referencesStore.mergeBranchTo(createBranch("release"));
+    await flushPromises();
+
+    expect(result).toBe(false);
+    expect(requestTypes(fixture)).toEqual([
+      "git.merge.to",
+      "git.status",
+      "git.tags",
+      "git.branches"
+    ]);
+    expect(fixture.gitStore.statusStore.status).toEqual(refreshedStatus);
+    expect(fixture.gitStore.referencesStore.branches).toEqual(refreshedBranches);
+    expect(fixture.gitStore.referencesStore.branchErrorMessage).toBe("merge-to failed");
     expect(fixture.gitStore.referencesStore.isMergingBranch).toBe(false);
   });
 

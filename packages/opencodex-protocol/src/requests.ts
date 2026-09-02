@@ -288,6 +288,12 @@ export type OpenCodexRequest =
     }
   | { type: "git.branch.create"; projectPath: string; sourceId: string | null; branchName: string }
   | { type: "git.merge"; projectPath: string; sourceId: string | null; branchName: string }
+  | {
+      type: "git.merge.to";
+      projectPath: string;
+      sourceId: string | null;
+      targetBranchName: string;
+    }
   | { type: "git.stage"; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.unstage"; projectPath: string; sourceId: string | null; paths: string[] }
   | {

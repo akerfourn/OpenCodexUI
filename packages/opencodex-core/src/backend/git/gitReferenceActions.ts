@@ -30,6 +30,7 @@ export {
   checkoutBranch,
   createBranch,
   mergeBranch,
+  mergeBranchTo,
   publishCurrentBranch,
   pull,
   push

@@ -40,6 +40,7 @@ type GitApiHandler = Pick<
   | "checkoutGitBranch"
   | "createGitBranch"
   | "mergeGitBranch"
+  | "mergeGitBranchTo"
   | "stageGitPaths"
   | "unstageGitPaths"
   | "commitGitChanges"
@@ -228,6 +229,15 @@ export class GitApi implements GitApiContract {
     branchName: string
   ): Promise<OpenCodexGitStatus> {
     return await this.handler.mergeGitBranch(projectPath, sourceId, branchName);
+  }
+
+  /** Merges the current branch into another local branch. */
+  async mergeBranchTo(
+    projectPath: string,
+    sourceId: string | null,
+    targetBranchName: string
+  ): Promise<OpenCodexGitStatus> {
+    return await this.handler.mergeGitBranchTo(projectPath, sourceId, targetBranchName);
   }
 
   /** Stages selected Git paths. */

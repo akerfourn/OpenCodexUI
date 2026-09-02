@@ -368,6 +368,11 @@ export interface GitApi {
   ): Promise<OpenCodexGitStatus>;
   createBranch(projectPath: string, sourceId: string | null, branchName: string): Promise<OpenCodexGitStatus>;
   mergeBranch(projectPath: string, sourceId: string | null, branchName: string): Promise<OpenCodexGitStatus>;
+  mergeBranchTo(
+    projectPath: string,
+    sourceId: string | null,
+    targetBranchName: string
+  ): Promise<OpenCodexGitStatus>;
   stage(projectPath: string, sourceId: string | null, paths: string[]): Promise<OpenCodexGitStatus>;
   unstage(projectPath: string, sourceId: string | null, paths: string[]): Promise<OpenCodexGitStatus>;
   commit(

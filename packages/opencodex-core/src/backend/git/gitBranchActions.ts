@@ -117,6 +117,70 @@ export async function mergeBranch(
 }
 
 /**
+ * Merges the current local branch into another local branch.
+ *
+ * The target branch remains checked out when the merge reports a conflict so
+ * that Git's conflict state stays visible and recoverable to the user.
+ *
+ * @param context Git command and status dependencies.
+ * @param projectPath Project working directory.
+ * @param sourceId Source identifier.
+ * @param targetBranchName Local branch receiving the merge.
+ * @returns Refreshed status with the target branch checked out.
+ * @throws When the repository is unavailable, the current branch is detached,
+ *   the target is not local, the worktree is dirty, or Git fails.
+ */
+export async function mergeBranchTo(
+  context: GitReferenceActionContext,
+  projectPath: string,
+  sourceId: string | null,
+  targetBranchName: string
+): Promise<OpenCodexGitStatus> {
+  const normalizedTargetBranchName = normalizeBranchName(targetBranchName);
+  if (normalizedTargetBranchName.length === 0) {
+    throw new Error("A target branch name is required.");
+  }
+
+  const initialStatus = await context.readStatus(projectPath, sourceId);
+  if (!initialStatus.isRepository) {
+    throw new Error("This project is not a Git repository.");
+  }
+
+  const sourceBranchName = initialStatus.branchName;
+  if (sourceBranchName === null) {
+    throw new Error("Cannot merge from a detached HEAD.");
+  }
+
+  if (sourceBranchName === normalizedTargetBranchName) {
+    throw new Error("The target branch must differ from the current branch.");
+  }
+
+  if (initialStatus.changedFiles.length > 0 || initialStatus.stagedFiles.length > 0) {
+    throw new Error("Cannot merge to another branch with uncommitted changes.");
+  }
+
+  const targetReference = `refs/heads/${normalizedTargetBranchName}`;
+  const targetCheck = await context.runGit(
+    projectPath,
+    sourceId,
+    ["show-ref", "--verify", "--quiet", targetReference],
+    { allowFailure: true }
+  );
+  if (targetCheck.exitCode !== 0) {
+    throw new Error("The target branch must be a local branch.");
+  }
+
+  await context.runGit(projectPath, sourceId, ["checkout", normalizedTargetBranchName], {
+    timeoutMs: 120_000
+  });
+  await context.runGit(projectPath, sourceId, ["merge", sourceBranchName], {
+    timeoutMs: 120_000
+  });
+
+  return await context.readStatus(projectPath, sourceId);
+}
+
+/**
  * Pushes local commits to the configured upstream and returns refreshed status.
  *
  * @param context Git command and status dependencies.

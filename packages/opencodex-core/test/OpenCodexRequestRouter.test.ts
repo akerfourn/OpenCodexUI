@@ -103,3 +103,23 @@ describe("OpenCodexRequestRouter plugin routes", () => {
     expect(plugins.refresh).toHaveBeenCalledWith("source-a");
   });
 });
+
+describe("OpenCodexRequestRouter Git routes", () => {
+  it("should route merge-to with an explicit target branch", async () => {
+    const mergeBranchTo = vi.fn(async () => ({ branchName: "main" }));
+    const runtime = {
+      git: { mergeBranchTo },
+      handleRequestError: vi.fn()
+    } as unknown as OpenCodexBackendRuntime;
+    const router = new OpenCodexRequestRouter(runtime);
+
+    await router.handleRequest({
+      type: "git.merge.to",
+      projectPath: "/workspace/project",
+      sourceId: "source-1",
+      targetBranchName: "main"
+    });
+
+    expect(mergeBranchTo).toHaveBeenCalledWith("/workspace/project", "source-1", "main");
+  });
+});
