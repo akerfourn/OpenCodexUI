@@ -49,6 +49,7 @@ export function createBackendServiceGraph(
   let clientPool!: OpenCodexClientPool;
   let codexUpdateService!: CodexUpdateService;
   let notificationCoordinator!: RuntimeNotificationCoordinator;
+  let projectAutomationRuntimeHandler!: ProjectAutomationRuntimeHandler;
   let projectRuntimeHandler!: ProjectRuntimeHandler;
   let runtimeErrorCoordinator!: RuntimeErrorCoordinator;
   let threadRuntimeHandler!: ThreadRuntimeHandler;
@@ -81,11 +82,14 @@ export function createBackendServiceGraph(
     ),
     handleServerRequest,
     handleError: handleClientError,
-    handleClose: (sourceId) => handleClientClose(sourceId, {
-      notifications: notificationCoordinator,
-      clients: clientPool,
-      events
-    }),
+    handleClose: (sourceId) => {
+      projectAutomationRuntimeHandler.handleCodexClientClosed(sourceId);
+      handleClientClose(sourceId, {
+        notifications: notificationCoordinator,
+        clients: clientPool,
+        events
+      });
+    },
     handleStderr: (message, sourceId) => (
       projectRuntimeHandler.handleCodexStderr(message, sourceId)
     )
@@ -160,7 +164,7 @@ export function createBackendServiceGraph(
   }));
   const dockerComposeService = new DockerComposeService({ clients: clientPool });
 
-  const projectAutomationRuntimeHandler = new ProjectAutomationRuntimeHandler({
+  projectAutomationRuntimeHandler = new ProjectAutomationRuntimeHandler({
     cache: cacheRepository,
     userDataPath: options.userDataPath,
     settings,

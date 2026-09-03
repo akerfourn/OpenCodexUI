@@ -70,7 +70,8 @@ export class ProjectAutomationRuntimeHandler {
       cacheRepository: options.cache,
       userDataPath: options.userDataPath,
       events: options.events,
-      clients: options.clients
+      clients: options.clients,
+      resolveSource: options.projects.resolveSource
     });
     this.projectCommandRuleService = new ProjectCommandRuleService({
       cacheRepository: options.cache,
@@ -189,6 +190,15 @@ export class ProjectAutomationRuntimeHandler {
    */
   async stopProjectCommandRun(runId: string): Promise<{ ok: true }> {
     return await this.projectCommandService.stopRun(runId);
+  }
+
+  /**
+   * Finalizes command runs when their Codex app-server client closes.
+   *
+   * @param sourceId Resolved source identifier whose client closed.
+   */
+  handleCodexClientClosed(sourceId: string): void {
+    this.projectCommandService.handleClientClosed(sourceId);
   }
 
   /**

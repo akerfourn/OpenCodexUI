@@ -4,6 +4,7 @@ import type {
 } from "@open-codex-ui/codex-rpc";
 import type {
   CachedProjectCommand,
+  CachedSource,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import { describe, expect, it, vi } from "vitest";
@@ -102,6 +103,62 @@ describe("ProjectCommandService", () => {
       exitCode: 0
     }));
   });
+
+  it("should clear a stale run when Codex no longer manages its process handle", async () => {
+    const { service, request, emit } = createService();
+    const run = await service.runCommand("command-1", "/workspace/project", "source-1");
+    request.mockImplementation(async (method: string) => {
+      if (method === "process/kill") {
+        throw new Error(
+          `no active process for process handle "${run.processHandle}"`
+        );
+      }
+
+      return {};
+    });
+    emit.mockClear();
+
+    await expect(service.stopRun(run.id)).resolves.toEqual({ ok: true });
+    await expect(service.runCommand("command-1", "/workspace/project", "source-1"))
+      .resolves.toMatchObject({ status: "running" });
+
+    expect(emit).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      type: "projectCommand.output",
+      runId: run.id,
+      stream: "stderr",
+      delta: expect.stringContaining("no longer manages this process")
+    }));
+    expect(emit).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      type: "projectCommand.exited",
+      runId: run.id,
+      status: "failed",
+      exitCode: null
+    }));
+  });
+
+  it("should clear runs for a source when its Codex client closes", async () => {
+    const { service, emit, resolveSource } = createService();
+    const run = await service.runCommand("command-1", "/workspace/project", null);
+    emit.mockClear();
+
+    service.handleClientClosed("source-1");
+
+    await expect(service.runCommand("command-1", "/workspace/project", null))
+      .resolves.toMatchObject({ status: "running" });
+    expect(resolveSource).toHaveBeenCalledWith(null);
+    expect(emit).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      type: "projectCommand.output",
+      runId: run.id,
+      stream: "stderr",
+      delta: expect.stringContaining("connection closed")
+    }));
+    expect(emit).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      type: "projectCommand.exited",
+      runId: run.id,
+      status: "failed",
+      exitCode: null
+    }));
+  });
 });
 
 /** Creates a service with deterministic cache, client, and event ports. */
@@ -113,13 +170,17 @@ function createService() {
   const request = vi.fn(async () => ({}));
   const client = { request } as unknown as CodexAppServerClient;
   const emit = vi.fn();
+  const resolveSource = vi.fn(async (): Promise<CachedSource> => ({
+    id: "source-1"
+  } as CachedSource));
   const service = new ProjectCommandService({
     cacheRepository: repository,
     events: { emit },
-    clients: { ensureClient: vi.fn(async () => client) }
+    clients: { ensureClient: vi.fn(async () => client) },
+    resolveSource
   });
 
-  return { service, request, emit };
+  return { service, request, emit, resolveSource };
 }
 
 /** Creates the configured command executed by integration tests. */

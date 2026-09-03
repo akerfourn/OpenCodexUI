@@ -13,6 +13,7 @@ import type {
   CachedProjectCommand,
   CachedProjectCommandCreateInput,
   CachedProjectCommandUpdateInput,
+  CachedSource,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import type {
@@ -39,10 +40,11 @@ export type ProjectCommandServiceOptions = {
   userDataPath?: string;
   events: Pick<RuntimeEventPort, "emit">;
   clients: Pick<ClientPort, "ensureClient">;
+  resolveSource(sourceId: string | null): Promise<CachedSource>;
 };
 
 type ActiveProjectCommandRun = OpenCodexProjectCommandRun & {
-  sourceId: string | null;
+  sourceId: string;
   outputWriteQueue: Promise<void>;
 };
 
@@ -144,8 +146,9 @@ export class ProjectCommandService {
       throw new Error("This command is already running.");
     }
 
-    const client = await this.options.clients.ensureClient(sourceId);
-    const run = await this.createRun(command, projectPath, sourceId);
+    const source = await this.options.resolveSource(sourceId);
+    const client = await this.options.clients.ensureClient(source.id);
+    const run = await this.createRun(command, projectPath, source.id);
     const protocolRun = toProtocolRun(run);
 
     this.runsById.set(run.id, run);
@@ -196,9 +199,41 @@ export class ProjectCommandService {
       });
     } catch (error) {
       this.stoppingRunIds.delete(run.id);
+
+      if (isMissingProcessHandleError(error, run.processHandle)) {
+        this.reportDiagnostic(
+          run,
+          "Codex app-server no longer manages this process; its exit status is unknown."
+        );
+        this.finishRun(run, "failed", null);
+        return { ok: true };
+      }
+
       throw error;
     }
     return { ok: true };
+  }
+
+  /**
+   * Finalizes command runs whose owning Codex client has closed.
+   *
+   * A process handle is scoped to its app-server connection, so it cannot be
+   * controlled after that client is gone.
+   *
+   * @param sourceId Resolved source identifier whose client closed.
+   */
+  handleClientClosed(sourceId: string): void {
+    const runs = Array.from(this.runsById.values()).filter((run) => (
+      run.sourceId === sourceId && run.status === "running"
+    ));
+
+    for (const run of runs) {
+      this.reportDiagnostic(
+        run,
+        "The Codex app-server connection closed before this process reported its exit status."
+      );
+      this.finishRun(run, "failed", null);
+    }
   }
 
   /**
@@ -265,7 +300,7 @@ export class ProjectCommandService {
   private async createRun(
     command: CachedProjectCommand,
     projectPath: string,
-    sourceId: string | null
+    sourceId: string
   ): Promise<ActiveProjectCommandRun> {
     const id = cryptoRandomId();
     const logPath = command.persistLogs
@@ -366,10 +401,56 @@ export class ProjectCommandService {
       return;
     }
 
-    run.status = this.stoppingRunIds.has(run.id)
+    const status = this.stoppingRunIds.has(run.id)
       ? "killed"
       : readExitedStatus(exit.exitCode);
-    run.exitCode = exit.exitCode;
+    this.finishRun(run, status, exit.exitCode);
+  }
+
+  /**
+   * Marks a command run as failed when spawning or bookkeeping fails.
+   *
+   * @param run Active run to fail.
+   * @param error Error that caused the failure.
+   */
+  private failRun(run: ActiveProjectCommandRun, error: unknown): void {
+    this.reportDiagnostic(run, String(error));
+    this.finishRun(run, "failed", null);
+  }
+
+  /**
+   * Emits one diagnostic line and writes it to the optional command log.
+   *
+   * @param run Active command run.
+   * @param message Diagnostic message.
+   */
+  private reportDiagnostic(run: ActiveProjectCommandRun, message: string): void {
+    const delta = `${message}\n`;
+    this.appendPersistentOutput(run, "stderr", delta);
+    this.options.events.emit({
+      type: "projectCommand.output",
+      projectId: run.projectId,
+      commandId: run.commandId,
+      runId: run.id,
+      stream: "stderr",
+      delta
+    });
+  }
+
+  /**
+   * Removes a completed run from local process tracking and emits its result.
+   *
+   * @param run Active command run.
+   * @param status Final run status.
+   * @param exitCode Process exit code, when known.
+   */
+  private finishRun(
+    run: ActiveProjectCommandRun,
+    status: Exclude<OpenCodexProjectCommandRun["status"], "running">,
+    exitCode: number | null
+  ): void {
+    run.status = status;
+    run.exitCode = exitCode;
     run.exitedAt = new Date().toISOString();
     this.stoppingRunIds.delete(run.id);
     this.runsByProcessHandle.delete(run.processHandle);
@@ -382,31 +463,6 @@ export class ProjectCommandService {
       runId: run.id,
       status: run.status,
       exitCode: run.exitCode,
-      exitedAt: run.exitedAt
-    });
-  }
-
-  /**
-   * Marks a command run as failed when spawning or bookkeeping fails.
-   *
-   * @param run Active run to fail.
-   * @param error Error that caused the failure.
-   */
-  private failRun(run: ActiveProjectCommandRun, error: unknown): void {
-    run.status = "failed";
-    run.exitCode = null;
-    run.exitedAt = new Date().toISOString();
-    this.stoppingRunIds.delete(run.id);
-    this.runsByProcessHandle.delete(run.processHandle);
-    this.runsById.delete(run.id);
-    this.appendPersistentOutput(run, "stderr", String(error));
-    this.options.events.emit({
-      type: "projectCommand.exited",
-      projectId: run.projectId,
-      commandId: run.commandId,
-      runId: run.id,
-      status: run.status,
-      exitCode: null,
       exitedAt: run.exitedAt
     });
   }
@@ -459,6 +515,21 @@ function toProtocolRun(run: ActiveProjectCommandRun): OpenCodexProjectCommandRun
     exitCode: run.exitCode,
     logPath: run.logPath
   };
+}
+
+/**
+ * Returns whether an app-server rejection means the process has already gone.
+ *
+ * @param error Request error returned by Codex app-server.
+ * @param processHandle Process handle passed to the failed request.
+ * @returns `true` when Codex no longer owns that exact process.
+ */
+function isMissingProcessHandleError(error: unknown, processHandle: string): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return error.message.includes(`no active process for process handle "${processHandle}"`);
 }
 
 /**
