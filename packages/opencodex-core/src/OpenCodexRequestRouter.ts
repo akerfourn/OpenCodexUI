@@ -142,6 +142,12 @@ export class OpenCodexRequestRouter {
           request.sourceId ?? null,
           request.limit ?? 500
         );
+      case "threads.turnDiagnostic.read":
+        return this.runtime.turnDiagnostics.read(
+          request.threadId,
+          request.sourceId ?? null,
+          request.turnId
+        );
       case "threads.subAgents.list":
         return this.runtime.threads.listSubAgents(request.parentThreadId, request.sourceId);
       case "threads.collaboration.list":

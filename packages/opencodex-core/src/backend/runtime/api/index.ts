@@ -27,5 +27,6 @@ export type {
   SourcesApi,
   ThreadsApi,
   UsageApi,
-  UsageReadReason
+  UsageReadReason,
+  TurnDiagnosticsApi
 } from "./PublicRuntimeApis.js";

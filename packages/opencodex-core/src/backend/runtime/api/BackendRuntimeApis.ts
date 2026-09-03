@@ -24,6 +24,7 @@ import {
   UsageApi
 } from "./SupportApis.js";
 import { CollaborationApi, EventLogApi, ThreadsApi } from "./ThreadApis.js";
+import { TurnDiagnosticsApi } from "./TurnDiagnosticsApi.js";
 
 /**
  * Public, stable API facades owned by one backend runtime.
@@ -55,6 +56,8 @@ export class BackendRuntimeApis {
   readonly collaboration: CollaborationApi;
   /** Thread event-log queries. */
   readonly eventLog: EventLogApi;
+  /** Developer-mode per-turn diagnostic queries. */
+  readonly turnDiagnostics: TurnDiagnosticsApi;
   /** Project command and rule operations. */
   readonly automation: AutomationApi;
   /** Git and commit-message operations. */
@@ -96,6 +99,7 @@ export class BackendRuntimeApis {
     this.threads = new ThreadsApi(services.threadRuntimeHandler);
     this.collaboration = new CollaborationApi(services.threadRuntimeHandler);
     this.eventLog = new EventLogApi(services.threadRuntimeHandler);
+    this.turnDiagnostics = new TurnDiagnosticsApi(services.events);
     this.automation = new AutomationApi(services.projectAutomationRuntimeHandler);
     this.git = new GitApi(services.gitRuntimeHandler);
     this.docker = new DockerApi(services.dockerHostService);

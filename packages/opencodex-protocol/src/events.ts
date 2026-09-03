@@ -18,6 +18,7 @@ import type {
   OpenCodexThreadEventLogEntry,
   OpenCodexThreadGoal,
   OpenCodexThreadTokenUsage,
+  OpenCodexTurnDiagnostic,
   OpenCodexTurn,
   OpenCodexUsageSnapshot
 } from "./messages";
@@ -91,6 +92,13 @@ export type OpenCodexEvent =
       sourceId?: string | null;
       threadId: string;
       entry: OpenCodexThreadEventLogEntry;
+    }
+  | {
+      type: "thread.turnDiagnostic.updated";
+      sourceId?: string | null;
+      threadId: string;
+      turnId: string | null;
+      diagnostic: OpenCodexTurnDiagnostic;
     }
   | { type: "thread.renamed"; sourceId?: string | null; threadId: string; name: string }
   | { type: "thread.deleted"; sourceId?: string | null; threadId: string }

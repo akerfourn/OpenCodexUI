@@ -27,6 +27,7 @@ import type {
   SettingsApi,
   SourcesApi,
   ThreadsApi,
+  TurnDiagnosticsApi,
   UsageApi
 } from "./backend/runtime/api/index.js";
 
@@ -105,6 +106,11 @@ export class OpenCodexBackendRuntime {
   /** Public thread event-log API. */
   get eventLog(): EventLogApi {
     return this.apis.eventLog;
+  }
+
+  /** Public developer-mode per-turn diagnostic API. */
+  get turnDiagnostics(): TurnDiagnosticsApi {
+    return this.apis.turnDiagnostics;
   }
 
   /** Public project automation API. */

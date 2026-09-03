@@ -1,4 +1,4 @@
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
+import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
@@ -7,11 +7,13 @@ import type {
   OpenCodexMessage,
   OpenCodexReasoningEffort,
   OpenCodexThreadEventLogValue,
+  OpenCodexTurnDiagnosticRequestInput,
   OpenCodexTurn,
   OpenCodexTurnExecutionMetadata
 } from "@open-codex-ui/opencodex-protocol";
 
 import { mapThread, readObject, readString } from "../../mapping.js";
+import { toError } from "../shared/errors.js";
 import type { ThreadTurnCache, ThreadTurnCacheEntry } from "../../ThreadTurnCache.js";
 import type { OpenCodexBackendOptions } from "../../types.js";
 import type { CollaborationService } from "../collaboration/CollaborationService.js";
@@ -19,7 +21,7 @@ import type { ThreadCacheService } from "./ThreadCacheService.js";
 import type { ThreadCreationService } from "./ThreadCreationService.js";
 import type { ThreadSourceResolver } from "./ThreadSourceResolver.js";
 import { withSourceId } from "./threadCacheMapping.js";
-import { buildTurnInput, createId } from "./turnInput.js";
+import { buildTurnDiagnosticInput, buildTurnInput, createId } from "./turnInput.js";
 import type {
   ClientPort,
   ProjectSourcePort,
@@ -48,7 +50,13 @@ export type ThreadTurnActionsServiceOptions = {
   /** Reads the current settings snapshot. */
   settings: Pick<RuntimeSettingsPort, "getSettings">;
   /** Emits backend events. */
-  events: Pick<RuntimeEventPort, "emit" | "recordClientRequest">;
+  events: Pick<
+    RuntimeEventPort,
+    | "emit"
+    | "recordClientRequest"
+    | "recordTurnDiagnosticRequest"
+    | "recordTurnDiagnosticResponse"
+  >;
   /** Resolves source-scoped Codex clients. */
   clients: Pick<ClientPort, "ensureClient">;
   /** Resolves sources used by existing and newly created threads. */
@@ -114,6 +122,7 @@ export class ThreadTurnActionsService {
     const targetThreadId = threadId ?? (
       await this.createThreadAndReturnId(client, projectPath, resolvedSource.id)
     );
+    let resumedExistingThread = false;
 
     if (
       threadId !== null &&
@@ -121,6 +130,7 @@ export class ThreadTurnActionsService {
       this.shouldResumeThreadBeforeTurn(targetThreadId)
     ) {
       await this.resumeThreadForTurn(client, targetThreadId, projectPath, model);
+      resumedExistingThread = true;
     }
 
     const message: OpenCodexMessage = {
@@ -135,6 +145,20 @@ export class ThreadTurnActionsService {
 
     const requestedReasoningEffort = reasoningEffort ??
       this.options.settings.getSettings().defaultReasoningEffort;
+    const diagnosticId = this.options.events.recordTurnDiagnosticRequest?.(
+      resolvedSource.id,
+      targetThreadId,
+      createTurnDiagnosticRequest(
+        targetThreadId,
+        null,
+        trimmedText,
+        input,
+        model,
+        requestedReasoningEffort,
+        serviceTier,
+        resumedExistingThread
+      )
+    ) ?? null;
 
     this.options.events.emit({
       type: "message.started",
@@ -155,15 +179,37 @@ export class ThreadTurnActionsService {
       })
     );
 
-    const turnResponse = await client.startTurn({
-      threadId: targetThreadId,
-      input,
-      model,
-      serviceTier,
-      effort: requestedReasoningEffort
-    });
+    let turnResponse: unknown;
+
+    try {
+      turnResponse = await client.startTurn({
+        threadId: targetThreadId,
+        input,
+        model,
+        serviceTier,
+        effort: requestedReasoningEffort
+      });
+    } catch (error) {
+      if (diagnosticId !== null) {
+        this.options.events.recordTurnDiagnosticResponse?.(
+          diagnosticId,
+          null,
+          toError(error).message
+        );
+      }
+
+      throw error;
+    }
     const turn = readObject(readObject(turnResponse).turn);
     const turnId = readString(turn.id);
+
+    if (diagnosticId !== null) {
+      this.options.events.recordTurnDiagnosticResponse?.(
+        diagnosticId,
+        turnId.length > 0 ? turnId : null,
+        turnId.length > 0 ? null : "Codex returned no turn id."
+      );
+    }
 
     if (turnId.length > 0) {
       const currentThread = this.options.threadTurnCache.get(targetThreadId)?.thread;
@@ -224,6 +270,21 @@ export class ThreadTurnActionsService {
     }
 
     const client = await this.options.clients.ensureClient(sourceId);
+    const diagnosticId = this.options.events.recordTurnDiagnosticRequest?.(
+      sourceId,
+      threadId,
+      createTurnDiagnosticRequest(
+        threadId,
+        turnId,
+        trimmedText,
+        input,
+        null,
+        null,
+        null,
+        false,
+        "turn.steer"
+      )
+    ) ?? null;
     this.options.events.recordClientRequest(
       sourceId,
       threadId,
@@ -231,13 +292,35 @@ export class ThreadTurnActionsService {
       turnId,
       createTurnRequestDetails(trimmedText, attachments, references)
     );
-    const response = await client.steerTurn({
-      threadId,
-      input,
-      expectedTurnId: turnId
-    });
+    let response: unknown;
+
+    try {
+      response = await client.steerTurn({
+        threadId,
+        input,
+        expectedTurnId: turnId
+      });
+    } catch (error) {
+      if (diagnosticId !== null) {
+        this.options.events.recordTurnDiagnosticResponse?.(
+          diagnosticId,
+          null,
+          toError(error).message
+        );
+      }
+
+      throw error;
+    }
     const responseTurnId = readString(readObject(response).turnId);
     const effectiveTurnId = responseTurnId.length > 0 ? responseTurnId : turnId;
+
+    if (diagnosticId !== null) {
+      this.options.events.recordTurnDiagnosticResponse?.(
+        diagnosticId,
+        effectiveTurnId.length > 0 ? effectiveTurnId : null,
+        effectiveTurnId.length > 0 ? null : "Codex returned no turn id."
+      );
+    }
     await this.persistSteerUserInput(threadId, effectiveTurnId, input);
 
     return {
@@ -510,5 +593,31 @@ function createTurnRequestDetails(
     attachmentCount: attachments.length,
     referenceCount: references.length,
     ...extra
+  };
+}
+
+/** Builds the developer-only request record for one turn RPC call. */
+function createTurnDiagnosticRequest(
+  threadId: string,
+  turnId: string | null,
+  text: string,
+  input: v2.UserInput[],
+  model: string | null,
+  reasoningEffort: OpenCodexTurnDiagnosticRequestInput["reasoningEffort"],
+  serviceTier: OpenCodexTurnDiagnosticRequestInput["serviceTier"],
+  resumedExistingThread: boolean,
+  requestType: OpenCodexTurnDiagnosticRequestInput["requestType"] = "turn.start"
+): OpenCodexTurnDiagnosticRequestInput {
+  return {
+    requestType,
+    rpcMethod: requestType === "turn.start" ? "turn/start" : "turn/steer",
+    threadId,
+    turnId,
+    text,
+    input: buildTurnDiagnosticInput(input),
+    model,
+    reasoningEffort,
+    serviceTier,
+    resumedExistingThread
   };
 }

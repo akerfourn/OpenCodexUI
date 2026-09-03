@@ -29,6 +29,8 @@ type ChatSubTurnViewProps = {
   onOpenLink(href: string): void;
   onNavigateThread(threadId: string): void;
   onStartEdit(content: string): void;
+  onOpenTurnDiagnostic(turnId: string): void;
+  showTurnDiagnostic: boolean;
 };
 
 /**
@@ -50,7 +52,9 @@ export function ChatSubTurnView({
   lastMessageRef,
   onOpenLink,
   onNavigateThread,
-  onStartEdit
+  onStartEdit,
+  onOpenTurnDiagnostic,
+  showTurnDiagnostic
 }: ChatSubTurnViewProps) {
   const assistantAnswer = subTurn.assistantAnswer;
   const shouldShowReasoning = subTurn.reasoningItems.length > 0
@@ -114,6 +118,9 @@ export function ChatSubTurnView({
           attachments={assistantAnswer.attachments ?? []}
           turnExecution={turn.execution}
           turnTokenUsage={turn.tokenUsage}
+          turnId={turn.id}
+          showTurnDiagnostic={showTurnDiagnostic}
+          onOpenTurnDiagnostic={() => onOpenTurnDiagnostic(turn.id)}
         />
       ) : null}
     </>

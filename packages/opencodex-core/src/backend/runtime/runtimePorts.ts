@@ -5,6 +5,8 @@ import type {
   OpenCodexLogEntry,
   OpenCodexProject,
   OpenCodexSettings,
+  OpenCodexTurnDiagnostic,
+  OpenCodexTurnDiagnosticRequestInput,
   OpenCodexThreadEventLogPage,
   OpenCodexThreadEventLogRequestType,
   OpenCodexThreadEventLogValue
@@ -32,6 +34,24 @@ export interface RuntimeEventPort {
     turnId: string | null,
     details?: Record<string, OpenCodexThreadEventLogValue>
   ): void;
+  /** Records the exact structured input of a developer-mode turn request. */
+  recordTurnDiagnosticRequest?(
+    sourceId: string,
+    threadId: string,
+    request: OpenCodexTurnDiagnosticRequestInput
+  ): string | null;
+  /** Completes a previously captured developer-mode turn request. */
+  recordTurnDiagnosticResponse?(
+    diagnosticId: string,
+    turnId: string | null,
+    errorMessage: string | null
+  ): void;
+  /** Reads a process-local diagnostic trace for one turn. */
+  readTurnDiagnostic?(
+    threadId: string,
+    sourceId: string | null,
+    turnId: string
+  ): OpenCodexTurnDiagnostic | null;
   /** Reads the bounded event journal for one thread. */
   readThreadEventLog(
     threadId: string,

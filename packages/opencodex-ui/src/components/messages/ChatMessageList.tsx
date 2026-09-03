@@ -35,6 +35,7 @@ import type {
 import type { ChatStore } from "../../stores/chat/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ModelSettingsFields } from "../chat/ModelSettingsFields";
+import { TurnDiagnosticDialogX } from "../dialogs/TurnDiagnosticDialog";
 import { ChatTurnViewX } from "./ChatTurnView";
 import { CollaborationEventList } from "./CollaborationEventCard";
 import { getVisibleTurns } from "./chatTimelineWindow";
@@ -46,6 +47,12 @@ type ChatMessageListProps = {
   store: RootStore;
   chatStore: ChatStore;
   onOpenSubAgentDialog: OpenSubAgentDialog;
+};
+
+type TurnDiagnosticSelection = {
+  threadId: string;
+  sourceId: string | null;
+  turnId: string;
 };
 
 /**
@@ -65,6 +72,9 @@ export function ChatMessageList({
   const currentThread = chatStore.thread;
   const editableItem = chatStore.actions.editableLastUserItemIdentity;
   const [editedMessage, setEditedMessage] = useState<string | null>(null);
+  const [turnDiagnosticSelection, setTurnDiagnosticSelection] =
+    useState<TurnDiagnosticSelection | null>(null);
+  const isTurnDiagnosticsVisible = store.settings.developerMode;
   const isWorking = chatStore.runtime.isWorking || chatStore.runtime.isStartingTurn;
   const sourceId = chatStore.sourceId;
   const collaborationEvents = sourceId === null
@@ -93,7 +103,16 @@ export function ChatMessageList({
 
   useEffect(() => {
     setEditedMessage(null);
-  }, [chatStore, chatStore.thread.id]);
+    setTurnDiagnosticSelection(null);
+    store.chatTurnDiagnosticStore.close();
+  }, [chatStore, chatStore.thread.id, store]);
+
+  useEffect(() => {
+    if (!isTurnDiagnosticsVisible) {
+      setTurnDiagnosticSelection(null);
+      store.chatTurnDiagnosticStore.close();
+    }
+  }, [isTurnDiagnosticsVisible, store]);
 
   const {
     containerRef,
@@ -108,6 +127,23 @@ export function ChatMessageList({
 
   function handleStartEdit(content: string): void {
     setEditedMessage(content);
+  }
+
+  function handleOpenTurnDiagnostic(turnId: string): void {
+    if (!isTurnDiagnosticsVisible) {
+      return;
+    }
+
+    setTurnDiagnosticSelection({
+      threadId: currentThread.id,
+      sourceId,
+      turnId
+    });
+  }
+
+  function handleCloseTurnDiagnostic(): void {
+    store.chatTurnDiagnosticStore.close();
+    setTurnDiagnosticSelection(null);
   }
 
   function handleCancelEdit(): void {
@@ -240,6 +276,8 @@ export function ChatMessageList({
               onOpenLink={handleOpenLink}
               onNavigateThread={handleNavigateThread}
               onStartEdit={handleStartEdit}
+              onOpenTurnDiagnostic={handleOpenTurnDiagnostic}
+              showTurnDiagnostic={isTurnDiagnosticsVisible}
             />
           ))}
           <Box
@@ -343,6 +381,16 @@ export function ChatMessageList({
           </DialogActions>
         </Box>
       </Dialog>
+      {turnDiagnosticSelection !== null && isTurnDiagnosticsVisible ? (
+        <TurnDiagnosticDialogX
+          open
+          store={store}
+          threadId={turnDiagnosticSelection.threadId}
+          sourceId={turnDiagnosticSelection.sourceId}
+          turnId={turnDiagnosticSelection.turnId}
+          onClose={handleCloseTurnDiagnostic}
+        />
+      ) : null}
     </Box>
   );
 }

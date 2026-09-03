@@ -398,6 +398,8 @@ function renderDialogContent(
                 onOpenLink={onOpenLink}
                 onNavigateThread={onNavigateThread}
                 onStartEdit={onIgnoredEdit}
+                onOpenTurnDiagnostic={() => undefined}
+                showTurnDiagnostic={false}
               />
             )) : null}
             {turnStores.length === 0 ? (

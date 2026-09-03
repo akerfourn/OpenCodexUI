@@ -34,6 +34,8 @@ type ChatTurnViewProps = {
   onOpenLink(href: string): void;
   onNavigateThread(threadId: string): void;
   onStartEdit(content: string): void;
+  onOpenTurnDiagnostic(turnId: string): void;
+  showTurnDiagnostic: boolean;
 };
 
 /**
@@ -55,7 +57,9 @@ export function ChatTurnView({
   lastMessageRef,
   onOpenLink,
   onNavigateThread,
-  onStartEdit
+  onStartEdit,
+  onOpenTurnDiagnostic,
+  showTurnDiagnostic
 }: ChatTurnViewProps) {
   const { t } = useTranslation();
   const turn = turnStore.turn;
@@ -86,10 +90,16 @@ export function ChatTurnView({
           onOpenLink={onOpenLink}
           onNavigateThread={onNavigateThread}
           onStartEdit={onStartEdit}
+          onOpenTurnDiagnostic={onOpenTurnDiagnostic}
+          showTurnDiagnostic={showTurnDiagnostic}
         />
       ))}
       {errorMessage !== null && errorMessage.trim().length > 0 ? (
-        <TurnErrorRow message={errorMessage} />
+        <TurnErrorRow
+          message={errorMessage}
+          showTurnDiagnostic={showTurnDiagnostic}
+          onOpenTurnDiagnostic={() => onOpenTurnDiagnostic(turn.id)}
+        />
       ) : null}
     </>
   );

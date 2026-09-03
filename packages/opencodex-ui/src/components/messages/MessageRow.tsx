@@ -3,6 +3,7 @@
  */
 import { memo, useState, type RefObject } from "react";
 import { Box, IconButton, Paper, Tooltip } from "@mui/material";
+import BugReportOutlinedIcon from "@mui/icons-material/BugReportOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTranslation } from "react-i18next";
@@ -47,6 +48,8 @@ type MessageRowProps = {
   attachments: OpenCodexImageAttachment[];
   turnExecution?: OpenCodexTurnExecutionMetadata | null;
   turnTokenUsage?: OpenCodexThreadTokenUsage | null;
+  turnId?: string;
+  showTurnDiagnostic?: boolean;
   widthMode?: "message" | "container";
   canEdit?: boolean;
   /**
@@ -55,6 +58,8 @@ type MessageRowProps = {
    * @returns Nothing.
    */
   onEdit?(): void;
+  /** Opens the developer-only diagnostic trace for the current turn. */
+  onOpenTurnDiagnostic?(): void;
 };
 
 /**
@@ -79,9 +84,12 @@ export function MessageRow({
   attachments,
   turnExecution,
   turnTokenUsage,
+  turnId,
+  showTurnDiagnostic = false,
   widthMode = "message",
   canEdit = false,
-  onEdit
+  onEdit,
+  onOpenTurnDiagnostic
 }: MessageRowProps) {
   const { t } = useTranslation();
   const [isTurnDetailsOpen, setTurnDetailsOpen] = useState(false);
@@ -301,6 +309,23 @@ export function MessageRow({
               {messageTimestamp}
             </Box>
             <Box sx={{ display: "flex", gap: 0.5 }}>
+              {showTurnDiagnostic && turnId !== undefined && onOpenTurnDiagnostic !== undefined ? (
+                <Tooltip title={t("turnDiagnostics.title")}>
+                  <IconButton
+                    aria-label={t("turnDiagnostics.title")}
+                    size="small"
+                    onClick={onOpenTurnDiagnostic}
+                    sx={{
+                      color: "text.secondary",
+                      height: 24,
+                      width: 24,
+                      p: 0.25
+                    }}
+                  >
+                    <BugReportOutlinedIcon sx={{ fontSize: 15 }} />
+                  </IconButton>
+                </Tooltip>
+              ) : null}
               {hasTurnDetails ? (
                 <Tooltip title={t("turnDetails.title")}>
                   <IconButton

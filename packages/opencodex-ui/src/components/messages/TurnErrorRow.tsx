@@ -2,10 +2,14 @@
  * Displays a terminal error reported for a Codex turn.
  */
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import { Alert, Box, Typography } from "@mui/material";
+import BugReportOutlinedIcon from "@mui/icons-material/BugReportOutlined";
+import { Alert, Box, IconButton, Tooltip, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 type TurnErrorRowProps = {
   message: string;
+  showTurnDiagnostic?: boolean;
+  onOpenTurnDiagnostic?(): void;
 };
 
 /**
@@ -14,7 +18,25 @@ type TurnErrorRowProps = {
  * @param props Error row properties.
  * @returns Rendered error row.
  */
-export function TurnErrorRow({ message }: TurnErrorRowProps) {
+export function TurnErrorRow({
+  message,
+  showTurnDiagnostic = false,
+  onOpenTurnDiagnostic
+}: TurnErrorRowProps) {
+  const { t } = useTranslation();
+  const diagnosticAction = showTurnDiagnostic && onOpenTurnDiagnostic !== undefined ? (
+    <Tooltip title={t("turnDiagnostics.title")}>
+      <IconButton
+        aria-label={t("turnDiagnostics.title")}
+        size="small"
+        onClick={onOpenTurnDiagnostic}
+        sx={{ color: "inherit", ml: 0.5 }}
+      >
+        <BugReportOutlinedIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
+  ) : undefined;
+
   return (
     <Box
       component="article"
@@ -42,6 +64,7 @@ export function TurnErrorRow({ message }: TurnErrorRowProps) {
             py: 0
           }
         }}
+        action={diagnosticAction}
       >
         <Typography variant="body2">{message}</Typography>
       </Alert>

@@ -4,7 +4,8 @@
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexComposerReference,
-  OpenCodexImageAttachment
+  OpenCodexImageAttachment,
+  OpenCodexTurnDiagnosticInput
 } from "@open-codex-ui/opencodex-protocol";
 
 /**
@@ -45,6 +46,53 @@ export function buildTurnInput(
   }
 
   return input;
+}
+
+/**
+ * Creates the developer-only representation of a Codex input payload.
+ *
+ * Image data URLs are represented by their length rather than their content so
+ * a diagnostic remains useful without duplicating potentially large binary
+ * data in memory or across the renderer boundary.
+ *
+ * @param input Codex input payload.
+ * @returns Structured diagnostic input with sensitive binary content omitted.
+ */
+export function buildTurnDiagnosticInput(
+  input: v2.UserInput[]
+): OpenCodexTurnDiagnosticInput[] {
+  const diagnosticInput: OpenCodexTurnDiagnosticInput[] = [];
+
+  for (const item of input) {
+    if (item.type === "text") {
+      diagnosticInput.push({ type: "text", text: item.text });
+      continue;
+    }
+
+    if (item.type === "skill") {
+      diagnosticInput.push({ type: "skill", name: item.name, path: item.path });
+      continue;
+    }
+
+    if (item.type === "image") {
+      diagnosticInput.push({
+        type: "image",
+        source: "dataUrl",
+        valueLength: item.url.length
+      });
+      continue;
+    }
+
+    if (item.type === "localImage") {
+      diagnosticInput.push({
+        type: "localImage",
+        source: "localPath",
+        path: item.path
+      });
+    }
+  }
+
+  return diagnosticInput;
 }
 
 /**

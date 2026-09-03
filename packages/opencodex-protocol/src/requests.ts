@@ -118,6 +118,12 @@ export type OpenCodexRequest =
       sourceId?: string | null;
       limit?: number;
     }
+  | {
+      type: "threads.turnDiagnostic.read";
+      threadId: string;
+      sourceId?: string | null;
+      turnId: string;
+    }
   | { type: "threads.subAgents.list"; sourceId: string | null; parentThreadId: string }
   | ({ type: "threads.collaboration.list" } & OpenCodexCollaborationQuery)
   | { type: "threads.readReadonly"; sourceId: string | null; threadId: string }

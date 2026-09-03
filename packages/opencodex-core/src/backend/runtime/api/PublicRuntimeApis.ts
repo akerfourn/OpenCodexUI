@@ -57,6 +57,7 @@ import type {
   OpenCodexThreadGoalPatch,
   OpenCodexThreadRuntimeStatus,
   OpenCodexToolVersionStatus,
+  OpenCodexTurnDiagnostic,
   OpenCodexTurn,
   OpenCodexUsageHistory,
   OpenCodexUsageHistoryAggregation,
@@ -241,6 +242,15 @@ export interface CollaborationApi {
 /** Public bounded thread event-log queries. */
 export interface EventLogApi {
   read(threadId: string, sourceId: string | null, limit: number): OpenCodexThreadEventLogPage;
+}
+
+/** Public process-local diagnostic queries for individual turns. */
+export interface TurnDiagnosticsApi {
+  read(
+    threadId: string,
+    sourceId: string | null,
+    turnId: string
+  ): OpenCodexTurnDiagnostic | null;
 }
 
 /** Public operations for project command definitions and command runs. */

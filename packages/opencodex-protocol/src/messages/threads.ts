@@ -158,6 +158,83 @@ export type OpenCodexTurnExecutionMetadata = {
   serviceTier: OpenCodexServiceTier | null;
 };
 
+/** Content-free or explicitly captured input element sent to Codex. */
+export type OpenCodexTurnDiagnosticInput =
+  | { type: "text"; text: string }
+  | { type: "skill"; name: string; path: string }
+  | { type: "image"; source: "dataUrl"; valueLength: number }
+  | { type: "localImage"; source: "localPath"; path: string };
+
+/** Request payload captured for a developer-mode turn diagnostic. */
+export type OpenCodexTurnDiagnosticRequestInput = {
+  requestType: "turn.start" | "turn.steer";
+  rpcMethod: "turn/start" | "turn/steer";
+  threadId: string;
+  turnId: string | null;
+  text: string;
+  input: OpenCodexTurnDiagnosticInput[];
+  model: string | null;
+  reasoningEffort: OpenCodexReasoningEffort | null;
+  serviceTier: OpenCodexServiceTier | null;
+  resumedExistingThread: boolean;
+};
+
+/** Result recorded after the captured request reaches the Codex client. */
+export type OpenCodexTurnDiagnosticRequestResult = {
+  status: "pending" | "succeeded" | "failed";
+  turnId: string | null;
+  errorMessage: string | null;
+};
+
+/** Complete captured request and response information for one turn. */
+export type OpenCodexTurnDiagnosticRequest = OpenCodexTurnDiagnosticRequestInput & {
+  capturedAt: string;
+  textHash: string;
+  response: OpenCodexTurnDiagnosticRequestResult;
+};
+
+/** Origin of one event retained by the dedicated turn diagnostic trace. */
+export type OpenCodexTurnDiagnosticEventSource = "request" | "notification" | "backend";
+
+/** One bounded event retained in a developer-mode turn diagnostic trace. */
+export type OpenCodexTurnDiagnosticEvent = {
+  id: string;
+  sequence: number;
+  source: OpenCodexTurnDiagnosticEventSource;
+  eventName: string;
+  threadId: string;
+  turnId: string | null;
+  itemId: string | null;
+  occurredAt: string;
+  lastOccurredAt: string;
+  count: number;
+  details: Record<string, string | number | boolean | null>;
+};
+
+/** Content-free output summary accumulated from assistant message deltas. */
+export type OpenCodexTurnDiagnosticResponse = {
+  assistantMessageIds: string[];
+  outputDeltaCount: number;
+  outputLength: number;
+  outputHash: string | null;
+};
+
+/** Dedicated, process-local diagnostic trace for one Codex turn. */
+export type OpenCodexTurnDiagnostic = {
+  id: string;
+  sourceId: string | null;
+  threadId: string;
+  turnId: string | null;
+  status: "pending" | "active" | "completed" | "failed" | "observed";
+  startedAt: string;
+  lastUpdatedAt: string;
+  requests: OpenCodexTurnDiagnosticRequest[];
+  response: OpenCodexTurnDiagnosticResponse;
+  events: OpenCodexTurnDiagnosticEvent[];
+  anomalies: string[];
+  truncated: boolean;
+};
+
 /**
  * Structured turn shown by the chat UI.
  */

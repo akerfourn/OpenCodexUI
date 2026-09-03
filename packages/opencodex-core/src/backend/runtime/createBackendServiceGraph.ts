@@ -39,7 +39,10 @@ export function createBackendServiceGraph(
   isPrerelease: boolean
 ): BackendServiceGraph {
   const settings = new RuntimeSettingsStore(options.settings);
-  const events = new RuntimeEventDispatcher({ emitToHost: options.emit });
+  const events = new RuntimeEventDispatcher({
+    emitToHost: options.emit,
+    isTurnDiagnosticsEnabled: () => settings.getSettings().developerMode
+  });
   const cacheRepository = options.cacheRepository ?? null;
 
   let approvalService!: ApprovalService;
