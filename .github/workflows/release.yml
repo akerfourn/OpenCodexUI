@@ -2,6 +2,8 @@ name: Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*.*.*"
 
@@ -9,9 +11,126 @@ permissions:
   contents: write
 
 jobs:
+  prepare_release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.metadata.outputs.should_release }}
+      release_kind: ${{ steps.metadata.outputs.release_kind }}
+      version: ${{ steps.metadata.outputs.version }}
+      tag: ${{ steps.metadata.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Detect release version
+        id: metadata
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          current_version="$(node -p "require('./package.json').version")"
+
+          skip_release() {
+            echo "should_release=false" >> "${GITHUB_OUTPUT}"
+            echo "release_kind=none" >> "${GITHUB_OUTPUT}"
+            echo "version=${current_version}" >> "${GITHUB_OUTPUT}"
+            echo "tag=" >> "${GITHUB_OUTPUT}"
+          }
+
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            if [[ ! "${current_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$ ]]; then
+              echo "No automatic prerelease: ${current_version} is not an alpha, beta, or rc version."
+              skip_release
+              exit 0
+            fi
+
+            before_sha="${BEFORE_SHA:-}"
+            if [[ -z "${before_sha}" || "${before_sha}" =~ ^0+$ ]]; then
+              before_sha="$(git rev-parse "${CURRENT_SHA}^" 2>/dev/null || true)"
+            fi
+
+            if [[ -z "${before_sha}" ]]; then
+              echo "Cannot determine the previous commit for prerelease detection." >&2
+              exit 1
+            fi
+
+            if git diff --quiet "${before_sha}" "${CURRENT_SHA}" -- package.json; then
+              echo "No automatic prerelease: the root package.json did not change."
+              skip_release
+              exit 0
+            fi
+
+            previous_version="$(
+              git show "${before_sha}:package.json" |
+                node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version"
+            )"
+
+            if [[ "${previous_version}" == "${current_version}" ]]; then
+              echo "No automatic prerelease: package.json changed without a version bump."
+              skip_release
+              exit 0
+            fi
+
+            echo "Detected prerelease version change: ${previous_version} -> ${current_version}."
+            echo "should_release=true" >> "${GITHUB_OUTPUT}"
+            echo "release_kind=prerelease" >> "${GITHUB_OUTPUT}"
+            echo "version=${current_version}" >> "${GITHUB_OUTPUT}"
+            echo "tag=v${current_version}" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if [[ "${GITHUB_REF}" != refs/tags/v* ]]; then
+            echo "Unsupported release ref: ${GITHUB_REF}" >&2
+            exit 1
+          fi
+
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+
+          if [[ "${tag}" == "${version}" ]]; then
+            echo "Tag must use the vX.Y.Z format." >&2
+            exit 1
+          fi
+
+          if [[ "${current_version}" != "${version}" ]]; then
+            echo "Tag version ${version} does not match package.json ${current_version}." >&2
+            exit 1
+          fi
+
+          if [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$ ]]; then
+            echo "Ignoring prerelease tag ${tag}: prereleases are created from main commits."
+            skip_release
+            exit 0
+          fi
+
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported tag version: ${version}." >&2
+            exit 1
+          fi
+
+          echo "Detected stable tag ${tag}."
+          echo "should_release=true" >> "${GITHUB_OUTPUT}"
+          echo "release_kind=stable" >> "${GITHUB_OUTPUT}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
+    needs: prepare_release
+    if: ${{ needs.prepare_release.outputs.should_release == 'true' }}
 
     steps:
       - name: Checkout
@@ -36,17 +155,20 @@ jobs:
         run: npm run dist -w apps/electron-app
 
       - name: Upload Linux artifacts
+        if: ${{ always() }}
         uses: actions/upload-artifact@v6
         with:
           name: linux-artifacts
           path: |
             apps/electron-app/release/*.AppImage
             apps/electron-app/release/*.deb
-          if-no-files-found: error
+          if-no-files-found: ignore
 
   build-windows:
     name: Build Windows
     runs-on: windows-latest
+    needs: prepare_release
+    if: ${{ needs.prepare_release.outputs.should_release == 'true' }}
 
     steps:
       - name: Checkout
@@ -68,17 +190,20 @@ jobs:
         run: npm run dist -w apps/electron-app
 
       - name: Upload Windows artifacts
+        if: ${{ always() }}
         uses: actions/upload-artifact@v6
         with:
           name: windows-artifacts
           path: |
             apps/electron-app/release/*.exe
-          if-no-files-found: error
+          if-no-files-found: ignore
 
   publish-release:
     name: Publish GitHub release
     runs-on: ubuntu-latest
+    if: ${{ always() && !cancelled() && needs.prepare_release.outputs.should_release == 'true' }}
     needs:
+      - prepare_release
       - build-linux
       - build-windows
 
@@ -96,13 +221,16 @@ jobs:
       - name: Validate release metadata
         id: metadata
         shell: bash
+        env:
+          RELEASE_KIND: ${{ needs.prepare_release.outputs.release_kind }}
+          RELEASE_TAG: ${{ needs.prepare_release.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.prepare_release.outputs.version }}
         run: |
           set -euo pipefail
 
-          tag="${GITHUB_REF_NAME}"
-          version="${tag#v}"
+          tag="${RELEASE_TAG}"
+          version="${RELEASE_VERSION}"
           package_version="$(node -p "require('./package.json').version")"
-          release_notes="docs/releases/release-${version}.md"
 
           if [ "${tag}" = "${version}" ]; then
             echo "Tag must use the vX.Y.Z format." >&2
@@ -113,6 +241,19 @@ jobs:
             echo "Tag version ${version} does not match package.json ${package_version}." >&2
             exit 1
           fi
+
+          if [ "${RELEASE_KIND}" = "prerelease" ]; then
+            release_title="OpenCodexUI ${version}"
+            release_body="$(mktemp)"
+            : > "${release_body}"
+
+            echo "version=${version}" >> "${GITHUB_OUTPUT}"
+            echo "release_title=${release_title}" >> "${GITHUB_OUTPUT}"
+            echo "release_body=${release_body}" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          release_notes="docs/releases/release-${version}.md"
 
           if ! git merge-base --is-ancestor "${GITHUB_SHA}" origin/main; then
             echo "Release tag ${tag} must point to a commit reachable from origin/main." >&2
@@ -141,13 +282,50 @@ jobs:
       - name: Publish release
         shell: bash
         env:
+          BUILD_LINUX_RESULT: ${{ needs.build-linux.result }}
+          BUILD_WINDOWS_RESULT: ${{ needs.build-windows.result }}
           GH_TOKEN: ${{ github.token }}
+          RELEASE_KIND: ${{ needs.prepare_release.outputs.release_kind }}
+          RELEASE_TAG: ${{ needs.prepare_release.outputs.tag }}
           RELEASE_BODY: ${{ steps.metadata.outputs.release_body }}
           RELEASE_TITLE: ${{ steps.metadata.outputs.release_title }}
         run: |
           set -euo pipefail
 
-          tag="${GITHUB_REF_NAME}"
+          tag="${RELEASE_TAG}"
+
+          if [[ "${RELEASE_KIND}" == "stable" && (
+            "${BUILD_LINUX_RESULT}" != "success" ||
+            "${BUILD_WINDOWS_RESULT}" != "success"
+          ) ]]; then
+            echo "Stable release blocked because at least one platform build failed." >&2
+            echo "Linux: ${BUILD_LINUX_RESULT}; Windows: ${BUILD_WINDOWS_RESULT}" >&2
+            exit 1
+          fi
+
+          if [[ "${RELEASE_KIND}" == "prerelease" && (
+            "${BUILD_LINUX_RESULT}" != "success" ||
+            "${BUILD_WINDOWS_RESULT}" != "success"
+          ) ]]; then
+            echo "::warning::Publishing a partial prerelease. Linux=${BUILD_LINUX_RESULT}; Windows=${BUILD_WINDOWS_RESULT}"
+            {
+              echo "This prerelease is partial because at least one platform build failed."
+              echo
+              echo "- Linux build: ${BUILD_LINUX_RESULT}"
+              echo "- Windows build: ${BUILD_WINDOWS_RESULT}"
+            } > "${RELEASE_BODY}"
+            {
+              echo "### Partial prerelease"
+              echo
+              echo "Linux: ${BUILD_LINUX_RESULT}; Windows: ${BUILD_WINDOWS_RESULT}"
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+          if [ ! -d release-artifacts ]; then
+            echo "No release artifact directory found." >&2
+            exit 1
+          fi
+
           mapfile -t release_files < <(find release-artifacts -type f | sort)
 
           if [ "${#release_files[@]}" -eq 0 ]; then
@@ -155,12 +333,22 @@ jobs:
             exit 1
           fi
 
+          release_flags=()
+          if [[ "${RELEASE_KIND}" == "prerelease" ]]; then
+            release_flags+=(--prerelease)
+          fi
+
           if gh release view "${tag}" >/dev/null 2>&1; then
-            gh release edit "${tag}" --title "${RELEASE_TITLE}" --notes-file "${RELEASE_BODY}"
+            gh release edit "${tag}" \
+              --title "${RELEASE_TITLE}" \
+              --notes-file "${RELEASE_BODY}" \
+              "${release_flags[@]}"
             gh release upload "${tag}" "${release_files[@]}" --clobber
             exit 0
           fi
 
           gh release create "${tag}" "${release_files[@]}" \
             --title "${RELEASE_TITLE}" \
-            --notes-file "${RELEASE_BODY}"
+            --notes-file "${RELEASE_BODY}" \
+            --target "${GITHUB_SHA}" \
+            "${release_flags[@]}"
