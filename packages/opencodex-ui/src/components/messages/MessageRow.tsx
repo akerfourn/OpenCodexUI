@@ -1,7 +1,8 @@
 /**
  * Renders the message row component for the OpenCodex UI.
  */
-import { memo, useState, type RefObject } from "react";
+import { useState, type RefObject } from "react";
+import { observer } from "mobx-react-lite";
 import { Box, IconButton, Paper, Tooltip } from "@mui/material";
 import BugReportOutlinedIcon from "@mui/icons-material/BugReportOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -9,11 +10,9 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTranslation } from "react-i18next";
 
 import type {
-  OpenCodexImageAttachment,
-  OpenCodexMessage,
-  OpenCodexPlanSnapshot,
   OpenCodexThreadTokenUsage,
-  OpenCodexTurnExecutionMetadata
+  OpenCodexTurnExecutionMetadata,
+  OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
 import { CopyIconButton } from "../common/CopyIconButton";
@@ -21,12 +20,13 @@ import { TurnDetailsDialog } from "../dialogs/TurnDetailsDialog";
 import { ActivityKindIcon } from "./ActivityKindIcon";
 import { CommandActivityRow } from "./CommandActivityRow";
 import { FileChangeActivityRow } from "./FileChangeActivityRow";
-import { ImageAttachmentPreviewGrid } from "./ImageAttachmentPreviewGrid";
+import { MessageAttachmentsX } from "./MessageAttachments";
 import { MarkdownMessageM } from "./MarkdownMessage";
 import { formatMessageTimestamp } from "./messageTimestamp";
-import { PlanActivityRow } from "./PlanActivityRow";
+import { PlanActivityRowX } from "./PlanActivityRow";
 
 type MessageRowProps = {
+  item: OpenCodexTurnItem;
   isLast: boolean;
   lastMessageRef: RefObject<HTMLElement>;
   /**
@@ -37,15 +37,8 @@ type MessageRowProps = {
    * @returns Nothing.
    */
   onOpenLink(href: string): void;
-  role: OpenCodexMessage["role"];
-  phase?: OpenCodexMessage["phase"];
-  kind?: string;
-  content: string;
-  isStreaming?: boolean;
-  createdAt: string | null;
-  details?: string | null;
-  plan?: OpenCodexPlanSnapshot | null;
-  attachments: OpenCodexImageAttachment[];
+  isRunning?: boolean;
+  fallbackCreatedAt?: string | null;
   turnExecution?: OpenCodexTurnExecutionMetadata | null;
   turnTokenUsage?: OpenCodexThreadTokenUsage | null;
   turnId?: string;
@@ -70,18 +63,12 @@ type MessageRowProps = {
  * @returns Nothing.
  */
 export function MessageRow({
+  item,
   isLast,
   lastMessageRef,
   onOpenLink,
-  role,
-  phase,
-  kind,
-  content,
-  isStreaming = false,
-  createdAt,
-  details,
-  plan = null,
-  attachments,
+  isRunning = false,
+  fallbackCreatedAt = null,
   turnExecution,
   turnTokenUsage,
   turnId,
@@ -92,11 +79,21 @@ export function MessageRow({
   onOpenTurnDiagnostic
 }: MessageRowProps) {
   const { t } = useTranslation();
+  const {
+    role,
+    phase,
+    kind,
+    content,
+    createdAt,
+    details,
+    plan = null
+  } = item;
+  const isStreaming = isRunning && item.status === "streaming";
   const [isTurnDetailsOpen, setTurnDetailsOpen] = useState(false);
   const articleRef = isLast ? lastMessageRef : undefined;
   const isCommentary = role === "assistant" && phase === "commentary";
   const isSteerMessage = role === "user" && kind === "steer";
-  const messageTimestamp = formatMessageTimestamp(createdAt, t);
+  const messageTimestamp = formatMessageTimestamp(createdAt ?? fallbackCreatedAt, t);
   const hasTurnDetails = turnExecution !== undefined && turnExecution !== null ||
     turnTokenUsage !== undefined && turnTokenUsage !== null;
 
@@ -156,7 +153,7 @@ export function MessageRow({
             requireModifiedClick
             onOpenLink={onOpenLink}
           />
-          {attachments.length > 0 ? <ImageAttachmentPreviewGrid attachments={attachments} /> : null}
+          <MessageAttachmentsX item={item} />
         </Paper>
         <Box
           className="user-message-actions"
@@ -173,7 +170,7 @@ export function MessageRow({
         >
           <Box
             component="time"
-            dateTime={createdAt ?? undefined}
+            dateTime={createdAt ?? fallbackCreatedAt ?? undefined}
             sx={{
               color: "text.secondary",
               fontSize: 12,
@@ -251,7 +248,7 @@ export function MessageRow({
           icon={<ActivityKindIcon kind={kind} />}
         />
       ) : role === "activity" && kind === "plan" && plan !== null ? (
-        <PlanActivityRow
+        <PlanActivityRowX
           plan={plan}
           icon={<ActivityKindIcon kind={kind} />}
         />
@@ -284,7 +281,7 @@ export function MessageRow({
             requireModifiedClick
             onOpenLink={onOpenLink}
           />
-          {attachments.length > 0 ? <ImageAttachmentPreviewGrid attachments={attachments} /> : null}
+          <MessageAttachmentsX item={item} />
           <Box
             className="assistant-message-actions"
             sx={{
@@ -299,7 +296,7 @@ export function MessageRow({
           >
             <Box
               component="time"
-              dateTime={createdAt ?? undefined}
+              dateTime={createdAt ?? fallbackCreatedAt ?? undefined}
               sx={{
                 color: "text.secondary",
                 fontSize: 12,
@@ -365,7 +362,7 @@ export function MessageRow({
   );
 }
 
-export const MessageRowM = memo(MessageRow);
+export const MessageRowX = observer(MessageRow);
 
 function isCommandActivityKind(kind?: string): boolean {
   return kind === "commandExecution" || kind === "command";

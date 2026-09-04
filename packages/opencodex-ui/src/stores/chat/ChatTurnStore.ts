@@ -14,6 +14,8 @@ import {
 export class ChatTurnStore {
   /** Raw Codex turn represented by this store. */
   turn: OpenCodexTurn;
+  /** Cached structural decomposition reused while live item content changes. */
+  private structure: ChatTurnStructure;
 
   /**
    * Creates a store for one Codex turn.
@@ -23,6 +25,7 @@ export class ChatTurnStore {
   constructor(turn: OpenCodexTurn) {
     this.turn = turn;
     makeAutoObservable(this);
+    this.structure = buildChatTurnStructure(this.turn);
   }
 
   /** Turn identifier. */
@@ -61,7 +64,17 @@ export class ChatTurnStore {
    * @param turn Raw Codex turn.
    */
   setTurn(turn: OpenCodexTurn): void {
+    if (this.turn === turn) {
+      return;
+    }
+
     this.turn = turn;
+    this.structure = buildChatTurnStructure(this.turn);
+  }
+
+  /** Rebuilds the structural view after an in-place item insertion or removal. */
+  refreshStructure(): void {
+    this.structure = buildChatTurnStructure(this.turn);
   }
 
   /**
@@ -85,8 +98,4 @@ export class ChatTurnStore {
     return !this.hasFinalAnswer || this.hasOpenSubTurn || this.turn.items.length === 0;
   }
 
-  /** Structured view derived lazily from the raw turn. */
-  private get structure(): ChatTurnStructure {
-    return buildChatTurnStructure(this.turn);
-  }
 }

@@ -17,23 +17,24 @@ import { toMessageStatus } from "./chatTurnUtils";
  * @param activity Live activity payload.
  * @param turnId Target turn identifier.
  * @param threadId Owning thread identifier.
+ * @returns Whether the turn's structural decomposition must be rebuilt.
  */
 export function appendActivityItem(
   timeline: ChatTimelineStore,
   activity: OpenCodexActivity,
   turnId: string | null,
   threadId: string
-): void {
+): boolean {
   if (
     activity.content === undefined ||
     activity.content.trim().length === 0 ||
     isEmptyReasoningActivity(activity.kind, activity.content)
   ) {
-    return;
+    return false;
   }
 
   if (turnId === null || turnId.length === 0) {
-    return;
+    return false;
   }
 
   const turn = findOrCreateTurn(timeline, threadId, turnId);
@@ -58,20 +59,22 @@ export function appendActivityItem(
       existing.status = toMessageStatus(activity.status);
 
       if (activity.kind === "plan") {
-        turn.items = movePlanItemsToLatestSubTurn(turn).items;
+        const normalizedTurn = movePlanItemsToLatestSubTurn(turn);
+        turn.items = normalizedTurn.items;
+        return normalizedTurn !== turn;
       }
 
-      return;
+      return false;
     }
 
     if (normalizeActivityContent(existing.content) === normalizeActivityContent(activity.content)) {
       existing.status = toMessageStatus(activity.status);
-      return;
+      return false;
     }
 
     existing.content += activity.content;
     existing.status = toMessageStatus(activity.status);
-    return;
+    return false;
   }
 
   turn.items.push({
@@ -87,8 +90,11 @@ export function appendActivityItem(
   });
 
   if (activity.kind === "plan") {
-    turn.items = movePlanItemsToLatestSubTurn(turn).items;
+    const normalizedTurn = movePlanItemsToLatestSubTurn(turn);
+    turn.items = normalizedTurn.items;
   }
+
+  return true;
 }
 
 /**

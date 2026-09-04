@@ -34,12 +34,12 @@ import type {
 
 import type { ChatStore } from "../../stores/chat/ChatStore";
 import type { RootStore } from "../../stores/RootStore";
+import { EMPTY_COLLABORATION_EVENTS } from "../../stores/collaboration/CollaborationEventIndex";
 import { ModelSettingsFields } from "../chat/ModelSettingsFields";
 import { TurnDiagnosticDialogX } from "../dialogs/TurnDiagnosticDialog";
 import { ChatTurnViewX } from "./ChatTurnView";
-import { CollaborationEventList } from "./CollaborationEventCard";
+import { CollaborationThreadContextX } from "./CollaborationThreadContext";
 import { getVisibleTurns } from "./chatTimelineWindow";
-import { buildCollaborationTimeline } from "./collaborationTimeline";
 import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 import { useChatTimelineScroll } from "./useChatTimelineScroll";
 
@@ -77,19 +77,19 @@ export function ChatMessageList({
   const isTurnDiagnosticsVisible = store.settings.developerMode;
   const isWorking = chatStore.runtime.isWorking || chatStore.runtime.isStartingTurn;
   const sourceId = chatStore.sourceId;
-  const collaborationEvents = sourceId === null
-    ? []
-    : store.collaborationStore.readThreadEvents(sourceId, currentThread.id);
-  const collaborationTimeline = buildCollaborationTimeline(
-    collaborationEvents,
-    currentThread.id
-  );
   const handleOpenLink = useCallback((href: string) => {
     store.openExternalLink(href);
   }, [store]);
   const handleNavigateThread = useCallback((threadId: string) => {
     onOpenSubAgentDialog(currentThread, threadId);
   }, [currentThread, onOpenSubAgentDialog]);
+  const readCollaborationEventsForTurn = useCallback((turnId: string) => {
+    if (sourceId === null) {
+      return EMPTY_COLLABORATION_EVENTS;
+    }
+
+    return store.collaborationStore.readTurnEvents(sourceId, currentThread.id, turnId);
+  }, [currentThread.id, sourceId, store]);
 
   useEffect(() => {
     if (sourceId === null) {
@@ -125,11 +125,11 @@ export function ChatMessageList({
   } = useChatTimelineScroll(chatStore);
   const visibleTurnStores = getVisibleTurns(chatStore.timeline.turnStores, visibleTurnCount);
 
-  function handleStartEdit(content: string): void {
+  const handleStartEdit = useCallback((content: string): void => {
     setEditedMessage(content);
-  }
+  }, []);
 
-  function handleOpenTurnDiagnostic(turnId: string): void {
+  const handleOpenTurnDiagnostic = useCallback((turnId: string): void => {
     if (!isTurnDiagnosticsVisible) {
       return;
     }
@@ -139,7 +139,7 @@ export function ChatMessageList({
       sourceId,
       turnId
     });
-  }
+  }, [currentThread.id, isTurnDiagnosticsVisible, sourceId]);
 
   function handleCloseTurnDiagnostic(): void {
     store.chatTurnDiagnosticStore.close();
@@ -256,10 +256,10 @@ export function ChatMessageList({
               <CircularProgress size={18} thickness={5} />
             </Box>
           ) : null}
-          <CollaborationEventList
-            events={collaborationTimeline.threadEvents}
+          <CollaborationThreadContextX
+            collaborationStore={store.collaborationStore}
+            sourceId={sourceId}
             currentThread={currentThread}
-            isThreadContext
             onNavigateThread={handleNavigateThread}
           />
           {visibleTurnStores.map((turnStore, index) => (
@@ -270,7 +270,7 @@ export function ChatMessageList({
               isWorking={isWorking}
               isLastTurn={index === visibleTurnStores.length - 1}
               editableItem={editableItem}
-              collaborationEvents={collaborationTimeline.eventsByTurnId.get(turnStore.id) ?? []}
+              readCollaborationEventsForTurn={readCollaborationEventsForTurn}
               currentThread={currentThread}
               lastMessageRef={lastMessageRef}
               onOpenLink={handleOpenLink}

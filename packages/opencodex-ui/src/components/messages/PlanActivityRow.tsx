@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { observer } from "mobx-react-lite";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
@@ -103,3 +104,5 @@ export function PlanActivityRow({ plan, icon }: PlanActivityRowProps) {
     </Box>
   );
 }
+
+export const PlanActivityRowX = observer(PlanActivityRow);

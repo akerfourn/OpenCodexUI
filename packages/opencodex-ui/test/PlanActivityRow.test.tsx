@@ -38,14 +38,17 @@ describe("PlanActivityRow", () => {
   it("should leave historical text-only plans on the generic Markdown path", () => {
     const markup = renderToStaticMarkup(
       <MessageRow
+        item={{
+          id: "legacy-plan",
+          role: "activity",
+          kind: "plan",
+          content: "completed: Analyser\npending: Implémenter",
+          status: "completed",
+          createdAt: null
+        }}
         isLast={false}
         lastMessageRef={{ current: null }}
         onOpenLink={vi.fn()}
-        role="activity"
-        kind="plan"
-        content={"completed: Analyser\npending: Implémenter"}
-        createdAt={null}
-        attachments={[]}
       />
     );
 

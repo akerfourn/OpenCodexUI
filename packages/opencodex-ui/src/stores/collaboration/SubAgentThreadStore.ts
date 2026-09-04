@@ -80,8 +80,25 @@ export class SubAgentThreadStore {
   readCollaborationEvents(
     sourceId: string,
     threadId: string
-  ): OpenCodexCollaborationEvent[] {
+  ): readonly OpenCodexCollaborationEvent[] {
     return this.root.collaborationStore.readThreadEvents(sourceId, threadId);
+  }
+
+  /** Reads collaboration events shown above one readonly thread timeline. */
+  readCollaborationContextEvents(
+    sourceId: string,
+    threadId: string
+  ): readonly OpenCodexCollaborationEvent[] {
+    return this.root.collaborationStore.readThreadContextEvents(sourceId, threadId);
+  }
+
+  /** Reads collaboration events anchored to one readonly turn. */
+  readCollaborationTurnEvents(
+    sourceId: string,
+    threadId: string,
+    turnId: string
+  ): readonly OpenCodexCollaborationEvent[] {
+    return this.root.collaborationStore.readTurnEvents(sourceId, threadId, turnId);
   }
 
   /** Adds a newly announced sub-agent to every compatible ancestor list. */

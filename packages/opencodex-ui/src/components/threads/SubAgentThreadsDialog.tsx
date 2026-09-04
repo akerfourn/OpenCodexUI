@@ -1,7 +1,14 @@
 /**
  * Renders a readonly dialog for sub-agent threads spawned by a parent chat.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject
+} from "react";
 import { observer } from "mobx-react-lite";
 import {
   Box,
@@ -23,9 +30,9 @@ import type {
 
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ChatTurnStore } from "../../stores/chat/ChatTurnStore";
+import { EMPTY_COLLABORATION_EVENTS } from "../../stores/collaboration/CollaborationEventIndex";
 import { ChatTurnViewX } from "../messages/ChatTurnView";
-import { CollaborationEventList } from "../messages/CollaborationEventCard";
-import { buildCollaborationTimeline } from "../messages/collaborationTimeline";
+import { CollaborationEventListM } from "../messages/CollaborationEventList";
 import { SubAgentThreadHeader } from "./SubAgentThreadHeader";
 import { SubAgentThreadTree } from "./SubAgentThreadTree";
 import {
@@ -47,6 +54,9 @@ type ReadonlyThreadView = {
   thread: OpenCodexThread;
   turns: OpenCodexTurn[];
 };
+
+/** Stable no-op used by readonly turn views. */
+const NOOP = (): void => undefined;
 
 /**
  * Renders sub-agent thread navigation and readonly message content.
@@ -74,7 +84,9 @@ export function SubAgentThreadsDialog({
   const readonlyThreadViewsRef = useRef(new Map<string, ReadonlyThreadView>());
   const sourceId = parentThread.sourceId;
   const threads = subAgentStore.read(parentThread.id, sourceId);
-  const treeNodes = buildSubAgentThreadTree(parentThread, threads, sourceId);
+  const treeNodes = useMemo(() => (
+    buildSubAgentThreadTree(parentThread, threads, sourceId)
+  ), [parentThread, sourceId, threads]);
   const turnStores = useMemo(() => (
     threadView?.turns.map((turn) => new ChatTurnStore(turn)) ?? []
   ), [threadView?.turns]);
@@ -82,16 +94,28 @@ export function SubAgentThreadsDialog({
     ? null
     : threads.find((thread) => thread.id === threadView.thread.id) ?? threadView.thread;
   const selectedThreadSourceId = currentThread?.sourceId ?? sourceId;
-  const collaborationEvents = currentThread === null || selectedThreadSourceId === null
-    ? []
-    : subAgentStore.readCollaborationEvents(
+  const threadCollaborationEvents = currentThread === null || selectedThreadSourceId === null
+    ? EMPTY_COLLABORATION_EVENTS
+    : subAgentStore.readCollaborationContextEvents(
       selectedThreadSourceId,
       currentThread.id
     );
-  const collaborationTimeline = buildCollaborationTimeline(
-    collaborationEvents,
-    currentThread?.id ?? ""
+  const readCollaborationEventsForTurn = useCallback((turnId: string) => {
+    if (currentThread === null || selectedThreadSourceId === null) {
+      return EMPTY_COLLABORATION_EVENTS;
+    }
+
+    return subAgentStore.readCollaborationTurnEvents(
+      selectedThreadSourceId,
+      currentThread.id,
+      turnId
+    );
+  }, [currentThread, selectedThreadSourceId, subAgentStore]);
+  const navigableThreadIds = useMemo(
+    () => threads.map((thread) => thread.id),
+    [threads]
   );
+  const emptyMessageRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -198,28 +222,28 @@ export function SubAgentThreadsDialog({
     };
   }, [open, selectedThreadId, sourceId, subAgentStore]);
 
-  function handleSelectThread(threadId: string): void {
+  const handleSelectThread = useCallback((threadId: string): void => {
     setSelectedThreadId(threadId);
-  }
+  }, []);
 
-  function handleOpenLink(href: string): void {
+  const handleOpenLink = useCallback((href: string): void => {
     projectStore.openExternalLink(href);
-  }
+  }, [projectStore]);
 
-  function handleIgnoredEdit(): void {
+  const handleIgnoredEdit = useCallback((): void => {
     // Readonly sub-agent inspection intentionally disables message editing.
-  }
+  }, []);
 
-  function handleNavigateThread(threadId: string): void {
+  const handleNavigateThread = useCallback((threadId: string): void => {
     if (threads.some((thread) => thread.id === threadId)) {
       setSelectedThreadId(threadId);
     }
-  }
+  }, [threads]);
 
-  function handleNavigateRoot(): void {
+  const handleNavigateRoot = useCallback((): void => {
     projectStore.navigateToThread(sourceId, parentThread.id);
     onClose();
-  }
+  }, [onClose, parentThread.id, projectStore, sourceId]);
 
   const content = renderDialogContent(
     t,
@@ -230,9 +254,10 @@ export function SubAgentThreadsDialog({
     selectedThreadId,
     currentThread,
     turnStores,
-    collaborationTimeline.threadEvents,
-    collaborationTimeline.eventsByTurnId,
-    threads.map((thread) => thread.id),
+    threadCollaborationEvents,
+    readCollaborationEventsForTurn,
+    navigableThreadIds,
+    emptyMessageRef,
     isLoadingList,
     isLoadingThread,
     handleSelectThread,
@@ -282,8 +307,9 @@ export const SubAgentThreadsDialogX = observer(SubAgentThreadsDialog);
  * @param currentThread Selected readonly thread metadata.
  * @param turnStores Renderable turn stores.
  * @param threadCollaborationEvents Events not reliably correlated to a receiver turn.
- * @param collaborationEventsByTurnId Events correlated to turns observed in this thread.
+ * @param readCollaborationEventsForTurn Reads events for one exact turn.
  * @param navigableThreadIds Descendants that can be selected without leaving the dialog.
+ * @param emptyMessageRef Stable ref because readonly messages are never editable.
  * @param isLoadingList Whether the sub-agent list is loading.
  * @param isLoadingThread Whether the selected thread is loading.
  * @param onSelectThread Selection callback.
@@ -303,8 +329,9 @@ function renderDialogContent(
   currentThread: OpenCodexThread | null,
   turnStores: ChatTurnStore[],
   threadCollaborationEvents: readonly OpenCodexCollaborationEvent[],
-  collaborationEventsByTurnId: ReadonlyMap<string, OpenCodexCollaborationEvent[]>,
+  readCollaborationEventsForTurn: (turnId: string) => readonly OpenCodexCollaborationEvent[],
   navigableThreadIds: readonly string[],
+  emptyMessageRef: MutableRefObject<HTMLElement | null>,
   isLoadingList: boolean,
   isLoadingThread: boolean,
   onSelectThread: (threadId: string) => void,
@@ -374,7 +401,7 @@ function renderDialogContent(
                   onNavigateRoot={onNavigateRoot}
                   onSelectThread={onSelectThread}
                 />
-                <CollaborationEventList
+                <CollaborationEventListM
                   events={threadCollaborationEvents}
                   currentThread={currentThread}
                   isThreadContext
@@ -391,14 +418,14 @@ function renderDialogContent(
                 isWorking={false}
                 isLastTurn={index === turnStores.length - 1}
                 editableItem={null}
-                collaborationEvents={collaborationEventsByTurnId.get(turnStore.id) ?? []}
+                readCollaborationEventsForTurn={readCollaborationEventsForTurn}
                 navigableThreadIds={navigableThreadIds}
                 currentThread={currentThread}
-                lastMessageRef={{ current: null }}
+                lastMessageRef={emptyMessageRef}
                 onOpenLink={onOpenLink}
                 onNavigateThread={onNavigateThread}
                 onStartEdit={onIgnoredEdit}
-                onOpenTurnDiagnostic={() => undefined}
+                onOpenTurnDiagnostic={NOOP}
                 showTurnDiagnostic={false}
               />
             )) : null}

@@ -262,10 +262,19 @@ export class ChatTimelineStore {
     const existing = turn.items.find((item) => item.id === itemId);
 
     if (existing !== undefined) {
+      const shouldRefreshForFirstContent = existing.content.length === 0 && delta.length > 0;
       existing.content += delta;
 
-      if (existing.phase === undefined || existing.phase === null) {
+      const shouldRefreshForPhase = (
+        existing.phase === undefined || existing.phase === null
+      ) && phase !== null && phase !== undefined;
+
+      if (shouldRefreshForPhase) {
         existing.phase = phase;
+      }
+
+      if (shouldRefreshForFirstContent || shouldRefreshForPhase) {
+        this.refreshTurnStructure(turnId);
       }
 
       return;
@@ -279,6 +288,7 @@ export class ChatTimelineStore {
       createdAt: new Date().toISOString(),
       phase
     });
+    this.refreshTurnStructure(turnId);
   }
 
   /**
@@ -294,7 +304,16 @@ export class ChatTimelineStore {
     pendingTurnId: string | null
   ): void {
     const turnId = activity.title ?? activeTurnId ?? pendingTurnId;
-    appendActivityItem(this, activity, turnId, this.parent.thread.id);
+    const structureChanged = appendActivityItem(
+      this,
+      activity,
+      turnId,
+      this.parent.thread.id
+    );
+
+    if (structureChanged && turnId !== null) {
+      this.refreshTurnStructure(turnId);
+    }
   }
 
   /**
@@ -371,6 +390,7 @@ export class ChatTimelineStore {
       attachments
     });
     turn.items = movePlanItemsToLatestSubTurn(turn).items;
+    this.refreshTurnStructure(turnId);
     this.scrollToBottomVersion += 1;
     return itemId;
   }
@@ -388,8 +408,15 @@ export class ChatTimelineStore {
       return;
     }
 
-    turn.items = turn.items.filter((item) => item.id !== itemId);
+    const nextItems = turn.items.filter((item) => item.id !== itemId);
+
+    if (nextItems.length === turn.items.length) {
+      return;
+    }
+
+    turn.items = nextItems;
     turn.items = movePlanItemsToLatestSubTurn(turn).items;
+    this.refreshTurnStructure(turnId);
   }
 
   /**
@@ -442,7 +469,7 @@ export class ChatTimelineStore {
       const existingStore = this.turnStoresById.get(turn.id);
       const turnStore = existingStore ?? new ChatTurnStore(turn);
 
-      if (existingStore !== undefined) {
+      if (existingStore !== undefined && existingStore.turn !== turn) {
         turnStore.setTurn(turn);
       }
 
@@ -463,13 +490,20 @@ export class ChatTimelineStore {
     const existingStore = this.turnStoresById.get(turn.id);
 
     if (existingStore !== undefined) {
-      existingStore.setTurn(turn);
+      if (existingStore.turn !== turn) {
+        existingStore.setTurn(turn);
+      }
       return;
     }
 
     const turnStore = new ChatTurnStore(turn);
     this.turnStoresById.set(turn.id, turnStore);
     this.turnStores.push(turnStore);
+  }
+
+  /** Rebuilds one cached turn structure after a live structural mutation. */
+  refreshTurnStructure(turnId: string): void {
+    this.turnStoresById.get(turnId)?.refreshStructure();
   }
 
   /**

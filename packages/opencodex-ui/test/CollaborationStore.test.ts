@@ -52,6 +52,58 @@ describe("CollaborationStore", () => {
     expect(store.readThreadEvents("source-1", "child-1")).toEqual([completedEvent]);
   });
 
+  it("should expose context and exact turn events through separate stable indexes", () => {
+    const store = new CollaborationStore(createRootStore(vi.fn()));
+    const firstEvent = createEvent({ id: "event-1", turnId: "turn-1" });
+    const secondEvent = createEvent({ id: "event-2", turnId: "turn-2" });
+
+    store.handleEvent({
+      type: "collaboration.updated",
+      sourceId: "source-1",
+      event: firstEvent
+    });
+
+    const firstTurnEvents = store.readTurnEvents("source-1", "parent-1", "turn-1");
+
+    store.handleEvent({
+      type: "collaboration.updated",
+      sourceId: "source-1",
+      event: secondEvent
+    });
+
+    expect(store.readThreadContextEvents("source-1", "parent-1")).toEqual([]);
+    expect(store.readThreadContextEvents("source-1", "child-1")).toEqual([
+      firstEvent,
+      secondEvent
+    ]);
+    expect(store.readTurnEvents("source-1", "parent-1", "turn-1")).toBe(firstTurnEvents);
+    expect(store.readTurnEvents("source-1", "parent-1", "turn-2")).toEqual([secondEvent]);
+  });
+
+  it("should move a partial event from context to its turn index when enriched", () => {
+    const store = new CollaborationStore(createRootStore(vi.fn()));
+    const partialEvent = createEvent({ turnId: null, status: "pending", prompt: null });
+    const completedEvent = createEvent({ status: "completed", prompt: "Completed prompt" });
+
+    store.handleEvent({
+      type: "collaboration.updated",
+      sourceId: "source-1",
+      event: partialEvent
+    });
+    store.handleEvent({
+      type: "collaboration.updated",
+      sourceId: "source-1",
+      event: completedEvent
+    });
+
+    expect(store.readThreadContextEvents("source-1", "parent-1")).toEqual([]);
+    expect(store.readTurnEvents("source-1", "parent-1", "turn-1")).toMatchObject([{
+      id: "event-1",
+      status: "completed",
+      prompt: "Completed prompt"
+    }]);
+  });
+
   it("should not regress a completed live event when a partial history load arrives later", () => {
     const store = new CollaborationStore(createRootStore(vi.fn()));
     const completedEvent = createEvent({

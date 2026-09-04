@@ -1,4 +1,4 @@
-import { type RefObject } from "react";
+import { useCallback, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 
 import type {
@@ -9,7 +9,7 @@ import type {
 import type { ChatSubTurn } from "../../stores/chat/chatTurnStructure";
 
 import { AssistantTurnBlockX } from "./AssistantTurnBlock";
-import { MessageRowM } from "./MessageRow";
+import { MessageRowX } from "./MessageRow";
 
 type EditableItemIdentity = {
   turnId: string;
@@ -65,25 +65,27 @@ export function ChatSubTurnView({
   const isReasoningLast = isLastInTurn && shouldShowReasoning && !shouldShowAnswer;
   const isAnswerLast = isLastInTurn && shouldShowAnswer;
   const canEdit = isEditableUserMessage(turn.id, subTurn.userMessage?.id ?? null, editableItem);
+  const handleEdit = useCallback(() => {
+    if (subTurn.userMessage !== null) {
+      onStartEdit(subTurn.userMessage.content);
+    }
+  }, [onStartEdit, subTurn.userMessage]);
+  const handleOpenTurnDiagnostic = useCallback(() => {
+    onOpenTurnDiagnostic(turn.id);
+  }, [onOpenTurnDiagnostic, turn.id]);
 
   return (
     <>
       {subTurn.userMessage !== null ? (
-        <MessageRowM
+        <MessageRowX
           key={buildSubTurnItemKey(turn.id, subTurn.userMessage.id)}
+          item={subTurn.userMessage}
+          fallbackCreatedAt={turn.startedAt}
           isLast={isUserMessageLast}
           lastMessageRef={lastMessageRef}
           onOpenLink={onOpenLink}
-          role={subTurn.userMessage.role}
-          phase={subTurn.userMessage.phase}
-          kind={subTurn.userMessage.kind}
-          content={subTurn.userMessage.content}
-          createdAt={subTurn.userMessage.createdAt ?? turn.startedAt}
-          details={subTurn.userMessage.details}
-          plan={subTurn.userMessage.plan}
-          attachments={subTurn.userMessage.attachments ?? []}
           canEdit={canEdit}
-          onEdit={canEdit ? () => onStartEdit(subTurn.userMessage?.content ?? "") : undefined}
+          onEdit={canEdit ? handleEdit : undefined}
         />
       ) : null}
       {shouldShowReasoning ? (
@@ -102,25 +104,19 @@ export function ChatSubTurnView({
         />
       ) : null}
       {assistantAnswer !== null ? (
-        <MessageRowM
+        <MessageRowX
           key={buildSubTurnItemKey(turn.id, assistantAnswer.id)}
+          item={assistantAnswer}
+          fallbackCreatedAt={turn.completedAt ?? turn.startedAt}
           isLast={isAnswerLast}
           lastMessageRef={lastMessageRef}
           onOpenLink={onOpenLink}
-          role={assistantAnswer.role}
-          phase={assistantAnswer.phase}
-          kind={assistantAnswer.kind}
-          content={assistantAnswer.content}
-          isStreaming={isReasoningRunning && assistantAnswer.status === "streaming"}
-          createdAt={assistantAnswer.createdAt ?? turn.completedAt ?? turn.startedAt}
-          details={assistantAnswer.details}
-          plan={assistantAnswer.plan}
-          attachments={assistantAnswer.attachments ?? []}
+          isRunning={isReasoningRunning}
           turnExecution={turn.execution}
           turnTokenUsage={turn.tokenUsage}
           turnId={turn.id}
           showTurnDiagnostic={showTurnDiagnostic}
-          onOpenTurnDiagnostic={() => onOpenTurnDiagnostic(turn.id)}
+          onOpenTurnDiagnostic={handleOpenTurnDiagnostic}
         />
       ) : null}
     </>

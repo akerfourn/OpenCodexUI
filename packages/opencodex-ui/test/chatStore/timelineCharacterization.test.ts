@@ -28,6 +28,73 @@ describe("ChatStore timeline characterization", () => {
     expect(chatStore.timeline.turnStores[0]?.turn.status).toBe("completed");
   });
 
+  it("should keep the cached structure when only streamed content changes", () => {
+    const chatStore = createChatStore({});
+    const turn = createTurn("turn-stream", "running");
+    turn.items.push({
+      id: "assistant-1",
+      role: "assistant",
+      phase: "commentary",
+      content: "Initial",
+      status: "streaming",
+      createdAt: null
+    });
+
+    chatStore.timeline.setTurns([turn]);
+    const turnStore = chatStore.timeline.turnStores[0]!;
+    const initialSubTurns = turnStore.subTurns;
+
+    chatStore.timeline.appendAssistantDelta(
+      "turn-stream",
+      "assistant-1",
+      " continuation",
+      "commentary"
+    );
+
+    expect(turnStore.subTurns).toBe(initialSubTurns);
+    expect(turnStore.subTurns[0]?.reasoningItems[0]?.content).toBe("Initial continuation");
+  });
+
+  it("should rebuild the cached structure when a new item changes its shape", () => {
+    const chatStore = createChatStore({});
+    const turn = createTurn("turn-stream", "running");
+    turn.items.push({
+      id: "assistant-1",
+      role: "assistant",
+      phase: "commentary",
+      content: "Initial",
+      status: "streaming",
+      createdAt: null
+    });
+
+    chatStore.timeline.setTurns([turn]);
+    const turnStore = chatStore.timeline.turnStores[0]!;
+    const initialSubTurns = turnStore.subTurns;
+
+    chatStore.timeline.appendAssistantDelta(
+      "turn-stream",
+      "assistant-2",
+      "New item",
+      "commentary"
+    );
+
+    expect(turnStore.subTurns).not.toBe(initialSubTurns);
+    expect(turnStore.subTurns[0]?.reasoningItems).toHaveLength(2);
+  });
+
+  it("should skip structure work when a synchronization reuses the same turn objects", () => {
+    const chatStore = createChatStore({});
+    const turn = createTurn("turn-1", "completed");
+
+    chatStore.timeline.setTurns([turn]);
+    const turnStore = chatStore.timeline.turnStores[0]!;
+    const initialSubTurns = turnStore.subTurns;
+
+    chatStore.timeline.setTurns(chatStore.timeline.turns);
+
+    expect(turnStore.subTurns).toBe(initialSubTurns);
+  });
+
   it("should preserve a pending turn when an opened snapshot omits it", () => {
     const chatStore = createChatStore({});
     const pendingTurn = createTurn("pending:local", "running");

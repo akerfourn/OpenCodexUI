@@ -1,7 +1,7 @@
 /**
  * Renders one chat turn and keeps turn-level observable reads local.
  */
-import type { RefObject } from "react";
+import { useCallback, useMemo, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
@@ -9,6 +9,7 @@ import type {
   OpenCodexCollaborationEvent,
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
+import { EMPTY_COLLABORATION_EVENTS } from "../../stores/collaboration/CollaborationEventIndex";
 import type { ChatTurnStore } from "../../stores/chat/ChatTurnStore";
 import type { ChatSubTurn } from "../../stores/chat/chatTurnStructure";
 
@@ -27,7 +28,9 @@ type ChatTurnViewProps = {
   isWorking: boolean;
   isLastTurn: boolean;
   editableItem: EditableItemIdentity | null;
-  collaborationEvents: readonly OpenCodexCollaborationEvent[];
+  collaborationEvents?: readonly OpenCodexCollaborationEvent[];
+  readCollaborationEventsForTurn?:
+    (turnId: string) => readonly OpenCodexCollaborationEvent[];
   currentThread: OpenCodexThread;
   navigableThreadIds?: readonly string[];
   lastMessageRef: RefObject<HTMLElement>;
@@ -52,6 +55,7 @@ export function ChatTurnView({
   isLastTurn,
   editableItem,
   collaborationEvents,
+  readCollaborationEventsForTurn,
   currentThread,
   navigableThreadIds,
   lastMessageRef,
@@ -64,14 +68,25 @@ export function ChatTurnView({
   const { t } = useTranslation();
   const turn = turnStore.turn;
   const isRunning = turnStore.isRunning(activeTurnId, isWorking);
-  const subTurns = readRenderableSubTurns(turnStore, isRunning, collaborationEvents);
-  const collaborationEventsBySubTurnId = assignCollaborationEvents(
-    subTurns,
-    collaborationEvents
+  const resolvedCollaborationEvents = collaborationEvents
+    ?? readCollaborationEventsForTurn?.(turn.id)
+    ?? EMPTY_COLLABORATION_EVENTS;
+  const emptySubTurn = useMemo(() => createEmptySubTurn(turnStore.id), [turnStore.id]);
+  const subTurns = readRenderableSubTurns(
+    turnStore,
+    isRunning,
+    resolvedCollaborationEvents,
+    emptySubTurn
   );
+  const collaborationEventsBySubTurnId = useMemo(() => (
+    assignCollaborationEvents(subTurns, resolvedCollaborationEvents)
+  ), [resolvedCollaborationEvents, subTurns]);
   const errorMessage = turn.errorMessage ?? (
     turn.status === "failed" ? t("message.turnFailed") : null
   );
+  const handleOpenTurnDiagnostic = useCallback(() => {
+    onOpenTurnDiagnostic(turn.id);
+  }, [onOpenTurnDiagnostic, turn.id]);
 
   return (
     <>
@@ -80,7 +95,8 @@ export function ChatTurnView({
           key={subTurn.id}
           turn={turn}
           subTurn={subTurn}
-          collaborationEvents={collaborationEventsBySubTurnId.get(subTurn.id) ?? []}
+          collaborationEvents={collaborationEventsBySubTurnId.get(subTurn.id)
+            ?? EMPTY_COLLABORATION_EVENTS}
           currentThread={currentThread}
           navigableThreadIds={navigableThreadIds}
           isReasoningRunning={isRunning && index === subTurns.length - 1}
@@ -98,7 +114,7 @@ export function ChatTurnView({
         <TurnErrorRow
           message={errorMessage}
           showTurnDiagnostic={showTurnDiagnostic}
-          onOpenTurnDiagnostic={() => onOpenTurnDiagnostic(turn.id)}
+          onOpenTurnDiagnostic={handleOpenTurnDiagnostic}
         />
       ) : null}
     </>
@@ -110,20 +126,24 @@ export const ChatTurnViewX = observer(ChatTurnView);
 function readRenderableSubTurns(
   turnStore: ChatTurnStore,
   isRunning: boolean,
-  collaborationEvents: readonly OpenCodexCollaborationEvent[]
+  collaborationEvents: readonly OpenCodexCollaborationEvent[],
+  emptySubTurn: ChatSubTurn
 ): ChatSubTurn[] {
   const subTurns = turnStore.subTurns;
 
   if (subTurns.length > 0 || (!isRunning && collaborationEvents.length === 0)) {
-    return [...subTurns];
+    return subTurns;
   }
 
-  return [
-    {
-      id: ["subTurn", turnStore.id, "empty"].join(":"),
-      userMessage: null,
-      reasoningItems: [],
-      assistantAnswer: null
-    }
-  ];
+  return [emptySubTurn];
+}
+
+/** Creates the stable placeholder used while a running turn has no items yet. */
+function createEmptySubTurn(turnId: string): ChatSubTurn {
+  return {
+    id: ["subTurn", turnId, "empty"].join(":"),
+    userMessage: null,
+    reasoningItems: [],
+    assistantAnswer: null
+  };
 }

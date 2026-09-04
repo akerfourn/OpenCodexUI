@@ -7,6 +7,10 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../RootStore";
+import {
+  CollaborationEventIndex,
+  createThreadRootKey
+} from "./CollaborationEventIndex";
 
 /**
  * Maintains source-scoped normalized collaboration events for future timeline views.
@@ -14,6 +18,8 @@ import type { RootStore } from "../RootStore";
 export class CollaborationStore {
   /** Normalized events grouped by their owning Codex source. */
   private readonly eventsBySourceId = new Map<string, Map<string, OpenCodexCollaborationEvent>>();
+  /** Stable source/thread/turn collections used by timeline observers. */
+  private readonly eventIndex = new CollaborationEventIndex();
   /** Thread roots whose persisted collaboration history has already been loaded. */
   private readonly loadedThreadRoots = new Set<string>();
   /** In-flight history requests shared by concurrent timeline consumers. */
@@ -30,9 +36,15 @@ export class CollaborationStore {
   constructor(private readonly root: RootStore) {
     makeAutoObservable<
       CollaborationStore,
-      "root" | "loadedThreadRoots" | "loadingThreadRoots"
+      | "root"
+      | "eventsBySourceId"
+      | "eventIndex"
+      | "loadedThreadRoots"
+      | "loadingThreadRoots"
     >(this, {
       root: false,
+      eventsBySourceId: false,
+      eventIndex: false,
       loadedThreadRoots: false,
       loadingThreadRoots: false
     });
@@ -81,7 +93,7 @@ export class CollaborationStore {
     const rootKey = createThreadRootKey(sourceId, threadId);
 
     if (this.loadedThreadRoots.has(rootKey)) {
-      return Promise.resolve(this.readThreadEvents(sourceId, threadId));
+      return Promise.resolve([...this.readThreadEvents(sourceId, threadId)]);
     }
 
     const existingRequest = this.loadingThreadRoots.get(rootKey);
@@ -110,18 +122,41 @@ export class CollaborationStore {
    * @param threadId Thread identifier.
    * @returns Known matching events in insertion order.
    */
-  readThreadEvents(sourceId: string, threadId: string): OpenCodexCollaborationEvent[] {
-    const events = this.eventsBySourceId.get(sourceId);
+  readThreadEvents(
+    sourceId: string,
+    threadId: string
+  ): readonly OpenCodexCollaborationEvent[] {
+    return this.eventIndex.readThreadEvents(sourceId, threadId);
+  }
 
-    if (events === undefined) {
-      return [];
-    }
+  /**
+   * Reads events that belong to a thread context rather than a specific turn.
+   *
+   * @param sourceId Source that owns the thread.
+   * @param threadId Thread identifier.
+   * @returns Stable context event collection.
+   */
+  readThreadContextEvents(
+    sourceId: string,
+    threadId: string
+  ): readonly OpenCodexCollaborationEvent[] {
+    return this.eventIndex.readThreadContextEvents(sourceId, threadId);
+  }
 
-    return Array.from(events.values()).filter((event) => (
-      event.threadId === threadId
-      || event.senderThreadId === threadId
-      || event.receiverThreadIds.includes(threadId)
-    ));
+  /**
+   * Reads events anchored to one exact source-aware turn.
+   *
+   * @param sourceId Source that owns the thread.
+   * @param threadId Thread identifier.
+   * @param turnId Turn identifier.
+   * @returns Stable turn event collection.
+   */
+  readTurnEvents(
+    sourceId: string,
+    threadId: string,
+    turnId: string
+  ): readonly OpenCodexCollaborationEvent[] {
+    return this.eventIndex.readTurnEvents(sourceId, threadId, turnId);
   }
 
   /**
@@ -133,11 +168,8 @@ export class CollaborationStore {
     let sourceEvents = this.eventsBySourceId.get(event.sourceId);
 
     if (sourceEvents === undefined) {
-      this.eventsBySourceId.set(
-        event.sourceId,
-        new Map<string, OpenCodexCollaborationEvent>([[event.id, event]])
-      );
-      return;
+      sourceEvents = new Map<string, OpenCodexCollaborationEvent>();
+      this.eventsBySourceId.set(event.sourceId, sourceEvents);
     }
 
     if (isStructuralSpawn(event)) {
@@ -151,7 +183,7 @@ export class CollaborationStore {
     } else if (isConcreteSpawn(event)) {
       for (const [eventId, candidate] of sourceEvents.entries()) {
         if (isStructuralSpawn(candidate) && hasSharedReceiver(candidate, event)) {
-          sourceEvents.delete(eventId);
+          this.removeCanonicalEvent(event.sourceId, eventId);
         }
       }
     }
@@ -160,6 +192,7 @@ export class CollaborationStore {
 
     if (existingEvent === undefined) {
       sourceEvents.set(event.id, event);
+      this.eventIndex.add(event);
       return;
     }
 
@@ -167,7 +200,21 @@ export class CollaborationStore {
 
     if (!areCollaborationEventsEqual(existingEvent, mergedEvent)) {
       sourceEvents.set(event.id, mergedEvent);
+      this.eventIndex.replace(existingEvent, mergedEvent);
     }
+  }
+
+  /** Removes one canonical event and its source-aware index entries. */
+  private removeCanonicalEvent(sourceId: string, eventId: string): void {
+    const sourceEvents = this.eventsBySourceId.get(sourceId);
+    const event = sourceEvents?.get(eventId);
+
+    if (sourceEvents === undefined || event === undefined) {
+      return;
+    }
+
+    sourceEvents.delete(eventId);
+    this.eventIndex.remove(event);
   }
 }
 
@@ -309,9 +356,4 @@ function areRecordsEqual(
 
   return firstEntries.length === secondEntries.length
     && firstEntries.every(([key, value]) => second[key] === value);
-}
-
-/** Builds a collision-free key for one source-aware collaboration subtree. */
-function createThreadRootKey(sourceId: string, threadId: string): string {
-  return `${encodeURIComponent(sourceId)}:${encodeURIComponent(threadId)}`;
 }

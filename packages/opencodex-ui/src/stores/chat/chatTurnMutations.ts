@@ -88,6 +88,7 @@ export function upsertPendingUserTurn(
   const turn = findOrCreateTurn(timeline, threadId, `pending:${message.id}`);
   turn.items.push(toTurnItem(message));
   turn.items = movePlanItemsToLatestSubTurn(turn).items;
+  timeline.refreshTurnStructure(turn.id);
   return turn.id;
 }
 
@@ -120,6 +121,7 @@ export function movePendingTurnToStartedTurn(
     existingTurn.items = [...pendingTurn.items, ...existingTurn.items];
     existingTurn.startedAt = existingTurn.startedAt ?? pendingTurn.startedAt ?? new Date().toISOString();
     existingTurn.status = "running";
+    timeline.refreshTurnStructure(existingTurn.id);
     timeline.setTurns(timeline.turns.filter((turn) => turn !== pendingTurn));
     return pendingTurnId;
   }
@@ -129,6 +131,7 @@ export function movePendingTurnToStartedTurn(
   pendingTurn.status = "running";
   pendingTurn.startedAt = pendingTurn.startedAt ?? new Date().toISOString();
   timeline.syncTurnStores();
+  timeline.refreshTurnStructure(turnId);
   return null;
 }
 
