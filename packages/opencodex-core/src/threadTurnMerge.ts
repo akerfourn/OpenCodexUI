@@ -64,7 +64,13 @@ export function mergeTurns(entry: ThreadTurnCacheEntry, turns: unknown[]): void 
       ? mergedTurn
       : attachTurnExecutionMetadata(mergedTurn, execution);
 
-    entry.turnsById.set(turnId, nextTurn);
+    const value = readObject(nextTurn);
+    delete value.openCodexUiWorkspace;
+    const workspaceContext = entry.turnWorkspaceContextsById.get(turnId);
+    if (workspaceContext !== undefined) {
+      value.openCodexUiWorkspace = workspaceContext;
+    }
+    entry.turnsById.set(turnId, value);
 
     if (entry.turnItemsById.has(turnId)) {
       indexTurnItems(entry, turnId, nextTurn);

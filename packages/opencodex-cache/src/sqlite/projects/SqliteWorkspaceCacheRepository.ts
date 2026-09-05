@@ -1,6 +1,7 @@
+import { captureTurnWorkspaceContexts, readTurnWorkspaceContexts } from "./turnWorkspaceContexts.js";
 import { randomUUID } from "node:crypto";
 import type { Database } from "better-sqlite3";
-import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProjectWorkspace, OpenCodexTurnWorkspaceContext } from "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceCacheRepository, WorkspaceExecutionReservation } from "../../types/workspaces.js";
 import { normalizeProjectPath } from "../../projectIdentity.js";
 import { resolveProject } from "./projectResolver.js";
@@ -24,6 +25,11 @@ interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "ma
 export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository {
   /** Uses the facade's transaction-capable connection. */
   constructor(private readonly database: Database) {}
+
+  /** Reads immutable history independently of current workspace associations. */
+  async listTurnContexts(threadId: string): Promise<OpenCodexTurnWorkspaceContext[]> {
+    return readTurnWorkspaceContexts(this.database, threadId);
+  }
 
   /** Lists all retained workspace identities for a logical project. */
   async list(projectId: string): Promise<OpenCodexProjectWorkspace[]> {
@@ -166,6 +172,7 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
       if (result.changes !== 1) {
         throw new Error("Turn response does not match the reserved workspace execution.");
       }
+      captureTurnWorkspaceContexts(this.database, reservationId);
       this.database.prepare("DELETE FROM workspace_execution_reservations WHERE id = ? AND state = 'completed'")
         .run(reservationId);
     })();
@@ -178,13 +185,21 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
         this.database.prepare(`UPDATE workspace_execution_reservations SET turn_id = ?, state = 'running'
           WHERE source_id = ? AND thread_id = ? AND turn_id IS NULL
             AND state IN ('submitting', 'uncertain')`).run(turnId, sourceId, threadId);
-        return;
+      } else {
+        this.database.prepare(`UPDATE workspace_execution_reservations SET state = 'completed'
+          WHERE source_id = ? AND thread_id = ? AND turn_id = ?`).run(sourceId, threadId, turnId);
       }
-      this.database.prepare(`UPDATE workspace_execution_reservations SET state = 'completed'
-        WHERE source_id = ? AND thread_id = ? AND turn_id = ?`).run(sourceId, threadId, turnId);
-      this.database.prepare(`DELETE FROM workspace_execution_reservations
-        WHERE source_id = ? AND thread_id = ? AND turn_id = ? AND acknowledged = 1`)
-        .run(sourceId, threadId, turnId);
+      const reservation = this.database.prepare(`SELECT id FROM workspace_execution_reservations
+        WHERE source_id = ? AND thread_id = ? AND turn_id = ?`).get(sourceId, threadId, turnId) as
+        { id: string } | undefined;
+      if (reservation !== undefined) {
+        captureTurnWorkspaceContexts(this.database, reservation.id);
+      }
+      if (completed) {
+        this.database.prepare(`DELETE FROM workspace_execution_reservations
+          WHERE source_id = ? AND thread_id = ? AND turn_id = ? AND acknowledged = 1`)
+          .run(sourceId, threadId, turnId);
+      }
     })();
   }
 

@@ -130,6 +130,9 @@ export class ThreadCacheService {
     }
 
     try {
+      for (const context of await repository.workspaces.listTurnContexts(threadId)) {
+        this.options.threadTurnCache.setTurnWorkspaceContext(context);
+      }
       return await repository.getThread(threadId, {
         latestTurnLimit: THREAD_INITIAL_CACHED_TURNS
       });

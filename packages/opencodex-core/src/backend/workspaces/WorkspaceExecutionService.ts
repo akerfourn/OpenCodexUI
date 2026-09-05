@@ -1,7 +1,8 @@
 import path from "node:path";
 import type { WorkspaceCacheRepository, WorkspaceExecutionReservation } from
   "@open-codex-ui/opencodex-cache";
-import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProjectWorkspace, OpenCodexTurnWorkspaceContext } from
+  "@open-codex-ui/opencodex-protocol";
 import type { CodexNotification } from "@open-codex-ui/codex-rpc";
 import { readObject, readString } from "../../mapping.js";
 import type { ClientPort } from "../runtime/runtimePorts.js";
@@ -29,7 +30,8 @@ export class WorkspaceExecutionService {
   /** Shares persistence and source clients with the thread runtime. */
   constructor(
     private readonly repository: WorkspaceCacheRepository,
-    private readonly clients: Pick<ClientPort, "ensureClient">
+    private readonly clients: Pick<ClientPort, "ensureClient">,
+    private readonly onContext?: (context: OpenCodexTurnWorkspaceContext) => void
   ) {}
 
   /** Lists the catalogue independently of source connectivity. */
@@ -75,6 +77,7 @@ export class WorkspaceExecutionService {
   /** Binds an implicitly created thread before any turn-start effect. */
   async bind(reservation: WorkspaceExecutionReservation, threadId: string): Promise<void> {
     await this.repository.bindThread(reservation.id, threadId);
+    reservation.threadId = threadId;
   }
 
   /** Records dispatch before sending a start request. */
@@ -88,6 +91,12 @@ export class WorkspaceExecutionService {
       throw new Error("Codex returned no turn id; workspace execution requires reconciliation.");
     }
     await this.repository.acknowledge(reservation.id, turnId);
+    const contexts = await this.repository.listTurnContexts(reservation.threadId ?? "");
+    for (const context of contexts) {
+      if (context.turnId === turnId) {
+        this.onContext?.(context);
+      }
+    }
   }
 
   /** Validates and serializes an internal selection; UI exposure remains deferred. */
@@ -147,6 +156,11 @@ export class WorkspaceExecutionService {
     if (threadId.length > 0 && turnId.length > 0) {
       await this.repository.observeTurn(sourceId, threadId, turnId,
         notification.method === "turn/completed");
+      for (const context of await this.repository.listTurnContexts(threadId)) {
+        if (context.sourceId === sourceId && context.turnId === turnId) {
+          this.onContext?.(context);
+        }
+      }
     }
   }
 

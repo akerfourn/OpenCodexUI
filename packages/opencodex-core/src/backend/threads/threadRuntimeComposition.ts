@@ -71,7 +71,8 @@ export function createThreadRuntimeServices(
     logger: options.backendOptions.logger
   });
   const workspaceExecution = options.cacheRepository === null ? undefined
-    : new WorkspaceExecutionService(options.cacheRepository.workspaces, options.clients);
+    : new WorkspaceExecutionService(options.cacheRepository.workspaces, options.clients,
+      (context) => threadTurnCache.setTurnWorkspaceContext(context));
   const threadConversationService = new ThreadConversationService({
     workspaceExecution,
     backendOptions: options.backendOptions,

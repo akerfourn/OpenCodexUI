@@ -2,6 +2,7 @@
  * Stores thread metadata and merged turn payloads for the active UI session.
  */
 import type {
+  OpenCodexTurnWorkspaceContext,
   OpenCodexThread,
   OpenCodexThreadTokenUsage,
   OpenCodexTurnExecutionMetadata
@@ -42,6 +43,8 @@ export type ThreadTurnCacheEntry = {
   hasLoadedAllOlderTurns: boolean;
   lastSyncedAt: string | null;
   tokenUsage: OpenCodexThreadTokenUsage | null;
+  /** Trusted contexts survive destructive turn replacements. */
+  turnWorkspaceContextsById: Map<string, OpenCodexTurnWorkspaceContext>;
   turnExecutionMetadataById: Map<string, OpenCodexTurnExecutionMetadata>;
 };
 
@@ -49,11 +52,30 @@ export type ThreadTurnCacheEntry = {
  * Stores and merges thread turns for the active session.
  */
 export class ThreadTurnCache {
+  /** Context evidence is retained even before a thread is loaded. */
+  private readonly workspaceContexts = new Map<string, Map<string, OpenCodexTurnWorkspaceContext>>();
+
   private readonly entries = new Map<string, ThreadTurnCacheEntry>();
   private readonly executionMetadataByThreadId = new Map<
     string,
     Map<string, OpenCodexTurnExecutionMetadata>
   >();
+
+  /** Records a trusted persisted context; RPC payloads cannot populate this registry. */
+  setTurnWorkspaceContext(context: OpenCodexTurnWorkspaceContext): void {
+    const contexts = this.workspaceContexts.get(context.threadId) ?? new Map();
+    const retained = contexts.get(context.turnId) ?? { ...context };
+    contexts.set(context.turnId, retained);
+    this.workspaceContexts.set(context.threadId, contexts);
+    const entry = this.entries.get(context.threadId);
+    if (entry !== undefined) {
+      entry.turnWorkspaceContextsById.set(context.turnId, retained);
+      const turn = entry.turnsById.get(context.turnId);
+      if (turn !== undefined) {
+        entry.turnsById.set(context.turnId, { ...readObject(turn), openCodexUiWorkspace: retained });
+      }
+    }
+  }
 
   /**
    * Returns.
@@ -153,6 +175,7 @@ export class ThreadTurnCache {
       hasLoadedAllOlderTurns: false,
       lastSyncedAt: null,
       tokenUsage: null,
+      turnWorkspaceContextsById: new Map(this.workspaceContexts.get(thread.id) ?? []),
       turnExecutionMetadataById: new Map(
         this.executionMetadataByThreadId.get(thread.id) ?? []
       )

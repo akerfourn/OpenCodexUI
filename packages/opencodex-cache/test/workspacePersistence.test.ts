@@ -7,6 +7,10 @@ import { writeThreadIndex } from "../src/sqlite/threads/threadIndexWriter";
 import { clearSourceAssociations } from "../src/sqlite/sources/sourceQueries";
 import type { CachedThreadSummary } from "../src/types";
 
+import { deleteEmptyUnsyncedThreads } from "../src/sqlite/threads/threadIndexQueries";
+import { writeTurns } from "../src/sqlite/threads/turnQueries";
+import { getThread, getOlderTurns } from "../src/sqlite/threads/threadSnapshotQueries";
+
 describe("workspace persistence", () => {
   let database: Database.Database;
   let workspaces: SqliteWorkspaceCacheRepository;
@@ -22,6 +26,8 @@ describe("workspace persistence", () => {
 
   it("should preserve legacy IDs and associations when migrating twice", async () => {
     database.exec(`
+      DROP TABLE turn_workspace_contexts;
+      DROP TRIGGER delete_thread_workspace_contexts;
       DROP TABLE workspace_execution_reservations;
       ALTER TABLE threads DROP COLUMN current_workspace_id;
       DROP TABLE workspace_path_aliases;
@@ -195,6 +201,85 @@ describe("workspace persistence", () => {
     await expect(workspaces.select("thread-a", workspace.id)).rejects.toThrow("reserved or active");
     await workspaces.acknowledge(reservation.id, "turn-a");
     expect(await workspaces.listReservations(workspace.id)).toEqual([]);
+  });
+
+  it("should retain historical cwd through sync, rollback, relocation and source removal", async () => {
+    writeThreadIndex(database, [thread()]);
+    const workspace = (await workspaces.getForThread("thread-a"))!;
+    const reservation = await workspaces.reserve(workspace.id, "thread-a");
+    await workspaces.submitting(reservation.id);
+    await workspaces.observeTurn("source-a", "thread-a", "turn-a", false);
+    await workspaces.observeTurn("source-a", "thread-a", "turn-a", true);
+    await workspaces.acknowledge(reservation.id, "turn-a");
+    const context = {
+      sourceId: "source-a", threadId: "thread-a", turnId: "turn-a",
+      projectId: workspace.projectId, workspaceId: workspace.id, cwd: "/repo"
+    };
+    await workspaces.relocate(workspace.id, "/moved");
+    writeTurns(database, "thread-a", [
+      { id: "turn-a", startedAt: 1, items: [], openCodexUiWorkspace: { cwd: "/forged" } },
+      { id: "turn-b", startedAt: 2, items: [] }
+    ]);
+    expect((await getThread(database, "thread-a"))?.turns[0])
+      .toMatchObject({ openCodexUiWorkspace: context });
+    expect((await getOlderTurns(database, {
+      threadId: "thread-a", beforeTurnId: "turn-b", limit: 1
+    })).turns[0]).toMatchObject({ openCodexUiWorkspace: context });
+
+    database.prepare("DELETE FROM turns WHERE thread_id = ?").run("thread-a");
+    expect(await workspaces.listTurnContexts("thread-a")).toEqual([context]);
+    writeTurns(database, "thread-a", [{ id: "turn-a", items: [] }]);
+    await clearSourceAssociations(database, "source-a");
+    expect((await getThread(database, "thread-a"))?.turns[0])
+      .toMatchObject({ openCodexUiWorkspace: context });
+    database.prepare("DELETE FROM threads WHERE id = ?").run("thread-a");
+    expect(await workspaces.listTurnContexts("thread-a")).toEqual([]);
+  });
+
+  it("should leave legacy and externally spawned turns unknown instead of inferring their cwd", async () => {
+    writeThreadIndex(database, [thread(), { ...thread(), id: "child", parentThreadId: "thread-a" }]);
+    for (const threadId of ["thread-a", "child"]) {
+      writeTurns(database, threadId, [{ id: "legacy", openCodexUiWorkspace: { cwd: "/repo" } }]);
+      expect(await workspaces.listTurnContexts(threadId)).toEqual([]);
+      expect((await getThread(database, threadId))?.turns[0])
+        .not.toHaveProperty("openCodexUiWorkspace");
+    }
+  });
+
+  it("should capture a new cwd for a new turn and reject conflicting reuse of an old turn ID", async () => {
+    writeThreadIndex(database, [thread()]);
+    const workspace = (await workspaces.getForThread("thread-a"))!;
+    const first = await workspaces.reserve(workspace.id, "thread-a");
+    await workspaces.submitting(first.id);
+    await workspaces.acknowledge(first.id, "turn-a");
+    database.exec("UPDATE threads SET title = '', codex_title = '', custom_title = ''");
+    expect(await deleteEmptyUnsyncedThreads(database, "/repo", "source-a")).toBe(0);
+    await workspaces.observeTurn("source-a", "thread-a", "turn-a", true);
+    await workspaces.relocate(workspace.id, "/moved");
+    const second = await workspaces.reserve(workspace.id, "thread-a");
+    await workspaces.submitting(second.id);
+    await expect(workspaces.acknowledge(second.id, "turn-a"))
+      .rejects.toThrow("conflicts with immutable execution history");
+    await workspaces.acknowledge(second.id, "turn-b");
+    expect(await workspaces.listTurnContexts("thread-a")).toEqual([
+      expect.objectContaining({ turnId: "turn-a", cwd: "/repo" }),
+      expect.objectContaining({ turnId: "turn-b", cwd: "/moved" })
+    ]);
+  });
+
+  it("should migrate only correlated reservations and preserve them on repeated migration", async () => {
+    writeThreadIndex(database, [thread()]);
+    const workspace = (await workspaces.getForThread("thread-a"))!;
+    const reservation = await workspaces.reserve(workspace.id, "thread-a");
+    await workspaces.submitting(reservation.id);
+    await workspaces.acknowledge(reservation.id, "turn-a");
+    database.exec("DROP TABLE turn_workspace_contexts; DELETE FROM schema_migrations WHERE version = 30");
+    runMigrations(database);
+    runMigrations(database);
+    expect(await workspaces.listTurnContexts("thread-a")).toEqual([
+      { sourceId: "source-a", threadId: "thread-a", turnId: "turn-a",
+        projectId: workspace.projectId, workspaceId: workspace.id, cwd: "/repo" }
+    ]);
   });
 
   it("should ignore completion from another source or another turn", async () => {

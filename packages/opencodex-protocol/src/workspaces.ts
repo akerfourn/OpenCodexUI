@@ -16,6 +16,14 @@ export interface OpenCodexProjectWorkspace {
   removedAt: string | null;
 }
 
+/** Historical context proven by a correlated local turn submission. */
+export interface OpenCodexTurnWorkspaceContext extends OpenCodexWorkspaceExecutionContext {
+  /** Thread in which the execution occurred. */
+  threadId: string;
+  /** Server identity of the executed turn. */
+  turnId: string;
+}
+
 /** Validated context captured before an execution crosses the RPC boundary. */
 export interface OpenCodexWorkspaceExecutionContext {
   /** Logical project identifier. */

@@ -127,6 +127,7 @@ function stripExecutionMetadata(turn: unknown): unknown {
 
   const value = { ...(turn as Record<string, unknown>) };
   delete value[TURN_EXECUTION_METADATA_KEY];
+  delete value.openCodexUiWorkspace;
   return value;
 }
 

@@ -239,6 +239,8 @@ export type OpenCodexTurnDiagnostic = {
  * Structured turn shown by the chat UI.
  */
 export type OpenCodexTurn = {
+  /** Captured execution context; absent/null means unknown, including legacy turns. */
+  workspaceContext?: import("../workspaces.js").OpenCodexTurnWorkspaceContext | null;
   id: string;
   threadId: string;
   status: string | null;

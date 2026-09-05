@@ -16,6 +16,7 @@ import {
   mapThreadTokenUsage,
   mapThreadRow
 } from "../shared/mappers.js";
+import { attachTurnWorkspaceContexts } from "../projects/turnWorkspaceContexts.js";
 import { parseTurnRows } from "./turnSerialization.js";
 import {
   createCacheOlderCursor,
@@ -50,7 +51,7 @@ export async function getThread(
 
   const thread = mapThreadRow(threadRow);
   const turnRows = readLatestTurnRows(database, threadId, options.latestTurnLimit ?? null);
-  const turns = parseTurnRows(turnRows);
+  const turns = attachTurnWorkspaceContexts(database, threadId, parseTurnRows(turnRows));
   const syncState = mapSyncState(threadRow);
   const tokenUsage = mapThreadTokenUsage(threadRow);
   const hasMoreCachedTurns = hasMoreCachedTurnsBefore(database, threadId, turnRows[0]?.id ?? null);
@@ -83,7 +84,7 @@ export async function getOlderTurns(
   query: CachedOlderTurnsQuery
 ): Promise<CachedOlderTurnsResult> {
   const rows = readOlderTurnRows(database, query.threadId, query.beforeTurnId, query.limit);
-  const turns = parseTurnRows(rows);
+  const turns = attachTurnWorkspaceContexts(database, query.threadId, parseTurnRows(rows));
   const hasMoreOlderTurns = hasMoreCachedTurnsBefore(database, query.threadId, rows[0]?.id ?? null);
 
   return {

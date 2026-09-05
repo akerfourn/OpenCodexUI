@@ -1,4 +1,4 @@
-import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceExecutionContext } from
+import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceExecutionContext, OpenCodexTurnWorkspaceContext } from
   "@open-codex-ui/opencodex-protocol";
 
 /** Durable reservation retained across transport failures and application restarts. */
@@ -15,6 +15,8 @@ export interface WorkspaceExecutionReservation extends OpenCodexWorkspaceExecuti
 
 /** Workspace identity and execution persistence; no filesystem operations. */
 export interface WorkspaceCacheRepository {
+  /** Reads immutable execution evidence, including turns removed by rollback. */
+  listTurnContexts(threadId: string): Promise<OpenCodexTurnWorkspaceContext[]>;
   /** Lists a project's catalogue, including logically removed workspaces. */
   list(projectId: string): Promise<OpenCodexProjectWorkspace[]>;
   /** Reads a workspace by opaque identity. */

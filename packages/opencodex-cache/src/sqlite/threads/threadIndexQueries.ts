@@ -181,6 +181,12 @@ export async function deleteEmptyUnsyncedThreads(
           FROM turns
           WHERE turns.thread_id = threads.id
         )
+        AND NOT EXISTS (
+          SELECT 1 FROM turn_workspace_contexts WHERE thread_id = threads.id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM workspace_execution_reservations WHERE thread_id = threads.id
+        )
       `
     )
     .run({

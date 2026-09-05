@@ -171,6 +171,10 @@ describe("workspace execution", () => {
     const result = await handler.startTurn("thread-a", null, null, "continue", [], [], null, null, null);
 
     expect(result).toEqual({ threadId: "thread-a", turnId: "turn-a" });
+    expect(await cache.workspaces.listTurnContexts("thread-a")).toEqual([
+      expect.objectContaining({ sourceId: "source-a", threadId: "thread-a", turnId: "turn-a",
+        workspaceId, cwd: "/source/repo" })
+    ]);
     expect(client.startTurn).toHaveBeenCalledWith(expect.objectContaining({ cwd: "/source/repo" }));
     expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
   });

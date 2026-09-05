@@ -154,12 +154,47 @@ relocation, alias reuse, source isolation and reservation transitions.
 source I/O, including concurrent requests, restart recovery and the wired thread
 runtime receiving completion before the start response.
 
-The UI selector and Git worktree creation remain deferred. Immutable historical
-turn context is the next separate step: reservations are operational records,
-not historical turn metadata. Old turns have not been assigned inferred paths.
+The UI selector and Git worktree creation remain deferred. Migration 30 adds
+immutable per-turn workspace history independently of operational reservations.
+Old turns have not been assigned inferred paths.
 
 Reviews, compaction, rollback and project tools still need the wider workspace
 adaptation. Permission/instruction reload and sub-agent behavior still require
 the live characterization described above. No non-primary workspaces are
 created by this implementation, and full workspace switching must remain
 unexposed in the UI until those execution boundaries are addressed.
+
+
+## Immutable turn context (action-plan step 4)
+
+`turn_workspace_contexts` records project/workspace IDs, source ID and the cwd
+submitted by the backend, keyed by thread and turn. Capture occurs atomically
+with reservation acknowledgement or the correlated start notification, before
+completion can release the reservation. An early completion and a lost response
+therefore retain the evidence already observed. Conflicting reuse of a turn ID
+fails instead of rewriting history.
+
+The migration recovers contexts only from reservations with an already known
+turn ID. It never reconstructs an older turn from the thread's current cwd.
+Missing `OpenCodexTurn.workspaceContext` means unknown, including external
+executions, reviews and compactions without a guarded local submission.
+This is submission evidence, not independent verification of the remote process
+or of permission/instruction reload.
+
+Snapshots and deltas cannot write these records. Cache reads and the in-memory
+turn registry overlay the trusted context, including after pagination or a full
+replacement. Relocation and removal of a source association preserve historical
+IDs and paths. Deleting the thread explicitly also deletes its context history.
+
+- Rollback hides removed turns but retains their evidence independently of the
+  turn snapshot. It does not rewind the thread's selected workspace.
+- Re-edit creates a new turn on the next submission. That turn captures the
+  selected workspace afresh; it never reuses the removed turn's context.
+- There is currently no application-level thread-fork operation. Imported forks
+  retain unknown context: matching turn IDs or parent ancestry alone cannot
+  prove where copied history executed. Any future fork operation must preserve
+  explicit origin evidence before attaching historical contexts.
+- Externally spawned sub-agents likewise remain unknown until their own guarded
+  submission establishes a context. Parent workspace selection and spawn model
+  settings are not filesystem evidence. No automatic inheritance is introduced
+  before the live app-server characterization is completed.

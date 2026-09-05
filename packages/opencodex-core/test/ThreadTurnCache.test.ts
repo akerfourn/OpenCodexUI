@@ -7,6 +7,31 @@ import { ThreadTurnCache } from "../src/ThreadTurnCache";
 import { createCacheSignature } from "../src/backend/threads/threadCacheMapping";
 
 describe("ThreadTurnCache", () => {
+  it("should preserve trusted context through rollback and reject inferred child context", () => {
+    const cache = new ThreadTurnCache();
+    const thread = {
+      id: "parent", codexTitle: "Thread", customTitle: null, title: "Thread", preview: "",
+      model: null, reasoningEffort: null, projectName: null, projectPath: "/moved",
+      branchName: null, updatedAt: null
+    };
+    const context = { projectId: "project", workspaceId: "workspace", sourceId: "source",
+      threadId: "parent", turnId: "turn", cwd: "/original" };
+    cache.setTurnWorkspaceContext(context);
+    const entry = cache.getOrCreate(thread);
+    cache.mergeLatestTurns(entry, [{ id: "turn", items: [] }], null);
+    cache.replaceThreadTurns(thread, []);
+    cache.replaceThreadTurns(thread, [
+      { id: "turn", startedAt: 1, openCodexUiWorkspace: { ...context, cwd: "/wrong" }, items: [] },
+      { id: "edited-turn", startedAt: 2, items: [] }
+    ]);
+    expect(cache.toTurns(entry)[0]).toMatchObject({ openCodexUiWorkspace: context });
+    expect(cache.toTurns(entry)[1]).not.toHaveProperty("openCodexUiWorkspace");
+
+    const child = cache.replaceThreadTurns({ ...thread, id: "child", parentThreadId: "parent" },
+      [{ id: "turn", items: [], openCodexUiWorkspace: context }]);
+    expect(cache.toTurns(child)[0]).not.toHaveProperty("openCodexUiWorkspace");
+  });
+
   it("should preserve structured sub-agent ancestry across partial metadata refreshes", () => {
     const cache = new ThreadTurnCache();
     const entry = cache.getOrCreate({

@@ -185,6 +185,10 @@ function mapTurnToOpenCodexTurn(
       .filter((item): item is OpenCodexTurnItem => item !== null)
   };
 
+  if (turn.openCodexUiWorkspace !== undefined && turn.openCodexUiWorkspace !== null) {
+    mappedTurn.workspaceContext = turn.openCodexUiWorkspace as OpenCodexTurn["workspaceContext"];
+  }
+
   if (execution !== null) {
     mappedTurn.execution = execution;
   }
