@@ -1,3 +1,4 @@
+import type { WorkspaceExecutionReservation } from "@open-codex-ui/opencodex-cache";
 import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
@@ -12,6 +13,7 @@ import type {
   OpenCodexTurnExecutionMetadata
 } from "@open-codex-ui/opencodex-protocol";
 
+import type { WorkspaceExecutionService } from "../workspaces/WorkspaceExecutionService.js";
 import { mapThread, readObject, readString } from "../../mapping.js";
 import { toError } from "../shared/errors.js";
 import type { ThreadTurnCache, ThreadTurnCacheEntry } from "../../ThreadTurnCache.js";
@@ -31,6 +33,8 @@ import type {
 
 /** Dependencies required to execute source-aware thread turn actions. */
 export type ThreadTurnActionsServiceOptions = {
+  /** Persisted execution guards when the runtime has a cache repository. */
+  workspaceExecution?: WorkspaceExecutionService;
   /** Backend options whose project path is used when an action omits its path. */
   backendOptions: Pick<OpenCodexBackendOptions, "projectPath">;
   /** In-memory thread and turn state used by turn actions. */
@@ -100,7 +104,8 @@ export class ThreadTurnActionsService {
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
     serviceTier: string | null,
-    shouldResumeExistingThread = true
+    shouldResumeExistingThread = true,
+    workspaceId: string | null = null
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
     const input = buildTurnInput(trimmedText, attachments, references);
@@ -109,7 +114,39 @@ export class ThreadTurnActionsService {
       return { threadId: threadId ?? "", turnId: "" };
     }
 
-    const targetSourceId = threadId === null
+    if (this.options.workspaceExecution !== undefined) {
+      return await this.options.workspaceExecution.run(
+        { threadId, projectPath, sourceId, workspaceId },
+        async (reservation) => await this.startReservedTurn(
+          threadId, reservation.cwd, reservation.sourceId, text, attachments,
+          references, model, reasoningEffort, serviceTier, shouldResumeExistingThread, reservation
+        )
+      );
+    }
+    if (workspaceId !== null) {
+      throw new Error("Workspace executions require a cache repository.");
+    }
+    return await this.startReservedTurn(threadId, projectPath, sourceId, text,
+      attachments, references, model, reasoningEffort, serviceTier, shouldResumeExistingThread);
+  }
+
+  /** Starts a turn inside the caller's reserved context, or the legacy cacheless path. */
+  private async startReservedTurn(
+    threadId: string | null,
+    projectPath: string | null,
+    sourceId: string | null,
+    text: string,
+    attachments: OpenCodexImageAttachment[],
+    references: OpenCodexComposerReference[],
+    model: string | null,
+    reasoningEffort: OpenCodexReasoningEffort | null,
+    serviceTier: string | null,
+    shouldResumeExistingThread: boolean,
+    reservation?: WorkspaceExecutionReservation
+  ): Promise<{ threadId: string; turnId: string }> {
+    const trimmedText = text.trim();
+    const input = buildTurnInput(trimmedText, attachments, references);
+    const targetSourceId = threadId === null || reservation !== undefined
       ? sourceId
       : await this.options.sourceResolver.resolveThreadSourceId(threadId, sourceId);
 
@@ -122,6 +159,9 @@ export class ThreadTurnActionsService {
     const targetThreadId = threadId ?? (
       await this.createThreadAndReturnId(client, projectPath, resolvedSource.id)
     );
+    if (reservation !== undefined) {
+      await this.options.workspaceExecution!.bind(reservation, targetThreadId);
+    }
     let resumedExistingThread = false;
 
     if (
@@ -182,8 +222,13 @@ export class ThreadTurnActionsService {
     let turnResponse: unknown;
 
     try {
+      if (reservation !== undefined) {
+        await this.options.workspaceExecution!.submitting(reservation);
+      }
       turnResponse = await client.startTurn({
         threadId: targetThreadId,
+        // A loaded thread may skip resume; apply explicit paths at the turn boundary.
+        cwd: normalizeProjectPath(projectPath) ?? undefined,
         input,
         model,
         serviceTier,
@@ -202,6 +247,9 @@ export class ThreadTurnActionsService {
     }
     const turn = readObject(readObject(turnResponse).turn);
     const turnId = readString(turn.id);
+    if (reservation !== undefined) {
+      await this.options.workspaceExecution!.acknowledge(reservation, turnId);
+    }
 
     if (diagnosticId !== null) {
       this.options.events.recordTurnDiagnosticResponse?.(

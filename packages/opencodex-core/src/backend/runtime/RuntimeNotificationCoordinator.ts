@@ -23,6 +23,8 @@ import type { UsageRuntimeService } from "../usage/UsageRuntimeService.js";
 
 /** Dependencies used by the notification coordination pipeline. */
 export type RuntimeNotificationCoordinatorOptions = {
+  /** Records execution ownership before optional UI notification suppression. */
+  recordWorkspaceNotification?(notification: CodexNotification, sourceId: string): void;
   /** Reads the current runtime settings. */
   settings: Pick<RuntimeSettingsPort, "getSettings">;
   /** Reports receipt of one raw notification and its estimated payload size. */
@@ -95,6 +97,7 @@ export class RuntimeNotificationCoordinator {
    * @returns Nothing.
    */
   handleNotification(notification: CodexNotification, sourceId: string): void {
+    this.options.recordWorkspaceNotification?.(notification, sourceId);
     this.options.onRawReceived?.(
       notification.method,
       estimateNotificationBytes(notification.params)

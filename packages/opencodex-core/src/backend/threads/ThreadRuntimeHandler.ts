@@ -16,6 +16,7 @@ import type {
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
+import type { WorkspaceExecutionService } from "../workspaces/WorkspaceExecutionService.js";
 import { ThreadConversationService } from "./ThreadConversationService.js";
 import { ThreadRuntimeNotifications } from "./ThreadRuntimeNotifications.js";
 import {
@@ -31,6 +32,8 @@ export type {
 
 /** Owns thread services, thread-scoped state, and their runtime-facing facade. */
 export class ThreadRuntimeHandler {
+  /** Source-owned context and persistent execution guards. */
+  private readonly workspaceExecution: WorkspaceExecutionService | undefined;
   /** Thread conversation and turn lifecycle service. */
   private readonly threadConversationService: ThreadConversationService;
   /** Notification callbacks, adapters, journaling, and suppression state. */
@@ -45,6 +48,15 @@ export class ThreadRuntimeHandler {
     const services = createThreadRuntimeServices(options);
     this.threadConversationService = services.threadConversationService;
     this.notifications = services.notifications;
+    this.workspaceExecution = services.workspaceExecution;
+  }
+
+  /** Exposes cache-backed preparatory workspace operations without UI state. */
+  get workspaces(): Pick<WorkspaceExecutionService, "list" | "select" | "reconcile" | "reconcileWorkspace"> {
+    if (this.workspaceExecution === undefined) {
+      throw new Error("Workspace operations require a cache repository.");
+    }
+    return this.workspaceExecution;
   }
 
   /**
@@ -252,7 +264,8 @@ export class ThreadRuntimeHandler {
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
-    serviceTier: string | null
+    serviceTier: string | null,
+    workspaceId: string | null = null
   ): Promise<{ threadId: string; turnId: string }> {
     return await this.threadConversationService.startTurn(
       threadId,
@@ -263,7 +276,9 @@ export class ThreadRuntimeHandler {
       references,
       model,
       reasoningEffort,
-      serviceTier
+      serviceTier,
+      true,
+      workspaceId
     );
   }
 

@@ -180,7 +180,8 @@ export class ThreadsApi implements ThreadsApiContract {
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
-    serviceTier: string | null
+    serviceTier: string | null,
+    workspaceId: string | null = null
   ): Promise<{ threadId: string; turnId: string }> {
     return await this.handler.startTurn(
       threadId,
@@ -191,7 +192,8 @@ export class ThreadsApi implements ThreadsApiContract {
       references,
       model,
       reasoningEffort,
-      serviceTier
+      serviceTier,
+      workspaceId
     );
   }
 

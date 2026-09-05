@@ -33,6 +33,7 @@ import type {
   OpenCodexPluginListResult,
   OpenCodexPluginSearchResult,
   OpenCodexProject,
+  OpenCodexProjectWorkspace,
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRule,
   OpenCodexProjectCommandRuleApplyResult,
@@ -64,6 +65,18 @@ import type {
   OpenCodexUsageResetConsumeResult,
   OpenCodexUsageSnapshot
 } from "@open-codex-ui/opencodex-protocol";
+
+/** Preparatory workspace catalogue, selection, and explicit execution recovery. */
+export interface WorkspacesApi {
+  /** Lists workspaces without contacting their source. */
+  list(projectId: string): Promise<OpenCodexProjectWorkspace[]>;
+  /** Selects within the same project/source after checking live thread inactivity. */
+  select(threadId: string, workspaceId: string): Promise<void>;
+  /** Clears a durable reservation only after source status confirms inactivity. */
+  reconcile(threadId: string): Promise<void>;
+  /** Recovers interrupted preparation when no thread identifier was returned. */
+  reconcileWorkspace(workspaceId: string): Promise<void>;
+}
 
 /** Public operations for cached projects. */
 export interface ProjectsApi {
@@ -207,7 +220,8 @@ export interface ThreadsApi {
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
-    serviceTier: string | null
+    serviceTier: string | null,
+    workspaceId?: string | null
   ): Promise<{ threadId: string; turnId: string }>;
   steerTurn(
     threadId: string,

@@ -35,6 +35,10 @@ export type OpenCodexRequest =
   | { type: "app.openDevTools" }
   | { type: "app.openUsageHistory"; sourceId: string }
   | { type: "projects.list" }
+  | { type: "projectWorkspaces.list"; projectId: string }
+  | { type: "projectWorkspaces.execution.reconcile"; workspaceId: string }
+  | { type: "threads.workspace.select"; threadId: string; workspaceId: string }
+  | { type: "threads.workspace.reconcile"; threadId: string }
   | { type: "projects.open"; projectPath: string; sourceId?: string | null; createIfMissing?: boolean }
   | { type: "projects.statistics.read"; projectPath: string; sourceId: string | null }
   | { type: "projects.pickDirectory"; mode: "open" | "create"; sourceId?: string | null }
@@ -150,6 +154,7 @@ export type OpenCodexRequest =
   | { type: "system.openProjectTerminal"; projectPath: string; sourceId: string | null }
   | {
       type: "turn.start";
+      workspaceId?: string | null;
       threadId: string | null;
       projectPath?: string | null;
       sourceId?: string | null;

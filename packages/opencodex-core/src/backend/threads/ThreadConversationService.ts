@@ -11,6 +11,7 @@ import type {
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
 
+import type { WorkspaceExecutionService } from "../workspaces/WorkspaceExecutionService.js";
 import { ThreadTurnCache } from "../../ThreadTurnCache.js";
 import type { OpenCodexBackendOptions } from "../../types.js";
 import {
@@ -36,6 +37,8 @@ import type {
 import type { CollaborationService } from "../collaboration/CollaborationService.js";
 
 export type ThreadConversationServiceOptions = {
+  /** Persistent context resolver shared with notification processing. */
+  workspaceExecution?: WorkspaceExecutionService;
   backendOptions: OpenCodexBackendOptions;
   threadTurnCache: ThreadTurnCache;
   threadCacheService: ThreadCacheService;
@@ -143,6 +146,7 @@ export class ThreadConversationService {
       handleClientError: options.handleClientError
     });
     this.threadTurnActionsService = new ThreadTurnActionsService({
+      workspaceExecution: options.workspaceExecution,
       backendOptions: options.backendOptions,
       threadTurnCache: options.threadTurnCache,
       threadCacheService: options.threadCacheService,
@@ -424,7 +428,8 @@ export class ThreadConversationService {
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
     serviceTier: string | null,
-    shouldResumeExistingThread = true
+    shouldResumeExistingThread = true,
+    workspaceId: string | null = null
   ): Promise<{ threadId: string; turnId: string }> {
     return await this.threadTurnActionsService.startTurn(
       threadId,
@@ -436,7 +441,8 @@ export class ThreadConversationService {
       model,
       reasoningEffort,
       serviceTier,
-      shouldResumeExistingThread
+      shouldResumeExistingThread,
+      workspaceId
     );
   }
 

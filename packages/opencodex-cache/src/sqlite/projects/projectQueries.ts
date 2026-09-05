@@ -3,7 +3,7 @@
  */
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
-import { createProjectIdentity } from "../../projectIdentity.js";
+import { resolveProject } from "./projectResolver.js";
 import type { CachedProject, CachedProjectPreferences } from "../../types.js";
 import { ensureProjectTreeItem } from "./projectGroupQueries.js";
 import { mapProjectRow } from "../shared/mappers.js";
@@ -24,48 +24,10 @@ export async function upsertProject(
   projectPath: string,
   sourceId: string | null = null
 ): Promise<CachedProject> {
-  const project = createProjectIdentity(projectPath, sourceId);
-
+  const project = database.transaction(() => resolveProject(database, projectPath, sourceId))();
   if (project === null) {
     throw new Error("Project path is required.");
   }
-
-  const now = new Date().toISOString();
-  database
-    .prepare(
-      `
-      INSERT INTO projects (
-        id,
-        source_id,
-        source_key,
-        path,
-        default_name,
-        display_name,
-        is_hidden,
-        created_at,
-        updated_at,
-        last_seen_at
-      )
-      VALUES (
-        @id,
-        @sourceId,
-        @sourceKey,
-        @path,
-        @defaultName,
-        NULL,
-        0,
-        @now,
-        @now,
-        @now
-      )
-      ON CONFLICT(source_key, path) DO UPDATE SET
-        source_id = COALESCE(excluded.source_id, projects.source_id),
-        default_name = excluded.default_name,
-        updated_at = excluded.updated_at,
-        last_seen_at = excluded.last_seen_at
-      `
-    )
-    .run({ ...project, sourceId, now });
 
   const row = database
     .prepare(
@@ -83,11 +45,11 @@ export async function upsertProject(
       FROM projects
       LEFT JOIN threads ON threads.project_id = projects.id
       LEFT JOIN turns ON turns.thread_id = threads.id
-      WHERE projects.source_key = @sourceKey AND projects.path = @path
+      WHERE projects.id = @id
       GROUP BY projects.id
       `
     )
-    .get({ sourceKey: project.sourceKey, path: project.path }) as ProjectRow | undefined;
+    .get({ id: project.id }) as ProjectRow | undefined;
 
   if (row === undefined) {
     throw new Error("Project could not be read after being cached.");

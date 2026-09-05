@@ -4,6 +4,25 @@ import { describe, expect, it, vi } from "vitest";
 import type { OpenCodexBackendRuntime } from "../src/OpenCodexBackendRuntime";
 import { OpenCodexRequestRouter } from "../src/OpenCodexRequestRouter";
 
+describe("OpenCodexRequestRouter workspace routes", () => {
+  it("should forward workspace identities and explicit recovery without deriving a path", async () => {
+    const workspaces = { list: vi.fn(), select: vi.fn(), reconcile: vi.fn() };
+    const startTurn = vi.fn();
+    const runtime = { workspaces, threads: { startTurn } } as unknown as OpenCodexBackendRuntime;
+    const router = new OpenCodexRequestRouter(runtime);
+
+    await router.handleRequest({ type: "projectWorkspaces.list", projectId: "project-a" });
+    await router.handleRequest({ type: "threads.workspace.select", threadId: "thread-a", workspaceId: "workspace-a" });
+    await router.handleRequest({ type: "threads.workspace.reconcile", threadId: "thread-a" });
+    await router.handleRequest({ type: "turn.start", threadId: null, workspaceId: "workspace-a", text: "start" });
+
+    expect(workspaces.list).toHaveBeenCalledWith("project-a");
+    expect(workspaces.select).toHaveBeenCalledWith("thread-a", "workspace-a");
+    expect(workspaces.reconcile).toHaveBeenCalledWith("thread-a");
+    expect(startTurn).toHaveBeenCalledWith(null, null, null, "start", [], [], null, null, null, "workspace-a");
+  });
+});
+
 describe("OpenCodexRequestRouter Docker Compose routes", () => {
   it("should forward every Compose request with explicit source and project scope", async () => {
     const dockerCompose = {

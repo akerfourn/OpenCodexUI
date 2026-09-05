@@ -383,6 +383,7 @@ export async function deleteSource(
   database: BetterSqliteDatabase,
   sourceId: string
 ): Promise<void> {
+  requireSourceWithoutWorkspaceExecutions(database, sourceId);
   database
     .prepare("DELETE FROM sources WHERE id = @sourceId")
     .run({ sourceId });
@@ -401,6 +402,9 @@ export async function clearSourceAssociations(
   sourceId: string
 ): Promise<void> {
   const clearAssociations = database.transaction(() => {
+    requireSourceWithoutWorkspaceExecutions(database, sourceId);
+    database.prepare("UPDATE project_workspaces SET source_id = NULL WHERE source_id = ?")
+      .run(sourceId);
     database
       .prepare("UPDATE projects SET source_id = NULL WHERE source_id = @sourceId")
       .run({ sourceId });
@@ -410,4 +414,12 @@ export async function clearSourceAssociations(
   });
 
   clearAssociations();
+}
+
+/** Prevents orphaning a durable execution that still requires its source for recovery. */
+function requireSourceWithoutWorkspaceExecutions(database: BetterSqliteDatabase, sourceId: string): void {
+  if (database.prepare("SELECT id FROM workspace_execution_reservations WHERE source_id = ?")
+    .get(sourceId) !== undefined) {
+    throw new Error("Source has unresolved workspace executions; reconcile them before removal.");
+  }
 }

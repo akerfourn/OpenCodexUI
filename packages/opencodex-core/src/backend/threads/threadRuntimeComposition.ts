@@ -1,5 +1,6 @@
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 
+import { WorkspaceExecutionService } from "../workspaces/WorkspaceExecutionService.js";
 import { ThreadTurnCache } from "../../ThreadTurnCache.js";
 import type { OpenCodexBackendOptions } from "../../types.js";
 import { CollaborationService } from "../collaboration/CollaborationService.js";
@@ -44,6 +45,7 @@ export type { ThreadRuntimeNotificationAdapters } from "./ThreadRuntimeNotificat
 export type ThreadRuntimeServices = {
   threadConversationService: ThreadConversationService;
   notifications: ThreadRuntimeNotifications;
+  workspaceExecution: WorkspaceExecutionService | undefined;
 };
 
 /**
@@ -68,7 +70,10 @@ export function createThreadRuntimeServices(
     events: options.events,
     logger: options.backendOptions.logger
   });
+  const workspaceExecution = options.cacheRepository === null ? undefined
+    : new WorkspaceExecutionService(options.cacheRepository.workspaces, options.clients);
   const threadConversationService = new ThreadConversationService({
+    workspaceExecution,
     backendOptions: options.backendOptions,
     threadTurnCache,
     threadCacheService,
@@ -80,6 +85,7 @@ export function createThreadRuntimeServices(
     handleClientError: options.handleClientError
   });
   const notifications = new ThreadRuntimeNotifications({
+    workspaceExecution,
     events: options.events,
     threadTurnCache,
     threadCacheService,
@@ -103,6 +109,7 @@ export function createThreadRuntimeServices(
 
   return {
     threadConversationService,
-    notifications
+    notifications,
+    workspaceExecution
   };
 }

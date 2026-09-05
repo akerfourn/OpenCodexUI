@@ -45,6 +45,14 @@ export class OpenCodexRequestRouter {
         throw new Error("Developer tools are not available in this runtime.");
       case "projects.list":
         return this.runtime.projects.list();
+      case "projectWorkspaces.list":
+        return this.runtime.workspaces.list(request.projectId);
+      case "projectWorkspaces.execution.reconcile":
+        return this.runtime.workspaces.reconcileWorkspace(request.workspaceId);
+      case "threads.workspace.select":
+        return this.runtime.workspaces.select(request.threadId, request.workspaceId);
+      case "threads.workspace.reconcile":
+        return this.runtime.workspaces.reconcile(request.threadId);
       case "projects.open":
         return this.runtime.projects.open(
           request.projectPath,
@@ -210,7 +218,8 @@ export class OpenCodexRequestRouter {
           request.references ?? [],
           request.model ?? null,
           request.reasoningEffort ?? null,
-          request.serviceTier ?? null
+          request.serviceTier ?? null,
+          request.workspaceId ?? null
         );
       case "turn.steer":
         return this.runtime.threads.steerTurn(

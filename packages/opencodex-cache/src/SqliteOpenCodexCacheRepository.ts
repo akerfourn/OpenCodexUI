@@ -71,6 +71,8 @@ import { SqliteLogCacheRepository } from "./sqlite/logs/SqliteLogCacheRepository
 import { SqliteProjectCacheRepository } from "./sqlite/projects/SqliteProjectCacheRepository.js";
 import { SqliteSourceCacheRepository } from "./sqlite/sources/SqliteSourceCacheRepository.js";
 import { SqliteThreadCacheRepository } from "./sqlite/threads/SqliteThreadCacheRepository.js";
+import { SqliteWorkspaceCacheRepository } from "./sqlite/projects/SqliteWorkspaceCacheRepository.js";
+import type { WorkspaceCacheRepository } from "./types/workspaces.js";
 
 export type SqliteOpenCodexCacheRepositoryOptions = {
   directory: string;
@@ -93,6 +95,8 @@ export function createOpenCodexSqliteCacheRepository(
  * Exposes the cache contract while delegating persistence to domain repositories.
  */
 export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository {
+  /** Workspace identity and execution persistence on the shared connection. */
+  readonly workspaces: WorkspaceCacheRepository;
   /** SQLite connection owned by this facade. */
   private readonly database: BetterSqliteDatabase;
 
@@ -129,6 +133,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     runMigrations(this.database);
 
     this.sources = new SqliteSourceCacheRepository(this.database);
+    this.workspaces = new SqliteWorkspaceCacheRepository(this.database);
     this.collaboration = new SqliteCollaborationCacheRepository(this.database);
     this.projects = new SqliteProjectCacheRepository(this.database);
     this.logs = new SqliteLogCacheRepository(this.database);

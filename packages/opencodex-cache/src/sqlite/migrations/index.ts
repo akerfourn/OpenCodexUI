@@ -27,6 +27,8 @@ import { applySchemaMigrationV24 } from "./v24.js";
 import { applySchemaMigrationV25 } from "./v25.js";
 import { applySchemaMigrationV26 } from "./v26.js";
 import { applySchemaMigrationV27 } from "./v27.js";
+import { applySchemaMigrationV28 } from "./v28.js";
+import { applySchemaMigrationV29 } from "./v29.js";
 
 /**
  * Applies all database schema migrations required by the SQLite cache.
@@ -69,4 +71,6 @@ export function runMigrations(database: BetterSqliteDatabase): void {
   applySchemaMigrationV25(database);
   applySchemaMigrationV26(database);
   applySchemaMigrationV27(database);
+  applySchemaMigrationV28(database);
+  applySchemaMigrationV29(database);
 }

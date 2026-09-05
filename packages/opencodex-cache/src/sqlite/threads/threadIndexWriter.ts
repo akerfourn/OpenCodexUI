@@ -3,9 +3,8 @@
  */
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
-import { createProjectIdentity } from "../../projectIdentity.js";
+import { resolveProject } from "../projects/projectResolver.js";
 import type { CachedThreadSummary } from "../../types.js";
-import { ensureProjectTreeItem } from "../projects/projectGroupQueries.js";
 
 /**
  * Writes thread index data and associated project rows.
@@ -19,44 +18,6 @@ export function writeThreadIndex(
   database: BetterSqliteDatabase,
   threads: CachedThreadSummary[]
 ): void {
-  const now = new Date().toISOString();
-  const upsertProject = database.prepare(
-    `
-    INSERT INTO projects (
-      id,
-      source_id,
-      source_key,
-      path,
-      default_name,
-      display_name,
-      is_hidden,
-      created_at,
-      updated_at,
-      last_seen_at
-    )
-    VALUES (
-      @id,
-      @sourceId,
-      @sourceKey,
-      @path,
-      @defaultName,
-      NULL,
-      @isHidden,
-      @now,
-      @now,
-      @now
-    )
-    ON CONFLICT(source_key, path) DO UPDATE SET
-      source_id = COALESCE(excluded.source_id, projects.source_id),
-      default_name = excluded.default_name,
-      is_hidden = CASE
-        WHEN excluded.is_hidden = 1 THEN 1
-        ELSE projects.is_hidden
-      END,
-      updated_at = excluded.updated_at,
-      last_seen_at = excluded.last_seen_at
-    `
-  );
   const upsertThread = database.prepare(
     `
     INSERT INTO threads (
@@ -65,6 +26,7 @@ export function writeThreadIndex(
       parent_thread_id,
       source_id,
       project_id,
+      current_workspace_id,
       cwd,
       branch_name,
       codex_title,
@@ -87,6 +49,7 @@ export function writeThreadIndex(
       @parentThreadId,
       @sourceId,
       @projectId,
+      @workspaceId,
       @cwd,
       @branchName,
       @codexTitle,
@@ -107,8 +70,9 @@ export function writeThreadIndex(
       session_id = COALESCE(excluded.session_id, threads.session_id),
       parent_thread_id = COALESCE(excluded.parent_thread_id, threads.parent_thread_id),
       source_id = COALESCE(excluded.source_id, threads.source_id),
-      project_id = excluded.project_id,
-      cwd = excluded.cwd,
+      project_id = COALESCE(excluded.project_id, threads.project_id),
+      current_workspace_id = COALESCE(excluded.current_workspace_id, threads.current_workspace_id),
+      cwd = COALESCE(excluded.cwd, threads.cwd),
       branch_name = excluded.branch_name,
       codex_title = excluded.codex_title,
       custom_title = COALESCE(excluded.custom_title, threads.custom_title),
@@ -141,18 +105,15 @@ export function writeThreadIndex(
 
   const writeIndex = database.transaction(() => {
     for (const thread of threads) {
-      const sourceId = thread.sourceId;
-      const project = createProjectIdentity(thread.projectPath ?? "", sourceId);
-
-      if (project !== null) {
-        upsertProject.run({
-          ...project,
-          sourceId,
-          isHidden: thread.projectHidden === true ? 1 : 0,
-          now
-        });
-        ensureProjectTreeItem(database, project.id);
+      const stored = database.prepare("SELECT source_id FROM threads WHERE id = ?")
+        .get(thread.id) as { source_id: string | null } | undefined;
+      if (stored?.source_id !== undefined && stored.source_id !== null &&
+        thread.sourceId !== null && thread.sourceId !== stored.source_id) {
+        throw new Error("Thread source conflicts with its persisted association.");
       }
+      const sourceId = thread.sourceId ?? stored?.source_id ?? null;
+      const project = resolveProject(database, thread.projectPath ?? "", sourceId,
+        thread.id, thread.projectHidden === true);
 
       upsertThread.run({
         id: thread.id,
@@ -160,6 +121,7 @@ export function writeThreadIndex(
         parentThreadId: thread.parentThreadId,
         sourceId,
         projectId: project?.id ?? null,
+        workspaceId: project?.workspaceId ?? null,
         cwd: project?.path ?? null,
         branchName: thread.branchName ?? null,
         codexTitle: thread.codexTitle,

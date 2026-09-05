@@ -47,7 +47,15 @@ describe("collaboration event persistence", () => {
       CREATE TABLE threads (
         id TEXT PRIMARY KEY,
         source_id TEXT,
+        project_id TEXT,
+        cwd TEXT,
         parent_thread_id TEXT
+      );
+      CREATE TABLE projects (
+        id TEXT PRIMARY KEY,
+        source_id TEXT,
+        source_key TEXT NOT NULL,
+        path TEXT NOT NULL
       );
       INSERT INTO preserved_data (id, value) VALUES ('sentinel', 'keep-me');
     `);

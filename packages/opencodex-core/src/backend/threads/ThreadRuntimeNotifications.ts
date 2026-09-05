@@ -8,6 +8,7 @@ import type {
   OpenCodexThreadEventLogValue
 } from "@open-codex-ui/opencodex-protocol";
 
+import type { WorkspaceExecutionService } from "../workspaces/WorkspaceExecutionService.js";
 import type { ThreadTurnCache } from "../../ThreadTurnCache.js";
 import type { CollaborationService } from "../collaboration/CollaborationService.js";
 import { toError } from "../shared/errors.js";
@@ -19,6 +20,8 @@ import { ThreadNotificationSuppressionRegistry } from "./ThreadNotificationSuppr
 
 /** Adapters consumed by the ordered notification coordinator. */
 export type ThreadRuntimeNotificationAdapters = {
+  /** Updates execution ownership independently of UI notification suppression. */
+  recordWorkspaceNotification(notification: CodexNotification, sourceId: string): void;
   readonly threadCacheService: Pick<
     ThreadCacheService,
     "writeTokenUsage" | "writeTurnExecutionMetadata"
@@ -37,6 +40,8 @@ export type ThreadRuntimeNotificationAdapters = {
 
 /** Dependencies shared by thread notification operations. */
 export type ThreadRuntimeNotificationsOptions = {
+  /** Durable execution lifecycle connected to source-aware notifications. */
+  workspaceExecution?: WorkspaceExecutionService;
   events: RuntimeEventPort;
   threadTurnCache: ThreadTurnCache;
   threadCacheService: ThreadCacheService;
@@ -123,6 +128,10 @@ export class ThreadRuntimeNotifications {
     }
 
     return {
+      recordWorkspaceNotification: (notification, sourceId) => {
+        void this.options.workspaceExecution?.observe(notification, sourceId)
+          .catch((error: unknown) => this.options.handleClientError(toError(error)));
+      },
       threadCacheService: this.options.threadCacheService,
       threadTurnCache: this.options.threadTurnCache,
       collaborationService: this.options.collaborationService,

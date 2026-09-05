@@ -5,6 +5,7 @@ import { isPrereleaseVersion } from "./version.js";
 import { createBackendServiceGraph } from "./backend/runtime/createBackendServiceGraph.js";
 import type { BackendServiceGraph } from "./backend/runtime/BackendServiceGraph.js";
 import { BackendRuntimeApis } from "./backend/runtime/api/BackendRuntimeApis.js";
+import type { WorkspacesApi } from "./backend/runtime/api/PublicRuntimeApis.js";
 import type {
   ApprovalsApi,
   AutomationApi,
@@ -61,6 +62,11 @@ export class OpenCodexBackendRuntime {
   /** Public project API. */
   get projects(): ProjectsApi {
     return this.apis.projects;
+  }
+
+  /** Preparatory workspace API; execution targets are resolved by the backend. */
+  get workspaces(): WorkspacesApi {
+    return this.services.threadRuntimeHandler.workspaces;
   }
 
   /** Public source API. */

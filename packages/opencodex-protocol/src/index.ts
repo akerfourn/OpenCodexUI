@@ -8,3 +8,4 @@ export * from "./messages";
 export * from "./performance";
 export * from "./requests";
 export * from "./transport";
+export * from "./workspaces";

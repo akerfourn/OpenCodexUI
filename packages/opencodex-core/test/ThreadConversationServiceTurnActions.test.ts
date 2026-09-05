@@ -40,6 +40,7 @@ describe("ThreadConversationService turn actions", () => {
     });
     expect(client.startTurnParams).toEqual({
       threadId: "thread-new",
+      cwd: "/workspace/project",
       input: [{ type: "text", text: "hello", text_elements: [] }],
       model: "gpt-requested",
       serviceTier: "priority",
@@ -129,6 +130,59 @@ describe("ThreadConversationService turn actions", () => {
       "writeMetadata",
       "turn.started"
     ]);
+  });
+
+  it("should pass the requested cwd when an existing empty thread skips resume", async () => {
+    const client = new StrictTurnActionsCodexClient();
+    const fixture = createFixture(client, { thread: createThread() });
+
+    await fixture.service.startTurn(
+      "thread-1", "/workspace/feature", "source-1", "continue", [], [], null, null, null
+    );
+
+    expect(client.resumeThreadParams).toBeNull();
+    expect(client.startTurnParams).toMatchObject({
+      threadId: "thread-1",
+      cwd: "/workspace/feature"
+    });
+  });
+
+  it("should pass the requested cwd when resume is explicitly disabled", async () => {
+    const client = new StrictTurnActionsCodexClient();
+    const fixture = createFixture(client, { thread: createThread() });
+    fixture.threadTurnCache.replaceThreadTurns(fixture.thread, [{ id: "turn-old", items: [] }]);
+
+    await fixture.service.startTurn(
+      "thread-1", "/workspace/feature", "source-1", "continue", [], [], null, null, null, false
+    );
+
+    expect(client.resumeThreadParams).toBeNull();
+    expect(client.startTurnParams).toMatchObject({ cwd: "/workspace/feature" });
+  });
+
+  it("should preserve the loaded cwd when no path is requested and resume is skipped", async () => {
+    const client = new StrictTurnActionsCodexClient();
+    const fixture = createFixture(client, { thread: createThread() });
+
+    await fixture.service.startTurn(
+      "thread-1", null, "source-1", "continue", [], [], null, null, null
+    );
+
+    expect(client.resumeThreadParams).toBeNull();
+    expect(JSON.parse(JSON.stringify(client.startTurnParams))).not.toHaveProperty("cwd");
+  });
+
+  it("should use the same normalized cwd for resume and turn start", async () => {
+    const client = new StrictTurnActionsCodexClient();
+    const fixture = createFixture(client, { thread: createThread() });
+    fixture.threadTurnCache.replaceThreadTurns(fixture.thread, [{ id: "turn-old", items: [] }]);
+
+    await fixture.service.startTurn(
+      "thread-1", " /workspace/feature/../other ", "source-1", "continue", [], [], null, null, null
+    );
+
+    expect(client.resumeThreadParams).toMatchObject({ params: { cwd: "/workspace/other" } });
+    expect(client.startTurnParams).toMatchObject({ cwd: "/workspace/other" });
   });
 
   it("steers with the expected turn and falls back when Codex returns no id", async () => {

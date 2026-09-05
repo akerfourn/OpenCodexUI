@@ -4,6 +4,7 @@ import type {
   ProjectCacheRepository
 } from "./repositoryProjects.js";
 import type { ThreadCacheRepository } from "./repositoryThreads.js";
+import type { WorkspaceCacheRepository } from "./workspaces.js";
 import type {
   AutomationCacheRepository,
   SourceCacheRepository
@@ -19,6 +20,8 @@ export interface OpenCodexCacheRepository
     LogCacheRepository,
     AutomationCacheRepository,
     ThreadCacheRepository {
+  /** Workspace catalogue and atomic execution reservations. */
+  readonly workspaces: WorkspaceCacheRepository;
   /**
    * Closes resources owned by the repository.
    *
