@@ -1,11 +1,8 @@
-import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
-import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
 /**
  * Runs user-configured project commands through Codex app-server process APIs.
  */
-import fs from "node:fs/promises";
 import crypto from "node:crypto";
-import path from "node:path";
+import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 
 import type {
   CodexNotification,
@@ -23,13 +20,12 @@ import type {
   OpenCodexProjectCommandRun
 } from "@open-codex-ui/opencodex-protocol";
 
-import {
-  createShellCommand,
-  sanitizePathSegment
-} from "./projectCommandExecution.js";
+import { toProtocolRun } from "./projectCommandRunMapping.js";
+import { ProjectCommandLog } from "./ProjectCommandLog.js";
+import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
+import { createShellCommand } from "./projectCommandExecution.js";
 import {
   decodeBase64Output,
-  prefixLines,
   readExitedStatus,
   readProcessExited,
   readProcessOutputDelta
@@ -47,7 +43,8 @@ export type ProjectCommandServiceOptions = {
 
 type ActiveProjectCommandRun = OpenCodexProjectCommandRun & {
   sourceId: string;
-  outputWriteQueue: Promise<void>;
+  /** Optional writer retained for the lifetime of this run. */
+  log: ProjectCommandLog | null;
 };
 
 /**
@@ -328,8 +325,8 @@ export class ProjectCommandService {
     workspaceId?: string
   ): Promise<ActiveProjectCommandRun> {
     const id = cryptoRandomId();
-    const logPath = command.persistLogs
-      ? await this.createLogFilePath(command.projectId, command.id, id)
+    const log = command.persistLogs
+      ? await ProjectCommandLog.create(this.options.userDataPath, command.projectId, command.id, id)
       : null;
 
     return {
@@ -342,37 +339,12 @@ export class ProjectCommandService {
       startedAt: new Date().toISOString(),
       exitedAt: null,
       exitCode: null,
-      logPath,
+      logPath: log?.path ?? null,
       sourceId,
       cwd: projectPath,
       workspaceId,
-      outputWriteQueue: Promise.resolve()
+      log
     };
-  }
-
-  /**
-   * Creates the log file path for a persistent command run.
-   *
-   * @param projectId Project identifier.
-   * @param commandId Command identifier.
-   * @param runId Run identifier.
-   * @returns Absolute log file path.
-   */
-  private async createLogFilePath(
-    projectId: string,
-    commandId: string,
-    runId: string
-  ): Promise<string> {
-    const root = this.options.userDataPath ?? process.cwd();
-    const directory = path.join(
-      root,
-      "opencodexui-logs",
-      sanitizePathSegment(projectId),
-      sanitizePathSegment(commandId)
-    );
-
-    await fs.mkdir(directory, { recursive: true });
-    return path.join(directory, `${sanitizePathSegment(runId)}.log`);
   }
 
   /**
@@ -399,7 +371,7 @@ export class ProjectCommandService {
       return;
     }
 
-    this.appendPersistentOutput(run, output.stream, delta);
+    run.log?.append(output.stream, delta);
     this.options.events.emit({
       type: "projectCommand.output",
       projectId: run.projectId,
@@ -453,7 +425,7 @@ export class ProjectCommandService {
    */
   private reportDiagnostic(run: ActiveProjectCommandRun, message: string): void {
     const delta = `${message}\n`;
-    this.appendPersistentOutput(run, "stderr", delta);
+    run.log?.append("stderr", delta);
     this.options.events.emit({
       type: "projectCommand.output",
       projectId: run.projectId,
@@ -494,57 +466,6 @@ export class ProjectCommandService {
     });
   }
 
-  /**
-   * Appends process output to the optional persistent log file.
-   *
-   * @param run Active command run.
-   * @param stream Output stream.
-   * @param delta Sanitized output delta.
-   */
-  private appendPersistentOutput(
-    run: ActiveProjectCommandRun,
-    stream: "stdout" | "stderr",
-    delta: string
-  ): void {
-    if (run.logPath === null) {
-      return;
-    }
-
-    const logPath = run.logPath;
-    const output = prefixLines(delta, stream === "stderr" ? "[stderr] " : "");
-    run.outputWriteQueue = run.outputWriteQueue
-      .catch(() => undefined)
-      .then(async () => {
-        await fs.appendFile(logPath, output, "utf8");
-      })
-      .catch(() => {
-        // Logging is best effort; command execution should not fail because disk logging failed.
-      });
-  }
-}
-
-/**
- * Converts an active run to its protocol DTO.
- *
- * @param run Active run metadata.
- * @returns Protocol command-run DTO.
- */
-function toProtocolRun(run: ActiveProjectCommandRun): OpenCodexProjectCommandRun {
-  return {
-    id: run.id,
-    projectId: run.projectId,
-    commandId: run.commandId,
-    processHandle: run.processHandle,
-    command: run.command,
-    status: run.status,
-    startedAt: run.startedAt,
-    exitedAt: run.exitedAt,
-    exitCode: run.exitCode,
-    logPath: run.logPath,
-    sourceId: run.sourceId,
-    cwd: run.cwd,
-    workspaceId: run.workspaceId
-  };
 }
 
 /**
