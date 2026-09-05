@@ -27,6 +27,10 @@ export type OpenCodexProjectCommandOutputStream = "stdout" | "stderr";
  * Live or completed execution of one project command.
  */
 export type OpenCodexProjectCommandRun = {
+  /** Captured physical context; older runs may omit it. */
+  workspaceId?: string;
+  sourceId?: string;
+  cwd?: string;
   id: string;
   projectId: string;
   commandId: string;

@@ -12,6 +12,29 @@ import { describe, expect, it, vi } from "vitest";
 import { ProjectCommandService } from "../src/backend/projects/ProjectCommandService";
 
 describe("ProjectCommandService", () => {
+  it("should reject simultaneous non-parallel starts before process registration", async () => {
+    const { service, request } = createService();
+    const results = await Promise.allSettled([
+      service.runCommand("command-1", "/primary", "source-1"),
+      service.runCommand("command-1", "/primary", "source-1")
+    ]);
+    expect(results.map((result) => result.status)).toEqual(["fulfilled", "rejected"]);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(results[1]).toMatchObject({ reason: new Error("This command is already running.") });
+  });
+
+  it("should keep commands in separate directories independent and retain their execution context", async () => {
+    const { service, request } = createService();
+    const primary = await service.runCommand("command-1", "/primary", "source-1");
+    await expect(service.runCommand("command-1", "/primary", "source-1"))
+      .rejects.toThrow("already running");
+    const secondary = await service.runCommand("command-1", "/secondary", "source-1");
+    expect(primary).toMatchObject({ cwd: "/primary", sourceId: "source-1" });
+    expect(secondary).toMatchObject({ cwd: "/secondary", sourceId: "source-1" });
+    await service.stopRun(primary.id);
+    expect(request).toHaveBeenLastCalledWith("process/kill", { processHandle: primary.processHandle });
+  });
+
   it("should preserve the run, output, and exit event sequence", async () => {
     const { service, request, emit } = createService();
 

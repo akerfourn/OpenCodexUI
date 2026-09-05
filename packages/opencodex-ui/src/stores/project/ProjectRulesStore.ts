@@ -336,9 +336,14 @@ export class ProjectRulesStore {
    * @returns Nothing.
    */
   handleEvent(event: OpenCodexEvent): void {
-    if (event.type === "projectRules.updated" && event.projectId === this.projectStore.project.id) {
-      this.applySnapshot(event.snapshot);
+    if (event.type !== "projectRules.updated" || event.projectId !== this.projectStore.project.id) {
+      return;
     }
+    // The current UI displays the primary workspace until workspace selection is exposed.
+    if (event.workspacePath !== undefined && event.workspacePath !== this.projectStore.project.path) {
+      return;
+    }
+    this.applySnapshot(event.snapshot);
   }
 
   /**

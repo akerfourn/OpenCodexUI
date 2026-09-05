@@ -55,6 +55,27 @@ describe("workspace persistence", () => {
     expect(database.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
   });
 
+  it("should preserve legacy generated rule state when migrating its physical key twice", async () => {
+    const project = await upsertProject(database, "/repo", "source-a");
+    database.exec(`
+      DROP TABLE project_command_rule_file_states;
+      CREATE TABLE project_command_rule_file_states (
+        project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+        generated_hash TEXT, generated_path TEXT, updated_at TEXT NOT NULL
+      );
+      DELETE FROM schema_migrations WHERE version = 31;
+    `);
+    database.prepare("INSERT INTO project_command_rule_file_states VALUES (?, ?, ?, ?)")
+      .run(project.id, "retained-hash", "/repo/.codex/rules/default.rules", "2026-01-01");
+    runMigrations(database);
+    runMigrations(database);
+    expect(database.prepare("SELECT * FROM project_command_rule_file_states").all()).toEqual([
+      { project_id: project.id, generated_hash: "retained-hash",
+        generated_path: "/repo/.codex/rules/default.rules", updated_at: "2026-01-01" }
+    ]);
+    expect(database.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+  });
+
   it("should share UUID project identity between creation and thread indexing", async () => {
     const project = await upsertProject(database, "/repo", "source-a");
     writeThreadIndex(database, [thread()]);

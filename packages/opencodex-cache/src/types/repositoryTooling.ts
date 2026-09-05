@@ -223,7 +223,7 @@ export interface AutomationCacheRepository {
    * @param projectId Project identifier.
    * @returns File state, or `null` when no file was generated yet.
    */
-  getProjectCommandRuleFileState(projectId: string): Promise<CachedProjectCommandRuleFileState | null>;
+  getProjectCommandRuleFileState(projectId: string, generatedPath?: string): Promise<CachedProjectCommandRuleFileState | null>;
 
   /**
    * Stores generated-file synchronization metadata for one project.

@@ -237,15 +237,17 @@ export async function readProjectCommandRule(
  */
 export async function getProjectCommandRuleFileState(
   database: BetterSqliteDatabase,
-  projectId: string
+  projectId: string,
+  generatedPath?: string
 ): Promise<CachedProjectCommandRuleFileState | null> {
   const row = database
     .prepare(`
       SELECT project_id, generated_hash, generated_path, updated_at
       FROM project_command_rule_file_states
-      WHERE project_id = @projectId
+      WHERE project_id = @projectId AND (@generatedPath IS NULL OR generated_path = @generatedPath)
+      ORDER BY updated_at DESC, generated_path ASC LIMIT 1
     `)
-    .get({ projectId }) as ProjectCommandRuleFileStateRow | undefined;
+    .get({ projectId, generatedPath: generatedPath ?? null }) as ProjectCommandRuleFileStateRow | undefined;
 
   return row === undefined ? null : mapProjectCommandRuleFileStateRow(row);
 }
@@ -270,7 +272,7 @@ export async function saveProjectCommandRuleFileState(
         updated_at
       )
       VALUES (@projectId, @generatedHash, @generatedPath, @updatedAt)
-      ON CONFLICT(project_id) DO UPDATE SET
+      ON CONFLICT DO UPDATE SET
         generated_hash = excluded.generated_hash,
         generated_path = excluded.generated_path,
         updated_at = excluded.updated_at

@@ -1,3 +1,4 @@
+import { optionalWorkspaceArgument } from "../../workspaces/workspaceToolContext.js";
 import type { ProjectRuntimeHandler } from "../../projects/ProjectRuntimeHandler.js";
 import type {
   CodexUpdatesApi as CodexUpdatesApiContract,
@@ -220,9 +221,10 @@ export class ProjectContextApi implements ProjectContextApiContract {
 
   /** Synchronizes configured context folders into the project Codex config. */
   async sync(
-    projectId: Parameters<ProjectContextHandler["syncProjectContext"]>[0]
+    projectId: Parameters<ProjectContextHandler["syncProjectContext"]>[0],
+    workspaceId?: string
   ): ReturnType<ProjectContextHandler["syncProjectContext"]> {
-    return await this.handler.syncProjectContext(projectId);
+    return await this.handler.syncProjectContext(projectId, ...optionalWorkspaceArgument(workspaceId));
   }
 
   /** Opens the host directory picker for an external context folder. */

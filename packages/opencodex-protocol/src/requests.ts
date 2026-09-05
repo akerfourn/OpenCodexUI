@@ -45,7 +45,7 @@ export type OpenCodexRequest =
   | { type: "projects.setHidden"; projectId: string; isHidden: boolean }
   | { type: "projects.displayName.update"; projectId: string; displayName: string | null }
   | { type: "projects.preferences.update"; projectId: string; patch: Partial<OpenCodexProjectPreferences> }
-  | { type: "projects.context.sync"; projectId: string }
+  | { type: "projects.context.sync"; workspaceId?: string; projectId: string }
   | { type: "projects.context.pickFolder" }
   | { type: "projects.delete"; projectId: string }
   | { type: "projectGroups.list" }
@@ -84,14 +84,14 @@ export type OpenCodexRequest =
     }
   | { type: "sources.pickExecutable" }
   | {
-      type: "files.search";
+      type: "files.search"; workspaceId?: string;
       projectPath: string;
       sourceId: string | null;
       query: string;
       limit?: number;
     }
   | {
-      type: "skills.search";
+      type: "skills.search"; workspaceId?: string;
       projectPath: string;
       sourceId: string | null;
       query: string;
@@ -148,10 +148,10 @@ export type OpenCodexRequest =
     }
   | { type: "thread.review"; threadId: string; projectPath?: string | null }
   | { type: "thread.compact"; threadId: string; projectPath?: string | null }
-  | { type: "system.openLink"; href: string; projectPath?: string | null; sourceId?: string | null }
-  | { type: "system.openProject"; projectPath: string; sourceId: string | null }
-  | { type: "system.openProjectFolder"; projectPath: string; sourceId: string | null }
-  | { type: "system.openProjectTerminal"; projectPath: string; sourceId: string | null }
+  | { type: "system.openLink"; workspaceId?: string; href: string; projectPath?: string | null; sourceId?: string | null }
+  | { type: "system.openProject"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "system.openProjectFolder"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "system.openProjectTerminal"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | {
       type: "turn.start";
       workspaceId?: string | null;
@@ -235,88 +235,88 @@ export type OpenCodexRequest =
   | { type: "docker.host.container.stop"; containerId: string }
   | { type: "docker.host.container.restart"; containerId: string }
   | { type: "docker.host.container.logs.read"; containerId: string; tail?: number }
-  | { type: "docker.compose.snapshot.read"; projectPath: string; sourceId: string }
+  | { type: "docker.compose.snapshot.read"; workspaceId?: string; projectPath: string; sourceId: string }
   | {
-      type: "docker.compose.service.up";
+      type: "docker.compose.service.up"; workspaceId?: string;
       projectPath: string;
       sourceId: string;
       serviceName: string;
     }
   | {
-      type: "docker.compose.service.stop";
+      type: "docker.compose.service.stop"; workspaceId?: string;
       projectPath: string;
       sourceId: string;
       serviceName: string;
     }
   | {
-      type: "docker.compose.service.restart";
+      type: "docker.compose.service.restart"; workspaceId?: string;
       projectPath: string;
       sourceId: string;
       serviceName: string;
     }
   | {
-      type: "docker.compose.service.logs.read";
+      type: "docker.compose.service.logs.read"; workspaceId?: string;
       projectPath: string;
       sourceId: string;
       serviceName: string;
       tail?: number;
     }
   | { type: "git.version" }
-  | { type: "git.status"; projectPath: string; sourceId: string | null }
-  | { type: "git.init"; projectPath: string; sourceId: string | null }
-  | { type: "git.remotes"; projectPath: string; sourceId: string | null }
-  | { type: "git.remote.upsert"; projectPath: string; sourceId: string | null; name: string; url: string }
-  | { type: "git.branches"; projectPath: string; sourceId: string | null }
-  | { type: "git.tags"; projectPath: string; sourceId: string | null }
-  | { type: "git.tags.fetch"; projectPath: string; sourceId: string | null }
+  | { type: "git.status"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "git.init"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "git.remotes"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "git.remote.upsert"; workspaceId?: string; projectPath: string; sourceId: string | null; name: string; url: string }
+  | { type: "git.branches"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "git.tags"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "git.tags.fetch"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | {
-      type: "git.tags.push";
+      type: "git.tags.push"; workspaceId?: string;
       projectPath: string;
       sourceId: string | null;
     }
   | {
-      type: "git.tag.create";
+      type: "git.tag.create"; workspaceId?: string;
       projectPath: string;
       sourceId: string | null;
       tagName: string;
     }
   | {
-      type: "git.tag.push";
+      type: "git.tag.push"; workspaceId?: string;
       projectPath: string;
       sourceId: string | null;
       tagName: string;
       force: boolean;
     }
-  | { type: "git.tag.commitsSince"; projectPath: string; sourceId: string | null; tagName: string }
-  | { type: "git.log"; projectPath: string; sourceId: string | null; limit: number; skip: number }
-  | { type: "git.commit.details"; projectPath: string; sourceId: string | null; hash: string }
+  | { type: "git.tag.commitsSince"; workspaceId?: string; projectPath: string; sourceId: string | null; tagName: string }
+  | { type: "git.log"; workspaceId?: string; projectPath: string; sourceId: string | null; limit: number; skip: number }
+  | { type: "git.commit.details"; workspaceId?: string; projectPath: string; sourceId: string | null; hash: string }
   | {
-      type: "git.checkout";
+      type: "git.checkout"; workspaceId?: string;
       projectPath: string;
       sourceId: string | null;
       branchName: string;
       branchKind: OpenCodexGitBranchKind;
     }
-  | { type: "git.branch.create"; projectPath: string; sourceId: string | null; branchName: string }
-  | { type: "git.merge"; projectPath: string; sourceId: string | null; branchName: string }
+  | { type: "git.branch.create"; workspaceId?: string; projectPath: string; sourceId: string | null; branchName: string }
+  | { type: "git.merge"; workspaceId?: string; projectPath: string; sourceId: string | null; branchName: string }
   | {
-      type: "git.merge.to";
+      type: "git.merge.to"; workspaceId?: string;
       projectPath: string;
       sourceId: string | null;
       targetBranchName: string;
     }
-  | { type: "git.stage"; projectPath: string; sourceId: string | null; paths: string[] }
-  | { type: "git.unstage"; projectPath: string; sourceId: string | null; paths: string[] }
+  | { type: "git.stage"; workspaceId?: string; projectPath: string; sourceId: string | null; paths: string[] }
+  | { type: "git.unstage"; workspaceId?: string; projectPath: string; sourceId: string | null; paths: string[] }
   | {
-      type: "git.commit";
+      type: "git.commit"; workspaceId?: string;
       projectPath: string;
       sourceId: string | null;
       projectId: string;
       message: string;
     }
-  | { type: "git.pull"; projectPath: string; sourceId: string | null }
-  | { type: "git.push"; projectPath: string; sourceId: string | null }
-  | { type: "git.branch.publish"; projectPath: string; sourceId: string | null }
+  | { type: "git.pull"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "git.push"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "git.branch.publish"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "projectCommands.list"; projectId: string }
   | {
       type: "projectCommands.create";
@@ -339,13 +339,13 @@ export type OpenCodexRequest =
   | { type: "projectCommands.delete"; commandId: string }
   | { type: "projectCommands.reorder"; projectId: string; commandIds: string[] }
   | {
-      type: "projectCommands.run";
+      type: "projectCommands.run"; workspaceId?: string;
       commandId: string;
       projectPath: string;
       sourceId: string | null;
     }
   | { type: "projectCommands.stop"; runId: string }
-  | { type: "projectRules.list"; projectId: string }
+  | { type: "projectRules.list"; workspaceId?: string; projectId: string }
   | {
       type: "projectRules.create";
       projectId: string;
@@ -371,9 +371,9 @@ export type OpenCodexRequest =
       };
     }
   | { type: "projectRules.delete"; ruleId: string }
-  | { type: "projectRules.apply"; projectId: string; force?: boolean }
-  | { type: "projectRules.test"; projectId: string; command: string }
-  | { type: "projectRules.restart"; projectId: string }
+  | { type: "projectRules.apply"; workspaceId?: string; projectId: string; force?: boolean }
+  | { type: "projectRules.test"; workspaceId?: string; projectId: string; command: string }
+  | { type: "projectRules.restart"; workspaceId?: string; projectId: string }
   | { type: "projectTasks.list"; projectId: string }
   | {
       type: "projectTasks.create";
@@ -396,7 +396,7 @@ export type OpenCodexRequest =
   | { type: "commitPrompt.update"; prompt: string }
   | { type: "commitPrompt.reset" }
   | {
-      type: "git.commitMessage.generate";
+      type: "git.commitMessage.generate"; workspaceId?: string;
       projectPath: string;
       sourceId: string | null;
       instruction: string;

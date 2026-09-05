@@ -1,6 +1,7 @@
 # Workspace execution context
 
-Status: stable identity and guarded turn starts implemented.
+Status: stable identity, guarded turn starts, immutable turn history and
+workspace-aware project tools implemented.
 Live app-server characterization remains open.
 
 ## Evidence and scope
@@ -158,8 +159,8 @@ The UI selector and Git worktree creation remain deferred. Migration 30 adds
 immutable per-turn workspace history independently of operational reservations.
 Old turns have not been assigned inferred paths.
 
-Reviews, compaction, rollback and project tools still need the wider workspace
-adaptation. Permission/instruction reload and sub-agent behavior still require
+Reviews, compaction and rollback still need the wider execution-guard
+adaptation before exposing workspace switching. Permission/instruction reload and sub-agent behavior still require
 the live characterization described above. No non-primary workspaces are
 created by this implementation, and full workspace switching must remain
 unexposed in the UI until those execution boundaries are addressed.
@@ -198,3 +199,47 @@ IDs and paths. Deleting the thread explicitly also deletes its context history.
   submission establishes a context. Parent workspace selection and spawn model
   settings are not filesystem evidence. No automatic inheritance is introduced
   before the live app-server characterization is completed.
+
+
+## Project tools (action-plan step 5)
+
+Physical tool requests accept an optional `workspaceId`. The runtime resolves
+that identity before dispatch, checks project/source ownership, and rejects
+contradictory path hints. It never converts a source path to a host path or
+silently adopts another project. Existing requests without this field retain
+their previous behavior, including cacheless integrations.
+
+The covered boundaries are Git (including commit message generation), Compose,
+file/skill search, project commands, IDE/folder/terminal/link opening, context
+synchronization, and rule read/apply/test/restart. Project names, preferences,
+tasks and command/rule definitions remain shared project data. The transport
+continues to accept legacy paths; this is preparation for the future selector,
+not a new UI selection mode.
+
+- Primary Compose workspaces retain the existing naming behavior, so upgrading
+  does not create a second stack. Secondary workspace IDs produce a stable,
+  distinct Compose project name for reads, actions and logs. Ports and explicit
+  container names remain the responsibility of Compose configuration.
+- Command runs retain their source, cwd and optional workspace ID. The
+  non-parallel setting applies within the same directory/source; stopping a
+  run still addresses its original process handle. Filesystem lifecycle guards
+  for these running processes belong to the upcoming worktree lifecycle work.
+- Context definitions are materialized into the requested workspace's `.codex`
+  directory. Synchronizing a secondary workspace does not update the primary
+  workspace's synchronization timestamp.
+- Migration 31 preserves existing rule-file metadata and keys it by project
+  and physical file path, so generating rules in another checkout cannot
+  overwrite the primary file's synchronization hash. Moving a workspace does
+  not assume that the destination file matches its previous hash.
+- Rule events carry their physical directory. The current primary-only UI
+  ignores events from other workspaces. Source restart state remains shared,
+  because restarting app-server affects the whole source.
+
+Validation covers legacy facade arguments, source/project isolation, Compose
+naming, command execution context, secondary config materialization, migration
+preservation/reopening and UI rule-event isolation. No worktree creation,
+selector, source restart or live model execution is performed by the tests.
+
+For the alpha, the existing primary-directory workflow remains the supported
+UI workflow. Before enabling switching, complete the app-server experiments
+and remaining turn-operation/lifecycle guards documented above.

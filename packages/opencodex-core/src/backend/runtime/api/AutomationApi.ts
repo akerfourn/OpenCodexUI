@@ -1,3 +1,4 @@
+import { optionalWorkspaceArgument } from "../../workspaces/workspaceToolContext.js";
 import type {
   ProjectAutomationRuntimeHandler
 } from "../../projects/ProjectAutomationRuntimeHandler.js";
@@ -87,9 +88,10 @@ export class CommandsApi implements CommandsApiContract {
   async run(
     commandId: Parameters<CommandsHandler["runProjectCommand"]>[0],
     projectPath: Parameters<CommandsHandler["runProjectCommand"]>[1],
-    sourceId: Parameters<CommandsHandler["runProjectCommand"]>[2]
+    sourceId: Parameters<CommandsHandler["runProjectCommand"]>[2],
+    workspaceId?: string
   ): ReturnType<CommandsHandler["runProjectCommand"]> {
-    return await this.handler.runProjectCommand(commandId, projectPath, sourceId);
+    return await this.handler.runProjectCommand(commandId, projectPath, sourceId, ...optionalWorkspaceArgument(workspaceId));
   }
 
   /** Stops a running project command. */
@@ -107,9 +109,10 @@ export class RulesApi implements RulesApiContract {
 
   /** Reads the managed rule snapshot for a project. */
   async read(
-    projectId: Parameters<RulesHandler["listProjectRules"]>[0]
+    projectId: Parameters<RulesHandler["listProjectRules"]>[0],
+    workspaceId?: string
   ): ReturnType<RulesHandler["listProjectRules"]> {
-    return await this.handler.listProjectRules(projectId);
+    return await this.handler.listProjectRules(projectId, ...optionalWorkspaceArgument(workspaceId));
   }
 
   /** Creates a managed project command rule. */
@@ -137,24 +140,27 @@ export class RulesApi implements RulesApiContract {
   /** Generates the managed rules file, optionally overwriting external changes. */
   async apply(
     projectId: Parameters<RulesHandler["applyProjectRules"]>[0],
-    force: Parameters<RulesHandler["applyProjectRules"]>[1] = false
+    force: Parameters<RulesHandler["applyProjectRules"]>[1] = false,
+    workspaceId?: string
   ): ReturnType<RulesHandler["applyProjectRules"]> {
-    return await this.handler.applyProjectRules(projectId, force);
+    return await this.handler.applyProjectRules(projectId, force, ...optionalWorkspaceArgument(workspaceId));
   }
 
   /** Tests a command against the generated managed rules file. */
   async test(
     projectId: Parameters<RulesHandler["testProjectRules"]>[0],
-    command: Parameters<RulesHandler["testProjectRules"]>[1]
+    command: Parameters<RulesHandler["testProjectRules"]>[1],
+    workspaceId?: string
   ): ReturnType<RulesHandler["testProjectRules"]> {
-    return await this.handler.testProjectRules(projectId, command);
+    return await this.handler.testProjectRules(projectId, command, ...optionalWorkspaceArgument(workspaceId));
   }
 
   /** Restarts a project's source runtime to load generated rules. */
   async restart(
-    projectId: Parameters<RulesHandler["restartProjectRules"]>[0]
+    projectId: Parameters<RulesHandler["restartProjectRules"]>[0],
+    workspaceId?: string
   ): ReturnType<RulesHandler["restartProjectRules"]> {
-    return await this.handler.restartProjectRules(projectId);
+    return await this.handler.restartProjectRules(projectId, ...optionalWorkspaceArgument(workspaceId));
   }
 }
 

@@ -1,3 +1,4 @@
+import { optionalWorkspaceArgument } from "./backend/workspaces/workspaceToolContext.js";
 /**
  * Routes protocol requests to the backend runtime.
  */
@@ -24,7 +25,11 @@ export class OpenCodexRequestRouter {
    */
   async handleRequest(request: OpenCodexRequest): Promise<unknown> {
     try {
-      return await this.handleValidRequest(request);
+      const resolved = "workspaceId" in request && request.workspaceId !== undefined
+        && request.type !== "turn.start" && request.type !== "threads.workspace.select"
+        && request.type !== "projectWorkspaces.execution.reconcile"
+        ? await this.runtime.resolveToolRequest(request) : request;
+      return await this.handleValidRequest(resolved);
     } catch (error) {
       this.runtime.handleRequestError(request, error);
     }
@@ -73,7 +78,7 @@ export class OpenCodexRequestRouter {
       case "projects.preferences.update":
         return this.runtime.projects.updatePreferences(request.projectId, request.patch);
       case "projects.context.sync":
-        return this.runtime.context.sync(request.projectId);
+        return this.runtime.context.sync(request.projectId, ...optionalWorkspaceArgument(request.workspaceId));
       case "projects.context.pickFolder":
         return this.runtime.context.pickFolder();
       case "projects.delete":
@@ -307,31 +312,35 @@ export class OpenCodexRequestRouter {
       case "docker.host.container.logs.read":
         return this.runtime.docker.readLogs(request.containerId, request.tail);
       case "docker.compose.snapshot.read":
-        return this.runtime.dockerCompose.readSnapshot(request.projectPath, request.sourceId);
+        return this.runtime.dockerCompose.readSnapshot(request.projectPath, request.sourceId, ...optionalWorkspaceArgument(request.workspaceId));
       case "docker.compose.service.up":
         return this.runtime.dockerCompose.up(
           request.projectPath,
           request.sourceId,
-          request.serviceName
+          request.serviceName,
+          ...optionalWorkspaceArgument(request.workspaceId)
         );
       case "docker.compose.service.stop":
         return this.runtime.dockerCompose.stop(
           request.projectPath,
           request.sourceId,
-          request.serviceName
+          request.serviceName,
+          ...optionalWorkspaceArgument(request.workspaceId)
         );
       case "docker.compose.service.restart":
         return this.runtime.dockerCompose.restart(
           request.projectPath,
           request.sourceId,
-          request.serviceName
+          request.serviceName,
+          ...optionalWorkspaceArgument(request.workspaceId)
         );
       case "docker.compose.service.logs.read":
         return this.runtime.dockerCompose.readLogs(
           request.projectPath,
           request.sourceId,
           request.serviceName,
-          request.tail
+          request.tail,
+          ...optionalWorkspaceArgument(request.workspaceId)
         );
       case "git.version":
         return this.runtime.git.readVersion();
@@ -429,12 +438,13 @@ export class OpenCodexRequestRouter {
         return this.runtime.automation.commands.run(
           request.commandId,
           request.projectPath,
-          request.sourceId
+          request.sourceId,
+          ...optionalWorkspaceArgument(request.workspaceId)
         );
       case "projectCommands.stop":
         return this.runtime.automation.commands.stop(request.runId);
       case "projectRules.list":
-        return this.runtime.automation.rules.read(request.projectId);
+        return this.runtime.automation.rules.read(request.projectId, ...optionalWorkspaceArgument(request.workspaceId));
       case "projectRules.create":
         return this.runtime.automation.rules.create({
           projectId: request.projectId,
@@ -451,11 +461,11 @@ export class OpenCodexRequestRouter {
       case "projectRules.delete":
         return this.runtime.automation.rules.delete(request.ruleId);
       case "projectRules.apply":
-        return this.runtime.automation.rules.apply(request.projectId, request.force === true);
+        return this.runtime.automation.rules.apply(request.projectId, request.force === true, ...optionalWorkspaceArgument(request.workspaceId));
       case "projectRules.test":
-        return this.runtime.automation.rules.test(request.projectId, request.command);
+        return this.runtime.automation.rules.test(request.projectId, request.command, ...optionalWorkspaceArgument(request.workspaceId));
       case "projectRules.restart":
-        return this.runtime.automation.rules.restart(request.projectId);
+        return this.runtime.automation.rules.restart(request.projectId, ...optionalWorkspaceArgument(request.workspaceId));
       case "projectTasks.list":
         return this.runtime.tasks.list(request.projectId);
       case "projectTasks.create":

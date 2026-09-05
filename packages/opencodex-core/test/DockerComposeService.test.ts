@@ -1,3 +1,4 @@
+import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import { describe, expect, it } from "vitest";
 
 import type { CodexNotification, Disposable } from "@open-codex-ui/codex-rpc";
@@ -10,6 +11,24 @@ import {
 import type { SourceDockerProcessClient } from "../src/backend/docker/SourceDockerCommandExecutor";
 
 describe("DockerComposeService", () => {
+  it("should isolate secondary stacks while retaining the primary Compose project name", async () => {
+    const client = new FakeSourceClient({ "compose.yaml": true });
+    const repository = { workspaces: { get: async (id: string) => ({
+      id, projectId: "project", sourceId: "source-1", path: "/workspace/app",
+      isPrimary: id === "primary", removedAt: null, managed: false
+    }) } } as unknown as OpenCodexCacheRepository;
+    const service = new DockerComposeService({ cacheRepository: repository,
+      clients: { ensureClient: async () => client } });
+    await service.up("/workspace/app", "source-1", "web", "primary");
+    await service.up("/workspace/app", "source-1", "web", "secondary");
+    await service.stop("/workspace/app", "source-1", "web", "secondary");
+    expect(client.spawnedCommands[0]).not.toContain("--project-name");
+    const secondary = client.spawnedCommands[1];
+    const nameIndex = secondary.indexOf("--project-name") + 1;
+    expect(secondary[nameIndex]).toMatch(/^opencodex-[a-f0-9]{24}$/u);
+    expect(client.spawnedCommands[2][nameIndex]).toBe(secondary[nameIndex]);
+  });
+
   it("should return an empty snapshot without spawning Docker when no Compose file exists", async () => {
     const client = new FakeSourceClient();
     const service = new DockerComposeService({

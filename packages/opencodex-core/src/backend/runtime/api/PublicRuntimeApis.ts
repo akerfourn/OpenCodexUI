@@ -132,7 +132,7 @@ export interface GroupsApi {
 
 /** Public operations for synchronizing external project context folders. */
 export interface ProjectContextApi {
-  sync(projectId: string): Promise<OpenCodexProject>;
+  sync(projectId: string, workspaceId?: string): Promise<OpenCodexProject>;
   pickFolder(): Promise<string | null>;
 }
 
@@ -283,7 +283,7 @@ export interface CommandsApi {
   ): Promise<OpenCodexProjectCommand>;
   reorder(projectId: string, commandIds: string[]): Promise<OpenCodexProjectCommand[]>;
   delete(commandId: string): Promise<{ ok: true }>;
-  run(commandId: string, projectPath: string, sourceId: string | null): Promise<OpenCodexProjectCommandRun>;
+  run(commandId: string, projectPath: string, sourceId: string | null, workspaceId?: string): Promise<OpenCodexProjectCommandRun>;
   stop(runId: string): Promise<{ ok: true }>;
 }
 
@@ -316,16 +316,16 @@ export type ProjectCommandRuleUpdateInput = Partial<
 
 /** Public operations for managed project command rules. */
 export interface RulesApi {
-  read(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot>;
+  read(projectId: string, workspaceId?: string): Promise<OpenCodexProjectCommandRulesSnapshot>;
   create(input: ProjectCommandRuleCreateInput): Promise<OpenCodexProjectCommandRule>;
   update(
     ruleId: string,
     patch: ProjectCommandRuleUpdateInput
   ): Promise<OpenCodexProjectCommandRule>;
   delete(ruleId: string): Promise<{ ok: true }>;
-  apply(projectId: string, force?: boolean): Promise<OpenCodexProjectCommandRuleApplyResult>;
-  test(projectId: string, command: string): Promise<OpenCodexProjectCommandRuleTestResult>;
-  restart(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot>;
+  apply(projectId: string, force?: boolean, workspaceId?: string): Promise<OpenCodexProjectCommandRuleApplyResult>;
+  test(projectId: string, command: string, workspaceId?: string): Promise<OpenCodexProjectCommandRuleTestResult>;
+  restart(projectId: string, workspaceId?: string): Promise<OpenCodexProjectCommandRulesSnapshot>;
 }
 
 /** Public project command and rule APIs. */
@@ -421,15 +421,16 @@ export interface DockerApi {
 
 /** Public source-scoped Docker Compose operations for a project. */
 export interface DockerComposeApi {
-  readSnapshot(projectPath: string, sourceId: string): Promise<OpenCodexDockerComposeSnapshot>;
-  up(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }>;
-  stop(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }>;
-  restart(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }>;
+  readSnapshot(projectPath: string, sourceId: string, workspaceId?: string): Promise<OpenCodexDockerComposeSnapshot>;
+  up(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }>;
+  stop(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }>;
+  restart(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }>;
   readLogs(
     projectPath: string,
     sourceId: string,
     serviceName: string,
-    tail?: number
+    tail?: number,
+    workspaceId?: string
   ): Promise<OpenCodexDockerComposeLogs>;
 }
 

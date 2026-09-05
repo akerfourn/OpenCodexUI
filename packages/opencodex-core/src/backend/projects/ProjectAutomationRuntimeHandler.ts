@@ -177,9 +177,10 @@ export class ProjectAutomationRuntimeHandler {
   async runProjectCommand(
     commandId: string,
     projectPath: string,
-    sourceId: string | null
+    sourceId: string | null,
+    workspaceId?: string
   ): Promise<OpenCodexProjectCommandRun> {
-    return await this.projectCommandService.runCommand(commandId, projectPath, sourceId);
+    return await this.projectCommandService.runCommand(commandId, projectPath, sourceId, workspaceId);
   }
 
   /**
@@ -207,8 +208,8 @@ export class ProjectAutomationRuntimeHandler {
    * @param projectId Project identifier.
    * @returns Project rule snapshot.
    */
-  async listProjectRules(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
-    return await this.projectCommandRuleService.readSnapshot(projectId);
+  async listProjectRules(projectId: string, workspaceId?: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
+    return await this.projectCommandRuleService.readSnapshot(projectId, workspaceId);
   }
 
   /**
@@ -256,9 +257,10 @@ export class ProjectAutomationRuntimeHandler {
    */
   async applyProjectRules(
     projectId: string,
-    force = false
+    force = false,
+    workspaceId?: string
   ): Promise<OpenCodexProjectCommandRuleApplyResult> {
-    return await this.projectCommandRuleService.applyRules(projectId, force);
+    return await this.projectCommandRuleService.applyRules(projectId, force, workspaceId);
   }
 
   /**
@@ -270,9 +272,10 @@ export class ProjectAutomationRuntimeHandler {
    */
   async testProjectRules(
     projectId: string,
-    command: string
+    command: string,
+    workspaceId?: string
   ): Promise<OpenCodexProjectCommandRuleTestResult> {
-    return await this.projectCommandRuleService.testRules(projectId, command);
+    return await this.projectCommandRuleService.testRules(projectId, command, workspaceId);
   }
 
   /**
@@ -281,8 +284,8 @@ export class ProjectAutomationRuntimeHandler {
    * @param projectId Project identifier.
    * @returns Refreshed project rule snapshot.
    */
-  async restartProjectRules(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
-    return await this.projectCommandRuleService.restartRules(projectId);
+  async restartProjectRules(projectId: string, workspaceId?: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
+    return await this.projectCommandRuleService.restartRules(projectId, workspaceId);
   }
 
   /**

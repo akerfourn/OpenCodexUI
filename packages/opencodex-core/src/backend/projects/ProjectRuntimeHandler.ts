@@ -240,8 +240,8 @@ export class ProjectRuntimeHandler implements ProjectSourcePort {
   }
 
   /** Synchronizes project context folders into the project Codex config. */
-  async syncProjectContext(projectId: string): Promise<OpenCodexProject> {
-    return await this.projectContextService.syncProjectContext(projectId);
+  async syncProjectContext(projectId: string, workspaceId?: string): Promise<OpenCodexProject> {
+    return await this.projectContextService.syncProjectContext(projectId, workspaceId);
   }
 
   /** Deletes a project from the local cache. */

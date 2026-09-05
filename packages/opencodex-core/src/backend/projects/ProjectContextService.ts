@@ -10,6 +10,7 @@ import type {
   OpenCodexProjectContextEnvFilePermission
 } from "@open-codex-ui/opencodex-protocol";
 
+import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
 import { toError } from "../shared/errors.js";
 import type { ClientPort } from "../runtime/runtimePorts.js";
 
@@ -43,7 +44,7 @@ export class ProjectContextService {
    * @param projectId Project identifier.
    * @returns Updated project with context sync metadata.
    */
-  async syncProjectContext(projectId: string): Promise<OpenCodexProject> {
+  async syncProjectContext(projectId: string, workspaceId?: string): Promise<OpenCodexProject> {
     const repository = this.requireCacheRepository();
     const project = await this.readProject(repository, projectId);
 
@@ -51,25 +52,33 @@ export class ProjectContextService {
       throw new Error("Cannot synchronize context folders for a project without a Codex source.");
     }
 
+    const workspace = workspaceId === undefined ? null
+      : await requireToolWorkspace(repository, workspaceId, projectId);
+    const executionPath = workspace?.path ?? project.path;
+    const executionSourceId = workspace?.sourceId ?? project.sourceId;
     const context = project.preferences.context;
     const profileId = normalizeProfileId(context?.permissionsProfileId);
     const enabledFolders = context?.folders?.filter((folder) => folder.enabled) ?? [];
-    const configPath = joinSourcePath(project.path, ".codex", "config.toml");
-    const codexDirectoryPath = joinSourcePath(project.path, ".codex");
-    const client = await this.options.clients.ensureClient(project.sourceId);
+    const configPath = joinSourcePath(executionPath, ".codex", "config.toml");
+    const codexDirectoryPath = joinSourcePath(executionPath, ".codex");
+    const client = await this.options.clients.ensureClient(executionSourceId);
 
     await this.ensureConfigDirectory(client, codexDirectoryPath);
     await client.createDirectory(codexDirectoryPath);
 
     const previousConfig = await this.readConfigFile(client, configPath);
     const managedBlock = buildManagedConfigBlock({
-      projectPath: project.path,
+      projectPath: executionPath,
       externalFolders: enabledFolders,
       profileId
     });
     const nextConfig = replaceManagedBlock(previousConfig, managedBlock, profileId);
 
     await client.writeFile(configPath, Buffer.from(nextConfig, "utf8").toString("base64"));
+
+    if (workspace !== null && !workspace.isPrimary) {
+      return project;
+    }
 
     const updatedProject = await repository.updateProjectPreferences(projectId, {
       ...project.preferences,

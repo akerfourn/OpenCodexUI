@@ -117,9 +117,10 @@ export class SqliteAutomationCacheRepository implements AutomationCacheRepositor
 
   /** Reads generated-file synchronization metadata for a project. */
   async getProjectCommandRuleFileState(
-    projectId: string
+    projectId: string,
+    generatedPath?: string
   ): Promise<CachedProjectCommandRuleFileState | null> {
-    return await getProjectCommandRuleFileState(this.database, projectId);
+    return await getProjectCommandRuleFileState(this.database, projectId, generatedPath);
   }
 
   /** Stores generated-file synchronization metadata for a project. */

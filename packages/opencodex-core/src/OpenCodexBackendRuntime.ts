@@ -1,3 +1,4 @@
+import { resolveWorkspaceToolRequest } from "./backend/workspaces/workspaceToolContext.js";
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 
 import type { OpenCodexBackendOptions } from "./types.js";
@@ -52,6 +53,11 @@ export class OpenCodexBackendRuntime {
     this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.services = createBackendServiceGraph(options, this.isPrerelease);
     this.apis = new BackendRuntimeApis(this.services, options);
+  }
+
+  /** Resolves physical tool identity before transport dispatch. */
+  async resolveToolRequest(request: OpenCodexRequest): Promise<OpenCodexRequest> {
+    return await resolveWorkspaceToolRequest(this.services.cacheRepository, request);
   }
 
   /** Public settings API. */

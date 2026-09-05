@@ -24,6 +24,22 @@ describe("project tooling persistence", () => {
     fs.rmSync(directory, { recursive: true, force: true });
   });
 
+  it("should retain independent rule hashes for two physical workspace files", async () => {
+    const project = await repository.upsertProject("/repo", "source");
+    const primary = { projectId: project.id, generatedPath: "/repo/.codex/rules/default.rules",
+      generatedHash: "primary-hash", updatedAt: "2026-01-01" };
+    const secondary = { ...primary, generatedPath: "/other/.codex/rules/default.rules",
+      generatedHash: "secondary-hash" };
+    await repository.saveProjectCommandRuleFileState(primary);
+    await repository.saveProjectCommandRuleFileState(secondary);
+    await repository.saveProjectCommandRuleFileState({ ...secondary, generatedHash: "new-hash" });
+    await repository.close();
+    repository = createOpenCodexSqliteCacheRepository({ directory });
+    expect(await repository.getProjectCommandRuleFileState(project.id, primary.generatedPath)).toEqual(primary);
+    expect(await repository.getProjectCommandRuleFileState(project.id, secondary.generatedPath))
+      .toEqual({ ...secondary, generatedHash: "new-hash" });
+  });
+
   it("should persist project commands", async () => {
     const project = await repository.upsertProject("/tmp/commands-project");
 

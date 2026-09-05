@@ -1,3 +1,4 @@
+import { optionalWorkspaceArgument } from "../../workspaces/workspaceToolContext.js";
 import type {
   OpenCodexDockerComposeLogs,
   OpenCodexDockerComposeSnapshot
@@ -11,23 +12,23 @@ export class DockerComposeApi {
   constructor(private readonly service: DockerComposeService) {}
 
   /** Reads configured services and their bounded runtime state. */
-  async readSnapshot(projectPath: string, sourceId: string): Promise<OpenCodexDockerComposeSnapshot> {
-    return await this.service.readSnapshot(projectPath, sourceId);
+  async readSnapshot(projectPath: string, sourceId: string, workspaceId?: string): Promise<OpenCodexDockerComposeSnapshot> {
+    return await this.service.readSnapshot(projectPath, sourceId, ...optionalWorkspaceArgument(workspaceId));
   }
 
   /** Creates or starts one Compose service. */
-  async up(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }> {
-    return await this.service.up(projectPath, sourceId, serviceName);
+  async up(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }> {
+    return await this.service.up(projectPath, sourceId, serviceName, ...optionalWorkspaceArgument(workspaceId));
   }
 
   /** Stops one Compose service without removing its container. */
-  async stop(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }> {
-    return await this.service.stop(projectPath, sourceId, serviceName);
+  async stop(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }> {
+    return await this.service.stop(projectPath, sourceId, serviceName, ...optionalWorkspaceArgument(workspaceId));
   }
 
   /** Restarts one Compose service. */
-  async restart(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }> {
-    return await this.service.restart(projectPath, sourceId, serviceName);
+  async restart(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }> {
+    return await this.service.restart(projectPath, sourceId, serviceName, ...optionalWorkspaceArgument(workspaceId));
   }
 
   /** Reads a bounded tail of one Compose service's logs. */
@@ -35,8 +36,9 @@ export class DockerComposeApi {
     projectPath: string,
     sourceId: string,
     serviceName: string,
-    tail?: number
+    tail?: number,
+    workspaceId?: string
   ): Promise<OpenCodexDockerComposeLogs> {
-    return await this.service.readLogs(projectPath, sourceId, serviceName, tail);
+    return await this.service.readLogs(projectPath, sourceId, serviceName, tail, ...optionalWorkspaceArgument(workspaceId));
   }
 }

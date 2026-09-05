@@ -162,7 +162,7 @@ export function createBackendServiceGraph(
   const dockerHostService = new DockerHostService(new DockerClient({
     executor: new LocalDockerCommandExecutor()
   }));
-  const dockerComposeService = new DockerComposeService({ clients: clientPool });
+  const dockerComposeService = new DockerComposeService({ clients: clientPool, cacheRepository });
 
   projectAutomationRuntimeHandler = new ProjectAutomationRuntimeHandler({
     cache: cacheRepository,

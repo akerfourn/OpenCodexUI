@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
+import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
 import {
   DockerClient,
   DockerCommandError,
@@ -33,6 +36,8 @@ const MAX_LOG_CHARACTERS_PER_STREAM = 250_000;
 
 /** Dependencies used by source-owned Docker Compose operations. */
 export type DockerComposeServiceOptions = {
+  /** Resolves workspace identities for isolated Compose project names. */
+  cacheRepository?: OpenCodexCacheRepository | null;
   /** Resolves the app-server that owns the requested source filesystem. */
   clients: Pick<ClientPort, "ensureClient">;
 };
@@ -43,7 +48,7 @@ export class DockerComposeService {
   constructor(private readonly options: DockerComposeServiceOptions) {}
 
   /** Reads a bounded Compose snapshot without invoking Docker when no file exists. */
-  async readSnapshot(projectPath: string, sourceId: string): Promise<OpenCodexDockerComposeSnapshot> {
+  async readSnapshot(projectPath: string, sourceId: string, workspaceId?: string): Promise<OpenCodexDockerComposeSnapshot> {
     requireProjectInput(projectPath, sourceId);
     let client: SourceDockerFilesystemClient;
 
@@ -71,7 +76,8 @@ export class DockerComposeService {
     }
 
     try {
-      const services = await createComposeClient(client, projectPath).services.list();
+      const services = await createComposeClient(client, projectPath,
+        await this.projectName(projectPath, sourceId, workspaceId)).services.list();
       return {
         projectPath,
         sourceId,
@@ -85,20 +91,20 @@ export class DockerComposeService {
   }
 
   /** Creates or starts one configured Compose service. */
-  async up(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }> {
-    await this.runServiceAction(projectPath, sourceId, serviceName, "up");
+  async up(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }> {
+    await this.runServiceAction(projectPath, sourceId, serviceName, "up", workspaceId);
     return { ok: true };
   }
 
   /** Stops one configured Compose service without removing its container. */
-  async stop(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }> {
-    await this.runServiceAction(projectPath, sourceId, serviceName, "stop");
+  async stop(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }> {
+    await this.runServiceAction(projectPath, sourceId, serviceName, "stop", workspaceId);
     return { ok: true };
   }
 
   /** Restarts one configured Compose service. */
-  async restart(projectPath: string, sourceId: string, serviceName: string): Promise<{ ok: true }> {
-    await this.runServiceAction(projectPath, sourceId, serviceName, "restart");
+  async restart(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }> {
+    await this.runServiceAction(projectPath, sourceId, serviceName, "restart", workspaceId);
     return { ok: true };
   }
 
@@ -107,13 +113,14 @@ export class DockerComposeService {
     projectPath: string,
     sourceId: string,
     serviceName: string,
-    tail = DEFAULT_LOG_TAIL
+    tail = DEFAULT_LOG_TAIL,
+    workspaceId?: string
   ): Promise<OpenCodexDockerComposeLogs> {
     requireProjectInput(projectPath, sourceId);
     requireServiceName(serviceName);
     requireLogTail(tail);
     try {
-      const client = await this.requireComposeClient(projectPath, sourceId);
+      const client = await this.requireComposeClient(projectPath, sourceId, workspaceId);
       const logs = await client.services.logs([serviceName], { tail });
       const stdout = boundText(logs.stdout, MAX_LOG_CHARACTERS_PER_STREAM);
       const stderr = boundText(logs.stderr, MAX_LOG_CHARACTERS_PER_STREAM);
@@ -135,12 +142,13 @@ export class DockerComposeService {
     projectPath: string,
     sourceId: string,
     serviceName: string,
-    action: "up" | "stop" | "restart"
+    action: "up" | "stop" | "restart",
+    workspaceId?: string
   ): Promise<void> {
     requireProjectInput(projectPath, sourceId);
     requireServiceName(serviceName);
     try {
-      const client = await this.requireComposeClient(projectPath, sourceId);
+      const client = await this.requireComposeClient(projectPath, sourceId, workspaceId);
 
       if (action === "up") {
         await client.services.up([serviceName]);
@@ -154,10 +162,27 @@ export class DockerComposeService {
     }
   }
 
+  /** Preserves existing primary stacks and gives secondary checkouts a stable namespace. */
+  private async projectName(projectPath: string, sourceId: string, workspaceId?: string): Promise<string | undefined> {
+    if (workspaceId === undefined) {
+      return undefined;
+    }
+    const workspace = await requireToolWorkspace(this.options.cacheRepository ?? null, workspaceId);
+    if (workspace.path !== projectPath || workspace.sourceId !== sourceId) {
+      throw new Error("Compose context does not match the workspace.");
+    }
+    if (workspace.isPrimary) {
+      return undefined;
+    }
+    const identity = JSON.stringify([workspace.projectId, workspace.id]);
+    return `opencodex-${createHash("sha256").update(identity).digest("hex").slice(0, 24)}`;
+  }
+
   /** Resolves a source client and rejects when the project has no Compose file. */
   private async requireComposeClient(
     projectPath: string,
-    sourceId: string
+    sourceId: string,
+    workspaceId?: string
   ): Promise<DockerComposeClient> {
     const sourceClient = await this.options.clients.ensureClient(sourceId);
     const composeFile = await findComposeFile(sourceClient, projectPath);
@@ -166,7 +191,8 @@ export class DockerComposeService {
       throw new Error("No Docker Compose file found.");
     }
 
-    return createComposeClient(sourceClient, projectPath);
+    return createComposeClient(sourceClient, projectPath,
+      await this.projectName(projectPath, sourceId, workspaceId));
   }
 }
 
@@ -230,10 +256,10 @@ function mapComposeContainer(container: ClientDockerComposeContainer): OpenCodex
 }
 
 /** Creates a Docker client whose process calls stay inside one source. */
-function createComposeClient(sourceClient: SourceDockerProcessClient, projectPath: string): DockerComposeClient {
+function createComposeClient(sourceClient: SourceDockerProcessClient, projectPath: string, projectName?: string): DockerComposeClient {
   return new DockerClient({
     executor: new SourceDockerCommandExecutor(sourceClient)
-  }).compose({ projectPath });
+  }).compose({ projectPath, projectName });
 }
 
 /** Finds the first standard Compose file through the source filesystem API. */

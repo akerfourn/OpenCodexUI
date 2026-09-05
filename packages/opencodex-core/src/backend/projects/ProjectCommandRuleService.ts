@@ -1,6 +1,7 @@
 /**
  * Manages OpenCodexUI-owned project command authorization rules.
  */
+import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
 import path from "node:path";
 
 import {
@@ -78,9 +79,9 @@ export class ProjectCommandRuleService {
    * @param projectId Project identifier.
    * @returns Complete project rule snapshot.
    */
-  async readSnapshot(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
+  async readSnapshot(projectId: string, workspaceId?: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
     const repository = this.requireRepository();
-    const project = await this.readProject(projectId);
+    const project = await this.readProject(projectId, workspaceId);
     const rules = await repository.listProjectCommandRules(projectId);
     const status = await this.readStatus(project, rules);
     return {
@@ -135,10 +136,11 @@ export class ProjectCommandRuleService {
    */
   async applyRules(
     projectId: string,
-    force = false
+    force = false,
+    workspaceId?: string
   ): Promise<OpenCodexProjectCommandRuleApplyResult> {
     const repository = this.requireRepository();
-    const project = await this.readProject(projectId);
+    const project = await this.readProject(projectId, workspaceId);
     const rules = await repository.listProjectCommandRules(projectId);
     const before = await this.readStatus(project, rules);
 
@@ -184,8 +186,8 @@ export class ProjectCommandRuleService {
       });
     }
 
-    const snapshot = await this.readSnapshot(projectId);
-    this.options.events.emit({ type: "projectRules.updated", projectId, snapshot });
+    const snapshot = await this.readSnapshot(projectId, workspaceId);
+    this.options.events.emit({ type: "projectRules.updated", projectId, workspacePath: project.path, snapshot });
 
     return {
       applied: true,
@@ -203,7 +205,8 @@ export class ProjectCommandRuleService {
    */
   async testRules(
     projectId: string,
-    commandText: string
+    commandText: string,
+    workspaceId?: string
   ): Promise<OpenCodexProjectCommandRuleTestResult> {
     const command = tokenizeCommandLine(commandText);
 
@@ -211,8 +214,8 @@ export class ProjectCommandRuleService {
       throw new Error("A command is required.");
     }
 
-    const project = await this.readProject(projectId);
-    const snapshot = await this.readSnapshot(projectId);
+    const project = await this.readProject(projectId, workspaceId);
+    const snapshot = await this.readSnapshot(projectId, workspaceId);
 
     if (!snapshot.status.isSupported || snapshot.status.filePath === null) {
       throw new Error("Project command rule testing is unavailable for this source.");
@@ -250,15 +253,15 @@ export class ProjectCommandRuleService {
    * @param projectId Project identifier.
    * @returns Refreshed project rule snapshot.
    */
-  async restartRules(projectId: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
-    const project = await this.readProject(projectId);
+  async restartRules(projectId: string, workspaceId?: string): Promise<OpenCodexProjectCommandRulesSnapshot> {
+    const project = await this.readProject(projectId, workspaceId);
     const sourceId = project.sourceId;
 
     if (sourceId === null) {
       throw new Error("This project has no Codex source.");
     }
 
-    const snapshot = await this.readSnapshot(projectId);
+    const snapshot = await this.readSnapshot(projectId, workspaceId);
 
     if (snapshot.status.fileStatus !== "synchronized") {
       throw new Error("Apply the project rules before restarting Codex.");
@@ -275,7 +278,8 @@ export class ProjectCommandRuleService {
     this.options.events.emit({
       type: "projectRules.updated",
       projectId,
-      snapshot: await this.readSnapshot(projectId)
+      workspacePath: project.path,
+      snapshot: await this.readSnapshot(projectId, workspaceId)
     });
 
     try {
@@ -289,8 +293,8 @@ export class ProjectCommandRuleService {
       throw error;
     }
 
-    const nextSnapshot = await this.readSnapshot(projectId);
-    this.options.events.emit({ type: "projectRules.updated", projectId, snapshot: nextSnapshot });
+    const nextSnapshot = await this.readSnapshot(projectId, workspaceId);
+    this.options.events.emit({ type: "projectRules.updated", projectId, workspacePath: project.path, snapshot: nextSnapshot });
     return nextSnapshot;
   }
 
@@ -300,7 +304,7 @@ export class ProjectCommandRuleService {
    * @param projectId Project identifier.
    * @returns Cached project.
    */
-  private async readProject(projectId: string): Promise<CachedProject> {
+  private async readProject(projectId: string, workspaceId?: string): Promise<CachedProject> {
     const project = (await this.requireRepository().listProjects())
       .find((candidate) => candidate.id === projectId);
 
@@ -308,7 +312,11 @@ export class ProjectCommandRuleService {
       throw new Error("Project not found.");
     }
 
-    return project;
+    if (workspaceId === undefined) {
+      return project;
+    }
+    const workspace = await requireToolWorkspace(this.requireRepository(), workspaceId, projectId);
+    return { ...project, path: workspace.path, sourceId: workspace.sourceId };
   }
 
   /**
@@ -324,7 +332,7 @@ export class ProjectCommandRuleService {
   ): Promise<OpenCodexProjectCommandRuleStatus> {
     const desiredContent = renderProjectCommandRules(rules.map(toProtocolRule));
     const desiredHash = hashProjectCommandRules(desiredContent);
-    const fileState = await this.requireRepository().getProjectCommandRuleFileState(project.id);
+    const fileState = await this.requireRepository().getProjectCommandRuleFileState(project.id, getRulesFilePath(project.path));
 
     if (project.sourceId === null) {
       return createUnsupportedStatus(project, desiredHash, fileState);

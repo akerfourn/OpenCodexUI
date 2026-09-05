@@ -1,3 +1,5 @@
+import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
+import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
 /**
  * Runs user-configured project commands through Codex app-server process APIs.
  */
@@ -52,6 +54,8 @@ type ActiveProjectCommandRun = OpenCodexProjectCommandRun & {
  * Coordinates persisted project command definitions and live process runs.
  */
 export class ProjectCommandService {
+  /** Serializes non-parallel starts before their process handles are registered. */
+  private readonly startingRuns = new Set<string>();
   private readonly runsById = new Map<string, ActiveProjectCommandRun>();
   private readonly runsByProcessHandle = new Map<string, ActiveProjectCommandRun>();
   private readonly stoppingRunIds = new Set<string>();
@@ -137,45 +141,65 @@ export class ProjectCommandService {
   async runCommand(
     commandId: string,
     projectPath: string,
-    sourceId: string | null
+    sourceId: string | null,
+    workspaceId?: string
   ): Promise<OpenCodexProjectCommandRun> {
+    projectPath = normalizeProjectPath(projectPath) ?? projectPath;
     const command = await this.readCommand(commandId);
-    const runningRuns = this.readRunningRunsForCommand(command.id);
+    if (workspaceId !== undefined) {
+      const workspace = await requireToolWorkspace(this.requireRepository(), workspaceId, command.projectId);
+      if (workspace.path !== projectPath || (sourceId !== null && workspace.sourceId !== sourceId)) {
+        throw new Error("Command context does not match the workspace.");
+      }
+      sourceId = workspace.sourceId;
+    }
+    const source = await this.options.resolveSource(sourceId);
+    const executionKey = JSON.stringify([command.id, source.id, projectPath]);
+    const runningRuns = this.readRunningRunsForCommand(command.id).filter((run) =>
+      run.cwd === projectPath && run.sourceId === source.id);
 
-    if (!command.allowParallel && runningRuns.length > 0) {
+    if (!command.allowParallel && (runningRuns.length > 0 || this.startingRuns.has(executionKey))) {
       throw new Error("This command is already running.");
     }
 
-    const source = await this.options.resolveSource(sourceId);
-    const client = await this.options.clients.ensureClient(source.id);
-    const run = await this.createRun(command, projectPath, source.id);
-    const protocolRun = toProtocolRun(run);
-
-    this.runsById.set(run.id, run);
-    this.runsByProcessHandle.set(run.processHandle, run);
-    this.options.events.emit({
-      type: "projectCommand.started",
-      projectId: run.projectId,
-      run: protocolRun
-    });
-
-    try {
-      await client.request<v2.ProcessSpawnResponse>("process/spawn", {
-        command: createShellCommand(command.command, projectPath),
-        processHandle: run.processHandle,
-        cwd: projectPath,
-        tty: true,
-        streamStdoutStderr: true,
-        streamStdin: true,
-        outputBytesCap: null,
-        timeoutMs: null
-      });
-    } catch (error) {
-      this.failRun(run, error);
-      throw error;
+    if (!command.allowParallel) {
+      this.startingRuns.add(executionKey);
     }
+    try {
+      const client = await this.options.clients.ensureClient(source.id);
+      const run = await this.createRun(command, projectPath, source.id, workspaceId);
+      const protocolRun = toProtocolRun(run);
 
-    return protocolRun;
+      this.runsById.set(run.id, run);
+      this.runsByProcessHandle.set(run.processHandle, run);
+      this.options.events.emit({
+        type: "projectCommand.started",
+        projectId: run.projectId,
+        run: protocolRun
+      });
+
+      try {
+        await client.request<v2.ProcessSpawnResponse>("process/spawn", {
+          command: createShellCommand(command.command, projectPath),
+          processHandle: run.processHandle,
+          cwd: projectPath,
+          tty: true,
+          streamStdoutStderr: true,
+          streamStdin: true,
+          outputBytesCap: null,
+          timeoutMs: null
+        });
+      } catch (error) {
+        this.failRun(run, error);
+        throw error;
+      }
+
+      return protocolRun;
+    } finally {
+      if (!command.allowParallel) {
+        this.startingRuns.delete(executionKey);
+      }
+    }
   }
 
   /**
@@ -300,7 +324,8 @@ export class ProjectCommandService {
   private async createRun(
     command: CachedProjectCommand,
     projectPath: string,
-    sourceId: string
+    sourceId: string,
+    workspaceId?: string
   ): Promise<ActiveProjectCommandRun> {
     const id = cryptoRandomId();
     const logPath = command.persistLogs
@@ -319,6 +344,8 @@ export class ProjectCommandService {
       exitCode: null,
       logPath,
       sourceId,
+      cwd: projectPath,
+      workspaceId,
       outputWriteQueue: Promise.resolve()
     };
   }
@@ -513,7 +540,10 @@ function toProtocolRun(run: ActiveProjectCommandRun): OpenCodexProjectCommandRun
     startedAt: run.startedAt,
     exitedAt: run.exitedAt,
     exitCode: run.exitCode,
-    logPath: run.logPath
+    logPath: run.logPath,
+    sourceId: run.sourceId,
+    cwd: run.cwd,
+    workspaceId: run.workspaceId
   };
 }
 

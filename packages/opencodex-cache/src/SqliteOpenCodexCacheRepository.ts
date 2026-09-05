@@ -387,9 +387,10 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
 
   /** Reads generated-file synchronization metadata for a project. */
   async getProjectCommandRuleFileState(
-    projectId: string
+    projectId: string,
+    generatedPath?: string
   ): Promise<CachedProjectCommandRuleFileState | null> {
-    return await this.automation.getProjectCommandRuleFileState(projectId);
+    return await this.automation.getProjectCommandRuleFileState(projectId, generatedPath);
   }
 
   /** Stores generated-file synchronization metadata for a project. */

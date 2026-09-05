@@ -40,6 +40,9 @@ describe("collaboration event persistence", () => {
         version INTEGER PRIMARY KEY,
         applied_at TEXT NOT NULL
       );
+      CREATE TABLE project_command_rule_file_states (
+        project_id TEXT PRIMARY KEY, generated_hash TEXT, generated_path TEXT, updated_at TEXT NOT NULL
+      );
       CREATE TABLE preserved_data (
         id TEXT PRIMARY KEY,
         value TEXT NOT NULL

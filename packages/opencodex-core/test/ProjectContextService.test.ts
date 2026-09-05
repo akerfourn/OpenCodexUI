@@ -1,11 +1,35 @@
-import { describe, expect, it } from "vitest";
+import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
+import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  ProjectContextService,
   buildManagedConfigBlock,
   replaceManagedBlock
 } from "../src/backend/projects/ProjectContextService";
 
 describe("ProjectContextService", () => {
+  it("should materialize shared context in the selected workspace without marking the primary as synced", async () => {
+    const project = { id: "project", sourceId: "source", path: "/primary", preferences: {} };
+    const updateProjectPreferences = vi.fn();
+    const repository = { listProjects: async () => [project], updateProjectPreferences,
+      workspaces: { get: async () => ({ id: "secondary", projectId: "project", sourceId: "source",
+        path: "/secondary", isPrimary: false, removedAt: null }) }
+    } as unknown as OpenCodexCacheRepository;
+    const writeFile = vi.fn(async () => undefined);
+    const client = { getMetadata: async () => ({ isDirectory: true }),
+      createDirectory: async () => undefined, readFile: async () => ({ dataBase64: "" }), writeFile
+    } as unknown as CodexAppServerClient;
+    const service = new ProjectContextService({ cacheRepository: repository,
+      clients: { ensureClient: async () => client } });
+    await service.syncProjectContext("project", "secondary");
+    expect(writeFile).toHaveBeenCalledWith("/secondary/.codex/config.toml", expect.any(String));
+    const config = Buffer.from(writeFile.mock.calls[0][1], "base64").toString("utf8");
+    expect(config).toContain('"/secondary" = true');
+    expect(config).not.toContain('"/primary" = true');
+    expect(updateProjectPreferences).not.toHaveBeenCalled();
+  });
+
   it("should generate a read-only external context profile", () => {
     const block = buildManagedConfigBlock({
       profileId: "opencodex-context",

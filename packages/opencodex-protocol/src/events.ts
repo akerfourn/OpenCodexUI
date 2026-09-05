@@ -183,7 +183,8 @@ export type OpenCodexEvent =
       exitCode: number | null;
       exitedAt: string;
     }
-  | { type: "projectRules.updated"; projectId: string; snapshot: OpenCodexProjectCommandRulesSnapshot }
+  | { type: "projectRules.updated"; projectId: string; workspacePath?: string;
+      snapshot: OpenCodexProjectCommandRulesSnapshot }
   | {
       type: "error";
       message: string;
