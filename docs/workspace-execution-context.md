@@ -4,6 +4,12 @@ Status: stable identity, guarded turn starts, immutable turn history and
 workspace-aware project tools implemented.
 Live app-server characterization remains open.
 
+The [Codex 0.153.4 source audit](codex-workspace-risk-audit.md) establishes
+cwd switching and AGENTS.md refresh from implementation and upstream tests.
+It narrows the remaining experiments to the actual OpenCodexUI permission
+profile, loaded/cold resume, surviving processes and relocation with the
+original directory absent. Those upstream tests were inspected, not run.
+
 ## Evidence and scope
 
 The generated `v2/TurnStartParams.ts` contract exposes `cwd` for the current
@@ -160,8 +166,9 @@ immutable per-turn workspace history independently of operational reservations.
 Old turns have not been assigned inferred paths.
 
 Reviews, compaction and rollback still need the wider execution-guard
-adaptation before exposing workspace switching. Permission/instruction reload and sub-agent behavior still require
-the live characterization described above. No non-primary workspaces are
+adaptation before exposing workspace switching. Permission transitions and
+sub-agent lifecycle handling still require the targeted validation identified
+in the source audit. No non-primary workspaces are
 created by this implementation, and full workspace switching must remain
 unexposed in the UI until those execution boundaries are addressed.
 
