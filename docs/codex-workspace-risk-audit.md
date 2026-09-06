@@ -2,6 +2,12 @@
 
 Date : 6 septembre 2026.
 
+Complément : les [essais locaux](codex-workspace-local-tests.md), effectués
+après cet audit, valident une première procédure de transition sur Linux.
+Les mentions « non exécuté » ci-dessous décrivent l'audit initial ; les tests
+Rust amont restent non exécutés, mais le vrai app-server a depuis été testé
+avec un fournisseur de réponses simulées et de vrais outils.
+
 ## Conclusion
 
 Codex sait changer le répertoire d'un thread existant et renouveler ses

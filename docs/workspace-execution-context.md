@@ -4,6 +4,10 @@ Status: stable identity, guarded turn starts, immutable turn history and
 workspace-aware project tools implemented.
 Live app-server characterization remains open.
 
+The [local app-server experiments](codex-workspace-local-tests.md) now verify
+single-client idle switching, real sandbox writes and cold relocation on Linux
+using a simulated model provider. Broader lifecycle cases remain open.
+
 The [Codex 0.153.4 source audit](codex-workspace-risk-audit.md) establishes
 cwd switching and AGENTS.md refresh from implementation and upstream tests.
 It narrows the remaining experiments to the actual OpenCodexUI permission
