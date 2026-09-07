@@ -1,3 +1,7 @@
+import { applySchemaMigrationV37 } from "./v37.js";
+import { applySchemaMigrationV36 } from "./v36.js";
+import { applySchemaMigrationV35 } from "./v35.js";
+import { applySchemaMigrationV34 } from "./v34.js";
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import { applySchemaMigrationV1 } from "./v01.js";
@@ -31,6 +35,8 @@ import { applySchemaMigrationV28 } from "./v28.js";
 import { applySchemaMigrationV31 } from "./v31.js";
 import { applySchemaMigrationV30 } from "./v30.js";
 import { applySchemaMigrationV29 } from "./v29.js";
+import { applySchemaMigrationV32 } from "./v32.js";
+import { applySchemaMigrationV33 } from "./v33.js";
 
 /**
  * Applies all database schema migrations required by the SQLite cache.
@@ -77,4 +83,10 @@ export function runMigrations(database: BetterSqliteDatabase): void {
   applySchemaMigrationV29(database);
   applySchemaMigrationV30(database);
   applySchemaMigrationV31(database);
+  applySchemaMigrationV32(database);
+  applySchemaMigrationV33(database);
+  applySchemaMigrationV34(database);
+  applySchemaMigrationV35(database);
+  applySchemaMigrationV36(database);
+  applySchemaMigrationV37(database);
 }

@@ -1,24 +1,22 @@
 import type {
   OpenCodexComposerReference,
   OpenCodexImageAttachment,
-  OpenCodexReasoningEffort,
-  OpenCodexTurn
+  OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ThreadTurnStartService } from "./ThreadTurnStartService.js";
 import { createTurnDiagnosticRequest, createTurnRequestDetails } from "./turnRequestDiagnostics.js";
-import { resumeThreadForTurn, shouldResumeThreadBeforeTurn } from "./threadTurnPreparation.js";
+import { ThreadMaintenanceService } from "./ThreadMaintenanceService.js";
 
 import type { WorkspaceExecutionService } from "../workspaces/WorkspaceExecutionService.js";
-import { mapThread, readObject, readString } from "../../mapping.js";
+import { readObject, readString } from "../../mapping.js";
 import { toError } from "../shared/errors.js";
-import type { ThreadTurnCache, ThreadTurnCacheEntry } from "../../ThreadTurnCache.js";
+import type { ThreadTurnCache } from "../../ThreadTurnCache.js";
 import type { OpenCodexBackendOptions } from "../../types.js";
 import type { CollaborationService } from "../collaboration/CollaborationService.js";
 import type { ThreadCacheService } from "./ThreadCacheService.js";
 import type { ThreadCreationService } from "./ThreadCreationService.js";
 import type { ThreadSourceResolver } from "./ThreadSourceResolver.js";
-import { withSourceId } from "./threadCacheMapping.js";
 import { buildTurnInput, createId } from "./turnInput.js";
 import type {
   ClientPort,
@@ -74,9 +72,13 @@ export class ThreadTurnActionsService {
   /** Coordinates new submissions with the same runtime dependencies. */
   private readonly turnStartService: ThreadTurnStartService;
 
+  /** Guards reviews, compaction and rollback with the same workspace coordinator. */
+  private readonly maintenance: ThreadMaintenanceService;
+
   /** Creates a thread turn action service. */
   constructor(private readonly options: ThreadTurnActionsServiceOptions) {
     this.turnStartService = new ThreadTurnStartService(options);
+    this.maintenance = new ThreadMaintenanceService(options);
   }
 
   /**
@@ -243,49 +245,7 @@ export class ThreadTurnActionsService {
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null
   ): Promise<{ threadId: string }> {
-    const targetSourceId = (
-      await this.options.sourceResolver.resolveThreadSourceId(threadId)
-    ) ?? sourceId;
-
-    if (targetSourceId === null) {
-      throw new Error("Cannot edit a turn for a project without a Codex source.");
-    }
-
-    const client = await this.options.clients.ensureClient(targetSourceId);
-
-    if (shouldResumeThreadBeforeTurn(this.options.threadTurnCache, threadId)) {
-      await resumeThreadForTurn(client, threadId, projectPath, this.options.backendOptions.projectPath, model);
-    }
-
-    const rollbackResponse = await client.rollbackThread({
-      threadId,
-      numTurns: 1
-    });
-    const rollbackThread = readObject(readObject(rollbackResponse).thread);
-    const rollbackThreadId = readString(rollbackThread.id) || threadId;
-    const thread = withSourceId(mapThread(
-      rollbackThread,
-      model,
-      reasoningEffort
-    ), targetSourceId);
-    const rawTurns = Array.isArray(rollbackThread.turns) ? rollbackThread.turns : [];
-    const cacheEntry = this.options.threadTurnCache.replaceThreadTurns(thread, rawTurns);
-
-    if (cacheEntry.thread.sourceId !== null) {
-      await this.options.collaborationService.reconcileTurns(
-        cacheEntry.thread.sourceId,
-        cacheEntry.thread.id,
-        rawTurns
-      );
-    }
-
-    this.emitThreadOpened(
-      cacheEntry,
-      this.options.threadCacheService.readTurns(cacheEntry)
-    );
-    await this.options.threadCacheService.writeSnapshot(cacheEntry);
-
-    return { threadId: rollbackThreadId };
+    return await this.maintenance.editLastTurn(threadId, projectPath, sourceId, model, reasoningEffort);
   }
 
   /**
@@ -316,23 +276,7 @@ export class ThreadTurnActionsService {
    * @returns Promise resolved when Codex accepts the review request.
    */
   async startReview(threadId: string, projectPath: string | null): Promise<{ ok: true }> {
-    const sourceId = await this.options.sourceResolver.resolveThreadSourceId(threadId);
-
-    if (sourceId === null) {
-      throw new Error("Cannot start a review for a thread without a Codex source.");
-    }
-
-    const client = await this.options.clients.ensureClient(sourceId);
-    await resumeThreadForTurn(client, threadId, projectPath, this.options.backendOptions.projectPath, null);
-    const response = await client.startReview(threadId);
-    const turn = readObject(readObject(response).turn);
-    const turnId = readString(turn.id);
-
-    if (turnId.length > 0) {
-      this.options.events.emit({ type: "turn.started", sourceId, threadId, turnId });
-    }
-
-    return { ok: true };
+    return await this.maintenance.startReview(threadId, projectPath);
   }
 
   /**
@@ -344,31 +288,6 @@ export class ThreadTurnActionsService {
    * @returns Promise resolved when Codex accepts the compaction request.
    */
   async compactThread(threadId: string, projectPath: string | null): Promise<{ ok: true }> {
-    const sourceId = await this.options.sourceResolver.resolveThreadSourceId(threadId);
-
-    if (sourceId === null) {
-      throw new Error("Cannot compact a thread without a Codex source.");
-    }
-
-    const client = await this.options.clients.ensureClient(sourceId);
-    await resumeThreadForTurn(client, threadId, projectPath, this.options.backendOptions.projectPath, null);
-    await client.compactThread(threadId);
-
-    return { ok: true };
+    return await this.maintenance.compactThread(threadId, projectPath);
   }
-
-  /** Emits the thread-opened event after replacing rollback cache state. */
-  private emitThreadOpened(
-    cacheEntry: ThreadTurnCacheEntry,
-    turns: OpenCodexTurn[]
-  ): void {
-    this.options.events.emit({
-      type: "thread.opened",
-      thread: cacheEntry.thread,
-      turns,
-      hasMoreOlderMessages: !cacheEntry.hasLoadedAllOlderTurns,
-      tokenUsage: cacheEntry.tokenUsage
-    });
-  }
-
 }

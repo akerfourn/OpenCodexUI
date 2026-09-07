@@ -1,5 +1,5 @@
 import Fuse from "fuse.js";
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexThread
@@ -138,18 +138,26 @@ export class ThreadListStore {
    *
    * @returns Nothing.
    */
-  createThread(): void {
-    if (this.projectStore.isReadOnlyFromCache) {
+  createThread(workspaceIdOverride?: string): void {
+    if (this.projectStore.isReadOnlyFromCache || this.projectStore.workspaces?.isBusy === true) {
       return;
     }
 
+    const workspace = this.projectStore.workspaces?.workspaces.find((item) => item.id === workspaceIdOverride);
+    if (workspaceIdOverride !== undefined && (workspace === undefined || workspace.removedAt !== null)) return;
+    const workspacePath = workspace?.path ?? this.projectStore.workspacePath ?? this.projectStore.projectPath;
+    const workspaceId = workspace?.id ?? this.projectStore.workspaceId;
     this.isCreatingThread = true;
     this.loadingThreadId = null;
+    if (this.projectStore.workspaces !== undefined) this.projectStore.workspaces.selectedId = workspaceId ?? null;
     this.projectStore.selectedChatId = null;
     void this.root.request({
       type: "threads.create",
-      projectPath: this.projectStore.projectPath,
+      projectPath: workspacePath,
+      ...(workspaceId === undefined ? {} : { workspaceId }),
       sourceId: this.projectStore.project.sourceId
+    }).catch(() => {
+      runInAction(() => { this.isCreatingThread = false; });
     });
   }
 

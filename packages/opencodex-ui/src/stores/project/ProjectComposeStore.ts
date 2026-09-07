@@ -122,7 +122,7 @@ export class ProjectComposeStore {
   /** Reads Compose metadata and the current service states. */
   async load(options: { force?: boolean } = {}): Promise<void> {
     const sourceId = this.projectStore.project.sourceId;
-    const projectPath = this.projectStore.projectPath;
+    const projectPath = (this.projectStore.workspacePath ?? this.projectStore.projectPath);
 
     if (sourceId === null || sourceId === undefined) {
       this.reset();
@@ -191,7 +191,7 @@ export class ProjectComposeStore {
   /** Opens the selected service logs using a bounded backend response. */
   async openLogs(serviceName: string): Promise<void> {
     const sourceId = this.projectStore.project.sourceId;
-    const projectPath = this.projectStore.projectPath;
+    const projectPath = (this.projectStore.workspacePath ?? this.projectStore.projectPath);
 
     if (sourceId === null || sourceId === undefined || !this.isAvailable) {
       return;
@@ -208,6 +208,7 @@ export class ProjectComposeStore {
       const logs = await this.root.request<OpenCodexDockerComposeLogs>({
         type: "docker.compose.service.logs.read",
         projectPath,
+        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         sourceId,
         serviceName,
         tail: 200
@@ -261,7 +262,7 @@ export class ProjectComposeStore {
   /** Executes a service action and refreshes the service state afterwards. */
   private async runAction(action: ComposeServiceAction, serviceName: string): Promise<void> {
     const sourceId = this.projectStore.project.sourceId;
-    const projectPath = this.projectStore.projectPath;
+    const projectPath = (this.projectStore.workspacePath ?? this.projectStore.projectPath);
 
     if (sourceId === null || sourceId === undefined || !this.isAvailable ||
       this.pendingServiceNames.has(serviceName)) {
@@ -278,6 +279,7 @@ export class ProjectComposeStore {
       await this.root.request({
         type: composeActionRequestTypes[action],
         projectPath,
+        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         sourceId,
         serviceName
       });
@@ -318,6 +320,7 @@ export class ProjectComposeStore {
       const snapshot = await this.root.request<OpenCodexDockerComposeSnapshot>({
         type: "docker.compose.snapshot.read",
         projectPath,
+        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         sourceId
       });
 
@@ -360,7 +363,7 @@ export class ProjectComposeStore {
     sourceId: string,
     projectIdentityId = this.projectIdentityId
   ): boolean {
-    return this.projectStore.projectPath === projectPath &&
+    return (this.projectStore.workspacePath ?? this.projectStore.projectPath) === projectPath &&
       this.projectStore.project.sourceId === sourceId &&
       this.projectIdentityId === projectIdentityId;
   }

@@ -1,4 +1,5 @@
 import { resolveWorkspaceToolRequest } from "./backend/workspaces/workspaceToolContext.js";
+import { initializeDefaultWorkspaceRoot } from "./backend/workspaces/initializeDefaultWorkspaceRoot.js";
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 
 import type { OpenCodexBackendOptions } from "./types.js";
@@ -43,6 +44,8 @@ export class OpenCodexBackendRuntime {
   private readonly services: BackendServiceGraph;
   /** Stable public facades backed by this runtime's private service graph. */
   private readonly apis: BackendRuntimeApis;
+  /** Shares local storage initialization across simultaneous bootstrap requests. */
+  private workspaceRootInitialization: Promise<void> | null = null;
 
   /**
    * Creates a backend runtime and wires its internal services.
@@ -207,6 +210,7 @@ export class OpenCodexBackendRuntime {
    */
   async bootstrap(): Promise<{ ok: true }> {
     await this.services.projectRuntimeHandler.ensureSourcesInitialized();
+    await this.ensureDefaultWorkspaceRoot();
     await this.services.codexUpdateService.checkLatestRelease(false);
     this.services.events.emit({
       type: "app.bootstrap",
@@ -221,6 +225,22 @@ export class OpenCodexBackendRuntime {
     await this.models.list();
     await this.usage.readLimits(this.settings.get().defaultSourceId, "bootstrap");
     return { ok: true };
+  }
+
+  /** Initializes storage before publishing settings, allowing retries after an I/O failure. */
+  private async ensureDefaultWorkspaceRoot(): Promise<void> {
+    this.workspaceRootInitialization ??= this.initializeWorkspaceStorage();
+    try {
+      await this.workspaceRootInitialization;
+    } finally {
+      this.workspaceRootInitialization = null;
+    }
+  }
+
+  /** Resolves persisted source identities before preparing a host-local storage directory. */
+  private async initializeWorkspaceStorage(): Promise<void> {
+    const sources = await this.services.cacheRepository?.listSources() ?? [];
+    await initializeDefaultWorkspaceRoot(this.options.userDataPath, sources, this.settings);
   }
 
   /**

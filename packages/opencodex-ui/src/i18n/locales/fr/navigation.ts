@@ -11,6 +11,7 @@ export const frNavigation = {
     title: "Fermer {{project}} ?"
   },
   home: {
+    workspaces: "Workspaces",
     allSources: "Toutes les sources",
     createProjectGroup: "Créer un groupe",
     deleteProjectGroup: "Supprimer le groupe",

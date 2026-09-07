@@ -52,7 +52,7 @@ export class ThreadRuntimeHandler {
   }
 
   /** Exposes cache-backed preparatory workspace operations without UI state. */
-  get workspaces(): Pick<WorkspaceExecutionService, "list" | "select" | "reconcile" | "reconcileWorkspace"> {
+  get workspaces(): Pick<WorkspaceExecutionService, "rename" | "list" | "select" | "reconcile" | "reconcileWorkspace" | "create" | "discover" | "pendingCreations" | "reconcileCreation"> {
     if (this.workspaceExecution === undefined) {
       throw new Error("Workspace operations require a cache repository.");
     }
@@ -216,9 +216,10 @@ export class ThreadRuntimeHandler {
    */
   async createThread(
     projectPath: string | null,
-    sourceId: string | null
+    sourceId: string | null,
+    workspaceId?: string
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.threadConversationService.createThread(projectPath, sourceId);
+    return await this.threadConversationService.createThread(projectPath, sourceId, workspaceId);
   }
 
   /**

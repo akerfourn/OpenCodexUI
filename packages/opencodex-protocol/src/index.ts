@@ -9,3 +9,5 @@ export * from "./performance";
 export * from "./requests";
 export * from "./transport";
 export * from "./workspaces";
+export * from "./workspaceCreations";
+export * from "./workspaceDiscovery";

@@ -1,4 +1,4 @@
-import { action, makeObservable, observable } from "mobx";
+import { action, makeObservable, observable, runInAction } from "mobx";
 
 import type {
   OpenCodexCodexReleaseCheck,
@@ -9,6 +9,7 @@ import type {
   OpenCodexRequest,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
+  OpenCodexWorkspaceRoot,
   OpenCodexVersioningVocabulary
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -22,9 +23,9 @@ export type AppSettingsRequestPort = {
 /**
  * Stores persisted application settings and their optimistic UI mutations.
  *
- * Backend responses are intentionally not awaited: the settings screen has
- * historically updated optimistically and relies on a later authoritative
- * bootstrap/event to replace its local snapshot.
+ * Most controls update optimistically and rely on authoritative bootstrap/events.
+ * Workspace storage waits for persistence before publishing new locations,
+ * because those settings determine where future filesystem operations run.
  */
 export class AppSettingsStore {
   /** Current application settings snapshot. */
@@ -102,6 +103,17 @@ export class AppSettingsStore {
   completeOnboarding(): void {
     this.settings = { ...this.settings, onboardingCompleted: true };
     this.persistPatch({ onboardingCompleted: true });
+  }
+
+  /** Waits for durable validation before publishing workspace storage preferences locally. */
+  async setWorkspaceRoots(roots: OpenCodexWorkspaceRoot[]): Promise<void> {
+    const workspaceRoots = roots.map((root) => ({
+      id: root.id, sourceId: root.sourceId, label: root.label, path: root.path, isDefault: root.isDefault
+    }));
+    const settings = await this.root.request<OpenCodexSettings>({ type: "settings.update", patch: { workspaceRoots } });
+    runInAction(() => {
+      this.settings = { ...this.settings, workspaceRoots: (settings.workspaceRoots ?? []).map((root) => ({ ...root })) };
+    });
   }
 
   /**
@@ -347,6 +359,7 @@ export class AppSettingsStore {
  */
 function createDefaultSettings(): OpenCodexSettings {
   return {
+    workspaceRoots: [],
     codexCommand: "codex",
     codexReleaseCheck: {
       latestVersion: null,
@@ -389,6 +402,7 @@ function createDefaultSettings(): OpenCodexSettings {
 function cloneSettings(settings: OpenCodexSettings): OpenCodexSettings {
   return {
     ...settings,
+    workspaceRoots: settings.workspaceRoots?.map((root) => ({ ...root })),
     codexReleaseCheck: { ...settings.codexReleaseCheck },
     desktopNotifications: { ...settings.desktopNotifications }
   };

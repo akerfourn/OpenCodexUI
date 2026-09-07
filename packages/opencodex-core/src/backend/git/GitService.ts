@@ -13,6 +13,8 @@ import type {
   OpenCodexGitTagListResult
 } from "@open-codex-ui/opencodex-protocol";
 
+import { GitWorktreeService } from "./GitWorktreeService.js";
+
 import { createRunGit } from "./gitCommandRunner.js";
 import {
   commitDetails as readCommitDetails,
@@ -60,6 +62,8 @@ export type GitServiceOptions = {
  * Keeps the historical Git API while delegating behavior to focused actions.
  */
 export class GitService {
+  /** Stateless source-local worktree operations for the workspace lifecycle service. */
+  readonly worktrees: GitWorktreeService;
   /** Dependencies for working-tree and commit actions. */
   private readonly repositoryContext: GitRepositoryActionContext;
 
@@ -73,6 +77,7 @@ export class GitService {
    */
   constructor(options: GitServiceOptions) {
     const runGit = createRunGit(options.clients);
+    this.worktrees = new GitWorktreeService(runGit);
     this.repositoryContext = { runGit, clients: options.clients };
     this.referenceContext = {
       runGit,

@@ -1,3 +1,4 @@
+import type { OpenCodexWorkspaceCreateInput } from "./workspaceCreations";
 /**
  * Declares the requests sent from the UI to the OpenCodex backend.
  */
@@ -35,7 +36,12 @@ export type OpenCodexRequest =
   | { type: "app.openDevTools" }
   | { type: "app.openUsageHistory"; sourceId: string }
   | { type: "projects.list" }
+  | { type: "projectWorkspaces.discover"; projectId: string; sourceId: string }
+  | { type: "projectWorkspaces.rename"; projectId: string; workspaceId: string; name: string }
   | { type: "projectWorkspaces.list"; projectId: string }
+  | { type: "projectWorkspaces.create"; input: OpenCodexWorkspaceCreateInput }
+  | { type: "projectWorkspaces.creations.list"; projectId: string }
+  | { type: "projectWorkspaces.creations.reconcile"; creationId: string }
   | { type: "projectWorkspaces.execution.reconcile"; workspaceId: string }
   | { type: "threads.workspace.select"; threadId: string; workspaceId: string }
   | { type: "threads.workspace.reconcile"; threadId: string }
@@ -134,7 +140,7 @@ export type OpenCodexRequest =
   | { type: "threads.loadOlder"; threadId: string }
   | { type: "threads.recover"; threadId: string }
   | { type: "threads.runtimeStatus.read"; threadId: string }
-  | { type: "threads.create"; projectPath?: string | null; sourceId?: string | null }
+  | { type: "threads.create"; workspaceId?: string; projectPath?: string | null; sourceId?: string | null }
   | { type: "threads.rename"; threadId: string; name: string }
   | { type: "threads.archive"; threadId: string }
   | { type: "threads.delete"; threadId: string }

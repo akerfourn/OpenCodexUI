@@ -293,7 +293,8 @@ export class ProjectCommandsStore {
       const run = await this.root.request<OpenCodexProjectCommandRun>({
         type: "projectCommands.run",
         commandId: command.id,
-        projectPath: this.projectStore.projectPath,
+        projectPath: (this.projectStore.workspacePath ?? this.projectStore.projectPath),
+        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         sourceId: this.projectStore.project.sourceId
       });
 

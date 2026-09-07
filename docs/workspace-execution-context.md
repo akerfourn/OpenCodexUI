@@ -2,7 +2,210 @@
 
 Status: stable identity, guarded turn starts, immutable turn history and
 workspace-aware project tools implemented.
-Live app-server characterization remains open.
+Local app-server characterization is documented in
+[codex-workspace-local-tests.md](codex-workspace-local-tests.md).
+Delivery status and remaining acceptance criteria are tracked in
+[the five delivery lots](workspaces-delivery-plan.md).
+Managed worktree creation and its journal are documented in
+[workspace-creation.md](workspace-creation.md).
+
+## Implementation stage: verified resume primitive
+
+`WorkspaceThreadTransition` now implements the tested source-bound sequence:
+validate the directory and idle thread, await a caller-provided dispatch
+reservation, unsubscribe, resume with explicit context, and verify the reply.
+The RPC client exposes typed `unsubscribeThread`; unsubscribe is not assumed
+to unload a thread observed by another client.
+
+The expected context includes cwd, runtime roots, named profile provenance,
+workspace-write sandbox projection, temporary-directory/network permissions,
+approval policy and reviewer. Unexpected roots, broad sandbox modes, unknown
+capabilities, active threads and independently transitioned sub-agents fail.
+Paths are compared in source space without host resolution or case folding.
+
+`WorkspaceTransitionError.requiresReconciliation` distinguishes pre-dispatch
+refusals from failures after unsubscribe dispatch, including lost responses
+and mismatched resume results. The primitive never retries or claims that an
+uncertain remote effect was rolled back. Expectations are copied before I/O.
+
+The primitive does not generate configuration or alter cached associations.
+Its reply verification covers Codex's compatibility projection, not the full
+split filesystem policy or persistence of cwd across future restarts.
+
+## Implementation stage: durable selection coordinator
+
+Migration 32 adds `workspace_transitions`, separate from execution reservations.
+Both workspaces are reserved before preparation. A frozen permission contract
+is persisted before unsubscribe dispatch. The original selection stays in
+place until resume verification succeeds, then selection and blocker removal
+commit in one SQLite transaction.
+
+Turn notifications cannot acknowledge or complete transitions. Pending records
+block executions on both locations, relocation, association changes and source
+removal. Thread/project deletion is restricted by foreign keys. Empty-thread
+cleanup skips pending transitions.
+
+`WorkspaceExecutionService.select` now delegates to `WorkspaceSelectionService`
+under the same local thread gate used by starts and reconciliation. Preparation
+and capability/lifecycle validation are required backend dependencies, never
+UI-supplied permissions. Production now supplies `WorkspaceRuntimePreparation`
+and the UI exposes verified selection rather than a cache-only change.
+Selecting the already selected workspace remains a no-op after the existing
+source/inactivity checks, unless a transition is pending.
+
+Pre-dispatch failures release the reservation. Ambiguous dispatch, mismatched
+permissions and failed commits retain it. Explicit thread/workspace
+reconciliation cancels interrupted preparation without remote effects, or
+re-runs supported preparation and verified resume with the same frozen contract.
+An idle reply alone cannot release dispatched state. Changed permission
+contracts remain blocked; automatic rollback or retry is not implemented.
+
+The transition coordinator is exercised with a real SQLite cache and mocked
+source RPCs. Coverage includes closing/reopening the cache after response loss,
+cross-operation concurrency, unrelated turn events, permission mismatches,
+source/ownership guards, migration preservation and transactional rollback.
+Earlier boundary tests use strict doubles. The final local scenario also
+exercises production preparation, real SQLite and the real Codex app-server.
+
+Production preparation, guarded lifecycle operations, Git creation and the
+selector are now implemented. Physical relocation remains a separate advanced
+feature. See the [delivery plan](workspaces-delivery-plan.md) and
+[user guide](workspaces-user-guide.md) for supported cases and acceptance status.
+
+## Implementation stage: guarded review, compaction and rollback
+
+Migration 33 distinguishes `turn`, `review`, `compact` and `rollback`
+reservations. Existing records retain the `turn` operation and their state.
+`ThreadMaintenanceService` now routes the three maintenance actions through
+the same durable reservation and local thread gate as starts and selection.
+
+With a cache, the workspace supplies source and cwd. Contradictory caller hints,
+active threads and pending transitions fail before dispatch. The reservation
+is marked submitting before resume, since resume itself can change Codex state.
+The resume response must identify the original, idle thread accepting direct
+input and return the reserved cwd; an ignored override prevents dispatch.
+This validates directory targeting, not the full permissions contract.
+
+- Review acknowledgement requires the original thread and a turn ID. Matching
+  completion releases its reservation, including completion before the RPC
+  response. Detached or incomplete replies remain uncertain.
+- Compaction acceptance does not release its reservation. Started/completed
+  events correlate its lifecycle. If a source omits that lifecycle, explicit
+  reconciliation after verified inactivity is required.
+- Rollback ignores turn lifecycle events and releases only after its response
+  and cache synchronization succeed. Lost replies remain uncertain and are
+  never retried automatically.
+
+Maintenance reservations do not create immutable user-turn workspace evidence.
+Existing history survives rollback independently of the operational guard.
+Cacheless runtimes retain legacy source/path fallback. Interrupt remains
+available to stop an active turn.
+
+Tests exercise migration idempotence, early/late completion, unrelated events,
+transition conflicts, ignored resume overrides, wrong review thread identity,
+source/path targeting and lost rollback responses across cache reopening.
+Legacy conversation action tests still exercise the public delegation.
+
+Effective workspace switching remains disabled until real permission
+preparation and lifecycle checks are installed. Process/child tracking still
+needs integration; these maintenance guards do not cover that boundary.
+
+### Catalog mutations during workspace operations
+
+Archive, restore and deletion use the same local thread gate as turn starts,
+maintenance, selection and recovery. They reject persisted transitions and
+execution reservations for the target thread before any source access, and
+hold the gate through the source response and cache cleanup. Cacheless
+runtimes retain their existing behavior.
+
+Migration 34 extends durable execution reservations with archive, unarchive
+and delete intents. It preserves existing reservations and recreates the
+transition exclusion trigger. The backend reserves before preparation,
+marks dispatch immediately before the source mutation, and releases only
+after the RPC and local cleanup succeed.
+
+Failure before dispatch cancels preparation. A lost response or failed cache
+write retains an uncertain reservation across restart. Turn notifications
+and maintenance acknowledgements cannot complete catalog reservations.
+Deletion intent survives removal of the cached thread itself. Source/project
+removal and workspace relocation continue to observe these reservations.
+
+Catalog cache writes now propagate failures so the caller cannot release the
+reservation after silently failed persistence. Cacheless behavior is retained.
+
+Explicit reconciliation now recovers archive and unarchive intents from
+positive source evidence. It searches the expected archived/active list with
+all known source kinds and providers, using at most 100 pages of 100 entries.
+It verifies the exact thread ID and cwd, then reads live identity and idle or
+not-loaded status. Cache archive state must persist before the guard releases.
+Repeated cursors, exhausted pages, unavailable sources, mismatched paths and
+failed cache writes keep the reservation intact. Verification can be retried.
+Preparation interrupted before dispatch cancels without contacting Codex.
+
+A successful delete RPC response is now persisted using the reservation's
+existing acknowledgement field before local cleanup. Explicit recovery can
+repeat local cleanup from that evidence, including after restart or removal
+of the cached thread row. Cleanup failure retains both evidence and blocker.
+Recovery looks up reservations independently of the thread catalogue.
+
+An empty list never proves deletion. Delete intents without a persisted
+successful response remain blocked: this includes a lost RPC response or a
+failure to persist its acknowledgement. Recovery does not replay archive,
+unarchive or delete RPCs. The local gate excludes concurrent
+backend operations throughout verification and persistence, but it does not
+coordinate external Codex clients or provide a remote atomic snapshot.
+
+Regression tests cover version 33 data preservation and migration idempotence,
+public-runtime dispatch ordering, cleanup success/failure, lost replies across
+reopening, unrelated turn events and rejection of idle-only recovery.
+
+## Implementation stage: destination permission preparation
+
+`WorkspacePermissionPreparation` reads the project's shared-folder definitions
+under an existing durable transition, writes the destination's managed config,
+and verifies the effective named profile via source-local `config/read`.
+It leaves project preferences and the primary synchronization timestamp alone.
+An unchanged config is not rewritten. Unmanaged default profiles and read
+errors other than explicitly missing files prevent writes.
+
+The profile ID hashes source identity, workspace identity and normalized policy
+content. Folder ordering and labels do not change it. Permission changes do.
+The same structured definition renders TOML and supplies explicit resume config
+overrides; the expected profile ID and sandbox are checked after resume.
+The full request contract remains part of durable transition recovery.
+
+This first supported profile extends `:workspace`, disables network access and
+general temporary-directory writes, and preserves explicit shared-folder and
+environment-file rules. It is a restricted transition profile, not an automatic
+replacement for arbitrary user policies. The production adapter validates
+source policy compatibility and supplies actual approval settings.
+No approval-policy default is guessed by this preparation service.
+
+Literal absolute paths are required. Nested workspaces, shared folders
+overlapping either workspace, conflicting duplicate rules and incompatible
+environment-file grants are refused. These are lexical source-path checks;
+the production adapter additionally checks ancestors through source metadata
+and refuses symbolic links, including the destination configuration paths.
+
+Effective configuration must match all generated rules. Known optional network
+and glob fields serialized as `null` are normalized; unexpected rules or values
+fail verification. During recovery, a changed contract is rejected before the
+destination file is overwritten.
+
+The existing primary context synchronization keeps its previous defaults and
+uses the extracted shared generator. A live Linux app-server test of both new
+services confirms writes in B and an allowed shared folder, refusal in A, and
+refusal to read a shared `.env` file. The provider is simulated: no LLM calls.
+See the [local test report](codex-workspace-local-tests.md).
+
+The production adapter is installed, and the GUI exposes effective switching.
+Empty conversations are created directly in their prepared destination; Codex
+cannot resume them before their first persisted turn. Unsupported policies and
+loaded child sessions fail explicitly, as documented in the user guide.
+
+`WorkspaceThreadTransition.test.ts` covers the RPC boundary with deterministic
+source doubles, including actual mismatches found during the local audit.
+It does not run a model or claim to reproduce filesystem enforcement itself.
 
 The [local app-server experiments](codex-workspace-local-tests.md) now verify
 single-client idle switching, real sandbox writes and cold relocation on Linux
@@ -142,12 +345,16 @@ Workspace lifecycle observation runs before UI notification suppression.
 The following preparatory protocol operations are available:
 
 - `projectWorkspaces.list`: read a project's catalogue without source access.
-- `threads.workspace.select`: select within a project/source after checking
-  inactivity; does not resume Codex or transfer files.
+- `threads.workspace.select`: coordinate verified selection within a
+  project/source. Effective changes require the backend preparation adapter;
+  without it, they fail explicitly. No filesystem move is performed.
 - `threads.workspace.reconcile`: release a thread's reservations only after
   the source reports an idle or unloaded thread.
 - `projectWorkspaces.execution.reconcile`: reconcile bound threads and release
   preparation interrupted before a thread ID was returned.
+
+Both reconciliation entry points also handle the separate transition records
+as described above; dispatched transitions require a verified resume.
 
 Reconciliation is explicit and refuses active or unknown thread states. A
 local in-flight operation cannot be released by reconciliation. These guarantees
@@ -165,16 +372,15 @@ relocation, alias reuse, source isolation and reservation transitions.
 source I/O, including concurrent requests, restart recovery and the wired thread
 runtime receiving completion before the start response.
 
-The UI selector and Git worktree creation remain deferred. Migration 30 adds
+Migration 30 adds
 immutable per-turn workspace history independently of operational reservations.
 Old turns have not been assigned inferred paths.
 
-Reviews, compaction and rollback still need the wider execution-guard
-adaptation before exposing workspace switching. Permission transitions and
-sub-agent lifecycle handling still require the targeted validation identified
-in the source audit. No non-primary workspaces are
-created by this implementation, and full workspace switching must remain
-unexposed in the UI until those execution boundaries are addressed.
+Reviews, compaction and rollback now use the execution guards described above.
+Permission transitions and sub-agent lifecycle guards are installed in the
+production adapter and validated in the local experiments. Creation and
+conversation switching are exposed through the named workspace chat groups;
+see the [user guide](workspaces-user-guide.md) for supported paths and limits.
 
 
 ## Immutable turn context (action-plan step 4)
@@ -242,8 +448,8 @@ not a new UI selection mode.
   and physical file path, so generating rules in another checkout cannot
   overwrite the primary file's synchronization hash. Moving a workspace does
   not assume that the destination file matches its previous hash.
-- Rule events carry their physical directory. The current primary-only UI
-  ignores events from other workspaces. Source restart state remains shared,
+- Rule events carry their physical directory. The UI follows the selected
+  conversation workspace and ignores events from other workspaces. Source restart state remains shared,
   because restarting app-server affects the whole source.
 
 Validation covers legacy facade arguments, source/project isolation, Compose
@@ -251,6 +457,8 @@ naming, command execution context, secondary config materialization, migration
 preservation/reopening and UI rule-event isolation. No worktree creation,
 selector, source restart or live model execution is performed by the tests.
 
-For the alpha, the existing primary-directory workflow remains the supported
-UI workflow. Before enabling switching, complete the app-server experiments
-and remaining turn-operation/lifecycle guards documented above.
+The primary-directory workflow remains supported. The subsequent workspace
+UI and production-adapter experiments are tracked in the
+[delivery plan](workspaces-delivery-plan.md). The grouped chat list adds
+persistent workspace names through migration 36 without altering thread or
+historical turn associations.

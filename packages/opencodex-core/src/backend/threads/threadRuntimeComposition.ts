@@ -1,5 +1,6 @@
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 
+import { WorkspaceRuntimePreparation } from "../workspaces/WorkspaceRuntimePreparation.js";
 import { WorkspaceExecutionService } from "../workspaces/WorkspaceExecutionService.js";
 import { ThreadTurnCache } from "../../ThreadTurnCache.js";
 import type { OpenCodexBackendOptions } from "../../types.js";
@@ -70,9 +71,16 @@ export function createThreadRuntimeServices(
     events: options.events,
     logger: options.backendOptions.logger
   });
-  const workspaceExecution = options.cacheRepository === null ? undefined
+  const workspaceExecution: WorkspaceExecutionService | undefined = options.cacheRepository === null ? undefined
     : new WorkspaceExecutionService(options.cacheRepository.workspaces, options.clients,
-      (context) => threadTurnCache.setTurnWorkspaceContext(context));
+      (context) => threadTurnCache.setTurnWorkspaceContext(context),
+      new WorkspaceRuntimePreparation(options.cacheRepository, options.clients),
+      (threadId, isArchived) => threadCacheService.writeArchiveState(threadId, isArchived),
+      (threadId, sourceId) => threadConversationService.forgetDeletedThread(threadId, sourceId),
+      (threadId, cwd) => {
+        const entry = threadTurnCache.get(threadId);
+        if (entry !== null) entry.thread = { ...entry.thread, projectPath: cwd };
+      }, () => options.settings.getSettings().workspaceRoots ?? []);
   const threadConversationService = new ThreadConversationService({
     workspaceExecution,
     backendOptions: options.backendOptions,

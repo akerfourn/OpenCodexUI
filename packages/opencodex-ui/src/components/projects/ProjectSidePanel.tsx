@@ -56,7 +56,7 @@ export function ProjectSidePanel({
   const { t } = useTranslation();
   const composeStore = projectStore.composeStore;
   const [selectedTab, setSelectedTab] = useState<ProjectSidePanelTab>("git");
-  const projectPath = projectStore.project?.path;
+  const projectPath = projectStore.workspacePath ?? projectStore.project?.path;
   const sourceId = projectStore.project?.sourceId;
   const hasComposeFile = sourceId !== null && sourceId !== undefined &&
     composeStore?.isAvailable === true && readHasComposeFile(composeStore);

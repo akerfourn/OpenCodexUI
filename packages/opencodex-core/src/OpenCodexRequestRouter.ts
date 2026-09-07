@@ -28,6 +28,7 @@ export class OpenCodexRequestRouter {
       const resolved = "workspaceId" in request && request.workspaceId !== undefined
         && request.type !== "turn.start" && request.type !== "threads.workspace.select"
         && request.type !== "projectWorkspaces.execution.reconcile"
+        && request.type !== "projectWorkspaces.rename"
         ? await this.runtime.resolveToolRequest(request) : request;
       return await this.handleValidRequest(resolved);
     } catch (error) {
@@ -50,6 +51,16 @@ export class OpenCodexRequestRouter {
         throw new Error("Developer tools are not available in this runtime.");
       case "projects.list":
         return this.runtime.projects.list();
+      case "projectWorkspaces.discover":
+        return this.runtime.workspaces.discover(request.projectId, request.sourceId);
+      case "projectWorkspaces.create":
+        return this.runtime.workspaces.create(request.input);
+      case "projectWorkspaces.creations.list":
+        return this.runtime.workspaces.pendingCreations(request.projectId);
+      case "projectWorkspaces.creations.reconcile":
+        return this.runtime.workspaces.reconcileCreation(request.creationId);
+      case "projectWorkspaces.rename":
+        return this.runtime.workspaces.rename(request.projectId, request.workspaceId, request.name);
       case "projectWorkspaces.list":
         return this.runtime.workspaces.list(request.projectId);
       case "projectWorkspaces.execution.reconcile":
@@ -181,7 +192,8 @@ export class OpenCodexRequestRouter {
       case "threads.runtimeStatus.read":
         return this.runtime.threads.readRuntimeStatus(request.threadId);
       case "threads.create":
-        return this.runtime.threads.create(request.projectPath ?? null, request.sourceId ?? null);
+        return this.runtime.threads.create(request.projectPath ?? null, request.sourceId ?? null,
+          ...optionalWorkspaceArgument(request.workspaceId));
       case "threads.rename":
         return this.runtime.threads.rename(request.threadId, request.name);
       case "threads.archive":

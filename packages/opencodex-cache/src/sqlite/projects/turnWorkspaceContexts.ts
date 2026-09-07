@@ -3,6 +3,11 @@ import type { OpenCodexTurnWorkspaceContext } from "@open-codex-ui/opencodex-pro
 
 /** Copies only correlated reservation evidence; snapshots never write this history. */
 export function captureTurnWorkspaceContexts(database: Database, reservationId: string): void {
+  const reservation = database.prepare("SELECT operation FROM workspace_execution_reservations WHERE id = ?")
+    .get(reservationId) as { operation: string } | undefined;
+  if (reservation?.operation !== "turn") {
+    return;
+  }
   const conflict = database.prepare(`SELECT 1 FROM workspace_execution_reservations AS reservation
     JOIN turn_workspace_contexts AS context
       ON context.thread_id = reservation.thread_id AND context.turn_id = reservation.turn_id

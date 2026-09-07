@@ -325,11 +325,7 @@ export class ThreadCacheService {
       return;
     }
 
-    try {
-      await repository.updateThreadArchiveState(threadId, isArchived);
-    } catch (error) {
-      this.log(`thread cache archive write failed: ${String(error)}`);
-    }
+    await repository.updateThreadArchiveState(threadId, isArchived);
   }
 
   /**
@@ -449,11 +445,7 @@ export class ThreadCacheService {
       return;
     }
 
-    try {
-      await repository.deleteThread(threadId);
-    } catch (error) {
-      this.log(`thread cache delete failed: ${String(error)}`);
-    }
+    await repository.deleteThread(threadId);
   }
 
   /**

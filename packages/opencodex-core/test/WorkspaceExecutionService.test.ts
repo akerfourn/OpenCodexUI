@@ -16,6 +16,10 @@ describe("workspace execution", () => {
   let service: WorkspaceExecutionService;
   let workspaceId: string;
   const client = {
+    listThreads: vi.fn(),
+    archiveThread: vi.fn(),
+    unarchiveThread: vi.fn(),
+    deleteThread: vi.fn(),
     getMetadata: vi.fn(),
     readThread: vi.fn(),
     resumeThread: vi.fn(),
@@ -43,9 +47,175 @@ describe("workspace execution", () => {
     service = new WorkspaceExecutionService(cache.workspaces, clients);
   });
 
+  /** Exercises the production composition with the same persisted workspace guard. */
+  function createHandler(): ThreadRuntimeHandler {
+    return new ThreadRuntimeHandler({
+      backendOptions: { projectPath: "/host/wrong-default" },
+      cacheRepository: cache,
+      clients,
+      settings: {
+        getSettings: () => ({ defaultModel: "test", defaultReasoningEffort: "medium" })
+      } as unknown as Pick<RuntimeSettingsPort, "getSettings">,
+      events: new RuntimeEventDispatcher({ emitToHost: () => undefined }),
+      projects: {
+        resolveSource: async () => ({ id: "source-a" }),
+        cacheProject: async () => null,
+        readCachedProjects: async () => []
+      } as unknown as Pick<ProjectSourcePort, "resolveSource" | "cacheProject" | "readCachedProjects">,
+      handleClientError: (error) => { throw error; }
+    });
+  }
+
   afterEach(async () => {
     await cache.close();
     fs.rmSync(directory, { recursive: true, force: true });
+  });
+
+  it.each(["archiveThread", "deleteThread", "unarchiveThread"] as const)(
+    "should block %s before source access while execution recovery is pending",
+    async (method) => {
+      const reservation = await cache.workspaces.reserve(workspaceId, "thread-a");
+      await cache.workspaces.submitting(reservation.id);
+      await cache.workspaces.fail(reservation.id);
+      const handler = createHandler();
+
+      await expect(handler[method]("thread-a")).rejects.toThrow("pending workspace execution");
+      expect(clients.ensureClient).not.toHaveBeenCalled();
+      expect(await cache.workspaces.listReservations(workspaceId)).toHaveLength(1);
+    }
+  );
+
+  it("should keep catalog mutations and local workspace operations mutually exclusive", async () => {
+    const entered = deferred();
+    const proceed = deferred();
+    const mutation = service.runCatalogMutation("thread-a", "archive", async () => {
+      entered.resolve();
+      await proceed.promise;
+    });
+    await entered.promise;
+
+    await expect(service.select("thread-a", workspaceId)).rejects.toThrow("operation in progress");
+    await expect(service.reconcile("thread-a")).rejects.toThrow("operation in progress");
+    await expect(service.runCatalogMutation("thread-a", "archive", vi.fn())).rejects.toThrow("operation in progress");
+    proceed.resolve();
+    await mutation;
+    await expect(service.runCatalogMutation("thread-a", "archive", async () => "ok")).resolves.toBe("ok");
+  });
+
+  it("should release the local catalog gate when the remote action fails", async () => {
+    await expect(service.runCatalogMutation("thread-a", "archive", async () => {
+      throw new Error("Source disconnected");
+    })).rejects.toThrow("Source disconnected");
+
+    await expect(service.runCatalogMutation("thread-a", "archive", async () => "retry")).resolves.toBe("retry");
+  });
+
+  it.each(["archive", "unarchive", "delete"] as const)(
+    "should retain lost %s responses after reopening and refuse idle-only recovery",
+    async (operation) => {
+      await expect(service.runCatalogMutation("thread-a", operation, async (dispatch) => {
+        await dispatch();
+        throw new Error("Response lost");
+      })).rejects.toThrow("Response lost");
+      await cache.close();
+      cache = createOpenCodexSqliteCacheRepository({ directory });
+      service = new WorkspaceExecutionService(cache.workspaces, clients);
+
+      await expect(service.reconcile("thread-a")).rejects.toThrow("idle status cannot reconcile");
+      await expect(service.runCatalogMutation("thread-a", operation, vi.fn())).rejects.toThrow(
+        "pending workspace execution"
+      );
+      expect(clients.ensureClient).not.toHaveBeenCalled();
+      expect(await cache.workspaces.listReservations(workspaceId)).toMatchObject([
+        { operation, state: "uncertain", sourceId: "source-a" }
+      ]);
+    }
+  );
+
+  it("should hold a durable catalog reservation until successful cache cleanup", async () => {
+    await service.runCatalogMutation("thread-a", "delete", async (dispatch) => {
+      expect(await cache.workspaces.listReservations(workspaceId)).toMatchObject([
+        { operation: "delete", state: "preparing" }
+      ]);
+      await dispatch();
+      await expect(cache.workspaces.relocate(workspaceId, "/moved")).rejects.toThrow("reserved or active");
+      expect(await cache.workspaces.listReservations(workspaceId)).toMatchObject([
+        { operation: "delete", state: "submitting" }
+      ]);
+    });
+
+    expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
+  });
+
+  it.each(["archiveThread", "unarchiveThread", "deleteThread"] as const)(
+    "should persist dispatch before %s reaches Codex and release after cleanup",
+    async (method) => {
+      client[method].mockImplementationOnce(async () => {
+        expect(await cache.workspaces.listReservations(workspaceId)).toMatchObject([
+          { state: "submitting" }
+        ]);
+        return {};
+      });
+
+      await expect(createHandler()[method]("thread-a")).resolves.toEqual({ ok: true });
+      expect(client[method]).toHaveBeenCalledWith("thread-a");
+      expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
+    }
+  );
+
+  it.each(["archiveThread", "deleteThread"] as const)(
+    "should keep %s reserved when local persistence fails after the source reply",
+    async (method) => {
+      const cacheMethod = method === "archiveThread" ? "updateThreadArchiveState" : "deleteThread";
+      const write = vi.spyOn(cache, cacheMethod).mockRejectedValueOnce(new Error("Cache unavailable"));
+      client[method].mockResolvedValue({});
+
+      await expect(createHandler()[method]("thread-a")).rejects.toThrow("Cache unavailable");
+
+      expect(client[method]).toHaveBeenCalledWith("thread-a");
+      expect(await cache.workspaces.listReservations(workspaceId)).toMatchObject([
+        { state: "uncertain" }
+      ]);
+      write.mockRestore();
+    }
+  );
+
+  it("should recover a confirmed delete through the runtime without sending another RPC", async () => {
+    client.deleteThread.mockResolvedValue({});
+    const write = vi.spyOn(cache, "deleteThread").mockRejectedValueOnce(new Error("Cache unavailable"));
+    const handler = createHandler();
+    await expect(handler.deleteThread("thread-a")).rejects.toThrow("Cache unavailable");
+    const pending = (await cache.workspaces.getReservationForThread("thread-a"))!;
+    expect(await cache.workspaces.isDeletionConfirmed(pending.id)).toBe(true);
+
+    await handler.workspaces.reconcile("thread-a");
+
+    expect(client.deleteThread).toHaveBeenCalledTimes(1);
+    expect(write).toHaveBeenCalledTimes(2);
+    expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
+    write.mockRestore();
+  });
+
+  it("should wire archive recovery through the production runtime", async () => {
+    const reservation = await cache.workspaces.reserve(workspaceId, "thread-a", "archive");
+    await cache.workspaces.submitting(reservation.id);
+    await cache.workspaces.fail(reservation.id);
+    client.listThreads.mockResolvedValue({
+      data: [{ id: "thread-a", cwd: "/source/repo" }], nextCursor: null
+    });
+    client.readThread.mockResolvedValue({ thread: {
+      id: "thread-a", cwd: "/source/repo", status: { type: "notLoaded" }
+    } });
+    const write = vi.spyOn(cache, "updateThreadArchiveState");
+
+    await createHandler().workspaces.reconcile("thread-a");
+
+    expect(write).toHaveBeenCalledWith("thread-a", true);
+    expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
+    expect(client.archiveThread).not.toHaveBeenCalled();
+    expect(client.unarchiveThread).not.toHaveBeenCalled();
+    expect(client.deleteThread).not.toHaveBeenCalled();
+    write.mockRestore();
   });
 
   it("should resolve a known thread without relying on a caller path or source", async () => {
@@ -142,21 +312,7 @@ describe("workspace execution", () => {
   });
 
   it("should wire persisted context and early notifications through the actual thread runtime", async () => {
-    const handler = new ThreadRuntimeHandler({
-      backendOptions: { projectPath: "/host/wrong-default" },
-      cacheRepository: cache,
-      clients,
-      settings: {
-        getSettings: () => ({ defaultModel: "test", defaultReasoningEffort: "medium" })
-      } as unknown as Pick<RuntimeSettingsPort, "getSettings">,
-      events: new RuntimeEventDispatcher({ emitToHost: () => undefined }),
-      projects: {
-        resolveSource: async () => ({ id: "source-a" }),
-        cacheProject: async () => null,
-        readCachedProjects: async () => []
-      } as unknown as Pick<ProjectSourcePort, "resolveSource" | "cacheProject" | "readCachedProjects">,
-      handleClientError: (error) => { throw error; }
-    });
+    const handler = createHandler();
     client.startTurn.mockImplementationOnce(async () => {
       const adapter = handler.getNotificationAdapters();
       adapter.recordWorkspaceNotification({

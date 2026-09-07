@@ -1,17 +1,21 @@
+import { validateWorkspaceName } from "./workspaceName.js";
+import { registerDiscoveredWorkspaces } from "./registerDiscoveredWorkspaces.js";
+import { SqliteWorkspaceCreationRepository } from "./SqliteWorkspaceCreationRepository.js";
 import { captureTurnWorkspaceContexts, readTurnWorkspaceContexts } from "./turnWorkspaceContexts.js";
 import { randomUUID } from "node:crypto";
 import type { Database } from "better-sqlite3";
-import type { OpenCodexProjectWorkspace, OpenCodexTurnWorkspaceContext } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProjectWorkspace, OpenCodexTurnWorkspaceContext, OpenCodexWorkspaceDiscoverySkipped } from "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceCacheRepository, WorkspaceExecutionReservation } from "../../types/workspaces.js";
 import { normalizeProjectPath } from "../../projectIdentity.js";
 import { resolveProject } from "./projectResolver.js";
+import { SqliteWorkspaceTransitionRepository } from "./SqliteWorkspaceTransitionRepository.js";
 
 /** SQL projection shared by catalogue and execution-context reads. */
 const workspaceColumns = `id, project_id AS projectId, source_id AS sourceId,
-  path, is_primary AS isPrimary, managed, removed_at AS removedAt`;
+  path, name, is_primary AS isPrimary, managed, removed_at AS removedAt`;
 /** SQL projection for durable execution reservations. */
 const reservationColumns = `id, workspace_id AS workspaceId, project_id AS projectId,
-  source_id AS sourceId, cwd, thread_id AS threadId, turn_id AS turnId, state`;
+  source_id AS sourceId, cwd, thread_id AS threadId, turn_id AS turnId, state, operation`;
 
 /** Raw projection with SQLite integer flags. */
 interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "managed"> {
@@ -23,8 +27,21 @@ interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "ma
 
 /** Owns workspace identity and atomic lifecycle guards in the shared cache. */
 export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository {
+  /** Tracks pending creation without making its destination executable. */
+  readonly creations: SqliteWorkspaceCreationRepository;
+  /** Transition records cannot be completed by turn lifecycle events. */
+  readonly transitions: SqliteWorkspaceTransitionRepository;
   /** Uses the facade's transaction-capable connection. */
-  constructor(private readonly database: Database) {}
+  constructor(private readonly database: Database) {
+    this.creations = new SqliteWorkspaceCreationRepository(database);
+    this.transitions = new SqliteWorkspaceTransitionRepository(database);
+  }
+
+  /** Registers an explicitly verified batch while preserving all existing identities and roles. */
+  async registerDiscovered(primaryWorkspaceId: string, sourceId: string, primaryPath: string,
+    paths: string[]): Promise<OpenCodexWorkspaceDiscoverySkipped[]> {
+    return registerDiscoveredWorkspaces(this.database, primaryWorkspaceId, sourceId, primaryPath, paths);
+  }
 
   /** Reads immutable history independently of current workspace associations. */
   async listTurnContexts(threadId: string): Promise<OpenCodexTurnWorkspaceContext[]> {
@@ -37,6 +54,15 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
       FROM project_workspaces WHERE project_id = ? ORDER BY is_primary DESC, id`)
       .all(projectId) as WorkspaceRow[];
     return rows.map(mapWorkspace);
+  }
+
+  /** Renames only secondary metadata; identity, physical path and history stay intact. */
+  async rename(projectId: string, workspaceId: string, name: string): Promise<void> {
+    const normalized = validateWorkspaceName(name);
+    const result = this.database.prepare(`UPDATE project_workspaces SET name = ?
+      WHERE id = ? AND project_id = ? AND is_primary = 0 AND removed_at IS NULL`)
+      .run(normalized, workspaceId, projectId);
+    if (result.changes !== 1) throw new Error("Only an available secondary workspace of this project can be renamed.");
   }
 
   /** Reads a workspace without interpreting its source-local path. */
@@ -68,6 +94,10 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
       const workspace = this.requireWorkspace(workspaceId);
       this.requireAvailable(workspace);
       this.requireThread(workspace, threadId);
+      if (this.database.prepare("SELECT id FROM workspace_transitions WHERE thread_id = ?")
+        .get(threadId) !== undefined) {
+        throw new Error("Thread has an unresolved workspace transition.");
+      }
       const reserved = this.database.prepare(`SELECT id FROM workspace_execution_reservations
         WHERE thread_id = ?`).get(threadId);
       if (reserved !== undefined) {
@@ -109,7 +139,8 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
   }
 
   /** Captures immutable context and guards against concurrent selection or relocation. */
-  async reserve(workspaceId: string, threadId: string | null): Promise<WorkspaceExecutionReservation> {
+  async reserve(workspaceId: string, threadId: string | null,
+    operation: WorkspaceExecutionReservation["operation"] = "turn"): Promise<WorkspaceExecutionReservation> {
     return this.database.transaction(() => {
       const workspace = this.requireWorkspace(workspaceId);
       this.requireAvailable(workspace);
@@ -127,9 +158,9 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
       }
       const id = randomUUID();
       this.database.prepare(`INSERT INTO workspace_execution_reservations
-        (id, workspace_id, project_id, source_id, cwd, thread_id, state)
-        VALUES (?, ?, ?, ?, ?, ?, 'preparing')`)
-        .run(id, workspaceId, workspace.projectId, workspace.sourceId, workspace.path, threadId);
+        (id, workspace_id, project_id, source_id, cwd, thread_id, state, operation)
+        VALUES (?, ?, ?, ?, ?, ?, 'preparing', ?)`)
+        .run(id, workspaceId, workspace.projectId, workspace.sourceId, workspace.path, threadId, operation);
       return this.database.prepare(`SELECT ${reservationColumns}
         FROM workspace_execution_reservations WHERE id = ?`).get(id) as WorkspaceExecutionReservation;
     })();
@@ -152,6 +183,25 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
     })();
   }
 
+  /** Records new-thread dispatch without inventing a thread identifier before the reply. */
+  async submittingCreation(reservationId: string): Promise<void> {
+    const result = this.database.prepare(`UPDATE workspace_execution_reservations SET state = 'submitting'
+      WHERE id = ? AND state = 'preparing' AND thread_id IS NULL AND operation = 'turn'`).run(reservationId);
+    if (result.changes !== 1) throw new Error("New conversation is not ready for submission.");
+  }
+
+  /** Requires positive creation evidence and a persisted matching thread before releasing the guard. */
+  async confirmCreation(reservationId: string, threadId: string): Promise<void> {
+    const result = this.database.prepare(`DELETE FROM workspace_execution_reservations
+      WHERE id = ? AND state = 'submitting' AND thread_id IS NULL AND operation = 'turn'
+      AND EXISTS (SELECT 1 FROM threads t WHERE t.id = ?
+        AND t.current_workspace_id = workspace_execution_reservations.workspace_id
+        AND t.source_id = workspace_execution_reservations.source_id
+        AND t.project_id = workspace_execution_reservations.project_id
+        AND t.cwd = workspace_execution_reservations.cwd)`).run(reservationId, threadId);
+    if (result.changes !== 1) throw new Error("Created conversation does not match its reserved workspace.");
+  }
+
   /** Writes intent before the turn-start RPC, so ambiguous failures survive restart. */
   async submitting(reservationId: string): Promise<void> {
     const result = this.database.prepare(`UPDATE workspace_execution_reservations SET state = 'submitting'
@@ -167,12 +217,41 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
     this.database.transaction(() => {
       const result = this.database.prepare(`UPDATE workspace_execution_reservations SET turn_id = ?,
         acknowledged = 1, state = CASE WHEN state = 'completed' THEN state ELSE 'running' END
-        WHERE id = ? AND (turn_id IS NULL OR turn_id = ?)`)
+        WHERE id = ? AND operation IN ('turn', 'review', 'compact')
+          AND (turn_id IS NULL OR turn_id = ?)`)
         .run(turnId, reservationId, turnId);
       if (result.changes !== 1) {
         throw new Error("Turn response does not match the reserved workspace execution.");
       }
       captureTurnWorkspaceContexts(this.database, reservationId);
+      this.database.prepare("DELETE FROM workspace_execution_reservations WHERE id = ? AND state = 'completed'")
+        .run(reservationId);
+    })();
+  }
+
+  /** Releases synchronous rollback; asynchronous maintenance waits for its correlated completion. */
+  async acknowledgeMaintenance(reservationId: string, turnId?: string): Promise<void> {
+    // Review acknowledgement needs the existing early-event correlation transaction.
+    const row = this.database.prepare(`SELECT operation, state FROM workspace_execution_reservations WHERE id = ?`)
+      .get(reservationId) as { operation: string; state: string } | undefined;
+    if (row === undefined || !["review", "compact", "rollback"].includes(row.operation)
+      || row.state === "preparing") {
+      throw new Error("Maintenance reservation is not ready for acknowledgement.");
+    }
+    if (row.operation === "review") {
+      if (turnId === undefined || turnId.length === 0) {
+        throw new Error("Review returned no turn id; reconcile before retrying.");
+      }
+      await this.acknowledge(reservationId, turnId);
+      return;
+    }
+    this.database.transaction(() => {
+      if (row.operation === "rollback") {
+        this.database.prepare("DELETE FROM workspace_execution_reservations WHERE id = ?").run(reservationId);
+        return;
+      }
+      this.database.prepare("UPDATE workspace_execution_reservations SET acknowledged = 1 WHERE id = ?")
+        .run(reservationId);
       this.database.prepare("DELETE FROM workspace_execution_reservations WHERE id = ? AND state = 'completed'")
         .run(reservationId);
     })();
@@ -184,7 +263,8 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
       if (!completed) {
         this.database.prepare(`UPDATE workspace_execution_reservations SET turn_id = ?, state = 'running'
           WHERE source_id = ? AND thread_id = ? AND turn_id IS NULL
-            AND state IN ('submitting', 'uncertain')`).run(turnId, sourceId, threadId);
+            AND operation IN ('turn', 'review', 'compact') AND state IN ('submitting', 'uncertain')`)
+          .run(turnId, sourceId, threadId);
       } else {
         this.database.prepare(`UPDATE workspace_execution_reservations SET state = 'completed'
           WHERE source_id = ? AND thread_id = ? AND turn_id = ?`).run(sourceId, threadId, turnId);
@@ -218,6 +298,29 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
     return this.database.prepare(`SELECT ${reservationColumns}
       FROM workspace_execution_reservations WHERE workspace_id = ? ORDER BY id`)
       .all(workspaceId) as WorkspaceExecutionReservation[];
+  }
+
+  /** Reads reservation identity independently of the mutable thread catalogue. */
+  async getReservationForThread(threadId: string): Promise<WorkspaceExecutionReservation | null> {
+    const reservation = this.database.prepare(`SELECT ${reservationColumns}
+      FROM workspace_execution_reservations WHERE thread_id = ?`).get(threadId) as
+      WorkspaceExecutionReservation | undefined;
+    return reservation ?? null;
+  }
+
+  /** Persists the positive RPC outcome before any local deletion or emitted event. */
+  async confirmDeletion(reservationId: string): Promise<void> {
+    const result = this.database.prepare(`UPDATE workspace_execution_reservations SET acknowledged = 1
+      WHERE id = ? AND operation = 'delete' AND state IN ('submitting', 'uncertain')`).run(reservationId);
+    if (result.changes !== 1) {
+      throw new Error("Deletion reservation is not ready for confirmation.");
+    }
+  }
+
+  /** Requires a persisted successful delete response rather than a missing thread. */
+  async isDeletionConfirmed(reservationId: string): Promise<boolean> {
+    return this.database.prepare(`SELECT id FROM workspace_execution_reservations
+      WHERE id = ? AND operation = 'delete' AND acknowledged = 1`).get(reservationId) !== undefined;
   }
 
   /** Releases a reservation after source reconciliation has established inactivity. */

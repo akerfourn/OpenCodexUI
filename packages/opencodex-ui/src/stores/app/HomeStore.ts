@@ -5,6 +5,7 @@ import { makeAutoObservable } from "mobx";
 
 export type HomeSection =
   | "projects"
+  | "workspaces"
   | "sources"
   | "plugins"
   | "commit"

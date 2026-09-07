@@ -76,6 +76,8 @@ export const projectRulePresets: Array<{
  * Stores managed project rules for one opened project.
  */
 export class ProjectRulesStore {
+  /** Invalidates physical-file replies after checkout changes, including A → B → A. */
+  private workspaceRevision = 0;
   rules: OpenCodexProjectCommandRule[] = [];
   status: OpenCodexProjectCommandRuleStatus | null = null;
   testResult: OpenCodexProjectCommandRuleTestResult | null = null;
@@ -85,6 +87,18 @@ export class ProjectRulesStore {
   isTesting = false;
   isRestarting = false;
   errorMessage: string | null = null;
+
+  /** Clears physical status while retaining project-wide rule definitions. */
+  invalidateWorkspace(): void {
+    this.workspaceRevision += 1;
+    this.status = null;
+    this.testResult = null;
+    this.errorMessage = null;
+    this.isLoading = false;
+    this.isApplying = false;
+    this.isTesting = false;
+    this.isRestarting = false;
+  }
 
   /**
    * Creates the rule store.
@@ -150,20 +164,23 @@ export class ProjectRulesStore {
    * @returns Promise resolved when state is refreshed.
    */
   async loadRules(): Promise<void> {
+    const revision = this.workspaceRevision;
     this.isLoading = true;
     this.errorMessage = null;
 
     try {
       const snapshot = await this.root.request<OpenCodexProjectCommandRulesSnapshot>({
         type: "projectRules.list",
+        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         projectId: this.projectStore.project.id
       });
+      if (revision !== this.workspaceRevision) return;
       this.applySnapshot(snapshot);
     } catch (error) {
-      this.reportError(error);
+      if (revision === this.workspaceRevision) this.reportError(error);
     } finally {
       runInAction(() => {
-        this.isLoading = false;
+        if (revision === this.workspaceRevision) this.isLoading = false;
       });
     }
   }
@@ -253,23 +270,26 @@ export class ProjectRulesStore {
    * @returns Apply result.
    */
   async applyRules(force = false): Promise<OpenCodexProjectCommandRuleApplyResult | null> {
+    const revision = this.workspaceRevision;
     this.isApplying = true;
     this.errorMessage = null;
 
     try {
       const result = await this.root.request<OpenCodexProjectCommandRuleApplyResult>({
         type: "projectRules.apply",
+        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         projectId: this.projectStore.project.id,
         force
       });
+      if (revision !== this.workspaceRevision) return null;
       this.applySnapshot(result.snapshot);
       return result;
     } catch (error) {
-      this.reportError(error);
+      if (revision === this.workspaceRevision) this.reportError(error);
       throw error;
     } finally {
       runInAction(() => {
-        this.isApplying = false;
+        if (revision === this.workspaceRevision) this.isApplying = false;
       });
     }
   }
@@ -281,25 +301,28 @@ export class ProjectRulesStore {
    * @returns Policy test result, or `null` on failure.
    */
   async testRule(command: string): Promise<OpenCodexProjectCommandRuleTestResult | null> {
+    const revision = this.workspaceRevision;
     this.isTesting = true;
     this.errorMessage = null;
 
     try {
       const result = await this.root.request<OpenCodexProjectCommandRuleTestResult>({
         type: "projectRules.test",
+        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         projectId: this.projectStore.project.id,
         command
       });
+      if (revision !== this.workspaceRevision) return null;
       runInAction(() => {
         this.testResult = result;
       });
       return result;
     } catch (error) {
-      this.reportError(error);
+      if (revision === this.workspaceRevision) this.reportError(error);
       return null;
     } finally {
       runInAction(() => {
-        this.isTesting = false;
+        if (revision === this.workspaceRevision) this.isTesting = false;
       });
     }
   }
@@ -310,21 +333,24 @@ export class ProjectRulesStore {
    * @returns Promise resolved when the source is ready again.
    */
   async restartRules(): Promise<void> {
+    const revision = this.workspaceRevision;
     this.isRestarting = true;
     this.errorMessage = null;
 
     try {
       const snapshot = await this.root.request<OpenCodexProjectCommandRulesSnapshot>({
         type: "projectRules.restart",
+        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         projectId: this.projectStore.project.id
       });
+      if (revision !== this.workspaceRevision) return;
       this.applySnapshot(snapshot);
     } catch (error) {
-      this.reportError(error);
+      if (revision === this.workspaceRevision) this.reportError(error);
       throw error;
     } finally {
       runInAction(() => {
-        this.isRestarting = false;
+        if (revision === this.workspaceRevision) this.isRestarting = false;
       });
     }
   }
@@ -339,8 +365,8 @@ export class ProjectRulesStore {
     if (event.type !== "projectRules.updated" || event.projectId !== this.projectStore.project.id) {
       return;
     }
-    // The current UI displays the primary workspace until workspace selection is exposed.
-    if (event.workspacePath !== undefined && event.workspacePath !== this.projectStore.project.path) {
+    // Physical rule status belongs to the checkout that produced the event.
+    if (event.workspacePath !== undefined && event.workspacePath !== (this.projectStore.workspacePath ?? this.projectStore.project.path)) {
       return;
     }
     this.applySnapshot(event.snapshot);

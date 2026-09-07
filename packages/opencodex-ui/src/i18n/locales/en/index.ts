@@ -1,3 +1,4 @@
+import { enWorkspaces } from "./workspaces.js";
 import type { TranslationShape } from "../../translationShape.js";
 import type { frTranslation } from "../fr/index.js";
 
@@ -14,6 +15,7 @@ import { enSupport } from "./support.js";
 import { enUsage } from "./usage.js";
 
 export const enTranslation = {
+  ...enWorkspaces,
   ...enApp,
   ...enAutomation,
   ...enCommon,

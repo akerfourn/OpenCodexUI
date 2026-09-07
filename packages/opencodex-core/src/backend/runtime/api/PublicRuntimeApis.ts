@@ -1,3 +1,4 @@
+import type { OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceDiscoveryResult } from "@open-codex-ui/opencodex-protocol";
 import type {
   OpenCodexApprovalDecision,
   OpenCodexCollaborationEvent,
@@ -68,6 +69,16 @@ import type {
 
 /** Preparatory workspace catalogue, selection, and explicit execution recovery. */
 export interface WorkspacesApi {
+  /** Renames secondary display metadata within the explicit logical project. */
+  rename(projectId: string, workspaceId: string, name: string): Promise<void>;
+  /** Discovers verified external checkouts without merging existing projects. */
+  discover(projectId: string, sourceId: string): Promise<OpenCodexWorkspaceDiscoveryResult>;
+  /** Creates a source-owned secondary workspace with durable recovery. */
+  create(input: OpenCodexWorkspaceCreateInput): Promise<OpenCodexProjectWorkspace>;
+  /** Lists unfinished creation intents for presentation and explicit recovery. */
+  pendingCreations(projectId: string): Promise<OpenCodexWorkspaceCreation[]>;
+  /** Publishes verified completion or cancels undispatched preparation. */
+  reconcileCreation(creationId: string): Promise<OpenCodexProjectWorkspace | null>;
   /** Lists workspaces without contacting their source. */
   list(projectId: string): Promise<OpenCodexProjectWorkspace[]>;
   /** Selects within the same project/source after checking live thread inactivity. */
@@ -204,7 +215,8 @@ export interface ThreadsApi {
   recover(threadId: string): Promise<{ ok: true }>;
   create(
     projectPath: string | null,
-    sourceId: string | null
+    sourceId: string | null,
+    workspaceId?: string
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }>;
   updateComposerSettings(
     threadId: string,

@@ -28,6 +28,7 @@ import type { ThreadGoalSetResponse } from "./generated/v2/ThreadGoalSetResponse
 import type { ThreadStartParams } from "./generated/v2/ThreadStartParams";
 import type { ThreadStartResponse } from "./generated/v2/ThreadStartResponse";
 import type { ThreadUnarchiveResponse } from "./generated/v2/ThreadUnarchiveResponse";
+import type { ThreadUnsubscribeResponse } from "./generated/v2/ThreadUnsubscribeResponse";
 import type { ThreadItemsListParams } from "./generated/v2/ThreadItemsListParams";
 import type { ThreadItemsListResponse } from "./generated/v2/ThreadItemsListResponse";
 import type { ThreadTurnsListParams } from "./generated/v2/ThreadTurnsListParams";
@@ -228,6 +229,11 @@ export class CodexAppServerClient {
       threadId,
       ...params
     });
+  }
+
+  /** Removes this client's subscription; other subscribers may keep the thread loaded. */
+  async unsubscribeThread(threadId: string): Promise<ThreadUnsubscribeResponse> {
+    return this.request<ThreadUnsubscribeResponse>("thread/unsubscribe", { threadId });
   }
 
   /**

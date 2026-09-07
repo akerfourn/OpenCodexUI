@@ -1,3 +1,4 @@
+import type { WorkspaceExecutionService } from "../workspaces/WorkspaceExecutionService.js";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexThread,
@@ -24,6 +25,8 @@ import type {
 
 /** Dependencies required to list and mutate source-aware thread metadata. */
 export type ThreadCatalogServiceOptions = {
+  /** Shares the thread gate with workspace selections and executions. */
+  workspaceExecution?: WorkspaceExecutionService;
   /** Backend project path used when a request omits its path. */
   backendOptions: Pick<OpenCodexBackendOptions, "projectPath">;
   /** In-memory thread metadata used by catalog mutations. */
@@ -120,8 +123,19 @@ export class ThreadCatalogService {
       params.cwd = currentProjectPath;
     }
 
+    const paths = [params.cwd];
+    if (currentProjectPath !== null && this.options.workspaceExecution !== undefined) {
+      const projects = await this.options.projects.readCachedProjects();
+      const project = projects.find((item) => item.path === currentProjectPath && item.sourceId === resolvedSource.id);
+      if (project !== undefined) {
+        const workspaces = await this.options.workspaceExecution.list(project.id);
+        paths.push(...workspaces.filter((item) => !item.isPrimary && item.removedAt === null).map((item) => item.path));
+      }
+    }
+    const pages = [];
+    for (const cwd of paths) pages.push(...await readThreadPages(client, { ...params, cwd }));
     const threads = filterMainThreads(
-      (await readThreadPages(client, params)).map((thread) => ({
+      pages.map((thread) => ({
         ...thread,
         isArchived,
         sourceId: resolvedSource.id
@@ -155,7 +169,8 @@ export class ThreadCatalogService {
    */
   async createThread(
     projectPath: string | null,
-    sourceId: string | null
+    sourceId: string | null,
+    workspaceId?: string
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     if (sourceId === null) {
       throw new Error("Cannot create a thread for a project without a Codex source.");
@@ -163,13 +178,18 @@ export class ThreadCatalogService {
 
     const resolvedSource = await this.options.projects.resolveSource(sourceId);
     const client = await this.options.clients.ensureClient(resolvedSource.id);
-    const thread = await this.options.threadCreationService.create(
-      client,
-      projectPath,
-      resolvedSource.id
-    );
+    let thread: OpenCodexThread;
+    if (workspaceId === undefined) {
+      thread = await this.options.threadCreationService.create(client, projectPath, resolvedSource.id);
+    } else {
+      if (this.options.workspaceExecution === undefined) throw new Error("Workspace storage is unavailable.");
+      thread = await this.options.workspaceExecution.createThread(workspaceId, projectPath, sourceId, async (parameters) => {
+        const created = await this.options.threadCreationService.create(client, projectPath, resolvedSource.id, parameters);
+        await this.options.threadCacheService.writeIndex([created]);
+        return created;
+      });
+    }
     const turns: OpenCodexTurn[] = [];
-
     this.options.threadTurnCache.getOrCreate(thread);
     this.options.events.emit({ type: "thread.created", thread, turns });
     await this.options.threadCacheService.writeIndex([thread]);
@@ -183,7 +203,7 @@ export class ThreadCatalogService {
    * @returns Successful archive result.
    */
   async archiveThread(threadId: string): Promise<{ ok: true }> {
-    await this.setThreadArchiveState(threadId, true);
+    await this.runMutation(threadId, "archive", (dispatch) => this.setThreadArchiveState(threadId, true, dispatch));
     return { ok: true };
   }
 
@@ -194,7 +214,7 @@ export class ThreadCatalogService {
    * @returns Successful restore result.
    */
   async unarchiveThread(threadId: string): Promise<{ ok: true }> {
-    await this.setThreadArchiveState(threadId, false);
+    await this.runMutation(threadId, "unarchive", (dispatch) => this.setThreadArchiveState(threadId, false, dispatch));
     return { ok: true };
   }
 
@@ -205,6 +225,13 @@ export class ThreadCatalogService {
    * @returns Successful deletion result.
    */
   async deleteThread(threadId: string): Promise<{ ok: true }> {
+    return await this.runMutation(threadId, "delete", (dispatch, confirm) => this.deleteSourceThread(threadId, dispatch, confirm));
+  }
+
+  /** Keeps source deletion and cache cleanup inside the shared catalog gate. */
+  private async deleteSourceThread(
+    threadId: string, beforeDispatch: () => Promise<void>, confirmDeletion: () => Promise<void>
+  ): Promise<{ ok: true }> {
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
 
     if (cachedSnapshot === null || cachedSnapshot.thread.sourceId === null) {
@@ -212,10 +239,24 @@ export class ThreadCatalogService {
     }
 
     const client = await this.options.clients.ensureClient(cachedSnapshot.thread.sourceId);
+    await beforeDispatch();
     await client.deleteThread(threadId);
+    await confirmDeletion();
     await this.forgetDeletedThread(threadId, cachedSnapshot.thread.sourceId);
 
     return { ok: true };
+  }
+
+  /** Preserves cacheless behavior while serializing persisted thread mutations. */
+  private async runMutation<T>(
+    threadId: string,
+    operation: "archive" | "unarchive" | "delete",
+    action: (beforeDispatch: () => Promise<void>, confirmDeletion: () => Promise<void>) => Promise<T>
+  ): Promise<T> {
+    if (this.options.workspaceExecution === undefined) {
+      return await action(async () => {}, async () => {});
+    }
+    return await this.options.workspaceExecution.runCatalogMutation(threadId, operation, action);
   }
 
   /**
@@ -324,7 +365,9 @@ export class ThreadCatalogService {
    * @param isArchived Desired archive state.
    * @returns Promise resolved after the state is persisted.
    */
-  private async setThreadArchiveState(threadId: string, isArchived: boolean): Promise<void> {
+  private async setThreadArchiveState(
+    threadId: string, isArchived: boolean, beforeDispatch: () => Promise<void>
+  ): Promise<void> {
     const cachedSnapshot = await this.options.threadCacheService.readSnapshot(threadId);
 
     if (cachedSnapshot === null || cachedSnapshot.thread.sourceId === null) {
@@ -333,6 +376,7 @@ export class ThreadCatalogService {
 
     const client = await this.options.clients.ensureClient(cachedSnapshot.thread.sourceId);
 
+    await beforeDispatch();
     if (isArchived) {
       await client.archiveThread(threadId);
     } else {

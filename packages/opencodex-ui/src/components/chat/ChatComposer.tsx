@@ -180,24 +180,24 @@ export function ChatComposer({
   ): Promise<OpenCodexFileSearchResult[]> => {
     return await store.request<OpenCodexFileSearchResult[]>({
       type: "files.search",
-      projectPath: projectStore.projectPath,
+      projectPath: projectStore.workspacePath,
       sourceId,
       query,
       limit: 8
     });
-  }, [projectStore.projectPath, sourceId, store]);
+  }, [projectStore.workspacePath, sourceId, store]);
 
   const searchProjectSkills = useCallback(async (
     query: string
   ): Promise<OpenCodexSkillSearchResult[]> => {
     return await store.request<OpenCodexSkillSearchResult[]>({
       type: "skills.search",
-      projectPath: projectStore.projectPath,
+      projectPath: projectStore.workspacePath,
       sourceId,
       query,
       limit: 8
     });
-  }, [projectStore.projectPath, sourceId, store]);
+  }, [projectStore.workspacePath, sourceId, store]);
 
   const handleOpenFileLink = useCallback((href: string): void => {
     if (!canOpenFileLinks) {

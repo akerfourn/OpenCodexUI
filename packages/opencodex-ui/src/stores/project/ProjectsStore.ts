@@ -384,6 +384,9 @@ export class ProjectsStore implements RootChildStore {
       ?? this.root.appStore.launchProjectPath
       ?? "";
     const sourceId = thread.sourceId ?? pendingProjectStore?.project.sourceId ?? null;
+    const threadStore = this.findProjectStoreForThread(thread.id, sourceId);
+    if (threadStore !== null) return threadStore;
+    if (pendingProjectStore !== null && pendingProjectStore.project.sourceId === sourceId) return pendingProjectStore;
     const existingStore = this.findProjectStoreByPath(projectPath, sourceId);
 
     if (existingStore !== null) {

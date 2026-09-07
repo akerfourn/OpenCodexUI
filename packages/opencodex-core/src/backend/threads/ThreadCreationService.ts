@@ -1,4 +1,5 @@
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
+import { verifyWorkspaceThreadCreation } from "../workspaces/verifyWorkspaceThreadCreation.js";
+import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
@@ -35,14 +36,17 @@ export class ThreadCreationService {
   async create(
     client: CodexAppServerClient,
     projectPath: string | null,
-    sourceId: string
+    sourceId: string,
+    parameters: Partial<v2.ThreadStartParams> = {}
   ): Promise<OpenCodexThread> {
     const currentProjectPath = this.resolveCurrentProjectPath(projectPath);
     await this.options.projects.cacheProject(currentProjectPath, sourceId);
     const response = await client.startThread({
+      ...parameters,
       cwd: currentProjectPath,
       model: this.options.settings.getSettings().defaultModel
     });
+    verifyWorkspaceThreadCreation(response, parameters, currentProjectPath);
     const responseObject = readObject(response);
 
     return withSourceId(mapThread(

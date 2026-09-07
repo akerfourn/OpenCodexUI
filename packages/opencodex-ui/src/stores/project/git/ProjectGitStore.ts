@@ -59,7 +59,8 @@ export class ProjectGitStore {
    */
   constructor(
     private readonly projectStore: ProjectStore,
-    private readonly root: RootStore
+    private readonly root: RootStore,
+    private readonly workspace?: { path: string; sourceId: string | null; workspaceId?: string }
   ) {
     this.statusStore = new ProjectGitStatusStore(this);
     this.changesStore = new ProjectGitChangesStore(this);
@@ -74,13 +75,13 @@ export class ProjectGitStore {
         return projectGitStore.statusStore.isRepository;
       },
       get projectPath() {
-        return projectStore.projectPath;
+        return workspace?.path ?? projectStore.projectPath;
       },
       get sourceId() {
-        return projectStore.project.sourceId;
+        return workspace === undefined ? projectStore.project.sourceId : workspace.sourceId;
       },
       request<TResponse>(request: OpenCodexRequest): Promise<TResponse> {
-        return root.request<TResponse>(request);
+        return projectGitStore.request<TResponse>(request);
       }
     };
     this.logStore = new ProjectGitLogStore(logContext);
@@ -93,10 +94,10 @@ export class ProjectGitStore {
         return projectGitStore.statusStore.isRepository;
       },
       get projectPath() {
-        return projectStore.projectPath;
+        return workspace?.path ?? projectStore.projectPath;
       },
       get sourceId() {
-        return projectStore.project.sourceId;
+        return workspace === undefined ? projectStore.project.sourceId : workspace.sourceId;
       },
       get projectId() {
         return projectStore.project.id;
@@ -105,7 +106,7 @@ export class ProjectGitStore {
         return projectStore.project.preferences;
       },
       request<TResponse>(request: OpenCodexRequest): Promise<TResponse> {
-        return root.request<TResponse>(request);
+        return projectGitStore.request<TResponse>(request);
       },
       reportWarning(message: string): void {
         projectGitStore.reportWarning(message);
@@ -142,12 +143,12 @@ export class ProjectGitStore {
 
   /** Returns the project path used by Git requests. */
   get projectPath(): string {
-    return this.projectStore.projectPath;
+    return this.workspace?.path ?? this.projectStore.projectPath;
   }
 
   /** Returns the source identifier used by Git requests. */
   get sourceId(): string | null {
-    return this.projectStore.project.sourceId;
+    return this.workspace === undefined ? this.projectStore.project.sourceId : this.workspace.sourceId;
   }
 
   /** Returns the project identifier used by project metadata requests. */
@@ -182,6 +183,11 @@ export class ProjectGitStore {
 
   /** Sends one request through the owning backend transport. */
   request<TResponse>(request: OpenCodexRequest): Promise<TResponse> {
+    const workspaceId = this.workspace?.workspaceId ?? this.projectStore.workspaces?.workspaces.find(
+      (item) => item.path === this.projectPath && item.sourceId === this.sourceId)?.id;
+    if (workspaceId !== undefined && request.type.startsWith("git.")) {
+      return this.root.request<TResponse>({ ...request, workspaceId } as OpenCodexRequest);
+    }
     return this.root.request<TResponse>(request);
   }
 
@@ -272,7 +278,7 @@ export class ProjectGitStore {
       logType: "warning",
       message,
       details: {
-        projectPath: this.projectStore.projectPath,
+        projectPath: this.projectPath,
         sourceId: this.projectStore.project.sourceId
       }
     });

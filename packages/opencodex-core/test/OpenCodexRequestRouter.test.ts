@@ -5,17 +5,35 @@ import type { OpenCodexBackendRuntime } from "../src/OpenCodexBackendRuntime";
 import { OpenCodexRequestRouter } from "../src/OpenCodexRequestRouter";
 
 describe("OpenCodexRequestRouter workspace routes", () => {
+  it("should route creation and recovery without deriving source paths", async () => {
+    const workspaces = { discover: vi.fn(), create: vi.fn(), pendingCreations: vi.fn(), reconcileCreation: vi.fn() };
+    const runtime = { workspaces } as unknown as OpenCodexBackendRuntime;
+    const router = new OpenCodexRequestRouter(runtime);
+    const input = { projectId: "project", sourceId: "source", destinationPath: "/new",
+      start: { mode: "detached" as const, startPoint: "HEAD" } };
+    await router.handleRequest({ type: "projectWorkspaces.discover", projectId: "project", sourceId: "source" });
+    await router.handleRequest({ type: "projectWorkspaces.create", input });
+    await router.handleRequest({ type: "projectWorkspaces.creations.list", projectId: "project" });
+    await router.handleRequest({ type: "projectWorkspaces.creations.reconcile", creationId: "creation" });
+    expect(workspaces.discover).toHaveBeenCalledWith("project", "source");
+    expect(workspaces.create).toHaveBeenCalledWith(input);
+    expect(workspaces.pendingCreations).toHaveBeenCalledWith("project");
+    expect(workspaces.reconcileCreation).toHaveBeenCalledWith("creation");
+  });
+
   it("should forward workspace identities and explicit recovery without deriving a path", async () => {
-    const workspaces = { list: vi.fn(), select: vi.fn(), reconcile: vi.fn() };
+    const workspaces = { rename: vi.fn(), list: vi.fn(), select: vi.fn(), reconcile: vi.fn() };
     const startTurn = vi.fn();
     const runtime = { workspaces, threads: { startTurn } } as unknown as OpenCodexBackendRuntime;
     const router = new OpenCodexRequestRouter(runtime);
 
+    await router.handleRequest({ type: "projectWorkspaces.rename", projectId: "project-a", workspaceId: "workspace-a", name: "Feature" });
     await router.handleRequest({ type: "projectWorkspaces.list", projectId: "project-a" });
     await router.handleRequest({ type: "threads.workspace.select", threadId: "thread-a", workspaceId: "workspace-a" });
     await router.handleRequest({ type: "threads.workspace.reconcile", threadId: "thread-a" });
     await router.handleRequest({ type: "turn.start", threadId: null, workspaceId: "workspace-a", text: "start" });
 
+    expect(workspaces.rename).toHaveBeenCalledWith("project-a", "workspace-a", "Feature");
     expect(workspaces.list).toHaveBeenCalledWith("project-a");
     expect(workspaces.select).toHaveBeenCalledWith("thread-a", "workspace-a");
     expect(workspaces.reconcile).toHaveBeenCalledWith("thread-a");

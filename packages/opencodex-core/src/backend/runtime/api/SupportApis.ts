@@ -1,3 +1,4 @@
+import { normalizeWorkspaceRoots } from "../../workspaces/workspaceRootsSettings.js";
 import type {
   OpenCodexApprovalDecision,
   OpenCodexFileSearchResult,
@@ -273,6 +274,8 @@ type SettingsApiSave = (settings: OpenCodexSettings) => Promise<void> | void;
 
 /** Exposes settings reads and updates while preserving runtime normalization. */
 export class SettingsApi implements SettingsApiContract {
+  /** Serializes persistence so concurrent patches retain all previously saved fields. */
+  private updateQueue: Promise<void> = Promise.resolve();
   /** Creates a settings API over a mutable settings store and persistence callback. */
   constructor(
     private readonly settings: RuntimeSettingsPort,
@@ -286,14 +289,25 @@ export class SettingsApi implements SettingsApiContract {
 
   /** Updates, normalizes, and persists backend settings. */
   async update(patch: Partial<OpenCodexSettings>): Promise<OpenCodexSettings> {
+    const plainPatch = structuredClone(patch);
+    const operation = this.updateQueue.then(() => this.persist(plainPatch));
+    this.updateQueue = operation.then(() => undefined, () => undefined);
+    return await operation;
+  }
+
+  /** Publishes settings only after persistence succeeds; a failed write preserves the runtime. */
+  private async persist(patch: Partial<OpenCodexSettings>): Promise<OpenCodexSettings> {
     const nextSettings = { ...this.settings.getSettings(), ...patch };
+    if (patch.workspaceRoots !== undefined) {
+      nextSettings.workspaceRoots = normalizeWorkspaceRoots(patch.workspaceRoots);
+    }
 
     if (!nextSettings.developerMode || !nextSettings.performanceMonitoringEnabled) {
       nextSettings.advancedPerformanceMonitoringEnabled = false;
     }
 
-    this.settings.setSettings(nextSettings);
     await this.saveSettings?.(nextSettings);
+    this.settings.setSettings(nextSettings);
     return nextSettings;
   }
 }

@@ -10,6 +10,7 @@ import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
  * Default settings applied when no user configuration has been saved yet.
  */
 export const defaultSettings: OpenCodexSettings = {
+  workspaceRoots: [],
   codexCommand: "codex",
   codexReleaseCheck: {
     latestVersion: null,

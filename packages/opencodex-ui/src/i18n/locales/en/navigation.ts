@@ -14,6 +14,7 @@ export const enNavigation = {
     title: "Close {{project}}?"
   },
   home: {
+    workspaces: "Workspaces",
     allSources: "All sources",
     createProjectGroup: "Create group",
     deleteProjectGroup: "Delete group",

@@ -110,6 +110,7 @@ export class ThreadConversationService {
       projects: options.projects
     });
     this.threadCatalogService = new ThreadCatalogService({
+      workspaceExecution: options.workspaceExecution,
       backendOptions: options.backendOptions,
       threadTurnCache: options.threadTurnCache,
       threadCacheService: options.threadCacheService,
@@ -336,9 +337,10 @@ export class ThreadConversationService {
    */
   async createThread(
     projectPath: string | null,
-    sourceId: string | null
+    sourceId: string | null,
+    workspaceId?: string
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.threadCatalogService.createThread(projectPath, sourceId);
+    return await this.threadCatalogService.createThread(projectPath, sourceId, workspaceId);
   }
 
   /**

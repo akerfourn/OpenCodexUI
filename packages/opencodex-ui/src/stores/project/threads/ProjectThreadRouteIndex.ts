@@ -48,7 +48,8 @@ export class ProjectThreadRouteIndex {
     for (const projectStore of this.readProjectStores().values()) {
       const sourceMatches = sourceId === undefined || projectStore.project.sourceId === sourceId;
 
-      if (projectStore.projectPath === normalizedPath && sourceMatches) {
+      if (sourceMatches && (projectStore.projectPath === normalizedPath
+        || projectStore.workspaces?.workspaces.some((workspace) => workspace.path === normalizedPath))) {
         return projectStore;
       }
     }

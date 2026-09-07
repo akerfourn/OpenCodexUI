@@ -1,244 +1,51 @@
-/**
- * Renders the thread button component for the OpenCodex UI.
- */
 import { observer } from "mobx-react-lite";
-import { useState, type MouseEvent } from "react";
-import {
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  IconButton,
-  ListItemButton,
-  ListItemIcon,
-  Menu,
-  MenuItem,
-  Stack,
-  Typography
-} from "@mui/material";
-import ArchiveOutlinedIcon from "@mui/icons-material/ArchiveOutlined";
-import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
+import { Box, CircularProgress, ListItemButton, ListItemIcon, Stack, Typography } from "@mui/material";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
-import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
-import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { useTranslation } from "react-i18next";
-
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
-
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import type { RootStore } from "../../stores/RootStore";
-import { ChatEventLogDialogX } from "../dialogs/ChatEventLogDialog";
 import type { OpenSubAgentDialog } from "./subAgentDialog";
+import { ThreadActionsMenuX } from "./ThreadActionsMenu";
 
-type ThreadButtonProps = {
-  projectStore: ProjectStore;
-  root: RootStore;
-  thread: OpenCodexThread;
+/** Displays a conversation row; properties and lifecycle actions live in its menu. */
+export function ThreadButton({ projectStore, root, thread, onOpenSubAgentDialog }: {
+  projectStore: ProjectStore; root: RootStore; thread: OpenCodexThread;
   onOpenSubAgentDialog: OpenSubAgentDialog;
-};
-
-/**
- * Renders the thread button component.
- *
- * @param props Component props.
- *
- * @returns Nothing.
- */
-export function ThreadButton({
-  projectStore,
-  root,
-  thread,
-  onOpenSubAgentDialog
-}: ThreadButtonProps) {
+}) {
   const { t } = useTranslation();
-  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isEventLogDialogOpen, setIsEventLogDialogOpen] = useState(false);
-  const threadListStore = projectStore.threadListStore;
-  const isMenuOpen = menuAnchor !== null;
-  const threadTitle = getThreadTitle(thread, t("chat.untitled"));
-
-  function handleOpenThread(): void {
-    if (threadListStore.isShowingArchivedThreads) {
-      return;
-    }
-
-    projectStore.openThread(thread.id);
-  }
-
-  function handleOpenMenu(event: MouseEvent<HTMLButtonElement>): void {
-    event.stopPropagation();
-    setMenuAnchor(event.currentTarget);
-  }
-
-  function handleCloseMenu(): void {
-    setMenuAnchor(null);
-  }
-
-  function handleArchiveThread(): void {
-    handleCloseMenu();
-    threadListStore.archiveThread(thread.id);
-  }
-
-  function handleUnarchiveThread(): void {
-    handleCloseMenu();
-    threadListStore.unarchiveThread(thread.id);
-  }
-
-  function handleOpenDeleteDialog(): void {
-    handleCloseMenu();
-    setIsDeleteDialogOpen(true);
-  }
-
-  function handleOpenSubAgentDialog(): void {
-    handleCloseMenu();
-    onOpenSubAgentDialog(thread);
-  }
-
-  function handleOpenEventLogDialog(): void {
-    handleCloseMenu();
-    setIsEventLogDialogOpen(true);
-  }
-
-  function handleCloseEventLogDialog(): void {
-    setIsEventLogDialogOpen(false);
-  }
-
-  function handleCloseDeleteDialog(): void {
-    if (isArchiving) {
-      return;
-    }
-
-    setIsDeleteDialogOpen(false);
-  }
-
-  function handleConfirmDeleteThread(): void {
-    setIsDeleteDialogOpen(false);
-    threadListStore.deleteThread(thread.id);
-  }
-
-  const isActive = projectStore.selectedChatId === thread.id;
-  const isLoading = threadListStore.loadingThreadId === thread.id;
-  const isArchiving = threadListStore.archivingThreadId === thread.id;
-  const indicatorState = projectStore.getThreadIndicatorState(thread.id);
-  const shouldShowLoading = isLoading || isArchiving || indicatorState === "running";
-  const chatIconClassName = indicatorState === "unseen" ? "work-indicator-pulse" : undefined;
+  const list = projectStore.threadListStore;
+  const title = getThreadTitle(thread, t("chat.untitled"));
   const metadata = getThreadMetadata(thread);
-  const archiveAction = threadListStore.isShowingArchivedThreads
-    ? (
-        <MenuItem onClick={handleUnarchiveThread}>
-          <ListItemIcon sx={{ minWidth: 32 }}>
-            <UnarchiveOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          {t("sidebar.unarchiveThread")}
-        </MenuItem>
-      )
-    : (
-        <MenuItem onClick={handleArchiveThread}>
-          <ListItemIcon sx={{ minWidth: 32 }}>
-            <ArchiveOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          {t("sidebar.archiveThread")}
-        </MenuItem>
-      );
-
+  const loading = list.loadingThreadId === thread.id;
+  const archiving = list.archivingThreadId === thread.id;
+  const indicator = projectStore.getThreadIndicatorState(thread.id);
+  const iconClassName = indicator === "unseen" ? "work-indicator-pulse" : undefined;
+  const icon = loading || archiving || indicator === "running"
+    ? <CircularProgress size={16} thickness={5} />
+    : <ChatBubbleOutlineOutlinedIcon className={iconClassName} fontSize="small" />;
+  const metadataContent = metadata === null ? null
+    : <Typography variant="caption" component="div" color="text.secondary" noWrap>{metadata}</Typography>;
+  /** Archived conversations retain their existing catalogue-only behavior. */
+  function handleOpenThread(): void {
+    if (!list.isShowingArchivedThreads) projectStore.openThread(thread.id);
+  }
   return (
-    <ListItemButton
-      component="div"
-      selected={isActive}
-      disabled={isLoading || isArchiving}
-      onClick={handleOpenThread}
-      sx={{ mb: 0.5, alignItems: "flex-start", borderRadius: 1 }}
-    >
-      <ListItemIcon sx={{ minWidth: 28, color: "inherit", mt: "2px" }}>
-        {shouldShowLoading ? (
-          <CircularProgress size={16} thickness={5} />
-        ) : (
-          <ChatBubbleOutlineOutlinedIcon className={chatIconClassName} fontSize="small" />
-        )}
-      </ListItemIcon>
+    <ListItemButton component="div" selected={projectStore.selectedChatId === thread.id}
+      disabled={loading || archiving} onClick={handleOpenThread}
+      sx={{ mb: 0.5, alignItems: "flex-start", borderRadius: 1 }}>
+      <ListItemIcon sx={{ minWidth: 28, color: "inherit", mt: "2px" }}>{icon}</ListItemIcon>
       <Stack direction="row" spacing={0.5} sx={{ minWidth: 0, flex: 1, alignItems: "flex-start" }}>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography variant="body2" noWrap>
-            {threadTitle}
-          </Typography>
-          {metadata !== null ? (
-            <Typography variant="caption" component="div" color="text.secondary" noWrap>
-              {metadata}
-            </Typography>
-          ) : null}
+          <Typography variant="body2" noWrap>{title}</Typography>
+          {metadataContent}
         </Box>
-        <IconButton
-          aria-label={t("sidebar.threadActions")}
-          size="small"
-          disabled={isArchiving}
-          onClick={handleOpenMenu}
-          sx={{ mt: -0.5 }}
-        >
-          <MoreVertOutlinedIcon fontSize="small" />
-        </IconButton>
+        <ThreadActionsMenuX project={projectStore} root={root} thread={thread} title={title}
+          onOpenSubAgentDialog={onOpenSubAgentDialog} />
       </Stack>
-      <Menu
-        anchorEl={menuAnchor}
-        open={isMenuOpen}
-        onClose={handleCloseMenu}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
-      >
-        {archiveAction}
-        <MenuItem onClick={handleOpenSubAgentDialog}>
-          <ListItemIcon sx={{ minWidth: 32 }}>
-            <AccountTreeOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          {t("sidebar.subAgentThreads")}
-        </MenuItem>
-        <MenuItem onClick={handleOpenEventLogDialog}>
-          <ListItemIcon sx={{ minWidth: 32 }}>
-            <EventNoteOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          {t("sidebar.threadEventLog")}
-        </MenuItem>
-        <MenuItem onClick={handleOpenDeleteDialog}>
-          <ListItemIcon sx={{ minWidth: 32 }}>
-            <DeleteOutlineOutlinedIcon color="error" fontSize="small" />
-          </ListItemIcon>
-          {t("sidebar.deleteThread")}
-        </MenuItem>
-      </Menu>
-      <Dialog open={isDeleteDialogOpen} onClose={handleCloseDeleteDialog}>
-        <DialogTitle>{t("sidebar.deleteThreadTitle")}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {t("sidebar.deleteThreadDescription", { thread: threadTitle })}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button disabled={isArchiving} onClick={handleCloseDeleteDialog}>
-            {t("sidebar.deleteThreadCancel")}
-          </Button>
-          <Button color="error" disabled={isArchiving} variant="contained" onClick={handleConfirmDeleteThread}>
-            {t("sidebar.deleteThreadConfirm")}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <ChatEventLogDialogX
-        open={isEventLogDialogOpen}
-        sourceId={projectStore.resolveThreadSourceId(thread)}
-        threadId={thread.id}
-        threadTitle={threadTitle}
-        store={root}
-        onClose={handleCloseEventLogDialog}
-      />
     </ListItemButton>
   );
 }
-
 export const ThreadButtonX = observer(ThreadButton);
 
 /**

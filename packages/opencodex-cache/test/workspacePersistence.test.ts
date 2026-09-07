@@ -26,8 +26,15 @@ describe("workspace persistence", () => {
 
   it("should preserve legacy IDs and associations when migrating twice", async () => {
     database.exec(`
+      DROP TRIGGER protect_transition_execution;
+      DROP TRIGGER protect_transition_workspace;
+      DROP TRIGGER protect_transition_thread;
+      DROP TABLE workspace_transitions;
       DROP TABLE turn_workspace_contexts;
       DROP TRIGGER delete_thread_workspace_contexts;
+      DROP TRIGGER protect_creation_destination;
+      DROP TRIGGER protect_creation_workspace;
+      DROP TABLE workspace_creations;
       DROP TABLE workspace_execution_reservations;
       ALTER TABLE threads DROP COLUMN current_workspace_id;
       DROP TABLE workspace_path_aliases;
@@ -46,7 +53,7 @@ describe("workspace persistence", () => {
 
     expect(await workspaces.list("legacy-hash")).toEqual([{
       id: "primary:legacy-hash", projectId: "legacy-hash", sourceId: "source-a",
-      path: "/repo", isPrimary: true, managed: false, removedAt: null
+      path: "/repo", name: null, isPrimary: true, managed: false, removedAt: null
     }]);
     expect(await workspaces.getForThread("legacy-thread")).toMatchObject({ projectId: "legacy-hash" });
     expect(database.prepare("SELECT id, display_name FROM projects").all()).toEqual([

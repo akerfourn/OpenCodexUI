@@ -54,7 +54,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const commitStore = gitStore.commitStore;
   const referencesStore = gitStore.referencesStore;
   const tagStore = gitStore.tagStore;
-  const projectPath = projectStore.projectPath;
+  const projectPath = projectStore.workspacePath;
   const sourceId = projectStore.project.sourceId;
   const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
   const canOpenFiles = source !== undefined &&

@@ -1,7 +1,6 @@
 /**
  * Renders the chat list for one opened project.
  */
-import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import BarChartOutlinedIcon from "@mui/icons-material/BarChartOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -27,7 +26,6 @@ import {
   MenuItem,
   Stack,
   TextField,
-  Tooltip,
   Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
@@ -36,7 +34,9 @@ import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
-import { ThreadButtonX } from "../threads/ThreadButton";
+import { WorkspaceThreadGroupX } from "./WorkspaceThreadGroup";
+import { WorkspaceListActionsX } from "./WorkspaceListActions";
+import { groupWorkspaceThreads } from "../../stores/project/threads/workspaceThreadGroups";
 import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 import { UsageLimitsWidgetX } from "../usage/UsageLimitsWidget";
 import { ProjectStatisticsDialogX } from "./ProjectStatisticsDialog";
@@ -66,6 +66,8 @@ export function ProjectThreadList({
   const [projectActionsAnchor, setProjectActionsAnchor] = useState<HTMLElement | null>(null);
   const [isStatisticsDialogOpen, setIsStatisticsDialogOpen] = useState(false);
   const threadListStore = projectStore.threadListStore;
+  const workspaceGroups = groupWorkspaceThreads(projectStore.workspaces.workspaces,
+    threadListStore.filteredThreads, projectStore.project.sourceId);
   const source = store.sourcesStore.sources.find((entry) => entry.id === projectStore.project.sourceId);
   const isReadOnlyProject = projectStore.isReadOnlyFromCache;
   const canOpenProject = source !== undefined &&
@@ -81,24 +83,20 @@ export function ProjectThreadList({
     threadListStore.setSearchTerm(event.target.value);
   }
 
-  function handleNewThread(): void {
-    projectStore.createThread();
-  }
-
   function handleRefreshThreads(): void {
     projectStore.refreshThreads();
   }
 
   function handleOpenProject(): void {
-    store.openProjectInIde(projectStore.projectPath, projectStore.project.sourceId);
+    store.openProjectInIde(projectStore.workspacePath, projectStore.project.sourceId);
   }
 
   function handleOpenProjectFolder(): void {
-    store.openProjectFolder(projectStore.projectPath, projectStore.project.sourceId);
+    store.openProjectFolder(projectStore.workspacePath, projectStore.project.sourceId);
   }
 
   function handleOpenProjectTerminal(): void {
-    store.openProjectTerminal(projectStore.projectPath, projectStore.project.sourceId);
+    store.openProjectTerminal(projectStore.workspacePath, projectStore.project.sourceId);
   }
 
   function handleOpenRenameDialog(): void {
@@ -222,19 +220,6 @@ export function ProjectThreadList({
               >
                 <MoreVertOutlinedIcon fontSize="small" />
               </IconButton>
-            </Stack>
-            <Stack className="project-sidebar-header-actions" direction="row" spacing={0.5}>
-              <Tooltip title={t("sidebar.openNewChat")}>
-                <IconButton
-                  aria-label={t("sidebar.openNewChat")}
-                  color="primary"
-                  size="small"
-                  disabled={isReadOnlyProject}
-                  onClick={handleNewThread}
-                >
-                  <AddOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
             </Stack>
           </Box>
           <Typography variant="caption" component="div" color="text.secondary" noWrap>
@@ -381,15 +366,11 @@ export function ProjectThreadList({
       ) : null}
 
       <div className="thread-groups">
-        {threadListStore.filteredThreads.map((thread) => (
-          <ThreadButtonX
-            key={thread.id}
-            projectStore={projectStore}
-            root={store}
-            thread={thread}
-            onOpenSubAgentDialog={onOpenSubAgentDialog}
-          />
+        {workspaceGroups.map((group) => (
+          <WorkspaceThreadGroupX key={group.id} group={group} project={projectStore} root={store}
+            onOpenSubAgentDialog={onOpenSubAgentDialog} />
         ))}
+        <WorkspaceListActionsX project={projectStore} />
       </div>
       {projectStore.hasSyncingChat ? (
         <Stack

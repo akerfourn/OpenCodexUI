@@ -5,6 +5,7 @@ import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import DonutSmallOutlinedIcon from "@mui/icons-material/DonutSmallOutlined";
 import DnsOutlinedIcon from "@mui/icons-material/DnsOutlined";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
+import FolderCopyOutlinedIcon from "@mui/icons-material/FolderCopyOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import WorkspacesOutlinedIcon from "@mui/icons-material/WorkspacesOutlined";
@@ -42,6 +43,11 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
 
   function selectSettings(): void {
     selectSection("settings");
+  }
+
+  /** Opens workspace storage as its own application section. */
+  function selectWorkspaces(): void {
+    selectSection("workspaces");
   }
 
   function selectLogs(): void {
@@ -89,6 +95,12 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
             <WorkspacesOutlinedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary={t("home.projects")} />
+        </ListItemButton>
+        <ListItemButton selected={selectedSection === "workspaces"} onClick={selectWorkspaces}>
+          <ListItemIcon>
+            <FolderCopyOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("home.workspaces")} />
         </ListItemButton>
         <ListItemButton selected={selectedSection === "sources"} onClick={selectSources}>
           <ListItemIcon>

@@ -419,6 +419,8 @@ export async function clearSourceAssociations(
 /** Prevents orphaning a durable execution that still requires its source for recovery. */
 function requireSourceWithoutWorkspaceExecutions(database: BetterSqliteDatabase, sourceId: string): void {
   if (database.prepare("SELECT id FROM workspace_execution_reservations WHERE source_id = ?")
+    .get(sourceId) !== undefined || database.prepare("SELECT id FROM workspace_transitions WHERE source_id = ?")
+    .get(sourceId) !== undefined || database.prepare("SELECT id FROM workspace_creations WHERE source_id = ?")
     .get(sourceId) !== undefined) {
     throw new Error("Source has unresolved workspace executions; reconcile them before removal.");
   }

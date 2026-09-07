@@ -2,6 +2,8 @@
 export interface OpenCodexProjectWorkspace {
   /** Opaque stable workspace identifier. */
   id: string;
+  /** User-facing name; absent on legacy payloads. Primary uses its fixed localized label. */
+  name?: string | null;
   /** Logical project owning this workspace. */
   projectId: string;
   /** Owning source, or null when its association has been removed. */

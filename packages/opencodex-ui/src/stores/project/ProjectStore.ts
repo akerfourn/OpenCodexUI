@@ -1,13 +1,14 @@
 /**
  * Holds the observable UI state for one opened project tab.
  */
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, reaction, type IReactionDisposer } from "mobx";
 
 import type {
   OpenCodexProject,
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
 
+import { ProjectWorkspacesStore } from "./ProjectWorkspacesStore";
 import { ChatStore } from "../chat/ChatStore";
 import { ProjectCommandsStore } from "./ProjectCommandsStore";
 import { ProjectComposeStore } from "./ProjectComposeStore";
@@ -26,13 +27,18 @@ export type ThreadIndicatorState = "idle" | "running" | "unseen";
  * Stores project-specific chat metadata and loaded chat stores.
  */
 export class ProjectStore {
+  /** Workspace catalogue and selection for this logical project. */
+  readonly workspaces: ProjectWorkspacesStore;
+  /** Releases the checkout invalidation reaction when this tab closes. */
+  private readonly disposeWorkspaceReaction: IReactionDisposer;
   project: OpenCodexProject;
   selectedChatId: string | null = null;
   trustRequest: ProjectTrustRequest | null = null;
   /** Resizable layout state retained outside mounted React views. */
   readonly layoutStore: ProjectViewLayoutStore;
   readonly threadListStore: ThreadListStore;
-  readonly gitStore: ProjectGitStore;
+  /** Git state stays attached to its checkout, including pending replies and drafts. */
+  private readonly gitStores = new Map<string, ProjectGitStore>();
   readonly commandsStore: ProjectCommandsStore;
   readonly composeStore: ProjectComposeStore;
   readonly contextStore: ProjectContextStore;
@@ -50,17 +56,23 @@ export class ProjectStore {
     private readonly root: RootStore
   ) {
     this.project = project;
+    this.workspaces = new ProjectWorkspacesStore(this, root);
     this.layoutStore = new ProjectViewLayoutStore();
     this.threadListStore = new ThreadListStore(this, root);
-    this.gitStore = new ProjectGitStore(this, root);
+
     this.commandsStore = new ProjectCommandsStore(this, root);
     this.composeStore = new ProjectComposeStore(this, root);
     this.contextStore = new ProjectContextStore(this, root);
     this.rulesStore = new ProjectRulesStore(this, root);
     this.tasksStore = new ProjectTasksStore(this, root);
-    makeAutoObservable<ProjectStore, "root" | "layoutStore">(this, {
+    makeAutoObservable<ProjectStore, "root" | "layoutStore" | "gitStores">(this, {
       root: false,
+      gitStores: false,
       layoutStore: false
+    });
+    this.disposeWorkspaceReaction = reaction(() => this.workspacePath, () => {
+      this.composeStore.reset();
+      this.rulesStore.invalidateWorkspace();
     });
   }
 
@@ -71,6 +83,29 @@ export class ProjectStore {
    */
   get projectPath(): string {
     return this.project.path;
+  }
+
+  /** Physical context used by tools, independent of the logical project's identity. */
+  get workspacePath(): string {
+    return this.workspaces.current?.path ?? this.selectedChat?.thread.projectPath ?? this.project.path;
+  }
+
+  /** Stable workspace identity for explicit tool requests. */
+  get workspaceId(): string | undefined {
+    return this.workspaces.current?.id;
+  }
+
+  /** Retains independent Git state so old replies cannot populate another checkout. */
+  get gitStore(): ProjectGitStore {
+    const key = `${this.project.sourceId}:${this.workspacePath}`;
+    let store = this.gitStores.get(key);
+    if (store === undefined) {
+      store = new ProjectGitStore(this, this.root, {
+        path: this.workspacePath, sourceId: this.project.sourceId, workspaceId: this.workspaceId
+      });
+      this.gitStores.set(key, store);
+    }
+    return store;
   }
 
   /**
@@ -210,6 +245,7 @@ export class ProjectStore {
       this.composeStore.hasNonStoppedContainer;
 
     return this.gitStore.commitStore.hasDraftMessage ||
+      [...this.gitStores.values()].some((store) => store.commitStore.hasDraftMessage) ||
       this.commandsStore.hasActiveRun ||
       hasComposeActivity;
   }
@@ -242,7 +278,7 @@ export class ProjectStore {
     const projectIdentityChanged = this.project.path !== project.path ||
       this.project.sourceId !== project.sourceId;
     this.project = project;
-    this.gitStore.applyProjectPreferences(project.preferences);
+    for (const store of this.gitStores.values()) store.applyProjectPreferences(project.preferences);
     if (projectIdentityChanged) {
       this.composeStore.reset();
     }
@@ -273,35 +309,17 @@ export class ProjectStore {
     }
   }
 
-  /**
-   * Replaces the visible thread list with fresh metadata.
-   *
-   * @param threads Thread collection to show for the project.
-   *
-   * @returns Nothing.
-   */
+  /** Replaces the visible thread list with fresh metadata. */
   setThreads(threads: OpenCodexThread[]): void {
     this.threadListStore.setThreads(threads);
   }
 
-  /**
-   * Inserts or updates one thread in the project list.
-   *
-   * @param thread Thread metadata to insert.
-   *
-   * @returns Merged thread metadata.
-   */
+  /** Inserts or updates one thread in the project list. */
   upsertThread(thread: OpenCodexThread): OpenCodexThread {
     return this.threadListStore.upsertThread(thread);
   }
 
-  /**
-   * Finds one thread in the project list.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Matching thread, or `null`.
-   */
+  /** Finds one thread in the project list. */
   findThread(threadId: string): OpenCodexThread | null {
     return this.threadListStore.findThread(threadId);
   }
@@ -348,11 +366,7 @@ export class ProjectStore {
     this.markThreadSeen(threadId);
   }
 
-  /**
-   * Marks the selected chat as seen when it is loaded.
-   *
-   * @returns Nothing.
-   */
+  /** Marks the selected chat as seen when it is loaded. */
   markSelectedChatSeen(): void {
     if (this.selectedChatId === null) {
       return;
@@ -361,13 +375,7 @@ export class ProjectStore {
     this.markThreadSeen(this.selectedChatId);
   }
 
-  /**
-   * Marks one chat as seen when it is loaded.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Nothing.
-   */
+  /** Marks one chat as seen when it is loaded. */
   markThreadSeen(threadId: string): void {
     this.chatsById.get(threadId)?.markSeen();
   }
@@ -397,56 +405,27 @@ export class ProjectStore {
     return "idle";
   }
 
-  /**
-   * Sets the project search term.
-   *
-   * @param value Search text.
-   *
-   * @returns Nothing.
-   */
+  /** Sets the project search term. */
   setSearchTerm(value: string): void {
     this.threadListStore.setSearchTerm(value);
   }
 
-  /**
-   * Refreshes this project's thread list.
-   *
-   * @param sourceIdOverride Optional source override used after project opening.
-   *
-   * @returns Nothing.
-   */
+  /** Refreshes this project's thread list. */
   refreshThreads(sourceIdOverride?: string | null): void {
     this.threadListStore.refresh(sourceIdOverride);
   }
 
-  /**
-   * Creates a new thread in this project.
-   *
-   * @returns Nothing.
-   */
+  /** Creates a new thread in this project. */
   createThread(): void {
     this.threadListStore.createThread();
   }
 
-  /**
-   * Opens a thread in this project.
-   *
-   * @param threadId Thread identifier.
-   *
-   * @returns Nothing.
-   */
+  /** Opens a thread in this project. */
   openThread(threadId: string): void {
     this.threadListStore.openThread(threadId);
   }
 
-  /**
-   * Applies a local thread rename.
-   *
-   * @param threadId Thread identifier.
-   * @param name New title.
-   *
-   * @returns Nothing.
-   */
+  /** Applies a local thread rename. */
   renameThread(threadId: string, name: string): void {
     this.threadListStore.renameThread(threadId, name);
   }
@@ -481,6 +460,8 @@ export class ProjectStore {
       chatStore.dispose();
     }
 
+    this.disposeWorkspaceReaction();
+    this.workspaces.dispose();
     this.chatsById.clear();
     this.commandsStore.dispose();
     this.composeStore.reset();

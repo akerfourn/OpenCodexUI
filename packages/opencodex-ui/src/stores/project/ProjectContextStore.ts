@@ -255,6 +255,7 @@ export class ProjectContextStore {
     try {
       const project = await this.root.request<OpenCodexProject>({
         type: "projects.context.sync",
+        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         projectId: this.projectStore.project.id
       });
       runInAction(() => {

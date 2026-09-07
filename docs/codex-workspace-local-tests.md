@@ -1,5 +1,43 @@
 # Essais locaux de transition de workspace
 
+## Complément : préparation applicative des permissions
+
+Les services `WorkspacePermissionPreparation` et `WorkspaceThreadTransition`
+ont été exécutés ensemble contre le vrai app-server 0.153.4 sous Linux.
+La fixture fournit une réservation et des préférences synthétiques ; ce test
+ne couvrait pas le coordinateur de production. Le scénario complet figure
+dans la dernière section de ce document.
+
+Le scénario crée un thread dans A, prépare le profil de B avec un dossier
+partagé autorisé en écriture et ses fichiers `*.env` interdits, reprend le même
+thread dans B, puis exécute les outils demandés par un fournisseur simulé.
+
+Résultats vérifiés par assertions :
+
+- le profil identifié par son contenu est chargé par `config/read` ;
+- le sandbox retourné après reprise correspond à la projection attendue ;
+- le fichier demandé dans B est créé ;
+- le fichier demandé dans le dossier partagé est créé ;
+- le fichier demandé dans A n'est pas créé : système de fichiers en lecture
+  seule ;
+- le contenu synthétique du fichier partagé `config.env` n'est pas retourné :
+  permission refusée.
+
+`config/read` ajoute des champs optionnels à `null` pour le réseau et la
+profondeur des globs. La comparaison tolère uniquement les champs connus
+absents ; des valeurs explicites ou des règles supplémentaires restent refusées.
+
+Artefacts temporaires : `/tmp/workspace-policy-live-V2WEko`.
+Script : `/tmp/workspace-permission-live.ts`, lancé avec le `vite-node` local.
+Trois requêtes au fournisseur simulé, aucun appel LLM. Le fichier `.env`
+contient uniquement une chaîne de test, sans secret réel.
+
+Ce contrôle isolé complète les essais initiaux ci-dessous. Il ne couvre pas
+les alias de chemins par liens symboliques, les processus survivants, les
+clients multiples, ni le raccordement de la politique d'approbation réelle.
+
+## Essais initiaux
+
 Date : 6 septembre 2026. Binaire : Codex CLI 0.153.4, Linux.
 
 ## Environnement
@@ -102,3 +140,31 @@ Conclusion : une procédure fonctionnelle est démontrée pour le cas local
 inactif à client unique. Ce résultat permet d'implémenter la transition dans
 OpenCodexUI avec contrôles explicites ; il ne valide pas encore tous les cas
 de cycle de vie nécessaires à une suppression ou un déplacement en production.
+
+## Coordinateur de production et interface — 6 septembre 2026
+
+Le scénario local final utilise SQLite réel et les classes
+`WorkspaceRuntimePreparation` et `WorkspaceExecutionService`, avec Codex
+0.153.4 et un fournisseur HTTP simulé. Il vérifie :
+
+- création directe d'un thread dans B après préparation des permissions ;
+- écriture dans B et dans le dossier partagé autorisé ;
+- refus d'écriture dans A et de lecture du fichier `.env` exclu ;
+- perte simulée de la réponse après acceptation de la bascule vers A ;
+- conservation de l'association B et d'une transition `uncertain` dans SQLite ;
+- fermeture et réouverture du cache, puis réconciliation vers A ;
+- tour suivant réellement exécuté dans A, avec écriture dans B refusée.
+
+Résultat : succès, quatre échanges avec le fournisseur simulé et **zéro appel
+à un LLM réel**. Artifacts temporaires :
+`/tmp/workspace-policy-live-jOtcj9/`, scénario
+`/tmp/workspace-coordinator-live.ts` et journal
+`/tmp/workspace-coordinator-live.log`.
+
+Le test intermédiaire d'une reprise de thread vide a échoué avec
+`no rollout found`. Le parcours de création a été corrigé pour préparer la
+politique avant `thread/start`, sans produire de tour artificiel.
+
+La vérification GUI interactive a été bloquée par le refus d'autorisation
+d'accès de Chrome au serveur local. Les tests de composants ne remplacent pas
+cette vérification visuelle ; elle reste explicitement non effectuée.

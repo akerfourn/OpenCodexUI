@@ -200,7 +200,7 @@ export class ChatActionsStore {
     void this.root.request<{ turnId?: string }>({
       type: "turn.start",
       threadId: this.parent.thread.id,
-      projectPath: this.projectStore.projectPath,
+      projectPath: this.parent.thread.projectPath ?? this.projectStore.projectPath,
       sourceId,
       text: trimmedText,
       attachments: plainAttachments,
@@ -280,7 +280,7 @@ export class ChatActionsStore {
     void this.root.request<{ threadId?: string }>({
       type: "turn.editLast",
       threadId: this.parent.thread.id,
-      projectPath: this.projectStore.projectPath,
+      projectPath: this.parent.thread.projectPath ?? this.projectStore.projectPath,
       sourceId,
       text: trimmedText,
       attachments: plainAttachments,
@@ -294,7 +294,7 @@ export class ChatActionsStore {
       void this.root.request<{ turnId?: string }>({
         type: "turn.start",
         threadId: targetThreadId,
-        projectPath: this.projectStore.projectPath,
+        projectPath: this.parent.thread.projectPath ?? this.projectStore.projectPath,
         sourceId,
         text: trimmedText,
         attachments: plainAttachments,
@@ -427,7 +427,7 @@ export class ChatActionsStore {
     const request = {
       type,
       threadId: this.parent.thread.id,
-      projectPath: this.projectStore.projectPath
+      projectPath: this.parent.thread.projectPath ?? this.projectStore.projectPath
     } as OpenCodexRequest;
 
     void this.root.request(request).catch((error: unknown) => {

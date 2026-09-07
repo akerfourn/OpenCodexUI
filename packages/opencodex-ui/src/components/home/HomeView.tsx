@@ -14,6 +14,7 @@ import { HomeSettingsViewX } from "./HomeSettingsView";
 import { HomeSidebarX } from "./HomeSidebar";
 import { HomeSourcesViewX } from "./HomeSourcesView";
 import { HomeUsageViewX } from "./HomeUsageView";
+import { HomeWorkspacesView } from "./HomeWorkspacesView";
 
 type HomeViewProps = {
   store: RootStore;
@@ -28,6 +29,10 @@ type HomeViewProps = {
  */
 export function HomeView({ store }: HomeViewProps) {
   let mainContent = <HomeProjectsViewX store={store} />;
+
+  if (store.homeStore.selectedSection === "workspaces") {
+    mainContent = <HomeWorkspacesView store={store} />;
+  }
 
   if (store.homeStore.selectedSection === "sources") {
     mainContent = <HomeSourcesViewX store={store} />;

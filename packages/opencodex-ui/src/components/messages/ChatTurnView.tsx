@@ -1,3 +1,4 @@
+import { Typography } from "@mui/material";
 /**
  * Renders one chat turn and keeps turn-level observable reads local.
  */
@@ -88,8 +89,15 @@ export function ChatTurnView({
     onOpenTurnDiagnostic(turn.id);
   }, [onOpenTurnDiagnostic, turn.id]);
 
+  const workspaceBadge = turn.workspaceContext == null ? null : (
+    <Typography variant="caption" color="text.secondary" sx={{ px: 2 }}>
+      {t("workspaces.current")} · {turn.workspaceContext.cwd}
+    </Typography>
+  );
+
   return (
     <>
+      {workspaceBadge}
       {subTurns.map((subTurn, index) => (
         <ChatSubTurnViewX
           key={subTurn.id}

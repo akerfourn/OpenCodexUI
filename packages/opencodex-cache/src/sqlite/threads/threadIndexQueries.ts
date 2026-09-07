@@ -187,6 +187,9 @@ export async function deleteEmptyUnsyncedThreads(
         AND NOT EXISTS (
           SELECT 1 FROM workspace_execution_reservations WHERE thread_id = threads.id
         )
+        AND NOT EXISTS (
+          SELECT 1 FROM workspace_transitions WHERE thread_id = threads.id
+        )
       `
     )
     .run({
@@ -215,7 +218,10 @@ export async function listThreads(
   const searchTerm = query.searchTerm?.trim() ?? "";
 
   if (query.scope === "currentProject" && currentProjectPath !== null) {
-    clauses.push("threads.cwd = @currentProjectPath");
+    clauses.push(`(threads.cwd = @currentProjectPath OR threads.project_id IN (
+      SELECT project_id FROM project_workspaces
+      WHERE path = @currentProjectPath AND source_id IS threads.source_id
+    ))`);
     params.currentProjectPath = currentProjectPath;
   }
 
@@ -348,4 +354,3 @@ function readSyncState(database: BetterSqliteDatabase, threadId: string): Cached
 
   return createEmptySyncState(threadId);
 }
-

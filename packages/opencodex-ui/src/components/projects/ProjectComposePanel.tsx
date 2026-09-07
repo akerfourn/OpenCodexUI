@@ -40,6 +40,7 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
   }, [
     composeStore,
     composeStore.isAvailable,
+    projectStore.workspacePath,
     projectStore.project?.path,
     projectStore.project?.sourceId
   ]);
@@ -54,6 +55,7 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
   }, [
     composeStore,
     composeStore.isAvailable,
+    projectStore.workspacePath,
     projectStore.project?.path,
     projectStore.project?.sourceId
   ]);

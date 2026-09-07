@@ -1,3 +1,4 @@
+import { observable, isObservable } from "mobx";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
@@ -10,6 +11,30 @@ import {
 } from "../src/stores/app/AppSettingsStore";
 
 describe("AppSettingsStore", () => {
+  it("should save plain storage DTOs and wait for persistence before changing the current locations", async () => {
+    let complete!: (value: OpenCodexSettings) => void;
+    const request = vi.fn(async (input: OpenCodexRequest) => {
+      if (input.type !== "settings.update") throw new Error("Unexpected request");
+      expect(isObservable(input.patch.workspaceRoots)).toBe(false);
+      expect(isObservable(input.patch.workspaceRoots?.[0])).toBe(false);
+      return await new Promise<OpenCodexSettings>((resolve) => { complete = resolve; });
+    });
+    const store = new AppSettingsStore({ request });
+    const roots = observable([{ id: "root", sourceId: "source", label: "Storage", path: "/storage", isDefault: true }]);
+    const saving = store.setWorkspaceRoots(roots);
+    expect(store.settings.workspaceRoots).toEqual([]);
+    complete({ ...store.settings, workspaceRoots: roots.map((root) => ({ ...root })) });
+    await saving;
+    roots[0].label = "Changed draft";
+    expect(store.settings.workspaceRoots?.[0].label).toBe("Storage");
+  });
+
+  it("should retain existing storage preferences when the backend rejects a save", async () => {
+    const store = new AppSettingsStore({ request: vi.fn().mockRejectedValue(new Error("Invalid root")) });
+    await expect(store.setWorkspaceRoots([])).rejects.toThrow("Invalid root");
+    expect(store.settings.workspaceRoots).toEqual([]);
+  });
+
   it("should update settings optimistically before sending the persisted patch", () => {
     const request = vi.fn(async (_request: OpenCodexRequest): Promise<unknown> => undefined);
     const store = new AppSettingsStore({ request });
