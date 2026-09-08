@@ -155,6 +155,7 @@ describe("ProjectGoalsStore", () => {
 
     await store.importNativeGoal(chatStore);
 
+    expect(chatStore.goal.load).toHaveBeenCalledWith(true);
     expect(request).toHaveBeenCalledWith({
       type: "projectGoals.list",
       projectId: "project-1",
@@ -162,6 +163,55 @@ describe("ProjectGoalsStore", () => {
     });
     expect(store.goals).toEqual([archivedGoal]);
     expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it("should retain a completed native goal in the project catalogue", async () => {
+    const completedGoal = createGoal({
+      status: "complete",
+      sourceId: "source-1",
+      threadId: "thread-1",
+      tokensUsed: 120,
+      timeUsedSeconds: 45,
+      launchedAt: "2026-01-01T10:00:00.000Z",
+      completedAt: "2026-01-01T10:00:45.000Z"
+    });
+    const request = createRequestMock([[], createGoal(), completedGoal]);
+    const { store } = createStoreFixture(request);
+    const nativeGoal = createNativeGoal({ status: "complete", tokensUsed: 120, timeUsedSeconds: 45 });
+    const load = vi.fn(async () => undefined);
+    const chatStore = {
+      thread: { id: "thread-1" },
+      sourceId: "source-1",
+      goal: {
+        load,
+        error: null,
+        goal: nativeGoal
+      }
+    } as unknown as ChatStore;
+
+    await store.importNativeGoal(chatStore);
+
+    expect(load).toHaveBeenCalledWith(true);
+    expect(request.mock.calls.map(([input]) => input.type)).toEqual([
+      "projectGoals.list",
+      "projectGoals.create",
+      "projectGoals.execution.update"
+    ]);
+    expect(store.goals).toEqual([completedGoal]);
+  });
+
+  it("should flag only active or paused goals for project attention", () => {
+    const { store } = createStoreFixture(vi.fn() as unknown as RootStore["request"]);
+    const completedGoal = createGoal({ status: "complete" });
+
+    store.goals = [completedGoal];
+    expect(store.hasAttention).toBe(false);
+
+    store.goals = [createGoal({ status: "paused" })];
+    expect(store.hasAttention).toBe(true);
+
+    store.goals = [createGoal({ status: "active" })];
+    expect(store.hasAttention).toBe(true);
   });
 });
 

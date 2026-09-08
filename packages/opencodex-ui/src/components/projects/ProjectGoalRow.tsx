@@ -4,7 +4,7 @@ import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import PauseOutlinedIcon from "@mui/icons-material/PauseOutlined";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
-import { Box, Chip, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import type { OpenCodexProjectGoal } from "@open-codex-ui/opencodex-protocol";
 import { useTranslation } from "react-i18next";
 
@@ -96,28 +96,31 @@ export function ProjectGoalRow({
       onKeyDown={handleKeyDown}
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 0 }}>
-        <FlagOutlinedIcon className={`project-goal-status-icon is-${statusColor}`} fontSize="small" />
-        <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
+        <Tooltip title={statusLabel}>
+          <Box
+            component="span"
+            className={`project-goal-status-icon is-${statusColor}`}
+            role="img"
+            aria-label={statusLabel}
+          >
+            <FlagOutlinedIcon fontSize="small" />
+          </Box>
+        </Tooltip>
+        <Box sx={{ minWidth: 0, flex: "1 1 auto", overflow: "hidden" }}>
           <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
             {goal.name}
           </Typography>
           {durationLabel !== null ? (
-            <Typography variant="caption" color="text.secondary" noWrap>
+            <Typography component="div" variant="caption" color="text.secondary" noWrap>
               {t("goals.elapsed", { duration: durationLabel })}
             </Typography>
           ) : null}
           {goal.threadId !== null && !isAttachedToCurrentChat ? (
-            <Typography variant="caption" color="text.secondary" noWrap>
+            <Typography component="div" variant="caption" color="text.secondary" noWrap>
               {t("goals.attachedToOtherChat")}
             </Typography>
           ) : null}
         </Box>
-        <Chip
-          size="small"
-          color={statusColor}
-          label={statusLabel}
-          sx={{ flex: "0 0 auto" }}
-        />
         <Stack direction="row" spacing={0.25} sx={{ flex: "0 0 auto" }}>
           {canLaunch ? (
             <Tooltip title={goal.status === "paused" ? t("goals.resume") : t("goals.launch")}>

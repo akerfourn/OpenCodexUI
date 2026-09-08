@@ -281,23 +281,34 @@
 }
 
 .project-goal-status-icon.is-default {
-  color: var(--vscode-descriptionForeground);
+  background: var(--vscode-descriptionForeground, #6b7280);
 }
 
 .project-goal-status-icon.is-primary {
-  color: var(--vscode-focusBorder);
+  background: var(--vscode-focusBorder, #0969da);
 }
 
 .project-goal-status-icon.is-success {
-  color: var(--vscode-testing-iconPassed);
+  background: var(--vscode-testing-iconPassed, #2da44e);
 }
 
 .project-goal-status-icon.is-warning {
-  color: var(--vscode-editorWarning-foreground);
+  background: var(--vscode-editorWarning-foreground, #9a6700);
 }
 
 .project-goal-status-icon.is-error {
-  color: var(--vscode-testing-iconFailed);
+  background: var(--vscode-testing-iconFailed, #cf222e);
+}
+
+.project-goal-status-icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
 }
 
 .project-goal-execution-summary {

@@ -42,28 +42,63 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
   const { t } = useTranslation();
   const goalsStore = projectStore.goalsStore;
   const currentChat = projectStore.selectedChat;
+  const loadedChatCount = projectStore.chatsById.size;
   const [selectedGoal, setSelectedGoal] = useState<OpenCodexProjectGoal | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [launchCandidate, setLaunchCandidate] = useState<OpenCodexProjectGoal | null>(null);
   const [busyGoalId, setBusyGoalId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const importedNativeChatIdsRef = useRef(new Set<string>());
   const importedProjectIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    void goalsStore.loadGoals();
-  }, [goalsStore, projectStore.project.id]);
+    if (!goalsStore.hasLoaded && !goalsStore.isLoading) {
+      void goalsStore.loadGoals();
+    }
+  }, [
+    goalsStore,
+    goalsStore.hasLoaded,
+    goalsStore.isLoading,
+    projectStore.project.id
+  ]);
 
   useEffect(() => {
-    if (!goalsStore.hasLoaded || goalsStore.isLoading ||
-      importedProjectIdRef.current === projectStore.project.id) {
+    const projectId = projectStore.project.id;
+
+    if (importedProjectIdRef.current !== projectId) {
+      importedProjectIdRef.current = projectId;
+      importedNativeChatIdsRef.current.clear();
+    }
+
+    if (!goalsStore.hasLoaded || goalsStore.isLoading) {
       return;
     }
 
-    importedProjectIdRef.current = projectStore.project.id;
-    void importLoadedNativeGoals(projectStore, goalsStore).catch((error: unknown) => {
+    const chatStores = Array.from(projectStore.chatsById.values());
+    const chatsToImport = chatStores.filter((chatStore) => (
+      !importedNativeChatIdsRef.current.has(chatStore.thread.id)
+    ));
+
+    if (chatsToImport.length === 0) {
+      return;
+    }
+
+    for (const chatStore of chatsToImport) {
+      importedNativeChatIdsRef.current.add(chatStore.thread.id);
+    }
+
+    void importNativeGoals(chatsToImport, goalsStore).catch((error: unknown) => {
       setActionError(readErrorMessage(error));
     });
-  }, [goalsStore, goalsStore.hasLoaded, goalsStore.isLoading, projectStore]);
+  }, [
+    goalsStore,
+    goalsStore.hasLoaded,
+    goalsStore.isLoading,
+    projectStore,
+    projectStore.project.id,
+    currentChat?.thread.id,
+    loadedChatCount
+  ]);
 
   function handleCreate(): void {
     setActionError(null);
@@ -440,12 +475,12 @@ function readErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** Imports native goals from loaded chats once when the project catalogue opens. */
-async function importLoadedNativeGoals(
-  projectStore: ProjectStore,
+/** Imports native goals from newly loaded chats when the catalogue is ready. */
+async function importNativeGoals(
+  chatStores: ChatStore[],
   goalsStore: ProjectStore["goalsStore"]
 ): Promise<void> {
-  for (const chatStore of projectStore.chatsById.values()) {
+  for (const chatStore of chatStores) {
     await goalsStore.importNativeGoal(chatStore);
   }
 }

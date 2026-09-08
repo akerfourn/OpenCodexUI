@@ -33,7 +33,7 @@ export class ProjectGoalsStore {
 
   /** Returns whether one unarchived goal needs attention in the project. */
   get hasAttention(): boolean {
-    return this.currentGoals.some((goal) => goal.status !== "draft");
+    return this.runningGoals.length > 0;
   }
 
   /**
@@ -127,7 +127,10 @@ export class ProjectGoalsStore {
 
   /** Imports one legacy native goal that predates the project catalogue. */
   async importNativeGoal(chatStore: ChatStore): Promise<void> {
-    await chatStore.goal.load();
+    // The chat header may already have cached an earlier `null` snapshot (or
+    // a non-terminal snapshot). Migration must read the authoritative native
+    // state so a completed goal is not silently skipped.
+    await chatStore.goal.load(true);
 
     if (chatStore.goal.error !== null || chatStore.goal.goal === null) {
       return;
