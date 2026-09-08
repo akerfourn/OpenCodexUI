@@ -1,4 +1,4 @@
-/** Holds transient UI state for the native Codex goal attached to a chat. */
+/** Holds UI state and lifecycle metadata for the native Codex goal of a chat. */
 import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
@@ -9,6 +9,11 @@ import type {
 
 import type { RootStore } from "../RootStore";
 import type { ChatStore } from "./ChatStore";
+import {
+  clearPersistedStartedGoal,
+  hasPersistedStartedGoal,
+  persistStartedGoal
+} from "./chatGoalStartedPersistence";
 import { readChatErrorMessage } from "./chatErrorMessage";
 
 const GOAL_STATUSES: readonly OpenCodexThreadGoalStatus[] = [
@@ -24,7 +29,7 @@ const GOAL_STATUSES: readonly OpenCodexThreadGoalStatus[] = [
 export class ChatGoalStore {
   /** Goal currently known by the renderer. */
   goal: OpenCodexThreadGoal | null = null;
-  /** Whether this goal has been explicitly started during the current UI session. */
+  /** Whether this goal has been explicitly started in this or an earlier UI session. */
   hasStarted = false;
   /** In-flight goal read shared by the header and the goal dialog. */
   private loadingPromise: Promise<void> | null = null;
@@ -104,9 +109,20 @@ export class ChatGoalStore {
       runInAction(() => {
         const normalizedGoal = isOpenCodexThreadGoal(goal) ? goal : null;
         this.goal = normalizedGoal;
-        this.hasStarted = normalizedGoal === null
-          ? false
-          : this.hasStarted || isStartedGoalStatus(normalizedGoal.status);
+
+        if (normalizedGoal === null) {
+          this.hasStarted = false;
+          this.clearPersistedStartedState();
+        } else {
+          this.hasStarted = this.hasStarted || this.readPersistedStartedState()
+            || isStartedGoalStatus(normalizedGoal.status)
+            || hasGoalUsage(normalizedGoal);
+
+          if (this.hasStarted) {
+            this.persistStartedState();
+          }
+        }
+
         this.hasLoaded = true;
       });
     } catch (error: unknown) {
@@ -151,7 +167,12 @@ export class ChatGoalStore {
 
       runInAction(() => {
         this.goal = goal;
-        this.hasStarted = this.hasStarted || isStartedGoalStatus(goal.status);
+        this.hasStarted = this.hasStarted || isStartedGoalStatus(goal.status) || hasGoalUsage(goal);
+
+        if (this.hasStarted) {
+          this.persistStartedState();
+        }
+
         this.hasLoaded = true;
       });
       return true;
@@ -194,6 +215,7 @@ export class ChatGoalStore {
         runInAction(() => {
           this.goal = null;
           this.hasStarted = false;
+          this.clearPersistedStartedState();
           this.hasLoaded = true;
         });
       }
@@ -218,7 +240,12 @@ export class ChatGoalStore {
     }
 
     this.goal = goal;
-    this.hasStarted = this.hasStarted || isStartedGoalStatus(goal.status);
+    this.hasStarted = this.hasStarted || isStartedGoalStatus(goal.status) || hasGoalUsage(goal);
+
+    if (this.hasStarted) {
+      this.persistStartedState();
+    }
+
     this.error = null;
     this.hasLoaded = true;
   }
@@ -231,14 +258,45 @@ export class ChatGoalStore {
 
     this.goal = null;
     this.hasStarted = false;
+    this.clearPersistedStartedState();
     this.error = null;
     this.hasLoaded = true;
+  }
+
+  /** Reads the persisted started marker for the current source and thread. */
+  private readPersistedStartedState(): boolean {
+    const sourceId = this.chatStore.sourceId;
+
+    return sourceId !== null && hasPersistedStartedGoal(sourceId, this.chatStore.thread.id);
+  }
+
+  /** Persists the started marker without making it part of the native goal payload. */
+  private persistStartedState(): void {
+    const sourceId = this.chatStore.sourceId;
+
+    if (sourceId !== null) {
+      persistStartedGoal(sourceId, this.chatStore.thread.id);
+    }
+  }
+
+  /** Removes the local marker when the native goal no longer exists. */
+  private clearPersistedStartedState(): void {
+    const sourceId = this.chatStore.sourceId;
+
+    if (sourceId !== null) {
+      clearPersistedStartedGoal(sourceId, this.chatStore.thread.id);
+    }
   }
 }
 
 /** Identifies statuses that prove the goal has started processing. */
 function isStartedGoalStatus(status: OpenCodexThreadGoalStatus): boolean {
   return status !== "paused";
+}
+
+/** Uses native counters to recover older paused goals created before local markers existed. */
+function hasGoalUsage(goal: OpenCodexThreadGoal): boolean {
+  return goal.tokensUsed > 0 || goal.timeUsedSeconds > 0;
 }
 
 /** Checks the response shape before it enters observable UI state. */

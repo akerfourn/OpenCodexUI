@@ -1,6 +1,6 @@
 /** Covers native goal reads and mutations exposed by one chat store. */
 import type { OpenCodexThreadGoal } from "@open-codex-ui/opencodex-protocol";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   countGoalCharacters,
@@ -16,6 +16,14 @@ import {
 } from "./chatStoreFixtures";
 
 describe("ChatGoalStore", () => {
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", createMemoryStorage());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("should accept an empty budget as the server default", () => {
     expect(readTokenBudget(" ")).toEqual({ value: null, error: false });
     expect(readTokenBudget("20000")).toEqual({ value: 20_000, error: false });
@@ -58,7 +66,12 @@ describe("ChatGoalStore", () => {
   it("should keep a saved definition paused until it is explicitly started", async () => {
     const rootStore = createRootStore();
     const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
-    const draft = { ...createGoal(), status: "paused" as const, tokensUsed: 0 };
+    const draft = {
+      ...createGoal(),
+      status: "paused" as const,
+      tokensUsed: 0,
+      timeUsedSeconds: 0
+    };
     const started = { ...draft, status: "active" as const, updatedAt: 3 };
     vi.mocked(rootStore.request)
       .mockResolvedValueOnce(draft)
@@ -77,6 +90,57 @@ describe("ChatGoalStore", () => {
 
     expect(chatStore.goal.goal?.status).toBe("active");
     expect(chatStore.goal.hasStarted).toBe(true);
+  });
+
+  it("should restore a started paused goal as resumable after a new UI session", async () => {
+    const rootStore = createRootStore();
+    const firstChatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+    const pausedGoal = {
+      ...createGoal(),
+      status: "paused" as const,
+      tokensUsed: 0,
+      timeUsedSeconds: 0
+    };
+
+    vi.mocked(rootStore.request).mockResolvedValueOnce({ ...createGoal(), status: "active" as const });
+    await expect(firstChatStore.goal.updateStatus("active")).resolves.toBe(true);
+
+    vi.mocked(rootStore.request).mockResolvedValueOnce(pausedGoal);
+    await expect(firstChatStore.goal.updateStatus("paused")).resolves.toBe(true);
+
+    const reopenedChatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+    vi.mocked(rootStore.request).mockResolvedValueOnce(pausedGoal);
+
+    await reopenedChatStore.goal.load();
+
+    expect(reopenedChatStore.goal.goal?.status).toBe("paused");
+    expect(reopenedChatStore.goal.hasStarted).toBe(true);
+  });
+
+  it("should keep a paused saved definition as a draft after a new UI session", async () => {
+    const rootStore = createRootStore();
+    const firstChatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+    const draft = {
+      ...createGoal(),
+      status: "paused" as const,
+      tokensUsed: 0,
+      timeUsedSeconds: 0
+    };
+
+    vi.mocked(rootStore.request).mockResolvedValueOnce(draft);
+    await expect(firstChatStore.goal.save({
+      objective: "Finish the task",
+      status: "paused",
+      tokenBudget: null
+    })).resolves.toBe(true);
+
+    const reopenedChatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+    vi.mocked(rootStore.request).mockResolvedValueOnce(draft);
+
+    await reopenedChatStore.goal.load();
+
+    expect(reopenedChatStore.goal.goal?.status).toBe("paused");
+    expect(reopenedChatStore.goal.hasStarted).toBe(false);
   });
 
   it("should share an in-flight read between the header and dialog", async () => {
@@ -123,5 +187,31 @@ function createGoal(): OpenCodexThreadGoal {
     timeUsedSeconds: 4,
     createdAt: 1,
     updatedAt: 2
+  };
+}
+
+/** Provides deterministic browser storage for renderer-store tests. */
+function createMemoryStorage(): Storage {
+  const values = new Map<string, string>();
+
+  return {
+    get length(): number {
+      return values.size;
+    },
+    clear(): void {
+      values.clear();
+    },
+    getItem(key: string): string | null {
+      return values.get(key) ?? null;
+    },
+    key(index: number): string | null {
+      return [...values.keys()][index] ?? null;
+    },
+    removeItem(key: string): void {
+      values.delete(key);
+    },
+    setItem(key: string, value: string): void {
+      values.set(key, value);
+    }
   };
 }
