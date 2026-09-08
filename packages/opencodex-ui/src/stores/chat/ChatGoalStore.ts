@@ -10,8 +10,10 @@ import type {
 import type { RootStore } from "../RootStore";
 import type { ChatStore } from "./ChatStore";
 import {
-  clearPersistedStartedGoal,
+  clearPersistedGoal,
+  hasPersistedDraftGoal,
   hasPersistedStartedGoal,
+  persistDraftGoal,
   persistStartedGoal
 } from "./chatGoalStartedPersistence";
 import { readChatErrorMessage } from "./chatErrorMessage";
@@ -112,14 +114,18 @@ export class ChatGoalStore {
 
         if (normalizedGoal === null) {
           this.hasStarted = false;
-          this.clearPersistedStartedState();
+          this.clearPersistedGoalState();
         } else {
+          const hasPersistedDraft = this.readPersistedDraftState();
           this.hasStarted = this.hasStarted || this.readPersistedStartedState()
             || isStartedGoalStatus(normalizedGoal.status)
-            || hasGoalUsage(normalizedGoal);
+            || hasGoalUsage(normalizedGoal)
+            || (normalizedGoal.status === "paused" && !hasPersistedDraft);
 
           if (this.hasStarted) {
             this.persistStartedState();
+          } else {
+            this.persistDraftState();
           }
         }
 
@@ -171,6 +177,8 @@ export class ChatGoalStore {
 
         if (this.hasStarted) {
           this.persistStartedState();
+        } else if (goal.status === "paused") {
+          this.persistDraftState();
         }
 
         this.hasLoaded = true;
@@ -215,7 +223,7 @@ export class ChatGoalStore {
         runInAction(() => {
           this.goal = null;
           this.hasStarted = false;
-          this.clearPersistedStartedState();
+          this.clearPersistedGoalState();
           this.hasLoaded = true;
         });
       }
@@ -244,6 +252,8 @@ export class ChatGoalStore {
 
     if (this.hasStarted) {
       this.persistStartedState();
+    } else if (goal.status === "paused") {
+      this.persistDraftState();
     }
 
     this.error = null;
@@ -258,7 +268,7 @@ export class ChatGoalStore {
 
     this.goal = null;
     this.hasStarted = false;
-    this.clearPersistedStartedState();
+    this.clearPersistedGoalState();
     this.error = null;
     this.hasLoaded = true;
   }
@@ -279,12 +289,28 @@ export class ChatGoalStore {
     }
   }
 
-  /** Removes the local marker when the native goal no longer exists. */
-  private clearPersistedStartedState(): void {
+  /** Persists the explicit draft state for a goal that has not started yet. */
+  private persistDraftState(): void {
     const sourceId = this.chatStore.sourceId;
 
     if (sourceId !== null) {
-      clearPersistedStartedGoal(sourceId, this.chatStore.thread.id);
+      persistDraftGoal(sourceId, this.chatStore.thread.id);
+    }
+  }
+
+  /** Reads whether the current goal was explicitly saved as a draft. */
+  private readPersistedDraftState(): boolean {
+    const sourceId = this.chatStore.sourceId;
+
+    return sourceId !== null && hasPersistedDraftGoal(sourceId, this.chatStore.thread.id);
+  }
+
+  /** Removes the local lifecycle marker when the native goal no longer exists. */
+  private clearPersistedGoalState(): void {
+    const sourceId = this.chatStore.sourceId;
+
+    if (sourceId !== null) {
+      clearPersistedGoal(sourceId, this.chatStore.thread.id);
     }
   }
 }

@@ -117,6 +117,23 @@ describe("ChatGoalStore", () => {
     expect(reopenedChatStore.goal.hasStarted).toBe(true);
   });
 
+  it("should treat a legacy paused goal without a local marker as resumable", async () => {
+    const rootStore = createRootStore();
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+    const legacyPausedGoal = {
+      ...createGoal(),
+      status: "paused" as const,
+      tokensUsed: 0,
+      timeUsedSeconds: 0
+    };
+
+    vi.mocked(rootStore.request).mockResolvedValueOnce(legacyPausedGoal);
+
+    await chatStore.goal.load();
+
+    expect(chatStore.goal.hasStarted).toBe(true);
+  });
+
   it("should keep a paused saved definition as a draft after a new UI session", async () => {
     const rootStore = createRootStore();
     const firstChatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);

@@ -10,10 +10,13 @@ import { ThreadGoalService } from "../src/backend/threads/ThreadGoalService";
 describe("ThreadGoalService", () => {
   it("should route goal operations through the resolved source and omit undefined fields", async () => {
     const goal = createGoal();
+    const setThreadGoal = vi.fn(async () => ({ goal }));
+    const resumeThread = vi.fn(async () => ({ thread: { id: "thread-1" } }));
     const client = {
       getThreadGoal: vi.fn(async () => ({ goal })),
-      setThreadGoal: vi.fn(async () => ({ goal })),
-      clearThreadGoal: vi.fn(async () => ({ cleared: true }))
+      setThreadGoal,
+      clearThreadGoal: vi.fn(async () => ({ cleared: true })),
+      resumeThread
     } as unknown as CodexAppServerClient;
     const sourceResolver = {
       resolveThreadSourceId: vi.fn(async () => "source-a")
@@ -63,6 +66,10 @@ describe("ThreadGoalService", () => {
       status: "active",
       tokenBudget: 20_000
     });
+    expect(client.resumeThread).toHaveBeenCalledWith("thread-1", { excludeTurns: true });
+    expect(resumeThread.mock.invocationCallOrder[0]).toBeLessThan(
+      setThreadGoal.mock.invocationCallOrder[0]
+    );
     expect(events.recordClientRequest).toHaveBeenCalledWith(
       "source-a",
       "thread-1",

@@ -20,7 +20,29 @@ export function hasPersistedStartedGoal(sourceId: string, threadId: string): boo
   }
 
   try {
-    return storage.getItem(createStorageKey(sourceId, threadId)) === "1";
+    const value = storage.getItem(createStorageKey(sourceId, threadId));
+    return value === "1" || value === "started";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Reads whether OpenCodexUI explicitly saved a goal as a draft.
+ *
+ * @param sourceId Source owning the thread.
+ * @param threadId Thread owning the goal.
+ * @returns Whether the goal was explicitly saved without starting it.
+ */
+export function hasPersistedDraftGoal(sourceId: string, threadId: string): boolean {
+  const storage = getLocalStorage();
+
+  if (storage === null) {
+    return false;
+  }
+
+  try {
+    return storage.getItem(createStorageKey(sourceId, threadId)) === "draft";
   } catch {
     return false;
   }
@@ -41,20 +63,41 @@ export function persistStartedGoal(sourceId: string, threadId: string): void {
   }
 
   try {
-    storage.setItem(createStorageKey(sourceId, threadId), "1");
+    storage.setItem(createStorageKey(sourceId, threadId), "started");
   } catch {
     // Local persistence is only a UI enhancement; the native goal remains authoritative.
   }
 }
 
 /**
- * Removes the local marker after a goal is cleared.
+ * Records that a goal was explicitly saved without starting it.
  *
  * @param sourceId Source owning the thread.
  * @param threadId Thread owning the goal.
  * @returns Nothing.
  */
-export function clearPersistedStartedGoal(sourceId: string, threadId: string): void {
+export function persistDraftGoal(sourceId: string, threadId: string): void {
+  const storage = getLocalStorage();
+
+  if (storage === null) {
+    return;
+  }
+
+  try {
+    storage.setItem(createStorageKey(sourceId, threadId), "draft");
+  } catch {
+    // Local persistence is best effort and must not affect goal mutations.
+  }
+}
+
+/**
+ * Removes the local lifecycle marker after a goal is cleared.
+ *
+ * @param sourceId Source owning the thread.
+ * @param threadId Thread owning the goal.
+ * @returns Nothing.
+ */
+export function clearPersistedGoal(sourceId: string, threadId: string): void {
   const storage = getLocalStorage();
 
   if (storage === null) {

@@ -11,7 +11,7 @@ import type { ClientPort, RuntimeEventPort } from "../runtime/runtimePorts.js";
 
 type ThreadGoalClient = Pick<
   CodexAppServerClient,
-  "getThreadGoal" | "setThreadGoal" | "clearThreadGoal"
+  "getThreadGoal" | "setThreadGoal" | "clearThreadGoal" | "resumeThread"
 >;
 
 /** Structural RPC parameters kept local to avoid leaking generated bindings. */
@@ -71,6 +71,13 @@ export class ThreadGoalService {
   ): Promise<OpenCodexThreadGoal> {
     const { sourceId, client } = await this.resolveClient(threadId, sourceIdOverride);
     const params = createSetParams(threadId, patch);
+
+    if (patch.status === "active") {
+      // The UI can restore the persisted goal without reopening its thread in
+      // app-server. Rejoin it before setting the active status so Codex can
+      // resume the goal runner instead of only updating its stored metadata.
+      await client.resumeThread(threadId, { excludeTurns: true });
+    }
 
     this.options.events.recordClientRequest(
       sourceId,
