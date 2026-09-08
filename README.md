@@ -182,6 +182,9 @@ Important boundaries:
 The streaming and renderer performance invariants are documented in
 [docs/performance.md](docs/performance.md).
 
+Workspace ownership, execution guards and recovery contracts are documented in
+[docs/workspaces.md](docs/workspaces.md).
+
 ## Local Data
 
 OpenCodexUI stores local application data in Electron's `userData` directory.
