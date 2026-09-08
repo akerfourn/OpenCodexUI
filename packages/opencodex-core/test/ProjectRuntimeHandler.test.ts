@@ -14,6 +14,7 @@ describe("ProjectRuntimeHandler", () => {
     await expect(handler.listProjects()).resolves.toEqual([]);
     await expect(handler.listProjectGroups()).resolves.toEqual({ groups: [], items: [] });
     await expect(handler.listProjectTasks("project-1")).resolves.toEqual([]);
+    await expect(handler.listProjectGoals("project-1")).resolves.toEqual([]);
     await expect(handler.readProjectStatistics("/workspace/project", null)).resolves.toEqual({
       chatCount: 0,
       chatsWithTokenUsage: 0,

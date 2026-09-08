@@ -23,6 +23,7 @@ import type {
   ModelsApi,
   PluginsApi,
   ProjectContextApi,
+  ProjectGoalsApi,
   ProjectTasksApi,
   ProjectTrustApi,
   ProjectsApi,
@@ -96,6 +97,11 @@ export class OpenCodexBackendRuntime {
   /** Public project-task API. */
   get tasks(): ProjectTasksApi {
     return this.apis.tasks;
+  }
+
+  /** Public project-goal catalogue API. */
+  get goals(): ProjectGoalsApi {
+    return this.apis.goals;
   }
 
   /** Public project-trust API. */

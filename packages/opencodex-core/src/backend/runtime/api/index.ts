@@ -18,6 +18,7 @@ export type {
   ProjectContextApi,
   ProjectCommandRuleCreateInput,
   ProjectCommandRuleUpdateInput,
+  ProjectGoalsApi,
   ProjectTasksApi,
   ProjectTrustApi,
   ProjectsApi,

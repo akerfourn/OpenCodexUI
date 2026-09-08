@@ -1,7 +1,11 @@
 /**
  * Internal SQLite row shapes used by cache queries and mappers.
  */
-import type { CachedCommandRuleDecision, CachedSourceKind } from "../../types.js";
+import type {
+  CachedCommandRuleDecision,
+  CachedProjectGoalStatus,
+  CachedSourceKind
+} from "../../types.js";
 
 /**
  * Joined SQLite row used to map cached thread summaries and sync state.
@@ -201,6 +205,30 @@ export type ProjectTaskRow = {
   title: string;
   description: string;
   status: "todo" | "inProgress" | "toValidate" | "done";
+  created_at: string;
+  updated_at: string;
+};
+
+/** SQLite row used to map one project goal. */
+export type ProjectGoalRow = {
+  id: string;
+  project_id: string;
+  name: string;
+  objective: string;
+  token_budget: number | null;
+  status: CachedProjectGoalStatus;
+  is_archived: number;
+  source_id: string | null;
+  thread_id: string | null;
+  workspace_id: string | null;
+  cwd: string | null;
+  tokens_used: number;
+  time_used_seconds: number;
+  launched_at: string | null;
+  paused_at: string | null;
+  completed_at: string | null;
+  archived_at: string | null;
+  last_synced_at: string | null;
   created_at: string;
   updated_at: string;
 };

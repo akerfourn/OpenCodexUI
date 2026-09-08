@@ -31,6 +31,9 @@ import type {
   CachedProjectGroupsSnapshot,
   CachedProjectGroupUpdateInput,
   CachedProjectPreferences,
+  CachedProjectGoal,
+  CachedProjectGoalCreateInput,
+  CachedProjectGoalUpdateInput,
   CachedProjectTask,
   CachedProjectTaskCreateInput,
   CachedProjectTaskUpdateInput,
@@ -64,9 +67,11 @@ import type {
   AutomationCacheRepository,
   SourceCacheRepository
 } from "./types/repositoryTooling.js";
+import type { ProjectGoalCacheRepository } from "./types/repositoryGoals.js";
 import { runMigrations } from "./sqlite/migrations.js";
 import { SqliteAutomationCacheRepository } from "./sqlite/automation/SqliteAutomationCacheRepository.js";
 import { SqliteCollaborationCacheRepository } from "./sqlite/collaboration/SqliteCollaborationCacheRepository.js";
+import { SqliteProjectGoalCacheRepository } from "./sqlite/goals/SqliteProjectGoalCacheRepository.js";
 import { SqliteLogCacheRepository } from "./sqlite/logs/SqliteLogCacheRepository.js";
 import { SqliteProjectCacheRepository } from "./sqlite/projects/SqliteProjectCacheRepository.js";
 import { SqliteSourceCacheRepository } from "./sqlite/sources/SqliteSourceCacheRepository.js";
@@ -115,6 +120,9 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
   /** Project automation persistence operations. */
   private readonly automation: AutomationCacheRepository;
 
+  /** Project goal catalogue persistence operations. */
+  private readonly projectGoals: ProjectGoalCacheRepository;
+
   /** Thread and usage persistence operations. */
   private readonly threads: ThreadCacheRepository;
 
@@ -138,6 +146,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     this.projects = new SqliteProjectCacheRepository(this.database);
     this.logs = new SqliteLogCacheRepository(this.database);
     this.automation = new SqliteAutomationCacheRepository(this.database);
+    this.projectGoals = new SqliteProjectGoalCacheRepository(this.database);
     this.threads = new SqliteThreadCacheRepository(this.database);
   }
 
@@ -421,6 +430,42 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
   /** Deletes a local project task. */
   async deleteProjectTask(taskId: string): Promise<void> {
     await this.automation.deleteProjectTask(taskId);
+  }
+
+  /** Lists project goals, optionally including archived entries. */
+  async listProjectGoals(
+    projectId: string,
+    includeArchived = false
+  ): Promise<CachedProjectGoal[]> {
+    return await this.projectGoals.listProjectGoals(projectId, includeArchived);
+  }
+
+  /** Creates a project goal draft. */
+  async createProjectGoal(input: CachedProjectGoalCreateInput): Promise<CachedProjectGoal> {
+    return await this.projectGoals.createProjectGoal(input);
+  }
+
+  /** Updates an editable project goal. */
+  async updateProjectGoal(
+    goalId: string,
+    patch: CachedProjectGoalUpdateInput
+  ): Promise<CachedProjectGoal> {
+    return await this.projectGoals.updateProjectGoal(goalId, patch);
+  }
+
+  /** Archives a project goal after its execution has stopped. */
+  async archiveProjectGoal(goalId: string): Promise<CachedProjectGoal> {
+    return await this.projectGoals.archiveProjectGoal(goalId);
+  }
+
+  /** Restores an archived project goal to the active catalogue. */
+  async unarchiveProjectGoal(goalId: string): Promise<CachedProjectGoal> {
+    return await this.projectGoals.unarchiveProjectGoal(goalId);
+  }
+
+  /** Deletes a project goal that has never been launched. */
+  async deleteProjectGoal(goalId: string): Promise<void> {
+    await this.projectGoals.deleteProjectGoal(goalId);
   }
 
   /** Inserts or updates cached thread metadata. */

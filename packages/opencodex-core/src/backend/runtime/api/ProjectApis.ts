@@ -4,6 +4,7 @@ import type {
   CodexUpdatesApi as CodexUpdatesApiContract,
   GroupsApi as GroupsApiContract,
   ProjectContextApi as ProjectContextApiContract,
+  ProjectGoalsApi as ProjectGoalsApiContract,
   ProjectTasksApi as ProjectTasksApiContract,
   ProjectTrustApi as ProjectTrustApiContract,
   ProjectsApi as ProjectsApiContract,
@@ -44,6 +45,16 @@ type ProjectContextHandler = Pick<
 type ProjectTasksHandler = Pick<
   ProjectRuntimeHandler,
   "listProjectTasks" | "createProjectTask" | "updateProjectTask" | "deleteProjectTask"
+>;
+
+type ProjectGoalsHandler = Pick<
+  ProjectRuntimeHandler,
+  | "listProjectGoals"
+  | "createProjectGoal"
+  | "updateProjectGoal"
+  | "archiveProjectGoal"
+  | "unarchiveProjectGoal"
+  | "deleteProjectGoal"
 >;
 
 type ProjectTrustHandler = Pick<
@@ -268,6 +279,59 @@ export class ProjectTasksApi implements ProjectTasksApiContract {
     taskId: Parameters<ProjectTasksHandler["deleteProjectTask"]>[0]
   ): ReturnType<ProjectTasksHandler["deleteProjectTask"]> {
     return await this.handler.deleteProjectTask(taskId);
+  }
+}
+
+/** Public operations for the project-level goal catalogue. */
+export class ProjectGoalsApi implements ProjectGoalsApiContract {
+  /** Creates a project goals API backed by the supplied project handler. */
+  constructor(private readonly handler: ProjectGoalsHandler) {}
+
+  /** Lists project goals, optionally including archived entries. */
+  async list(
+    projectId: Parameters<ProjectGoalsHandler["listProjectGoals"]>[0],
+    includeArchived?: Parameters<ProjectGoalsHandler["listProjectGoals"]>[1]
+  ): ReturnType<ProjectGoalsHandler["listProjectGoals"]> {
+    return await this.handler.listProjectGoals(projectId, includeArchived);
+  }
+
+  /** Creates a project goal draft. */
+  async create(
+    projectId: Parameters<ProjectGoalsHandler["createProjectGoal"]>[0],
+    name: Parameters<ProjectGoalsHandler["createProjectGoal"]>[1],
+    objective: Parameters<ProjectGoalsHandler["createProjectGoal"]>[2],
+    tokenBudget: Parameters<ProjectGoalsHandler["createProjectGoal"]>[3]
+  ): ReturnType<ProjectGoalsHandler["createProjectGoal"]> {
+    return await this.handler.createProjectGoal(projectId, name, objective, tokenBudget);
+  }
+
+  /** Updates editable fields in a project goal. */
+  async update(
+    goalId: Parameters<ProjectGoalsHandler["updateProjectGoal"]>[0],
+    patch: Parameters<ProjectGoalsHandler["updateProjectGoal"]>[1]
+  ): ReturnType<ProjectGoalsHandler["updateProjectGoal"]> {
+    return await this.handler.updateProjectGoal(goalId, patch);
+  }
+
+  /** Archives a project goal after execution has stopped. */
+  async archive(
+    goalId: Parameters<ProjectGoalsHandler["archiveProjectGoal"]>[0]
+  ): ReturnType<ProjectGoalsHandler["archiveProjectGoal"]> {
+    return await this.handler.archiveProjectGoal(goalId);
+  }
+
+  /** Restores an archived project goal. */
+  async unarchive(
+    goalId: Parameters<ProjectGoalsHandler["unarchiveProjectGoal"]>[0]
+  ): ReturnType<ProjectGoalsHandler["unarchiveProjectGoal"]> {
+    return await this.handler.unarchiveProjectGoal(goalId);
+  }
+
+  /** Deletes a project goal that has never been launched. */
+  async delete(
+    goalId: Parameters<ProjectGoalsHandler["deleteProjectGoal"]>[0]
+  ): ReturnType<ProjectGoalsHandler["deleteProjectGoal"]> {
+    return await this.handler.deleteProjectGoal(goalId);
   }
 }
 

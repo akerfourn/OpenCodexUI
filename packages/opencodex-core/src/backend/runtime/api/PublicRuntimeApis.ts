@@ -34,6 +34,8 @@ import type {
   OpenCodexPluginListResult,
   OpenCodexPluginSearchResult,
   OpenCodexProject,
+  OpenCodexProjectGoal,
+  OpenCodexProjectGoalPatch,
   OpenCodexProjectWorkspace,
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRule,
@@ -161,6 +163,21 @@ export interface ProjectTasksApi {
     patch: { title?: string; description?: string; status?: OpenCodexProjectTaskStatus }
   ): Promise<OpenCodexProjectTask>;
   delete(taskId: string): Promise<{ ok: true }>;
+}
+
+/** Public operations for the project-level goal catalogue. */
+export interface ProjectGoalsApi {
+  list(projectId: string, includeArchived?: boolean): Promise<OpenCodexProjectGoal[]>;
+  create(
+    projectId: string,
+    name: string,
+    objective: string,
+    tokenBudget: number | null
+  ): Promise<OpenCodexProjectGoal>;
+  update(goalId: string, patch: OpenCodexProjectGoalPatch): Promise<OpenCodexProjectGoal>;
+  archive(goalId: string): Promise<OpenCodexProjectGoal>;
+  unarchive(goalId: string): Promise<OpenCodexProjectGoal>;
+  delete(goalId: string): Promise<{ ok: true }>;
 }
 
 /** Public operations for project trust decisions. */

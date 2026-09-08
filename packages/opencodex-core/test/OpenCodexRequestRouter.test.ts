@@ -160,3 +160,51 @@ describe("OpenCodexRequestRouter Git routes", () => {
     expect(mergeBranchTo).toHaveBeenCalledWith("/workspace/project", "source-1", "main");
   });
 });
+
+describe("OpenCodexRequestRouter project goal routes", () => {
+  it("should forward catalogue operations without deriving a chat scope", async () => {
+    const goals = {
+      list: vi.fn(async () => []),
+      create: vi.fn(async () => undefined),
+      update: vi.fn(async () => undefined),
+      archive: vi.fn(async () => undefined),
+      unarchive: vi.fn(async () => undefined),
+      delete: vi.fn(async () => ({ ok: true as const }))
+    };
+    const runtime = { goals } as unknown as OpenCodexBackendRuntime;
+    const router = new OpenCodexRequestRouter(runtime);
+
+    await router.handleRequest({
+      type: "projectGoals.list",
+      projectId: "project-1",
+      includeArchived: true
+    });
+    await router.handleRequest({
+      type: "projectGoals.create",
+      projectId: "project-1",
+      name: "Release",
+      objective: "Prepare the release.",
+      tokenBudget: 10_000
+    });
+    await router.handleRequest({
+      type: "projectGoals.update",
+      goalId: "goal-1",
+      patch: { name: "Release v2" }
+    });
+    await router.handleRequest({ type: "projectGoals.archive", goalId: "goal-1" });
+    await router.handleRequest({ type: "projectGoals.unarchive", goalId: "goal-1" });
+    await router.handleRequest({ type: "projectGoals.delete", goalId: "goal-1" });
+
+    expect(goals.list).toHaveBeenCalledWith("project-1", true);
+    expect(goals.create).toHaveBeenCalledWith(
+      "project-1",
+      "Release",
+      "Prepare the release.",
+      10_000
+    );
+    expect(goals.update).toHaveBeenCalledWith("goal-1", { name: "Release v2" });
+    expect(goals.archive).toHaveBeenCalledWith("goal-1");
+    expect(goals.unarchive).toHaveBeenCalledWith("goal-1");
+    expect(goals.delete).toHaveBeenCalledWith("goal-1");
+  });
+});

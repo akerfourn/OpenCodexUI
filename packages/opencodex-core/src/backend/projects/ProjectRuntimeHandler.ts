@@ -5,6 +5,8 @@ import type {
 import type {
   OpenCodexCodexReleaseCheck,
   OpenCodexProject,
+  OpenCodexProjectGoal,
+  OpenCodexProjectGoalPatch,
   OpenCodexProjectGroupsSnapshot,
   OpenCodexProjectPreferences,
   OpenCodexProjectStatistics,
@@ -19,6 +21,7 @@ import type {
 import type { OpenCodexBackendOptions } from "../../types.js";
 import { ProjectCacheDataService } from "./ProjectCacheDataService.js";
 import { ProjectContextService } from "./ProjectContextService.js";
+import { ProjectGoalService } from "./ProjectGoalService.js";
 import { ProjectGroupService } from "./ProjectGroupService.js";
 import { ProjectSourceService } from "./ProjectSourceService.js";
 import { ProjectTrustService } from "./ProjectTrustService.js";
@@ -61,6 +64,8 @@ export class ProjectRuntimeHandler implements ProjectSourcePort {
   private readonly projectGroupService: ProjectGroupService;
   /** Reads project statistics and persists local project tasks. */
   private readonly projectCacheDataService: ProjectCacheDataService;
+  /** Persists and validates the project-level goal catalogue. */
+  private readonly projectGoalService: ProjectGoalService;
   /** Coordinates release checks and standalone Codex source updates. */
   private readonly sourceUpdateRuntimeHandler: SourceUpdateRuntimeHandler;
 
@@ -137,6 +142,9 @@ export class ProjectRuntimeHandler implements ProjectSourcePort {
       events: options.events
     });
     this.projectCacheDataService = new ProjectCacheDataService({
+      cacheRepository: options.cacheRepository
+    });
+    this.projectGoalService = new ProjectGoalService({
       cacheRepository: options.cacheRepository
     });
     this.sourceUpdateRuntimeHandler = new SourceUpdateRuntimeHandler({
@@ -329,6 +337,53 @@ export class ProjectRuntimeHandler implements ProjectSourcePort {
   /** Deletes a local project task. */
   async deleteProjectTask(taskId: string): Promise<{ ok: true }> {
     return await this.projectCacheDataService.deleteProjectTask(taskId);
+  }
+
+  /** Lists project goals, optionally including archived entries. */
+  async listProjectGoals(
+    projectId: string,
+    includeArchived = false
+  ): Promise<OpenCodexProjectGoal[]> {
+    return await this.projectGoalService.listProjectGoals(projectId, includeArchived);
+  }
+
+  /** Creates a draft in the project goal catalogue. */
+  async createProjectGoal(
+    projectId: string,
+    name: string,
+    objective: string,
+    tokenBudget: number | null
+  ): Promise<OpenCodexProjectGoal> {
+    return await this.projectGoalService.createProjectGoal({
+      projectId,
+      name,
+      objective,
+      tokenBudget
+    });
+  }
+
+  /** Updates editable fields in a project goal. */
+  async updateProjectGoal(
+    goalId: string,
+    patch: OpenCodexProjectGoalPatch
+  ): Promise<OpenCodexProjectGoal> {
+    return await this.projectGoalService.updateProjectGoal(goalId, patch);
+  }
+
+  /** Archives a project goal after its execution has stopped. */
+  async archiveProjectGoal(goalId: string): Promise<OpenCodexProjectGoal> {
+    return await this.projectGoalService.archiveProjectGoal(goalId);
+  }
+
+  /** Restores an archived project goal. */
+  async unarchiveProjectGoal(goalId: string): Promise<OpenCodexProjectGoal> {
+    return await this.projectGoalService.unarchiveProjectGoal(goalId);
+  }
+
+  /** Deletes a project goal that has never been launched. */
+  async deleteProjectGoal(goalId: string): Promise<{ ok: true }> {
+    await this.projectGoalService.deleteProjectGoal(goalId);
+    return { ok: true };
   }
 
   /** Trusts a project in Codex configuration. */

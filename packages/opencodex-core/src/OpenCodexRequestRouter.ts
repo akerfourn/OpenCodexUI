@@ -491,6 +491,23 @@ export class OpenCodexRequestRouter {
         return this.runtime.tasks.update(request.taskId, request.patch);
       case "projectTasks.delete":
         return this.runtime.tasks.delete(request.taskId);
+      case "projectGoals.list":
+        return this.runtime.goals.list(request.projectId, request.includeArchived === true);
+      case "projectGoals.create":
+        return this.runtime.goals.create(
+          request.projectId,
+          request.name,
+          request.objective,
+          request.tokenBudget
+        );
+      case "projectGoals.update":
+        return this.runtime.goals.update(request.goalId, request.patch);
+      case "projectGoals.archive":
+        return this.runtime.goals.archive(request.goalId);
+      case "projectGoals.unarchive":
+        return this.runtime.goals.unarchive(request.goalId);
+      case "projectGoals.delete":
+        return this.runtime.goals.delete(request.goalId);
       case "commitPrompt.get":
         return this.runtime.git.commitMessage.readPrompt();
       case "commitPrompt.update":

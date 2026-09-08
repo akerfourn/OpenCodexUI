@@ -9,6 +9,7 @@ import type {
   AutomationCacheRepository,
   SourceCacheRepository
 } from "./repositoryTooling.js";
+import type { ProjectGoalCacheRepository } from "./repositoryGoals.js";
 
 /**
  * Describes the storage contract implemented by cache backends.
@@ -19,6 +20,7 @@ export interface OpenCodexCacheRepository
     ProjectCacheRepository,
     LogCacheRepository,
     AutomationCacheRepository,
+    ProjectGoalCacheRepository,
     ThreadCacheRepository {
   /** Workspace catalogue and atomic execution reservations. */
   readonly workspaces: WorkspaceCacheRepository;

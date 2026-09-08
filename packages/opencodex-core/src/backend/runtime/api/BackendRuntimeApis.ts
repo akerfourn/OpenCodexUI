@@ -8,6 +8,7 @@ import {
   CodexUpdatesApi,
   GroupsApi,
   ProjectContextApi,
+  ProjectGoalsApi,
   ProjectTasksApi,
   ProjectTrustApi,
   ProjectsApi,
@@ -46,6 +47,8 @@ export class BackendRuntimeApis {
   readonly context: ProjectContextApi;
   /** Project task operations. */
   readonly tasks: ProjectTasksApi;
+  /** Project goal catalogue operations. */
+  readonly goals: ProjectGoalsApi;
   /** Project trust operations. */
   readonly trust: ProjectTrustApi;
   /** Codex release and source update operations. */
@@ -94,6 +97,7 @@ export class BackendRuntimeApis {
     this.groups = new GroupsApi(services.projectRuntimeHandler);
     this.context = new ProjectContextApi(services.projectRuntimeHandler);
     this.tasks = new ProjectTasksApi(services.projectRuntimeHandler);
+    this.goals = new ProjectGoalsApi(services.projectRuntimeHandler);
     this.trust = new ProjectTrustApi(services.projectRuntimeHandler);
     this.updates = new CodexUpdatesApi(services.projectRuntimeHandler);
     this.threads = new ThreadsApi(services.threadRuntimeHandler);

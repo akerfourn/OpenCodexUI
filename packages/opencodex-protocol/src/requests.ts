@@ -18,6 +18,7 @@ import type {
   OpenCodexSourceColor,
   OpenCodexSourceSettingsPatch,
   OpenCodexSettings,
+  OpenCodexProjectGoalPatch,
   OpenCodexThreadGoalPatch,
   OpenCodexThreadGoalStatus,
   OpenCodexThreadScope,
@@ -398,6 +399,18 @@ export type OpenCodexRequest =
       };
     }
   | { type: "projectTasks.delete"; taskId: string }
+  | { type: "projectGoals.list"; projectId: string; includeArchived?: boolean }
+  | {
+      type: "projectGoals.create";
+      projectId: string;
+      name: string;
+      objective: string;
+      tokenBudget: number | null;
+    }
+  | { type: "projectGoals.update"; goalId: string; patch: OpenCodexProjectGoalPatch }
+  | { type: "projectGoals.archive"; goalId: string }
+  | { type: "projectGoals.unarchive"; goalId: string }
+  | { type: "projectGoals.delete"; goalId: string }
   | { type: "commitPrompt.get" }
   | { type: "commitPrompt.update"; prompt: string }
   | { type: "commitPrompt.reset" }

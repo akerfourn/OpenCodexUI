@@ -14,6 +14,7 @@ import { ProjectCommandsStore } from "./ProjectCommandsStore";
 import { ProjectComposeStore } from "./ProjectComposeStore";
 import { ProjectContextStore } from "./ProjectContextStore";
 import { ProjectGitStore } from "./git/ProjectGitStore";
+import { ProjectGoalsStore } from "./ProjectGoalsStore";
 import { ProjectRulesStore } from "./ProjectRulesStore";
 import { ProjectTasksStore } from "./ProjectTasksStore";
 import { ProjectViewLayoutStore } from "./ProjectViewLayoutStore";
@@ -42,6 +43,7 @@ export class ProjectStore {
   readonly commandsStore: ProjectCommandsStore;
   readonly composeStore: ProjectComposeStore;
   readonly contextStore: ProjectContextStore;
+  readonly goalsStore: ProjectGoalsStore;
   readonly rulesStore: ProjectRulesStore;
   readonly tasksStore: ProjectTasksStore;
   readonly chatsById = new Map<string, ChatStore>();
@@ -63,6 +65,7 @@ export class ProjectStore {
     this.commandsStore = new ProjectCommandsStore(this, root);
     this.composeStore = new ProjectComposeStore(this, root);
     this.contextStore = new ProjectContextStore(this, root);
+    this.goalsStore = new ProjectGoalsStore(this, root);
     this.rulesStore = new ProjectRulesStore(this, root);
     this.tasksStore = new ProjectTasksStore(this, root);
     makeAutoObservable<ProjectStore, "root" | "layoutStore" | "gitStores">(this, {

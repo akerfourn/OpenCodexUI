@@ -10,6 +10,7 @@ import type {
   CachedProjectCommand,
   CachedProjectCommandRule,
   CachedProjectCommandRuleFileState,
+  CachedProjectGoal,
   CachedProjectTask,
   CachedSource,
   CachedLogEntry,
@@ -23,6 +24,7 @@ import type {
   LogRow,
   ProjectCommandRow,
   ProjectCommandRuleFileStateRow,
+  ProjectGoalRow,
   ProjectCommandRuleRow,
   ProjectRow,
   ProjectGroupRow,
@@ -284,6 +286,32 @@ export function mapProjectTaskRow(row: ProjectTaskRow): CachedProjectTask {
     title: row.title,
     description: row.description,
     status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+/** Maps a raw SQLite project goal row into the public cache shape. */
+export function mapProjectGoalRow(row: ProjectGoalRow): CachedProjectGoal {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    name: row.name,
+    objective: row.objective,
+    tokenBudget: row.token_budget,
+    status: row.status,
+    isArchived: row.is_archived === 1,
+    sourceId: row.source_id,
+    threadId: row.thread_id,
+    workspaceId: row.workspace_id,
+    cwd: row.cwd,
+    tokensUsed: row.tokens_used,
+    timeUsedSeconds: row.time_used_seconds,
+    launchedAt: row.launched_at,
+    pausedAt: row.paused_at,
+    completedAt: row.completed_at,
+    archivedAt: row.archived_at,
+    lastSyncedAt: row.last_synced_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
