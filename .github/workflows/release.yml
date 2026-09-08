@@ -245,7 +245,14 @@ jobs:
           if [ "${RELEASE_KIND}" = "prerelease" ]; then
             release_title="OpenCodexUI ${version}"
             release_body="$(mktemp)"
-            : > "${release_body}"
+            short_sha="${GITHUB_SHA:0:7}"
+            cat > "${release_body}" <<EOF
+          Automated prerelease of OpenCodexUI ${version}.
+
+          This build is intended for testing and may contain incomplete or unstable changes.
+
+          Built from commit [\`${short_sha}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}) on \`main\`.
+          EOF
 
             echo "version=${version}" >> "${GITHUB_OUTPUT}"
             echo "release_title=${release_title}" >> "${GITHUB_OUTPUT}"
@@ -308,12 +315,18 @@ jobs:
             "${BUILD_WINDOWS_RESULT}" != "success"
           ) ]]; then
             echo "::warning::Publishing a partial prerelease. Linux=${BUILD_LINUX_RESULT}; Windows=${BUILD_WINDOWS_RESULT}"
+            partial_release_body="$(mktemp)"
             {
+              cat "${RELEASE_BODY}"
+              echo
+              echo "### Partial prerelease"
+              echo
               echo "This prerelease is partial because at least one platform build failed."
               echo
               echo "- Linux build: ${BUILD_LINUX_RESULT}"
               echo "- Windows build: ${BUILD_WINDOWS_RESULT}"
-            } > "${RELEASE_BODY}"
+            } > "${partial_release_body}"
+            mv "${partial_release_body}" "${RELEASE_BODY}"
             {
               echo "### Partial prerelease"
               echo
