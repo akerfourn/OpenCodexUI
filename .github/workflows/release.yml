@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
     tags:
       - "v*.*.*"
 
@@ -37,6 +38,7 @@ jobs:
         env:
           BEFORE_SHA: ${{ github.event.before }}
           CURRENT_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -49,7 +51,7 @@ jobs:
             echo "tag=" >> "${GITHUB_OUTPUT}"
           }
 
-          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+          if [[ "${GITHUB_REF}" == "refs/heads/main" || "${GITHUB_REF}" == "refs/heads/dev" ]]; then
             if [[ ! "${current_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$ ]]; then
               echo "No automatic prerelease: ${current_version} is not an alpha, beta, or rc version."
               skip_release
@@ -83,11 +85,18 @@ jobs:
               exit 0
             fi
 
-            echo "Detected prerelease version change: ${previous_version} -> ${current_version}."
+            release_tag="v${current_version}"
+            if gh release view "${release_tag}" >/dev/null 2>&1; then
+              echo "No automatic prerelease: GitHub release ${release_tag} already exists."
+              skip_release
+              exit 0
+            fi
+
+            echo "Detected prerelease version change on ${GITHUB_REF_NAME}: ${previous_version} -> ${current_version}."
             echo "should_release=true" >> "${GITHUB_OUTPUT}"
             echo "release_kind=prerelease" >> "${GITHUB_OUTPUT}"
             echo "version=${current_version}" >> "${GITHUB_OUTPUT}"
-            echo "tag=v${current_version}" >> "${GITHUB_OUTPUT}"
+            echo "tag=${release_tag}" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
@@ -202,6 +211,10 @@ jobs:
     name: Publish GitHub release
     runs-on: ubuntu-latest
     if: ${{ always() && !cancelled() && needs.prepare_release.outputs.should_release == 'true' }}
+    concurrency:
+      # Branches can carry the same version while a merge is being completed.
+      group: opencodexui-release-${{ needs.prepare_release.outputs.version }}
+      cancel-in-progress: false
     needs:
       - prepare_release
       - build-linux
@@ -251,7 +264,7 @@ jobs:
 
           This build is intended for testing and may contain incomplete or unstable changes.
 
-          Built from commit [\`${short_sha}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}) on \`main\`.
+          Built from commit [\`${short_sha}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}) on \`${GITHUB_REF_NAME}\`.
           EOF
 
             echo "version=${version}" >> "${GITHUB_OUTPUT}"
