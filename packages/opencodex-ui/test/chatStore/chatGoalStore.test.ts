@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   countGoalCharacters,
+  getGoalStartAction,
   MAX_GOAL_OBJECTIVE_CHARACTERS,
   readGoalFormValues,
   readTokenBudget
@@ -42,6 +43,17 @@ describe("ChatGoalStore", () => {
       values: null,
       error: "objectiveTooLong"
     });
+  });
+
+  it("should not offer to resume a completed native goal", () => {
+    expect(getGoalStartAction({ ...createGoal(), status: "complete" }, true)).toBeNull();
+    expect(getGoalStartAction({ ...createGoal(), status: "budgetLimited" }, true)).toBeNull();
+  });
+
+  it("should offer start for a draft and resume only for a started paused goal", () => {
+    expect(getGoalStartAction(null, false)).toBe("start");
+    expect(getGoalStartAction({ ...createGoal(), status: "paused" }, false)).toBe("start");
+    expect(getGoalStartAction({ ...createGoal(), status: "paused" }, true)).toBe("resume");
   });
 
   it("should load a native goal for the chat source", async () => {

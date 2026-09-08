@@ -185,8 +185,7 @@ export function ChatGoalDialog({
   }
 
   const isBusy = goalStore.isLoading || goalStore.isSaving;
-  const canStart = goal === null || goal.status !== "active";
-  const startLabel = goalStore.hasStarted ? t("goal.resume") : t("goal.start");
+  const startAction = getGoalStartAction(goal, goalStore.hasStarted);
   const objectiveCharacterCount = countGoalCharacters(objectiveMarkdown.trim());
   const isObjectiveTooLong = objectiveCharacterCount > MAX_GOAL_OBJECTIVE_CHARACTERS;
   const objectiveCharacterCountText = t("goal.objectiveCharacters", {
@@ -312,7 +311,7 @@ export function ChatGoalDialog({
         >
           {savingAction === "save" ? <CircularProgress size={18} color="inherit" /> : t("goal.save")}
         </Button>
-        {canStart ? (
+        {startAction !== null ? (
           <Button
             type="button"
             variant="contained"
@@ -320,7 +319,13 @@ export function ChatGoalDialog({
             onClick={() => void handleStart()}
             disabled={!canMutate || isBusy}
           >
-            {savingAction === "start" ? <CircularProgress size={18} color="inherit" /> : startLabel}
+            {savingAction === "start" ? (
+              <CircularProgress size={18} color="inherit" />
+            ) : startAction === "resume" ? (
+              t("goal.resume")
+            ) : (
+              t("goal.start")
+            )}
           </Button>
         ) : null}
       </DialogActions>
@@ -387,6 +392,24 @@ export function readGoalFormValues(objective: string, tokenBudget: string): Goal
 /** Counts Unicode code points, matching Codex's native character limit semantics. */
 export function countGoalCharacters(value: string): number {
   return Array.from(value).length;
+}
+
+export type GoalStartAction = "start" | "resume";
+
+/** Chooses whether the current native goal can be started or resumed safely. */
+export function getGoalStartAction(
+  goal: OpenCodexThreadGoal | null,
+  hasStarted: boolean
+): GoalStartAction | null {
+  if (goal === null) {
+    return "start";
+  }
+
+  if (goal.status !== "paused") {
+    return null;
+  }
+
+  return hasStarted ? "resume" : "start";
 }
 
 export const ChatGoalDialogX = observer(ChatGoalDialog);
