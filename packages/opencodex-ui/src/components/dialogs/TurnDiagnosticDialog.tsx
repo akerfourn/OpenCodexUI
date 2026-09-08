@@ -222,7 +222,7 @@ function TurnDiagnosticContent({ diagnostic }: { diagnostic: OpenCodexTurnDiagno
       ) : null}
 
       <DiagnosticSection title={t("turnDiagnostics.chronology")}>
-        <TurnDiagnosticEventList events={diagnostic.events} />
+        <TurnDiagnosticEventList key={diagnostic.id} events={diagnostic.events} />
       </DiagnosticSection>
     </>
   );
