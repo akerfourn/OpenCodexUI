@@ -1,6 +1,6 @@
 {
   "name": "@open-codex-ui/codex-rpc",
-  "version": "1.13.0-alpha.8",
+  "version": "1.13.0-alpha.9",
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

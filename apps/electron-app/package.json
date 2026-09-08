@@ -1,6 +1,6 @@
 {
   "name": "open-codex-ui",
-  "version": "1.13.0-alpha.8",
+  "version": "1.13.0-alpha.9",
   "description": "Electron desktop UI for the local Codex app-server.",
   "author": {
     "name": "Adrien Kerfourn",
