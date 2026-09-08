@@ -34,7 +34,10 @@ export function ChatGoalSummary({ goal, hasStarted }: ChatGoalSummaryProps) {
           t("goal.tokensUsed"),
           formatNumber(goal.tokensUsed)
         )}
-        {renderChatGoalSummaryRow(t("goal.timeUsed"), `${formatNumber(goal.timeUsedSeconds)} s`)}
+        {renderChatGoalSummaryRow(
+          t("goal.timeUsed"),
+          formatGoalDuration(goal.timeUsedSeconds, t)
+        )}
         {renderChatGoalSummaryRow(
           t("goal.tokenBudget"),
           goal.tokenBudget === null ? t("goal.serverDefault") : formatNumber(goal.tokenBudget)
@@ -114,4 +117,39 @@ function getGoalStatusColor(
 /** Formats a goal counter consistently across platforms. */
 function formatNumber(value: number): string {
   return new Intl.NumberFormat().format(value);
+}
+
+type GoalDurationTranslate = (key: string) => string;
+
+const GOAL_DURATION_UNITS = [
+  { seconds: 86_400, singularKey: "goal.duration.day", pluralKey: "goal.duration.days" },
+  { seconds: 3_600, singularKey: "goal.duration.hour", pluralKey: "goal.duration.hours" },
+  { seconds: 60, singularKey: "goal.duration.minute", pluralKey: "goal.duration.minutes" },
+  { seconds: 1, singularKey: "goal.duration.second", pluralKey: "goal.duration.seconds" }
+] as const;
+
+/** Formats goal elapsed time with only the non-zero calendar units. */
+export function formatGoalDuration(
+  timeUsedSeconds: number,
+  translate: GoalDurationTranslate
+): string {
+  const totalSeconds = Number.isFinite(timeUsedSeconds)
+    ? Math.max(0, Math.floor(timeUsedSeconds))
+    : 0;
+  let remainingSeconds = totalSeconds;
+  const parts: string[] = [];
+
+  for (const unit of GOAL_DURATION_UNITS) {
+    const count = Math.floor(remainingSeconds / unit.seconds);
+
+    if (count === 0) {
+      continue;
+    }
+
+    remainingSeconds -= count * unit.seconds;
+    const labelKey = count === 1 ? unit.singularKey : unit.pluralKey;
+    parts.push(`${formatNumber(count)} ${translate(labelKey)}`);
+  }
+
+  return parts.length === 0 ? translate("goal.duration.zero") : parts.join(" ");
 }

@@ -52,6 +52,17 @@ export const enConversation = {
     status: "Status",
     title: "Manage native goal",
     timeUsed: "Time used",
+    duration: {
+      day: "day",
+      days: "days",
+      hour: "hour",
+      hours: "hours",
+      minute: "minute",
+      minutes: "minutes",
+      second: "second",
+      seconds: "seconds",
+      zero: "0 seconds"
+    },
     tokenBudget: "Official budget",
     tokenBudgetHint:
       "Native Codex budget units based on uncached input tokens and output tokens.",

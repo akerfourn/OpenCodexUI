@@ -51,6 +51,17 @@ export const frConversation = {
     status: "État",
     title: "Gérer le goal natif",
     timeUsed: "Temps utilisé",
+    duration: {
+      day: "jour",
+      days: "jours",
+      hour: "heure",
+      hours: "heures",
+      minute: "minute",
+      minutes: "minutes",
+      second: "seconde",
+      seconds: "secondes",
+      zero: "0 seconde"
+    },
     tokenBudget: "Budget officiel",
     tokenBudgetHint:
       "Unités de budget natives Codex, liées aux tokens non mis en cache et aux tokens de sortie.",
