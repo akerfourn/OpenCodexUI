@@ -33,6 +33,7 @@ import type {
   CachedProjectPreferences,
   CachedProjectGoal,
   CachedProjectGoalCreateInput,
+  CachedProjectGoalExecutionInput,
   CachedProjectGoalUpdateInput,
   CachedProjectTask,
   CachedProjectTaskCreateInput,
@@ -451,6 +452,14 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     patch: CachedProjectGoalUpdateInput
   ): Promise<CachedProjectGoal> {
     return await this.projectGoals.updateProjectGoal(goalId, patch);
+  }
+
+  /** Synchronizes native execution metadata for a project goal. */
+  async updateProjectGoalExecution(
+    goalId: string,
+    patch: CachedProjectGoalExecutionInput
+  ): Promise<CachedProjectGoal> {
+    return await this.projectGoals.updateProjectGoalExecution(goalId, patch);
   }
 
   /** Archives a project goal after its execution has stopped. */

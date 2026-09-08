@@ -29,6 +29,9 @@ vi.mock("../src/components/projects/ProjectRulesPanel", () => ({
 vi.mock("../src/components/projects/ProjectTasksPanel", () => ({
   ProjectTasksPanelX: () => null
 }));
+vi.mock("../src/components/projects/ProjectGoalsPanel", () => ({
+  ProjectGoalsPanelX: () => null
+}));
 
 import { ProjectSidePanel } from "../src/components/projects/ProjectSidePanel";
 
@@ -94,6 +97,30 @@ describe("ProjectSidePanel", () => {
     );
 
     expect(markup.match(/project-side-panel-tab-indicator is-active/gu)).toHaveLength(3);
+  });
+
+  it("should mark the Goals tool when one project goal needs attention", () => {
+    const projectStore = {
+      goalsStore: {
+        hasAttention: true
+      },
+      project: {
+        path: "/workspace/project",
+        sourceId: "source-1"
+      }
+    } as unknown as ProjectStore;
+
+    const markup = renderToStaticMarkup(
+      <ProjectSidePanel
+        store={{} as RootStore}
+        projectStore={projectStore}
+        isCollapsed={true}
+        onCollapsedChange={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain('aria-label="projectTools.goals"');
+    expect(markup.match(/project-side-panel-tab-indicator is-active/gu)).toHaveLength(1);
   });
 
   it("should expose Compose only when a Compose file is detected", () => {

@@ -10,6 +10,7 @@ import type {
   OpenCodexMessagePhase,
   OpenCodexReasoningEffort,
   OpenCodexThread,
+  OpenCodexThreadGoal,
   OpenCodexThreadRuntimeStatus,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
@@ -94,6 +95,19 @@ export class ChatStore {
    */
   get sourceId(): string | null {
     return this.projectStore.resolveThreadSourceId(this.thread);
+  }
+
+  /** Synchronizes a native goal event with the project-level goal catalogue. */
+  syncProjectGoalFromNative(goal: OpenCodexThreadGoal): void {
+    const goalsStore = this.projectStore.goalsStore;
+
+    if (goalsStore === undefined) {
+      return;
+    }
+
+    void goalsStore.syncNativeGoal(this, goal).catch((error: unknown) => {
+      this.root.appStore.errorMessage = readChatErrorMessage(error);
+    });
   }
 
   /** Application store used by the composer to resolve current model options. */

@@ -107,9 +107,9 @@ export class ChatGoalStore {
         threadId: this.chatStore.thread.id,
         sourceId
       });
+      const normalizedGoal = isOpenCodexThreadGoal(goal) ? goal : null;
 
       runInAction(() => {
-        const normalizedGoal = isOpenCodexThreadGoal(goal) ? goal : null;
         this.goal = normalizedGoal;
 
         if (normalizedGoal === null) {
@@ -131,6 +131,10 @@ export class ChatGoalStore {
 
         this.hasLoaded = true;
       });
+
+      if (normalizedGoal !== null) {
+        this.chatStore.syncProjectGoalFromNative(normalizedGoal);
+      }
     } catch (error: unknown) {
       runInAction(() => {
         this.error = readChatErrorMessage(error);
@@ -258,6 +262,7 @@ export class ChatGoalStore {
 
     this.error = null;
     this.hasLoaded = true;
+    this.chatStore.syncProjectGoalFromNative(goal);
   }
 
   /** Applies a native goal-cleared notification. */

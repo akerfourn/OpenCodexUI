@@ -7,6 +7,7 @@ import type {
   OpenCodexProject,
   OpenCodexProjectGoal,
   OpenCodexProjectGoalPatch,
+  OpenCodexProjectGoalExecutionPatch,
   OpenCodexProjectGroupsSnapshot,
   OpenCodexProjectPreferences,
   OpenCodexProjectStatistics,
@@ -368,6 +369,14 @@ export class ProjectRuntimeHandler implements ProjectSourcePort {
     patch: OpenCodexProjectGoalPatch
   ): Promise<OpenCodexProjectGoal> {
     return await this.projectGoalService.updateProjectGoal(goalId, patch);
+  }
+
+  /** Synchronizes native execution metadata for a project goal. */
+  async updateProjectGoalExecution(
+    goalId: string,
+    patch: OpenCodexProjectGoalExecutionPatch
+  ): Promise<OpenCodexProjectGoal> {
+    return await this.projectGoalService.updateProjectGoalExecution(goalId, patch);
   }
 
   /** Archives a project goal after its execution has stopped. */

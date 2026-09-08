@@ -240,7 +240,7 @@ export class ProjectStore {
   /**
    * Returns whether one visible project tool needs attention.
    *
-   * @returns `true` when Git, commands, or Compose should display an activity marker.
+   * @returns `true` when Git, commands, Compose, or goals should display an activity marker.
    */
   get hasSidePanelActivity(): boolean {
     const hasComposeActivity = this.composeStore.isAvailable &&
@@ -250,7 +250,8 @@ export class ProjectStore {
     return this.gitStore.commitStore.hasDraftMessage ||
       [...this.gitStores.values()].some((store) => store.commitStore.hasDraftMessage) ||
       this.commandsStore.hasActiveRun ||
-      hasComposeActivity;
+      hasComposeActivity ||
+      this.goalsStore.hasAttention;
   }
 
   /**

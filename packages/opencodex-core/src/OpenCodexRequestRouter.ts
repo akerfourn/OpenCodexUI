@@ -502,6 +502,8 @@ export class OpenCodexRequestRouter {
         );
       case "projectGoals.update":
         return this.runtime.goals.update(request.goalId, request.patch);
+      case "projectGoals.execution.update":
+        return this.runtime.goals.updateExecution(request.goalId, request.patch);
       case "projectGoals.archive":
         return this.runtime.goals.archive(request.goalId);
       case "projectGoals.unarchive":

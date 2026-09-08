@@ -52,6 +52,7 @@ type ProjectGoalsHandler = Pick<
   | "listProjectGoals"
   | "createProjectGoal"
   | "updateProjectGoal"
+  | "updateProjectGoalExecution"
   | "archiveProjectGoal"
   | "unarchiveProjectGoal"
   | "deleteProjectGoal"
@@ -311,6 +312,14 @@ export class ProjectGoalsApi implements ProjectGoalsApiContract {
     patch: Parameters<ProjectGoalsHandler["updateProjectGoal"]>[1]
   ): ReturnType<ProjectGoalsHandler["updateProjectGoal"]> {
     return await this.handler.updateProjectGoal(goalId, patch);
+  }
+
+  /** Synchronizes native execution metadata for a project goal. */
+  async updateExecution(
+    goalId: Parameters<ProjectGoalsHandler["updateProjectGoalExecution"]>[0],
+    patch: Parameters<ProjectGoalsHandler["updateProjectGoalExecution"]>[1]
+  ): ReturnType<ProjectGoalsHandler["updateProjectGoalExecution"]> {
+    return await this.handler.updateProjectGoalExecution(goalId, patch);
   }
 
   /** Archives a project goal after execution has stopped. */

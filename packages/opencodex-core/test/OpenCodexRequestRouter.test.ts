@@ -167,6 +167,7 @@ describe("OpenCodexRequestRouter project goal routes", () => {
       list: vi.fn(async () => []),
       create: vi.fn(async () => undefined),
       update: vi.fn(async () => undefined),
+      updateExecution: vi.fn(async () => undefined),
       archive: vi.fn(async () => undefined),
       unarchive: vi.fn(async () => undefined),
       delete: vi.fn(async () => ({ ok: true as const }))
@@ -191,6 +192,15 @@ describe("OpenCodexRequestRouter project goal routes", () => {
       goalId: "goal-1",
       patch: { name: "Release v2" }
     });
+    await router.handleRequest({
+      type: "projectGoals.execution.update",
+      goalId: "goal-1",
+      patch: {
+        status: "active",
+        sourceId: "source-1",
+        threadId: "thread-1"
+      }
+    });
     await router.handleRequest({ type: "projectGoals.archive", goalId: "goal-1" });
     await router.handleRequest({ type: "projectGoals.unarchive", goalId: "goal-1" });
     await router.handleRequest({ type: "projectGoals.delete", goalId: "goal-1" });
@@ -203,6 +213,11 @@ describe("OpenCodexRequestRouter project goal routes", () => {
       10_000
     );
     expect(goals.update).toHaveBeenCalledWith("goal-1", { name: "Release v2" });
+    expect(goals.updateExecution).toHaveBeenCalledWith("goal-1", {
+      status: "active",
+      sourceId: "source-1",
+      threadId: "thread-1"
+    });
     expect(goals.archive).toHaveBeenCalledWith("goal-1");
     expect(goals.unarchive).toHaveBeenCalledWith("goal-1");
     expect(goals.delete).toHaveBeenCalledWith("goal-1");

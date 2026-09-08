@@ -165,6 +165,7 @@ describe("project runtime APIs", () => {
     const listProjectGoals = vi.fn<ProjectRuntimeHandler["listProjectGoals"]>(async () => []);
     const createProjectGoal = vi.fn<ProjectRuntimeHandler["createProjectGoal"]>(async () => undefined as never);
     const updateProjectGoal = vi.fn<ProjectRuntimeHandler["updateProjectGoal"]>(async () => undefined as never);
+    const updateProjectGoalExecution = vi.fn<ProjectRuntimeHandler["updateProjectGoalExecution"]>(async () => undefined as never);
     const archiveProjectGoal = vi.fn<ProjectRuntimeHandler["archiveProjectGoal"]>(async () => undefined as never);
     const unarchiveProjectGoal = vi.fn<ProjectRuntimeHandler["unarchiveProjectGoal"]>(async () => undefined as never);
     const deleteProjectGoal = vi.fn<ProjectRuntimeHandler["deleteProjectGoal"]>(async () => ({ ok: true }));
@@ -172,6 +173,7 @@ describe("project runtime APIs", () => {
       listProjectGoals,
       createProjectGoal,
       updateProjectGoal,
+      updateProjectGoalExecution,
       archiveProjectGoal,
       unarchiveProjectGoal,
       deleteProjectGoal
@@ -179,6 +181,12 @@ describe("project runtime APIs", () => {
     await goals.list("project-1", true);
     await goals.create("project-1", "Release", "Prepare the release.", 10_000);
     await goals.update("goal-1", { name: "Release v2" });
+    await goals.updateExecution("goal-1", {
+      status: "active",
+      sourceId: "source-1",
+      threadId: "thread-1",
+      tokensUsed: 12
+    });
     await goals.archive("goal-1");
     await goals.unarchive("goal-1");
     await goals.delete("goal-1");
@@ -190,6 +198,12 @@ describe("project runtime APIs", () => {
       10_000
     );
     expect(updateProjectGoal).toHaveBeenCalledWith("goal-1", { name: "Release v2" });
+    expect(updateProjectGoalExecution).toHaveBeenCalledWith("goal-1", {
+      status: "active",
+      sourceId: "source-1",
+      threadId: "thread-1",
+      tokensUsed: 12
+    });
     expect(archiveProjectGoal).toHaveBeenCalledWith("goal-1");
     expect(unarchiveProjectGoal).toHaveBeenCalledWith("goal-1");
     expect(deleteProjectGoal).toHaveBeenCalledWith("goal-1");

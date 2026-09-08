@@ -35,6 +35,7 @@ import type {
   OpenCodexPluginSearchResult,
   OpenCodexProject,
   OpenCodexProjectGoal,
+  OpenCodexProjectGoalExecutionPatch,
   OpenCodexProjectGoalPatch,
   OpenCodexProjectWorkspace,
   OpenCodexProjectCommand,
@@ -175,6 +176,10 @@ export interface ProjectGoalsApi {
     tokenBudget: number | null
   ): Promise<OpenCodexProjectGoal>;
   update(goalId: string, patch: OpenCodexProjectGoalPatch): Promise<OpenCodexProjectGoal>;
+  updateExecution(
+    goalId: string,
+    patch: OpenCodexProjectGoalExecutionPatch
+  ): Promise<OpenCodexProjectGoal>;
   archive(goalId: string): Promise<OpenCodexProjectGoal>;
   unarchive(goalId: string): Promise<OpenCodexProjectGoal>;
   delete(goalId: string): Promise<{ ok: true }>;

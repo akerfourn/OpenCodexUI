@@ -108,4 +108,66 @@ describe("project goal persistence", () => {
     await repository.deleteProjectGoal(draft.id);
     expect(await repository.listProjectGoals(project.id)).toHaveLength(0);
   });
+
+  it("should persist monotonic native execution snapshots and reject reuse", async () => {
+    const project = await repository.upsertProject("/tmp/execution-goals-project");
+    const goal = await repository.createProjectGoal({
+      projectId: project.id,
+      name: "Run checks",
+      objective: "Run the complete verification suite.",
+      tokenBudget: null
+    });
+
+    const activeGoal = await repository.updateProjectGoalExecution(goal.id, {
+      status: "active",
+      sourceId: "source-1",
+      threadId: "thread-1",
+      workspaceId: "workspace-1",
+      cwd: "/workspace/project",
+      tokensUsed: 120,
+      timeUsedSeconds: 4,
+      launchedAt: "2026-01-01T10:00:00.000Z",
+      lastSyncedAt: "2026-01-01T10:00:04.000Z"
+    });
+    expect(activeGoal).toMatchObject({
+      status: "active",
+      sourceId: "source-1",
+      threadId: "thread-1",
+      tokensUsed: 120,
+      timeUsedSeconds: 4,
+      launchedAt: "2026-01-01T10:00:00.000Z"
+    });
+
+    const pausedGoal = await repository.updateProjectGoalExecution(goal.id, {
+      status: "paused",
+      tokensUsed: 90,
+      timeUsedSeconds: 8
+    });
+    expect(pausedGoal).toMatchObject({
+      status: "paused",
+      tokensUsed: 120,
+      timeUsedSeconds: 8,
+      pausedAt: expect.any(String)
+    });
+
+    const completedGoal = await repository.updateProjectGoalExecution(goal.id, {
+      status: "complete",
+      tokensUsed: 240,
+      timeUsedSeconds: 12
+    });
+    expect(completedGoal).toMatchObject({
+      status: "complete",
+      tokensUsed: 240,
+      timeUsedSeconds: 12,
+      completedAt: expect.any(String)
+    });
+
+    await expect(repository.updateProjectGoalExecution(goal.id, {
+      status: "active"
+    })).rejects.toThrow("A finished goal cannot change its status.");
+
+    await expect(repository.updateProjectGoalExecution(goal.id, {
+      status: "error"
+    })).rejects.toThrow("A finished goal cannot change its status.");
+  });
 });

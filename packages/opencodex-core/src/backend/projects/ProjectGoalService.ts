@@ -3,6 +3,7 @@ import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexProjectGoal,
   OpenCodexProjectGoalCreateInput,
+  OpenCodexProjectGoalExecutionPatch,
   OpenCodexProjectGoalPatch
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -64,6 +65,14 @@ export class ProjectGoalService {
     patch: OpenCodexProjectGoalPatch
   ): Promise<OpenCodexProjectGoal> {
     return await this.requireCacheRepository().updateProjectGoal(goalId, patch);
+  }
+
+  /** Synchronizes native execution metadata for a project goal. */
+  async updateProjectGoalExecution(
+    goalId: string,
+    patch: OpenCodexProjectGoalExecutionPatch
+  ): Promise<OpenCodexProjectGoal> {
+    return await this.requireCacheRepository().updateProjectGoalExecution(goalId, patch);
   }
 
   /** Archives a goal that is no longer running. */

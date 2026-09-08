@@ -41,3 +41,18 @@ export type CachedProjectGoalUpdateInput = {
   objective?: string;
   tokenBudget?: number | null;
 };
+
+/** Native execution snapshot synchronized into a project goal. */
+export type CachedProjectGoalExecutionInput = {
+  status: Exclude<CachedProjectGoalStatus, "draft">;
+  sourceId?: string | null;
+  threadId?: string | null;
+  workspaceId?: string | null;
+  cwd?: string | null;
+  tokensUsed?: number;
+  timeUsedSeconds?: number;
+  launchedAt?: string | null;
+  pausedAt?: string | null;
+  completedAt?: string | null;
+  lastSyncedAt?: string | null;
+};

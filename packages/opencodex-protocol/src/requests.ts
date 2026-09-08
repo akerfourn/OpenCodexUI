@@ -19,6 +19,7 @@ import type {
   OpenCodexSourceSettingsPatch,
   OpenCodexSettings,
   OpenCodexProjectGoalPatch,
+  OpenCodexProjectGoalExecutionPatch,
   OpenCodexThreadGoalPatch,
   OpenCodexThreadGoalStatus,
   OpenCodexThreadScope,
@@ -408,6 +409,11 @@ export type OpenCodexRequest =
       tokenBudget: number | null;
     }
   | { type: "projectGoals.update"; goalId: string; patch: OpenCodexProjectGoalPatch }
+  | {
+      type: "projectGoals.execution.update";
+      goalId: string;
+      patch: OpenCodexProjectGoalExecutionPatch;
+    }
   | { type: "projectGoals.archive"; goalId: string }
   | { type: "projectGoals.unarchive"; goalId: string }
   | { type: "projectGoals.delete"; goalId: string }

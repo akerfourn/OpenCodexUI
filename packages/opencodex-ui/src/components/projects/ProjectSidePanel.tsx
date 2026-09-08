@@ -3,6 +3,7 @@
  */
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import ChecklistOutlinedIcon from "@mui/icons-material/ChecklistOutlined";
+import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import FolderCopyOutlinedIcon from "@mui/icons-material/FolderCopyOutlined";
 import KeyboardTabOutlinedIcon from "@mui/icons-material/KeyboardTabOutlined";
 import RuleOutlinedIcon from "@mui/icons-material/RuleOutlined";
@@ -23,8 +24,9 @@ import { ProjectRulesPanelX } from "./ProjectRulesPanel";
 import { ProjectSidePanelTabIndicator } from "./ProjectSidePanelTabIndicator";
 import { ProjectSidePanelTabLabel } from "./ProjectSidePanelTabLabel";
 import { ProjectTasksPanelX } from "./ProjectTasksPanel";
+import { ProjectGoalsPanelX } from "./ProjectGoalsPanel";
 
-type ProjectSidePanelTab = "git" | "commands" | "rules" | "context" | "tasks" | "compose";
+type ProjectSidePanelTab = "git" | "commands" | "rules" | "context" | "tasks" | "goals" | "compose";
 type ProjectSidePanelTabDefinition = {
   value: ProjectSidePanelTab;
   label: string;
@@ -57,6 +59,7 @@ export function ProjectSidePanel({
   const composeStore = projectStore.composeStore;
   const [selectedTab, setSelectedTab] = useState<ProjectSidePanelTab>("git");
   const projectPath = projectStore.workspacePath ?? projectStore.project?.path;
+  const projectId = projectStore.project?.id;
   const sourceId = projectStore.project?.sourceId;
   const hasComposeFile = sourceId !== null && sourceId !== undefined &&
     composeStore?.isAvailable === true && readHasComposeFile(composeStore);
@@ -64,6 +67,7 @@ export function ProjectSidePanel({
   const hasProtectedCommitBranch = projectStore.gitStore?.isCurrentBranchCommitProtected === true;
   const hasActiveCommandRun = projectStore.commandsStore?.hasActiveRun === true;
   const hasNonStoppedComposeContainer = composeStore?.hasNonStoppedContainer === true;
+  const hasGoalActivity = projectStore.goalsStore?.hasAttention === true;
 
   useEffect(() => {
     if (composeStore !== undefined &&
@@ -80,6 +84,15 @@ export function ProjectSidePanel({
   }, [composeStore, composeStore?.isAvailable, projectPath, sourceId]);
 
   useEffect(() => {
+    const goalsStore = projectStore.goalsStore;
+
+    if (goalsStore !== undefined && projectId !== undefined &&
+      !goalsStore.hasLoaded && !goalsStore.isLoading) {
+      void goalsStore.loadGoals();
+    }
+  }, [projectId, projectStore.goalsStore]);
+
+  useEffect(() => {
     if (selectedTab === "compose" && !hasComposeFile) {
       setSelectedTab("git");
     }
@@ -89,6 +102,7 @@ export function ProjectSidePanel({
   const rulesLabel = t("projectTools.rules");
   const contextLabel = t("projectTools.context");
   const tasksLabel = t("projectTools.tasks");
+  const goalsLabel = t("projectTools.goals");
   const composeLabel = t("projectTools.compose");
   const tabs: ProjectSidePanelTabDefinition[] = [
     {
@@ -121,6 +135,12 @@ export function ProjectSidePanel({
       label: tasksLabel,
       icon: <ChecklistOutlinedIcon fontSize="small" />,
       hasActivity: false
+    },
+    {
+      value: "goals",
+      label: goalsLabel,
+      icon: <FlagOutlinedIcon fontSize="small" />,
+      hasActivity: hasGoalActivity
     }
   ];
 
@@ -166,6 +186,10 @@ export function ProjectSidePanel({
 
   if (selectedTab === "tasks") {
     panelContent = <ProjectTasksPanelX projectStore={projectStore} />;
+  }
+
+  if (selectedTab === "goals") {
+    panelContent = <ProjectGoalsPanelX store={store} projectStore={projectStore} />;
   }
 
   if (selectedTab === "compose" && composeStore !== undefined && hasComposeFile) {

@@ -3,9 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import type {
   OpenCodexProjectGoal,
-  OpenCodexRequest
+  OpenCodexRequest,
+  OpenCodexThreadGoal
 } from "@open-codex-ui/opencodex-protocol";
 
+import type { ChatStore } from "../src/stores/chat/ChatStore";
 import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import { ProjectGoalsStore } from "../src/stores/project/ProjectGoalsStore";
 import type { RootStore } from "../src/stores/RootStore";
@@ -96,6 +98,71 @@ describe("ProjectGoalsStore", () => {
     expect(store.errorMessage).toBe("catalogue unavailable");
     expect(root.appStore.errorMessage).toBe("catalogue unavailable");
   });
+
+  it("should persist execution snapshots separately from the goal definition", async () => {
+    const goal = createGoal();
+    const updatedGoal = createGoal({
+      status: "active",
+      sourceId: "source-1",
+      threadId: "thread-1",
+      launchedAt: "2026-01-01T10:00:00.000Z"
+    });
+    const request = createRequestMock([updatedGoal]);
+    const { store } = createStoreFixture(request);
+    store.goals = [goal];
+
+    await store.updateExecution(goal.id, {
+      status: "active",
+      sourceId: " source-1 ",
+      threadId: " thread-1 ",
+      tokensUsed: 42,
+      timeUsedSeconds: 3
+    });
+
+    expect(request.mock.calls[0]?.[0]).toEqual({
+      type: "projectGoals.execution.update",
+      goalId: "goal-1",
+      patch: {
+        status: "active",
+        sourceId: "source-1",
+        threadId: "thread-1",
+        tokensUsed: 42,
+        timeUsedSeconds: 3
+      }
+    });
+    expect(store.goals).toEqual([updatedGoal]);
+  });
+
+  it("should not duplicate an archived goal while importing a legacy native goal", async () => {
+    const archivedGoal = createGoal({
+      status: "complete",
+      isArchived: true,
+      threadId: "thread-1",
+      sourceId: "source-1",
+      launchedAt: "2026-01-01T10:00:00.000Z"
+    });
+    const request = createRequestMock([[archivedGoal]]);
+    const { store } = createStoreFixture(request);
+    const nativeGoal = createNativeGoal({ status: "complete" });
+    const chatStore = {
+      thread: { id: "thread-1" },
+      goal: {
+        load: vi.fn(async () => undefined),
+        error: null,
+        goal: nativeGoal
+      }
+    } as unknown as ChatStore;
+
+    await store.importNativeGoal(chatStore);
+
+    expect(request).toHaveBeenCalledWith({
+      type: "projectGoals.list",
+      projectId: "project-1",
+      includeArchived: true
+    });
+    expect(store.goals).toEqual([archivedGoal]);
+    expect(request).toHaveBeenCalledTimes(1);
+  });
 });
 
 /** Creates a project goal store with an isolated request mock. */
@@ -145,6 +212,23 @@ function createGoal(overrides: Partial<OpenCodexProjectGoal> = {}): OpenCodexPro
     lastSyncedAt: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides
+  };
+}
+
+/** Creates one native goal snapshot for catalogue import tests. */
+function createNativeGoal(
+  overrides: Partial<OpenCodexThreadGoal> = {}
+): OpenCodexThreadGoal {
+  return {
+    threadId: "thread-1",
+    objective: "Prepare the release.",
+    status: "active",
+    tokenBudget: null,
+    tokensUsed: 20,
+    timeUsedSeconds: 4,
+    createdAt: 1,
+    updatedAt: 2,
     ...overrides
   };
 }

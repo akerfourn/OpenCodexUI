@@ -209,6 +209,107 @@
   background: var(--project-task-status-background);
 }
 
+.project-goals-panel {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.project-goals-header {
+  flex: 0 0 auto;
+  align-items: center;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 10px 12px;
+}
+
+.project-goal-add-button.MuiIconButton-root {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.project-goal-add-button.MuiIconButton-root:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.project-goals-controls {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 8px 12px;
+}
+
+.project-goals-controls .MuiFormControlLabel-root {
+  margin: 0;
+}
+
+.project-goals-content {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.project-goal-row {
+  flex: 0 0 auto;
+  min-width: 0;
+  cursor: pointer;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 7px;
+  padding: 6px 6px 6px 8px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 94%, var(--vscode-focusBorder));
+  outline: none;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.project-goal-row:hover,
+.project-goal-row:focus-visible {
+  border-color: var(--vscode-focusBorder);
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 84%, var(--vscode-focusBorder));
+}
+
+.project-goal-row.is-archived {
+  opacity: 0.72;
+}
+
+.project-goal-status-icon.is-default {
+  color: var(--vscode-descriptionForeground);
+}
+
+.project-goal-status-icon.is-primary {
+  color: var(--vscode-focusBorder);
+}
+
+.project-goal-status-icon.is-success {
+  color: var(--vscode-testing-iconPassed);
+}
+
+.project-goal-status-icon.is-warning {
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.project-goal-status-icon.is-error {
+  color: var(--vscode-testing-iconFailed);
+}
+
+.project-goal-execution-summary {
+  display: flex;
+  gap: 6px;
+  flex-direction: column;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 94%, var(--vscode-focusBorder));
+}
+
 .project-task-status-select.MuiInputBase-root:hover {
   filter: brightness(1.06);
 }

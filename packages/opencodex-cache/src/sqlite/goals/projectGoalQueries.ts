@@ -6,6 +6,8 @@ import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 import type {
   CachedProjectGoal,
   CachedProjectGoalCreateInput,
+  CachedProjectGoalExecutionInput,
+  CachedProjectGoalStatus,
   CachedProjectGoalUpdateInput
 } from "../../types.js";
 import { mapProjectGoalRow } from "../shared/mappers.js";
@@ -156,6 +158,91 @@ export async function updateProjectGoal(
       name: nextName,
       objective: nextObjective,
       tokenBudget: nextTokenBudget,
+      updatedAt: now
+    });
+
+  return await readProjectGoal(database, current.id);
+}
+
+/** Synchronizes one native execution snapshot without rewriting its definition. */
+export async function updateProjectGoalExecution(
+  database: BetterSqliteDatabase,
+  goalId: string,
+  patch: CachedProjectGoalExecutionInput
+): Promise<CachedProjectGoal> {
+  const current = await readProjectGoal(database, goalId);
+
+  if (current.isArchived) {
+    throw new Error("An archived goal cannot receive execution updates.");
+  }
+
+  if (isFinishedGoalStatus(current.status) && patch.status !== current.status) {
+    throw new Error("A finished goal cannot change its status.");
+  }
+
+  const sourceId = readExecutionText(patch.sourceId, current.sourceId);
+  const threadId = readExecutionText(patch.threadId, current.threadId);
+  const workspaceId = readExecutionText(patch.workspaceId, current.workspaceId);
+  const cwd = readExecutionText(patch.cwd, current.cwd);
+
+  if (current.threadId !== null && threadId !== current.threadId) {
+    throw new Error("A project goal cannot be moved to another chat.");
+  }
+
+  if (current.sourceId !== null && sourceId !== current.sourceId) {
+    throw new Error("A project goal cannot be moved to another Codex source.");
+  }
+
+  if (current.launchedAt === null && (sourceId === null || threadId === null)) {
+    throw new Error("The first execution update must identify its source and chat.");
+  }
+
+  const now = new Date().toISOString();
+  const launchedAt = current.launchedAt ?? patch.launchedAt ?? now;
+  const pausedAt = patch.status === "paused"
+    ? patch.pausedAt ?? current.pausedAt ?? now
+    : patch.pausedAt === undefined ? current.pausedAt : patch.pausedAt;
+  const completedAt = isFinishedGoalStatus(patch.status)
+    ? patch.completedAt ?? current.completedAt ?? now
+    : patch.completedAt === undefined ? current.completedAt : patch.completedAt;
+  const tokensUsed = readMonotonicCounter(patch.tokensUsed, current.tokensUsed, "tokens used");
+  const timeUsedSeconds = readMonotonicCounter(
+    patch.timeUsedSeconds,
+    current.timeUsedSeconds,
+    "time used"
+  );
+  const lastSyncedAt = patch.lastSyncedAt ?? now;
+
+  database
+    .prepare(`
+      UPDATE project_goals SET
+        status = @status,
+        source_id = @sourceId,
+        thread_id = @threadId,
+        workspace_id = @workspaceId,
+        cwd = @cwd,
+        tokens_used = @tokensUsed,
+        time_used_seconds = @timeUsedSeconds,
+        launched_at = @launchedAt,
+        paused_at = @pausedAt,
+        completed_at = @completedAt,
+        last_synced_at = @lastSyncedAt,
+        updated_at = @updatedAt
+      WHERE id = @goalId
+    `)
+    .run({
+      goalId: current.id,
+      status: patch.status,
+      sourceId,
+      threadId,
+      workspaceId,
+      cwd,
+      tokensUsed,
+      timeUsedSeconds,
+      launchedAt,
+      pausedAt,
+      completedAt,
+      lastSyncedAt,
       updatedAt: now
     });
 
@@ -339,6 +426,43 @@ function normalizeRequiredGoalName(value: string): string {
   }
 
   return name;
+}
+
+/** Returns a nullable execution field while rejecting blank identifiers. */
+function readExecutionText(value: string | null | undefined, fallback: string | null): string | null {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  const normalizedValue = value.trim();
+  return normalizedValue.length === 0 ? null : normalizedValue;
+}
+
+/** Validates that a native snapshot counter never goes backwards. */
+function readMonotonicCounter(
+  value: number | undefined,
+  fallback: number,
+  label: string
+): number {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`Goal ${label} must be a non-negative integer.`);
+  }
+
+  return Math.max(value, fallback);
+}
+
+/** Identifies terminal native goal statuses retained for history. */
+function isFinishedGoalStatus(status: CachedProjectGoalStatus): boolean {
+  return status === "blocked" || status === "usageLimited" ||
+    status === "budgetLimited" || status === "complete" || status === "error";
 }
 
 /** Finds the first generic name not currently used in the project. */

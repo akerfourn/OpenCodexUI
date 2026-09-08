@@ -47,3 +47,18 @@ export type OpenCodexProjectGoalPatch = {
   objective?: string;
   tokenBudget?: number | null;
 };
+
+/** Execution metadata synchronized from a native Codex goal. */
+export type OpenCodexProjectGoalExecutionPatch = {
+  status: Exclude<OpenCodexProjectGoalStatus, "draft">;
+  sourceId?: string | null;
+  threadId?: string | null;
+  workspaceId?: string | null;
+  cwd?: string | null;
+  tokensUsed?: number;
+  timeUsedSeconds?: number;
+  launchedAt?: string | null;
+  pausedAt?: string | null;
+  completedAt?: string | null;
+  lastSyncedAt?: string | null;
+};

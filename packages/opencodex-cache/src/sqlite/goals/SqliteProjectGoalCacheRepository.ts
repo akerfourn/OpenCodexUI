@@ -3,6 +3,7 @@ import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 import type {
   CachedProjectGoal,
   CachedProjectGoalCreateInput,
+  CachedProjectGoalExecutionInput,
   CachedProjectGoalUpdateInput
 } from "../../types/goals.js";
 import type { ProjectGoalCacheRepository } from "../../types/repositoryGoals.js";
@@ -12,7 +13,8 @@ import {
   deleteProjectGoal,
   listProjectGoals,
   unarchiveProjectGoal,
-  updateProjectGoal
+  updateProjectGoal,
+  updateProjectGoalExecution
 } from "./projectGoalQueries.js";
 
 /** Provides project goal catalogue persistence through SQLite. */
@@ -41,6 +43,14 @@ export class SqliteProjectGoalCacheRepository implements ProjectGoalCacheReposit
     patch: CachedProjectGoalUpdateInput
   ): Promise<CachedProjectGoal> {
     return await updateProjectGoal(this.database, goalId, patch);
+  }
+
+  /** Synchronizes native execution metadata. */
+  async updateProjectGoalExecution(
+    goalId: string,
+    patch: CachedProjectGoalExecutionInput
+  ): Promise<CachedProjectGoal> {
+    return await updateProjectGoalExecution(this.database, goalId, patch);
   }
 
   /** Archives a non-running project goal. */

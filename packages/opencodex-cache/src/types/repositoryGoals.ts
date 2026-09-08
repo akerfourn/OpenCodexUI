@@ -1,6 +1,7 @@
 import type {
   CachedProjectGoal,
   CachedProjectGoalCreateInput,
+  CachedProjectGoalExecutionInput,
   CachedProjectGoalUpdateInput
 } from "./goals.js";
 
@@ -36,6 +37,18 @@ export interface ProjectGoalCacheRepository {
   updateProjectGoal(
     goalId: string,
     patch: CachedProjectGoalUpdateInput
+  ): Promise<CachedProjectGoal>;
+
+  /**
+   * Synchronizes native execution metadata without changing the goal content.
+   *
+   * @param goalId Goal identifier.
+   * @param patch Native execution snapshot.
+   * @returns Updated goal.
+   */
+  updateProjectGoalExecution(
+    goalId: string,
+    patch: CachedProjectGoalExecutionInput
   ): Promise<CachedProjectGoal>;
 
   /**

@@ -3,7 +3,6 @@
  */
 import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import CompressOutlinedIcon from "@mui/icons-material/CompressOutlined";
-import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
 import {
@@ -28,11 +27,9 @@ export type ChatAdvancedAction = "review" | "compact";
 type ChatAdvancedActionsMenuProps = {
   disabled: boolean;
   attachImagesDisabled: boolean;
-  manageGoalDisabled: boolean;
   onReview(): void;
   onCompact(): void;
   onAttachImages(): void;
-  onManageGoal(): void;
 };
 
 /**
@@ -46,15 +43,13 @@ export function ChatAdvancedActionsMenu({
   onReview,
   onCompact,
   attachImagesDisabled,
-  onAttachImages,
-  manageGoalDisabled,
-  onManageGoal
+  onAttachImages
 }: ChatAdvancedActionsMenuProps) {
   const { t } = useTranslation();
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
   const [pendingAction, setPendingAction] = useState<ChatAdvancedAction | null>(null);
   const isMenuOpen = anchorElement !== null;
-  const isMenuDisabled = disabled && attachImagesDisabled && manageGoalDisabled;
+  const isMenuDisabled = disabled && attachImagesDisabled;
 
   function handleOpenMenu(event: React.MouseEvent<HTMLButtonElement>): void {
     setAnchorElement(event.currentTarget);
@@ -72,11 +67,6 @@ export function ChatAdvancedActionsMenu({
   function handleAttachImages(): void {
     handleCloseMenu();
     onAttachImages();
-  }
-
-  function handleManageGoal(): void {
-    handleCloseMenu();
-    onManageGoal();
   }
 
   function handleCancel(): void {
@@ -126,12 +116,6 @@ export function ChatAdvancedActionsMenu({
         transformOrigin={{ vertical: "bottom", horizontal: "right" }}
         onClose={handleCloseMenu}
       >
-        <MenuItem disabled={manageGoalDisabled} onClick={handleManageGoal}>
-          <ListItemIcon>
-            <FlagOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("goal.open")}</ListItemText>
-        </MenuItem>
         <MenuItem disabled={attachImagesDisabled} onClick={handleAttachImages}>
           <ListItemIcon>
             <AddPhotoAlternateOutlinedIcon fontSize="small" />
