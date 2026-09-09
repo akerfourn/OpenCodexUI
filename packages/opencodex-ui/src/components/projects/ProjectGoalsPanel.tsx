@@ -30,7 +30,7 @@ import type { RootStore } from "../../stores/RootStore";
 import type { ChatStore } from "../../stores/chat/ChatStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ProjectGoalDialogX } from "./ProjectGoalDialog";
-import { ProjectGoalRow } from "./ProjectGoalRow";
+import { ProjectGoalSections } from "./ProjectGoalSections";
 
 type ProjectGoalsPanelProps = {
   store: RootStore;
@@ -241,11 +241,7 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
           <Typography variant="caption" color="text.secondary">
             {t("goals.selectChatToLaunch")}
           </Typography>
-        ) : (
-          <Typography variant="caption" color="text.secondary" noWrap>
-            {t("goals.currentChat", { chat: readChatTitle(currentChat) })}
-          </Typography>
-        )}
+        ) : null}
       </Stack>
 
       <Box className="project-goals-content">
@@ -266,21 +262,19 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
             </Button>
           </Stack>
         ) : null}
-        <Stack spacing={0.75}>
-          {goals.map((goal) => (
-            <ProjectGoalRow
-              key={goal.id}
-              goal={goal}
-              currentChatId={currentChat?.thread.id ?? null}
-              disabled={goalsStore.isSaving || busyGoalId !== null}
-              onOpen={handleOpen}
-              onLaunch={handleLaunch}
-              onPause={handlePause}
-              onArchive={handleArchive}
-              onUnarchive={handleUnarchive}
-            />
-          ))}
-        </Stack>
+        {goals.length > 0 ? (
+          <ProjectGoalSections
+            goals={goals}
+            currentChatId={currentChat?.thread.id ?? null}
+            currentChatTitle={currentChat === null ? null : readChatTitle(currentChat)}
+            disabled={goalsStore.isSaving || busyGoalId !== null}
+            onOpen={handleOpen}
+            onLaunch={handleLaunch}
+            onPause={handlePause}
+            onArchive={handleArchive}
+            onUnarchive={handleUnarchive}
+          />
+        ) : null}
       </Box>
 
       <ProjectGoalDialogX

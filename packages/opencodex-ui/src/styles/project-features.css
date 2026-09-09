@@ -258,6 +258,38 @@
   padding: 12px;
 }
 
+.project-goal-sections {
+  min-width: 0;
+}
+
+.project-goal-section {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.project-goal-section + .project-goal-section {
+  border-top: 1px solid var(--vscode-panel-border);
+  padding-top: 8px;
+}
+
+.project-goal-section-header {
+  display: flex;
+  min-width: 0;
+  min-height: 30px;
+  align-items: center;
+  gap: 4px;
+}
+
+.project-goal-section-header .MuiIconButton-root {
+  flex: 0 0 auto;
+  margin: -4px 0 -4px 0;
+}
+
+.project-goal-section-content {
+  min-width: 0;
+  padding-top: 4px;
+}
+
 .project-goal-row {
   flex: 0 0 auto;
   min-width: 0;
