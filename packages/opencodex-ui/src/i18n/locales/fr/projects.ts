@@ -46,6 +46,7 @@ export const frProjects = {
     chatBusy: "Le chat courant est déjà occupé.",
     chatLabel: "Chat",
     close: "Fermer",
+    createTitle: "Créer un objectif",
     currentChat: "Chat courant : {{chat}}",
     currentChatEmpty: "Aucun objectif n'est associé à ce chat.",
     currentChatSection: "Objectifs du chat courant : {{chat}}",

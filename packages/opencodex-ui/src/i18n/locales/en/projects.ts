@@ -47,6 +47,7 @@ export const enProjects = {
     chatBusy: "The current chat is busy.",
     chatLabel: "Chat",
     close: "Close",
+    createTitle: "Create goal",
     currentChat: "Current chat: {{chat}}",
     currentChatEmpty: "No goal is attached to this chat.",
     currentChatSection: "Current chat goals: {{chat}}",

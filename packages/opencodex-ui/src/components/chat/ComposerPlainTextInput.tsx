@@ -20,7 +20,7 @@ import {
   type LexicalEditor
 } from "lexical";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, MouseEvent, UIEvent } from "react";
+import type { CSSProperties, KeyboardEvent, MouseEvent, UIEvent } from "react";
 
 import type {
   OpenCodexComposerReference,
@@ -59,6 +59,7 @@ type ComposerPlainTextInputProps = {
   disabled?: boolean;
   renderSuggestionsInPortal?: boolean;
   wrapperClassName?: string;
+  wrapperStyle?: CSSProperties;
   editorMinHeight?: number;
   onChange(value: string, markdown: string, references: OpenCodexComposerReference[]): void;
   onSearchFiles(query: string): Promise<OpenCodexFileSearchResult[]>;
@@ -81,6 +82,7 @@ export function ComposerPlainTextInput({
   disabled = false,
   renderSuggestionsInPortal = false,
   wrapperClassName,
+  wrapperStyle,
   editorMinHeight = COMPOSER_MIN_HEIGHT_PX,
   onChange,
   onSearchFiles,
@@ -363,7 +365,7 @@ export function ComposerPlainTextInput({
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className={inputWrapperClassName}>
+      <div className={inputWrapperClassName} style={wrapperStyle}>
         {suggestionsView}
         <div className={editorShellClassName}>
           {resizeHandle}

@@ -272,7 +272,8 @@ export function ProjectGoalDialog({
                 resizeLabel={t("composer.resize")}
                 disabled={isBusy || !canEdit || !isDefinitionEditable}
                 renderSuggestionsInPortal
-                wrapperClassName="goal-objective-editor project-goal-objective-editor"
+                wrapperClassName="goal-objective-editor"
+                wrapperStyle={{ width: "100%", maxWidth: "none" }}
                 editorMinHeight={GOAL_EDITOR_MIN_HEIGHT_PX}
                 onChange={handleObjectiveChange}
                 onSearchFiles={searchFiles}
@@ -280,18 +281,38 @@ export function ProjectGoalDialog({
                 onOpenFileLink={(href) => store.openExternalLink(href)}
                 onKeyDown={handleObjectiveKeyDown}
               />
-              <Typography
-                variant="caption"
-                sx={{ color: objectiveCounterColor, display: "block", textAlign: "right", mt: 0.5 }}
+              <Box
+                sx={{
+                  display: "flex",
+                  width: "100%",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  gap: 1,
+                  mt: 0.5
+                }}
               >
-                {t("goals.objectiveCharacters", {
-                  count: objectiveCharacterCount,
-                  max: MAX_GOAL_OBJECTIVE_CHARACTERS
-                })}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {t("goals.objectiveHint")}
-              </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ minWidth: 0, flex: "1 1 auto" }}
+                >
+                  {t("goals.objectiveHint")}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    flex: "0 0 auto",
+                    whiteSpace: "nowrap",
+                    textAlign: "right",
+                    color: objectiveCounterColor
+                  }}
+                >
+                  {t("goals.objectiveCharacters", {
+                    count: objectiveCharacterCount,
+                    max: MAX_GOAL_OBJECTIVE_CHARACTERS
+                  })}
+                </Typography>
+              </Box>
             </Box>
 
             <TextField
