@@ -87,7 +87,13 @@ describe("token usage history", () => {
       createSnapshot("source-a", "turn-1", 100, 100, "2026-07-31T09:00:00.000Z")
     );
     await repository.saveThreadTokenUsageSnapshot(
-      createSnapshot("source-a", "turn-1", 130, 30, "2026-07-31T10:00:00.000Z")
+      createSnapshot("source-a", "turn-1", 120, 20, "2026-07-31T09:30:00.000Z")
+    );
+    await repository.saveThreadTokenUsageSnapshot(
+      createSnapshot("source-a", "turn-1", 125, 5, "2026-07-31T09:30:00.000Z")
+    );
+    await repository.saveThreadTokenUsageSnapshot(
+      createSnapshot("source-a", "turn-1", 130, 5, "2026-07-31T10:00:00.000Z")
     );
     await repository.saveThreadTokenUsageSnapshot(
       createSnapshot("source-a", "turn-2", 160, 30, "2026-07-31T11:00:00.000Z")
@@ -109,7 +115,7 @@ describe("token usage history", () => {
     });
 
     expect(snapshots.map((snapshot) => [snapshot.threadId, snapshot.total.totalTokens])).toEqual([
-      ["thread-1", 100],
+      ["thread-1", 125],
       ["thread-2", 50],
       ["thread-1", 130],
       ["thread-2", 70],

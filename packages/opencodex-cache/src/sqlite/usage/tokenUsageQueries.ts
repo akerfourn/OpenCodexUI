@@ -235,25 +235,57 @@ export function listSourceTokenUsageSnapshots(
   const rows = database
     .prepare(
       `
-      WITH baselines AS (
-        SELECT current_snapshot.*
-        FROM thread_token_usage_snapshots AS current_snapshot
-        WHERE current_snapshot.source_id = @sourceId
-          AND current_snapshot.observed_at < @fromObservedAt
-          AND NOT EXISTS (
-            SELECT 1
-            FROM thread_token_usage_snapshots AS newer_snapshot
-            WHERE newer_snapshot.source_id = current_snapshot.source_id
-              AND newer_snapshot.thread_id = current_snapshot.thread_id
-              AND newer_snapshot.observed_at < @fromObservedAt
-              AND (
-                newer_snapshot.observed_at > current_snapshot.observed_at
-                OR (
-                  newer_snapshot.observed_at = current_snapshot.observed_at
-                  AND newer_snapshot.id > current_snapshot.id
-                )
-              )
-          )
+      WITH ranked_baselines AS (
+        SELECT
+          id,
+          source_id,
+          thread_id,
+          turn_id,
+          observed_at,
+          total_total_tokens,
+          total_input_tokens,
+          total_cached_input_tokens,
+          total_output_tokens,
+          total_reasoning_output_tokens,
+          last_total_tokens,
+          last_input_tokens,
+          last_cached_input_tokens,
+          last_output_tokens,
+          last_reasoning_output_tokens,
+          model_context_window,
+          model,
+          reasoning_effort,
+          service_tier,
+          ROW_NUMBER() OVER (
+            PARTITION BY thread_id
+            ORDER BY observed_at DESC, id DESC
+          ) AS baseline_row_number
+        FROM thread_token_usage_snapshots
+        WHERE source_id = @sourceId
+          AND observed_at < @fromObservedAt
+      ), baselines AS (
+        SELECT
+          id,
+          source_id,
+          thread_id,
+          turn_id,
+          observed_at,
+          total_total_tokens,
+          total_input_tokens,
+          total_cached_input_tokens,
+          total_output_tokens,
+          total_reasoning_output_tokens,
+          last_total_tokens,
+          last_input_tokens,
+          last_cached_input_tokens,
+          last_output_tokens,
+          last_reasoning_output_tokens,
+          model_context_window,
+          model,
+          reasoning_effort,
+          service_tier
+        FROM ranked_baselines
+        WHERE baseline_row_number = 1
       )
       SELECT *
       FROM (

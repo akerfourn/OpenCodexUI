@@ -85,23 +85,12 @@ export function listUsageRateLimitSnapshots(
   const sql = query.includeBaselineBeforeFrom === true && query.fromObservedAt !== undefined
     ? `
       WITH baselines AS (
-        SELECT current_snapshot.*
-        FROM usage_rate_limit_snapshots AS current_snapshot
-        WHERE current_snapshot.source_id = @sourceId
-          AND current_snapshot.observed_at < @fromObservedAt
-          AND NOT EXISTS (
-            SELECT 1
-            FROM usage_rate_limit_snapshots AS newer_snapshot
-            WHERE newer_snapshot.source_id = current_snapshot.source_id
-              AND (
-                newer_snapshot.observed_at > current_snapshot.observed_at
-                OR (
-                  newer_snapshot.observed_at = current_snapshot.observed_at
-                  AND newer_snapshot.id > current_snapshot.id
-                )
-              )
-              AND newer_snapshot.observed_at < @fromObservedAt
-          )
+        SELECT *
+        FROM usage_rate_limit_snapshots
+        WHERE source_id = @sourceId
+          AND observed_at < @fromObservedAt
+        ORDER BY observed_at DESC, id DESC
+        LIMIT 1
       )
       SELECT
         id,

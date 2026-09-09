@@ -101,6 +101,18 @@ describe("usage rate-limit history", () => {
     await repository.saveUsageRateLimitSnapshot(createSnapshot(
       "source-a",
       "fingerprint-b",
+      "2026-07-31T09:30:00.000Z",
+      {}
+    ));
+    await repository.saveUsageRateLimitSnapshot(createSnapshot(
+      "source-a",
+      "fingerprint-c",
+      "2026-07-31T09:30:00.000Z",
+      {}
+    ));
+    await repository.saveUsageRateLimitSnapshot(createSnapshot(
+      "source-a",
+      "fingerprint-d",
       "2026-07-31T10:30:00.000Z",
       {}
     ));
@@ -113,8 +125,8 @@ describe("usage rate-limit history", () => {
     });
 
     expect(snapshots.map((snapshot) => snapshot.fingerprint)).toEqual([
-      "fingerprint-a",
-      "fingerprint-b"
+      "fingerprint-c",
+      "fingerprint-d"
     ]);
   });
 });
