@@ -1,6 +1,7 @@
 import { normalizeWorkspaceRoots } from "../../workspaces/workspaceRootsSettings.js";
 import type {
   OpenCodexApprovalDecision,
+  OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexImageAttachment,
   OpenCodexInstalledPluginListResult,
@@ -191,9 +192,10 @@ export class SearchApi implements SearchApiContract {
     projectPath: string,
     sourceId: string | null,
     query: string,
-    limit: number
+    limit: number,
+    searchMode: OpenCodexFileSearchMode = "indexed"
   ): Promise<OpenCodexFileSearchResult[]> {
-    return await this.service.searchProjectFiles(projectPath, sourceId, query, limit);
+    return await this.service.searchProjectFiles(projectPath, sourceId, query, limit, searchMode);
   }
 
   /** Searches Codex skills available for a project. */

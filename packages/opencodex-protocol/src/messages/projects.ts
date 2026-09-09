@@ -198,6 +198,9 @@ export type OpenCodexFileSearchResult = {
   matchType: "file" | "directory";
 };
 
+/** Search backend used to resolve project file references. */
+export type OpenCodexFileSearchMode = "indexed" | "filesystem";
+
 /**
  * Skill search result for composer references.
  */

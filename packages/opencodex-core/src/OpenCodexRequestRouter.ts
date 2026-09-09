@@ -131,7 +131,8 @@ export class OpenCodexRequestRouter {
           request.projectPath,
           request.sourceId,
           request.query,
-          request.limit ?? 8
+          request.limit ?? 8,
+          request.searchMode ?? "indexed"
         );
       case "skills.search":
         return this.runtime.search.skills(

@@ -4,11 +4,13 @@ import {
 } from "@open-codex-ui/codex-rpc";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type {
+  OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexSkillSearchResult
 } from "@open-codex-ui/opencodex-protocol";
 
 import { filterSearchableProjectFiles } from "./fileSearchFilters.js";
+import { ProjectFileSystemSearchService } from "./ProjectFileSystemSearchService.js";
 import type { ClientPort } from "../runtime/runtimePorts.js";
 
 /** Dependencies used by project-scoped search operations. */
@@ -21,6 +23,8 @@ export type ProjectSearchServiceOptions = {
 export class ProjectSearchService {
   /** Client resolver used to execute searches in the requested source. */
   private readonly options: ProjectSearchServiceOptions;
+  /** Filesystem search used by the explicit extended-reference mode. */
+  private readonly fileSystemSearch = new ProjectFileSystemSearchService();
 
   /**
    * Creates a project search service.
@@ -38,13 +42,15 @@ export class ProjectSearchService {
    * @param sourceId Source identifier, or `null`.
    * @param query Fuzzy search query.
    * @param limit Maximum number of results.
+   * @param searchMode Search backend, defaulting to Codex's indexed search.
    * @returns Matching files.
    */
   async searchProjectFiles(
     projectPath: string,
     sourceId: string | null,
     query: string,
-    limit: number
+    limit: number,
+    searchMode: OpenCodexFileSearchMode = "indexed"
   ): Promise<OpenCodexFileSearchResult[]> {
     const root = normalizeProjectPath(projectPath);
 
@@ -54,6 +60,10 @@ export class ProjectSearchService {
 
     const client = await this.options.clients.ensureClient(sourceId);
     const normalizedLimit = Math.max(1, limit);
+
+    if (searchMode === "filesystem") {
+      return await this.fileSystemSearch.search(client, sourceId, root, query, normalizedLimit);
+    }
 
     if (query.trim().length === 0) {
       const response = await client.request<v2.FsReadDirectoryResponse>("fs/readDirectory", {

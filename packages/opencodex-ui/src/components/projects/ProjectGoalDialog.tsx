@@ -21,6 +21,7 @@ import {
   Typography
 } from "@mui/material";
 import type {
+  OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexProjectGoal,
   OpenCodexProjectGoalStatus,
@@ -203,8 +204,11 @@ export function ProjectGoalDialog({
   const currentStatus = goal === null ? null : t(`goals.status.${goal.status}`);
   const canOpenFileLinks = canOpenProjectFileLinks(store, projectStore.project.sourceId);
   const searchFiles = useCallback(
-    async (query: string): Promise<OpenCodexFileSearchResult[]> => {
-      return await searchProjectFiles(store, projectStore, query);
+    async (
+      query: string,
+      searchMode: OpenCodexFileSearchMode
+    ): Promise<OpenCodexFileSearchResult[]> => {
+      return await searchProjectFiles(store, projectStore, query, searchMode);
     },
     [projectStore, store]
   );
@@ -431,14 +435,16 @@ function readStatusColor(
 async function searchProjectFiles(
   store: RootStore,
   projectStore: ProjectStore,
-  query: string
+  query: string,
+  searchMode: OpenCodexFileSearchMode
 ): Promise<OpenCodexFileSearchResult[]> {
   return await store.request<OpenCodexFileSearchResult[]>({
     type: "files.search",
     projectPath: projectStore.workspacePath,
     sourceId: projectStore.project.sourceId,
     query,
-    limit: 8
+    limit: 8,
+    searchMode
   });
 }
 

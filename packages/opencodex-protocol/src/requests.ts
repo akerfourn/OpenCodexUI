@@ -6,6 +6,7 @@ import type {
   OpenCodexApprovalDecision,
   OpenCodexCommitMessageLanguage,
   OpenCodexComposerReference,
+  OpenCodexFileSearchMode,
   OpenCodexImageAttachment,
   OpenCodexLogType,
   OpenCodexLogRetentionUnit,
@@ -97,6 +98,7 @@ export type OpenCodexRequest =
       sourceId: string | null;
       query: string;
       limit?: number;
+      searchMode?: OpenCodexFileSearchMode;
     }
   | {
       type: "skills.search"; workspaceId?: string;

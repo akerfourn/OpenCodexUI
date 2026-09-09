@@ -24,6 +24,7 @@ import type { CSSProperties, KeyboardEvent, MouseEvent, UIEvent } from "react";
 
 import type {
   OpenCodexComposerReference,
+  OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexSkillSearchResult
 } from "@open-codex-ui/opencodex-protocol";
@@ -62,7 +63,10 @@ type ComposerPlainTextInputProps = {
   wrapperStyle?: CSSProperties;
   editorMinHeight?: number;
   onChange(value: string, markdown: string, references: OpenCodexComposerReference[]): void;
-  onSearchFiles(query: string): Promise<OpenCodexFileSearchResult[]>;
+  onSearchFiles(
+    query: string,
+    searchMode: OpenCodexFileSearchMode
+  ): Promise<OpenCodexFileSearchResult[]>;
   onSearchSkills(query: string): Promise<OpenCodexSkillSearchResult[]>;
   onOpenFileLink(href: string): void;
   onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void;
@@ -128,7 +132,7 @@ export function ComposerPlainTextInput({
     let isCurrent = true;
     const timeout = window.setTimeout(() => {
       const searchPromise = activeTrigger.kind === "file"
-        ? onSearchFiles(activeTrigger.query).then(mapFileSuggestions)
+        ? onSearchFiles(activeTrigger.query, activeTrigger.searchMode).then(mapFileSuggestions)
         : onSearchSkills(activeTrigger.query).then(mapSkillSuggestions);
 
       void searchPromise.then((results) => {

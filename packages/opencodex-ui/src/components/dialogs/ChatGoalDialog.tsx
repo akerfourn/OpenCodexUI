@@ -21,6 +21,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { useTranslation } from "react-i18next";
 
 import type {
+  OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexSkillSearchResult,
   OpenCodexThreadGoal
@@ -34,7 +35,10 @@ type ChatGoalDialogProps = {
   open: boolean;
   chatStore: ChatStore;
   canOpenFileLinks: boolean;
-  onSearchFiles(query: string): Promise<OpenCodexFileSearchResult[]>;
+  onSearchFiles(
+    query: string,
+    searchMode: OpenCodexFileSearchMode
+  ): Promise<OpenCodexFileSearchResult[]>;
   onSearchSkills(query: string): Promise<OpenCodexSkillSearchResult[]>;
   onOpenFileLink(href: string): void;
   onClose(): void;

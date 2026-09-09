@@ -12,6 +12,7 @@ import type {
   OpenCodexDockerComposeSnapshot,
   OpenCodexComposerReference,
   OpenCodexCodexReleaseCheck,
+  OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexGitBranch,
   OpenCodexGitBranchKind,
@@ -531,7 +532,8 @@ export interface SearchApi {
     projectPath: string,
     sourceId: string | null,
     query: string,
-    limit: number
+    limit: number,
+    searchMode?: OpenCodexFileSearchMode
   ): Promise<OpenCodexFileSearchResult[]>;
   skills(
     projectPath: string,

@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import type {
   OpenCodexComposerReference,
   OpenCodexEnterKeyBehavior,
+  OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexImageAttachment,
   OpenCodexSkillSearchResult
@@ -166,14 +167,16 @@ export function ChatComposer({
   }
 
   const searchProjectFiles = useCallback(async (
-    query: string
+    query: string,
+    searchMode: OpenCodexFileSearchMode
   ): Promise<OpenCodexFileSearchResult[]> => {
     return await store.request<OpenCodexFileSearchResult[]>({
       type: "files.search",
       projectPath: projectStore.workspacePath,
       sourceId,
       query,
-      limit: 8
+      limit: 8,
+      searchMode
     });
   }, [projectStore.workspacePath, sourceId, store]);
 

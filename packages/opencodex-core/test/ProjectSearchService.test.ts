@@ -148,6 +148,72 @@ describe("ProjectSearchService", () => {
     expect(ensureClient).toHaveBeenCalledWith("windows");
   });
 
+  it("should search ignored files recursively through the source filesystem", async () => {
+    const entriesByPath = new Map([
+      ["/workspace/project", [
+        { fileName: ".git", isFile: false, isDirectory: true },
+        { fileName: ".goals", isFile: false, isDirectory: true },
+        { fileName: "node_modules", isFile: false, isDirectory: true },
+        { fileName: "src", isFile: false, isDirectory: true }
+      ]],
+      ["/workspace/project/.goals", [
+        { fileName: "progress.md", isFile: true, isDirectory: false },
+        { fileName: "archive", isFile: false, isDirectory: true }
+      ]],
+      ["/workspace/project/.goals/archive", [
+        { fileName: "old.md", isFile: true, isDirectory: false }
+      ]],
+      ["/workspace/project/src", [
+        { fileName: "App.tsx", isFile: true, isDirectory: false }
+      ]]
+    ]);
+    const request = vi.fn(async (method: string, params?: unknown) => {
+      const path = (params as { path?: string } | undefined)?.path;
+
+      if (method === "fs/getMetadata") {
+        return {
+          isDirectory: true,
+          isFile: false,
+          isSymlink: false,
+          createdAtMs: 0,
+          modifiedAtMs: 0
+        };
+      }
+
+      if (method === "fs/readDirectory" && path !== undefined) {
+        return { entries: entriesByPath.get(path) ?? [] };
+      }
+
+      throw new Error(`Unexpected filesystem request: ${method}`);
+    });
+    const client = createClient(request);
+    const ensureClient = vi.fn(async () => client);
+    const service = new ProjectSearchService({ clients: { ensureClient } });
+
+    const results = await service.searchProjectFiles(
+      "/workspace/project",
+      "local",
+      "progress",
+      10,
+      "filesystem"
+    );
+    const cachedResults = await service.searchProjectFiles(
+      "/workspace/project",
+      "local",
+      "old.md",
+      10,
+      "filesystem"
+    );
+
+    expect(results).toEqual([createFileResult(".goals/progress.md", "progress.md")]);
+    expect(cachedResults).toEqual([createFileResult(".goals/archive/old.md", "old.md")]);
+    expect(request.mock.calls.filter(([method]) => method === "fuzzyFileSearch")).toHaveLength(0);
+    expect(request.mock.calls.filter(([method]) => method === "fs/readDirectory")).toHaveLength(4);
+    expect(request.mock.calls.some(([, params]) => (
+      (params as { path?: string } | undefined)?.path?.includes("node_modules") ?? false
+    ))).toBe(false);
+  });
+
   it("should exclude disabled skills and order enabled fuzzy matches by score", async () => {
     const request = vi.fn(async () => ({
       data: [{
@@ -295,6 +361,20 @@ function createFile(
     relativePath: fileName,
     fileName,
     matchType
+  };
+}
+
+/** Creates a file result with a nested relative path. */
+function createFileResult(
+  relativePath: string,
+  fileName: string
+): OpenCodexFileSearchResult {
+  return {
+    root: "/workspace/project",
+    path: `/workspace/project/${relativePath}`,
+    relativePath,
+    fileName,
+    matchType: "file"
   };
 }
 

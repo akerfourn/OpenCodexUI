@@ -14,6 +14,7 @@ import {
 
 import type {
   OpenCodexComposerReference,
+  OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexSkillSearchResult
 } from "@open-codex-ui/opencodex-protocol";
@@ -36,6 +37,7 @@ export type ReferenceTriggerState = {
   startOffset: number;
   endOffset: number;
   query: string;
+  searchMode: OpenCodexFileSearchMode;
 };
 
 /**
@@ -94,18 +96,48 @@ export function readReferenceTrigger(): ReferenceTriggerState | null {
   }
 
   const triggerCharacter = beforeCursor[startOffset];
-  const query = beforeCursor.slice(startOffset + 1);
+  const rawQuery = beforeCursor.slice(startOffset + 1);
 
-  if (query.includes("\n")) {
+  if (rawQuery.includes("\n")) {
     return null;
   }
+
+  const parsedQuery = triggerCharacter === "@"
+    ? parseFileSearchQuery(rawQuery)
+    : { query: rawQuery.trim(), searchMode: "indexed" as const };
 
   return {
     kind: triggerCharacter === "$" ? "skill" : "file",
     nodeKey: node.getKey(),
     startOffset,
     endOffset: cursorOffset,
-    query: query.trim()
+    query: parsedQuery.query,
+    searchMode: parsedQuery.searchMode
+  };
+}
+
+/**
+ * Parses the optional extended-search marker from a file trigger query.
+ *
+ * @param rawQuery Text entered after `@`.
+ * @returns Search query and backend mode.
+ */
+export function parseFileSearchQuery(rawQuery: string): {
+  query: string;
+  searchMode: OpenCodexFileSearchMode;
+} {
+  const normalizedQuery = rawQuery.trim();
+
+  if (!normalizedQuery.startsWith("!")) {
+    return {
+      query: normalizedQuery,
+      searchMode: "indexed"
+    };
+  }
+
+  return {
+    query: normalizedQuery.slice(1).trim(),
+    searchMode: "filesystem"
   };
 }
 
@@ -116,7 +148,7 @@ export function readReferenceTrigger(): ReferenceTriggerState | null {
  * @returns Key suitable for effect dependencies and caching.
  */
 export function createTriggerKey(trigger: ReferenceTriggerState): string {
-  return `${trigger.kind}:${trigger.nodeKey}:${trigger.startOffset}:${trigger.query}`;
+  return `${trigger.kind}:${trigger.searchMode}:${trigger.nodeKey}:${trigger.startOffset}:${trigger.query}`;
 }
 
 /**
