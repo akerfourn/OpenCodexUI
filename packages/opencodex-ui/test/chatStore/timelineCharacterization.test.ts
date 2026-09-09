@@ -89,10 +89,30 @@ describe("ChatStore timeline characterization", () => {
     chatStore.timeline.setTurns([turn]);
     const turnStore = chatStore.timeline.turnStores[0]!;
     const initialSubTurns = turnStore.subTurns;
+    const initialTurns = chatStore.timeline.turns;
+    const initialTurnStores = chatStore.timeline.turnStores;
 
     chatStore.timeline.setTurns(chatStore.timeline.turns);
 
     expect(turnStore.subTurns).toBe(initialSubTurns);
+    expect(chatStore.timeline.turns).toBe(initialTurns);
+    expect(chatStore.timeline.turnStores).toBe(initialTurnStores);
+  });
+
+  it("should update token usage without replacing timeline collections", () => {
+    const chatStore = createChatStore({});
+    const turn = createTurn("turn-usage", "completed");
+
+    chatStore.timeline.setTurns([turn]);
+    const initialTurns = chatStore.timeline.turns;
+    const initialTurnStores = chatStore.timeline.turnStores;
+    const usage = createTokenUsage("turn-usage");
+
+    chatStore.timeline.applyTokenUsage(usage);
+
+    expect(chatStore.timeline.turns).toBe(initialTurns);
+    expect(chatStore.timeline.turnStores).toBe(initialTurnStores);
+    expect(chatStore.timeline.turns[0]?.tokenUsage).toEqual(usage);
   });
 
   it("should preserve a pending turn when an opened snapshot omits it", () => {

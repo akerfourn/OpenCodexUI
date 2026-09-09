@@ -4,13 +4,17 @@
 import { Tooltip } from "@mui/material";
 import type { ReactElement } from "react";
 
-import { ProjectSidePanelTabIndicator } from "./ProjectSidePanelTabIndicator";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
+import {
+  ProjectSidePanelTabActivityX,
+  type ProjectSidePanelActivity
+} from "./ProjectSidePanelTabActivity";
 
 type ProjectSidePanelTabLabelProps = {
+  projectStore: ProjectStore;
   label: string;
   icon: ReactElement;
-  hasActivity: boolean;
-  color?: "error" | "warning";
+  activity: ProjectSidePanelActivity;
 };
 
 /**
@@ -21,15 +25,19 @@ type ProjectSidePanelTabLabelProps = {
  * @returns Rendered tab label.
  */
 export function ProjectSidePanelTabLabel({
+  projectStore,
   label,
   icon,
-  hasActivity,
-  color
+  activity
 }: ProjectSidePanelTabLabelProps) {
   return (
     <Tooltip title={label}>
       <span className="project-side-panel-tab-label" aria-hidden="true">
-        <ProjectSidePanelTabIndicator icon={icon} hasActivity={hasActivity} color={color} />
+        <ProjectSidePanelTabActivityX
+          projectStore={projectStore}
+          activity={activity}
+          icon={icon}
+        />
       </span>
     </Tooltip>
   );

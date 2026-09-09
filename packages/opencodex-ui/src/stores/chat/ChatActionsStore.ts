@@ -1,7 +1,7 @@
 /**
  * Holds user-triggered commands and optimistic mutations for one chat.
  */
-import { makeAutoObservable, runInAction } from "mobx";
+import { computed, makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexComposerReference,
@@ -59,7 +59,8 @@ export class ChatActionsStore {
         parent: false,
         projectStore: false,
         root: false,
-        confirmedThread: false
+        confirmedThread: false,
+        editableLastUserItemIdentity: computed.struct
       },
       { autoBind: true }
     );

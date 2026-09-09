@@ -3,12 +3,12 @@
  */
 import { observer } from "mobx-react-lite";
 import { Box, Button, Snackbar } from "@mui/material";
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
 import { AppShutdownOverlay } from "./app/AppShutdownOverlay";
 import { AppCloseConfirmationDialogX } from "./app/AppCloseConfirmationDialog";
+import { ApplicationActivityReporterX } from "./app/ApplicationActivityReporter";
 import { AppTabsX } from "./app/AppTabs";
 import { ApprovalDialogX } from "./dialogs/ApprovalDialog";
 import { HomeViewX } from "./home/HomeView";
@@ -35,13 +35,9 @@ export function App({ store }: AppProps) {
   const notificationMessage = errorMessage ?? warningMessage;
   const activeTabId = store.navigationStore.activeTabId;
   const activeProjectStore = store.navigationStore.activeProjectStore;
-  const hasPendingProjectActivity = store.hasPendingProjectActivity;
   const shutdownOverlay = <AppShutdownOverlay open={store.appStore.isShuttingDown} />;
   const closeConfirmation = <AppCloseConfirmationDialogX store={store} />;
-
-  useEffect(() => {
-    store.reportApplicationActivity?.();
-  }, [hasPendingProjectActivity, store]);
+  const activityReporter = <ApplicationActivityReporterX store={store} />;
 
   function handleCloseNotification(): void {
     if (errorMessage !== null) {
@@ -90,6 +86,7 @@ export function App({ store }: AppProps) {
     return (
       <Box component="main" className="app-shell">
         <OnboardingViewX store={store} />
+        {activityReporter}
         {snackbar}
         {closeConfirmation}
         {shutdownOverlay}
@@ -106,6 +103,7 @@ export function App({ store }: AppProps) {
       <ApprovalDialogX store={store.approvalsStore} />
       <ProjectTrustDialogX store={store.projectsStore.trustStore} />
       <CloseProjectDialogX store={store} />
+      {activityReporter}
       {snackbar}
       {closeConfirmation}
       {shutdownOverlay}

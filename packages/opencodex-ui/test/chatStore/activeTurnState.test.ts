@@ -1,5 +1,6 @@
 /** Covers active-turn lifecycle, recovery, editing, and runtime polling. */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { autorun } from "mobx";
 import type { OpenCodexActivity } from "@open-codex-ui/opencodex-protocol";
 
 import { ChatStore } from "../../src/stores/chat/ChatStore";
@@ -387,6 +388,35 @@ describe("ChatStore active turn state", () => {
 
     expect(chatStore.timeline.turns.find((turn) => turn.id === "turn-active")?.status).toBe("interrupted");
     expect(chatStore.actions.editableLastUserItem?.itemId).toBe("user-message");
+  });
+
+  it("should not notify edit controls when only message content changes", () => {
+    const chatStore = createChatStore({});
+    const turn = createTurn("turn-terminal", "completed");
+
+    turn.items.push({
+      id: "user-message",
+      role: "user",
+      content: "hello",
+      status: "completed",
+      createdAt: null,
+      attachments: []
+    });
+    chatStore.timeline.setTurns([turn]);
+
+    let reactionRuns = 0;
+    const dispose = autorun(() => {
+      chatStore.actions.editableLastUserItemIdentity;
+      reactionRuns += 1;
+    });
+
+    chatStore.timeline.setTurns([{
+      ...turn,
+      items: turn.items.map((item) => ({ ...item, content: "updated" }))
+    }]);
+
+    expect(reactionRuns).toBe(1);
+    dispose();
   });
 
   it("should keep a running turn active even when a final answer item exists", () => {

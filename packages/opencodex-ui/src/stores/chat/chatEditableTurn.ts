@@ -3,7 +3,8 @@
  */
 import type {
   OpenCodexImageAttachment,
-  OpenCodexTurn
+  OpenCodexTurn,
+  OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
 /** Payload used to initialize the edit composer for one user item. */
@@ -31,6 +32,48 @@ export function readEditableChatItem(
   turns: readonly OpenCodexTurn[],
   isAllowed: boolean
 ): EditableChatItem | null {
+  const editableItem = readEditableUserItem(turns, isAllowed);
+
+  if (editableItem === null) {
+    return null;
+  }
+
+  return {
+    turnId: editableItem.turn.id,
+    itemId: editableItem.item.id,
+    content: editableItem.item.content,
+    attachments: editableItem.item.attachments ?? []
+  };
+}
+
+/**
+ * Reads the identity of the latest editable user item.
+ *
+ * @param turns Loaded chat turns.
+ * @param isAllowed Whether runtime and project guards allow editing.
+ * @returns Editable item identity, or `null` when no item qualifies.
+ */
+export function readEditableChatItemIdentity(
+  turns: readonly OpenCodexTurn[],
+  isAllowed: boolean
+): EditableChatItemIdentity | null {
+  const editableItem = readEditableUserItem(turns, isAllowed);
+
+  if (editableItem === null) {
+    return null;
+  }
+
+  return {
+    turnId: editableItem.turn.id,
+    itemId: editableItem.item.id
+  };
+}
+
+/** Reads only the turn and item identity needed by edit controls. */
+function readEditableUserItem(
+  turns: readonly OpenCodexTurn[],
+  isAllowed: boolean
+): { turn: OpenCodexTurn; item: OpenCodexTurnItem } | null {
   if (!isAllowed) {
     return null;
   }
@@ -57,35 +100,7 @@ export function readEditableChatItem(
     return null;
   }
 
-  return {
-    turnId: lastTurn.id,
-    itemId: userItem.id,
-    content: userItem.content,
-    attachments: userItem.attachments ?? []
-  };
-}
-
-/**
- * Reads the identity of the latest editable user item.
- *
- * @param turns Loaded chat turns.
- * @param isAllowed Whether runtime and project guards allow editing.
- * @returns Editable item identity, or `null` when no item qualifies.
- */
-export function readEditableChatItemIdentity(
-  turns: readonly OpenCodexTurn[],
-  isAllowed: boolean
-): EditableChatItemIdentity | null {
-  const editableItem = readEditableChatItem(turns, isAllowed);
-
-  if (editableItem === null) {
-    return null;
-  }
-
-  return {
-    turnId: editableItem.turnId,
-    itemId: editableItem.itemId
-  };
+  return { turn: lastTurn, item: userItem };
 }
 
 /**

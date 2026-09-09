@@ -70,7 +70,6 @@ export function ChatMessageList({
   const { t } = useTranslation();
   const lastMessageRef = useRef<HTMLElement | null>(null);
   const currentThread = chatStore.thread;
-  const editableItem = chatStore.actions.editableLastUserItemIdentity;
   const [editedMessage, setEditedMessage] = useState<string | null>(null);
   const [turnDiagnosticSelection, setTurnDiagnosticSelection] =
     useState<TurnDiagnosticSelection | null>(null);
@@ -269,7 +268,7 @@ export function ChatMessageList({
               activeTurnId={chatStore.runtime.activeTurnId}
               isWorking={isWorking}
               isLastTurn={index === visibleTurnStores.length - 1}
-              editableItem={editableItem}
+              chatActions={chatStore.actions}
               readCollaborationEventsForTurn={readCollaborationEventsForTurn}
               currentThread={currentThread}
               lastMessageRef={lastMessageRef}

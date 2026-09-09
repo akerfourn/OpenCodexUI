@@ -417,7 +417,6 @@ function renderDialogContent(
                 activeTurnId={null}
                 isWorking={false}
                 isLastTurn={index === turnStores.length - 1}
-                editableItem={null}
                 readCollaborationEventsForTurn={readCollaborationEventsForTurn}
                 navigableThreadIds={navigableThreadIds}
                 currentThread={currentThread}

@@ -6,15 +6,11 @@ import type {
   OpenCodexThread,
   OpenCodexTurn
 } from "@open-codex-ui/opencodex-protocol";
+import type { ChatActionsStore } from "../../stores/chat/ChatActionsStore";
 import type { ChatSubTurn } from "../../stores/chat/chatTurnStructure";
 
 import { AssistantTurnBlockX } from "./AssistantTurnBlock";
 import { MessageRowX } from "./MessageRow";
-
-type EditableItemIdentity = {
-  turnId: string;
-  itemId: string;
-};
 
 type ChatSubTurnViewProps = {
   turn: OpenCodexTurn;
@@ -24,7 +20,7 @@ type ChatSubTurnViewProps = {
   navigableThreadIds?: readonly string[];
   isReasoningRunning: boolean;
   isLastInTurn: boolean;
-  editableItem: EditableItemIdentity | null;
+  chatActions?: ChatActionsStore;
   lastMessageRef: RefObject<HTMLElement>;
   onOpenLink(href: string): void;
   onNavigateThread(threadId: string): void;
@@ -48,7 +44,7 @@ export function ChatSubTurnView({
   navigableThreadIds,
   isReasoningRunning,
   isLastInTurn,
-  editableItem,
+  chatActions,
   lastMessageRef,
   onOpenLink,
   onNavigateThread,
@@ -64,12 +60,6 @@ export function ChatSubTurnView({
   const isUserMessageLast = isLastInTurn && !shouldShowReasoning && !shouldShowAnswer;
   const isReasoningLast = isLastInTurn && shouldShowReasoning && !shouldShowAnswer;
   const isAnswerLast = isLastInTurn && shouldShowAnswer;
-  const canEdit = isEditableUserMessage(turn.id, subTurn.userMessage?.id ?? null, editableItem);
-  const handleEdit = useCallback(() => {
-    if (subTurn.userMessage !== null) {
-      onStartEdit(subTurn.userMessage.content);
-    }
-  }, [onStartEdit, subTurn.userMessage]);
   const handleOpenTurnDiagnostic = useCallback(() => {
     onOpenTurnDiagnostic(turn.id);
   }, [onOpenTurnDiagnostic, turn.id]);
@@ -84,8 +74,9 @@ export function ChatSubTurnView({
           isLast={isUserMessageLast}
           lastMessageRef={lastMessageRef}
           onOpenLink={onOpenLink}
-          canEdit={canEdit}
-          onEdit={canEdit ? handleEdit : undefined}
+          turnId={turn.id}
+          chatActions={chatActions}
+          onStartEdit={onStartEdit}
         />
       ) : null}
       {shouldShowReasoning ? (
@@ -124,18 +115,6 @@ export function ChatSubTurnView({
 }
 
 export const ChatSubTurnViewX = observer(ChatSubTurnView);
-
-function isEditableUserMessage(
-  turnId: string,
-  itemId: string | null,
-  editableItem: EditableItemIdentity | null
-): boolean {
-  if (itemId === null || editableItem === null) {
-    return false;
-  }
-
-  return editableItem.turnId === turnId && editableItem.itemId === itemId;
-}
 
 function buildSubTurnItemKey(turnId: string, itemId: string): string {
   return ["subTurnItem", turnId, itemId].join(":");

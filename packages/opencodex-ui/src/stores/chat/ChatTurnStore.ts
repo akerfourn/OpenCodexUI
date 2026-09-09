@@ -1,4 +1,4 @@
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, observable } from "mobx";
 
 import type { OpenCodexTurn } from "@open-codex-ui/opencodex-protocol";
 
@@ -24,7 +24,9 @@ export class ChatTurnStore {
    */
   constructor(turn: OpenCodexTurn) {
     this.turn = turn;
-    makeAutoObservable(this);
+    makeAutoObservable(this, {
+      structure: observable.ref
+    });
     this.structure = buildChatTurnStructure(this.turn);
   }
 

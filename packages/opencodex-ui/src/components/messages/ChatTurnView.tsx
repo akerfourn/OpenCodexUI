@@ -11,6 +11,7 @@ import type {
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
 import { EMPTY_COLLABORATION_EVENTS } from "../../stores/collaboration/CollaborationEventIndex";
+import type { ChatActionsStore } from "../../stores/chat/ChatActionsStore";
 import type { ChatTurnStore } from "../../stores/chat/ChatTurnStore";
 import type { ChatSubTurn } from "../../stores/chat/chatTurnStructure";
 
@@ -18,17 +19,12 @@ import { ChatSubTurnViewX } from "./ChatSubTurnView";
 import { assignCollaborationEvents } from "./collaborationReasoningTimeline";
 import { TurnErrorRow } from "./TurnErrorRow";
 
-type EditableItemIdentity = {
-  turnId: string;
-  itemId: string;
-};
-
 type ChatTurnViewProps = {
   turnStore: ChatTurnStore;
   activeTurnId: string | null;
   isWorking: boolean;
   isLastTurn: boolean;
-  editableItem: EditableItemIdentity | null;
+  chatActions?: ChatActionsStore;
   collaborationEvents?: readonly OpenCodexCollaborationEvent[];
   readCollaborationEventsForTurn?:
     (turnId: string) => readonly OpenCodexCollaborationEvent[];
@@ -54,7 +50,7 @@ export function ChatTurnView({
   activeTurnId,
   isWorking,
   isLastTurn,
-  editableItem,
+  chatActions,
   collaborationEvents,
   readCollaborationEventsForTurn,
   currentThread,
@@ -109,7 +105,7 @@ export function ChatTurnView({
           navigableThreadIds={navigableThreadIds}
           isReasoningRunning={isRunning && index === subTurns.length - 1}
           isLastInTurn={isLastTurn && index === subTurns.length - 1}
-          editableItem={editableItem}
+          chatActions={chatActions}
           lastMessageRef={lastMessageRef}
           onOpenLink={onOpenLink}
           onNavigateThread={onNavigateThread}

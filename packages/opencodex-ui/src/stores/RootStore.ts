@@ -111,9 +111,9 @@ export class RootStore {
    *
    * @returns Nothing.
    */
-  reportApplicationActivity(): void {
+  reportApplicationActivity(hasPendingProjectActivity = this.hasPendingProjectActivity): void {
     this.transport.reportApplicationActivity?.({
-      hasPendingProjectActivity: this.hasPendingProjectActivity
+      hasPendingProjectActivity
     });
   }
 

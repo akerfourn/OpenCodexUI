@@ -21,7 +21,10 @@ import { ProjectComposePanelX } from "./ProjectComposePanel";
 import { ProjectContextPanelX } from "./ProjectContextPanel";
 import { ProjectGitPanelX } from "./ProjectGitPanel";
 import { ProjectRulesPanelX } from "./ProjectRulesPanel";
-import { ProjectSidePanelTabIndicator } from "./ProjectSidePanelTabIndicator";
+import {
+  ProjectSidePanelTabActivityX,
+  type ProjectSidePanelActivity
+} from "./ProjectSidePanelTabActivity";
 import { ProjectSidePanelTabLabel } from "./ProjectSidePanelTabLabel";
 import { ProjectTasksPanelX } from "./ProjectTasksPanel";
 import { ProjectGoalsPanelX } from "./ProjectGoalsPanel";
@@ -31,8 +34,7 @@ type ProjectSidePanelTabDefinition = {
   value: ProjectSidePanelTab;
   label: string;
   icon: ReactElement;
-  hasActivity: boolean;
-  indicatorColor?: "error" | "warning";
+  activity: ProjectSidePanelActivity;
 };
 
 type ProjectSidePanelProps = {
@@ -62,12 +64,7 @@ export function ProjectSidePanel({
   const projectId = projectStore.project?.id;
   const sourceId = projectStore.project?.sourceId;
   const hasComposeFile = sourceId !== null && sourceId !== undefined &&
-    composeStore?.isAvailable === true && readHasComposeFile(composeStore);
-  const hasPendingCommitMessage = projectStore.gitStore?.commitStore?.hasDraftMessage === true;
-  const hasProtectedCommitBranch = projectStore.gitStore?.isCurrentBranchCommitProtected === true;
-  const hasActiveCommandRun = projectStore.commandsStore?.hasActiveRun === true;
-  const hasNonStoppedComposeContainer = composeStore?.hasNonStoppedContainer === true;
-  const hasGoalActivity = projectStore.goalsStore?.hasAttention === true;
+    composeStore?.isAvailable === true && composeStore.hasComposeFile === true;
 
   useEffect(() => {
     if (composeStore !== undefined &&
@@ -109,38 +106,37 @@ export function ProjectSidePanel({
       value: "git",
       label: gitLabel,
       icon: <AccountTreeOutlinedIcon fontSize="small" />,
-      hasActivity: hasPendingCommitMessage || hasProtectedCommitBranch,
-      indicatorColor: hasPendingCommitMessage ? "error" : "warning"
+      activity: "git"
     },
     {
       value: "commands",
       label: commandsLabel,
       icon: <TerminalOutlinedIcon fontSize="small" />,
-      hasActivity: hasActiveCommandRun
+      activity: "commands"
     },
     {
       value: "rules",
       label: rulesLabel,
       icon: <RuleOutlinedIcon fontSize="small" />,
-      hasActivity: false
+      activity: "none"
     },
     {
       value: "context",
       label: contextLabel,
       icon: <FolderCopyOutlinedIcon fontSize="small" />,
-      hasActivity: false
+      activity: "none"
     },
     {
       value: "tasks",
       label: tasksLabel,
       icon: <ChecklistOutlinedIcon fontSize="small" />,
-      hasActivity: false
+      activity: "none"
     },
     {
       value: "goals",
       label: goalsLabel,
       icon: <FlagOutlinedIcon fontSize="small" />,
-      hasActivity: hasGoalActivity
+      activity: "goals"
     }
   ];
 
@@ -149,7 +145,7 @@ export function ProjectSidePanel({
       value: "compose",
       label: composeLabel,
       icon: <ViewModuleOutlinedIcon fontSize="small" />,
-      hasActivity: hasNonStoppedComposeContainer
+      activity: "compose"
     });
   }
 
@@ -222,10 +218,10 @@ export function ProjectSidePanel({
                 aria-pressed={selectedTab === tab.value}
                 onClick={() => handleCollapsedTabClick(tab.value)}
               >
-                <ProjectSidePanelTabIndicator
+                <ProjectSidePanelTabActivityX
+                  projectStore={projectStore}
+                  activity={tab.activity}
                   icon={tab.icon}
-                  hasActivity={tab.hasActivity}
-                  color={tab.indicatorColor}
                 />
               </IconButton>
             </Tooltip>
@@ -263,10 +259,10 @@ export function ProjectSidePanel({
               aria-label={tab.label}
               label={
                 <ProjectSidePanelTabLabel
+                  projectStore={projectStore}
                   label={tab.label}
                   icon={tab.icon}
-                  hasActivity={tab.hasActivity}
-                  color={tab.indicatorColor}
+                  activity={tab.activity}
                 />
               }
             />
@@ -279,13 +275,3 @@ export function ProjectSidePanel({
 }
 
 export const ProjectSidePanelX = observer(ProjectSidePanel);
-
-/** Returns whether a project store has a detected Compose file. */
-function readHasComposeFile(composeStore: ProjectStore["composeStore"] | undefined): boolean {
-  if (composeStore === undefined) {
-    return false;
-  }
-
-  const composeFile = composeStore.snapshot?.composeFile;
-  return (composeFile !== null && composeFile !== undefined) || composeStore.hasComposeFile;
-}

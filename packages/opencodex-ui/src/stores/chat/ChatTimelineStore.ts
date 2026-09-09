@@ -1,7 +1,7 @@
 /**
  * Holds the observable turn timeline for one loaded chat.
  */
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable, observable, runInAction } from "mobx";
 
 import type {
   OpenCodexActivity,
@@ -80,7 +80,8 @@ export class ChatTimelineStore {
       projectStore: false,
       root: false,
       turnStoresById: false,
-      turnTokenUsageById: false
+      turnTokenUsageById: false,
+      turnStores: observable.shallow
     }, { autoBind: true });
   }
 
@@ -115,9 +116,14 @@ export class ChatTimelineStore {
    * @param turns Raw turns.
    */
   setTurns(turns: OpenCodexTurn[]): void {
-    this.turns = turns.map((turn) => this.attachKnownTokenUsage(
+    const nextTurns = turns.map((turn) => this.attachKnownTokenUsage(
       movePlanItemsToLatestSubTurn(turn)
     ));
+
+    if (!areSameTurnReferences(this.turns, nextTurns)) {
+      this.turns = nextTurns;
+    }
+
     this.syncTurnStores();
   }
 
@@ -217,11 +223,7 @@ export class ChatTimelineStore {
       return;
     }
 
-    this.setTurns(this.turns.map((entry) => (
-      entry.id === usage.turnId
-        ? { ...entry, tokenUsage: usage }
-        : entry
-    )));
+    turn.tokenUsage = usage;
   }
 
   /**
@@ -477,7 +479,13 @@ export class ChatTimelineStore {
       nextStoresById.set(turn.id, turnStore);
     }
 
-    this.turnStores = nextStores;
+    const hasTurnStoreSequenceChanged = this.turnStores.length !== nextStores.length ||
+      nextStores.some((store, index) => store !== this.turnStores[index]);
+
+    if (hasTurnStoreSequenceChanged) {
+      this.turnStores = nextStores;
+    }
+
     this.turnStoresById = nextStoresById;
   }
 
@@ -534,4 +542,16 @@ export class ChatTimelineStore {
       tokenUsage: knownUsage
     };
   }
+}
+
+/** Returns whether two turn arrays contain the exact same turn instances. */
+function areSameTurnReferences(
+  currentTurns: readonly OpenCodexTurn[],
+  nextTurns: readonly OpenCodexTurn[]
+): boolean {
+  if (currentTurns.length !== nextTurns.length) {
+    return false;
+  }
+
+  return nextTurns.every((turn, index) => turn === currentTurns[index]);
 }

@@ -5,7 +5,6 @@ import { useState, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import { Box, IconButton, Paper, Tooltip } from "@mui/material";
 import BugReportOutlinedIcon from "@mui/icons-material/BugReportOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useTranslation } from "react-i18next";
 
@@ -20,10 +19,12 @@ import { TurnDetailsDialog } from "../dialogs/TurnDetailsDialog";
 import { ActivityKindIcon } from "./ActivityKindIcon";
 import { CommandActivityRow } from "./CommandActivityRow";
 import { FileChangeActivityRow } from "./FileChangeActivityRow";
+import { EditableMessageActionX } from "./EditableMessageAction";
 import { MessageAttachmentsX } from "./MessageAttachments";
 import { MarkdownMessageM } from "./MarkdownMessage";
 import { formatMessageTimestamp } from "./messageTimestamp";
 import { PlanActivityRowX } from "./PlanActivityRow";
+import type { ChatActionsStore } from "../../stores/chat/ChatActionsStore";
 
 type MessageRowProps = {
   item: OpenCodexTurnItem;
@@ -44,13 +45,9 @@ type MessageRowProps = {
   turnId?: string;
   showTurnDiagnostic?: boolean;
   widthMode?: "message" | "container";
-  canEdit?: boolean;
-  /**
-   * Handles edit.
-   *
-   * @returns Nothing.
-   */
-  onEdit?(): void;
+  chatActions?: ChatActionsStore;
+  /** Starts editing the supplied user message. */
+  onStartEdit?(content: string): void;
   /** Opens the developer-only diagnostic trace for the current turn. */
   onOpenTurnDiagnostic?(): void;
 };
@@ -74,8 +71,8 @@ export function MessageRow({
   turnId,
   showTurnDiagnostic = false,
   widthMode = "message",
-  canEdit = false,
-  onEdit,
+  chatActions,
+  onStartEdit,
   onOpenTurnDiagnostic
 }: MessageRowProps) {
   const { t } = useTranslation();
@@ -180,22 +177,14 @@ export function MessageRow({
             {messageTimestamp}
           </Box>
           <Box sx={{ display: "flex", gap: 0.5 }}>
-            {canEdit && onEdit !== undefined ? (
-              <Tooltip title={t("message.edit")}>
-                <IconButton
-                  aria-label={t("message.edit")}
-                  size="small"
-                  onClick={onEdit}
-                  sx={{
-                    color: "text.secondary",
-                    height: 24,
-                    width: 24,
-                    p: 0.25
-                  }}
-                >
-                  <EditOutlinedIcon sx={{ fontSize: 15 }} />
-                </IconButton>
-              </Tooltip>
+            {chatActions !== undefined && turnId !== undefined && onStartEdit !== undefined ? (
+              <EditableMessageActionX
+                actions={chatActions}
+                turnId={turnId}
+                itemId={item.id}
+                content={content}
+                onStartEdit={onStartEdit}
+              />
             ) : null}
             <CopyIconButton
               value={content}
