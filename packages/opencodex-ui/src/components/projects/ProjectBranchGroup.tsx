@@ -17,7 +17,8 @@ type ProjectBranchGroupProps = {
   title: string;
   branches: OpenCodexGitBranch[];
   isBusy: boolean;
-  onSelect(branch: OpenCodexGitBranch): Promise<void>;
+  selectedBranchFullName: string | null;
+  onSelect(branch: OpenCodexGitBranch): void;
 };
 
 /**
@@ -31,6 +32,7 @@ export function ProjectBranchGroup({
   title,
   branches,
   isBusy,
+  selectedBranchFullName,
   onSelect
 }: ProjectBranchGroupProps) {
   const { t } = useTranslation();
@@ -49,10 +51,9 @@ export function ProjectBranchGroup({
           {branches.map((branch) => (
             <ListItemButton
               key={branch.fullName}
+              selected={selectedBranchFullName === branch.fullName}
               disabled={isBusy || branch.isCurrent}
-              onClick={() => {
-                void onSelect(branch);
-              }}
+              onClick={() => onSelect(branch)}
             >
               <ListItemText
                 primary={branch.name}

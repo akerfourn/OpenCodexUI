@@ -217,13 +217,28 @@ export class GitRuntimeHandler {
     return await this.gitService.mergeBranch(projectPath, sourceId, branchName);
   }
 
-  /** Merges the current local branch into another local branch. */
+  /**
+   * Merges the current local branch into another local branch.
+   *
+   * @param allowDirtyWorktree Whether an explicit caller confirmation allows
+   *   Git to attempt the merge with uncommitted changes.
+   */
   async mergeGitBranchTo(
     projectPath: string,
     sourceId: string | null,
-    targetBranchName: string
+    targetBranchName: string,
+    allowDirtyWorktree?: boolean
   ): Promise<OpenCodexGitStatus> {
-    return await this.gitService.mergeBranchTo(projectPath, sourceId, targetBranchName);
+    if (allowDirtyWorktree === undefined) {
+      return await this.gitService.mergeBranchTo(projectPath, sourceId, targetBranchName);
+    }
+
+    return await this.gitService.mergeBranchTo(
+      projectPath,
+      sourceId,
+      targetBranchName,
+      allowDirtyWorktree
+    );
   }
 
   /** Stages selected Git paths. */

@@ -35,6 +35,12 @@ export class ProjectGitChangesStore {
   /** Staged file paths selected for unstaging. */
   selectedStagedPaths: string[] = [];
 
+  /** Whether Git reports any unstaged or staged changes in the worktree. */
+  get hasUncommittedChanges(): boolean {
+    return this.parent.statusStore.status.changedFiles.length > 0 ||
+      this.parent.statusStore.status.stagedFiles.length > 0;
+  }
+
   /**
    * Creates a changed-file store attached to its owning Git aggregate.
    *

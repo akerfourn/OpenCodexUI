@@ -335,6 +335,30 @@ describe("ProjectGitReferencesStore Git references", () => {
     expect(fixture.gitStore.referencesStore.isMergingBranch).toBe(false);
   });
 
+  it("should send explicit dirty-worktree confirmation for merge-to", async () => {
+    const fixture = createProjectGitReferencesFixture();
+    const status = createStatus({ branchName: "release" });
+    const branches = [createBranch("main"), createBranch("release", { isCurrent: true })];
+    fixture.request
+      .mockResolvedValueOnce(status)
+      .mockResolvedValueOnce(branches)
+      .mockResolvedValueOnce(createTagResult());
+
+    const didMerge = await fixture.gitStore.referencesStore.mergeBranchTo(
+      createBranch("main"),
+      true
+    );
+
+    expect(didMerge).toBe(true);
+    expect(fixture.request).toHaveBeenNthCalledWith(1, {
+      type: "git.merge.to",
+      projectPath: "/workspace/project",
+      sourceId: "source-1",
+      targetBranchName: "main",
+      allowDirtyWorktree: true
+    });
+  });
+
   it.each([
     {
       name: "an empty branch",

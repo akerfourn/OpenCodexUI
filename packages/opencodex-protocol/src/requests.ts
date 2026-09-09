@@ -312,6 +312,7 @@ export type OpenCodexRequest =
       projectPath: string;
       sourceId: string | null;
       targetBranchName: string;
+      allowDirtyWorktree?: boolean;
     }
   | { type: "git.stage"; workspaceId?: string; projectPath: string; sourceId: string | null; paths: string[] }
   | { type: "git.unstage"; workspaceId?: string; projectPath: string; sourceId: string | null; paths: string[] }

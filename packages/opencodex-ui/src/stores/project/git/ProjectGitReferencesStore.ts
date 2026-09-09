@@ -221,10 +221,19 @@ export class ProjectGitReferencesStore {
    * Merges the current branch into a selected local branch.
    *
    * @param branch Local branch receiving the merge.
+   * @param allowDirtyWorktree Whether the user explicitly confirmed keeping
+   *   uncommitted changes while changing to the target branch.
    * @returns Whether merge succeeded.
    */
-  async mergeBranchTo(branch: OpenCodexGitBranch): Promise<boolean> {
-    return await this.applyMergeStatusRequest("git.merge.to", branch.name);
+  async mergeBranchTo(
+    branch: OpenCodexGitBranch,
+    allowDirtyWorktree = false
+  ): Promise<boolean> {
+    return await this.applyMergeStatusRequest(
+      "git.merge.to",
+      branch.name,
+      allowDirtyWorktree
+    );
   }
 
   /**
@@ -464,7 +473,8 @@ export class ProjectGitReferencesStore {
    */
   private async applyMergeStatusRequest(
     type: "git.merge" | "git.merge.to",
-    branchName: string
+    branchName: string,
+    allowDirtyWorktree = false
   ): Promise<boolean> {
     const normalizedBranchName = branchName.trim();
 
@@ -488,7 +498,8 @@ export class ProjectGitReferencesStore {
           type,
           projectPath: this.parent.projectPath,
           sourceId: this.parent.sourceId,
-          targetBranchName: normalizedBranchName
+          targetBranchName: normalizedBranchName,
+          ...(allowDirtyWorktree ? { allowDirtyWorktree: true } : {})
         });
 
       runInAction(() => {

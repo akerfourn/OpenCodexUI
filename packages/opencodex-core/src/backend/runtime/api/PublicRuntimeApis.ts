@@ -429,7 +429,8 @@ export interface GitApi {
   mergeBranchTo(
     projectPath: string,
     sourceId: string | null,
-    targetBranchName: string
+    targetBranchName: string,
+    allowDirtyWorktree?: boolean
   ): Promise<OpenCodexGitStatus>;
   stage(projectPath: string, sourceId: string | null, paths: string[]): Promise<OpenCodexGitStatus>;
   unstage(projectPath: string, sourceId: string | null, paths: string[]): Promise<OpenCodexGitStatus>;

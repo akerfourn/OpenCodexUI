@@ -358,6 +358,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
       {mergeDirection !== null ? (
         <ProjectBranchMergeDialogX
           direction={mergeDirection}
+          changesStore={changesStore}
           referencesStore={referencesStore}
           open
           onClose={handleCloseMergeDialog}

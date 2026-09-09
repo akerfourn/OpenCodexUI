@@ -44,10 +44,15 @@ export function ProjectBranchSwitcherDialog({
 }: ProjectBranchSwitcherDialogProps) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedBranchFullName, setSelectedBranchFullName] = useState<string | null>(null);
   const normalizedSearchTerm = searchTerm.trim();
   const filteredBranches = useMemo(
     () => filterBranches(referencesStore.branches, normalizedSearchTerm),
     [referencesStore.branches, normalizedSearchTerm]
+  );
+  const selectedBranch = useMemo(
+    () => filteredBranches.find((branch) => branch.fullName === selectedBranchFullName) ?? null,
+    [filteredBranches, selectedBranchFullName]
   );
   const localBranches = filteredBranches.filter((branch) => branch.kind === "local");
   const remoteBranches = filteredBranches.filter((branch) => branch.kind === "remote");
@@ -56,15 +61,29 @@ export function ProjectBranchSwitcherDialog({
   useEffect(() => {
     if (open) {
       setSearchTerm("");
+      setSelectedBranchFullName(null);
       void referencesStore.loadBranches();
     }
   }, [referencesStore, open]);
 
   function handleSearchChange(event: ChangeEvent<HTMLInputElement>): void {
     setSearchTerm(event.target.value);
+    setSelectedBranchFullName(null);
   }
 
-  async function handleCheckoutBranch(branch: OpenCodexGitBranch): Promise<void> {
+  function handleSelectBranch(branch: OpenCodexGitBranch): void {
+    setSelectedBranchFullName(branch.fullName);
+  }
+
+  function handleCheckoutSelectedBranch(): void {
+    if (selectedBranch === null) {
+      return;
+    }
+
+    void checkoutBranch(selectedBranch);
+  }
+
+  async function checkoutBranch(branch: OpenCodexGitBranch): Promise<void> {
     const didCheckout = await referencesStore.checkoutBranch(branch);
 
     if (didCheckout) {
@@ -121,14 +140,16 @@ export function ProjectBranchSwitcherDialog({
                 title={t("git.localBranches")}
                 branches={localBranches}
                 isBusy={referencesStore.isCheckingOutBranch}
-                onSelect={handleCheckoutBranch}
+                selectedBranchFullName={selectedBranchFullName}
+                onSelect={handleSelectBranch}
               />
               <Divider />
               <ProjectBranchGroupX
                 title={t("git.remoteBranches")}
                 branches={remoteBranches}
                 isBusy={referencesStore.isCheckingOutBranch}
-                onSelect={handleCheckoutBranch}
+                selectedBranchFullName={selectedBranchFullName}
+                onSelect={handleSelectBranch}
               />
             </Stack>
           )}
@@ -136,6 +157,14 @@ export function ProjectBranchSwitcherDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>{t("git.close")}</Button>
+        <Button
+          variant="contained"
+          disabled={selectedBranch === null || referencesStore.isCheckingOutBranch}
+          startIcon={referencesStore.isCheckingOutBranch ? <CircularProgress size={16} /> : undefined}
+          onClick={handleCheckoutSelectedBranch}
+        >
+          {t("git.selectBranch")}
+        </Button>
       </DialogActions>
     </Dialog>
   );

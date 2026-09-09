@@ -126,15 +126,19 @@ export async function mergeBranch(
  * @param projectPath Project working directory.
  * @param sourceId Source identifier.
  * @param targetBranchName Local branch receiving the merge.
+ * @param allowDirtyWorktree Whether an explicit caller confirmation allows
+ *   Git to attempt the checkout with uncommitted changes.
  * @returns Refreshed status with the target branch checked out.
  * @throws When the repository is unavailable, the current branch is detached,
- *   the target is not local, the worktree is dirty, or Git fails.
+ *   the target is not local, the worktree is dirty without explicit
+ *   confirmation, or Git fails.
  */
 export async function mergeBranchTo(
   context: GitReferenceActionContext,
   projectPath: string,
   sourceId: string | null,
-  targetBranchName: string
+  targetBranchName: string,
+  allowDirtyWorktree = false
 ): Promise<OpenCodexGitStatus> {
   const normalizedTargetBranchName = normalizeBranchName(targetBranchName);
   if (normalizedTargetBranchName.length === 0) {
@@ -155,7 +159,10 @@ export async function mergeBranchTo(
     throw new Error("The target branch must differ from the current branch.");
   }
 
-  if (initialStatus.changedFiles.length > 0 || initialStatus.stagedFiles.length > 0) {
+  if (
+    !allowDirtyWorktree &&
+    (initialStatus.changedFiles.length > 0 || initialStatus.stagedFiles.length > 0)
+  ) {
     throw new Error("Cannot merge to another branch with uncommitted changes.");
   }
 

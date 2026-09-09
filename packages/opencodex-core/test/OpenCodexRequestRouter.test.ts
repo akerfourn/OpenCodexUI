@@ -159,6 +159,30 @@ describe("OpenCodexRequestRouter Git routes", () => {
 
     expect(mergeBranchTo).toHaveBeenCalledWith("/workspace/project", "source-1", "main");
   });
+
+  it("should forward an explicit dirty-worktree confirmation for merge-to", async () => {
+    const mergeBranchTo = vi.fn(async () => ({ branchName: "main" }));
+    const runtime = {
+      git: { mergeBranchTo },
+      handleRequestError: vi.fn()
+    } as unknown as OpenCodexBackendRuntime;
+    const router = new OpenCodexRequestRouter(runtime);
+
+    await router.handleRequest({
+      type: "git.merge.to",
+      projectPath: "/workspace/project",
+      sourceId: "source-1",
+      targetBranchName: "main",
+      allowDirtyWorktree: true
+    });
+
+    expect(mergeBranchTo).toHaveBeenCalledWith(
+      "/workspace/project",
+      "source-1",
+      "main",
+      true
+    );
+  });
 });
 
 describe("OpenCodexRequestRouter project goal routes", () => {

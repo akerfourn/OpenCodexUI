@@ -231,13 +231,28 @@ export class GitApi implements GitApiContract {
     return await this.handler.mergeGitBranch(projectPath, sourceId, branchName);
   }
 
-  /** Merges the current branch into another local branch. */
+  /**
+   * Merges the current branch into another local branch.
+   *
+   * @param allowDirtyWorktree Whether an explicit caller confirmation allows
+   *   Git to attempt the merge with uncommitted changes.
+   */
   async mergeBranchTo(
     projectPath: string,
     sourceId: string | null,
-    targetBranchName: string
+    targetBranchName: string,
+    allowDirtyWorktree?: boolean
   ): Promise<OpenCodexGitStatus> {
-    return await this.handler.mergeGitBranchTo(projectPath, sourceId, targetBranchName);
+    if (allowDirtyWorktree === undefined) {
+      return await this.handler.mergeGitBranchTo(projectPath, sourceId, targetBranchName);
+    }
+
+    return await this.handler.mergeGitBranchTo(
+      projectPath,
+      sourceId,
+      targetBranchName,
+      allowDirtyWorktree
+    );
   }
 
   /** Stages selected Git paths. */

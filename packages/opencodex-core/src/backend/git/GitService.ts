@@ -335,14 +335,23 @@ export class GitService {
    * @param projectPath Project working directory.
    * @param sourceId Source identifier.
    * @param targetBranchName Local branch receiving the merge.
+   * @param allowDirtyWorktree Whether an explicit caller confirmation allows
+   *   Git to attempt the merge with uncommitted changes.
    * @returns Refreshed status with the target branch checked out.
    */
   async mergeBranchTo(
     projectPath: string,
     sourceId: string | null,
-    targetBranchName: string
+    targetBranchName: string,
+    allowDirtyWorktree?: boolean
   ): Promise<OpenCodexGitStatus> {
-    return await mergeGitBranchTo(this.referenceContext, projectPath, sourceId, targetBranchName);
+    return await mergeGitBranchTo(
+      this.referenceContext,
+      projectPath,
+      sourceId,
+      targetBranchName,
+      allowDirtyWorktree
+    );
   }
 
   /**
