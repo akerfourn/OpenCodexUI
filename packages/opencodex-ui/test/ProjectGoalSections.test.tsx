@@ -13,7 +13,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 import { ProjectGoalSections } from "../src/components/projects/ProjectGoalSections";
-import { groupProjectGoals } from "../src/components/projects/projectGoalSections";
+import { groupProjectGoals } from "../src/components/projects/projectGoalGrouping";
 
 describe("ProjectGoalSections", () => {
   it("should split current, unassigned, and other-chat goals", () => {

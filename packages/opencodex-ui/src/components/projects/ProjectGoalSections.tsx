@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ProjectGoalRow } from "./ProjectGoalRow";
-import { groupProjectGoals } from "./projectGoalSections";
+import { groupProjectGoals } from "./projectGoalGrouping";
 
 type ProjectGoalActions = {
   onOpen(goal: OpenCodexProjectGoal): void;
