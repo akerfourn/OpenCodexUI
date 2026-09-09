@@ -5,7 +5,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key })
+  useTranslation: () => ({
+    t: (key: string, options?: { href?: string }) =>
+      key === "message.linkTooltip"
+        ? `${options?.href ?? ""} (Ctrl+clic)`
+        : key
+  })
 }));
 
 import { MarkdownMessage } from "../src/components/messages/MarkdownMessage";
@@ -42,6 +47,18 @@ describe("MarkdownMessage", () => {
     expect(markup).toContain("href=\"https://openai.com\"");
     expect(markup).toContain("<table");
     expect(markup).toContain("hljs-keyword");
+  });
+
+  it("should show the link target and modified-click hint on hover", () => {
+    const markup = renderToStaticMarkup(
+      <MarkdownMessage
+        markdown="[OpenAI](https://openai.com/docs)"
+        requireModifiedClick
+        onOpenLink={vi.fn()}
+      />
+    );
+
+    expect(markup).toContain('title="https://openai.com/docs (Ctrl+clic)"');
   });
 
   it("should render inline and display math with KaTeX", () => {

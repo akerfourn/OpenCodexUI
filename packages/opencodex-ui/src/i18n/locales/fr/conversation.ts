@@ -253,6 +253,7 @@ export const frConversation = {
     fileChangeVisualView: "Vue diff",
     imageUnavailable: "Image manquante ou non disponible",
     limitContent: "Limiter l'affichage",
+    linkTooltip: "{{href}} (Ctrl+clic)",
     openImage: "Ouvrir l'image",
     showAllContent: "Tout afficher",
     showMoreContent: "Afficher plus",

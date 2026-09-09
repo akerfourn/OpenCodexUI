@@ -251,6 +251,7 @@ export const enConversation = {
     fileChangeVisualView: "Diff view",
     imageUnavailable: "Image missing or unavailable",
     limitContent: "Limit display",
+    linkTooltip: "{{href}} (Ctrl+click)",
     openImage: "Open image",
     showAllContent: "Show all",
     showMoreContent: "Show more",

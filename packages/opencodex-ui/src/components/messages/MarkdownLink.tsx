@@ -3,6 +3,7 @@
  */
 import { Link } from "@mui/material";
 import type { MouseEvent, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 type MarkdownLinkProps = {
   href?: string;
@@ -26,10 +27,15 @@ export function MarkdownLink({
   requireModifiedClick = false,
   onOpenLink
 }: MarkdownLinkProps) {
+  const { t } = useTranslation();
+
   if (href === undefined || href.length === 0) {
     return <>{children}</>;
   }
   const linkHref = href;
+  const linkTitle = requireModifiedClick
+    ? t("message.linkTooltip", { href: linkHref })
+    : linkHref;
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>): void {
     event.preventDefault();
@@ -43,6 +49,7 @@ export function MarkdownLink({
   return (
     <Link
       href={linkHref}
+      title={linkTitle}
       underline="hover"
       onClick={handleClick}
       sx={{
