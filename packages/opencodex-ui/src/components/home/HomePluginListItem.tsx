@@ -88,10 +88,22 @@ export function HomePluginListItem({
   return (
     <ListItem
       disablePadding
-      secondaryAction={actionContent}
-      sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1 }}
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 1,
+        "&:hover": { backgroundColor: "action.hover" }
+      }}
     >
-      <ListItemButton onClick={handleOpen} sx={{ pr: 18 }}>
+      <ListItemButton
+        onClick={handleOpen}
+        sx={{
+          minWidth: 0,
+          pr: 1.5,
+          backgroundColor: "transparent",
+          "&:hover": { backgroundColor: "transparent" }
+        }}
+      >
         <ListItemAvatar>
           <Avatar
             src={plugin.logoUrl ?? undefined}
@@ -101,7 +113,7 @@ export function HomePluginListItem({
             {plugin.displayName.slice(0, 1).toUpperCase()}
           </Avatar>
         </ListItemAvatar>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, width: 0, flex: "1 1 0", overflow: "hidden" }}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
             <Typography variant="subtitle2" noWrap>
               {plugin.displayName}
@@ -126,6 +138,9 @@ export function HomePluginListItem({
           </Typography>
         </Box>
       </ListItemButton>
+      <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0, pl: 1, pr: 1.5 }}>
+        {actionContent}
+      </Box>
     </ListItem>
   );
 }
