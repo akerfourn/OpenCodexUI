@@ -432,7 +432,8 @@ export class OpenCodexRequestRouter {
           request.projectPath,
           request.sourceId,
           request.message,
-          request.projectId
+          request.projectId,
+          request.workspaceId
         );
       case "git.pull":
         return this.runtime.git.pull(request.projectPath, request.sourceId);

@@ -1,3 +1,4 @@
+import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexCommitMessageGenerationResult,
@@ -31,7 +32,7 @@ export type GitRuntimeHandlerOptions = {
   settings: Pick<RuntimeSettingsPort, "getSettings">;
   clients: Pick<ClientPort, "ensureClient">;
   /** Cache used to resolve project-local Git preferences for mutations. */
-  cacheRepository?: Pick<OpenCodexCacheRepository, "listProjects"> | null;
+  cacheRepository?: Pick<OpenCodexCacheRepository, "listProjects" | "workspaces"> | null;
   threads: Pick<ThreadRuntimeHandler, "ignoreThreadNotifications" | "releaseThreadNotifications">;
   usage: Pick<UsageRuntimeService, "onCommitGenerationStarted" | "onCommitGenerationFinished">;
   logger?: (message: string) => void;
@@ -47,7 +48,7 @@ export class GitRuntimeHandler {
   /** Performs source-scoped Git operations through Codex clients. */
   private readonly gitService: GitService;
   /** Reads persisted project preferences for protected-branch checks. */
-  private readonly cacheRepository: Pick<OpenCodexCacheRepository, "listProjects"> | null;
+  private readonly cacheRepository: Pick<OpenCodexCacheRepository, "listProjects" | "workspaces"> | null;
   /** Manages the editable commit prompt and one-shot message generation. */
   private readonly commitMessageService: CommitMessageService;
 
@@ -264,12 +265,14 @@ export class GitRuntimeHandler {
     projectPath: string,
     sourceId: string | null,
     message: string,
-    projectId: string
+    projectId: string,
+    workspaceId?: string
   ): Promise<OpenCodexGitCommitResult> {
     const protectedBranches = await this.readCommitProtectedBranches(
       projectId,
       projectPath,
-      sourceId
+      sourceId,
+      workspaceId
     );
 
     return await this.gitService.commit(projectPath, sourceId, message, protectedBranches);
@@ -281,12 +284,14 @@ export class GitRuntimeHandler {
    * @param projectId Project identifier from the UI request.
    * @param projectPath Project path from the UI request.
    * @param sourceId Source identifier from the UI request.
+   * @param workspaceId Workspace identifier when the request targets a worktree.
    * @returns Persisted protected branch names, or an empty list without a cache.
    */
   private async readCommitProtectedBranches(
     projectId: string,
     projectPath: string,
-    sourceId: string | null
+    sourceId: string | null,
+    workspaceId?: string
   ): Promise<string[]> {
     if (this.cacheRepository === null) {
       return [];
@@ -300,7 +305,20 @@ export class GitRuntimeHandler {
       throw new Error(`Project not found: ${projectId}`);
     }
 
-    if (project.path !== projectPath || project.sourceId !== sourceId) {
+    if (workspaceId === undefined) {
+      if (!sameProjectPath(project.path, projectPath) || project.sourceId !== sourceId) {
+        throw new Error("Git project context does not match the requested project.");
+      }
+    } else {
+      const workspace = await this.cacheRepository.workspaces.get(workspaceId);
+      if (workspace === null || workspace.removedAt !== null
+        || workspace.projectId !== projectId || workspace.sourceId === null
+        || workspace.sourceId !== sourceId || !sameProjectPath(workspace.path, projectPath)) {
+        throw new Error("Git project context does not match the requested project.");
+      }
+    }
+
+    if (workspaceId !== undefined && project.sourceId !== sourceId) {
       throw new Error("Git project context does not match the requested project.");
     }
 
@@ -358,4 +376,9 @@ export class GitRuntimeHandler {
   async pullGitChanges(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
     return await this.gitService.pull(projectPath, sourceId);
   }
+}
+
+/** Compares paths after applying the cache's cross-platform normalization. */
+function sameProjectPath(left: string, right: string): boolean {
+  return normalizeProjectPath(left) === normalizeProjectPath(right);
 }

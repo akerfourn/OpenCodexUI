@@ -142,6 +142,34 @@ describe("OpenCodexRequestRouter plugin routes", () => {
 });
 
 describe("OpenCodexRequestRouter Git routes", () => {
+  it("should forward the workspace identity for commits", async () => {
+    const commit = vi.fn(async () => ({ hash: "commit-1" }));
+    const resolveToolRequest = vi.fn(async (request: OpenCodexRequest) => request);
+    const runtime = {
+      git: { commit },
+      resolveToolRequest,
+      handleRequestError: vi.fn()
+    } as unknown as OpenCodexBackendRuntime;
+    const router = new OpenCodexRequestRouter(runtime);
+
+    await router.handleRequest({
+      type: "git.commit",
+      projectPath: "/workspace/project-feature",
+      sourceId: "source-1",
+      projectId: "project-1",
+      workspaceId: "workspace-1",
+      message: "release changes"
+    });
+
+    expect(commit).toHaveBeenCalledWith(
+      "/workspace/project-feature",
+      "source-1",
+      "release changes",
+      "project-1",
+      "workspace-1"
+    );
+  });
+
   it("should route merge-to with an explicit target branch", async () => {
     const mergeBranchTo = vi.fn(async () => ({ branchName: "main" }));
     const runtime = {

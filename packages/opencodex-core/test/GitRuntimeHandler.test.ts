@@ -5,6 +5,7 @@ import path from "node:path";
 import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexProject,
+  OpenCodexProjectWorkspace,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
@@ -50,7 +51,8 @@ describe("GitRuntimeHandler", () => {
     const handler = createHandler({
       clients: { ensureClient: async () => client.asCodexClient() },
       cacheRepository: {
-        listProjects: async () => [project]
+        listProjects: async () => [project],
+        workspaces: { get: async () => null }
       }
     });
 
@@ -59,6 +61,49 @@ describe("GitRuntimeHandler", () => {
       "source-1",
       "release changes",
       "project-1"
+    )).rejects.toThrow("protected branch");
+
+    expect(client.commands).toEqual([
+      ["git", "branch", "--show-current"]
+    ]);
+  });
+
+  it("should load project protection before committing from a workspace", async () => {
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "main\n", stderr: "" }
+    ]);
+    const project = {
+      id: "project-1",
+      sourceId: "source-1",
+      path: "/workspace/project",
+      preferences: {
+        git: { commitProtectedBranches: ["main"] }
+      }
+    } as OpenCodexProject;
+    const workspace = {
+      id: "workspace-1",
+      projectId: "project-1",
+      sourceId: "source-1",
+      path: "/workspace/project-feature",
+      name: "Feature",
+      isPrimary: false,
+      managed: true,
+      removedAt: null
+    } as OpenCodexProjectWorkspace;
+    const handler = createHandler({
+      clients: { ensureClient: async () => client.asCodexClient() },
+      cacheRepository: {
+        listProjects: async () => [project],
+        workspaces: { get: async () => workspace }
+      }
+    });
+
+    await expect(handler.commitGitChanges(
+      "/workspace/project-feature",
+      "source-1",
+      "release changes",
+      "project-1",
+      "workspace-1"
     )).rejects.toThrow("protected branch");
 
     expect(client.commands).toEqual([

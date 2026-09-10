@@ -439,7 +439,8 @@ export interface GitApi {
     projectPath: string,
     sourceId: string | null,
     message: string,
-    projectId: string
+    projectId: string,
+    workspaceId?: string
   ): Promise<OpenCodexGitCommitResult>;
   push(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
   publishCurrentBranch(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;

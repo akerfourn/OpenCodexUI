@@ -51,12 +51,13 @@ describe("GitApi", () => {
     await expect(api.readStatus("/project", "source-1")).resolves.toBe(status);
     expect(handler.readGitStatus).toHaveBeenCalledWith("/project", "source-1");
 
-    await api.commit("/project", "source-1", "release changes", "project-1");
+    await api.commit("/project", "source-1", "release changes", "project-1", "workspace-1");
     expect(handler.commitGitChanges).toHaveBeenCalledWith(
       "/project",
       "source-1",
       "release changes",
-      "project-1"
+      "project-1",
+      "workspace-1"
     );
 
     await api.mergeBranchTo("/project", "source-1", "release");
