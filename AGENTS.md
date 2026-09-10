@@ -90,6 +90,17 @@ This file applies to the whole repository.
 - Do not hand-edit generated Codex RPC types. Regenerate them with
   `npm run generate:codex-types` when needed.
 
+## Cross-platform path validation
+
+- Run `npm run check:path-casing` whenever a change adds, renames, or imports a
+  file. The check detects both case-only path collisions and relative imports
+  whose casing differs from the file on disk.
+- Treat a casing failure as blocking even when Linux typechecking succeeds;
+  Windows filesystems and the Windows TypeScript build resolve paths
+  case-insensitively.
+- `npm run check` includes this validation and should be run before handing off
+  changes that affect source files.
+
 ## Validation
 
 - Run `npm run typecheck` after changes that touch protocol, cache, core, UI, or

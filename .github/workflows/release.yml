@@ -157,6 +157,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check path casing
+        run: npm run check:path-casing
+
       - name: Build packages
         run: npm run build:packages
 
@@ -191,6 +194,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check path casing
+        run: npm run check:path-casing
 
       - name: Build packages
         run: npm run build:packages

@@ -18,8 +18,10 @@
     "rebuild:sqlite:electron": "npm run rebuild:sqlite:electron -w apps/electron-app",
     "rebuild:sqlite:node": "npm rebuild better-sqlite3",
     "typecheck": "npm run build:packages && npm run typecheck -w apps/electron-app",
-    "check": "npm run typecheck",
-    "test": "npm run rebuild:sqlite:node && npm run test --workspaces --if-present",
+    "check:path-casing": "node scripts/check-path-casing.mjs",
+    "check": "npm run check:path-casing && npm run typecheck",
+    "test:path-casing": "node --test scripts/check-path-casing.test.mjs",
+    "test": "npm run rebuild:sqlite:node && npm run test:path-casing && npm run test --workspaces --if-present",
     "generate:codex-types": "codex app-server generate-ts --experimental --out packages/codex-rpc/src/generated"
   },
   "devDependencies": {
