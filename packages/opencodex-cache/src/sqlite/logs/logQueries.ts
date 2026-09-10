@@ -77,6 +77,24 @@ export async function listLogs(
   query: CachedLogListQuery
 ): Promise<CachedLogPage> {
   const limit = normalizeLimit(query.limit);
+  const types = query.types;
+
+  if (types !== undefined && types.length === 0) {
+    return { logs: [], hasMore: false };
+  }
+
+  const typeFilter = types === undefined
+    ? ""
+    : `AND type IN (${types.map((_, index) => `@logType${index}`).join(", ")})`;
+  const parameters: Record<string, string | number | null> = {
+    beforeCreatedAt: query.beforeCreatedAt ?? null,
+    limit: limit + 1
+  };
+
+  types?.forEach((type, index) => {
+    parameters[`logType${index}`] = type;
+  });
+
   const rows = database
     .prepare(`
       SELECT
@@ -86,14 +104,12 @@ export async function listLogs(
         details_json,
         created_at
       FROM logs
-      WHERE @beforeCreatedAt IS NULL OR created_at < @beforeCreatedAt
+      WHERE (@beforeCreatedAt IS NULL OR created_at < @beforeCreatedAt)
+      ${typeFilter}
       ORDER BY created_at DESC, id DESC
       LIMIT @limit
     `)
-    .all({
-      beforeCreatedAt: query.beforeCreatedAt ?? null,
-      limit: limit + 1
-    }) as LogRow[];
+    .all(parameters) as LogRow[];
   const pageRows = rows.slice(0, limit);
 
   return {

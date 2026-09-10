@@ -22,6 +22,7 @@ import type { RootStore } from "../../stores/RootStore";
 import { HomeLogCleanupDialogX } from "./HomeLogCleanupDialog";
 import { HomeLogDetailsDialog } from "./HomeLogDetailsDialog";
 import { HomeLogListItem } from "./HomeLogListItem";
+import { HomeLogTypeFilterX } from "./HomeLogTypeFilter";
 
 type HomeLogsViewProps = {
   store: RootStore;
@@ -39,6 +40,7 @@ export function HomeLogsView({ store }: HomeLogsViewProps) {
   const logsStore = store.logsStore;
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [selectedLog, setSelectedLog] = useState<OpenCodexLogEntry | null>(null);
+  const visibleLogs = logsStore.visibleLogs;
 
   useEffect(() => {
     if (logsStore.logs.length === 0 && !logsStore.isLoading) {
@@ -89,10 +91,11 @@ export function HomeLogsView({ store }: HomeLogsViewProps) {
 
   return (
     <Stack className="home-content-panel" spacing={2}>
-      <Box sx={{ alignItems: "center", display: "flex", gap: 1 }}>
+      <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
         <Typography variant="h5" component="h2" sx={{ flex: "1 1 auto" }}>
           {t("logs.title")}
         </Typography>
+        <HomeLogTypeFilterX store={logsStore} />
         <Tooltip title={t("logs.cleanup")}>
           <IconButton aria-label={t("logs.cleanup")} color="primary" onClick={handleOpenCleanup}>
             <CleaningServicesOutlinedIcon />
@@ -102,13 +105,13 @@ export function HomeLogsView({ store }: HomeLogsViewProps) {
 
       {logsStore.isLoading ? <LinearProgress /> : null}
 
-      {logsStore.logs.length === 0 && !logsStore.isLoading ? (
+      {visibleLogs.length === 0 && !logsStore.isLoading ? (
         <Typography variant="body2" color="text.secondary">
-          {t("logs.empty")}
+          {logsStore.logs.length === 0 ? t("logs.empty") : t("logs.noMatching")}
         </Typography>
       ) : (
         <List dense disablePadding>
-          {logsStore.logs.map((log) => (
+          {visibleLogs.map((log) => (
             <HomeLogListItem
               key={log.id}
               log={log}

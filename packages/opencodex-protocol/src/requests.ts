@@ -432,7 +432,12 @@ export type OpenCodexRequest =
       reasoningEffort: OpenCodexReasoningEffort | null;
       language: OpenCodexCommitMessageLanguage;
     }
-  | { type: "logs.list"; beforeCreatedAt?: string | null; limit?: number }
+  | {
+      type: "logs.list";
+      beforeCreatedAt?: string | null;
+      limit?: number;
+      types?: OpenCodexLogType[];
+    }
   | { type: "logs.delete"; logId: string }
   | {
       type: "logs.clear";

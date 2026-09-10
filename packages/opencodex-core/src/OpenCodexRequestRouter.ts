@@ -537,7 +537,11 @@ export class OpenCodexRequestRouter {
           request.language
         );
       case "logs.list":
-        return this.runtime.logs.list(request.beforeCreatedAt ?? null, request.limit ?? 30);
+        return this.runtime.logs.list(
+          request.beforeCreatedAt ?? null,
+          request.limit ?? 30,
+          request.types
+        );
       case "logs.delete":
         return this.runtime.logs.delete(request.logId);
       case "logs.clear":

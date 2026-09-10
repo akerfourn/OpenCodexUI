@@ -19,7 +19,12 @@ export const enSupport = {
     details: "Log details",
     empty: "No logs yet.",
     loadMore: "Load more logs",
+    allTypes: "All types",
+    noMatching: "No log matches the selected types.",
+    noTypesSelected: "No type",
+    selectedTypes: "{{count}} types selected",
     title: "Logs",
+    typeFilter: "Displayed types",
     types: {
       error: "Error",
       info: "Information",

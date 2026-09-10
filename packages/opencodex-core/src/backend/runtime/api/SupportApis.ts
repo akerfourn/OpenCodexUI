@@ -8,6 +8,7 @@ import type {
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
+  OpenCodexLogType,
   OpenCodexModel,
   OpenCodexPluginDetail,
   OpenCodexPluginCatalogRefreshResult,
@@ -50,8 +51,12 @@ export class LogsApi implements LogsApiContract {
   constructor(private readonly service: LogsApiService) {}
 
   /** Lists persisted application logs. */
-  async list(beforeCreatedAt: string | null, limit: number): Promise<OpenCodexLogPage> {
-    return await this.service.listLogs(beforeCreatedAt, limit);
+  async list(
+    beforeCreatedAt: string | null,
+    limit: number,
+    types?: OpenCodexLogType[]
+  ): Promise<OpenCodexLogPage> {
+    return await this.service.listLogs(beforeCreatedAt, limit, types);
   }
 
   /** Deletes one persisted application log. */

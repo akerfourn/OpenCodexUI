@@ -168,6 +168,7 @@ export interface LogCacheRepository {
    * Lists application logs from newest to oldest.
    *
    * @param query Log pagination query.
+   * The optional severity filter is applied before pagination.
    * @returns Log page.
    */
   listLogs(query: CachedLogListQuery): Promise<CachedLogPage>;

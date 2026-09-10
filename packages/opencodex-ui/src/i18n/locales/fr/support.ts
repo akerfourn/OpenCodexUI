@@ -16,7 +16,12 @@ export const frSupport = {
     details: "Détails du log",
     empty: "Aucun log pour le moment.",
     loadMore: "Charger plus de logs",
+    allTypes: "Tous les types",
+    noMatching: "Aucun log ne correspond aux types sélectionnés.",
+    noTypesSelected: "Aucun type",
+    selectedTypes: "{{count}} types sélectionnés",
     title: "Logs",
+    typeFilter: "Types affichés",
     types: {
       error: "Erreur",
       info: "Information",

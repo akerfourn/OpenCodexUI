@@ -7,6 +7,7 @@ import type {
   OpenCodexEvent,
   OpenCodexLogEntry,
   OpenCodexLogPage,
+  OpenCodexLogType,
   OpenCodexLogRetentionUnit
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -25,6 +26,8 @@ export class LogsStore implements RootChildStore {
   hasMore = false;
   /** Whether a log page is currently loading. */
   isLoading = false;
+  /** Log severities shown by the global log view. */
+  visibleLogTypes: OpenCodexLogType[] = ["error", "warning"];
   /** Whether the cleanup confirmation dialog is open. */
   cleanupDialogOpen = false;
   /** Cleanup mode selected in the cleanup dialog. */
@@ -33,6 +36,8 @@ export class LogsStore implements RootChildStore {
   cleanupAmount = 24;
   /** Unit paired with `cleanupAmount` for retention cleanup. */
   cleanupUnit: OpenCodexLogRetentionUnit = "hours";
+  /** Invalidates log responses that belong to an older filter or pagination request. */
+  private logsRequestId = 0;
 
   /**
    * Creates the logs store.
@@ -40,7 +45,31 @@ export class LogsStore implements RootChildStore {
    * @param root Root store used for backend requests.
    */
   constructor(private readonly root: RootStore) {
-    makeAutoObservable<LogsStore, "root">(this, { root: false });
+    makeAutoObservable<LogsStore, "root" | "logsRequestId">(this, {
+      root: false,
+      logsRequestId: false
+    });
+  }
+
+  /**
+   * Returns loaded logs matching the selected severities.
+   *
+   * @returns Filtered logs in newest-first order.
+   */
+  get visibleLogs(): OpenCodexLogEntry[] {
+    return this.logs.filter((log) => this.visibleLogTypes.includes(log.type));
+  }
+
+  /**
+   * Changes the severities shown by the global log view.
+   *
+   * @param types Severities to display.
+   */
+  setVisibleLogTypes(types: OpenCodexLogType[]): void {
+    this.visibleLogTypes = [...new Set(types)];
+    this.logs = [];
+    this.hasMore = false;
+    void this.loadLatest();
   }
 
   /**
@@ -70,22 +99,31 @@ export class LogsStore implements RootChildStore {
    * @returns Promise resolved when loading completes.
    */
   async loadLatest(): Promise<void> {
+    const requestId = ++this.logsRequestId;
+    const types = [...this.visibleLogTypes];
     this.isLoading = true;
 
     try {
       const page = await this.root.request<OpenCodexLogPage>({
         type: "logs.list",
-        limit: LOG_PAGE_SIZE
+        limit: LOG_PAGE_SIZE,
+        types
       });
 
       runInAction(() => {
+        if (requestId !== this.logsRequestId) {
+          return;
+        }
+
         this.logs = page.logs;
         this.hasMore = page.hasMore;
         this.isLoading = false;
       });
     } catch {
       runInAction(() => {
-        this.isLoading = false;
+        if (requestId === this.logsRequestId) {
+          this.isLoading = false;
+        }
       });
     }
   }
@@ -107,21 +145,31 @@ export class LogsStore implements RootChildStore {
       return;
     }
 
+    const requestId = ++this.logsRequestId;
+    const types = [...this.visibleLogTypes];
+
     try {
       const page = await this.root.request<OpenCodexLogPage>({
         type: "logs.list",
         beforeCreatedAt: lastLog.createdAt,
-        limit: LOG_PAGE_SIZE
+        limit: LOG_PAGE_SIZE,
+        types
       });
 
       runInAction(() => {
+        if (requestId !== this.logsRequestId) {
+          return;
+        }
+
         this.logs = [...this.logs, ...page.logs];
         this.hasMore = page.hasMore;
         this.isLoading = false;
       });
     } catch {
       runInAction(() => {
-        this.isLoading = false;
+        if (requestId === this.logsRequestId) {
+          this.isLoading = false;
+        }
       });
     }
   }
@@ -209,6 +257,10 @@ export class LogsStore implements RootChildStore {
    * @param log Created log entry.
    */
   private upsertCreatedLog(log: OpenCodexLogEntry): void {
+    if (!this.visibleLogTypes.includes(log.type)) {
+      return;
+    }
+
     if (this.logs.some((entry) => entry.id === log.id)) {
       return;
     }

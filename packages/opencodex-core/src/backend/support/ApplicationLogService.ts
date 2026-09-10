@@ -2,7 +2,8 @@ import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexLogEntry,
   OpenCodexLogPage,
-  OpenCodexLogRetentionUnit
+  OpenCodexLogRetentionUnit,
+  OpenCodexLogType
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RuntimeEventPort } from "../runtime/runtimePorts.js";
@@ -34,14 +35,23 @@ export class ApplicationLogService {
    *
    * @param beforeCreatedAt Optional pagination cursor.
    * @param limit Maximum number of entries to read.
+   * @param types Optional severities to include.
    * @returns Log page, or an empty page when persistence is unavailable.
    */
-  async listLogs(beforeCreatedAt: string | null, limit: number): Promise<OpenCodexLogPage> {
+  async listLogs(
+    beforeCreatedAt: string | null,
+    limit: number,
+    types?: OpenCodexLogType[]
+  ): Promise<OpenCodexLogPage> {
     if (this.options.cacheRepository === null) {
       return { logs: [], hasMore: false };
     }
 
-    return await this.options.cacheRepository.listLogs({ beforeCreatedAt, limit });
+    return await this.options.cacheRepository.listLogs({
+      beforeCreatedAt,
+      limit,
+      ...(types === undefined ? {} : { types })
+    });
   }
 
   /**

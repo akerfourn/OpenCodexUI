@@ -33,7 +33,7 @@ describe("ApplicationLogService", () => {
     expect(emit).not.toHaveBeenCalledWith(expect.objectContaining({ type: "logs.created" }));
   });
 
-  it("should forward the log pagination cursor and limit to the cache", async () => {
+  it("should forward the log pagination and severity filters to the cache", async () => {
     const listLogs = vi.fn(async (_query: CachedLogListQuery): Promise<CachedLogPage> => ({
       logs: [],
       hasMore: false
@@ -44,13 +44,16 @@ describe("ApplicationLogService", () => {
       events: { emit: vi.fn() }
     });
 
-    await expect(service.listLogs("2026-08-09T10:00:00.000Z", 30)).resolves.toEqual({
+    await expect(
+      service.listLogs("2026-08-09T10:00:00.000Z", 30, ["error", "warning"])
+    ).resolves.toEqual({
       logs: [],
       hasMore: false
     });
     expect(listLogs).toHaveBeenCalledWith({
       beforeCreatedAt: "2026-08-09T10:00:00.000Z",
-      limit: 30
+      limit: 30,
+      types: ["error", "warning"]
     });
   });
 

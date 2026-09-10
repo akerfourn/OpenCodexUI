@@ -17,6 +17,8 @@ export type CachedLogEntry = {
 export type CachedLogListQuery = {
   beforeCreatedAt?: string | null;
   limit: number;
+  /** Optional severities to include in the page. */
+  types?: CachedLogType[];
 };
 
 /**
