@@ -24,7 +24,7 @@ export class ChatTurnStore {
    */
   constructor(turn: OpenCodexTurn) {
     this.turn = turn;
-    makeAutoObservable(this, {
+    makeAutoObservable<ChatTurnStore, "structure">(this, {
       structure: observable.ref
     });
     this.structure = buildChatTurnStructure(this.turn);
