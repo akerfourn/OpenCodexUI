@@ -15,11 +15,21 @@ import Popper from "@mui/material/Popper";
 import {
   $getNodeByKey,
   $getRoot,
+  $getSelection,
+  $isRangeSelection,
   $isTextNode,
   type EditorState,
   type LexicalEditor
 } from "lexical";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, UIEvent } from "react";
 
 import type {
@@ -72,13 +82,21 @@ type ComposerPlainTextInputProps = {
   onKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void;
 };
 
+export interface ComposerPlainTextInputHandle {
+  /** Inserts plain text at the current editor selection. */
+  insertText(text: string): void;
+}
+
 /**
  * Renders a plain-text Lexical editor with the same external contract as a textarea.
  *
  * @param props Component props.
  * @returns Rendered composer input.
  */
-export function ComposerPlainTextInput({
+export const ComposerPlainTextInput = forwardRef<
+  ComposerPlainTextInputHandle,
+  ComposerPlainTextInputProps
+>(function ComposerPlainTextInput({
   value,
   placeholder,
   canOpenFileLinks,
@@ -93,7 +111,7 @@ export function ComposerPlainTextInput({
   onSearchSkills,
   onOpenFileLink,
   onKeyDown
-}: ComposerPlainTextInputProps) {
+}, ref) {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const lexicalEditorRef = useRef<LexicalEditor | null>(null);
   const previousMarkdownRef = useRef<string | null>(null);
@@ -118,6 +136,37 @@ export function ComposerPlainTextInput({
       throw error;
     }
   }), []);
+
+  const insertText = useCallback((text: string): void => {
+    if (text.length === 0) {
+      return;
+    }
+
+    const editor = lexicalEditorRef.current;
+
+    if (editor === null) {
+      return;
+    }
+
+    editor.focus();
+    editor.update(() => {
+      const selection = $getSelection();
+
+      if ($isRangeSelection(selection)) {
+        selection.insertText(text);
+        return;
+      }
+
+      $getRoot().selectEnd();
+      const endSelection = $getSelection();
+
+      if ($isRangeSelection(endSelection)) {
+        endSelection.insertText(text);
+      }
+    });
+  }, []);
+
+  useImperativeHandle(ref, () => ({ insertText }), [insertText]);
 
   useEffect(() => {
     activeTriggerRef.current = activeTrigger;
@@ -428,7 +477,7 @@ export function ComposerPlainTextInput({
 
     setActiveTrigger(trigger);
   }
-}
+});
 
 function isSkillLink(link: HTMLAnchorElement): boolean {
   return link.relList.contains("opencodex-skill") || isSkillUrl(link.getAttribute("href") ?? "");

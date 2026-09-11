@@ -178,6 +178,16 @@ export const frConversation = {
     },
     attachedImage: "Image jointe",
     attachImage: "Ajouter une image",
+    emoji: {
+      categories: "Catégories d'emojis",
+      emptyRecent: "Aucun emoji récent.",
+      emotions: "Émotions",
+      insert: "Insérer {{emoji}}",
+      open: "Insérer un emoji",
+      reactions: "Réactions",
+      recent: "Récents",
+      title: "Sélecteur d’emojis"
+    },
     imageIndex: "Image {{index}}",
     interrupt: "Interrompre",
     messagePlaceholder: "Message à Codex",

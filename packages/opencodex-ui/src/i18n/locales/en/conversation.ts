@@ -177,6 +177,16 @@ export const enConversation = {
     },
     attachedImage: "Attached image",
     attachImage: "Attach image",
+    emoji: {
+      categories: "Emoji categories",
+      emptyRecent: "No recent emoji.",
+      emotions: "Emotions",
+      insert: "Insert {{emoji}}",
+      open: "Insert an emoji",
+      reactions: "Reactions",
+      recent: "Recent",
+      title: "Emoji picker"
+    },
     imageIndex: "Image {{index}}",
     interrupt: "Interrupt",
     messagePlaceholder: "Message Codex",

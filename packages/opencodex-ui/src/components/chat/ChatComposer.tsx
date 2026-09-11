@@ -4,7 +4,7 @@
 import AssistantDirectionRoundedIcon from "@mui/icons-material/AssistantDirectionRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { IconButton, Stack, Tooltip } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
@@ -24,7 +24,11 @@ import type { ProjectStore } from "../../stores/project/ProjectStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ChatAdvancedActionsMenu } from "./ChatAdvancedActionsMenu";
 import { ComposerAttachmentList } from "./ComposerAttachmentList";
-import { ComposerPlainTextInput } from "./ComposerPlainTextInput";
+import { ComposerEmojiPicker } from "./ComposerEmojiPicker";
+import {
+  ComposerPlainTextInput,
+  type ComposerPlainTextInputHandle
+} from "./ComposerPlainTextInput";
 import { ModelSettingsFields } from "./ModelSettingsFields";
 import { canOpenProjectFileLinks } from "./projectFileLinkAccess";
 
@@ -52,6 +56,7 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const { t } = useTranslation();
   const composer = chatStore.composer;
+  const composerInputRef = useRef<ComposerPlainTextInputHandle>(null);
   const draft = composer.draft;
   const draftMarkdown = composer.draftMarkdown;
   const draftReferences = composer.draftReferences;
@@ -80,6 +85,10 @@ export function ChatComposer({
     references: OpenCodexComposerReference[]
   ): void {
     composer.setDraft(value, markdown, references);
+  }
+
+  function handleEmojiSelect(emoji: string): void {
+    composerInputRef.current?.insertText(emoji);
   }
 
   async function submitDraft(): Promise<void> {
@@ -227,6 +236,7 @@ export function ChatComposer({
   return (
     <form className="composer" onSubmit={handleSubmit} onPaste={handlePaste}>
       <ComposerPlainTextInput
+        ref={composerInputRef}
         value={draft}
         placeholder={t("composer.messagePlaceholder")}
         canOpenFileLinks={canOpenFileLinks}
@@ -263,6 +273,7 @@ export function ChatComposer({
             void handleAttachImages();
           }}
         />
+        <ComposerEmojiPicker onSelect={handleEmojiSelect} />
         {isWorking ? (
           <Tooltip title={t("composer.interrupt")}>
             <span>
