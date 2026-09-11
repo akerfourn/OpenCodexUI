@@ -183,6 +183,7 @@ export const frConversation = {
       emptyRecent: "Aucun emoji récent.",
       emotions: "Émotions",
       insert: "Insérer {{emoji}}",
+      noMatch: "Aucun emoji ne correspond à cette recherche.",
       open: "Insérer un emoji",
       reactions: "Réactions",
       recent: "Récents",

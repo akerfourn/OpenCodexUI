@@ -11,7 +11,6 @@ import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { LinkNode } from "@lexical/link";
 import DragHandleRoundedIcon from "@mui/icons-material/DragHandleRounded";
-import Popper from "@mui/material/Popper";
 import {
   $getNodeByKey,
   $getRoot,
@@ -31,6 +30,7 @@ import {
   useState
 } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, UIEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 import type {
   OpenCodexComposerReference,
@@ -40,10 +40,8 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ComposerFileSuggestionKeyPlugin } from "./ComposerFileSuggestionKeyPlugin";
-import {
-  ComposerFileSuggestions
-} from "./ComposerFileSuggestions";
 import { ComposerPlainTextValuePlugin } from "./ComposerPlainTextValuePlugin";
+import { ComposerSuggestionPopups } from "./ComposerSuggestionPopups";
 import {
   createTriggerKey,
   isSkillUrl,
@@ -60,6 +58,7 @@ import {
   isComposerEditorAtBottom,
   readComposerMaxHeight
 } from "./composerResize";
+import { useComposerEmojiSuggestions } from "./useComposerEmojiSuggestions";
 import { useComposerResize } from "./useComposerResize";
 
 type ComposerPlainTextInputProps = {
@@ -68,6 +67,7 @@ type ComposerPlainTextInputProps = {
   canOpenFileLinks: boolean;
   resizeLabel: string;
   disabled?: boolean;
+  enableEmojiSuggestions?: boolean;
   renderSuggestionsInPortal?: boolean;
   wrapperClassName?: string;
   wrapperStyle?: CSSProperties;
@@ -102,6 +102,7 @@ export const ComposerPlainTextInput = forwardRef<
   canOpenFileLinks,
   resizeLabel,
   disabled = false,
+  enableEmojiSuggestions = false,
   renderSuggestionsInPortal = false,
   wrapperClassName,
   wrapperStyle,
@@ -112,6 +113,7 @@ export const ComposerPlainTextInput = forwardRef<
   onOpenFileLink,
   onKeyDown
 }, ref) {
+  const { t } = useTranslation();
   const editorRef = useRef<HTMLDivElement | null>(null);
   const lexicalEditorRef = useRef<LexicalEditor | null>(null);
   const previousMarkdownRef = useRef<string | null>(null);
@@ -121,6 +123,10 @@ export const ComposerPlainTextInput = forwardRef<
   const [cancelledTriggerKey, setCancelledTriggerKey] = useState<string | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [suggestions, setSuggestions] = useState<ComposerReferenceSuggestion[]>([]);
+  const emojiSuggestionsState = useComposerEmojiSuggestions(
+    enableEmojiSuggestions,
+    lexicalEditorRef
+  );
   const {
     editorHeight,
     manualEditorHeight,
@@ -217,6 +223,7 @@ export const ComposerPlainTextInput = forwardRef<
       }
 
       updateReferenceTrigger();
+      emojiSuggestionsState.updateFromEditor();
     });
 
     if (!didChangeContent || !shouldStickToBottomRef.current) {
@@ -238,6 +245,10 @@ export const ComposerPlainTextInput = forwardRef<
   }
 
   function handleEditorKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (emojiSuggestionsState.handleKeyDown(event)) {
+      return;
+    }
+
     if (handleSuggestionKeyDown(event)) {
       return;
     }
@@ -392,34 +403,24 @@ export const ComposerPlainTextInput = forwardRef<
     ? "composer-input-wrapper"
     : `composer-input-wrapper ${wrapperClassName}`;
   const suggestionsAnchor = editorRef.current;
-  const hasSuggestions = !disabled && suggestions.length > 0;
-  const suggestionsContent = disabled ? null : (
-    <ComposerFileSuggestions
-      suggestions={suggestions}
-      highlightedIndex={highlightedIndex}
-      isPortaled={renderSuggestionsInPortal}
-      onSelect={insertReference}
-    />
-  );
-  const suggestionsView = renderSuggestionsInPortal ? (
-    <Popper
-      open={hasSuggestions && suggestionsAnchor !== null}
-      anchorEl={suggestionsAnchor}
-      placement="top-start"
-      modifiers={[{ name: "offset", options: { offset: [0, 8] } }]}
-      sx={{
-        width: suggestionsAnchor?.getBoundingClientRect().width,
-        zIndex: (theme) => theme.zIndex.modal + 1
-      }}
-    >
-      {suggestionsContent}
-    </Popper>
-  ) : suggestionsContent;
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <div className={inputWrapperClassName} style={wrapperStyle}>
-        {suggestionsView}
+        <ComposerSuggestionPopups
+          anchorElement={suggestionsAnchor}
+          disabled={disabled}
+          renderInPortal={renderSuggestionsInPortal}
+          fileSuggestions={suggestions}
+          fileHighlightedIndex={highlightedIndex}
+          emojiEnabled={enableEmojiSuggestions}
+          emojiActive={emojiSuggestionsState.activeTrigger !== null}
+          emojiHighlightedIndex={emojiSuggestionsState.highlightedIndex}
+          emojiSuggestions={emojiSuggestionsState.suggestions}
+          emojiEmptyMessage={t("composer.emoji.noMatch")}
+          onFileSelect={insertReference}
+          onEmojiSelect={emojiSuggestionsState.insertEmoji}
+        />
         <div className={editorShellClassName}>
           {resizeHandle}
           <PlainTextPlugin
