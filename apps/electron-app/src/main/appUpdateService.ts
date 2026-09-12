@@ -14,6 +14,14 @@ import type {
 
 const INITIAL_CHECK_DELAY_MS = 10_000;
 const CHECK_COOLDOWN_MS = 30 * 60 * 1_000;
+const MISSING_RELEASE_ERROR_CODES = new Set([
+  "ERR_UPDATER_LATEST_VERSION_NOT_FOUND",
+  "ERR_UPDATER_NO_PUBLISHED_VERSIONS"
+]);
+const MISSING_RELEASE_ERROR_PATTERNS = [
+  /Unable to find latest version on GitHub .*please ensure a production release exists/i,
+  /No published versions on GitHub/i
+];
 
 type AppUpdateLogLevel = "info" | "warning" | "error";
 
@@ -168,7 +176,13 @@ export class AppUpdateService {
     this.updater.logger = {
       info: (message?: unknown) => this.options.log("info", String(message ?? "")),
       warn: (message?: unknown) => this.options.log("warning", String(message ?? "")),
-      error: (message?: unknown) => this.options.log("error", String(message ?? ""))
+      error: (message?: unknown) => {
+        if (shouldIgnoreMissingRelease(message, this.options.currentVersion)) {
+          return;
+        }
+
+        this.options.log("error", String(message ?? ""));
+      }
     };
   }
 
@@ -214,8 +228,7 @@ export class AppUpdateService {
         this.publishAvailableUpdate(result.updateInfo);
       }
     } catch (error) {
-      this.lastCheckAtMs = Date.now();
-      this.applyError(error);
+      this.handleCheckError(error);
     }
 
     return this.getState();
@@ -254,6 +267,39 @@ export class AppUpdateService {
       status: "error",
       progress: null,
       errorMessage: message,
+      checkedAt: new Date().toISOString()
+    });
+  }
+
+  /** Treats the absence of a published release as normal for prerelease builds. */
+  private handleCheckError(error: unknown): void {
+    this.lastCheckAtMs = Date.now();
+
+    if (shouldIgnoreMissingRelease(error, this.options.currentVersion)) {
+      this.publishNoUpdateAvailable();
+      return;
+    }
+
+    this.applyError(error);
+  }
+
+  /** Publishes a quiet result when the configured update channel has no release yet. */
+  private publishNoUpdateAvailable(): void {
+    if (
+      this.state.status === "not-available" &&
+      this.state.errorMessage === null &&
+      this.state.availableVersion === null
+    ) {
+      return;
+    }
+
+    this.publishState({
+      status: "not-available",
+      availableVersion: null,
+      releaseName: null,
+      releaseDate: null,
+      progress: null,
+      errorMessage: null,
       checkedAt: new Date().toISOString()
     });
   }
@@ -324,6 +370,15 @@ export class AppUpdateService {
   /** Receives an updater error and turns it into a safe UI message. */
   private readonly handleUpdaterError = (error: Error): void => {
     if (!this.isDisposed) {
+      if (
+        this.state.status === "checking" &&
+        shouldIgnoreMissingRelease(error, this.options.currentVersion)
+      ) {
+        this.lastCheckAtMs = Date.now();
+        this.publishNoUpdateAvailable();
+        return;
+      }
+
       this.applyError(error);
     }
   };
@@ -368,4 +423,43 @@ function normalizeProgress(info: ProgressInfo): OpenCodexAppUpdateProgress {
 /** Replaces invalid numeric values emitted by an updater implementation. */
 function normalizeNumber(value: number): number {
   return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+/** Returns whether a version is a semantic-version prerelease. */
+function isPrereleaseVersion(version: string): boolean {
+  return /^\d+\.\d+\.\d+-[0-9A-Za-z.-]+$/.test(version);
+}
+
+/** Reads an updater error code without leaking provider-specific types. */
+function getErrorCode(error: unknown): string | null {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return null;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : null;
+}
+
+/** Identifies the expected no-release case for an unstable application build. */
+function shouldIgnoreMissingRelease(error: unknown, currentVersion: string): boolean {
+  if (!isPrereleaseVersion(currentVersion)) {
+    return false;
+  }
+
+  const code = getErrorCode(error);
+  if (code !== null && MISSING_RELEASE_ERROR_CODES.has(code)) {
+    return true;
+  }
+
+  const message = getErrorMessage(error);
+  return MISSING_RELEASE_ERROR_PATTERNS.some((pattern) => pattern.test(message));
+}
+
+/** Returns a safe textual representation for updater log filtering. */
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return typeof error === "string" ? error : "";
 }

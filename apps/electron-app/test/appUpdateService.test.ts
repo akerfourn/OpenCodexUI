@@ -79,7 +79,9 @@ describe("AppUpdateService", () => {
 
   it("should convert provider failures into a recoverable error state", async () => {
     const updater = createFakeUpdater();
-    updater.checkForUpdates.mockRejectedValue(new Error("GitHub unavailable"));
+    updater.checkForUpdates.mockRejectedValue(
+      createUpdaterError("GitHub unavailable", "ERR_UPDATER_LATEST_VERSION_NOT_FOUND")
+    );
     const service = createService(updater, [], false);
 
     const state = await service.check(true);
@@ -87,6 +89,31 @@ describe("AppUpdateService", () => {
     expect(state).toMatchObject<Partial<OpenCodexAppUpdateState>>({
       status: "error",
       errorMessage: "GitHub unavailable"
+    });
+    service.dispose();
+  });
+
+  it.each([
+    "ERR_UPDATER_LATEST_VERSION_NOT_FOUND",
+    "ERR_UPDATER_NO_PUBLISHED_VERSIONS"
+  ])("should ignore a missing release for a prerelease build (%s)", async (code) => {
+    const updater = createFakeUpdater();
+    const error = createUpdaterError(
+      "Unable to find latest version on GitHub",
+      code
+    );
+    updater.checkForUpdates.mockImplementation(async () => {
+      updater.emit("error", error);
+      throw error;
+    });
+    const service = createService(updater, [], false, "1.14.0-alpha.2");
+
+    const state = await service.check(true);
+
+    expect(state).toMatchObject<Partial<OpenCodexAppUpdateState>>({
+      status: "not-available",
+      availableVersion: null,
+      errorMessage: null
     });
     service.dispose();
   });
@@ -123,16 +150,24 @@ function createFakeUpdater(): FakeUpdater {
 function createService(
   updater: FakeUpdater,
   states: OpenCodexAppUpdateState[],
-  allowPrerelease: boolean
+  allowPrerelease: boolean,
+  currentVersion = "1.14.0"
 ): AppUpdateService {
   return new AppUpdateService({
-    currentVersion: "1.14.0",
+    currentVersion,
     isPackaged: true,
     allowPrerelease,
     emit: (state) => states.push(state),
     log: vi.fn(),
     onInstallRequested: vi.fn()
   }, updater as unknown as AppUpdater);
+}
+
+/** Creates an updater error with the code used by electron-updater providers. */
+function createUpdaterError(message: string, code: string): Error & { code: string } {
+  const error = new Error(message) as Error & { code: string };
+  error.code = code;
+  return error;
 }
 
 /** Creates the smallest provider metadata accepted by the updater contract. */
