@@ -38,6 +38,10 @@ import type { OpenCodexCollaborationQuery } from "./collaboration";
  */
 export type OpenCodexRequest =
   | { type: "app.bootstrap" }
+  | { type: "app.update.state" }
+  | { type: "app.update.check"; force?: boolean }
+  | { type: "app.update.download" }
+  | { type: "app.update.install" }
   | { type: "app.openDevTools" }
   | { type: "app.openUsageHistory"; sourceId: string }
   | { type: "projects.list" }

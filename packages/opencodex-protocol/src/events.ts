@@ -4,6 +4,7 @@
 import type {
   OpenCodexActivity,
   OpenCodexApproval,
+  OpenCodexAppUpdateState,
   OpenCodexLogEntry,
   OpenCodexMessage,
   OpenCodexModel,
@@ -33,6 +34,7 @@ import type { OpenCodexCollaborationEvent } from "./collaboration";
 export type OpenCodexEvent =
   | { type: "connection.status"; status: "starting" | "ready" | "stopped" | "error"; message?: string }
   | { type: "app.shutdown.started" }
+  | { type: "app.update.state"; state: OpenCodexAppUpdateState }
   | {
       type: "app.bootstrap";
       settings: OpenCodexSettings;

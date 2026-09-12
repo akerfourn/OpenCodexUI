@@ -28,6 +28,7 @@ let contextMenuLanguage: ContextMenuLanguage = "fr";
 let isDisposing = false;
 let isDisposed = false;
 let isCloseConfirmationOpen = false;
+let isApplicationUpdateInstallInProgress = false;
 
 const SHUTDOWN_RENDER_DELAY_MS = 100;
 const SHUTDOWN_CLEANUP_TIMEOUT_MS = 5_000;
@@ -70,6 +71,9 @@ async function main(): Promise<void> {
       applyContextMenuLanguage(nextSettings.language);
     },
     onApplicationCloseResponse: handleApplicationCloseResponse,
+    onApplicationUpdateInstallRequested: () => {
+      isApplicationUpdateInstallInProgress = true;
+    },
     openUsageHistory: (sourceId) => {
       openUsageHistoryWindow({
         sourceId,
@@ -82,6 +86,7 @@ async function main(): Promise<void> {
   });
   bridgeServer.attachWindow(window);
   bridgeServer.register();
+  bridgeServer.startApplicationUpdates();
 
   app.on("activate", () => {
     if (mainWindow === null || mainWindow.isDestroyed()) {
@@ -105,7 +110,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", (event) => {
-  if (isDisposed || isDisposing) {
+  if (isDisposed || isDisposing || isApplicationUpdateInstallInProgress) {
     return;
   }
 
@@ -181,7 +186,7 @@ async function disposeAndExit(code: number): Promise<void> {
 function attachMainWindow(window: BrowserWindow): void {
   mainWindow = window;
   window.on("close", (event) => {
-    if (isDisposed || isDisposing) {
+    if (isDisposed || isDisposing || isApplicationUpdateInstallInProgress) {
       return;
     }
 

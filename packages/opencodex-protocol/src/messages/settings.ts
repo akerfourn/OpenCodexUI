@@ -55,6 +55,8 @@ export type OpenCodexSettings = {
   discordRichPresenceEnabled: boolean;
   onboardingCompleted: boolean;
   allowOutdatedCodex: boolean;
+  /** Whether the application updater may select alpha, beta, or rc releases. */
+  allowPrereleaseUpdates?: boolean;
   developerMode: boolean;
   performanceMonitoringEnabled: boolean;
   advancedPerformanceMonitoringEnabled: boolean;

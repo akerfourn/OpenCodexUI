@@ -72,6 +72,20 @@ export const enApp = {
     allowOutdatedCodexWarning: "This mode may produce errors during Codex actions if the local API does not provide expected features.",
     allowTurnSteering: "Allow steering while thinking",
     allowTurnSteeringDescription: "Allows sending a message into the active turn while Codex is thinking.",
+    appUpdates: "Application updates",
+    appUpdatesAvailable: "Version {{version}} is available. Download it when you are ready.",
+    appUpdatesCheck: "Check for updates",
+    appUpdatesChecking: "Checking…",
+    appUpdatesCurrentVersion: "Current version: {{version}}",
+    appUpdatesDescription: "Stable versions are checked automatically. Downloading and installing remain manual.",
+    appUpdatesDownload: "Download",
+    appUpdatesDownloaded: "Version {{version}} has been downloaded and is ready to install.",
+    appUpdatesError: "The update failed: {{message}}",
+    appUpdatesIncludePrerelease: "Include prerelease versions",
+    appUpdatesIncludePrereleaseDescription: "Also checks alpha, beta, and rc versions. Disabled by default.",
+    appUpdatesInstall: "Restart and install",
+    appUpdatesNotAvailable: "No update is available.",
+    appUpdatesUnsupported: "Automatic updates are available only for a packaged, installed application.",
     desktopNotifications: "Desktop notifications",
     desktopNotificationsDescription: "Shows local notifications without recording message content.",
     desktopNotificationsTurnCompleted: "Completed responses",
@@ -121,6 +135,15 @@ export const enApp = {
   shutdown: {
     detail: "Stopping Codex processes and finalizing local data.",
     title: "Closing the application…"
+  },
+  updates: {
+    available: "OpenCodexUI version {{version}} is available.",
+    download: "Download",
+    downloaded: "Version {{version}} is ready to install.",
+    downloading: "Downloading version {{version}}…",
+    error: "The update failed: {{message}}",
+    install: "Restart and install",
+    retry: "Retry"
   },
   theme: {
     dark: "Dark",

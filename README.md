@@ -64,6 +64,12 @@ Windows builds currently include:
 The application stores its own settings and cache in the operating system's
 application data directory. It does not store Codex credentials.
 
+Packaged installations can check GitHub Releases from the application settings.
+Stable updates are checked automatically after startup, but downloading and
+installing always require an explicit action. Alpha, beta, and rc releases are
+excluded by default and can be enabled separately. The portable Windows build
+does not support automatic installation.
+
 ## Development Setup
 
 Install dependencies:
@@ -212,7 +218,8 @@ The settings file is merged with application defaults. Current defaults include:
   "language": "system",
   "colorScheme": "system",
   "enterKeyBehavior": "newline",
-  "versioningVocabulary": "simple"
+  "versioningVocabulary": "simple",
+  "allowPrereleaseUpdates": false
 }
 ```
 

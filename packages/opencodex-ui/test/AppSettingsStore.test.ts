@@ -50,6 +50,21 @@ describe("AppSettingsStore", () => {
     });
   });
 
+  it("should keep prerelease updates disabled by default and persist the opt-in", () => {
+    const request = vi.fn(async (_request: OpenCodexRequest): Promise<unknown> => undefined);
+    const store = new AppSettingsStore({ request });
+
+    expect(store.settings.allowPrereleaseUpdates).toBe(false);
+
+    store.setAllowPrereleaseUpdates(true);
+
+    expect(store.settings.allowPrereleaseUpdates).toBe(true);
+    expect(request).toHaveBeenCalledWith({
+      type: "settings.update",
+      patch: { allowPrereleaseUpdates: true }
+    });
+  });
+
   it("should apply the optimistic language before requesting persistence", () => {
     const store = new AppSettingsStore({
       request: vi.fn((_request: OpenCodexRequest): Promise<unknown> => {

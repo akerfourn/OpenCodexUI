@@ -14,6 +14,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
+import { HomeAppUpdateSettingsX } from "./HomeAppUpdateSettings";
 
 type HomeSettingsViewProps = {
   store: RootStore;
@@ -174,6 +175,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
           </Stack>
         )}
       />
+      <HomeAppUpdateSettingsX store={store} />
       <Box
         sx={{
           border: 1,

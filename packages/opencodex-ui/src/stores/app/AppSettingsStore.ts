@@ -57,6 +57,7 @@ export class AppSettingsStore {
       setVersioningVocabulary: action,
       setDiscordRichPresenceEnabled: action,
       setAllowOutdatedCodex: action,
+      setAllowPrereleaseUpdates: action,
       setDeveloperMode: action,
       setPerformanceMonitoringEnabled: action,
       setAdvancedPerformanceMonitoringEnabled: action,
@@ -237,6 +238,16 @@ export class AppSettingsStore {
   }
 
   /**
+   * Updates whether the application updater may select prerelease versions.
+   *
+   * @param allowPrereleaseUpdates Whether alpha, beta, and rc releases are eligible.
+   * @returns Nothing.
+   */
+  setAllowPrereleaseUpdates(allowPrereleaseUpdates: boolean): void {
+    this.updateSettings({ allowPrereleaseUpdates });
+  }
+
+  /**
    * Updates developer mode and enforces its advanced-monitoring dependency.
    *
    * @param developerMode Whether developer-only actions are enabled.
@@ -407,6 +418,7 @@ function createDefaultSettings(): OpenCodexSettings {
     discordRichPresenceEnabled: true,
     onboardingCompleted: false,
     allowOutdatedCodex: false,
+    allowPrereleaseUpdates: false,
     developerMode: false,
     performanceMonitoringEnabled: true,
     advancedPerformanceMonitoringEnabled: false,

@@ -13,6 +13,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { AppStore } from "./app/AppStore";
+import { AppUpdateStore } from "./app/AppUpdateStore";
 import { ApprovalsStore } from "./app/ApprovalsStore";
 import { ChatEventLogStore } from "./chat/ChatEventLogStore";
 import { ChatTurnDiagnosticStore } from "./chat/ChatTurnDiagnosticStore";
@@ -38,6 +39,7 @@ export { HOME_TAB_ID, type OpenCodexAppTab } from "./app/NavigationStore";
  */
 export class RootStore {
   readonly appStore = new AppStore(this);
+  readonly appUpdateStore = new AppUpdateStore(this);
   readonly approvalsStore = new ApprovalsStore(this);
   readonly chatEventLogStore = new ChatEventLogStore(this);
   readonly chatTurnDiagnosticStore = new ChatTurnDiagnosticStore(this);
@@ -140,6 +142,7 @@ export class RootStore {
       this.appStore.bootstrap(),
       this.emojiCatalogStore.load()
     ]);
+    await this.appUpdateStore.load();
   }
 
   /**
@@ -156,6 +159,7 @@ export class RootStore {
     }
 
     this.appStore.handleEvent(event);
+    this.appUpdateStore.handleEvent(event);
     this.chatEventLogStore.handleEvent(event);
     this.chatTurnDiagnosticStore.handleEvent(event);
     this.collaborationStore.handleEvent(event);

@@ -101,6 +101,12 @@ function createRootStore(
     },
     approvalsStore: {},
     projectsStore: { trustStore: {} },
+    appUpdateStore: {
+      state: {
+        isSupported: false,
+        status: "idle"
+      }
+    },
     openLogsHome: vi.fn(),
     reportApplicationActivity: vi.fn()
   } as unknown as RootStore;

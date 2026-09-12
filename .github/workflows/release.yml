@@ -169,7 +169,10 @@ jobs:
 
       - name: Validate Linux update metadata
         shell: bash
-        run: test -s apps/electron-app/release/latest-linux.yml
+        run: |
+          set -euo pipefail
+          test -s apps/electron-app/release/latest-linux.yml
+          test -s apps/electron-app/release/linux-unpacked/resources/app-update.yml
 
       - name: Upload Linux artifacts
         if: ${{ always() }}
@@ -214,7 +217,10 @@ jobs:
 
       - name: Validate Windows update metadata
         shell: bash
-        run: test -s apps/electron-app/release/latest.yml
+        run: |
+          set -euo pipefail
+          test -s apps/electron-app/release/latest.yml
+          test -s apps/electron-app/release/win-unpacked/resources/app-update.yml
 
       - name: Upload Windows artifacts
         if: ${{ always() }}

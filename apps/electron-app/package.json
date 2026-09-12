@@ -31,6 +31,7 @@
     "@open-codex-ui/opencodex-ui": "file:../../packages/opencodex-ui",
     "better-sqlite3": "^12.9.0",
     "discord-rpc": "^4.0.1",
+    "electron-updater": "^6.6.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

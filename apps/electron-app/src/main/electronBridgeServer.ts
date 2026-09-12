@@ -18,6 +18,7 @@ import type {
 
 import { DiscordPresenceService } from "./discordPresenceService.js";
 import { EmojiCatalogStore } from "./emojiCatalogStore.js";
+import { AppUpdateService } from "./appUpdateService.js";
 import {
   PerformanceMonitoringService,
   type OpenCodexProcessPerformanceMetric
@@ -41,6 +42,7 @@ type ElectronBridgeServerOptions = {
   openUsageHistory(sourceId: string): void;
   onSettingsUpdated(settings: OpenCodexSettings): void;
   onApplicationCloseResponse(shouldClose: boolean): void;
+  onApplicationUpdateInstallRequested(): void;
 };
 
 /**
@@ -53,6 +55,7 @@ export class ElectronBridgeServer {
   private readonly performanceMonitoringService: PerformanceMonitoringService;
   private readonly desktopNotificationService: DesktopNotificationService;
   private readonly emojiCatalogStore: EmojiCatalogStore;
+  private readonly appUpdateService: AppUpdateService;
   private readonly logger: (message: string) => void;
   private readonly openUsageHistoryWindow: (sourceId: string) => void;
   private readonly onSettingsUpdated: (settings: OpenCodexSettings) => void;
@@ -74,6 +77,14 @@ export class ElectronBridgeServer {
     this.openUsageHistoryWindow = options.openUsageHistory;
     this.onSettingsUpdated = options.onSettingsUpdated;
     this.onApplicationCloseResponse = options.onApplicationCloseResponse;
+    this.appUpdateService = new AppUpdateService({
+      currentVersion: options.appVersion,
+      isPackaged: isAutomaticUpdateSupported(),
+      allowPrerelease: options.settings.allowPrereleaseUpdates === true,
+      emit: (state) => this.emit({ type: "app.update.state", state }),
+      log: (level, message) => logger(`[updater:${level}] ${message}`),
+      onInstallRequested: options.onApplicationUpdateInstallRequested
+    });
 
     this.runtime = new OpenCodexBackendRuntime({
       settings: options.settings,
@@ -152,6 +163,12 @@ export class ElectronBridgeServer {
    */
   attachWindow(window: BrowserWindow): void {
     this.window = window;
+    this.emit({ type: "app.update.state", state: this.appUpdateService.getState() });
+  }
+
+  /** Starts the delayed update check after the main renderer has been attached. */
+  startApplicationUpdates(): void {
+    this.appUpdateService.start();
   }
 
   /**
@@ -220,6 +237,22 @@ export class ElectronBridgeServer {
         return this.openDeveloperTools();
       }
 
+      if (request.type === "app.update.state") {
+        return this.appUpdateService.getState();
+      }
+
+      if (request.type === "app.update.check") {
+        return this.appUpdateService.check(request.force === true);
+      }
+
+      if (request.type === "app.update.download") {
+        return this.appUpdateService.download();
+      }
+
+      if (request.type === "app.update.install") {
+        return this.appUpdateService.install();
+      }
+
       if (request.type === "app.openUsageHistory") {
         this.openUsageHistoryWindow(request.sourceId);
         return { ok: true };
@@ -237,6 +270,7 @@ export class ElectronBridgeServer {
         this.discordPresenceService.setEnabled(settings.discordRichPresenceEnabled);
         this.performanceMonitoringService.setSettings(settings);
         this.desktopNotificationService.setSettings(settings);
+        this.appUpdateService.setAllowPrerelease(settings.allowPrereleaseUpdates === true);
         this.closeDeveloperToolsWhenDisabled(settings);
         this.onSettingsUpdated(settings);
       }
@@ -261,6 +295,7 @@ export class ElectronBridgeServer {
     ipcMain.off("opencodex:application-activity", this.handleApplicationActivity);
     ipcMain.off("opencodex:application-close-response", this.handleApplicationCloseResponse);
     this.window = null;
+    this.appUpdateService.dispose();
     this.desktopNotificationService.dispose();
     this.performanceMonitoringService.dispose();
     const results = await Promise.allSettled([
@@ -463,6 +498,20 @@ export class ElectronBridgeServer {
 
 function resolveDefaultCommitPromptPath(): string {
   return resolvePackagedMarkdownPath("prompt-commit.default.md");
+}
+
+/** Returns whether this packaged process has a supported auto-update path. */
+function isAutomaticUpdateSupported(): boolean {
+  if (!app.isPackaged) {
+    return false;
+  }
+
+  if (process.platform !== "win32") {
+    return true;
+  }
+
+  return process.env.PORTABLE_EXECUTABLE_FILE === undefined &&
+    process.env.PORTABLE_EXECUTABLE_DIR === undefined;
 }
 
 function resolveGenerationCommitPromptPath(): string {

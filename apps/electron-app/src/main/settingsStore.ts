@@ -38,6 +38,7 @@ export const defaultSettings: OpenCodexSettings = {
   discordRichPresenceEnabled: true,
   onboardingCompleted: false,
   allowOutdatedCodex: false,
+  allowPrereleaseUpdates: false,
   developerMode: false,
   performanceMonitoringEnabled: true,
   advancedPerformanceMonitoringEnabled: false

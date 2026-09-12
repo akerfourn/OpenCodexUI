@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
 import { AppShutdownOverlay } from "./app/AppShutdownOverlay";
 import { AppCloseConfirmationDialogX } from "./app/AppCloseConfirmationDialog";
+import { AppUpdateBannerX } from "./app/AppUpdateBanner";
 import { ApplicationActivityReporterX } from "./app/ApplicationActivityReporter";
 import { AppTabsX } from "./app/AppTabs";
 import { ApprovalDialogX } from "./dialogs/ApprovalDialog";
@@ -97,6 +98,7 @@ export function App({ store }: AppProps) {
   return (
     <Box component="main" className="app-shell">
       <AppTabsX store={store} />
+      <AppUpdateBannerX store={store.appUpdateStore} />
       <section className="app-content">
         {activeView}
       </section>

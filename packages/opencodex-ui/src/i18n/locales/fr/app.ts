@@ -69,6 +69,20 @@ export const frApp = {
     allowOutdatedCodexWarning: "Ce mode peut provoquer des erreurs pendant les actions Codex si l'API locale ne fournit pas les fonctionnalités attendues.",
     allowTurnSteering: "Permettre le guidage pendant la réflexion",
     allowTurnSteeringDescription: "Permet de guider l'agent pendant qu'il réfléchit, en lui fournissant de nouvelles directives sans attendre la réponse finale.",
+    appUpdates: "Mises à jour de l'application",
+    appUpdatesAvailable: "La version {{version}} est disponible. Téléchargez-la quand vous êtes prêt.",
+    appUpdatesCheck: "Rechercher des mises à jour",
+    appUpdatesChecking: "Recherche en cours…",
+    appUpdatesCurrentVersion: "Version actuelle : {{version}}",
+    appUpdatesDescription: "Les versions stables sont recherchées automatiquement. Le téléchargement et l'installation restent manuels.",
+    appUpdatesDownload: "Télécharger",
+    appUpdatesDownloaded: "La version {{version}} est téléchargée et prête à être installée.",
+    appUpdatesError: "La mise à jour a échoué : {{message}}",
+    appUpdatesIncludePrerelease: "Inclure les versions de préversion",
+    appUpdatesIncludePrereleaseDescription: "Autorise aussi la recherche des versions alpha, beta et rc. Désactivé par défaut.",
+    appUpdatesInstall: "Redémarrer et installer",
+    appUpdatesNotAvailable: "Aucune mise à jour disponible.",
+    appUpdatesUnsupported: "Les mises à jour automatiques sont disponibles uniquement avec une application installée et empaquetée.",
     desktopNotifications: "Notifications de bureau",
     desktopNotificationsDescription: "Affiche des notifications locales sans enregistrer le contenu des messages.",
     desktopNotificationsTurnCompleted: "Réponses terminées",
@@ -118,6 +132,15 @@ export const frApp = {
   shutdown: {
     detail: "Arrêt des processus Codex et finalisation des données locales.",
     title: "Fermeture de l’application…"
+  },
+  updates: {
+    available: "La version {{version}} de l'application est disponible.",
+    download: "Télécharger",
+    downloaded: "La version {{version}} est prête à être installée.",
+    downloading: "Téléchargement de la version {{version}}…",
+    error: "La mise à jour a échoué : {{message}}",
+    install: "Redémarrer et installer",
+    retry: "Réessayer"
   },
   theme: {
     dark: "Sombre",
