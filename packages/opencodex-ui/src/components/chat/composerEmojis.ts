@@ -1,3 +1,5 @@
+import type { OpenCodexEmojiCatalogOverrides } from "@open-codex-ui/opencodex-protocol";
+
 /** Curated Unicode emojis that help express tone in a chat message. */
 export const COMPOSER_EMOJI_CATEGORIES = {
   emotions: [
@@ -131,3 +133,56 @@ export const COMPOSER_EMOJI_ALIASES: Record<string, readonly string[]> = {
   "🚀": ["lancement", "rapide", "progrès", "fusée", "launch", "progress"],
   "☕": ["café", "pause", "boisson", "coffee", "break"]
 };
+
+/** Returns the curated emoji catalogue in stable picker order. */
+export function getComposerEmojis(): string[] {
+  return Array.from(new Set([
+    ...COMPOSER_EMOJI_CATEGORIES.emotions,
+    ...COMPOSER_EMOJI_CATEGORIES.reactions
+  ]));
+}
+
+/** Returns the built-in aliases for one emoji without user customizations. */
+export function getDefaultComposerEmojiAliases(emoji: string): string[] {
+  return [...(COMPOSER_EMOJI_ALIASES[emoji] ?? [])];
+}
+
+/** Returns built-in and user-added aliases after applying user removals. */
+export function getComposerEmojiAliases(
+  emoji: string,
+  overrides?: OpenCodexEmojiCatalogOverrides
+): string[] {
+  const defaultAliases = getDefaultComposerEmojiAliases(emoji);
+  const override = overrides?.overrides[emoji];
+  const removedAliases = new Set(
+    (override?.removedDefaultAliases ?? []).map(normalizeComposerEmojiSearchText)
+  );
+  const aliases = defaultAliases.filter((alias) => (
+    !removedAliases.has(normalizeComposerEmojiSearchText(alias))
+  ));
+
+  for (const alias of override?.addedAliases ?? []) {
+    const trimmedAlias = alias.trim();
+
+    if (trimmedAlias.length > 0 && !containsNormalizedAlias(aliases, trimmedAlias)) {
+      aliases.push(trimmedAlias);
+    }
+  }
+
+  return aliases;
+}
+
+/** Normalizes accents and case for aliases and search terms. */
+export function normalizeComposerEmojiSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .toLocaleLowerCase()
+    .trim();
+}
+
+/** Checks whether an alias already exists with a different accent or case. */
+function containsNormalizedAlias(aliases: readonly string[], candidate: string): boolean {
+  const normalizedCandidate = normalizeComposerEmojiSearchText(candidate);
+  return aliases.some((alias) => normalizeComposerEmojiSearchText(alias) === normalizedCandidate);
+}

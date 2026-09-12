@@ -67,6 +67,7 @@ export function ChatComposer({
   const canShowSubmit = !isWorking || canSteer;
   const canAttachImages = !isWorking || canSteer;
   const sourceId = chatStore.sourceId;
+  const emojiOverrides = store.emojiCatalogStore.overrides;
   const reasoningEfforts = store.appStore.getReasoningEffortOptions(composer.selectedModel);
   const serviceTierOptions = store.appStore.getServiceTierOptions(composer.selectedModel);
   const areAdvancedActionsDisabled = (
@@ -242,6 +243,7 @@ export function ChatComposer({
         canOpenFileLinks={canOpenFileLinks}
         resizeLabel={t("composer.resize")}
         enableEmojiSuggestions
+        emojiOverrides={emojiOverrides}
         onChange={handleDraftChange}
         onSearchFiles={searchProjectFiles}
         onSearchSkills={searchProjectSkills}

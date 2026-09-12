@@ -7,6 +7,7 @@ import type { RootStore } from "../../stores/RootStore";
 import { ResizableSidebarLayout } from "../layout/ResizableSidebarLayout";
 import { HomeCommitViewX } from "./HomeCommitView";
 import { HomeDockerViewX } from "./HomeDockerView";
+import { HomeEmojiViewX } from "./HomeEmojiView";
 import { HomeLogsViewX } from "./HomeLogsView";
 import { HomePluginsViewX } from "./HomePluginsView";
 import { HomeProjectsViewX } from "./HomeProjectsView";
@@ -52,6 +53,10 @@ export function HomeView({ store }: HomeViewProps) {
 
   if (store.homeStore.selectedSection === "plugins") {
     mainContent = <HomePluginsViewX store={store} />;
+  }
+
+  if (store.homeStore.selectedSection === "emojis") {
+    mainContent = <HomeEmojiViewX store={store} />;
   }
 
   if (store.homeStore.selectedSection === "usage") {

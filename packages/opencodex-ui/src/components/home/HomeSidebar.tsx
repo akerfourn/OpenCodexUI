@@ -5,6 +5,7 @@ import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import DonutSmallOutlinedIcon from "@mui/icons-material/DonutSmallOutlined";
 import DnsOutlinedIcon from "@mui/icons-material/DnsOutlined";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
+import EmojiEmotionsOutlinedIcon from "@mui/icons-material/EmojiEmotionsOutlined";
 import FolderCopyOutlinedIcon from "@mui/icons-material/FolderCopyOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
@@ -73,6 +74,10 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
     selectSection("plugins");
   }
 
+  function selectEmojis(): void {
+    selectSection("emojis");
+  }
+
   function selectUsage(): void {
     selectSection("usage");
     void store.usageStore.load();
@@ -125,6 +130,12 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
             <ExtensionOutlinedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary={t("home.plugins")} />
+        </ListItemButton>
+        <ListItemButton selected={selectedSection === "emojis"} onClick={selectEmojis}>
+          <ListItemIcon>
+            <EmojiEmotionsOutlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={t("home.emojis")} />
         </ListItemButton>
         <ListItemButton selected={selectedSection === "usage"} onClick={selectUsage}>
           <ListItemIcon>

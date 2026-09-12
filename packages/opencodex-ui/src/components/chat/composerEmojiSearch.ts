@@ -8,9 +8,12 @@ import {
 } from "lexical";
 
 import {
-  COMPOSER_EMOJI_ALIASES,
+  getComposerEmojiAliases,
+  getComposerEmojis,
+  normalizeComposerEmojiSearchText,
   COMPOSER_EMOJI_CATEGORIES
 } from "./composerEmojis";
+import type { OpenCodexEmojiCatalogOverrides } from "@open-codex-ui/opencodex-protocol";
 
 export type EmojiTriggerState = {
   nodeKey: NodeKey;
@@ -85,9 +88,12 @@ export function createEmojiTriggerKey(trigger: EmojiTriggerState): string {
  * @param query User-entered search text after `::`.
  * @returns Matching emojis ordered by relevance and catalogue order.
  */
-export function searchComposerEmojis(query: string): string[] {
-  const emojis = readAllEmojis();
-  const normalizedQuery = normalizeSearchText(query);
+export function searchComposerEmojis(
+  query: string,
+  overrides?: OpenCodexEmojiCatalogOverrides
+): string[] {
+  const emojis = getComposerEmojis();
+  const normalizedQuery = normalizeComposerEmojiSearchText(query);
 
   if (normalizedQuery.length === 0) {
     return emojis;
@@ -99,7 +105,7 @@ export function searchComposerEmojis(query: string): string[] {
     .map((emoji, index) => ({
       emoji,
       index,
-      score: scoreEmoji(emoji, queryTerms)
+      score: scoreEmoji(emoji, queryTerms, overrides)
     }))
     .filter((item): item is { emoji: string; index: number; score: number } => item.score !== null)
     .sort((left, right) => left.score - right.score || left.index - right.index)
@@ -132,21 +138,17 @@ export function replaceEmojiTrigger(
   node.select(nextOffset, nextOffset);
 }
 
-/** Reads and deduplicates all emojis in their visible picker order. */
-function readAllEmojis(): string[] {
-  return Array.from(new Set([
-    ...COMPOSER_EMOJI_CATEGORIES.emotions,
-    ...COMPOSER_EMOJI_CATEGORIES.reactions
-  ]));
-}
-
 /** Scores one emoji against all normalized query terms. */
-function scoreEmoji(emoji: string, queryTerms: string[]): number | null {
+function scoreEmoji(
+  emoji: string,
+  queryTerms: string[],
+  overrides?: OpenCodexEmojiCatalogOverrides
+): number | null {
   const aliases = [
     emoji,
-    ...(COMPOSER_EMOJI_ALIASES[emoji] ?? []),
+    ...getComposerEmojiAliases(emoji, overrides),
     ...readEmojiCategoryAliases(emoji)
-  ].map(normalizeSearchText);
+  ].map(normalizeComposerEmojiSearchText);
   let bestScore: number | null = null;
 
   for (const alias of aliases) {
@@ -173,13 +175,4 @@ function readEmojiCategoryAliases(emoji: string): readonly string[] {
   }
 
   return aliases;
-}
-
-/** Makes French and English search terms comparable. */
-function normalizeSearchText(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/gu, "")
-    .toLocaleLowerCase()
-    .trim();
 }

@@ -6,6 +6,7 @@ import {
 } from "lexical";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, RefObject } from "react";
+import type { OpenCodexEmojiCatalogOverrides } from "@open-codex-ui/opencodex-protocol";
 
 import {
   createEmojiTriggerKey,
@@ -33,7 +34,8 @@ export interface ComposerEmojiSuggestionsState {
  */
 export function useComposerEmojiSuggestions(
   enabled: boolean,
-  editorRef: RefObject<LexicalEditor | null>
+  editorRef: RefObject<LexicalEditor | null>,
+  overrides?: OpenCodexEmojiCatalogOverrides
 ): ComposerEmojiSuggestionsState {
   const activeTriggerRef = useRef<EmojiTriggerState | null>(null);
   const [activeTrigger, setActiveTrigger] = useState<EmojiTriggerState | null>(null);
@@ -70,9 +72,9 @@ export function useComposerEmojiSuggestions(
     }
 
     setActiveTrigger(trigger);
-    setSuggestions(searchComposerEmojis(trigger.query));
+    setSuggestions(searchComposerEmojis(trigger.query, overrides));
     setHighlightedIndex(0);
-  }, [cancelledTriggerKey, enabled]);
+  }, [cancelledTriggerKey, enabled, overrides]);
 
   const cancelActiveTrigger = useCallback((): void => {
     const trigger = activeTriggerRef.current;

@@ -8,6 +8,7 @@ export type HomeSection =
   | "workspaces"
   | "sources"
   | "plugins"
+  | "emojis"
   | "commit"
   | "docker"
   | "usage"

@@ -34,6 +34,7 @@ import { useTranslation } from "react-i18next";
 
 import type {
   OpenCodexComposerReference,
+  OpenCodexEmojiCatalogOverrides,
   OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexSkillSearchResult
@@ -68,6 +69,7 @@ type ComposerPlainTextInputProps = {
   resizeLabel: string;
   disabled?: boolean;
   enableEmojiSuggestions?: boolean;
+  emojiOverrides?: OpenCodexEmojiCatalogOverrides;
   renderSuggestionsInPortal?: boolean;
   wrapperClassName?: string;
   wrapperStyle?: CSSProperties;
@@ -103,6 +105,7 @@ export const ComposerPlainTextInput = forwardRef<
   resizeLabel,
   disabled = false,
   enableEmojiSuggestions = false,
+  emojiOverrides,
   renderSuggestionsInPortal = false,
   wrapperClassName,
   wrapperStyle,
@@ -125,7 +128,8 @@ export const ComposerPlainTextInput = forwardRef<
   const [suggestions, setSuggestions] = useState<ComposerReferenceSuggestion[]>([]);
   const emojiSuggestionsState = useComposerEmojiSuggestions(
     enableEmojiSuggestions,
-    lexicalEditorRef
+    lexicalEditorRef,
+    emojiOverrides
   );
   const {
     editorHeight,

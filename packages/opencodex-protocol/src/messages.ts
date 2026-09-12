@@ -3,6 +3,7 @@
  */
 export * from "./messages/automation.js";
 export * from "./messages/docker.js";
+export * from "./messages/emoji.js";
 export * from "./messages/foundations.js";
 export * from "./messages/git.js";
 export * from "./messages/goals.js";

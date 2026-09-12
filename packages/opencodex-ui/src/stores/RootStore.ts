@@ -20,6 +20,7 @@ import { CollaborationStore } from "./collaboration/CollaborationStore";
 import type { ChatStore } from "./chat/ChatStore";
 import { CommitPromptStore } from "./app/CommitPromptStore";
 import { DockerHostStore } from "./app/DockerHostStore";
+import { EmojiCatalogStore } from "./app/EmojiCatalogStore";
 import { HomeStore } from "./app/HomeStore";
 import { LogsStore } from "./app/LogsStore";
 import { NavigationStore } from "./app/NavigationStore";
@@ -43,6 +44,7 @@ export class RootStore {
   readonly collaborationStore = new CollaborationStore(this);
   readonly commitPromptStore = new CommitPromptStore(this);
   readonly dockerHostStore = new DockerHostStore(this);
+  readonly emojiCatalogStore = new EmojiCatalogStore(this);
   readonly homeStore = new HomeStore();
   readonly logsStore = new LogsStore(this);
   readonly navigationStore = new NavigationStore(this);
@@ -134,7 +136,10 @@ export class RootStore {
    * @returns Promise resolved when the operation completes.
    */
   async bootstrap(): Promise<void> {
-    await this.appStore.bootstrap();
+    await Promise.all([
+      this.appStore.bootstrap(),
+      this.emojiCatalogStore.load()
+    ]);
   }
 
   /**

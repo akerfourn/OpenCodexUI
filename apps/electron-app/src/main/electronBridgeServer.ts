@@ -17,6 +17,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { DiscordPresenceService } from "./discordPresenceService.js";
+import { EmojiCatalogStore } from "./emojiCatalogStore.js";
 import {
   PerformanceMonitoringService,
   type OpenCodexProcessPerformanceMetric
@@ -51,6 +52,7 @@ export class ElectronBridgeServer {
   private readonly discordPresenceService: DiscordPresenceService;
   private readonly performanceMonitoringService: PerformanceMonitoringService;
   private readonly desktopNotificationService: DesktopNotificationService;
+  private readonly emojiCatalogStore: EmojiCatalogStore;
   private readonly logger: (message: string) => void;
   private readonly openUsageHistoryWindow: (sourceId: string) => void;
   private readonly onSettingsUpdated: (settings: OpenCodexSettings) => void;
@@ -68,6 +70,7 @@ export class ElectronBridgeServer {
     const cacheRepository = createCacheRepository(options.userDataPath);
     const logger = (message: string) => console.log(`[OpenCodexUI] ${message}`);
     this.logger = logger;
+    this.emojiCatalogStore = new EmojiCatalogStore(options.userDataPath);
     this.openUsageHistoryWindow = options.openUsageHistory;
     this.onSettingsUpdated = options.onSettingsUpdated;
     this.onApplicationCloseResponse = options.onApplicationCloseResponse;
@@ -205,6 +208,14 @@ export class ElectronBridgeServer {
     ipcMain.on("opencodex:application-activity", this.handleApplicationActivity);
     ipcMain.on("opencodex:application-close-response", this.handleApplicationCloseResponse);
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
+      if (request.type === "emojiCatalog.get") {
+        return this.emojiCatalogStore.get();
+      }
+
+      if (request.type === "emojiCatalog.update") {
+        return this.emojiCatalogStore.update(request.overrides);
+      }
+
       if (request.type === "app.openDevTools") {
         return this.openDeveloperTools();
       }

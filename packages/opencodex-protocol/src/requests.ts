@@ -14,6 +14,7 @@ import type {
   OpenCodexServiceTier,
   OpenCodexGitBranchKind,
   OpenCodexCommandRuleDecision,
+  OpenCodexEmojiCatalogOverrides,
   OpenCodexProjectPreferences,
   OpenCodexSourceKind,
   OpenCodexSourceColor,
@@ -447,4 +448,6 @@ export type OpenCodexRequest =
     }
   | { type: "logs.create"; logType: OpenCodexLogType; message: string; details?: unknown }
   | { type: "settings.get" }
-  | { type: "settings.update"; patch: Partial<OpenCodexSettings> };
+  | { type: "settings.update"; patch: Partial<OpenCodexSettings> }
+  | { type: "emojiCatalog.get" }
+  | { type: "emojiCatalog.update"; overrides: OpenCodexEmojiCatalogOverrides };
