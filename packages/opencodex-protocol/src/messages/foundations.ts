@@ -54,6 +54,9 @@ export type OpenCodexVersioningVocabulary = "simple" | "technical";
  */
 export type OpenCodexLogType = "error" | "warning" | "info";
 
+/** Optional semantic category used to apply a log policy independently of severity. */
+export type OpenCodexLogCategory = "performanceSlowdown";
+
 /**
  * Retention unit available when clearing old logs.
  */

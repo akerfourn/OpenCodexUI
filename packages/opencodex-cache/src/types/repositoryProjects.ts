@@ -13,6 +13,7 @@ import type {
 } from "./projects.js";
 import type {
   CachedLogCreateInput,
+  CachedLogClearFilter,
   CachedLogEntry,
   CachedLogListQuery,
   CachedLogPage
@@ -194,5 +195,5 @@ export interface LogCacheRepository {
    * @param createdBefore Exclusive timestamp cutoff.
    * @returns Promise resolved when deletion completes.
    */
-  clearLogsOlderThan(createdBefore: string): Promise<void>;
+  clearLogsOlderThan(createdBefore: string, filter?: CachedLogClearFilter): Promise<void>;
 }

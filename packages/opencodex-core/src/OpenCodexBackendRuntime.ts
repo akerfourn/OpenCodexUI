@@ -206,6 +206,7 @@ export class OpenCodexBackendRuntime {
   async dispose(): Promise<void> {
     this.services.notificationCoordinator.flushAll();
     await this.services.clientPool.dispose();
+    await this.services.applicationLogService.dispose();
     await this.services.cacheRepository?.close();
   }
 
@@ -215,6 +216,7 @@ export class OpenCodexBackendRuntime {
    * @returns Success result.
    */
   async bootstrap(): Promise<{ ok: true }> {
+    await this.services.applicationLogService.start();
     await this.services.projectRuntimeHandler.ensureSourcesInitialized();
     await this.ensureDefaultWorkspaceRoot();
     await this.services.codexUpdateService.checkLatestRelease(false);

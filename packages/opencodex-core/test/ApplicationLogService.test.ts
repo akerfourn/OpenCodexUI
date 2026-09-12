@@ -30,7 +30,8 @@ describe("ApplicationLogService", () => {
 
     expect(emit).toHaveBeenCalledWith({ type: "logs.deleted", logId: "log-1" });
     expect(emit).toHaveBeenCalledWith({ type: "logs.cleared" });
-    expect(emit).not.toHaveBeenCalledWith(expect.objectContaining({ type: "logs.created" }));
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: "logs.created" }));
+    await service.dispose();
   });
 
   it("should forward the log pagination and severity filters to the cache", async () => {
@@ -92,7 +93,7 @@ describe("ApplicationLogService", () => {
     expect(deleteLog).toHaveBeenCalledWith("log-1");
     expect(clearLogs).toHaveBeenCalledOnce();
     expect(emittedEvents).toEqual([
-      { type: "logs.created", log: createdLog },
+      { type: "logs.created", log: { ...createdLog, storage: "persistent" } },
       { type: "logs.deleted", logId: "log-1" },
       { type: "logs.cleared" }
     ]);
@@ -143,9 +144,10 @@ describe("ApplicationLogService", () => {
     });
 
     expect(() => service.persistLog("error", "Failed to save", null)).not.toThrow();
-    await flushMicrotasks();
+    await service.dispose();
 
     expect(logger).toHaveBeenCalledWith("application log write failed: Error: disk full");
+    expect(createLog).toHaveBeenCalledWith({ type: "error", message: "Failed to save", details: null });
     expect(emit).not.toHaveBeenCalled();
   });
 });

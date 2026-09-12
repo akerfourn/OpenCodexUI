@@ -30,6 +30,8 @@ export type {
   CachedProjectTaskUpdateInput,
   CachedProjectTokenUsageStatistics,
   CachedLogCreateInput,
+  CachedLogCategory,
+  CachedLogClearFilter,
   CachedLogEntry,
   CachedLogListQuery,
   CachedLogPage,

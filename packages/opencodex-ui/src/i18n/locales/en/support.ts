@@ -22,6 +22,27 @@ export const enSupport = {
     allTypes: "All types",
     noMatching: "No log matches the selected types.",
     noTypesSelected: "No type",
+    maxEntries: "Maximum entries",
+    policyCategories: {
+      info: "Information",
+      performanceSlowdown: "Performance slowdowns"
+    },
+    policyInvalidNumber: "Enter a whole number from {{min}} to {{max}}.",
+    policyMode: "Storage mode",
+    policyModes: {
+      disabled: "Disabled",
+      retained: "Limited history",
+      session: "Session only",
+      unlimited: "Unlimited history"
+    },
+    policyPersistenceNote: "Limited history purges logs older than the selected duration. Disabled and session-only modes stop future disk persistence and keep existing disk history until cleanup.",
+    policySaveError: "Unable to save log storage settings.",
+    policySettings: "Log storage settings",
+    policySettingsDescription: "Choose how information and performance slowdown logs are retained. Changes apply after they are saved.",
+    retentionDays: "Retention days",
+    savePolicies: "Save settings",
+    session: "Session",
+    sessionTooltip: "Kept only during this app session; lost when the app closes.",
     selectedTypes: "{{count}} types selected",
     title: "Logs",
     typeFilter: "Displayed types",

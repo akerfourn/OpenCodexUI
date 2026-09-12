@@ -1,10 +1,12 @@
 import { normalizeWorkspaceRoots } from "../../workspaces/workspaceRootsSettings.js";
+import { validateLogPolicies } from "../../support/applicationLogPolicies.js";
 import type {
   OpenCodexApprovalDecision,
   OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
   OpenCodexImageAttachment,
   OpenCodexInstalledPluginListResult,
+  OpenCodexLogCategory,
   OpenCodexLogEntry,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
@@ -54,9 +56,10 @@ export class LogsApi implements LogsApiContract {
   async list(
     beforeCreatedAt: string | null,
     limit: number,
-    types?: OpenCodexLogType[]
+    types?: OpenCodexLogType[],
+    beforeId?: string | null
   ): Promise<OpenCodexLogPage> {
-    return await this.service.listLogs(beforeCreatedAt, limit, types);
+    return await this.service.listLogs(beforeCreatedAt, limit, types, beforeId);
   }
 
   /** Deletes one persisted application log. */
@@ -77,9 +80,10 @@ export class LogsApi implements LogsApiContract {
   async create(
     type: OpenCodexLogEntry["type"],
     message: string,
-    details: unknown
+    details: unknown,
+    category?: OpenCodexLogCategory
   ): Promise<{ ok: true }> {
-    return await this.service.createLog(type, message, details);
+    return await this.service.createLog(type, message, details, category);
   }
 }
 
@@ -278,6 +282,7 @@ export class ApprovalsApi implements ApprovalsApiContract {
 }
 
 type SettingsApiSave = (settings: OpenCodexSettings) => Promise<void> | void;
+type SettingsApiSaved = (settings: OpenCodexSettings) => Promise<void> | void;
 
 /** Exposes settings reads and updates while preserving runtime normalization. */
 export class SettingsApi implements SettingsApiContract {
@@ -286,7 +291,9 @@ export class SettingsApi implements SettingsApiContract {
   /** Creates a settings API over a mutable settings store and persistence callback. */
   constructor(
     private readonly settings: RuntimeSettingsPort,
-    private readonly saveSettings?: SettingsApiSave
+    private readonly saveSettings?: SettingsApiSave,
+    private readonly onSettingsSaved?: SettingsApiSaved,
+    private readonly logger?: (message: string) => void
   ) {}
 
   /** Returns the current backend settings. */
@@ -313,8 +320,21 @@ export class SettingsApi implements SettingsApiContract {
       nextSettings.advancedPerformanceMonitoringEnabled = false;
     }
 
+    if (nextSettings.logPolicies !== undefined) {
+      nextSettings.logPolicies = validateLogPolicies(nextSettings.logPolicies);
+    }
+
     await this.saveSettings?.(nextSettings);
     this.settings.setSettings(nextSettings);
+    try {
+      await this.onSettingsSaved?.(nextSettings);
+    } catch (error: unknown) {
+      try {
+        this.logger?.(`settings post-save maintenance failed: ${String(error)}`);
+      } catch {
+        // Settings persistence already succeeded; diagnostics must stay best effort.
+      }
+    }
     return nextSettings;
   }
 }

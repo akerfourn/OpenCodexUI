@@ -2,6 +2,7 @@ import type { CodexAppServerClient, CodexNotification } from "@open-codex-ui/cod
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexEvent,
+  OpenCodexLogCategory,
   OpenCodexLogEntry,
   OpenCodexProject,
   OpenCodexSettings,
@@ -76,7 +77,8 @@ export interface ApplicationLogPort {
   persistLog(
     type: OpenCodexLogEntry["type"],
     message: string,
-    details: unknown
+    details: unknown,
+    category?: OpenCodexLogCategory
   ): void;
 }
 

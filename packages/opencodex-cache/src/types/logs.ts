@@ -1,4 +1,4 @@
-import type { CachedLogType } from "./foundations.js";
+import type { CachedLogCategory, CachedLogType } from "./foundations.js";
 
 /**
  * Persisted application log entry.
@@ -9,6 +9,8 @@ export type CachedLogEntry = {
   message: string;
   details: unknown;
   createdAt: string;
+  /** Optional semantic category used by retention policies. */
+  category?: CachedLogCategory;
 };
 
 /**
@@ -16,6 +18,8 @@ export type CachedLogEntry = {
  */
 export type CachedLogListQuery = {
   beforeCreatedAt?: string | null;
+  /** Optional id tie-breaker for entries sharing the cursor timestamp. */
+  beforeId?: string | null;
   limit: number;
   /** Optional severities to include in the page. */
   types?: CachedLogType[];
@@ -36,4 +40,13 @@ export type CachedLogCreateInput = {
   type: CachedLogType;
   message: string;
   details?: unknown;
+  /** Optional semantic category used by retention policies. */
+  category?: CachedLogCategory;
+};
+
+/** Optional filters applied while deleting logs older than a cutoff. */
+export type CachedLogClearFilter = {
+  type?: CachedLogType;
+  category?: CachedLogCategory;
+  excludeCategory?: CachedLogCategory;
 };

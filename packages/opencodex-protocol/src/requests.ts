@@ -8,6 +8,7 @@ import type {
   OpenCodexComposerReference,
   OpenCodexFileSearchMode,
   OpenCodexImageAttachment,
+  OpenCodexLogCategory,
   OpenCodexLogType,
   OpenCodexLogRetentionUnit,
   OpenCodexReasoningEffort,
@@ -436,6 +437,7 @@ export type OpenCodexRequest =
   | {
       type: "logs.list";
       beforeCreatedAt?: string | null;
+      beforeId?: string | null;
       limit?: number;
       types?: OpenCodexLogType[];
     }
@@ -446,7 +448,13 @@ export type OpenCodexRequest =
       amount?: number;
       unit?: OpenCodexLogRetentionUnit;
     }
-  | { type: "logs.create"; logType: OpenCodexLogType; message: string; details?: unknown }
+  | {
+      type: "logs.create";
+      logType: OpenCodexLogType;
+      message: string;
+      details?: unknown;
+      category?: OpenCodexLogCategory;
+    }
   | { type: "settings.get" }
   | { type: "settings.update"; patch: Partial<OpenCodexSettings> }
   | { type: "emojiCatalog.get" }

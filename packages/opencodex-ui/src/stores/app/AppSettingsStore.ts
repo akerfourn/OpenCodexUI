@@ -1,11 +1,14 @@
 import { action, makeObservable, observable, runInAction } from "mobx";
 
+import { DEFAULT_LOG_POLICIES } from "@open-codex-ui/opencodex-protocol";
+
 import type {
   OpenCodexCodexReleaseCheck,
   OpenCodexColorScheme,
   OpenCodexCommitMessageLanguage,
   OpenCodexEnterKeyBehavior,
   OpenCodexLanguage,
+  OpenCodexLogPolicies,
   OpenCodexRequest,
   OpenCodexReasoningEffort,
   OpenCodexSettings,
@@ -26,6 +29,8 @@ export type AppSettingsRequestPort = {
  * Most controls update optimistically and rely on authoritative bootstrap/events.
  * Workspace storage waits for persistence before publishing new locations,
  * because those settings determine where future filesystem operations run.
+ * Log policies use the same pessimistic behavior so retention never appears
+ * active before the backend accepts the settings update.
  */
 export class AppSettingsStore {
   /** Current application settings snapshot. */
@@ -60,7 +65,8 @@ export class AppSettingsStore {
       setCommitMessageModelAndEffort: action,
       setCommitMessageReasoningEffort: action,
       setCommitMessageLanguage: action,
-      setCodexReleaseCheck: action
+      setCodexReleaseCheck: action,
+      setLogPolicies: action
     });
   }
 
@@ -113,6 +119,20 @@ export class AppSettingsStore {
     const settings = await this.root.request<OpenCodexSettings>({ type: "settings.update", patch: { workspaceRoots } });
     runInAction(() => {
       this.settings = { ...this.settings, workspaceRoots: (settings.workspaceRoots ?? []).map((root) => ({ ...root })) };
+    });
+  }
+
+  /** Persists log policies before publishing them to the observable snapshot. */
+  async setLogPolicies(logPolicies: OpenCodexLogPolicies): Promise<void> {
+    const patchLogPolicies = cloneLogPolicies(logPolicies);
+    const saved = await this.root.request<OpenCodexSettings | undefined>({
+      type: "settings.update",
+      patch: { logPolicies: patchLogPolicies }
+    });
+    const savedLogPolicies = saved?.logPolicies ?? patchLogPolicies;
+
+    runInAction(() => {
+      this.settings = { ...this.settings, logPolicies: cloneLogPolicies(savedLogPolicies) };
     });
   }
 
@@ -389,7 +409,8 @@ function createDefaultSettings(): OpenCodexSettings {
     allowOutdatedCodex: false,
     developerMode: false,
     performanceMonitoringEnabled: true,
-    advancedPerformanceMonitoringEnabled: false
+    advancedPerformanceMonitoringEnabled: false,
+    logPolicies: cloneLogPolicies(DEFAULT_LOG_POLICIES)
   };
 }
 
@@ -404,6 +425,15 @@ function cloneSettings(settings: OpenCodexSettings): OpenCodexSettings {
     ...settings,
     workspaceRoots: settings.workspaceRoots?.map((root) => ({ ...root })),
     codexReleaseCheck: { ...settings.codexReleaseCheck },
-    desktopNotifications: { ...settings.desktopNotifications }
+    desktopNotifications: { ...settings.desktopNotifications },
+    logPolicies: settings.logPolicies === undefined ? undefined : cloneLogPolicies(settings.logPolicies)
+  };
+}
+
+/** Clones the two log policy unions before crossing the request boundary. */
+function cloneLogPolicies(logPolicies: OpenCodexLogPolicies): OpenCodexLogPolicies {
+  return {
+    info: { ...logPolicies.info },
+    performanceSlowdown: { ...logPolicies.performanceSlowdown }
   };
 }

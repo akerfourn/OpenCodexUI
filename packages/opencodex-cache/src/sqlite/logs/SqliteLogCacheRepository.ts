@@ -1,6 +1,7 @@
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import type {
+  CachedLogClearFilter,
   CachedLogCreateInput,
   CachedLogEntry,
   CachedLogListQuery,
@@ -50,7 +51,10 @@ export class SqliteLogCacheRepository implements LogCacheRepository {
   }
 
   /** Deletes application logs older than the provided timestamp. */
-  async clearLogsOlderThan(createdBefore: string): Promise<void> {
-    await clearLogsOlderThan(this.database, createdBefore);
+  async clearLogsOlderThan(
+    createdBefore: string,
+    filter?: CachedLogClearFilter
+  ): Promise<void> {
+    await clearLogsOlderThan(this.database, createdBefore, filter);
   }
 }

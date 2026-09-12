@@ -11,6 +11,7 @@ import type {
   CachedCollaborationEvent,
   CachedCollaborationEventQuery,
   CachedLogCreateInput,
+  CachedLogClearFilter,
   CachedLogEntry,
   CachedLogListQuery,
   CachedLogPage,
@@ -324,8 +325,11 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
   }
 
   /** Deletes application logs older than a timestamp. */
-  async clearLogsOlderThan(createdBefore: string): Promise<void> {
-    await this.logs.clearLogsOlderThan(createdBefore);
+  async clearLogsOlderThan(
+    createdBefore: string,
+    filter?: CachedLogClearFilter
+  ): Promise<void> {
+    await this.logs.clearLogsOlderThan(createdBefore, filter);
   }
 
   /** Lists commands configured for a project. */

@@ -2,6 +2,7 @@
  * Renders persisted application logs on the Home tab.
  */
 import CleaningServicesOutlinedIcon from "@mui/icons-material/CleaningServicesOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import {
   Box,
   Button,
@@ -21,7 +22,8 @@ import type { OpenCodexLogEntry } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../../stores/RootStore";
 import { HomeLogCleanupDialogX } from "./HomeLogCleanupDialog";
 import { HomeLogDetailsDialog } from "./HomeLogDetailsDialog";
-import { HomeLogListItem } from "./HomeLogListItem";
+import { HomeLogListItemX } from "./HomeLogListItem";
+import { HomeLogPolicyDialogX } from "./HomeLogPolicyDialog";
 import { HomeLogTypeFilterX } from "./HomeLogTypeFilter";
 
 type HomeLogsViewProps = {
@@ -40,6 +42,7 @@ export function HomeLogsView({ store }: HomeLogsViewProps) {
   const logsStore = store.logsStore;
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [selectedLog, setSelectedLog] = useState<OpenCodexLogEntry | null>(null);
+  const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
   const visibleLogs = logsStore.visibleLogs;
 
   useEffect(() => {
@@ -73,6 +76,16 @@ export function HomeLogsView({ store }: HomeLogsViewProps) {
     logsStore.openCleanupDialog();
   }
 
+  /** Opens the log retention policy editor without changing persisted settings. */
+  function handleOpenPolicySettings(): void {
+    setPolicyDialogOpen(true);
+  }
+
+  /** Discards the current log retention policy draft. */
+  function handleClosePolicySettings(): void {
+    setPolicyDialogOpen(false);
+  }
+
   function handleDeleteLog(logId: string): void {
     logsStore.deleteLog(logId);
   }
@@ -101,6 +114,15 @@ export function HomeLogsView({ store }: HomeLogsViewProps) {
             <CleaningServicesOutlinedIcon />
           </IconButton>
         </Tooltip>
+        <Tooltip title={t("logs.policySettings")}>
+          <IconButton
+            aria-label={t("logs.policySettings")}
+            color="primary"
+            onClick={handleOpenPolicySettings}
+          >
+            <SettingsOutlinedIcon />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {logsStore.isLoading ? <LinearProgress /> : null}
@@ -112,7 +134,7 @@ export function HomeLogsView({ store }: HomeLogsViewProps) {
       ) : (
         <List dense disablePadding>
           {visibleLogs.map((log) => (
-            <HomeLogListItem
+            <HomeLogListItemX
               key={log.id}
               log={log}
               onDelete={handleDeleteLog}
@@ -132,6 +154,11 @@ export function HomeLogsView({ store }: HomeLogsViewProps) {
 
       <HomeLogDetailsDialog log={selectedLog} onClose={handleCloseDetails} />
       <HomeLogCleanupDialogX store={logsStore} />
+      <HomeLogPolicyDialogX
+        store={store.appStore.settingsStore}
+        open={policyDialogOpen}
+        onClose={handleClosePolicySettings}
+      />
     </Stack>
   );
 }

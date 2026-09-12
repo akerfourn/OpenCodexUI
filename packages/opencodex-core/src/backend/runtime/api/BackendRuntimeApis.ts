@@ -91,7 +91,12 @@ export class BackendRuntimeApis {
    * @param options Runtime host options used for settings persistence.
    */
   constructor(services: BackendServiceGraph, options: OpenCodexBackendOptions) {
-    this.settings = new SettingsApi(services.settings, options.saveSettings);
+    this.settings = new SettingsApi(
+      services.settings,
+      options.saveSettings,
+      (settings) => services.applicationLogService.applySettings(settings),
+      options.logger
+    );
     this.projects = new ProjectsApi(services.projectRuntimeHandler);
     this.sources = new SourcesApi(services.projectRuntimeHandler);
     this.groups = new GroupsApi(services.projectRuntimeHandler);

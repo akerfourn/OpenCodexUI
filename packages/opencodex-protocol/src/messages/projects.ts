@@ -1,4 +1,4 @@
-import type { OpenCodexLogType } from "./foundations.js";
+import type { OpenCodexLogCategory, OpenCodexLogType } from "./foundations.js";
 import type { OpenCodexSourceColor } from "./sources.js";
 
 /**
@@ -232,6 +232,10 @@ export type OpenCodexLogEntry = {
   message: string;
   details: unknown;
   createdAt: string;
+  /** Optional semantic category used by retention policies. */
+  category?: OpenCodexLogCategory;
+  /** Indicates whether the UI entry is session-only or backed by persistence. */
+  storage?: "session" | "persistent";
 };
 
 /**

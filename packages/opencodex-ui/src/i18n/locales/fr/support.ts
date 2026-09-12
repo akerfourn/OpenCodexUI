@@ -19,6 +19,27 @@ export const frSupport = {
     allTypes: "Tous les types",
     noMatching: "Aucun log ne correspond aux types sélectionnés.",
     noTypesSelected: "Aucun type",
+    maxEntries: "Nombre maximal d'entrées",
+    policyCategories: {
+      info: "Information",
+      performanceSlowdown: "Ralentissements des performances"
+    },
+    policyInvalidNumber: "Saisissez un nombre entier entre {{min}} et {{max}}.",
+    policyMode: "Mode de stockage",
+    policyModes: {
+      disabled: "Désactivé",
+      retained: "Historique limité",
+      session: "Session uniquement",
+      unlimited: "Historique illimité"
+    },
+    policyPersistenceNote: "L'historique limité supprime automatiquement les logs plus anciens que la durée choisie. Les modes Désactivé et Session uniquement arrêtent la persistance future et conservent l'historique déjà enregistré sur disque jusqu'au nettoyage.",
+    policySaveError: "Impossible d'enregistrer les paramètres de stockage des logs.",
+    policySettings: "Paramètres de stockage des logs",
+    policySettingsDescription: "Choisissez la conservation des logs d'information et de ralentissement des performances. Les changements s'appliquent après l'enregistrement.",
+    retentionDays: "Jours de conservation",
+    savePolicies: "Enregistrer les paramètres",
+    session: "Session",
+    sessionTooltip: "Conservés uniquement pendant cette session de l’application ; perdus à sa fermeture.",
     selectedTypes: "{{count}} types sélectionnés",
     title: "Logs",
     typeFilter: "Types affichés",

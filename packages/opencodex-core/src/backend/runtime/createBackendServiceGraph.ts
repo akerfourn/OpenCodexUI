@@ -67,6 +67,7 @@ export function createBackendServiceGraph(
 
   const applicationLogService = new ApplicationLogService({
     cacheRepository,
+    settings,
     events,
     logger: options.logger
   });

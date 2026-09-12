@@ -46,6 +46,30 @@ Automatic slowdown reports retain at most five minutes of samples and apply a
 ten-minute cooldown. Chat text, reasoning, commands, and diffs must never be
 copied into performance logs.
 
+## Application Log Retention
+
+Application log policies are stored in `settings.json` under `logPolicies`.
+Information logs default to a session buffer of 200 entries; slowdown reports
+default to seven days of persistent history. Other warnings and errors retain
+their existing persistent behavior. Severity filters only affect display.
+
+Each configurable category supports disabled, session, time-limited persistent,
+or unlimited persistent storage. The stable `performanceSlowdown` category
+takes precedence over severity; translated messages are not runtime selectors.
+Session entries share the log view with persisted entries but never reach
+SQLite. Their buffer is bounded by entry count and bytes and is lost when the
+backend closes. Evictions must also remove entries from the renderer.
+
+Retention applies at startup and periodically without opening the log view.
+Saving a time-limited policy also applies its cutoff to matching stored logs.
+Disabled and session policies stop new disk writes without deleting existing
+disk history. Manual cleanup remains available for that history. Policy
+changes must only become active after successful settings persistence.
+
+These policies do not change usage-history snapshots, per-thread diagnostic
+traces or performance sampling. Disabling slowdown reports does not disable
+the performance monitor itself.
+
 ## Source Routing And Cache Identity
 
 Live UI events should carry the source identifier known by their Codex channel.

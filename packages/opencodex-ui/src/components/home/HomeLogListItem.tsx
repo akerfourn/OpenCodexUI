@@ -7,6 +7,7 @@ import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import { Box, IconButton, ListItem, ListItemIcon, ListItemText, Tooltip } from "@mui/material";
+import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexLogEntry } from "@open-codex-ui/opencodex-protocol";
@@ -27,6 +28,24 @@ type HomeLogListItemProps = {
 export function HomeLogListItem({ log, onDelete, onOpen }: HomeLogListItemProps) {
   const { t } = useTranslation();
   const createdAt = new Date(log.createdAt).toLocaleString();
+  const sessionIndicator = log.storage === "session" ? (
+    <Tooltip title={t("logs.sessionTooltip")}>
+      <Box
+        component="span"
+        sx={{
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 0.75,
+          color: "text.secondary",
+          fontSize: "0.7rem",
+          lineHeight: 1.4,
+          px: 0.5
+        }}
+      >
+        {t("logs.session")}
+      </Box>
+    </Tooltip>
+  ) : null;
 
   function handleDelete(): void {
     onDelete(log.id);
@@ -35,6 +54,13 @@ export function HomeLogListItem({ log, onDelete, onOpen }: HomeLogListItemProps)
   function handleOpen(): void {
     onOpen(log);
   }
+
+  const secondaryContent = (
+    <Box component="span" sx={{ alignItems: "center", display: "inline-flex", gap: 0.75 }}>
+      <Box component="span">{createdAt}</Box>
+      {sessionIndicator}
+    </Box>
+  );
 
   return (
     <ListItem
@@ -60,7 +86,7 @@ export function HomeLogListItem({ log, onDelete, onOpen }: HomeLogListItemProps)
       </ListItemIcon>
       <ListItemText
         primary={log.message}
-        secondary={createdAt}
+        secondary={secondaryContent}
         slotProps={{
           primary: {
             noWrap: true,
@@ -71,6 +97,8 @@ export function HomeLogListItem({ log, onDelete, onOpen }: HomeLogListItemProps)
     </ListItem>
   );
 }
+
+export const HomeLogListItemX = observer(HomeLogListItem);
 
 function getLogIcon(type: OpenCodexLogEntry["type"]) {
   if (type === "error") {

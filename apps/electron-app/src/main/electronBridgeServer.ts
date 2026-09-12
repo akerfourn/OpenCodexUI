@@ -122,7 +122,7 @@ export class ElectronBridgeServer {
     this.requestRouter = new OpenCodexRequestRouter(this.runtime);
     this.performanceMonitoringService = new PerformanceMonitoringService(options.settings, {
       createLog: async (message, details) => {
-        await this.runtime.logs.create("warning", message, details);
+        await this.runtime.logs.create("warning", message, details, "performanceSlowdown");
       },
       readProcessMetrics
     });

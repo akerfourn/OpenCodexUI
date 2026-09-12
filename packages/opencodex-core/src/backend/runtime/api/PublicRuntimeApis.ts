@@ -26,6 +26,7 @@ import type {
   OpenCodexImageAttachment,
   OpenCodexInstalledPluginListResult,
   OpenCodexLogEntry,
+  OpenCodexLogCategory,
   OpenCodexLogPage,
   OpenCodexLogRetentionUnit,
   OpenCodexLogType,
@@ -477,11 +478,17 @@ export interface LogsApi {
   list(
     beforeCreatedAt: string | null,
     limit: number,
-    types?: OpenCodexLogType[]
+    types?: OpenCodexLogType[],
+    beforeId?: string | null
   ): Promise<OpenCodexLogPage>;
   delete(logId: string): Promise<{ ok: true }>;
   clear(mode: "all" | "olderThan", amount: number, unit: OpenCodexLogRetentionUnit): Promise<{ ok: true }>;
-  create(type: OpenCodexLogEntry["type"], message: string, details: unknown): Promise<{ ok: true }>;
+  create(
+    type: OpenCodexLogEntry["type"],
+    message: string,
+    details: unknown,
+    category?: OpenCodexLogCategory
+  ): Promise<{ ok: true }>;
 }
 
 /** Reasons exposed by the public usage-limit read operation. */

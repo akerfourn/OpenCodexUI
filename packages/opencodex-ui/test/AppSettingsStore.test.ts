@@ -2,6 +2,7 @@ import { observable, isObservable } from "mobx";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
+  OpenCodexLogPolicies,
   OpenCodexRequest,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
@@ -228,6 +229,56 @@ describe("AppSettingsStore", () => {
         commitMessageReasoningEffort: "high"
       }
     });
+  });
+
+  it("should save plain log policy DTOs and publish them only after persistence", async () => {
+    let complete!: (value: OpenCodexSettings) => void;
+    const request = vi.fn(async (input: OpenCodexRequest) => {
+      if (input.type !== "settings.update") throw new Error("Unexpected request");
+      expect(isObservable(input.patch.logPolicies)).toBe(false);
+      expect(isObservable(input.patch.logPolicies?.info)).toBe(false);
+      return await new Promise<OpenCodexSettings>((resolve) => { complete = resolve; });
+    });
+    const store = new AppSettingsStore({ request });
+    const previous: OpenCodexLogPolicies = {
+      info: { mode: "session", maxEntries: 200 },
+      performanceSlowdown: { mode: "retained", retentionDays: 7 }
+    };
+    const next = observable({
+      info: { mode: "session" as const, maxEntries: 400 },
+      performanceSlowdown: { mode: "unlimited" as const }
+    }) as unknown as OpenCodexLogPolicies;
+    store.replaceSettings(createSettings({ logPolicies: previous }));
+
+    const saving = store.setLogPolicies(next);
+
+    expect(store.settings.logPolicies).toEqual(previous);
+    complete({ ...store.settings, logPolicies: next });
+    await saving;
+    next.info.maxEntries = 800;
+
+    expect(store.settings.logPolicies).toEqual({
+      info: { mode: "session", maxEntries: 400 },
+      performanceSlowdown: { mode: "unlimited" }
+    });
+  });
+
+  it("should keep existing log policies when persistence fails", async () => {
+    const previous: OpenCodexLogPolicies = {
+      info: { mode: "disabled" },
+      performanceSlowdown: { mode: "retained", retentionDays: 30 }
+    };
+    const store = new AppSettingsStore({
+      request: vi.fn().mockRejectedValue(new Error("Settings unavailable"))
+    });
+    store.replaceSettings(createSettings({ logPolicies: previous }));
+
+    await expect(store.setLogPolicies({
+      info: { mode: "session", maxEntries: 20 },
+      performanceSlowdown: { mode: "unlimited" }
+    })).rejects.toThrow("Settings unavailable");
+
+    expect(store.settings.logPolicies).toEqual(previous);
   });
 });
 

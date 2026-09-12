@@ -8,6 +8,25 @@ import type {
 } from "./foundations.js";
 import type { OpenCodexCodexReleaseCheck } from "./sources.js";
 
+/** Policy controlling how one application log category is retained. */
+export type OpenCodexLogPolicy =
+  | { mode: "disabled" }
+  | { mode: "session"; maxEntries: number }
+  | { mode: "retained"; retentionDays: number }
+  | { mode: "unlimited" };
+
+/** Retention policies for ordinary and performance diagnostic logs. */
+export interface OpenCodexLogPolicies {
+  info: OpenCodexLogPolicy;
+  performanceSlowdown: OpenCodexLogPolicy;
+}
+
+/** Default log retention policy for a new or legacy settings document. */
+export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
+  info: { mode: "session", maxEntries: 200 },
+  performanceSlowdown: { mode: "retained", retentionDays: 7 }
+};
+
 /**
  * Persisted application settings shared by backend and UI.
  */
@@ -39,6 +58,8 @@ export type OpenCodexSettings = {
   developerMode: boolean;
   performanceMonitoringEnabled: boolean;
   advancedPerformanceMonitoringEnabled: boolean;
+  /** Optional to preserve compatibility with settings saved before log policies existed. */
+  logPolicies?: OpenCodexLogPolicies;
 };
 
 /**

@@ -540,14 +540,20 @@ export class OpenCodexRequestRouter {
         return this.runtime.logs.list(
           request.beforeCreatedAt ?? null,
           request.limit ?? 30,
-          request.types
+          request.types,
+          request.beforeId
         );
       case "logs.delete":
         return this.runtime.logs.delete(request.logId);
       case "logs.clear":
         return this.runtime.logs.clear(request.mode, request.amount ?? 24, request.unit ?? "hours");
       case "logs.create":
-        return this.runtime.logs.create(request.logType, request.message, request.details ?? null);
+        return this.runtime.logs.create(
+          request.logType,
+          request.message,
+          request.details ?? null,
+          request.category
+        );
       case "settings.get":
         return this.runtime.settings.get();
       case "settings.update":

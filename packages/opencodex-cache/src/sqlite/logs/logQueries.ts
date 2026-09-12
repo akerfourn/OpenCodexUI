@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import type {
+  CachedLogClearFilter,
   CachedLogCreateInput,
   CachedLogEntry,
   CachedLogListQuery,
@@ -34,7 +35,8 @@ export async function createLog(
     type: input.type,
     message: input.message,
     detailsJson: stringifyLogDetails(input.details),
-    createdAt: createLogTimestamp()
+    createdAt: createLogTimestamp(),
+    category: input.category ?? null
   };
 
   database
@@ -44,14 +46,16 @@ export async function createLog(
         type,
         message,
         details_json,
-        created_at
+        created_at,
+        category
       )
       VALUES (
         @id,
         @type,
         @message,
         @detailsJson,
-        @createdAt
+        @createdAt,
+        @category
       )
     `)
     .run(log);
@@ -61,7 +65,8 @@ export async function createLog(
     type: log.type,
     message: log.message,
     details: input.details ?? null,
-    createdAt: log.createdAt
+    createdAt: log.createdAt,
+    ...(input.category === undefined ? {} : { category: input.category })
   };
 }
 
@@ -88,6 +93,7 @@ export async function listLogs(
     : `AND type IN (${types.map((_, index) => `@logType${index}`).join(", ")})`;
   const parameters: Record<string, string | number | null> = {
     beforeCreatedAt: query.beforeCreatedAt ?? null,
+    beforeId: query.beforeId ?? null,
     limit: limit + 1
   };
 
@@ -102,9 +108,18 @@ export async function listLogs(
         type,
         message,
         details_json,
-        created_at
+        created_at,
+        category
       FROM logs
-      WHERE (@beforeCreatedAt IS NULL OR created_at < @beforeCreatedAt)
+      WHERE (
+        @beforeCreatedAt IS NULL
+        OR created_at < @beforeCreatedAt
+        OR (
+          @beforeId IS NOT NULL
+          AND created_at = @beforeCreatedAt
+          AND id < @beforeId
+        )
+      )
       ${typeFilter}
       ORDER BY created_at DESC, id DESC
       LIMIT @limit
@@ -148,11 +163,30 @@ export async function clearLogs(database: BetterSqliteDatabase): Promise<void> {
  */
 export async function clearLogsOlderThan(
   database: BetterSqliteDatabase,
-  createdBefore: string
+  createdBefore: string,
+  filter?: CachedLogClearFilter
 ): Promise<void> {
+  const conditions = ["created_at < @createdBefore"];
+  const parameters: Record<string, string> = { createdBefore };
+
+  if (filter?.type !== undefined) {
+    conditions.push("type = @logType");
+    parameters.logType = filter.type;
+  }
+
+  if (filter?.category !== undefined) {
+    conditions.push("category = @logCategory");
+    parameters.logCategory = filter.category;
+  }
+
+  if (filter?.excludeCategory !== undefined) {
+    conditions.push("(category IS NULL OR category <> @excludedLogCategory)");
+    parameters.excludedLogCategory = filter.excludeCategory;
+  }
+
   database
-    .prepare("DELETE FROM logs WHERE created_at < @createdBefore")
-    .run({ createdBefore });
+    .prepare(`DELETE FROM logs WHERE ${conditions.join(" AND ")}`)
+    .run(parameters);
 }
 
 /**

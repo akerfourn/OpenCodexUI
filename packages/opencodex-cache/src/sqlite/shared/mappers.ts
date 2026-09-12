@@ -205,13 +205,19 @@ export function mapSourceRow(row: SourceRow): CachedSource {
  * @returns Normalized cached log entry.
  */
 export function mapLogRow(row: LogRow): CachedLogEntry {
-  return {
+  const entry: CachedLogEntry = {
     id: row.id,
     type: row.type,
     message: row.message,
     details: parseLogDetails(row.details_json),
     createdAt: row.created_at
   };
+
+  if (row.category !== null) {
+    entry.category = row.category;
+  }
+
+  return entry;
 }
 
 /**

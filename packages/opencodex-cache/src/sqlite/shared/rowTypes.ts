@@ -3,6 +3,7 @@
  */
 import type {
   CachedCommandRuleDecision,
+  CachedLogCategory,
   CachedProjectGoalStatus,
   CachedSourceKind
 } from "../../types.js";
@@ -143,6 +144,7 @@ export type LogRow = {
   message: string;
   details_json: string | null;
   created_at: string;
+  category: CachedLogCategory | null;
 };
 
 /**

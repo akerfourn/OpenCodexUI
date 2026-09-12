@@ -54,6 +54,46 @@ describe("support APIs", () => {
     expect(saveSettings).toHaveBeenCalledWith(nextSettings);
   });
 
+  it("should validate log policies before saving or publishing settings", async () => {
+    const settings = {
+      getSettings: vi.fn().mockReturnValue({} as OpenCodexSettings),
+      setSettings: vi.fn()
+    };
+    const saveSettings = vi.fn();
+    const api = new SettingsApi(settings, saveSettings);
+
+    await expect(api.update({
+      logPolicies: {
+        info: { mode: "session", maxEntries: 0 },
+        performanceSlowdown: { mode: "unlimited" }
+      }
+    })).rejects.toThrow("maxEntries");
+
+    expect(saveSettings).not.toHaveBeenCalled();
+    expect(settings.setSettings).not.toHaveBeenCalled();
+  });
+
+  it("should keep settings success when post-save log maintenance fails", async () => {
+    const nextSettings = { language: "en" } as OpenCodexSettings;
+    const settings = {
+      getSettings: vi.fn().mockReturnValue(nextSettings),
+      setSettings: vi.fn()
+    };
+    const logger = vi.fn();
+    const api = new SettingsApi(
+      settings,
+      vi.fn(),
+      vi.fn(() => Promise.reject(new Error("maintenance unavailable"))),
+      logger
+    );
+
+    await expect(api.update({ language: "fr" })).resolves.toMatchObject({ language: "fr" });
+    expect(settings.setSettings).toHaveBeenCalled();
+    expect(logger).toHaveBeenCalledWith(
+      "settings post-save maintenance failed: Error: maintenance unavailable"
+    );
+  });
+
   it("should forward approval resolutions synchronously", () => {
     const approvalService = {
       resolveApproval: vi.fn()
