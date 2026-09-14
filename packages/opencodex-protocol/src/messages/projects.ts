@@ -170,7 +170,7 @@ export type OpenCodexProjectPreferences = {
 };
 
 /** Permission applied to files in an external context folder. */
-export type OpenCodexProjectContextFolderPermission = "read" | "write";
+export type OpenCodexProjectContextFolderPermission = "deny" | "read" | "write";
 
 /** Permission applied to `.env` files inside external context folders. */
 export type OpenCodexProjectContextEnvFilePermission = "deny" | "read" | "write";

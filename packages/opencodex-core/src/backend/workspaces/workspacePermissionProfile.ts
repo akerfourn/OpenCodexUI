@@ -25,11 +25,12 @@ export function workspacePermissionInput(
     }
     const permission = folder.permission ?? "read";
     const envFilePermission = folder.envFilePermission ?? "deny";
-    if (permission !== "read" && permission !== "write") {
+    if (permission !== "deny" && permission !== "read" && permission !== "write") {
       throw new Error("Unsupported shared-folder permission.");
     }
     if (!["read", "write", "deny"].includes(envFilePermission)
-      || (permission === "read" && envFilePermission === "write")) {
+      || (permission === "read" && envFilePermission === "write")
+      || (permission === "deny" && envFilePermission !== "deny")) {
       throw new Error("Environment-file permission exceeds the shared-folder policy.");
     }
     const normalized = { path: folderPath, permission, envFilePermission };

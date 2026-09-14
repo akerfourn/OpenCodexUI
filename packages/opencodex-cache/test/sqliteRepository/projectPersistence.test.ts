@@ -194,6 +194,14 @@ describe("project persistence", () => {
             enabled: false,
             permission: "read",
             envFilePermission: "write"
+          },
+          {
+            id: "folder-3",
+            path: "/tmp/blocked-project",
+            label: "Projet interdit",
+            enabled: true,
+            permission: "deny",
+            envFilePermission: "read"
           }
         ],
         lastSyncedAt: null
@@ -218,6 +226,14 @@ describe("project persistence", () => {
           enabled: false,
           permission: "read",
           envFilePermission: "deny"
+        },
+        {
+          id: "folder-3",
+          path: "/tmp/blocked-project",
+          label: "Projet interdit",
+          enabled: true,
+          permission: "deny",
+          envFilePermission: "deny"
         }
       ],
       lastSyncedAt: null
@@ -226,7 +242,7 @@ describe("project persistence", () => {
     const projects = await repository.listProjects();
     const persistedProject = projects.find((entry) => entry.id === project.id);
 
-    expect(persistedProject?.preferences.context?.folders).toHaveLength(2);
+    expect(persistedProject?.preferences.context?.folders).toHaveLength(3);
   });
 
   it("should default legacy context preferences to denied env-file access", async () => {

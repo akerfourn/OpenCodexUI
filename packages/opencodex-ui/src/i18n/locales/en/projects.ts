@@ -114,14 +114,14 @@ export const enProjects = {
     actions: "Folder actions",
     add: "Add",
     addDescription:
-      "Select a local folder or type a path manually for remote or non-native sources.",
+      "Select a local folder or type a path. To block a path, add it and choose Deny all access.",
     addManualPath: "Add this path",
     addTitle: "Add context folder",
     cancel: "Cancel",
     delete: "Delete",
     deleteDescription: "Remove the \"{{name}}\" context folder? The Codex configuration will need to be synchronized again.",
     deleteTitle: "Remove this folder?",
-    description: "Add folders Codex may read in addition to the current project.",
+    description: "Add folders Codex may read, or explicitly deny a path.",
     empty: "No external folder configured.",
     envFilePermission: ".env file access",
     envFilePermissionDescription:
@@ -131,7 +131,8 @@ export const enProjects = {
     envFilePermissionWrite: "Read and write",
     folderPermission: "Folder access",
     folderPermissionDescription:
-      "This permission applies to files that are not .env files.",
+      "Choose read only, read and write, or deny this path completely.",
+    folderPermissionDeny: "Deny all access",
     folderPermissionRead: "Read only",
     folderPermissionWrite: "Read and write",
     lastSynced: "Synced on {{date}}",
@@ -147,7 +148,7 @@ export const enProjects = {
     save: "Save",
     permissions: "Edit access",
     permissionsDescription:
-      "General access applies to non-.env files. .env files use the separate rule below.",
+      "General access applies to non-.env files. A denied path stays blocked even when an inherited rule can read it.",
     permissionsTitle: "Configure access",
     sourceUnavailable: "The project's Codex source is inactive.",
     sync: "Synchronize Codex configuration",

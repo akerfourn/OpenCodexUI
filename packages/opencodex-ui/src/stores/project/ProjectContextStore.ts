@@ -358,7 +358,7 @@ function createContextFolderId(): string {
 function normalizeFolderPermission(
   value: OpenCodexProjectContextFolderPermission | null | undefined
 ): OpenCodexProjectContextFolderPermission {
-  return value === "write" ? value : defaultContextFolderPermission;
+  return value === "deny" || value === "write" ? value : defaultContextFolderPermission;
 }
 
 /**
@@ -372,6 +372,10 @@ function normalizeEnvFilePermission(
   value: OpenCodexProjectContextEnvFilePermission | null | undefined,
   folderPermission: OpenCodexProjectContextFolderPermission
 ): OpenCodexProjectContextEnvFilePermission {
+  if (folderPermission === "deny") {
+    return defaultEnvFilePermission;
+  }
+
   if (value === "write" && folderPermission === "read") {
     return defaultEnvFilePermission;
   }

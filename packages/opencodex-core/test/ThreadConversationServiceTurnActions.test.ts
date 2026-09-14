@@ -269,8 +269,8 @@ describe("ThreadConversationService turn actions", () => {
     expect(fixture.calls).toEqual([
       "readSnapshot",
       "ensureClient",
-      "readThread",
       "resumeThread",
+      "readThread",
       "rollbackThread",
       "reconcile",
       "thread.opened",

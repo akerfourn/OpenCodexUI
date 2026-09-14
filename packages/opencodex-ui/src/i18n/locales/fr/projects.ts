@@ -113,14 +113,14 @@ export const frProjects = {
     actions: "Actions du dossier",
     add: "Ajouter",
     addDescription:
-      "Sélectionnez un dossier local ou saisissez un chemin manuellement pour les sources distantes ou non natives.",
+      "Sélectionnez un dossier local ou saisissez un chemin. Pour bloquer un chemin, ajoutez-le puis choisissez Refuser tout accès.",
     addManualPath: "Ajouter ce chemin",
     addTitle: "Ajouter un dossier de contexte",
     cancel: "Annuler",
     delete: "Supprimer",
     deleteDescription: "Supprimer le dossier de contexte \"{{name}}\" ? La configuration Codex devra être resynchronisée.",
     deleteTitle: "Supprimer ce dossier ?",
-    description: "Ajoutez des dossiers que Codex pourra lire en plus du projet courant.",
+    description: "Ajoutez des dossiers que Codex pourra lire, ou interdisez explicitement un chemin.",
     empty: "Aucun dossier externe configuré.",
     envFilePermission: "Accès aux fichiers .env",
     envFilePermissionDescription:
@@ -130,7 +130,8 @@ export const frProjects = {
     envFilePermissionWrite: "Lecture et écriture",
     folderPermission: "Accès au dossier",
     folderPermissionDescription:
-      "Cette permission s'applique aux fichiers qui ne sont pas des fichiers .env.",
+      "Choisissez lecture seule, lecture et écriture, ou refusez complètement ce chemin.",
+    folderPermissionDeny: "Refuser tout accès",
     folderPermissionRead: "Lecture seule",
     folderPermissionWrite: "Lecture et écriture",
     lastSynced: "Synchronisé le {{date}}",
@@ -146,7 +147,7 @@ export const frProjects = {
     save: "Enregistrer",
     permissions: "Modifier les accès",
     permissionsDescription:
-      "L'accès général s'applique aux fichiers non .env. Les fichiers .env utilisent la règle distincte ci-dessous.",
+      "L'accès général s'applique aux fichiers non .env. Un chemin refusé reste bloqué même s'il est accessible par une règle héritée.",
     permissionsTitle: "Configurer les accès",
     sourceUnavailable: "La source Codex du projet est inactive.",
     sync: "Synchroniser la configuration Codex",

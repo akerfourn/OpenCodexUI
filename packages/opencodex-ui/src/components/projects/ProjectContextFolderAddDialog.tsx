@@ -76,10 +76,7 @@ export function ProjectContextFolderAddDialog({
     }
 
     setFolderPermission(permission);
-
-    if (permission === "read" && envFilePermission === "write") {
-      setEnvFilePermission("deny");
-    }
+    setEnvFilePermission(normalizeEnvFilePermission(envFilePermission, permission));
   }
 
   function handleEnvFilePermissionChange(event: SelectChangeEvent): void {
@@ -156,10 +153,11 @@ export function ProjectContextFolderAddDialog({
             >
               <MenuItem value="read">{t("contextFolders.folderPermissionRead")}</MenuItem>
               <MenuItem value="write">{t("contextFolders.folderPermissionWrite")}</MenuItem>
+              <MenuItem value="deny">{t("contextFolders.folderPermissionDeny")}</MenuItem>
             </Select>
             <FormHelperText>{t("contextFolders.folderPermissionDescription")}</FormHelperText>
           </FormControl>
-          <FormControl fullWidth size="small">
+          <FormControl fullWidth size="small" disabled={folderPermission === "deny"}>
             <InputLabel id="context-env-file-permission-label">
               {t("contextFolders.envFilePermission")}
             </InputLabel>
@@ -170,7 +168,9 @@ export function ProjectContextFolderAddDialog({
               onChange={handleEnvFilePermissionChange}
             >
               <MenuItem value="deny">{t("contextFolders.envFilePermissionDeny")}</MenuItem>
-              <MenuItem value="read">{t("contextFolders.envFilePermissionRead")}</MenuItem>
+              {folderPermission !== "deny" ? (
+                <MenuItem value="read">{t("contextFolders.envFilePermissionRead")}</MenuItem>
+              ) : null}
               {folderPermission === "write" ? (
                 <MenuItem value="write">{t("contextFolders.envFilePermissionWrite")}</MenuItem>
               ) : null}
@@ -209,7 +209,7 @@ export const ProjectContextFolderAddDialogX = observer(ProjectContextFolderAddDi
  * @returns Whether the value is supported.
  */
 function isFolderPermission(value: string): value is OpenCodexProjectContextFolderPermission {
-  return value === "read" || value === "write";
+  return value === "deny" || value === "read" || value === "write";
 }
 
 /**
@@ -220,4 +220,18 @@ function isFolderPermission(value: string): value is OpenCodexProjectContextFold
  */
 function isEnvFilePermission(value: string): value is OpenCodexProjectContextEnvFilePermission {
   return value === "deny" || value === "read" || value === "write";
+}
+
+/** Keeps `.env` access within the selected folder permission. */
+function normalizeEnvFilePermission(
+  value: OpenCodexProjectContextEnvFilePermission,
+  folderPermission: OpenCodexProjectContextFolderPermission
+): OpenCodexProjectContextEnvFilePermission {
+  if (folderPermission === "deny") {
+    return "deny";
+  }
+  if (folderPermission === "read" && value === "write") {
+    return "deny";
+  }
+  return value;
 }

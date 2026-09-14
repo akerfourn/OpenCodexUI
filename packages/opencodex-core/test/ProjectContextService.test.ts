@@ -55,7 +55,8 @@ describe("ProjectContextService", () => {
   it.each([
     { permission: "read", envFilePermission: "read", expectedEnvPermission: "read" },
     { permission: "write", envFilePermission: "write", expectedEnvPermission: "write" },
-    { permission: "read", envFilePermission: "write", expectedEnvPermission: "deny" }
+    { permission: "read", envFilePermission: "write", expectedEnvPermission: "deny" },
+    { permission: "deny", envFilePermission: "read", expectedEnvPermission: "deny" }
   ] as const)(
     "should apply folder permission $permission and compatible env permission",
     ({ permission, envFilePermission, expectedEnvPermission }) => {
@@ -67,6 +68,9 @@ describe("ProjectContextService", () => {
 
       expect(block).toContain(`"/workspace/docs" = "${permission}"`);
       expect(block).toContain(`"/workspace/docs/**/*.env" = "${expectedEnvPermission}"`);
+      if (permission === "deny") {
+        expect(block).toContain('"/workspace/docs/**" = "deny"');
+      }
       expect(block).not.toContain("\"/workspace/app/**/*.env\"");
     }
   );

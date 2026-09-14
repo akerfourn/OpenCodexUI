@@ -50,7 +50,11 @@ export function buildManagedPermissionProfile(input: ManagedConfigBlockInput): M
     filesystem[":slash_tmp"] = "read";
   }
   for (const folder of folders) {
-    filesystem[folder.path] = normalizeContextFolderPermission(folder.permission);
+    const permission = normalizeContextFolderPermission(folder.permission);
+    filesystem[folder.path] = permission;
+    if (permission === "deny") {
+      filesystem[joinSourcePath(folder.path, "**")] = "deny";
+    }
   }
   for (const folder of folders) {
     const permission = normalizeContextFolderPermission(folder.permission);
@@ -241,7 +245,7 @@ export function normalizeProfileId(value: string | null | undefined): string {
 function normalizeContextFolderPermission(
   value: OpenCodexProjectContextFolderPermission | null | undefined
 ): OpenCodexProjectContextFolderPermission {
-  return value === "write" ? value : defaultContextFolderPermission;
+  return value === "deny" || value === "write" ? value : defaultContextFolderPermission;
 }
 
 /**
@@ -255,6 +259,10 @@ function normalizeEnvFilePermission(
   value: OpenCodexProjectContextEnvFilePermission | null | undefined,
   folderPermission: OpenCodexProjectContextFolderPermission
 ): OpenCodexProjectContextEnvFilePermission {
+  if (folderPermission === "deny") {
+    return defaultEnvFilePermission;
+  }
+
   if (value === "write" && folderPermission === "read") {
     return defaultEnvFilePermission;
   }

@@ -145,4 +145,24 @@ describe("workspace-specific permission identities", () => {
     expect(() => workspacePermissionInput(transition, [shared, { ...shared, permission: "write" }]))
       .toThrow("Conflicting permissions");
   });
+
+  it("should preserve an explicit denied path without granting a writable root", () => {
+    const input = workspacePermissionInput(transition, [
+      { ...shared, permission: "deny", envFilePermission: "deny" }
+    ]);
+    const profile = buildManagedPermissionProfile(input);
+
+    expect(profile.filesystem).toMatchObject({
+      "/shared": "deny",
+      "/shared/**": "deny",
+      "/shared/**/*.env": "deny"
+    });
+    expect(profile.filesystem["/shared"]).not.toBe("write");
+  });
+
+  it("should reject environment access for a denied path", () => {
+    expect(() => workspacePermissionInput(transition, [
+      { ...shared, permission: "deny", envFilePermission: "read" }
+    ])).toThrow("Environment-file permission");
+  });
 });

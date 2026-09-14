@@ -255,7 +255,8 @@ function normalizeContextFolder(
     label: normalizeNullableText(value.label) ?? null,
     enabled: value.enabled !== false,
     permission,
-    envFilePermission: permission === "read" && envFilePermission === "write"
+    envFilePermission: (permission === "read" && envFilePermission === "write")
+      || (permission === "deny" && envFilePermission !== "deny")
       ? defaultEnvFilePermission
       : envFilePermission
   };
@@ -268,7 +269,7 @@ function normalizeContextFolder(
  * @returns A supported folder permission, or `undefined` when invalid or absent.
  */
 function normalizeContextFolderPermission(value: unknown): CachedProjectContextFolderPermission | undefined {
-  if (value === "read" || value === "write") {
+  if (value === "deny" || value === "read" || value === "write") {
     return value;
   }
 

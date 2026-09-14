@@ -85,7 +85,7 @@ export type CachedProjectPreferences = {
 };
 
 /** Permission applied to files in an external context folder. */
-export type CachedProjectContextFolderPermission = "read" | "write";
+export type CachedProjectContextFolderPermission = "deny" | "read" | "write";
 
 /** Permission applied to `.env` files inside external context folders. */
 export type CachedProjectContextEnvFilePermission = "deny" | "read" | "write";

@@ -10,6 +10,7 @@ import TuneOutlinedIcon from "@mui/icons-material/TuneOutlined";
 import {
   Box,
   Checkbox,
+  Chip,
   IconButton,
   ListItemIcon,
   Menu,
@@ -52,6 +53,7 @@ export function ProjectContextFolderRow({
   const [isRenameOpen, setRenameOpen] = useState(false);
   const [isDeleteOpen, setDeleteOpen] = useState(false);
   const folderName = folder.label ?? readFolderName(folder.path);
+  const folderPermission = contextStore.getFolderPermission(folder);
 
   function handleMenuOpen(event: MouseEvent<HTMLButtonElement>): void {
     setMenuAnchor(event.currentTarget);
@@ -116,9 +118,19 @@ export function ProjectContextFolderRow({
         onChange={handleToggle}
       />
       <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-        <Typography variant="body2" noWrap>
-          {folderName}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0 }}>
+          <Typography variant="body2" noWrap sx={{ minWidth: 0 }}>
+            {folderName}
+          </Typography>
+          {folderPermission === "deny" ? (
+            <Chip
+              size="small"
+              color="error"
+              variant="outlined"
+              label={t("contextFolders.folderPermissionDeny")}
+            />
+          ) : null}
+        </Box>
         <Typography
           variant="caption"
           color="text.secondary"
