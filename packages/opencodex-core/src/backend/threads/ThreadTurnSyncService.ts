@@ -286,21 +286,27 @@ export class ThreadTurnSyncService {
    *
    * @param threadId Thread identifier.
    * @param sourceIdOverride Explicit source known by the caller, or `null`.
+   * @param model Model fallback for a thread without a cached snapshot.
+   * @param reasoningEffort Reasoning fallback for a thread without a cached snapshot.
    * @returns Promise resolved when synchronization completes.
    */
   async syncCached(
     threadId: string,
-    sourceIdOverride: string | null = null
+    sourceIdOverride: string | null = null,
+    model: OpenCodexThread["model"] = null,
+    reasoningEffort: OpenCodexThread["reasoningEffort"] = null
   ): Promise<void> {
     return this.runSerialized(threadId, () => (
-      this.syncCachedNow(threadId, sourceIdOverride)
+      this.syncCachedNow(threadId, sourceIdOverride, model, reasoningEffort)
     ));
   }
 
   /** Synchronizes a cached thread inside the per-thread synchronization chain. */
   private async syncCachedNow(
     threadId: string,
-    sourceIdOverride: string | null
+    sourceIdOverride: string | null,
+    model: OpenCodexThread["model"] = null,
+    reasoningEffort: OpenCodexThread["reasoningEffort"] = null
   ): Promise<void> {
     const syncStartedAt = Date.now();
 
@@ -313,7 +319,9 @@ export class ThreadTurnSyncService {
 
     if (cachedSnapshot === null) {
       const client = await this.options.clients.ensureClient(sourceId);
-      const thread = await this.readMetadata(client, threadId, sourceId);
+      const thread = await this.readMetadata(
+        client, threadId, sourceId, model, reasoningEffort
+      );
       const cacheEntry = this.options.threadTurnCache.getOrCreate(thread);
 
       await this.options.threadCacheService.writeIndex([cacheEntry.thread]);

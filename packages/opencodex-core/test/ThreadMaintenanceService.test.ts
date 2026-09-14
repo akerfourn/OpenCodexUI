@@ -5,6 +5,7 @@ import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createOpenCodexSqliteCacheRepository, type OpenCodexCacheRepository } from
   "@open-codex-ui/opencodex-cache";
+import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 import { WorkspaceExecutionService } from "../src/backend/workspaces/WorkspaceExecutionService";
 import { ThreadMaintenanceService } from "../src/backend/threads/ThreadMaintenanceService";
 import { ThreadTurnCache } from "../src/ThreadTurnCache";
@@ -17,9 +18,12 @@ describe("guarded thread maintenance", () => {
   let workspaceId: string;
   let execution: WorkspaceExecutionService;
   let maintenance: ThreadMaintenanceService;
+  let threadTurnCache: ThreadTurnCache;
   const client = { readThread: vi.fn(), getMetadata: vi.fn(), resumeThread: vi.fn(),
-    startReview: vi.fn(), compactThread: vi.fn(), rollbackThread: vi.fn() };
+    startReview: vi.fn(), compactThread: vi.fn(), rollbackThread: vi.fn(),
+    forkThread: vi.fn(), revertThread: vi.fn() };
   const clients = { ensureClient: vi.fn() };
+  const threadTurnSyncService = { syncCached: vi.fn() };
 
   beforeEach(async () => {
     vi.resetAllMocks();
@@ -42,13 +46,19 @@ describe("guarded thread maintenance", () => {
     client.startReview.mockResolvedValue({ reviewThreadId: "thread", turn: { id: "review-turn" } });
     client.compactThread.mockResolvedValue({});
     client.rollbackThread.mockResolvedValue({ thread: { id: "thread", cwd: "/source/repo", turns: [] } });
+    client.revertThread.mockResolvedValue({ thread: { id: "thread" } });
+    threadTurnCache = new ThreadTurnCache();
     clients.ensureClient.mockResolvedValue(client as unknown as CodexAppServerClient);
+    threadTurnSyncService.syncCached.mockImplementation(async (threadId: string) => {
+      threadTurnCache.replaceThreadTurns(createThread(threadId), []);
+    });
     execution = new WorkspaceExecutionService(cache.workspaces, clients);
     maintenance = new ThreadMaintenanceService({
       workspaceExecution: execution, clients, backendOptions: { projectPath: "/wrong-default" },
-      threadTurnCache: new ThreadTurnCache(),
+      threadTurnCache,
       threadCacheService: { readTurns: vi.fn(() => []), writeSnapshot: vi.fn() },
-      collaborationService: { reconcileTurns: vi.fn() }, events: { emit: vi.fn() }
+      collaborationService: { reconcileTurns: vi.fn() }, events: { emit: vi.fn() },
+      threadTurnSyncService
     } as unknown as ThreadTurnActionsServiceOptions);
   });
 
@@ -83,6 +93,30 @@ describe("guarded thread maintenance", () => {
     expect(client.rollbackThread).toHaveBeenCalledWith({ threadId: "thread", numTurns: 1 });
     expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
     expect(await cache.workspaces.listTurnContexts("thread")).toEqual([]);
+  });
+
+  it("should revert paginated history in place instead of calling rollback or fork", async () => {
+    threadTurnCache.replaceThreadTurns(createThread("thread"), [
+      createTurn("turn-old"),
+      createTurn("turn-last")
+    ]);
+    client.readThread.mockResolvedValue({ thread: {
+      id: "thread", historyMode: "paginated", status: { type: "idle" }
+    } });
+    await expect(maintenance.editLastTurn(
+      "thread", null, null, "gpt-5.6", "high"
+    )).resolves.toEqual({ threadId: "thread" });
+
+    expect(client.rollbackThread).not.toHaveBeenCalled();
+    expect(client.forkThread).not.toHaveBeenCalled();
+    expect(client.revertThread).toHaveBeenCalledWith({
+      threadId: "thread",
+      beforeTurnId: "turn-last"
+    });
+    expect(threadTurnSyncService.syncCached).toHaveBeenCalledWith(
+      "thread", "source", "gpt-5.6", "high"
+    );
+    expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
   });
 
   it.each(["review", "compact", "rollback"] as const)("should block %s before RPC when a transition is pending", async (operation) => {
@@ -130,3 +164,34 @@ describe("guarded thread maintenance", () => {
     expect(await cache.workspaces.listTurnContexts("thread")).toEqual([]);
   });
 });
+
+/** Creates the smallest thread metadata required by the in-memory turn cache. */
+function createThread(id: string): OpenCodexThread {
+  return {
+    id,
+    sessionId: null,
+    parentThreadId: null,
+    codexTitle: "Thread",
+    customTitle: null,
+    title: "Thread",
+    preview: "",
+    model: null,
+    reasoningEffort: null,
+    projectName: "repo",
+    projectPath: "/source/repo",
+    sourceId: "source",
+    branchName: "main",
+    updatedAt: null,
+    isArchived: false,
+    threadSource: "appServer",
+    agentNickname: null,
+    agentRole: null,
+    subAgentSource: null,
+    canAcceptDirectInput: true
+  };
+}
+
+/** Creates one completed raw turn with a stable ordering key. */
+function createTurn(id: string): Record<string, unknown> {
+  return { id, status: "completed", startedAt: id === "turn-old" ? 1 : 2, items: [] };
+}

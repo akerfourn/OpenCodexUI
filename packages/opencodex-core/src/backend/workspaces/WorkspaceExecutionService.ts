@@ -135,7 +135,9 @@ export class WorkspaceExecutionService {
       const workspace = await this.resolve(input);
       this.workspaceUsers.set(workspace.id, (this.workspaceUsers.get(workspace.id) ?? 0) + 1);
       try {
-        const reservation = await this.repository.reserve(workspace.id, input.threadId, operation);
+        const reservation = await this.reserveAfterRollbackRecovery(
+          workspace, input.threadId, operation
+        );
         try {
           const client = await this.clients.ensureClient(reservation.sourceId);
           const metadata = await client.getMetadata(reservation.cwd);
@@ -159,6 +161,33 @@ export class WorkspaceExecutionService {
         }
       }
     });
+  }
+
+  /** Clears only an idle, stale rollback guard before retrying a new operation. */
+  private async reserveAfterRollbackRecovery(
+    workspace: OpenCodexProjectWorkspace,
+    threadId: string | null,
+    operation: WorkspaceExecutionReservation["operation"]
+  ): Promise<WorkspaceExecutionReservation> {
+    try {
+      return await this.repository.reserve(workspace.id, threadId, operation);
+    } catch (error) {
+      if (threadId === null || !isUnresolvedExecutionError(error)) {
+        throw error;
+      }
+
+      const pending = await this.repository.getReservationForThread(threadId);
+      if (pending === null || pending.operation !== "rollback"
+        || pending.workspaceId !== workspace.id || pending.sourceId !== workspace.sourceId) {
+        throw error;
+      }
+
+      // A previous rollback was rejected by Codex or lost its response. Only a
+      // positive idle status permits releasing that specific stale guard.
+      await this.requireIdle(pending.sourceId, threadId);
+      await this.repository.release(pending.id);
+      return await this.repository.reserve(workspace.id, threadId, operation);
+    }
   }
 
   /** Serializes maintenance with selections and keeps ambiguous/async work durably reserved. */
@@ -376,6 +405,12 @@ export class WorkspaceExecutionService {
       this.busyThreads.delete(threadId);
     }
   }
+}
+
+/** Identifies the durable guard emitted when a thread already has a reservation. */
+function isUnresolvedExecutionError(error: unknown): boolean {
+  return error instanceof Error
+    && error.message === "Thread has an unresolved workspace execution; reconcile before retrying.";
 }
 
 /** Normalizes absolute source paths without resolving relative paths on the host. */

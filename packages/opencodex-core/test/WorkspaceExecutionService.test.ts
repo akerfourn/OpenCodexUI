@@ -229,6 +229,24 @@ describe("workspace execution", () => {
     expect(clients.ensureClient).toHaveBeenCalledWith("source-a");
   });
 
+  it("should clear a stale rollback guard after Codex confirms the thread is idle", async () => {
+    const stale = await cache.workspaces.reserve(workspaceId, "thread-a", "rollback");
+    await cache.workspaces.submitting(stale.id);
+    await cache.workspaces.fail(stale.id);
+
+    await service.run({ threadId: "thread-a", projectPath: null, sourceId: null }, async (reservation) => {
+      await service.submitting(reservation);
+      await service.acknowledge(reservation, "turn-recovered");
+    });
+    await service.observe({
+      method: "turn/completed",
+      params: { threadId: "thread-a", turn: { id: "turn-recovered" } }
+    }, "source-a");
+
+    expect(client.readThread).toHaveBeenCalled();
+    expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
+  });
+
   it.each([
     { sourceId: "source-b", projectPath: null, message: "does not own" },
     { sourceId: null, projectPath: "/other", message: "does not match" },

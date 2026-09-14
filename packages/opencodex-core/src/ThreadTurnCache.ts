@@ -455,6 +455,29 @@ export class ThreadTurnCache {
   }
 
   /**
+   * Clears the in-memory history after Codex replaces a thread's durable history.
+   *
+   * @param thread Updated thread metadata.
+   * @returns Reset cache entry ready for a fresh latest-page synchronization.
+   */
+  resetThreadHistory(thread: OpenCodexThread): ThreadTurnCacheEntry {
+    const entry = this.getOrCreate(thread);
+    entry.revision += 1;
+    entry.turnsById.clear();
+    entry.turnItemsById.clear();
+    entry.liveTextBuffers.clear();
+    entry.orderedTurnIds = [];
+    entry.newestTurnId = null;
+    entry.oldestTurnId = null;
+    entry.olderCursor = null;
+    entry.hasLoadedLatest = false;
+    entry.hasLoadedAllOlderTurns = false;
+    entry.lastSyncedAt = null;
+    entry.tokenUsage = null;
+    return entry;
+  }
+
+  /**
    * Converts turns to the target representation.
    *
    * @param entry Entry.

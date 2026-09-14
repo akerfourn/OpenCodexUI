@@ -223,11 +223,11 @@ describe("ChatActionsStore actions characterization", () => {
     expect(rootStore.appStore.errorMessage).toBeNull();
   });
 
-  it("should restart an edited turn using the thread id returned by Codex", async () => {
+  it("should restart an edited message in the same chat", async () => {
     const rootStore = createRootStore();
     vi.mocked(rootStore.request)
-      .mockResolvedValueOnce({ threadId: "thread-recreated" })
-      .mockResolvedValueOnce({ threadId: "thread-recreated", turnId: "turn-edited" });
+      .mockResolvedValueOnce({ threadId: "thread-1" })
+      .mockResolvedValueOnce({ threadId: "thread-1", turnId: "turn-edited" });
     const chatStore = createEditableChatStore(rootStore);
 
     expect(chatStore.actions.editLast("after", [], "gpt-5.5", "high")).toBe(true);
@@ -241,26 +241,28 @@ describe("ChatActionsStore actions characterization", () => {
     }));
     expect(rootStore.request).toHaveBeenNthCalledWith(2, expect.objectContaining({
       type: "turn.start",
-      threadId: "thread-recreated",
+      threadId: "thread-1",
       sourceId: "source-1",
       text: "after"
     }));
     expect(chatStore.timeline.turns.at(-1)?.items[0]?.content).toBe("after");
     expect(chatStore.runtime.activeTurnId).toBe("turn-edited");
     expect(chatStore.runtime.isWorking).toBe(true);
+    expect(chatStore.runtime.isStartingTurn).toBe(false);
+    expect(chatStore.runtime.isEditingLastTurn).toBe(false);
   });
 
-  it("should keep the edited optimistic turn when its restarted start fails", async () => {
+  it("should remove the optimistic replacement when the same-chat restart fails", async () => {
     const rootStore = createRootStore();
     vi.mocked(rootStore.request)
-      .mockResolvedValueOnce({ threadId: "thread-recreated" })
+      .mockResolvedValueOnce({ threadId: "thread-1" })
       .mockRejectedValueOnce(new Error("Restart failed"));
     const chatStore = createEditableChatStore(rootStore);
 
     expect(chatStore.actions.editLast("after")).toBe(true);
     await flushPromises();
 
-    expect(chatStore.timeline.turns.at(-1)?.items[0]?.content).toBe("after");
+    expect(chatStore.timeline.turns).toHaveLength(0);
     expect(chatStore.runtime.isEditingLastTurn).toBe(false);
     expect(chatStore.runtime.isStartingTurn).toBe(false);
     expect(rootStore.appStore.errorMessage).toBe("Restart failed");

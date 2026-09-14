@@ -32,6 +32,35 @@ describe("ThreadTurnCache", () => {
     expect(cache.toTurns(child)[0]).not.toHaveProperty("openCodexUiWorkspace");
   });
 
+  it("should clear stale pagination state before a durable history replacement", () => {
+    const cache = new ThreadTurnCache();
+    const thread = {
+      id: "thread-1",
+      codexTitle: "Thread",
+      customTitle: null,
+      title: "Thread",
+      preview: "",
+      model: null,
+      reasoningEffort: null,
+      projectName: null,
+      projectPath: null,
+      branchName: null,
+      updatedAt: null
+    };
+    const entry = cache.getOrCreate(thread);
+
+    cache.mergeLatestTurns(entry, [{ id: "turn-latest" }], "older");
+    cache.mergeOlderTurns(entry, [{ id: "turn-old" }], null);
+    cache.resetThreadHistory(thread);
+
+    expect(entry.orderedTurnIds).toEqual([]);
+    expect(entry.newestTurnId).toBeNull();
+    expect(entry.oldestTurnId).toBeNull();
+    expect(entry.olderCursor).toBeNull();
+    expect(entry.hasLoadedLatest).toBe(false);
+    expect(entry.hasLoadedAllOlderTurns).toBe(false);
+  });
+
   it("should preserve structured sub-agent ancestry across partial metadata refreshes", () => {
     const cache = new ThreadTurnCache();
     const entry = cache.getOrCreate({

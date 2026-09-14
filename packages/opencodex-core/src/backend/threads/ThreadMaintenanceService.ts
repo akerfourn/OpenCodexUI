@@ -17,6 +17,15 @@ export class ThreadMaintenanceService {
   ): Promise<{ threadId: string }> {
     return await this.run(threadId, projectPath, sourceId, "rollback", async (source, cwd) => {
       const client = await this.options.clients.ensureClient(source);
+      const metadata = await client.readThread(threadId, false);
+      const historyMode = readString(readObject(readObject(metadata).thread).historyMode);
+
+      if (historyMode === "paginated") {
+        return await this.revertPaginatedThread(
+          client, threadId, source, model, reasoningEffort
+        );
+      }
+
       if (this.options.workspaceExecution !== undefined
         || shouldResumeThreadBeforeTurn(this.options.threadTurnCache, threadId)) {
         await this.resume(client, threadId, cwd, model);
@@ -41,6 +50,51 @@ export class ThreadMaintenanceService {
       await this.options.threadCacheService.writeSnapshot(entry);
       return { value: { threadId: responseId } };
     });
+  }
+
+  /** Reverts paginated history in place before the replacement turn starts. */
+  private async revertPaginatedThread(
+    client: CodexAppServerClient,
+    threadId: string,
+    sourceId: string,
+    model: string | null,
+    reasoningEffort: OpenCodexReasoningEffort | null
+  ): Promise<{ value: { threadId: string } }> {
+    const entry = this.options.threadTurnCache.get(threadId);
+
+    if (entry === null || entry.newestTurnId === null) {
+      throw new Error("Cannot edit a paginated thread before its latest turn is synchronized.");
+    }
+
+    const beforeTurnId = entry.newestTurnId;
+
+    const response = await client.revertThread({
+      threadId,
+      beforeTurnId
+    });
+    const rawThread = readObject(readObject(response).thread);
+    const responseId = readString(rawThread.id) || threadId;
+
+    if (responseId !== threadId) {
+      throw new Error("Revert response belongs to another thread; reconcile before retrying.");
+    }
+
+    this.options.threadTurnCache.resetThreadHistory(entry.thread);
+    await this.options.threadTurnSyncService.syncCached(
+      threadId,
+      sourceId,
+      model ?? entry.thread.model,
+      reasoningEffort ?? entry.thread.reasoningEffort
+    );
+    const revertedEntry = this.options.threadTurnCache.get(threadId);
+
+    if (revertedEntry === null) {
+      throw new Error("Reverted thread was not synchronized; reconcile before retrying.");
+    }
+
+    await this.options.threadCacheService.writeSnapshot(revertedEntry);
+
+    return { value: { threadId } };
   }
 
   /** Keeps an inline review reserved until its matching completion, including early notifications. */

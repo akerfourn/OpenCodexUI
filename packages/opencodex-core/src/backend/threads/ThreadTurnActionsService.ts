@@ -17,6 +17,7 @@ import type { CollaborationService } from "../collaboration/CollaborationService
 import type { ThreadCacheService } from "./ThreadCacheService.js";
 import type { ThreadCreationService } from "./ThreadCreationService.js";
 import type { ThreadSourceResolver } from "./ThreadSourceResolver.js";
+import type { ThreadTurnSyncService } from "./ThreadTurnSyncService.js";
 import { buildTurnInput, createId } from "./turnInput.js";
 import type {
   ClientPort,
@@ -34,7 +35,7 @@ export type ThreadTurnActionsServiceOptions = {
   /** In-memory thread and turn state used by turn actions. */
   threadTurnCache: Pick<
     ThreadTurnCache,
-    "get" | "getOrCreate" | "recordLiveItem" | "replaceThreadTurns"
+    "get" | "getOrCreate" | "recordLiveItem" | "replaceThreadTurns" | "resetThreadHistory"
   >;
   /** Cache persistence operations needed by turn actions. */
   threadCacheService: Pick<
@@ -45,6 +46,8 @@ export type ThreadTurnActionsServiceOptions = {
     | "writeSnapshot"
     | "writeTurnExecutionMetadata"
   >;
+  /** Synchronizes a thread after Codex changes its durable history. */
+  threadTurnSyncService: Pick<ThreadTurnSyncService, "syncCached">;
   /** Reads the current settings snapshot. */
   settings: Pick<RuntimeSettingsPort, "getSettings">;
   /** Emits backend events. */
@@ -63,7 +66,7 @@ export type ThreadTurnActionsServiceOptions = {
   threadCreationService: Pick<ThreadCreationService, "create">;
   /** Resolves the source that owns an existing thread. */
   sourceResolver: Pick<ThreadSourceResolver, "resolveThreadSourceId">;
-  /** Reconciles collaboration data after rollback. */
+  /** Reconciles collaboration data after a history mutation. */
   collaborationService: Pick<CollaborationService, "reconcileTurns">;
 };
 

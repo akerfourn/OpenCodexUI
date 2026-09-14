@@ -346,6 +346,30 @@ describe("CodexAppServerClient", () => {
     });
   });
 
+  it("should expose the paginated thread revert endpoint", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+
+    respondToRequests(fakeProcess, (request) => {
+      fakeProcess.stdout.write(`${JSON.stringify({
+        id: request.id,
+        result: request.method === "initialize"
+          ? {}
+          : { thread: { id: "thread-1" }, turnsBackwardsCursor: null, itemsBackwardsCursor: null }
+      })}\n`);
+    });
+
+    await client.start();
+    await expect(client.revertThread({
+      threadId: "thread-1",
+      beforeTurnId: "turn-last"
+    })).resolves.toEqual({
+      thread: { id: "thread-1" },
+      turnsBackwardsCursor: null,
+      itemsBackwardsCursor: null
+    });
+  });
+
   it("should expose the native goal endpoints with their generated payloads", async () => {
     const fakeProcess = new FakeProcess();
     const client = createClient(fakeProcess);

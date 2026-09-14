@@ -157,7 +157,8 @@ export class ThreadConversationService {
       projects: options.projects,
       threadCreationService,
       sourceResolver: this.threadSourceResolver,
-      collaborationService: options.collaborationService
+      collaborationService: options.collaborationService,
+      threadTurnSyncService: this.threadTurnSyncService
     });
   }
 

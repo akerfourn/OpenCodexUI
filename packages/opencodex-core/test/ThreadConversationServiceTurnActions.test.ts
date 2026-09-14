@@ -269,6 +269,7 @@ describe("ThreadConversationService turn actions", () => {
     expect(fixture.calls).toEqual([
       "readSnapshot",
       "ensureClient",
+      "readThread",
       "resumeThread",
       "rollbackThread",
       "reconcile",
@@ -544,6 +545,12 @@ class StrictTurnActionsCodexClient {
     this.resumeThreadParams = { threadId, params };
     this.resumeThreadParamsList.push({ threadId, params });
     return {};
+  }
+
+  /** Returns legacy history metadata for the rollback characterization. */
+  async readThread(): Promise<unknown> {
+    this.calls.push("readThread");
+    return { thread: { id: "thread-1", historyMode: "legacy", status: { type: "idle" } } };
   }
 
   /** Records a turn-start request and returns a stable turn identifier. */

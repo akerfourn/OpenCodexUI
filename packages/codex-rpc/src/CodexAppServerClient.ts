@@ -17,6 +17,10 @@ import type { ThreadDeleteResponse } from "./generated/v2/ThreadDeleteResponse";
 import type { ThreadReadResponse } from "./generated/v2/ThreadReadResponse";
 import type { ThreadResumeParams } from "./generated/v2/ThreadResumeParams";
 import type { ThreadResumeResponse } from "./generated/v2/ThreadResumeResponse";
+import type { ThreadForkParams } from "./generated/v2/ThreadForkParams";
+import type { ThreadForkResponse } from "./generated/v2/ThreadForkResponse";
+import type { ThreadRevertParams } from "./generated/v2/ThreadRevertParams";
+import type { ThreadRevertResponse } from "./generated/v2/ThreadRevertResponse";
 import type { ThreadRollbackParams } from "./generated/v2/ThreadRollbackParams";
 import type { ThreadRollbackResponse } from "./generated/v2/ThreadRollbackResponse";
 import type { ThreadCompactStartResponse } from "./generated/v2/ThreadCompactStartResponse";
@@ -229,6 +233,16 @@ export class CodexAppServerClient {
       threadId,
       ...params
     });
+  }
+
+  /** Forks an existing thread at a stable turn boundary. */
+  async forkThread(params: ThreadForkParams): Promise<ThreadForkResponse> {
+    return this.request<ThreadForkResponse>("thread/fork", params);
+  }
+
+  /** Replaces a paginated thread's durable history before a turn boundary. */
+  async revertThread(params: ThreadRevertParams): Promise<ThreadRevertResponse> {
+    return this.request<ThreadRevertResponse>("thread/revert", params);
   }
 
   /** Removes this client's subscription; other subscribers may keep the thread loaded. */

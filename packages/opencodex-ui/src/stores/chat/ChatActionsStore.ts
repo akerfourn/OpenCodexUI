@@ -289,12 +289,10 @@ export class ChatActionsStore {
       model,
       reasoningEffort,
       serviceTier
-    }).then((result) => {
-      const targetThreadId = result.threadId ?? this.parent.thread.id;
-
+    }).then(() => {
       void this.root.request<{ turnId?: string }>({
         type: "turn.start",
-        threadId: targetThreadId,
+        threadId: this.parent.thread.id,
         projectPath: this.parent.thread.projectPath ?? this.projectStore.projectPath,
         sourceId,
         text: trimmedText,
@@ -311,8 +309,10 @@ export class ChatActionsStore {
         });
       }).catch((error: unknown) => {
         runInAction(() => {
+          const pendingTurnId = this.parent.runtime.pendingTurnId;
           this.parent.runtime.clearEditStart();
           this.parent.discardPendingLiveEvents();
+          this.parent.timeline.removePendingTurn(pendingTurnId);
           this.root.appStore.errorMessage = readChatErrorMessage(error);
         });
       });
