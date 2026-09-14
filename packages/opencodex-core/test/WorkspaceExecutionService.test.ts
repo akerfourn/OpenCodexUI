@@ -229,6 +229,28 @@ describe("workspace execution", () => {
     expect(clients.ensureClient).toHaveBeenCalledWith("source-a");
   });
 
+  it("should resume a thread missing from the app-server session before checking idle state", async () => {
+    client.readThread
+      .mockRejectedValueOnce(new Error("thread not found: thread-a"))
+      .mockResolvedValueOnce({ thread: { id: "thread-a", status: { type: "idle" } } });
+
+    await service.run({ threadId: "thread-a", projectPath: null, sourceId: null }, async (reservation) => {
+      await service.submitting(reservation);
+      await service.acknowledge(reservation, "turn-a");
+    });
+    await service.observe({
+      method: "turn/completed",
+      params: { threadId: "thread-a", turn: { id: "turn-a" } }
+    }, "source-a");
+
+    expect(client.resumeThread).toHaveBeenCalledWith("thread-a", {
+      cwd: "/source/repo",
+      excludeTurns: true
+    });
+    expect(client.readThread).toHaveBeenCalledTimes(2);
+    expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
+  });
+
   it("should clear a stale rollback guard after Codex confirms the thread is idle", async () => {
     const stale = await cache.workspaces.reserve(workspaceId, "thread-a", "rollback");
     await cache.workspaces.submitting(stale.id);

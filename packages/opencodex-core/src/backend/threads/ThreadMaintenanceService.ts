@@ -17,6 +17,10 @@ export class ThreadMaintenanceService {
   ): Promise<{ threadId: string }> {
     return await this.run(threadId, projectPath, sourceId, "rollback", async (source, cwd) => {
       const client = await this.options.clients.ensureClient(source);
+      if (this.options.workspaceExecution !== undefined
+        || shouldResumeThreadBeforeTurn(this.options.threadTurnCache, threadId)) {
+        await this.resume(client, threadId, cwd, model);
+      }
       const metadata = await client.readThread(threadId, false);
       const historyMode = readString(readObject(readObject(metadata).thread).historyMode);
 
@@ -26,10 +30,6 @@ export class ThreadMaintenanceService {
         );
       }
 
-      if (this.options.workspaceExecution !== undefined
-        || shouldResumeThreadBeforeTurn(this.options.threadTurnCache, threadId)) {
-        await this.resume(client, threadId, cwd, model);
-      }
       const response = await client.rollbackThread({ threadId, numTurns: 1 });
       const rawThread = readObject(readObject(response).thread);
       const responseId = readString(rawThread.id) || threadId;

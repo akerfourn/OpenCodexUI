@@ -145,7 +145,7 @@ export class WorkspaceExecutionService {
             throw new Error("Workspace path is not an available directory.");
           }
           if (input.threadId !== null) {
-            await this.requireIdle(reservation.sourceId, input.threadId);
+            await this.requireIdle(reservation.sourceId, input.threadId, reservation.cwd);
           }
           return await action(reservation);
         } catch (error) {
@@ -184,7 +184,7 @@ export class WorkspaceExecutionService {
 
       // A previous rollback was rejected by Codex or lost its response. Only a
       // positive idle status permits releasing that specific stale guard.
-      await this.requireIdle(pending.sourceId, threadId);
+      await this.requireIdle(pending.sourceId, threadId, pending.cwd);
       await this.repository.release(pending.id);
       return await this.repository.reserve(workspace.id, threadId, operation);
     }
@@ -276,7 +276,7 @@ export class WorkspaceExecutionService {
       if (current?.sourceId === null || current === null) {
         throw new Error("Thread has no source-owned workspace.");
       }
-      await this.requireIdle(current.sourceId, threadId);
+      await this.requireIdle(current.sourceId, threadId, current.path);
       await this.selection.select(threadId, workspaceId);
       await this.publishSelection(threadId);
     });
@@ -298,7 +298,7 @@ export class WorkspaceExecutionService {
         throw new Error("Thread has no source-owned workspace.");
       }
       const reservations = await this.repository.listReservations(workspace.id);
-      await this.requireIdle(workspace.sourceId, threadId);
+      await this.requireIdle(workspace.sourceId, threadId, workspace.path);
       for (const reservation of reservations) {
         if (reservation.threadId === threadId && reservation.sourceId === workspace.sourceId) {
           await this.repository.release(reservation.id);
@@ -380,10 +380,22 @@ export class WorkspaceExecutionService {
     return workspace;
   }
 
-  /** Checks live status; unavailable or unknown sources never imply inactivity. */
-  private async requireIdle(sourceId: string, threadId: string): Promise<void> {
+  /** Checks live status and reloads a thread missing from the app-server session. */
+  private async requireIdle(sourceId: string, threadId: string, cwd: string): Promise<void> {
     const client = await this.clients.ensureClient(sourceId);
-    const response = await client.readThread(threadId, false);
+    let response;
+
+    try {
+      response = await client.readThread(threadId, false);
+    } catch (error) {
+      if (!isThreadNotFoundError(error)) {
+        throw error;
+      }
+
+      await client.resumeThread(threadId, { cwd, excludeTurns: true });
+      response = await client.readThread(threadId, false);
+    }
+
     const status = readThreadRuntimeStatus(readObject(response.thread).status);
     if (status !== "idle" && status !== "notLoaded") {
       throw new Error("Thread is active or its execution status is unknown.");
@@ -411,6 +423,11 @@ export class WorkspaceExecutionService {
 function isUnresolvedExecutionError(error: unknown): boolean {
   return error instanceof Error
     && error.message === "Thread has an unresolved workspace execution; reconcile before retrying.";
+}
+
+/** Identifies a missing app-server session that can be restored with thread/resume. */
+function isThreadNotFoundError(error: unknown): boolean {
+  return error instanceof Error && /\bthread not found\b/iu.test(error.message);
 }
 
 /** Normalizes absolute source paths without resolving relative paths on the host. */

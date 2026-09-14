@@ -119,6 +119,42 @@ describe("guarded thread maintenance", () => {
     expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
   });
 
+  it("should resume an unloaded thread before reading edit metadata", async () => {
+    let isResumed = false;
+    client.resumeThread.mockImplementation(async () => {
+      isResumed = true;
+      return { cwd: "/source/repo", thread: {
+        id: "thread", canAcceptDirectInput: true, status: { type: "idle" }
+      } };
+    });
+    client.readThread.mockImplementation(async () => {
+      if (!isResumed) {
+        throw new Error("thread not found: thread");
+      }
+
+      return { thread: {
+        id: "thread", historyMode: "paginated", status: { type: "idle" }
+      } };
+    });
+    threadTurnCache.replaceThreadTurns(createThread("thread"), [
+      createTurn("turn-old"),
+      createTurn("turn-last")
+    ]);
+
+    await expect(maintenance.editLastTurn(
+      "thread", null, null, "gpt-5.6", "high"
+    )).resolves.toEqual({ threadId: "thread" });
+
+    expect(client.resumeThread).toHaveBeenCalledWith("thread", expect.objectContaining({
+      cwd: "/source/repo"
+    }));
+    expect(client.readThread).toHaveBeenCalledWith("thread", false);
+    expect(client.revertThread).toHaveBeenCalledWith({
+      threadId: "thread",
+      beforeTurnId: "turn-last"
+    });
+  });
+
   it.each(["review", "compact", "rollback"] as const)("should block %s before RPC when a transition is pending", async (operation) => {
     await cache.workspaces.transitions.begin("thread", workspaceId);
     const actions = {
