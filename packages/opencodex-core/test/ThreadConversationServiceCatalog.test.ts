@@ -91,6 +91,45 @@ describe("ThreadConversationService catalog", () => {
     ]);
   });
 
+  it("should deduplicate a thread returned for the project and a workspace path", async () => {
+    const client = new CatalogCodexClient({
+      listResponses: [
+        {
+          data: [{
+            id: "thread-overlap",
+            cwd: "/workspace/project",
+            name: "Thread"
+          }]
+        },
+        {
+          data: [{
+            id: "thread-overlap",
+            cwd: "/workspace/project-worktree",
+            name: "Thread"
+          }]
+        }
+      ]
+    });
+    const fixture = createFixture({
+      client,
+      resolvedSourceId: "source-canonical",
+      workspacePaths: ["/workspace/project-worktree"]
+    });
+
+    const threads = await fixture.service.listThreads(
+      "currentProject",
+      "/workspace/project",
+      "source-canonical"
+    );
+
+    expect(threads.map((thread) => thread.id)).toEqual(["thread-overlap"]);
+    expect(fixture.indexedThreads.map((thread) => thread.id)).toEqual(["thread-overlap"]);
+    expect(client.listThreadParams).toEqual([
+      expect.objectContaining({ cwd: "/workspace/project" }),
+      expect.objectContaining({ cwd: "/workspace/project-worktree" })
+    ]);
+  });
+
   it("returns orphan cache data without resolving a source or starting Codex", async () => {
     const cachedThread = createThread({ sourceId: null });
     const fixture = createFixture({ cachedThreads: [cachedThread] });

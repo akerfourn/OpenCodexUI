@@ -2,12 +2,15 @@ import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type { CachedThreadSnapshot } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexEvent,
+  OpenCodexProject,
   OpenCodexSettings,
-  OpenCodexThread
+  OpenCodexThread,
+  OpenCodexProjectWorkspace
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ThreadTurnCache } from "../../src/ThreadTurnCache";
 import { ThreadConversationService } from "../../src/backend/threads/ThreadConversationService";
+import type { WorkspaceExecutionService } from "../../src/backend/workspaces/WorkspaceExecutionService";
 import type { ThreadCacheService } from "../../src/backend/threads/ThreadCacheService";
 
 export type FixtureOptions = {
@@ -16,6 +19,7 @@ export type FixtureOptions = {
   resolvedSourceId?: string;
   snapshot?: CachedThreadSnapshot | null;
   seedThread?: OpenCodexThread;
+  workspacePaths?: string[];
 };
 
 export type Fixture = {
@@ -60,12 +64,34 @@ export function createFixture(options: FixtureOptions = {}): Fixture {
   const client = options.client ?? new CatalogCodexClient();
   client.calls = calls;
   const readThreads = options.cachedThreads ?? [];
+  const resolvedSourceId = options.resolvedSourceId ?? "source-1";
+  const cachedProjects: OpenCodexProject[] = options.workspacePaths === undefined
+    ? []
+    : [{
+        id: "project-1",
+        path: "/workspace/project",
+        sourceId: resolvedSourceId
+      } as OpenCodexProject];
+  const workspaceExecution = options.workspacePaths === undefined
+    ? undefined
+    : {
+        list: async (): Promise<OpenCodexProjectWorkspace[]> => options.workspacePaths?.map((path, index) => ({
+          id: `workspace-${index}`,
+          projectId: "project-1",
+          sourceId: resolvedSourceId,
+          path,
+          isPrimary: false,
+          managed: false,
+          removedAt: null
+        })) ?? []
+      } as unknown as WorkspaceExecutionService;
 
   if (options.seedThread !== undefined) {
     threadTurnCache.getOrCreate(options.seedThread);
   }
 
   const service = new ThreadConversationService({
+    workspaceExecution,
     backendOptions: { projectPath: "/workspace/backend" },
     threadTurnCache,
     threadCacheService: {
@@ -127,7 +153,7 @@ export function createFixture(options: FixtureOptions = {}): Fixture {
     projects: {
       resolveSource: async () => {
         calls.push("resolveSource");
-        return { id: options.resolvedSourceId ?? "source-1" } as never;
+        return { id: resolvedSourceId } as never;
       },
       cacheProject: async (projectPath: string | null, sourceId: string | null) => {
         calls.push("cacheProject");
@@ -136,7 +162,7 @@ export function createFixture(options: FixtureOptions = {}): Fixture {
       },
       readCachedProjects: async () => {
         calls.push("readCachedProjects");
-        return [];
+        return cachedProjects;
       }
     },
     collaborationService: {

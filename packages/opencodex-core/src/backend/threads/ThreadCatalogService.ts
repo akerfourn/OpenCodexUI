@@ -12,7 +12,7 @@ import {
   THREAD_MAIN_SOURCE_KINDS,
   type ThreadListParams
 } from "../shared/constants.js";
-import { readThreadPages } from "../shared/codexReaders.js";
+import { deduplicateThreadsById, readThreadPages } from "../shared/codexReaders.js";
 import type { ThreadCacheService } from "./ThreadCacheService.js";
 import { mergeFreshThreadList } from "./threadCacheMapping.js";
 import { filterMainThreads } from "./threadHierarchy.js";
@@ -123,23 +123,30 @@ export class ThreadCatalogService {
       params.cwd = currentProjectPath;
     }
 
-    const paths = [params.cwd];
+    const initialCwd = typeof params.cwd === "string" ? params.cwd : undefined;
+    const paths = new Set<string | undefined>([initialCwd]);
     if (currentProjectPath !== null && this.options.workspaceExecution !== undefined) {
       const projects = await this.options.projects.readCachedProjects();
       const project = projects.find((item) => item.path === currentProjectPath && item.sourceId === resolvedSource.id);
       if (project !== undefined) {
         const workspaces = await this.options.workspaceExecution.list(project.id);
-        paths.push(...workspaces.filter((item) => !item.isPrimary && item.removedAt === null).map((item) => item.path));
+        for (const workspace of workspaces) {
+          if (!workspace.isPrimary && workspace.removedAt === null) {
+            paths.add(workspace.path);
+          }
+        }
       }
     }
     const pages = [];
     for (const cwd of paths) pages.push(...await readThreadPages(client, { ...params, cwd }));
-    const threads = filterMainThreads(
-      pages.map((thread) => ({
-        ...thread,
-        isArchived,
-        sourceId: resolvedSource.id
-      }))
+    const threads = deduplicateThreadsById(
+      filterMainThreads(
+        pages.map((thread) => ({
+          ...thread,
+          isArchived,
+          sourceId: resolvedSource.id
+        }))
+      )
     );
     await this.options.threadCacheService.writeIndex(threads);
 

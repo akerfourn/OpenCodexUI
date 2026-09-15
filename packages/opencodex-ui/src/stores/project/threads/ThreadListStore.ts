@@ -8,6 +8,7 @@ import type {
 import type { ProjectStore } from "../ProjectStore";
 import type { RootStore } from "../../RootStore";
 import { SubAgentThreadStore } from "../../collaboration/SubAgentThreadStore";
+import { deduplicateThreadsById } from "./threadListNormalization";
 
 /**
  * Stores the thread list state for a single opened project.
@@ -207,7 +208,9 @@ export class ThreadListStore {
    * @returns Nothing.
    */
   setThreads(threads: OpenCodexThread[]): void {
-    this.threads = threads.map((thread) => this.mergeThreadMetadata(thread));
+    this.threads = deduplicateThreadsById(
+      threads.map((thread) => this.mergeThreadMetadata(thread))
+    );
 
     for (const thread of this.threads) {
       const chat = this.projectStore.chatsById.get(thread.id);
@@ -230,11 +233,13 @@ export class ThreadListStore {
     const existingThread = this.findThread(thread.id);
 
     if (existingThread === null) {
-      this.threads = [mergedThread, ...this.threads];
+      this.threads = deduplicateThreadsById([mergedThread, ...this.threads]);
     } else {
-      this.threads = this.threads.map((entry) => (
-        entry.id === mergedThread.id ? mergedThread : entry
-      ));
+      this.threads = deduplicateThreadsById(
+        this.threads.map((entry) => (
+          entry.id === mergedThread.id ? mergedThread : entry
+        ))
+      );
     }
 
     const chat = this.projectStore.chatsById.get(mergedThread.id);
