@@ -23,7 +23,10 @@ import type {
 import { toProtocolRun } from "./projectCommandRunMapping.js";
 import { ProjectCommandLog } from "./ProjectCommandLog.js";
 import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
-import { createShellCommand } from "./projectCommandExecution.js";
+import {
+  createShellCommand,
+  readHostShellEnvironment
+} from "./projectCommandExecution.js";
 import {
   decodeBase64Output,
   readExitedStatus,
@@ -184,7 +187,10 @@ export class ProjectCommandService {
           streamStdoutStderr: true,
           streamStdin: true,
           outputBytesCap: null,
-          timeoutMs: null
+          timeoutMs: null,
+          ...(shouldUseHostShellEnvironment(source)
+            ? { env: readHostShellEnvironment() }
+            : {})
         });
       } catch (error) {
         this.failRun(run, error);
@@ -466,6 +472,20 @@ export class ProjectCommandService {
     });
   }
 
+}
+
+/**
+ * Limits host-environment forwarding to sources whose process runs locally.
+ *
+ * @param source Resolved source used by the command.
+ * @returns Whether the command can safely use the Electron host environment.
+ */
+function shouldUseHostShellEnvironment(source: CachedSource): boolean {
+  if (source.kind === "local") {
+    return true;
+  }
+
+  return source.kind === "custom" && source.settings.hasLocalAccess;
 }
 
 /**

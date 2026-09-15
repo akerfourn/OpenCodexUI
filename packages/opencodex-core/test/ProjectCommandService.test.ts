@@ -43,7 +43,8 @@ describe("ProjectCommandService", () => {
     expect(request).toHaveBeenCalledWith("process/spawn", expect.objectContaining({
       command: ["sh", "-lc", "npm test"],
       processHandle: run.processHandle,
-      cwd: "/workspace/project"
+      cwd: "/workspace/project",
+      env: expect.objectContaining({ PATH: expect.any(String) })
     }));
     expect(emit).toHaveBeenNthCalledWith(1, {
       type: "projectCommand.started",
@@ -100,6 +101,16 @@ describe("ProjectCommandService", () => {
     }));
 
     expect(emit).not.toHaveBeenCalled();
+  });
+
+  it("should not forward the host environment to remote sources", async () => {
+    const { service, request } = createService(createRemoteSource());
+
+    await service.runCommand("command-1", "/workspace/project", "source-1");
+
+    expect(request).toHaveBeenCalledWith("process/spawn", expect.objectContaining({
+      command: ["sh", "-lc", "npm test"]
+    }));
   });
 
   it("should report a stopped run as killed when its exit arrives", async () => {
@@ -185,7 +196,7 @@ describe("ProjectCommandService", () => {
 });
 
 /** Creates a service with deterministic cache, client, and event ports. */
-function createService() {
+function createService(source: CachedSource = createLocalSource()) {
   const command = createCommand();
   const repository = {
     getProjectCommand: vi.fn(async () => command)
@@ -193,9 +204,7 @@ function createService() {
   const request = vi.fn(async () => ({}));
   const client = { request } as unknown as CodexAppServerClient;
   const emit = vi.fn();
-  const resolveSource = vi.fn(async (): Promise<CachedSource> => ({
-    id: "source-1"
-  } as CachedSource));
+  const resolveSource = vi.fn(async (): Promise<CachedSource> => source);
   const service = new ProjectCommandService({
     cacheRepository: repository,
     events: { emit },
@@ -204,6 +213,50 @@ function createService() {
   });
 
   return { service, request, emit, resolveSource };
+}
+
+/** Creates a local source fixture that may inherit the Electron host environment. */
+function createLocalSource(): CachedSource {
+  return {
+    ...createSourceMetadata(),
+    kind: "local",
+    settings: {
+      commandMode: "auto",
+      command: null,
+      color: "blue",
+      openFolderCommand: null,
+      openFileCommand: null
+    }
+  };
+}
+
+/** Creates a remote source fixture that must keep its app-server environment. */
+function createRemoteSource(): CachedSource {
+  return {
+    ...createSourceMetadata(),
+    kind: "ssh",
+    settings: {
+      color: "blue",
+      host: "example.test",
+      user: null,
+      port: null,
+      identityFile: null,
+      codexCommand: "codex"
+    }
+  };
+}
+
+/** Creates metadata shared by source fixtures. */
+function createSourceMetadata() {
+  return {
+    id: "source-1",
+    name: "Test source",
+    lastDetectedCodexVersion: "0.154.0",
+    lastDetectedCodexAt: "2026-08-12T10:00:00.000Z",
+    lastDetectionError: null,
+    createdAt: "2026-08-12T10:00:00.000Z",
+    updatedAt: "2026-08-12T10:00:00.000Z"
+  };
 }
 
 /** Creates the configured command executed by integration tests. */

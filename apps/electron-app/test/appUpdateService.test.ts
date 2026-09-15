@@ -7,9 +7,42 @@ import type { OpenCodexAppUpdateState } from "@open-codex-ui/opencodex-protocol"
 
 import { AppUpdateService } from "../src/main/appUpdateService";
 
-vi.mock("electron-updater", () => ({ autoUpdater: {} }));
+vi.mock("electron-updater", () => ({
+  get autoUpdater(): never {
+    throw new Error("autoUpdater must not be resolved in development.");
+  }
+}));
 
 describe("AppUpdateService", () => {
+  it("should disable the updater in development without resolving electron-updater", async () => {
+    const service = new AppUpdateService({
+      currentVersion: "0.0",
+      isPackaged: false,
+      allowPrerelease: true,
+      emit: vi.fn(),
+      log: vi.fn(),
+      onInstallRequested: vi.fn()
+    });
+
+    service.start();
+
+    await expect(service.check(true)).resolves.toMatchObject({
+      currentVersion: "0.0",
+      isSupported: false,
+      status: "idle"
+    });
+    await expect(service.download()).resolves.toMatchObject({
+      isSupported: false,
+      status: "idle"
+    });
+    expect(service.install()).toMatchObject({
+      isSupported: false,
+      status: "idle"
+    });
+
+    service.dispose();
+  });
+
   it("should keep prereleases opt-in and expose an available update", async () => {
     const updater = createFakeUpdater();
     const states: OpenCodexAppUpdateState[] = [];

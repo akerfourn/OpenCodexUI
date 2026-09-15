@@ -38,7 +38,7 @@ type AppUpdateServiceOptions = {
  * Owns the native updater lifecycle and keeps update operations user-driven.
  */
 export class AppUpdateService {
-  private readonly updater: AppUpdater;
+  private readonly updater: AppUpdater | null;
   private readonly options: AppUpdateServiceOptions;
   private state: OpenCodexAppUpdateState;
   private checkPromise: Promise<OpenCodexAppUpdateState> | null = null;
@@ -48,10 +48,16 @@ export class AppUpdateService {
   private isDisposed = false;
 
   /** Creates the updater service with the packaged application settings. */
-  constructor(options: AppUpdateServiceOptions, updater: AppUpdater = autoUpdater) {
+  constructor(options: AppUpdateServiceOptions, updater?: AppUpdater) {
     this.options = options;
-    this.updater = updater;
     this.state = createInitialState(options.currentVersion, options.isPackaged);
+
+    if (!options.isPackaged) {
+      this.updater = null;
+      return;
+    }
+
+    this.updater = updater ?? autoUpdater;
     this.configureUpdater(options.allowPrerelease);
     this.attachUpdaterEvents();
   }
@@ -82,7 +88,7 @@ export class AppUpdateService {
 
   /** Updates prerelease selection for future checks. */
   setAllowPrerelease(allowPrerelease: boolean): void {
-    if (this.isDisposed) {
+    if (this.isDisposed || this.updater === null) {
       return;
     }
 
@@ -116,7 +122,8 @@ export class AppUpdateService {
 
   /** Downloads the currently offered update after explicit user action. */
   async download(): Promise<OpenCodexAppUpdateState> {
-    if (this.isDisposed || !this.state.isSupported || this.state.status !== "available") {
+    const updater = this.updater;
+    if (this.isDisposed || updater === null || !this.state.isSupported || this.state.status !== "available") {
       return this.getState();
     }
 
@@ -127,7 +134,7 @@ export class AppUpdateService {
     });
 
     try {
-      await this.updater.downloadUpdate();
+      await updater.downloadUpdate();
     } catch (error) {
       this.applyError(error);
     }
@@ -137,12 +144,13 @@ export class AppUpdateService {
 
   /** Installs a downloaded update and lets the native installer relaunch the app. */
   install(): OpenCodexAppUpdateState {
-    if (this.isDisposed || !this.state.isSupported || this.state.status !== "downloaded") {
+    const updater = this.updater;
+    if (this.isDisposed || updater === null || !this.state.isSupported || this.state.status !== "downloaded") {
       return this.getState();
     }
 
     this.options.onInstallRequested();
-    this.updater.quitAndInstall(false, true);
+    updater.quitAndInstall(false, true);
     return this.getState();
   }
 
@@ -158,22 +166,32 @@ export class AppUpdateService {
       this.initialCheckTimer = null;
     }
 
-    this.updater.off("checking-for-update", this.handleCheckingForUpdate);
-    this.updater.off("update-available", this.handleUpdateAvailable);
-    this.updater.off("update-not-available", this.handleUpdateNotAvailable);
-    this.updater.off("download-progress", this.handleDownloadProgress);
-    this.updater.off("update-downloaded", this.handleUpdateDownloaded);
-    this.updater.off("update-cancelled", this.handleUpdateCancelled);
-    this.updater.off("error", this.handleUpdaterError);
+    const updater = this.updater;
+    if (updater === null) {
+      return;
+    }
+
+    updater.off("checking-for-update", this.handleCheckingForUpdate);
+    updater.off("update-available", this.handleUpdateAvailable);
+    updater.off("update-not-available", this.handleUpdateNotAvailable);
+    updater.off("download-progress", this.handleDownloadProgress);
+    updater.off("update-downloaded", this.handleUpdateDownloaded);
+    updater.off("update-cancelled", this.handleUpdateCancelled);
+    updater.off("error", this.handleUpdaterError);
   }
 
   /** Configures conservative updater defaults before any check can start. */
   private configureUpdater(allowPrerelease: boolean): void {
-    this.updater.autoDownload = false;
-    this.updater.autoInstallOnAppQuit = false;
-    this.updater.allowPrerelease = allowPrerelease;
-    this.updater.allowDowngrade = false;
-    this.updater.logger = {
+    const updater = this.updater;
+    if (updater === null) {
+      return;
+    }
+
+    updater.autoDownload = false;
+    updater.autoInstallOnAppQuit = false;
+    updater.allowPrerelease = allowPrerelease;
+    updater.allowDowngrade = false;
+    updater.logger = {
       info: (message?: unknown) => this.options.log("info", String(message ?? "")),
       warn: (message?: unknown) => this.options.log("warning", String(message ?? "")),
       error: (message?: unknown) => {
@@ -188,18 +206,24 @@ export class AppUpdateService {
 
   /** Subscribes to updater events and converts them to protocol snapshots. */
   private attachUpdaterEvents(): void {
-    this.updater.on("checking-for-update", this.handleCheckingForUpdate);
-    this.updater.on("update-available", this.handleUpdateAvailable);
-    this.updater.on("update-not-available", this.handleUpdateNotAvailable);
-    this.updater.on("download-progress", this.handleDownloadProgress);
-    this.updater.on("update-downloaded", this.handleUpdateDownloaded);
-    this.updater.on("update-cancelled", this.handleUpdateCancelled);
-    this.updater.on("error", this.handleUpdaterError);
+    const updater = this.updater;
+    if (updater === null) {
+      return;
+    }
+
+    updater.on("checking-for-update", this.handleCheckingForUpdate);
+    updater.on("update-available", this.handleUpdateAvailable);
+    updater.on("update-not-available", this.handleUpdateNotAvailable);
+    updater.on("download-progress", this.handleDownloadProgress);
+    updater.on("update-downloaded", this.handleUpdateDownloaded);
+    updater.on("update-cancelled", this.handleUpdateCancelled);
+    updater.on("error", this.handleUpdaterError);
   }
 
   /** Runs one provider check and normalizes the result when no event was emitted. */
   private async performCheck(): Promise<OpenCodexAppUpdateState> {
-    if (!this.updater.isUpdaterActive()) {
+    const updater = this.updater;
+    if (updater === null || !updater.isUpdaterActive()) {
       this.publishState({ isSupported: false, status: "idle", errorMessage: null });
       return this.getState();
     }
@@ -211,7 +235,7 @@ export class AppUpdateService {
     });
 
     try {
-      const result = await this.updater.checkForUpdates();
+      const result = await updater.checkForUpdates();
       this.lastCheckAtMs = Date.now();
 
       if (result === null || !result.isUpdateAvailable) {

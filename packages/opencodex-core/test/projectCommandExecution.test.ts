@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createShellCommand,
   isWindowsPath,
+  readHostShellEnvironment,
   sanitizePathSegment
 } from "../src/backend/projects/projectCommandExecution";
 
@@ -13,6 +14,30 @@ describe("project command execution helpers", () => {
       "-lc",
       "npm test"
     ]);
+  });
+
+  it("should read only the host environment values allowed for local commands", () => {
+    const environment = readHostShellEnvironment({
+      PATH: "/home/adrien/.local/bin:/usr/bin",
+      HOME: "/home/adrien",
+      XDG_CONFIG_HOME: "/home/adrien/.config",
+      CODEX_HOME: "/home/adrien/.codex",
+      OPENCODEX_CODEX_COMMAND: "/home/adrien/.local/bin/codex",
+      OPENAI_API_KEY: "must-not-be-forwarded"
+    });
+
+    expect(environment).toEqual({
+      PATH: "/home/adrien/.local/bin:/usr/bin",
+      HOME: "/home/adrien",
+      XDG_CONFIG_HOME: "/home/adrien/.config",
+      CODEX_HOME: "/home/adrien/.codex",
+      OPENCODEX_CODEX_COMMAND: "/home/adrien/.local/bin/codex"
+    });
+    expect(environment).toHaveProperty(
+      "OPENCODEX_CODEX_COMMAND",
+      "/home/adrien/.local/bin/codex"
+    );
+    expect(environment).not.toHaveProperty("OPENAI_API_KEY");
   });
 
   it.each([

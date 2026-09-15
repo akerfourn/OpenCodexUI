@@ -126,7 +126,10 @@ process.once("SIGINT", () => {
   void disposeAndExit(0);
 });
 
-void main();
+void main().catch((error: unknown) => {
+  console.error(`[OpenCodexUI] startup failed: ${String(error)}`);
+  app.exit(1);
+});
 
 /**
  * Disposes backend resources before the Electron process exits.
