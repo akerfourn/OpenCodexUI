@@ -1,10 +1,9 @@
 /**
- * Renders the markdown message component for the OpenCodex UI.
+ * Renders Markdown messages with bounded previews and lazy expensive work.
  */
-import { Box } from "@mui/material";
+import { Box, Button, Stack, Typography } from "@mui/material";
 import {
   memo,
-  startTransition,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -12,32 +11,42 @@ import {
   useState,
   type RefObject
 } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
-import rehypeKatex, { type Options as RehypeKatexOptions } from "rehype-katex";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
+import { useTranslation } from "react-i18next";
 
+import {
+  createMarkdownContentProfile,
+  type MarkdownContentProfile
+} from "./markdownMessageOptimization";
+import {
+  createMarkdownRenderTree,
+  MarkdownLinkContext,
+  type MarkdownLinkContextValue,
+  type MarkdownRenderVariant
+} from "./markdownRenderTree";
+import {
+  hasActiveSelectionWithin,
+  scheduleHighlightingAfterPaint,
+  useDeferredSyntaxHighlighting
+} from "./markdownHighlighting";
 import {
   isMarkdownRenderPerformanceRecordingEnabled,
   recordMarkdownRenderPerformance
 } from "../../performance/rendererPerformanceRecorder";
-import { InlineCode } from "./InlineCode";
 import { normalizeLatexDelimiters } from "./latexMarkdown";
-import { MarkdownLink } from "./MarkdownLink";
-import { PreBlock } from "./PreBlock";
 import {
   createStreamingMarkdownScheduler,
   type StreamingMarkdownScheduler
 } from "./streamingMarkdownScheduler";
 
-type MarkdownMessageProps = {
+export type MarkdownMessageProps = {
   markdown: string;
   isStreaming?: boolean;
   /** Requires a modifier key before opening links in the rendered Markdown. */
   requireModifiedClick?: boolean;
   /** Opens one link rendered from the Markdown content. */
   onOpenLink(href: string): void;
+  /** Enables progressive rendering for completed large content. */
+  optimizeLargeContent?: boolean;
 };
 
 type RenderedMarkdownProps = {
@@ -51,37 +60,53 @@ type RenderedMarkdownProps = {
   onOpenLink(href: string): void;
 };
 
-const remarkPlugins = [remarkGfm, remarkMath];
-const rehypeKatexOptions: RehypeKatexOptions = {
-  strict: "ignore",
-  trust: false
-};
-const katexPlugin: [typeof rehypeKatex, RehypeKatexOptions] = [
-  rehypeKatex,
-  rehypeKatexOptions
-];
-const mathRehypePlugins = [katexPlugin];
-const highlightedRehypePlugins = [katexPlugin, rehypeHighlight];
-const plainRehypePlugins: [] = [];
+type MarkdownViewMode = "markdown" | "plainText";
 
 /**
- * Renders the markdown message component.
+ * Renders a Markdown message and avoids mounting its entire expensive form by default.
  *
- * @param props Component props.
- *
- * @returns Nothing.
+ * @param props Message content and link behavior.
+ * @returns Rendered message content and optional display controls.
  */
 export function MarkdownMessage({
   markdown,
   isStreaming = false,
   requireModifiedClick = false,
-  onOpenLink
+  onOpenLink,
+  optimizeLargeContent = true
 }: MarkdownMessageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const renderedMarkdown = useStreamingMarkdown(markdown, isStreaming);
-  const shouldHighlightSyntax = useDeferredSyntaxHighlighting(isStreaming, containerRef);
+  const contentProfile = useMemo<MarkdownContentProfile>(
+    () => createMarkdownContentProfile(markdown),
+    [markdown]
+  );
+  const isLargeContent = optimizeLargeContent && contentProfile.isLarge && !isStreaming;
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<MarkdownViewMode>("markdown");
+  const isPlainTextVisible = isLargeContent && viewMode === "plainText";
+  const displayedMarkdown = isLargeContent && !isExpanded
+    ? contentProfile.preview.markdown
+    : markdown;
+  const renderedMarkdown = useStreamingMarkdown(displayedMarkdown, isStreaming);
+  const shouldHighlightSyntax = useDeferredSyntaxHighlighting(
+    isStreaming,
+    containerRef,
+    isLargeContent,
+    !isPlainTextVisible
+  );
 
-  return (
+  useEffect(() => {
+    if (isLargeContent) {
+      return;
+    }
+
+    setIsExpanded(false);
+    setViewMode("markdown");
+  }, [isLargeContent]);
+
+  const content = isPlainTextVisible ? (
+    <PlainTextMessage markdown={displayedMarkdown} />
+  ) : (
     <RenderedMarkdownM
       markdown={renderedMarkdown}
       isStreaming={isStreaming}
@@ -91,6 +116,23 @@ export function MarkdownMessage({
       onOpenLink={onOpenLink}
     />
   );
+
+  return (
+    <>
+      {content}
+      {isLargeContent ? (
+        <LargeMarkdownControls
+          profile={contentProfile}
+          isExpanded={isExpanded}
+          viewMode={viewMode}
+          onToggleExpanded={() => setIsExpanded((current) => !current)}
+          onToggleViewMode={() => setViewMode((current) => (
+            current === "markdown" ? "plainText" : "markdown"
+          ))}
+        />
+      ) : null}
+    </>
+  );
 }
 
 export const MarkdownMessageM = memo(MarkdownMessage);
@@ -98,7 +140,7 @@ export const MarkdownMessageM = memo(MarkdownMessage);
 /**
  * Renders the expensive Markdown parser and syntax-highlighting subtree.
  *
- * @param props Component props.
+ * @param props Render state and link behavior.
  * @returns Rendered Markdown content.
  */
 function RenderedMarkdown({
@@ -109,18 +151,26 @@ function RenderedMarkdown({
   requireModifiedClick,
   onOpenLink
 }: RenderedMarkdownProps) {
-  const rehypePlugins = isStreaming
-    ? plainRehypePlugins
-    : shouldHighlightSyntax
-      ? highlightedRehypePlugins
-      : mathRehypePlugins;
+  const renderStartedAt = isMarkdownRenderPerformanceRecordingEnabled()
+    ? performance.now()
+    : null;
   const markdownForRendering = useMemo(
     () => (isStreaming ? markdown : normalizeLatexDelimiters(markdown)),
     [isStreaming, markdown]
   );
-  const renderStartedAt = isMarkdownRenderPerformanceRecordingEnabled()
-    ? performance.now()
-    : null;
+  const renderVariant: MarkdownRenderVariant = isStreaming
+    ? "streaming"
+    : shouldHighlightSyntax
+      ? "highlighted"
+      : "standard";
+  const markdownTree = useMemo(
+    () => createMarkdownRenderTree(markdownForRendering, renderVariant),
+    [markdownForRendering, renderVariant]
+  );
+  const linkContext = useMemo<MarkdownLinkContextValue>(() => ({
+    requireModifiedClick,
+    onOpenLink
+  }), [onOpenLink, requireModifiedClick]);
 
   return (
     <Box
@@ -179,25 +229,9 @@ function RenderedMarkdown({
         }
       }}
     >
-      <ReactMarkdown
-        remarkPlugins={remarkPlugins}
-        rehypePlugins={rehypePlugins}
-        components={{
-          pre: PreBlock,
-          code: InlineCode,
-          a: ({ href, children }) => (
-            <MarkdownLink
-              href={href}
-              requireModifiedClick={requireModifiedClick}
-              onOpenLink={onOpenLink}
-            >
-              {children}
-            </MarkdownLink>
-          )
-        }}
-      >
-        {markdownForRendering}
-      </ReactMarkdown>
+      <MarkdownLinkContext.Provider value={linkContext}>
+        {markdownTree}
+      </MarkdownLinkContext.Provider>
       {renderStartedAt !== null ? (
         <MarkdownRenderTiming
           startedAt={renderStartedAt}
@@ -211,6 +245,92 @@ function RenderedMarkdown({
 
 const RenderedMarkdownM = memo(RenderedMarkdown);
 
+type PlainTextMessageProps = {
+  markdown: string;
+};
+
+/**
+ * Renders raw Markdown without invoking the Markdown parser.
+ *
+ * @param props Raw message content.
+ * @returns Plain text message content.
+ */
+function PlainTextMessage({ markdown }: PlainTextMessageProps) {
+  return (
+    <Box
+      component="pre"
+      className="markdown-message markdown-message-plain"
+      sx={{
+        m: 0,
+        minWidth: 0,
+        overflowWrap: "anywhere",
+        whiteSpace: "pre-wrap",
+        font: "inherit",
+        lineHeight: 1.45
+      }}
+    >
+      {markdown}
+    </Box>
+  );
+}
+
+type LargeMarkdownControlsProps = {
+  profile: MarkdownContentProfile;
+  isExpanded: boolean;
+  viewMode: MarkdownViewMode;
+  onToggleExpanded(): void;
+  onToggleViewMode(): void;
+};
+
+/**
+ * Renders controls for expanding and switching a large message to raw text.
+ *
+ * @param props Large-content state and event handlers.
+ * @returns Display controls.
+ */
+function LargeMarkdownControls({
+  profile,
+  isExpanded,
+  viewMode,
+  onToggleExpanded,
+  onToggleViewMode
+}: LargeMarkdownControlsProps) {
+  const { t } = useTranslation();
+  const omissionLabel = t("message.contentOmitted", {
+    count: profile.preview.omittedCharacterCount,
+    formattedCount: profile.preview.omittedCharacterCount.toLocaleString()
+  });
+
+  return (
+    <Stack
+      direction="row"
+      spacing={0.75}
+      useFlexGap
+      sx={{
+        mt: 0.75,
+        flexWrap: "wrap",
+        alignItems: "center"
+      }}
+    >
+      <Typography variant="caption" color="text.secondary">
+        {omissionLabel}
+      </Typography>
+      <Button size="small" onClick={onToggleExpanded}>
+        {isExpanded ? t("message.limitContent") : t("message.showAllContent")}
+      </Button>
+      <Button
+        size="small"
+        aria-pressed={viewMode === "plainText"}
+        onClick={onToggleViewMode}
+      >
+        {viewMode === "markdown"
+          ? t("message.showPlainText")
+          : t("message.showMarkdown")}
+      </Button>
+    </Stack>
+  );
+}
+
 type MarkdownRenderTimingProps = {
   startedAt: number;
   markdownLength: number;
@@ -218,7 +338,7 @@ type MarkdownRenderTimingProps = {
 };
 
 /**
- * Reports one advanced Markdown commit latency without rendering UI content.
+ * Reports one Markdown commit latency without rendering UI content.
  *
  * @param props Content-free timing metadata.
  * @returns No rendered content.
@@ -242,8 +362,8 @@ function MarkdownRenderTiming({
 /**
  * Returns a cadence-limited Markdown snapshot while content is streaming.
  *
- * Completed and historical content bypasses the scheduler so its final value
- * is rendered during the same React update that marks it as complete.
+ * Completed and historical content bypass the scheduler so their final value
+ * is rendered during the same React update that marks them as complete.
  *
  * @param markdown Latest Markdown content.
  * @param isStreaming Whether the content is still receiving deltas.
@@ -281,152 +401,8 @@ function useStreamingMarkdown(markdown: string, isStreaming: boolean): string {
   return isStreaming ? streamedMarkdown : markdown;
 }
 
-/**
- * Defers syntax highlighting until completed content has already been painted.
- *
- * Historical content starts highlighted. Content that transitions from
- * streaming to completed first renders its final plain code blocks, then
- * enables highlighting during an idle low-priority React update.
- *
- * @param isStreaming Whether the content is still receiving deltas.
- * @param containerRef Rendered Markdown container used to protect selections.
- * @returns Whether the expensive syntax-highlighting plugin should run.
- */
-function useDeferredSyntaxHighlighting(
-  isStreaming: boolean,
-  containerRef: RefObject<HTMLDivElement>
-): boolean {
-  const [shouldHighlight, setShouldHighlight] = useState(!isStreaming);
-  const hasStreamedRef = useRef(isStreaming);
-
-  useEffect(() => {
-    if (isStreaming) {
-      hasStreamedRef.current = true;
-      setShouldHighlight(false);
-      return undefined;
-    }
-
-    if (!hasStreamedRef.current) {
-      setShouldHighlight(true);
-      return undefined;
-    }
-
-    let removeSelectionListener: (() => void) | null = null;
-
-    /** Enables highlighting in a low-priority React transition. */
-    function enableHighlighting(): void {
-      hasStreamedRef.current = false;
-      startTransition(() => {
-        setShouldHighlight(true);
-      });
-    }
-
-    const cancelScheduledHighlighting = scheduleHighlightingAfterPaint(() => {
-      if (!hasActiveSelectionWithin(containerRef.current)) {
-        enableHighlighting();
-        return;
-      }
-
-      /** Enables highlighting once the user leaves the rendered block selection. */
-      function handleSelectionChange(): void {
-        if (hasActiveSelectionWithin(containerRef.current)) {
-          return;
-        }
-
-        removeSelectionListener?.();
-        removeSelectionListener = null;
-        enableHighlighting();
-      }
-
-      document.addEventListener("selectionchange", handleSelectionChange);
-      removeSelectionListener = () => {
-        document.removeEventListener("selectionchange", handleSelectionChange);
-      };
-    });
-
-    return () => {
-      cancelScheduledHighlighting();
-      removeSelectionListener?.();
-    };
-  }, [containerRef, isStreaming]);
-
-  return !isStreaming && shouldHighlight;
-}
-
-/**
- * Checks whether the current document selection intersects a Markdown block.
- *
- * @param container Rendered Markdown container.
- * @returns Whether an active selection starts or ends inside the container.
- */
-export function hasActiveSelectionWithin(container: HTMLElement | null): boolean {
-  if (container === null || typeof window.getSelection !== "function") {
-    return false;
-  }
-
-  const selection = window.getSelection();
-
-  if (selection === null || selection.isCollapsed) {
-    return false;
-  }
-
-  const anchorNode = selection.anchorNode;
-  const focusNode = selection.focusNode;
-
-  return (
-    (anchorNode !== null && container.contains(anchorNode)) ||
-    (focusNode !== null && container.contains(focusNode))
-  );
-}
-
-/**
- * Schedules syntax highlighting after at least one completed-content paint.
- *
- * @param callback Work that enables syntax highlighting.
- * @returns Cleanup function cancelling all pending browser callbacks.
- */
-export function scheduleHighlightingAfterPaint(callback: () => void): () => void {
-  let firstFrameId: number | null = null;
-  let secondFrameId: number | null = null;
-  let idleCallbackId: number | null = null;
-  let timeoutId: number | null = null;
-
-  /** Runs the low-priority work and clears its active callback identity. */
-  function runCallback(): void {
-    idleCallbackId = null;
-    timeoutId = null;
-    callback();
-  }
-
-  firstFrameId = window.requestAnimationFrame(() => {
-    firstFrameId = null;
-    secondFrameId = window.requestAnimationFrame(() => {
-      secondFrameId = null;
-
-      if (typeof window.requestIdleCallback === "function") {
-        idleCallbackId = window.requestIdleCallback(runCallback);
-        return;
-      }
-
-      timeoutId = window.setTimeout(runCallback, 0);
-    });
-  });
-
-  return () => {
-    if (firstFrameId !== null) {
-      window.cancelAnimationFrame(firstFrameId);
-    }
-
-    if (secondFrameId !== null) {
-      window.cancelAnimationFrame(secondFrameId);
-    }
-
-    if (idleCallbackId !== null && typeof window.cancelIdleCallback === "function") {
-      window.cancelIdleCallback(idleCallbackId);
-    }
-
-    if (timeoutId !== null) {
-      window.clearTimeout(timeoutId);
-    }
-  };
-}
+export {
+  hasActiveSelectionWithin,
+  scheduleHighlightingAfterPaint,
+  useDeferredSyntaxHighlighting
+} from "./markdownHighlighting";

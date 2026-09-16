@@ -267,6 +267,8 @@ export const frConversation = {
     linkTooltip: "{{href}} (Ctrl+clic)",
     openImage: "Ouvrir l'image",
     showAllContent: "Tout afficher",
+    showMarkdown: "Afficher en Markdown",
+    showPlainText: "Afficher en texte brut",
     showMoreContent: "Afficher plus",
     submitEdit: "Relancer",
     turnFailed: "La réponse a échoué.",

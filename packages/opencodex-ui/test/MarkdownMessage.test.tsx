@@ -150,4 +150,26 @@ describe("MarkdownMessage", () => {
     expect(markup).toContain("E = mc^2");
     expect(markup).not.toContain('class="katex');
   });
+
+  it("should render only a bounded preview for a large completed message", () => {
+    const markdown = [
+      "# Large message",
+      "",
+      "```js",
+      ...Array.from({ length: 320 }, (_, index) => `const item${index} = ${index};`),
+      "```",
+      "tail-marker"
+    ].join("\n");
+
+    const markup = renderToStaticMarkup(
+      <MarkdownMessage markdown={markdown} onOpenLink={vi.fn()} />
+    );
+
+    expect(markup).toContain("Large message");
+    expect(markup).not.toContain("tail-marker");
+    expect(markup).toContain("message.contentOmitted");
+    expect(markup).toContain("message.showAllContent");
+    expect(markup).toContain("message.showPlainText");
+    expect(markup).not.toContain("hljs-keyword");
+  });
 });

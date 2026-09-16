@@ -265,6 +265,8 @@ export const enConversation = {
     linkTooltip: "{{href}} (Ctrl+click)",
     openImage: "Open image",
     showAllContent: "Show all",
+    showMarkdown: "Show as Markdown",
+    showPlainText: "Show as plain text",
     showMoreContent: "Show more",
     submitEdit: "Regenerate",
     turnFailed: "The response failed.",
