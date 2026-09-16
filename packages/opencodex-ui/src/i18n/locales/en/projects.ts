@@ -117,6 +117,16 @@ export const enProjects = {
       "Select a local folder or type a path. To block a path, add it and choose Deny all access.",
     addManualPath: "Add this path",
     addTitle: "Add context folder",
+    accessScope: "General access scope",
+    accessScopeGlobal: "Global access",
+    accessScopeGlobalDescription:
+      "Agents can read the whole system. Writes remain limited to the project and authorized folders.",
+    accessScopeInherit: "Inherit global configuration",
+    accessScopeInheritDescription:
+      "No project-specific scope is configured: the global Codex scope is used.",
+    accessScopeLocal: "Local project access",
+    accessScopeLocalDescription:
+      "Agents can access the project, authorized context folders, and required temporary directories. Other paths are denied.",
     cancel: "Cancel",
     delete: "Delete",
     deleteDescription: "Remove the \"{{name}}\" context folder? The Codex configuration will need to be synchronized again.",

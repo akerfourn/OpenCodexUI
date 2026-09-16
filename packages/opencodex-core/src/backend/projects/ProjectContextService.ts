@@ -63,7 +63,8 @@ export class ProjectContextService {
     const managedBlock = buildManagedConfigBlock({
       projectPath: executionPath,
       externalFolders: enabledFolders,
-      profileId
+      profileId,
+      accessScope: context?.accessScope
     });
     const nextConfig = replaceManagedBlock(previousConfig, managedBlock, profileId);
 
@@ -77,6 +78,7 @@ export class ProjectContextService {
       ...project.preferences,
       context: {
         permissionsProfileId: profileId,
+        ...(context?.accessScope === undefined ? {} : { accessScope: context.accessScope }),
         folders: context?.folders ?? [],
         lastSyncedAt: new Date().toISOString()
       }

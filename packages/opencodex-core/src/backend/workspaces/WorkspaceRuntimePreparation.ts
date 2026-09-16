@@ -37,7 +37,9 @@ export class WorkspaceRuntimePreparation implements WorkspaceSelectionPreparatio
     const input = workspacePermissionInput({ id: reservation.id, threadId: "",
       projectId: reservation.projectId, sourceId: reservation.sourceId,
       fromWorkspaceId: primary.id, toWorkspaceId: reservation.workspaceId,
-      fromPath: primary.path, toPath: reservation.cwd, state: "preparing", expectationJson: null }, folders);
+      fromPath: primary.path, toPath: reservation.cwd, state: "preparing", expectationJson: null },
+    folders,
+    project.preferences.context?.accessScope);
     for (const value of [primary.path, reservation.cwd, ...input.externalFolders.map((folder) => folder.path)]) {
       await this.requireLiteralDirectory(reservation.sourceId, value);
     }

@@ -1,4 +1,7 @@
+import path from "node:path";
+
 import type {
+  OpenCodexProjectContextAccessScope,
   OpenCodexProjectContextFolder,
   OpenCodexProjectContextFolderPermission,
   OpenCodexProjectContextEnvFilePermission
@@ -20,6 +23,8 @@ export interface ManagedConfigBlockInput {
   externalFolders: Array<Pick<OpenCodexProjectContextFolder, "path" | "permission" | "envFilePermission">>;
   /** Named profile written into the managed block. */
   profileId: string;
+  /** Project-wide filesystem scope; omitted preserves the current behavior. */
+  accessScope?: OpenCodexProjectContextAccessScope;
   /** Omitted preserves the legacy built-in temporary-directory permissions. */
   restrictTemporaryDirectories?: boolean;
   /** Omitted preserves the built-in network policy. */
@@ -45,19 +50,36 @@ export function buildManagedPermissionProfile(input: ManagedConfigBlockInput): M
   const folders = input.externalFolders.filter((folder, index, all) =>
     folder.path !== input.projectPath && all.findIndex((candidate) => candidate.path === folder.path) === index);
   const filesystem: ManagedPermissionProfile["filesystem"] = {};
-  if (input.restrictTemporaryDirectories === true) {
+
+  const accessScope = normalizeContextAccessScope(input.accessScope);
+  if (accessScope === "local") {
+    filesystem[":root"] = "deny";
+    filesystem[":minimal"] = "read";
+    filesystem[":tmpdir"] = "write";
+    filesystem[":slash_tmp"] = "write";
+  } else if (accessScope === "global") {
+    filesystem[":root"] = "read";
+  } else if (input.restrictTemporaryDirectories === true) {
     filesystem[":tmpdir"] = "read";
     filesystem[":slash_tmp"] = "read";
   }
+
   for (const folder of folders) {
     const permission = normalizeContextFolderPermission(folder.permission);
     filesystem[folder.path] = permission;
-    if (permission === "deny") {
+
+    if (permission === "deny" && shouldWriteRecursiveDeny(accessScope, input.projectPath, folder.path)) {
       filesystem[joinSourcePath(folder.path, "**")] = "deny";
     }
   }
+
   for (const folder of folders) {
     const permission = normalizeContextFolderPermission(folder.permission);
+
+    if (permission === "deny" && !shouldWriteRecursiveDeny(accessScope, input.projectPath, folder.path)) {
+      continue;
+    }
+
     filesystem[joinSourcePath(folder.path, "**", "*.env")] =
       normalizeEnvFilePermission(folder.envFilePermission, permission);
   }
@@ -119,6 +141,22 @@ export function replaceManagedBlock(config: string, block: string, profileId: st
   }
 
   return `${normalizedConfig}\n\n${block}`;
+}
+
+/**
+ * Normalizes the project-wide filesystem scope.
+ *
+ * @param value Optional scope value.
+ * @returns A supported scope, or `undefined` when the project inherits the current behavior.
+ */
+export function normalizeContextAccessScope(
+  value: OpenCodexProjectContextAccessScope | null | undefined
+): OpenCodexProjectContextAccessScope | undefined {
+  if (value === "inherit" || value === "local" || value === "global") {
+    return value;
+  }
+
+  return undefined;
 }
 
 /**
@@ -268,6 +306,48 @@ function normalizeEnvFilePermission(
   }
 
   return value === "read" || value === "write" ? value : defaultEnvFilePermission;
+}
+
+/** Avoids expanding a large recursive deny when the local root rule already denies the path. */
+function shouldWriteRecursiveDeny(
+  accessScope: OpenCodexProjectContextAccessScope | undefined,
+  projectPath: string,
+  folderPath: string
+): boolean {
+  return accessScope !== "local" || sourcePathsOverlap(projectPath, folderPath);
+}
+
+/** Checks path ancestry without interpreting a source path on the Electron host. */
+function sourcePathsOverlap(left: string, right: string): boolean {
+  const windows = isWindowsSourcePath(left);
+
+  if (windows !== isWindowsSourcePath(right)) {
+    return false;
+  }
+
+  const api = windows ? path.win32 : path.posix;
+  const normalizedLeft = windows ? api.normalize(left).toLowerCase() : api.normalize(left);
+  const normalizedRight = windows ? api.normalize(right).toLowerCase() : api.normalize(right);
+
+  return isSourcePathWithin(api, normalizedLeft, normalizedRight)
+    || isSourcePathWithin(api, normalizedRight, normalizedLeft);
+}
+
+/** Returns whether a source path is equal to or nested below another source path. */
+function isSourcePathWithin(
+  api: typeof path.posix,
+  root: string,
+  candidate: string
+): boolean {
+  const relative = api.relative(root, candidate);
+
+  return relative === "" || (relative !== ".." && !relative.startsWith(`${api.sep}..`)
+    && !relative.startsWith(`..${api.sep}`) && !api.isAbsolute(relative));
+}
+
+/** Identifies native Windows paths without relying on the host operating system. */
+function isWindowsSourcePath(value: string): boolean {
+  return /^[a-zA-Z]:[\\/]/u.test(value) || value.startsWith("\\\\");
 }
 
 /**

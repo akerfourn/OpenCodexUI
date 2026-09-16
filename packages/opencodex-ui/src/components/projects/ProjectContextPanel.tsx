@@ -1,19 +1,27 @@
 /**
- * Renders external read-only context folders for one project.
+ * Renders external context folders and the project-wide access scope.
  */
 import CreateNewFolderOutlinedIcon from "@mui/icons-material/CreateNewFolderOutlined";
 import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
 import {
   Alert,
   CircularProgress,
+  FormControl,
+  FormHelperText,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Tooltip,
   Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
+import type { SelectChangeEvent } from "@mui/material";
 import { useTranslation } from "react-i18next";
+
+import type { OpenCodexProjectContextAccessScope } from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ProjectContextFolderAddDialogX } from "./ProjectContextFolderAddDialog";
@@ -34,6 +42,8 @@ export function ProjectContextPanel({ projectStore }: ProjectContextPanelProps) 
   const contextStore = projectStore.contextStore;
   const [isAddDialogOpen, setAddDialogOpen] = useState(false);
   const isBusy = contextStore.isSaving || contextStore.isPickingFolder || contextStore.isSyncing;
+  const accessScope = contextStore.accessScope;
+  const accessScopeDescription = getAccessScopeDescriptionKey(accessScope);
 
   function handleOpenAddDialog(): void {
     setAddDialogOpen(true);
@@ -45,6 +55,16 @@ export function ProjectContextPanel({ projectStore }: ProjectContextPanelProps) 
 
   function handleSync(): void {
     void contextStore.syncConfig();
+  }
+
+  function handleAccessScopeChange(event: SelectChangeEvent): void {
+    const nextAccessScope = event.target.value;
+
+    if (!isAccessScope(nextAccessScope)) {
+      return;
+    }
+
+    void contextStore.setAccessScope(nextAccessScope);
   }
 
   return (
@@ -71,6 +91,22 @@ export function ProjectContextPanel({ projectStore }: ProjectContextPanelProps) 
             </span>
           </Tooltip>
         </Stack>
+        <FormControl fullWidth size="small" disabled={!contextStore.isAvailable || isBusy}>
+          <InputLabel id="context-access-scope-label">
+            {t("contextFolders.accessScope")}
+          </InputLabel>
+          <Select
+            labelId="context-access-scope-label"
+            label={t("contextFolders.accessScope")}
+            value={accessScope}
+            onChange={handleAccessScopeChange}
+          >
+            <MenuItem value="inherit">{t("contextFolders.accessScopeInherit")}</MenuItem>
+            <MenuItem value="local">{t("contextFolders.accessScopeLocal")}</MenuItem>
+            <MenuItem value="global">{t("contextFolders.accessScopeGlobal")}</MenuItem>
+          </Select>
+          <FormHelperText>{t(accessScopeDescription)}</FormHelperText>
+        </FormControl>
         <ProjectContextFolderAddDialogX
           contextStore={contextStore}
           open={isAddDialogOpen}
@@ -131,3 +167,25 @@ export function ProjectContextPanel({ projectStore }: ProjectContextPanelProps) 
 }
 
 export const ProjectContextPanelX = observer(ProjectContextPanel);
+
+/** Checks whether a select value is a supported project-wide access scope. */
+function isAccessScope(value: string): value is OpenCodexProjectContextAccessScope {
+  return value === "inherit" || value === "local" || value === "global";
+}
+
+/** Maps the selected scope to its localized explanatory text. */
+function getAccessScopeDescriptionKey(
+  accessScope: OpenCodexProjectContextAccessScope
+): "contextFolders.accessScopeInheritDescription"
+  | "contextFolders.accessScopeLocalDescription"
+  | "contextFolders.accessScopeGlobalDescription" {
+  if (accessScope === "local") {
+    return "contextFolders.accessScopeLocalDescription";
+  }
+
+  if (accessScope === "global") {
+    return "contextFolders.accessScopeGlobalDescription";
+  }
+
+  return "contextFolders.accessScopeInheritDescription";
+}

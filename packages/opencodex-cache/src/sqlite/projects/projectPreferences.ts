@@ -2,6 +2,7 @@
  * Normalizes persisted project preferences.
  */
 import type {
+  CachedProjectContextAccessScope,
   CachedProjectContextEnvFilePermission,
   CachedProjectContextFolderPermission,
   CachedProjectPreferences
@@ -170,22 +171,39 @@ function normalizeContextPreferences(value: unknown): CachedProjectPreferences["
   }
 
   const permissionsProfileId = normalizeNullableText(value.permissionsProfileId) ?? defaultPermissionsProfileId;
+  const accessScope = normalizeContextAccessScope(value.accessScope);
   const folders = normalizeContextFolders(value.folders);
   const lastSyncedAt = normalizeNullableText(value.lastSyncedAt);
 
   if (
     folders.length === 0 &&
     lastSyncedAt === undefined &&
-    permissionsProfileId === defaultPermissionsProfileId
+    permissionsProfileId === defaultPermissionsProfileId &&
+    accessScope === undefined
   ) {
     return undefined;
   }
 
   return {
     permissionsProfileId,
+    ...(accessScope === undefined ? {} : { accessScope }),
     folders,
     lastSyncedAt: lastSyncedAt ?? null
   };
+}
+
+/**
+ * Normalizes the optional project-wide context access scope.
+ *
+ * @param value Unknown scope value from persisted JSON.
+ * @returns A supported scope, or `undefined` when absent or invalid.
+ */
+function normalizeContextAccessScope(value: unknown): CachedProjectContextAccessScope | undefined {
+  if (value === "inherit" || value === "local" || value === "global") {
+    return value;
+  }
+
+  return undefined;
 }
 
 /**

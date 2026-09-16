@@ -35,7 +35,11 @@ export class WorkspacePermissionPreparation {
     if (project === undefined || project.sourceId !== transition.sourceId) {
       throw new Error("Workspace permission source does not own this project.");
     }
-    const input = workspacePermissionInput(transition, project.preferences.context?.folders ?? []);
+    const input = workspacePermissionInput(
+      transition,
+      project.preferences.context?.folders ?? [],
+      project.preferences.context?.accessScope
+    );
     const profile = buildManagedPermissionProfile(input);
     const configOverrides = { [`permissions.${input.profileId}`]: { ...profile } };
     const expected: WorkspaceResumeExpectation = {

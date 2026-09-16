@@ -178,6 +178,7 @@ describe("project persistence", () => {
     const updatedProject = await repository.updateProjectPreferences(project.id, {
       context: {
         permissionsProfileId: "opencodex-context",
+        accessScope: "local",
         folders: [
           {
             id: "folder-1",
@@ -210,6 +211,7 @@ describe("project persistence", () => {
 
     expect(updatedProject?.preferences.context).toEqual({
       permissionsProfileId: "opencodex-context",
+      accessScope: "local",
       folders: [
         {
           id: "folder-1",

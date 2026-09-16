@@ -129,6 +129,7 @@ describe("workspace-specific permission identities", () => {
     expect(workspacePermissionInput({ ...transition, sourceId: "other-source" }, [shared, other]).profileId).not.toBe(first.profileId);
     expect(workspacePermissionInput({ ...transition, toWorkspaceId: "C" }, [shared, other]).profileId).not.toBe(first.profileId);
     expect(workspacePermissionInput(transition, [{ ...shared, permission: "write" }, other]).profileId).not.toBe(first.profileId);
+    expect(workspacePermissionInput(transition, [shared], "local").profileId).not.toBe(first.profileId);
   });
 
   it.each(["/", "/A", "/A/child", "/B", "/B/child", "relative", "/shared/*"])("should reject unsafe or ambiguous context path %s", (folderPath) => {

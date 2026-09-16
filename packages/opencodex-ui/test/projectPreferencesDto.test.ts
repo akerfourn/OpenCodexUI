@@ -23,6 +23,7 @@ describe("project preferences DTO", () => {
       },
       context: {
         permissionsProfileId: "opencodex-context",
+        accessScope: "local",
         folders: [sourceFolder],
         lastSyncedAt: "2026-06-27T10:00:00.000Z"
       }

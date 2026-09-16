@@ -164,10 +164,15 @@ export type OpenCodexProjectPreferences = {
   };
   context?: {
     permissionsProfileId?: string | null;
+    /** General filesystem scope used by the generated Codex permission profile. */
+    accessScope?: OpenCodexProjectContextAccessScope;
     folders?: OpenCodexProjectContextFolder[];
     lastSyncedAt?: string | null;
   };
 };
+
+/** General filesystem scope for a project's Codex context profile. */
+export type OpenCodexProjectContextAccessScope = "inherit" | "local" | "global";
 
 /** Permission applied to files in an external context folder. */
 export type OpenCodexProjectContextFolderPermission = "deny" | "read" | "write";

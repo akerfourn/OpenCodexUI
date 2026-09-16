@@ -7,6 +7,7 @@ import {
   buildManagedConfigBlock,
   replaceManagedBlock
 } from "../src/backend/projects/ProjectContextService";
+import { buildManagedPermissionProfile } from "../src/backend/projects/projectContextConfig";
 
 describe("ProjectContextService", () => {
   it("should materialize shared context in the selected workspace without marking the primary as synced", async () => {
@@ -74,6 +75,41 @@ describe("ProjectContextService", () => {
       expect(block).not.toContain("\"/workspace/app/**/*.env\"");
     }
   );
+
+  it("should restrict local profiles to the project and explicitly allowed context paths", () => {
+    const profile = buildManagedPermissionProfile({
+      profileId: "opencodex-context",
+      projectPath: "/workspace/app",
+      accessScope: "local",
+      externalFolders: [
+        { path: "/workspace/docs", permission: "read", envFilePermission: "deny" },
+        { path: "/other/project", permission: "deny", envFilePermission: "deny" }
+      ]
+    });
+
+    expect(profile.filesystem).toMatchObject({
+      ":root": "deny",
+      ":minimal": "read",
+      ":tmpdir": "write",
+      ":slash_tmp": "write",
+      "/workspace/docs": "read",
+      "/workspace/docs/**/*.env": "deny",
+      "/other/project": "deny"
+    });
+    expect(profile.filesystem).not.toHaveProperty("/other/project/**");
+    expect(profile.filesystem).not.toHaveProperty("/other/project/**/*.env");
+  });
+
+  it("should make global access explicit without changing external-folder rules", () => {
+    const profile = buildManagedPermissionProfile({
+      profileId: "opencodex-context",
+      projectPath: "/workspace/app",
+      accessScope: "global",
+      externalFolders: []
+    });
+
+    expect(profile.filesystem).toEqual({ ":root": "read" });
+  });
 
   it("should replace only the managed config block", () => {
     const previousConfig = [

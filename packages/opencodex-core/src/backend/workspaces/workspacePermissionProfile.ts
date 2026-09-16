@@ -1,13 +1,21 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
 import type { WorkspaceTransitionRecord } from "@open-codex-ui/opencodex-cache";
-import type { OpenCodexProjectContextFolder } from "@open-codex-ui/opencodex-protocol";
-import { buildManagedPermissionProfile, type ManagedConfigBlockInput } from "../projects/projectContextConfig.js";
+import type {
+  OpenCodexProjectContextAccessScope,
+  OpenCodexProjectContextFolder
+} from "@open-codex-ui/opencodex-protocol";
+import {
+  buildManagedPermissionProfile,
+  normalizeContextAccessScope,
+  type ManagedConfigBlockInput
+} from "../projects/projectContextConfig.js";
 
 /** Builds a stable source/workspace/policy identity; labels and folder ordering do not change it. */
 export function workspacePermissionInput(
   transition: WorkspaceTransitionRecord,
-  folders: OpenCodexProjectContextFolder[]
+  folders: OpenCodexProjectContextFolder[],
+  accessScope?: OpenCodexProjectContextAccessScope
 ): ManagedConfigBlockInput {
   const fromPath = normalizePermissionPath(transition.fromPath);
   const toPath = normalizePermissionPath(transition.toPath);
@@ -43,7 +51,10 @@ export function workspacePermissionInput(
   const input: ManagedConfigBlockInput = {
     projectPath: toPath,
     externalFolders: [...unique.values()].sort(compareFolderPaths),
-    profileId: "pending", restrictTemporaryDirectories: true, networkAccess: false
+    profileId: "pending",
+    accessScope: normalizeContextAccessScope(accessScope),
+    restrictTemporaryDirectories: true,
+    networkAccess: false
   };
   const digest = createHash("sha256").update(JSON.stringify({
     sourceId: transition.sourceId, workspaceId: transition.toWorkspaceId,

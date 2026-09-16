@@ -79,10 +79,14 @@ export type CachedProjectPreferences = {
   };
   context?: {
     permissionsProfileId?: string | null;
+    accessScope?: CachedProjectContextAccessScope;
     folders?: CachedProjectContextFolder[];
     lastSyncedAt?: string | null;
   };
 };
+
+/** General filesystem scope for a project's Codex context profile. */
+export type CachedProjectContextAccessScope = "inherit" | "local" | "global";
 
 /** Permission applied to files in an external context folder. */
 export type CachedProjectContextFolderPermission = "deny" | "read" | "write";

@@ -32,6 +32,9 @@ export function cloneProjectPreferences(
   if (preferences.context !== undefined) {
     clonedPreferences.context = {
       permissionsProfileId: preferences.context.permissionsProfileId,
+      ...(preferences.context.accessScope !== undefined
+        ? { accessScope: preferences.context.accessScope }
+        : {}),
       folders: cloneContextFolders(preferences.context.folders ?? []),
       lastSyncedAt: preferences.context.lastSyncedAt
     };

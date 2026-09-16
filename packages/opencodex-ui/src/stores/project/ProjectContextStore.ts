@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
+  OpenCodexProjectContextAccessScope,
   OpenCodexProject,
   OpenCodexProjectContextEnvFilePermission,
   OpenCodexProjectContextFolder,
@@ -16,6 +17,7 @@ import {
 } from "./projectPreferencesDto";
 
 const defaultPermissionsProfileId = "opencodex-context";
+const defaultContextAccessScope: OpenCodexProjectContextAccessScope = "inherit";
 const defaultContextFolderPermission: OpenCodexProjectContextFolderPermission = "read";
 const defaultEnvFilePermission: OpenCodexProjectContextEnvFilePermission = "deny";
 
@@ -58,6 +60,11 @@ export class ProjectContextStore {
   /** Local permissions profile id managed for this project. */
   get permissionsProfileId(): string {
     return this.projectStore.project.preferences.context?.permissionsProfileId ?? defaultPermissionsProfileId;
+  }
+
+  /** Returns the project-wide filesystem scope used by the generated profile. */
+  get accessScope(): OpenCodexProjectContextAccessScope {
+    return this.projectStore.project.preferences.context?.accessScope ?? defaultContextAccessScope;
   }
 
   /** Returns the effective permission applied to one external context folder. */
@@ -225,6 +232,15 @@ export class ProjectContextStore {
     });
   }
 
+  /** Changes the project-wide filesystem scope and invalidates the synced config. */
+  async setAccessScope(accessScope: OpenCodexProjectContextAccessScope): Promise<void> {
+    await this.persistContext({
+      accessScope: normalizeAccessScope(accessScope),
+      folders: this.folders,
+      lastSyncedAt: null
+    });
+  }
+
   /**
    * Updates the display label for an external context folder.
    *
@@ -312,11 +328,13 @@ export class ProjectContextStore {
 
     try {
       const currentPreferences = cloneProjectPreferences(this.projectStore.project.preferences);
+      const accessScope = contextPatch.accessScope ?? currentPreferences.context?.accessScope;
       const preferences: OpenCodexProjectPreferences = {
         ...currentPreferences,
         context: {
           permissionsProfileId: this.permissionsProfileId,
           ...contextPatch,
+          ...(accessScope === undefined ? {} : { accessScope }),
           folders: cloneContextFolders(contextPatch.folders ?? currentPreferences.context?.folders ?? [])
         }
       };
@@ -359,6 +377,11 @@ function normalizeFolderPermission(
   value: OpenCodexProjectContextFolderPermission | null | undefined
 ): OpenCodexProjectContextFolderPermission {
   return value === "deny" || value === "write" ? value : defaultContextFolderPermission;
+}
+
+/** Normalizes a project-wide context scope received from a UI control. */
+function normalizeAccessScope(value: OpenCodexProjectContextAccessScope): OpenCodexProjectContextAccessScope {
+  return value === "local" || value === "global" ? value : defaultContextAccessScope;
 }
 
 /**

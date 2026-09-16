@@ -116,6 +116,16 @@ export const frProjects = {
       "Sélectionnez un dossier local ou saisissez un chemin. Pour bloquer un chemin, ajoutez-le puis choisissez Refuser tout accès.",
     addManualPath: "Ajouter ce chemin",
     addTitle: "Ajouter un dossier de contexte",
+    accessScope: "Portée générale des accès",
+    accessScopeGlobal: "Accès global",
+    accessScopeGlobalDescription:
+      "Les agents peuvent lire l'ensemble du système. Les écritures restent limitées au projet et aux dossiers autorisés.",
+    accessScopeInherit: "Hériter de la configuration globale",
+    accessScopeInheritDescription:
+      "Aucune portée locale n'est définie pour ce projet : la portée globale de Codex est utilisée.",
+    accessScopeLocal: "Accès local au projet",
+    accessScopeLocalDescription:
+      "Les agents peuvent accéder au projet, aux dossiers de contexte autorisés et aux répertoires temporaires nécessaires. Les autres chemins sont refusés.",
     cancel: "Annuler",
     delete: "Supprimer",
     deleteDescription: "Supprimer le dossier de contexte \"{{name}}\" ? La configuration Codex devra être resynchronisée.",
