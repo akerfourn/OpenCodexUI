@@ -323,8 +323,33 @@ describe("workspace execution", () => {
     expect(clients.ensureClient).not.toHaveBeenCalled();
   });
 
-  it("should refuse an externally active thread before submitting a turn", async () => {
-    client.readThread.mockResolvedValue({ thread: { status: { type: "active", activeFlags: [] } } });
+  it("should allow a new turn after Codex reports a system error", async () => {
+    client.readThread.mockResolvedValue({ thread: { status: { type: "systemError" } } });
+    const handler = createHandler();
+
+    await expect(handler.startTurn("thread-a", null, null, "continue", [], [], null, null, null))
+      .resolves.toEqual({ threadId: "thread-a", turnId: "turn-a" });
+    expect(client.startTurn).toHaveBeenCalledOnce();
+    expect(await cache.workspaces.listTurnContexts("thread-a")).toEqual([
+      expect.objectContaining({ threadId: "thread-a", turnId: "turn-a", workspaceId })
+    ]);
+  });
+
+  it.each(["review", "compact", "rollback"] as const)(
+    "should still reject %s maintenance when Codex reports a system error", async (operation) => {
+      client.readThread.mockResolvedValue({ thread: { status: { type: "systemError" } } });
+      const action = vi.fn();
+
+      await expect(service.run(
+        { threadId: "thread-a", projectPath: null, sourceId: null }, action, operation
+      )).rejects.toThrow("Thread is active");
+      expect(action).not.toHaveBeenCalled();
+      expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
+    }
+  );
+
+  it.each(["active", "unknown"])("should refuse a thread with %s status before submitting a turn", async (type) => {
+    client.readThread.mockResolvedValue({ thread: { status: { type, activeFlags: [] } } });
     const action = vi.fn();
 
     await expect(service.run({ threadId: "thread-a", projectPath: null, sourceId: null }, action))

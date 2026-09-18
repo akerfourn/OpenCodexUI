@@ -145,7 +145,9 @@ export class WorkspaceExecutionService {
             throw new Error("Workspace path is not an available directory.");
           }
           if (input.threadId !== null) {
-            await this.requireIdle(reservation.sourceId, input.threadId, reservation.cwd);
+            await this.requireIdle(
+              reservation.sourceId, input.threadId, reservation.cwd, operation === "turn"
+            );
           }
           return await action(reservation);
         } catch (error) {
@@ -380,8 +382,10 @@ export class WorkspaceExecutionService {
     return workspace;
   }
 
-  /** Checks live status and reloads a thread missing from the app-server session. */
-  private async requireIdle(sourceId: string, threadId: string, cwd: string): Promise<void> {
+  /** Checks live status; only new turns may retry a thread reporting a system error. */
+  private async requireIdle(
+    sourceId: string, threadId: string, cwd: string, allowSystemError = false
+  ): Promise<void> {
     const client = await this.clients.ensureClient(sourceId);
     let response;
 
@@ -397,6 +401,9 @@ export class WorkspaceExecutionService {
     }
 
     const status = readThreadRuntimeStatus(readObject(response.thread).status);
+    if (status === "systemError" && allowSystemError) {
+      return;
+    }
     if (status !== "idle" && status !== "notLoaded") {
       throw new Error("Thread is active or its execution status is unknown.");
     }
