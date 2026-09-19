@@ -50,7 +50,7 @@ export class AppUpdateStore {
 
   /** Requests a provider check, bypassing the host cooldown for manual actions. */
   async check(): Promise<void> {
-    if (this.isChecking) {
+    if (this.isChecking || this.state.status === "installing") {
       return;
     }
     runInAction(() => {
@@ -74,6 +74,7 @@ export class AppUpdateStore {
 
   /** Starts an explicit update download. */
   async download(): Promise<void> {
+    if (this.state.status === "installing") return;
     try {
       const state = await this.root.request<OpenCodexAppUpdateState>({ type: "app.update.download" });
       runInAction(() => {
@@ -86,10 +87,15 @@ export class AppUpdateStore {
 
   /** Starts the explicit native install/relaunch sequence. */
   install(): void {
+    if (!this.state.isSupported || this.state.status !== "downloaded") return;
+    runInAction(() => {
+      this.state = { ...this.state, status: "installing", errorMessage: null, progress: null };
+    });
     void this.root.request<OpenCodexAppUpdateState>({ type: "app.update.install" })
       .then((state) => {
         runInAction(() => {
-          this.applyState(state);
+          // A native failure notification may precede the initial IPC acknowledgement.
+          if (this.state.status === "installing") this.applyState(state);
         });
       })
       .catch((error: unknown) => {

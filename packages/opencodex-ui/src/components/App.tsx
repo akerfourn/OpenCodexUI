@@ -37,7 +37,11 @@ export function App({ store }: AppProps) {
   const notificationMessage = errorMessage ?? warningMessage;
   const activeTabId = store.navigationStore.activeTabId;
   const activeProjectStore = store.navigationStore.activeProjectStore;
-  const shutdownOverlay = <AppShutdownOverlay open={store.appStore.isShuttingDown} />;
+  const isInstalling = store.appUpdateStore.state.status === "installing";
+  const overlayMode = isInstalling ? "update" : "shutdown";
+  const shutdownOverlay = (
+    <AppShutdownOverlay open={store.appStore.isShuttingDown || isInstalling} mode={overlayMode} />
+  );
   const closeConfirmation = <AppCloseConfirmationDialogX store={store} />;
   const fileDropOverlay = <AppFileDropOverlayX store={store} />;
   const activityReporter = <ApplicationActivityReporterX store={store} />;

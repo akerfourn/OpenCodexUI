@@ -146,6 +146,8 @@ export const enApp = {
     details: "Details",
     dismiss: "Dismiss",
     install: "Restart and install",
+    installing: "Installing the update…",
+    installingDetail: "The application will restart automatically when installation finishes. You may be asked for system authorization.",
     retry: "Retry"
   },
   theme: {

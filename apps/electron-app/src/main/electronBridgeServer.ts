@@ -3,6 +3,7 @@ import { DictationHostService } from "./dictation/DictationHostService.js";
  * Hosts the Electron-side bridge between renderer IPC requests and the backend.
  */
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { createNativeAppUpdater } from "./asyncDebUpdater.js";
 import type { IpcMainEvent } from "electron";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
@@ -43,7 +44,7 @@ type ElectronBridgeServerOptions = {
   openUsageHistory(sourceId: string): void;
   onSettingsUpdated(settings: OpenCodexSettings): void;
   onApplicationCloseResponse(shouldClose: boolean): void;
-  onApplicationUpdateInstallRequested(): void;
+  onApplicationUpdateInstallStateChanged(installing: boolean): void;
 };
 
 /**
@@ -86,8 +87,8 @@ export class ElectronBridgeServer {
       allowPrerelease: options.settings.allowPrereleaseUpdates === true,
       emit: (state) => this.emit({ type: "app.update.state", state }),
       log: (level, message) => logger(`[updater:${level}] ${message}`),
-      onInstallRequested: options.onApplicationUpdateInstallRequested
-    });
+      onInstallStateChanged: options.onApplicationUpdateInstallStateChanged
+    }, isAutomaticUpdateSupported() ? createNativeAppUpdater() : undefined);
 
     this.runtime = new OpenCodexBackendRuntime({
       settings: options.settings,

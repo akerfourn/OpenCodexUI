@@ -8,6 +8,18 @@ vi.mock("react-i18next", () => ({
 import { AppShutdownOverlay } from "../src/components/app/AppShutdownOverlay";
 
 describe("AppShutdownOverlay", () => {
+  it("should leave the application unobstructed when no operation is running", () => {
+    const markup = renderToStaticMarkup(<AppShutdownOverlay open={false} />);
+    expect(markup).not.toContain('role="progressbar"');
+  });
+  it("should show installation progress without claiming a download percentage", () => {
+    const markup = renderToStaticMarkup(<AppShutdownOverlay open mode="update" />);
+    expect(markup).toContain("updates.installing");
+    expect(markup).toContain("updates.installingDetail");
+    expect(markup).toContain('role="progressbar"');
+    expect(markup).not.toContain("shutdown.title");
+    expect(markup).not.toContain("aria-valuenow");
+  });
   it("should expose localized shutdown progress when open", () => {
     const markup = renderToStaticMarkup(<AppShutdownOverlay open />);
 

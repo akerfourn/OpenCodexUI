@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AppUpdater } from "electron-updater";
 import type { OpenCodexAppUpdateState } from "@open-codex-ui/opencodex-protocol";
@@ -14,6 +14,7 @@ vi.mock("electron-updater", () => ({
 }));
 
 describe("AppUpdateService", () => {
+  afterEach(() => vi.useRealTimers());
   it("should disable the updater in development without resolving electron-updater", async () => {
     const service = new AppUpdateService({
       currentVersion: "0.0",
@@ -21,7 +22,7 @@ describe("AppUpdateService", () => {
       allowPrerelease: true,
       emit: vi.fn(),
       log: vi.fn(),
-      onInstallRequested: vi.fn()
+      onInstallStateChanged: vi.fn()
     });
 
     service.start();
@@ -69,6 +70,7 @@ describe("AppUpdateService", () => {
   });
 
   it("should publish download progress and require explicit installation", async () => {
+    vi.useFakeTimers();
     const updater = createFakeUpdater();
     const states: OpenCodexAppUpdateState[] = [];
     const updateInfo = createUpdateInfo("1.15.0");
@@ -93,7 +95,7 @@ describe("AppUpdateService", () => {
       allowPrerelease: false,
       emit: (state) => states.push(state),
       log: vi.fn(),
-      onInstallRequested: installRequested
+      onInstallStateChanged: installRequested
     }, updater as unknown as AppUpdater);
 
     await service.check(true);
@@ -106,8 +108,50 @@ describe("AppUpdateService", () => {
     service.install();
 
     expect(installRequested).toHaveBeenCalledOnce();
+    expect(installRequested).toHaveBeenCalledWith(true);
+    expect(service.getState().status).toBe("installing");
+    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+    service.install();
+    await service.check(true);
+    updater.emit("update-downloaded", updateInfo);
+    expect(service.getState().status).toBe("installing");
+    await vi.advanceTimersByTimeAsync(100);
     expect(updater.quitAndInstall).toHaveBeenCalledWith(false, true);
+    expect(updater.quitAndInstall).toHaveBeenCalledOnce();
     service.dispose();
+  });
+
+  it("should release the installation guard after an asynchronous installer failure", async () => {
+    vi.useFakeTimers();
+    const updater = createFakeUpdater();
+    const changed = vi.fn();
+    const service = new AppUpdateService({
+      currentVersion: "1.14.0", isPackaged: true, allowPrerelease: false,
+      emit: vi.fn(), log: vi.fn(), onInstallStateChanged: changed
+    }, updater as unknown as AppUpdater);
+    updater.emit("update-downloaded", createUpdateInfo("1.15.0"));
+    service.install();
+    await vi.advanceTimersByTimeAsync(100);
+    updater.emit("error", new Error("Authorization cancelled"));
+    expect(service.getState()).toMatchObject({ status: "error", errorMessage: "Authorization cancelled" });
+    expect(changed.mock.calls).toEqual([[true], [false]]);
+    service.dispose();
+  });
+
+  it("should recover from a synchronous installer exception and cancel deferred installs on disposal", async () => {
+    vi.useFakeTimers();
+    const updater = createFakeUpdater();
+    const service = createService(updater, [], false);
+    updater.quitAndInstall.mockImplementation(() => { throw new Error("installer unavailable"); });
+    updater.emit("update-downloaded", createUpdateInfo("1.15.0"));
+    service.install();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(service.getState()).toMatchObject({ status: "error", errorMessage: "installer unavailable" });
+    updater.emit("update-downloaded", createUpdateInfo("1.15.0"));
+    service.install();
+    service.dispose();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(updater.quitAndInstall).toHaveBeenCalledOnce();
   });
 
   it("should convert provider failures into a recoverable error state", async () => {
@@ -192,7 +236,7 @@ function createService(
     allowPrerelease,
     emit: (state) => states.push(state),
     log: vi.fn(),
-    onInstallRequested: vi.fn()
+    onInstallStateChanged: vi.fn()
   }, updater as unknown as AppUpdater);
 }
 

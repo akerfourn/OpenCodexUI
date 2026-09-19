@@ -143,6 +143,8 @@ export const frApp = {
     details: "Détails",
     dismiss: "Fermer",
     install: "Redémarrer et installer",
+    installing: "Installation de la mise à jour en cours…",
+    installingDetail: "L’application redémarrera automatiquement une fois l’installation terminée. Une autorisation système peut vous être demandée.",
     retry: "Réessayer"
   },
   theme: {

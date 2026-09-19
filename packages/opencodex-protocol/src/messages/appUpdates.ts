@@ -10,6 +10,7 @@ export type OpenCodexAppUpdateStatus =
   | "available"
   | "downloading"
   | "downloaded"
+  | "installing"
   | "not-available"
   | "error";
 

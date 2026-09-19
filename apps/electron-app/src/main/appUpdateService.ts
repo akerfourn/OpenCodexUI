@@ -31,7 +31,7 @@ type AppUpdateServiceOptions = {
   allowPrerelease: boolean;
   emit(state: OpenCodexAppUpdateState): void;
   log(level: AppUpdateLogLevel, message: string): void;
-  onInstallRequested(): void;
+  onInstallStateChanged(installing: boolean): void;
 };
 
 /**
@@ -46,6 +46,8 @@ export class AppUpdateService {
   private lastCheckAtMs: number | null = null;
   private isStarted = false;
   private isDisposed = false;
+  /** Gives the renderer time to paint before invoking a platform installer. */
+  private installTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Creates the updater service with the packaged application settings. */
   constructor(options: AppUpdateServiceOptions, updater?: AppUpdater) {
@@ -98,7 +100,7 @@ export class AppUpdateService {
 
   /** Checks GitHub releases unless a recent check is still fresh. */
   async check(force: boolean): Promise<OpenCodexAppUpdateState> {
-    if (this.isDisposed || !this.state.isSupported) {
+    if (this.isDisposed || !this.state.isSupported || this.state.status === "installing") {
       return this.getState();
     }
 
@@ -149,8 +151,16 @@ export class AppUpdateService {
       return this.getState();
     }
 
-    this.options.onInstallRequested();
-    updater.quitAndInstall(false, true);
+    this.publishState({ status: "installing", errorMessage: null, progress: null });
+    this.options.onInstallStateChanged(true);
+    this.installTimer = setTimeout(() => {
+      this.installTimer = null;
+      try {
+        updater.quitAndInstall(false, true);
+      } catch (error) {
+        this.applyError(error);
+      }
+    }, 100);
     return this.getState();
   }
 
@@ -161,6 +171,11 @@ export class AppUpdateService {
     }
 
     this.isDisposed = true;
+    if (this.installTimer !== null) {
+      clearTimeout(this.installTimer);
+      this.installTimer = null;
+      this.options.onInstallStateChanged(false);
+    }
     if (this.initialCheckTimer !== null) {
       clearTimeout(this.initialCheckTimer);
       this.initialCheckTimer = null;
@@ -279,6 +294,11 @@ export class AppUpdateService {
 
   /** Stores a provider error without exposing the provider-specific error object. */
   private applyError(error: unknown): void {
+    if (this.state.status === "installing") {
+      if (this.installTimer !== null) clearTimeout(this.installTimer);
+      this.installTimer = null;
+      this.options.onInstallStateChanged(false);
+    }
     const message = error instanceof Error && error.message.length > 0
       ? error.message
       : String(error);
@@ -330,14 +350,14 @@ export class AppUpdateService {
 
   /** Receives the start of a provider check. */
   private readonly handleCheckingForUpdate = (): void => {
-    if (!this.isDisposed) {
+    if (!this.isDisposed && this.state.status !== "installing") {
       this.publishState({ status: "checking", errorMessage: null, progress: null });
     }
   };
 
   /** Receives metadata for an available update. */
   private readonly handleUpdateAvailable = (info: UpdateInfo): void => {
-    if (!this.isDisposed) {
+    if (!this.isDisposed && this.state.status !== "installing") {
       this.lastCheckAtMs = Date.now();
       this.publishAvailableUpdate(info);
     }
@@ -345,7 +365,7 @@ export class AppUpdateService {
 
   /** Receives a completed check without an available update. */
   private readonly handleUpdateNotAvailable = (info: UpdateInfo): void => {
-    if (!this.isDisposed) {
+    if (!this.isDisposed && this.state.status !== "installing") {
       this.lastCheckAtMs = Date.now();
       this.publishState({
         status: "not-available",
@@ -361,7 +381,7 @@ export class AppUpdateService {
 
   /** Receives download progress from the native updater. */
   private readonly handleDownloadProgress = (info: ProgressInfo): void => {
-    if (!this.isDisposed) {
+    if (!this.isDisposed && this.state.status !== "installing") {
       this.publishState({
         status: "downloading",
         errorMessage: null,
@@ -372,7 +392,7 @@ export class AppUpdateService {
 
   /** Receives the completed download notification. */
   private readonly handleUpdateDownloaded = (info: UpdateInfo): void => {
-    if (!this.isDisposed) {
+    if (!this.isDisposed && this.state.status !== "installing") {
       this.publishState({
         status: "downloaded",
         availableVersion: info.version,
@@ -386,7 +406,7 @@ export class AppUpdateService {
 
   /** Returns to the available state when a download is cancelled. */
   private readonly handleUpdateCancelled = (info: UpdateInfo): void => {
-    if (!this.isDisposed) {
+    if (!this.isDisposed && this.state.status !== "installing") {
       this.publishAvailableUpdate(info);
     }
   };

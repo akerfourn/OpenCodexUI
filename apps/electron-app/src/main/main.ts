@@ -4,7 +4,7 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
 
-import { app, BrowserWindow, dialog, Menu } from "electron";
+import { app, autoUpdater, BrowserWindow, dialog, Menu } from "electron";
 
 import type {
   OpenCodexApplicationCloseRequest,
@@ -29,6 +29,8 @@ let isDisposing = false;
 let isDisposed = false;
 let isCloseConfirmationOpen = false;
 let isApplicationUpdateInstallInProgress = false;
+/** Only the native updater may close the application during installation. */
+let isApplicationUpdateRestartReady = false;
 
 const SHUTDOWN_RENDER_DELAY_MS = 100;
 const SHUTDOWN_CLEANUP_TIMEOUT_MS = 5_000;
@@ -71,8 +73,9 @@ async function main(): Promise<void> {
       applyContextMenuLanguage(nextSettings.language);
     },
     onApplicationCloseResponse: handleApplicationCloseResponse,
-    onApplicationUpdateInstallRequested: () => {
-      isApplicationUpdateInstallInProgress = true;
+    onApplicationUpdateInstallStateChanged: (installing) => {
+      isApplicationUpdateInstallInProgress = installing;
+      isApplicationUpdateRestartReady = false;
     },
     openUsageHistory: (sourceId) => {
       openUsageHistoryWindow({
@@ -109,8 +112,16 @@ app.on("window-all-closed", () => {
   }
 });
 
+autoUpdater.on("before-quit-for-update", () => {
+  isApplicationUpdateRestartReady = true;
+});
+
 app.on("before-quit", (event) => {
-  if (isDisposed || isDisposing || isApplicationUpdateInstallInProgress) {
+  if (isApplicationUpdateInstallInProgress && !isApplicationUpdateRestartReady) {
+    event.preventDefault();
+    return;
+  }
+  if (isDisposed || isDisposing || isApplicationUpdateRestartReady) {
     return;
   }
 
@@ -189,7 +200,11 @@ async function disposeAndExit(code: number): Promise<void> {
 function attachMainWindow(window: BrowserWindow): void {
   mainWindow = window;
   window.on("close", (event) => {
-    if (isDisposed || isDisposing || isApplicationUpdateInstallInProgress) {
+    if (isApplicationUpdateInstallInProgress && !isApplicationUpdateRestartReady) {
+      event.preventDefault();
+      return;
+    }
+    if (isDisposed || isDisposing || isApplicationUpdateRestartReady) {
       return;
     }
 
