@@ -7,7 +7,7 @@ import type {
   OpenCodexCommitMessageLanguage,
   OpenCodexComposerReference,
   OpenCodexFileSearchMode,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexLogCategory,
   OpenCodexLogType,
   OpenCodexLogRetentionUnit,
@@ -77,6 +77,7 @@ export type OpenCodexRequest =
     }
   | { type: "projectGroups.delete"; groupId: string }
   | { type: "projectGroups.assignProject"; projectId: string; groupId: string | null }
+  | { type: "attachments.pickFiles" }
   | { type: "attachments.pickImages" }
   | { type: "sources.list" }
   | {
@@ -175,7 +176,7 @@ export type OpenCodexRequest =
       projectPath?: string | null;
       sourceId?: string | null;
       text: string;
-      attachments?: OpenCodexImageAttachment[];
+      attachments?: OpenCodexAttachment[];
       references?: OpenCodexComposerReference[];
       model?: string | null;
       reasoningEffort?: OpenCodexReasoningEffort | null;
@@ -186,7 +187,7 @@ export type OpenCodexRequest =
       threadId: string;
       turnId: string;
       text: string;
-      attachments?: OpenCodexImageAttachment[];
+      attachments?: OpenCodexAttachment[];
       references?: OpenCodexComposerReference[];
     }
   | {
@@ -195,7 +196,7 @@ export type OpenCodexRequest =
       projectPath?: string | null;
       sourceId?: string | null;
       text: string;
-      attachments?: OpenCodexImageAttachment[];
+      attachments?: OpenCodexAttachment[];
       references?: OpenCodexComposerReference[];
       model?: string | null;
       reasoningEffort?: OpenCodexReasoningEffort | null;

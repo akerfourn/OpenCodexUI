@@ -176,7 +176,7 @@ export const enConversation = {
       reviewTitle: "Start a review?"
     },
     attachedImage: "Attached image",
-    attachImage: "Attach image",
+    attachFile: "Attach file",
     emoji: {
       categories: "Emoji categories",
       emptyRecent: "No recent emoji.",

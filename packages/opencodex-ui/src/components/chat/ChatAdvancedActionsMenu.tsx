@@ -1,7 +1,7 @@
 /**
  * Renders advanced chat actions behind a compact overflow menu.
  */
-import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
+import AttachFileOutlinedIcon from "@mui/icons-material/AttachFileOutlined";
 import CompressOutlinedIcon from "@mui/icons-material/CompressOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
@@ -26,10 +26,10 @@ export type ChatAdvancedAction = "review" | "compact";
 
 type ChatAdvancedActionsMenuProps = {
   disabled: boolean;
-  attachImagesDisabled: boolean;
+  attachFilesDisabled: boolean;
   onReview(): void;
   onCompact(): void;
-  onAttachImages(): void;
+  onAttachFiles(): void;
 };
 
 /**
@@ -42,14 +42,14 @@ export function ChatAdvancedActionsMenu({
   disabled,
   onReview,
   onCompact,
-  attachImagesDisabled,
-  onAttachImages
+  attachFilesDisabled,
+  onAttachFiles
 }: ChatAdvancedActionsMenuProps) {
   const { t } = useTranslation();
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
   const [pendingAction, setPendingAction] = useState<ChatAdvancedAction | null>(null);
   const isMenuOpen = anchorElement !== null;
-  const isMenuDisabled = disabled && attachImagesDisabled;
+  const isMenuDisabled = disabled && attachFilesDisabled;
 
   function handleOpenMenu(event: React.MouseEvent<HTMLButtonElement>): void {
     setAnchorElement(event.currentTarget);
@@ -64,9 +64,9 @@ export function ChatAdvancedActionsMenu({
     handleCloseMenu();
   }
 
-  function handleAttachImages(): void {
+  function handleAttachFiles(): void {
     handleCloseMenu();
-    onAttachImages();
+    onAttachFiles();
   }
 
   function handleCancel(): void {
@@ -116,11 +116,11 @@ export function ChatAdvancedActionsMenu({
         transformOrigin={{ vertical: "bottom", horizontal: "right" }}
         onClose={handleCloseMenu}
       >
-        <MenuItem disabled={attachImagesDisabled} onClick={handleAttachImages}>
+        <MenuItem disabled={attachFilesDisabled} onClick={handleAttachFiles}>
           <ListItemIcon>
-            <AddPhotoAlternateOutlinedIcon fontSize="small" />
+            <AttachFileOutlinedIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>{t("composer.attachImage")}</ListItemText>
+          <ListItemText>{t("composer.attachFile")}</ListItemText>
         </MenuItem>
         <MenuItem disabled={disabled} onClick={() => handleSelectAction("review")}>
           <ListItemIcon>

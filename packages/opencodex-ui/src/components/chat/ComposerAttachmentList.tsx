@@ -1,17 +1,18 @@
 /**
  * Renders composer image attachments with preview and removal controls.
  */
-import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
-import { Box, Dialog, DialogContent, IconButton, Typography } from "@mui/material";
+import { observer } from "mobx-react-lite";
+import { ComposerAttachmentTileX } from "./ComposerAttachmentTile";
+import { Box, Dialog, DialogContent } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexImageAttachment } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexAttachment, OpenCodexImageAttachment } from "@open-codex-ui/opencodex-protocol";
 
 import { readImageAttachmentSrc } from "../messages/imageAttachmentSource";
 
 type ComposerAttachmentListProps = {
-  attachments: OpenCodexImageAttachment[];
+  attachments: OpenCodexAttachment[];
   /**
    * Handles remove attachment.
    *
@@ -53,60 +54,9 @@ export function ComposerAttachmentList({
           width: "100%"
         }}
       >
-        {attachments.map((attachment, index) => (
-          <Box
-            key={attachment.id}
-            sx={{
-              alignItems: "center",
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 1,
-              display: "flex",
-              gap: 1,
-              maxWidth: 260,
-              overflow: "hidden",
-              p: 0.75
-            }}
-          >
-            <Box
-              component="button"
-              type="button"
-              onClick={() => setPreviewAttachment(attachment)}
-              sx={{
-                border: 0,
-                bgcolor: "transparent",
-                cursor: "pointer",
-                display: "block",
-                flex: "0 0 auto",
-                p: 0
-              }}
-            >
-              <Box
-                component="img"
-                src={readImageAttachmentSrc(attachment)}
-                alt={attachment.name ?? t("composer.attachedImage")}
-                sx={{
-                  borderRadius: 0.75,
-                  display: "block",
-                  height: 42,
-                  objectFit: "cover",
-                  width: 56
-                }}
-              />
-            </Box>
-            <Typography variant="caption" noWrap sx={{ flex: "1 1 auto", minWidth: 0 }}>
-              {attachment.name ?? t("composer.imageIndex", { index: String(index + 1) })}
-            </Typography>
-            <IconButton
-              type="button"
-              size="small"
-              aria-label={t("composer.removeAttachment")}
-              onClick={() => onRemoveAttachment(attachment.id)}
-              sx={{ flex: "0 0 auto" }}
-            >
-              <CloseOutlinedIcon sx={{ fontSize: 15 }} />
-            </IconButton>
-          </Box>
+        {attachments.map((attachment) => (
+          <ComposerAttachmentTileX key={attachment.id} attachment={attachment}
+            onPreview={setPreviewAttachment} onRemove={onRemoveAttachment} />
         ))}
       </Box>
       <Dialog
@@ -135,3 +85,5 @@ export function ComposerAttachmentList({
     </>
   );
 }
+
+export const ComposerAttachmentListX = observer(ComposerAttachmentList);

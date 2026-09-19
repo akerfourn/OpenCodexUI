@@ -63,6 +63,11 @@ export class CodexAppServerClient {
     this.transport = new CodexAppServerTransport(options);
   }
 
+  /** Returns the source-native storage root, never a path inferred from the UI host. */
+  async getCodexHome(): Promise<string> {
+    return await this.transport.getCodexHome();
+  }
+
   /**
    * Starts the Codex app-server process and runs the JSON-RPC initialization handshake.
    *

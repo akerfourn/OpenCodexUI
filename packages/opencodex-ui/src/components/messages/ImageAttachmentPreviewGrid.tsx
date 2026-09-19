@@ -1,15 +1,17 @@
+import { FileAttachmentTileX } from "./FileAttachmentTile";
+import { observer } from "mobx-react-lite";
 /**
  * Renders image attachment previews for chat messages.
  */
 import { Box, Dialog, DialogContent } from "@mui/material";
 import { useState } from "react";
 
-import type { OpenCodexImageAttachment } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexAttachment } from "@open-codex-ui/opencodex-protocol";
 
 import { ImageAttachmentPreviewTile } from "./ImageAttachmentPreviewTile";
 
 type ImageAttachmentPreviewGridProps = {
-  attachments: OpenCodexImageAttachment[];
+  attachments: OpenCodexAttachment[];
 };
 
 type OpenedImage = {
@@ -35,16 +37,17 @@ export function ImageAttachmentPreviewGrid({ attachments }: ImageAttachmentPrevi
     setOpenedImage(null);
   }
 
+  const tiles = attachments.map((attachment) => {
+    if (attachment.kind === "file") {
+      return <FileAttachmentTileX key={attachment.id} attachment={attachment} />;
+    }
+    return <ImageAttachmentPreviewTile key={attachment.id} attachment={attachment} onOpen={handleOpenImage} />;
+  });
+
   return (
     <>
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
-        {attachments.map((attachment) => (
-          <ImageAttachmentPreviewTile
-            key={attachment.id}
-            attachment={attachment}
-            onOpen={handleOpenImage}
-          />
-        ))}
+        {tiles}
       </Box>
       <Dialog open={openedImage !== null} maxWidth="lg" fullWidth onClose={handleCloseImage}>
         {openedImage !== null ? (
@@ -67,3 +70,5 @@ export function ImageAttachmentPreviewGrid({ attachments }: ImageAttachmentPrevi
     </>
   );
 }
+
+export const ImageAttachmentPreviewGridX = observer(ImageAttachmentPreviewGrid);

@@ -23,7 +23,7 @@ import type {
   OpenCodexGitStatus,
   OpenCodexGitTagFetchResult,
   OpenCodexGitTagListResult,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexInstalledPluginListResult,
   OpenCodexLogEntry,
   OpenCodexLogCategory,
@@ -253,7 +253,7 @@ export interface ThreadsApi {
     projectPath: string | null,
     sourceId: string | null,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
@@ -264,7 +264,7 @@ export interface ThreadsApi {
     threadId: string,
     turnId: string,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[]
   ): Promise<{ threadId: string; turnId: string }>;
   editLastTurn(
@@ -272,7 +272,7 @@ export interface ThreadsApi {
     projectPath: string | null,
     sourceId: string | null,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
@@ -559,7 +559,7 @@ export interface SearchApi {
 /** Public host filesystem, picker, link, and process operations. */
 export interface HostApi {
   pickExecutable(): Promise<string | null>;
-  pickImages(): Promise<OpenCodexImageAttachment[]>;
+  pickFiles(): Promise<OpenCodexAttachment[]>;
   openLink(href: string, projectPath: string | null, sourceId: string | null): Promise<{ ok: true }>;
   openInIde(projectPath: string, sourceId: string | null): Promise<{ ok: true }>;
   openFolder(projectPath: string, sourceId: string | null): Promise<{ ok: true }>;

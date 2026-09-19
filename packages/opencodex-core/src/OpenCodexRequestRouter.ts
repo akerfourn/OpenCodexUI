@@ -109,7 +109,9 @@ export class OpenCodexRequestRouter {
       case "projectGroups.assignProject":
         return this.runtime.groups.assignProject(request.projectId, request.groupId);
       case "attachments.pickImages":
-        return this.runtime.host.pickImages();
+        return (await this.runtime.host.pickFiles()).filter((attachment) => attachment.kind === "image");
+      case "attachments.pickFiles":
+        return this.runtime.host.pickFiles();
       case "sources.list":
         return this.runtime.sources.list();
       case "sources.create":

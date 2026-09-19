@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite";
 
 import type { OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 
-import { ImageAttachmentPreviewGrid } from "./ImageAttachmentPreviewGrid";
+import { ImageAttachmentPreviewGridX } from "./ImageAttachmentPreviewGrid";
 
 type MessageAttachmentsProps = {
   item: OpenCodexTurnItem;
@@ -16,7 +16,7 @@ export function MessageAttachments({ item }: MessageAttachmentsProps) {
     return null;
   }
 
-  return <ImageAttachmentPreviewGrid attachments={attachments} />;
+  return <ImageAttachmentPreviewGridX attachments={attachments} />;
 }
 
 export const MessageAttachmentsX = observer(MessageAttachments);

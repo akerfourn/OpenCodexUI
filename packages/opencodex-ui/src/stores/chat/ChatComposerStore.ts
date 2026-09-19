@@ -5,7 +5,7 @@ import { makeAutoObservable } from "mobx";
 
 import type {
   OpenCodexComposerReference,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexReasoningEffort,
   OpenCodexServiceTier,
   OpenCodexThread
@@ -29,8 +29,8 @@ export class ChatComposerStore {
   draftMarkdown = "";
   /** Structured references embedded in the markdown draft. */
   draftReferences: OpenCodexComposerReference[] = [];
-  /** Image attachments currently staged in the draft. */
-  attachments: OpenCodexImageAttachment[] = [];
+  /** Attachments currently staged in the draft. */
+  attachments: OpenCodexAttachment[] = [];
   /** Whether the user explicitly changed the model for this chat. */
   private hasExplicitModelSelection = false;
   /** Whether the user explicitly changed reasoning effort for this chat. */
@@ -153,14 +153,14 @@ export class ChatComposerStore {
   }
 
   /**
-   * Appends image attachments to the in-memory draft.
+   * Appends attachments to the in-memory draft.
    *
-   * @param attachments Image attachments to add.
+   * @param attachments Attachments to add.
    */
-  addAttachments(attachments: OpenCodexImageAttachment[]): void {
+  addAttachments(attachments: OpenCodexAttachment[]): void {
     this.attachments = [
       ...this.attachments,
-      ...cloneImageAttachments(attachments)
+      ...cloneAttachments(attachments)
     ];
   }
 
@@ -203,22 +203,23 @@ export function cloneComposerReferences(
 }
 
 /**
- * Clones image attachments before crossing request boundaries.
+ * Clones attachments before crossing request boundaries.
  *
- * @param attachments Image attachments.
+ * @param attachments Attachments.
  * @returns Plain cloned attachments.
  */
-export function cloneImageAttachments(
-  attachments: OpenCodexImageAttachment[]
-): OpenCodexImageAttachment[] {
-  return attachments.map((attachment) => ({
-    id: attachment.id,
-    kind: attachment.kind,
-    source: attachment.source,
-    value: attachment.value,
-    name: attachment.name ?? null,
-    previewUrl: attachment.previewUrl ?? null
-  }));
+export function cloneAttachments(
+  attachments: OpenCodexAttachment[]
+): OpenCodexAttachment[] {
+  return attachments.map((attachment) => {
+    if (attachment.kind === "file") {
+      return { ...attachment };
+    }
+    return {
+      id: attachment.id, kind: attachment.kind, source: attachment.source,
+      value: attachment.value, name: attachment.name ?? null, previewUrl: attachment.previewUrl ?? null
+    };
+  });
 }
 
 /**

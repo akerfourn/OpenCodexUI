@@ -177,7 +177,7 @@ export const frConversation = {
       reviewTitle: "Lancer une review ?"
     },
     attachedImage: "Image jointe",
-    attachImage: "Ajouter une image",
+    attachFile: "Ajouter un fichier",
     emoji: {
       categories: "Catégories d'emojis",
       emptyRecent: "Aucun emoji récent.",

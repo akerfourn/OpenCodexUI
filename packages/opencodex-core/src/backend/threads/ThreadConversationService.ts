@@ -2,7 +2,7 @@ import type { CodexNotification } from "@open-codex-ui/codex-rpc";
 
 import type {
   OpenCodexComposerReference,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexReasoningEffort,
   OpenCodexThread,
   OpenCodexThreadGoal,
@@ -426,7 +426,7 @@ export class ThreadConversationService {
     projectPath: string | null,
     sourceId: string | null,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
@@ -464,7 +464,7 @@ export class ThreadConversationService {
     threadId: string,
     turnId: string,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[]
   ): Promise<{ threadId: string; turnId: string }> {
     return await this.threadTurnActionsService.steerTurn(
@@ -496,7 +496,7 @@ export class ThreadConversationService {
     projectPath: string | null,
     sourceId: string | null,
     _text: string,
-    _attachments: OpenCodexImageAttachment[],
+    _attachments: OpenCodexAttachment[],
     _references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,

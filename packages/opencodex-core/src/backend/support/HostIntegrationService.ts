@@ -1,5 +1,5 @@
 import { normalizeProjectPath, type CachedSource } from "@open-codex-ui/opencodex-cache";
-import type { OpenCodexImageAttachment } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexAttachment } from "@open-codex-ui/opencodex-protocol";
 
 import { getBackendLabels } from "../shared/errors.js";
 import type {
@@ -17,8 +17,8 @@ export type HostIntegrationServiceOptions = {
   projects: Pick<ProjectSourcePort, "resolveSource">;
   /** Lets the host application pick a local executable. */
   pickExecutableFile?: () => Promise<string | null> | string | null;
-  /** Lets the host application pick image attachments. */
-  pickImageFiles?: () => Promise<OpenCodexImageAttachment[]> | OpenCodexImageAttachment[];
+  /** Lets the host application pick file attachments. */
+  pickAttachmentFiles?: () => Promise<OpenCodexAttachment[]> | OpenCodexAttachment[];
   /** Opens a URL or source path through an optional host opener command. */
   openExternalLink?: (
     href: string,
@@ -49,12 +49,12 @@ export class HostIntegrationService {
   }
 
   /**
-   * Opens the host image picker.
+   * Opens the host file picker.
    *
-   * @returns Selected image attachments, or an empty array when no picker is configured.
+   * @returns Selected file attachments, or an empty array when no picker is configured.
    */
-  async pickImageFiles(): Promise<OpenCodexImageAttachment[]> {
-    return await this.options.pickImageFiles?.() ?? [];
+  async pickAttachmentFiles(): Promise<OpenCodexAttachment[]> {
+    return await this.options.pickAttachmentFiles?.() ?? [];
   }
 
   /**

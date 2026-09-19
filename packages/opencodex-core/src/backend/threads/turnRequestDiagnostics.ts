@@ -1,6 +1,6 @@
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import type {
-  OpenCodexComposerReference, OpenCodexImageAttachment,
+  OpenCodexComposerReference, OpenCodexAttachment,
   OpenCodexThreadEventLogValue, OpenCodexTurnDiagnosticRequestInput
 } from "@open-codex-ui/opencodex-protocol";
 import { buildTurnDiagnosticInput } from "./turnInput.js";
@@ -16,7 +16,7 @@ import { buildTurnDiagnosticInput } from "./turnInput.js";
  */
 export function createTurnRequestDetails(
   text: string,
-  attachments: OpenCodexImageAttachment[],
+  attachments: OpenCodexAttachment[],
   references: OpenCodexComposerReference[],
   extra: Record<string, OpenCodexThreadEventLogValue> = {}
 ): Record<string, OpenCodexThreadEventLogValue> {

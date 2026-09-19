@@ -19,15 +19,15 @@ describe("HostIntegrationService", () => {
       fileName: "image.png"
     }];
     const pickExecutableFile = vi.fn(() => "/usr/bin/codex");
-    const pickImageFiles = vi.fn(() => images);
-    const service = createService({ pickExecutableFile, pickImageFiles });
+    const pickAttachmentFiles = vi.fn(() => images);
+    const service = createService({ pickExecutableFile, pickAttachmentFiles });
 
     await expect(service.pickSourceExecutable()).resolves.toBe("/usr/bin/codex");
-    await expect(service.pickImageFiles()).resolves.toEqual(images);
+    await expect(service.pickAttachmentFiles()).resolves.toEqual(images);
     await expect(createService().pickSourceExecutable()).resolves.toBeNull();
-    await expect(createService().pickImageFiles()).resolves.toEqual([]);
+    await expect(createService().pickAttachmentFiles()).resolves.toEqual([]);
     expect(pickExecutableFile).toHaveBeenCalledOnce();
-    expect(pickImageFiles).toHaveBeenCalledOnce();
+    expect(pickAttachmentFiles).toHaveBeenCalledOnce();
   });
 
   it("should treat an empty link as a successful no-op", async () => {
@@ -230,7 +230,7 @@ function createService(
     projectPath: overrides.projectPath ?? null,
     projects: { resolveSource },
     pickExecutableFile: overrides.pickExecutableFile,
-    pickImageFiles: overrides.pickImageFiles,
+    pickAttachmentFiles: overrides.pickAttachmentFiles,
     openExternalLink: overrides.openExternalLink,
     openProjectFolder: overrides.openProjectFolder,
     openProjectTerminal: overrides.openProjectTerminal

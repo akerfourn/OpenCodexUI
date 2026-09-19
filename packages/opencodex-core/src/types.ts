@@ -3,7 +3,7 @@
  */
 import type {
   OpenCodexEvent,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
@@ -72,7 +72,7 @@ export type OpenCodexBackendOptions = {
    *
    * @returns Selected image paths, or an empty array when cancelled.
    */
-  pickImageFiles?(): Promise<OpenCodexImageAttachment[]> | OpenCodexImageAttachment[];
+  pickAttachmentFiles?(): Promise<OpenCodexAttachment[]> | OpenCodexAttachment[];
   /**
    * Lets the host application pick a local executable.
    *

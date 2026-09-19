@@ -14,7 +14,7 @@ import type {
   OpenCodexEnterKeyBehavior,
   OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexSkillSearchResult
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -23,7 +23,7 @@ import type { ChatComposerStore } from "../../stores/chat/ChatComposerStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import type { RootStore } from "../../stores/RootStore";
 import { ChatAdvancedActionsMenu } from "./ChatAdvancedActionsMenu";
-import { ComposerAttachmentList } from "./ComposerAttachmentList";
+import { ComposerAttachmentListX } from "./ComposerAttachmentList";
 import { ComposerEmojiPicker } from "./ComposerEmojiPicker";
 import {
   ComposerPlainTextInput,
@@ -65,7 +65,7 @@ export function ChatComposer({
   const isSteering = isWorking && canSteer;
   const canSubmit = (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
   const canShowSubmit = !isWorking || canSteer;
-  const canAttachImages = !isWorking || canSteer;
+  const canAttachFiles = !isWorking || canSteer;
   const sourceId = chatStore.sourceId;
   const emojiOverrides = store.emojiCatalogStore.overrides;
   const reasoningEfforts = store.appStore.getReasoningEffortOptions(composer.selectedModel);
@@ -162,14 +162,13 @@ export function ChatComposer({
     chatStore.actions.compact();
   }
 
-  async function handleAttachImages(): Promise<void> {
-    const pickedAttachments = await store.pickImageAttachments();
-
-    if (pickedAttachments.length === 0) {
-      return;
+  async function handleAttachFiles(): Promise<void> {
+    try {
+      const pickedAttachments = await store.pickFileAttachments();
+      composer.addAttachments(pickedAttachments);
+    } catch (error) {
+      store.appStore.applyError({ type: "error", message: error instanceof Error ? error.message : String(error) });
     }
-
-    composer.addAttachments(pickedAttachments);
   }
 
   function handleRemoveAttachment(attachmentId: string): void {
@@ -250,7 +249,7 @@ export function ChatComposer({
         onOpenFileLink={handleOpenFileLink}
         onKeyDown={handleKeyDown}
       />
-      <ComposerAttachmentList
+      <ComposerAttachmentListX
         attachments={attachments}
         onRemoveAttachment={handleRemoveAttachment}
       />
@@ -269,11 +268,11 @@ export function ChatComposer({
         <div className="spacer" />
         <ChatAdvancedActionsMenu
           disabled={areAdvancedActionsDisabled}
-          attachImagesDisabled={!canAttachImages}
+          attachFilesDisabled={!canAttachFiles}
           onReview={handleReview}
           onCompact={handleCompact}
-          onAttachImages={() => {
-            void handleAttachImages();
+          onAttachFiles={() => {
+            void handleAttachFiles();
           }}
         />
         <ComposerEmojiPicker onSelect={handleEmojiSelect} />
@@ -312,7 +311,7 @@ export function ChatComposer({
 
 export const ChatComposerX = observer(ChatComposer);
 
-function readImageAttachmentFromFile(file: File): Promise<OpenCodexImageAttachment> {
+function readImageAttachmentFromFile(file: File): Promise<OpenCodexAttachment> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 

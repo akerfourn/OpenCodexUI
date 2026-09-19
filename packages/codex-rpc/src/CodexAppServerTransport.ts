@@ -54,6 +54,8 @@ export class CodexAppServerTransport {
   private startPromise: Promise<void> | null = null;
   private isInitialized = false;
   private isStopping = false;
+  /** Source-native Codex home from the initialization handshake. */
+  private codexHome: string | null = null;
 
   /**
    * Creates a transport with the process and protocol options supplied by the client.
@@ -69,6 +71,15 @@ export class CodexAppServerTransport {
     this.processFactory = options.processFactory ?? defaultProcessFactory;
     this.logger = options.logger ?? (() => undefined);
     this.stderr = options.stderr ?? (() => undefined);
+  }
+
+  /** Returns the current server's storage root after the initialization handshake. */
+  async getCodexHome(): Promise<string> {
+    await this.start();
+    if (this.codexHome === null || this.codexHome.length === 0) {
+      throw new Error("This Codex version does not expose its attachment storage root.");
+    }
+    return this.codexHome;
   }
 
   /**
@@ -327,7 +338,7 @@ export class CodexAppServerTransport {
    * @returns Promise resolved once the initialization exchange finishes.
    */
   private async initialize(): Promise<void> {
-    await this.request("initialize", {
+    const response = await this.request<{ codexHome?: string }>("initialize", {
       clientInfo: this.clientInfo,
       capabilities: {
         experimentalApi: this.experimentalApi,
@@ -335,6 +346,7 @@ export class CodexAppServerTransport {
       }
     });
 
+    this.codexHome = response.codexHome ?? null;
     this.notify("initialized");
   }
 

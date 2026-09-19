@@ -2,7 +2,7 @@
  * Pure helpers for finding the latest user turn that can be edited.
  */
 import type {
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexTurn,
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
@@ -12,7 +12,7 @@ export interface EditableChatItem {
   turnId: string;
   itemId: string;
   content: string;
-  attachments: OpenCodexImageAttachment[];
+  attachments: OpenCodexAttachment[];
 }
 
 /** Identity used to render edit controls without copying the message body. */

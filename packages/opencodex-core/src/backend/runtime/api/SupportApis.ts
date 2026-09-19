@@ -4,7 +4,7 @@ import type {
   OpenCodexApprovalDecision,
   OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexInstalledPluginListResult,
   OpenCodexLogCategory,
   OpenCodexLogEntry,
@@ -221,7 +221,7 @@ export class SearchApi implements SearchApiContract {
 type HostApiService = Pick<
   HostIntegrationService,
   | "pickSourceExecutable"
-  | "pickImageFiles"
+  | "pickAttachmentFiles"
   | "openLink"
   | "openProjectInIde"
   | "openProjectFolder"
@@ -239,8 +239,8 @@ export class HostApi implements HostApiContract {
   }
 
   /** Opens the host image picker. */
-  async pickImages(): Promise<OpenCodexImageAttachment[]> {
-    return await this.service.pickImageFiles();
+  async pickFiles(): Promise<OpenCodexAttachment[]> {
+    return await this.service.pickAttachmentFiles();
   }
 
   /** Opens an external link through the host. */

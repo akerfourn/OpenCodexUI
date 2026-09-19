@@ -109,6 +109,20 @@ export type OpenCodexImageAttachment = {
   previewUrl?: string | null;
 };
 
+/** A selected file's bytes, or its durable path on an explicit Codex source. */
+export interface OpenCodexFileAttachment {
+  id: string;
+  kind: "file";
+  source: "dataUrl" | "localPath";
+  value: string;
+  name: string;
+  sourceId?: string;
+  previewUrl?: null;
+}
+
+/** Attachments supported by the composer and persisted user messages. */
+export type OpenCodexAttachment = OpenCodexImageAttachment | OpenCodexFileAttachment;
+
 /**
  * Legacy flattened message DTO kept for compatibility with UI flows.
  */
@@ -127,7 +141,7 @@ export type OpenCodexMessage = {
   summary?: string | null;
   details?: string | null;
   plan?: OpenCodexPlanSnapshot | null;
-  attachments?: OpenCodexImageAttachment[];
+  attachments?: OpenCodexAttachment[];
 };
 
 /**
@@ -144,7 +158,7 @@ export type OpenCodexTurnItem = {
   summary?: string | null;
   details?: string | null;
   plan?: OpenCodexPlanSnapshot | null;
-  attachments?: OpenCodexImageAttachment[];
+  attachments?: OpenCodexAttachment[];
 };
 
 /**

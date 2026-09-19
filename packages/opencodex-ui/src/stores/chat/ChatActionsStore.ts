@@ -5,7 +5,7 @@ import { computed, makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexComposerReference,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexReasoningEffort,
   OpenCodexRequest,
   OpenCodexServiceTier,
@@ -15,7 +15,7 @@ import type {
 import type { ProjectStore } from "../project/ProjectStore";
 import type { RootStore } from "../RootStore";
 import type { ChatStore } from "./ChatStore";
-import { cloneComposerReferences, cloneImageAttachments } from "./ChatComposerStore";
+import { cloneComposerReferences, cloneAttachments } from "./ChatComposerStore";
 import {
   readEditableChatItem,
   readEditableChatItemIdentity
@@ -89,7 +89,7 @@ export class ChatActionsStore {
     turnId: string;
     itemId: string;
     content: string;
-    attachments: OpenCodexImageAttachment[];
+    attachments: OpenCodexAttachment[];
   } | null {
     return readEditableChatItem(this.parent.timeline.turns, this.canEditLastTurn);
   }
@@ -156,7 +156,7 @@ export class ChatActionsStore {
    * Sends a new message or steers the active turn.
    *
    * @param text Message text.
-   * @param attachments Image attachments.
+   * @param attachments Attachments.
    * @param references Composer references.
    * @param model Model identifier, or `null` for the backend default.
    * @param reasoningEffort Reasoning effort for the new turn.
@@ -165,7 +165,7 @@ export class ChatActionsStore {
    */
   send(
     text: string,
-    attachments: OpenCodexImageAttachment[] = [],
+    attachments: OpenCodexAttachment[] = [],
     references: OpenCodexComposerReference[] = [],
     model: string | null = this.parent.composer.selectedModel,
     reasoningEffort: OpenCodexReasoningEffort = this.parent.composer.reasoningEffort,
@@ -173,7 +173,7 @@ export class ChatActionsStore {
   ): Promise<boolean> {
     const trimmedText = text.trim();
     const sourceId = this.parent.sourceId;
-    const plainAttachments = cloneImageAttachments(attachments);
+    const plainAttachments = cloneAttachments(attachments);
     const plainReferences = cloneComposerReferences(references);
 
     if (
@@ -244,7 +244,7 @@ export class ChatActionsStore {
    * Edits the latest completed user turn and starts its replacement.
    *
    * @param text Replacement message text.
-   * @param attachments Image attachments.
+   * @param attachments Attachments.
    * @param model Model identifier, or `null` for the backend default.
    * @param reasoningEffort Reasoning effort for the replacement turn.
    * @param references Composer references.
@@ -253,7 +253,7 @@ export class ChatActionsStore {
    */
   editLast(
     text: string,
-    attachments: OpenCodexImageAttachment[] = [],
+    attachments: OpenCodexAttachment[] = [],
     model: string | null = this.parent.composer.selectedModel,
     reasoningEffort: OpenCodexReasoningEffort = this.parent.composer.reasoningEffort,
     references: OpenCodexComposerReference[] = [],
@@ -263,7 +263,7 @@ export class ChatActionsStore {
     const sourceId = this.parent.sourceId;
     const editableItem = this.editableLastUserItem;
     const previousTurns = this.parent.timeline.turns;
-    const plainAttachments = cloneImageAttachments(attachments);
+    const plainAttachments = cloneAttachments(attachments);
 
     if (
       editableItem === null ||
@@ -444,11 +444,11 @@ export class ChatActionsStore {
    * Creates a temporary user turn before Codex returns the real turn id.
    *
    * @param content User message content.
-   * @param attachments Image attachments.
+   * @param attachments Attachments.
    */
   private createOptimisticUserTurn(
     content: string,
-    attachments: OpenCodexImageAttachment[]
+    attachments: OpenCodexAttachment[]
   ): void {
     this.parent.runtime.pendingTurnId = this.parent.timeline.createOptimisticUserTurn(
       this.parent.thread.id,
@@ -461,13 +461,13 @@ export class ChatActionsStore {
    * Sends a steering message into the active turn with optimistic UI.
    *
    * @param content Steering message content.
-   * @param attachments Image attachments.
+   * @param attachments Attachments.
    * @param references Composer references.
    * @returns Promise resolved with whether steering succeeded.
    */
   private steerActiveTurn(
     content: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[]
   ): Promise<boolean> {
     const turnId = this.parent.runtime.activeTurnId;

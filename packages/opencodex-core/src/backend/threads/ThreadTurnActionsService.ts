@@ -1,6 +1,7 @@
+import { prepareFileAttachments } from "./fileAttachments.js";
 import type {
   OpenCodexComposerReference,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexReasoningEffort
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -105,7 +106,7 @@ export class ThreadTurnActionsService {
     projectPath: string | null,
     sourceId: string | null,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
@@ -134,13 +135,12 @@ export class ThreadTurnActionsService {
     threadId: string,
     turnId: string,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[]
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
-    const input = buildTurnInput(trimmedText, attachments, references);
-
-    if (input.length === 0) {
+    if (trimmedText.length === 0 && attachments.length === 0
+      && references.every((reference) => reference.type !== "skill")) {
       return { threadId, turnId };
     }
 
@@ -151,6 +151,8 @@ export class ThreadTurnActionsService {
     }
 
     const client = await this.options.clients.ensureClient(sourceId);
+    attachments = await prepareFileAttachments(client, sourceId, attachments);
+    const input = buildTurnInput(trimmedText, attachments, references);
     const diagnosticId = this.options.events.recordTurnDiagnosticRequest?.(
       sourceId,
       threadId,

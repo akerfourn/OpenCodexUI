@@ -4,7 +4,7 @@ import type {
   OpenCodexCollaborationQuery,
   OpenCodexComposerReference,
   OpenCodexEvent,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexReasoningEffort,
   OpenCodexThread,
   OpenCodexThreadEventLogPage,
@@ -261,7 +261,7 @@ export class ThreadRuntimeHandler {
     projectPath: string | null,
     sourceId: string | null,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
@@ -297,7 +297,7 @@ export class ThreadRuntimeHandler {
     threadId: string,
     turnId: string,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[]
   ): Promise<{ threadId: string; turnId: string }> {
     return await this.threadConversationService.steerTurn(
@@ -328,7 +328,7 @@ export class ThreadRuntimeHandler {
     projectPath: string | null,
     sourceId: string | null,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,

@@ -1,8 +1,9 @@
+import { prepareFileAttachments } from "./fileAttachments.js";
 import type { WorkspaceExecutionReservation } from "@open-codex-ui/opencodex-cache";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type {
-  OpenCodexComposerReference, OpenCodexImageAttachment, OpenCodexMessage,
+  OpenCodexComposerReference, OpenCodexAttachment, OpenCodexMessage,
   OpenCodexReasoningEffort, OpenCodexTurnExecutionMetadata
 } from "@open-codex-ui/opencodex-protocol";
 import { readObject, readString } from "../../mapping.js";
@@ -43,7 +44,7 @@ export class ThreadTurnStartService {
     projectPath: string | null,
     sourceId: string | null,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
@@ -52,9 +53,8 @@ export class ThreadTurnStartService {
     workspaceId: string | null = null
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
-    const input = buildTurnInput(trimmedText, attachments, references);
-
-    if (input.length === 0) {
+    if (trimmedText.length === 0 && attachments.length === 0
+      && references.every((reference) => reference.type !== "skill")) {
       return { threadId: threadId ?? "", turnId: "" };
     }
 
@@ -80,7 +80,7 @@ export class ThreadTurnStartService {
     projectPath: string | null,
     sourceId: string | null,
     text: string,
-    attachments: OpenCodexImageAttachment[],
+    attachments: OpenCodexAttachment[],
     references: OpenCodexComposerReference[],
     model: string | null,
     reasoningEffort: OpenCodexReasoningEffort | null,
@@ -89,7 +89,6 @@ export class ThreadTurnStartService {
     reservation?: WorkspaceExecutionReservation
   ): Promise<{ threadId: string; turnId: string }> {
     const trimmedText = text.trim();
-    const input = buildTurnInput(trimmedText, attachments, references);
     const targetSourceId = threadId === null || reservation !== undefined
       ? sourceId
       : await this.options.sourceResolver.resolveThreadSourceId(threadId, sourceId);
@@ -100,6 +99,8 @@ export class ThreadTurnStartService {
 
     const resolvedSource = await this.options.projects.resolveSource(targetSourceId);
     const client = await this.options.clients.ensureClient(resolvedSource.id);
+    attachments = await prepareFileAttachments(client, resolvedSource.id, attachments);
+    const input = buildTurnInput(trimmedText, attachments, references);
     const targetThreadId = threadId ?? (
       await this.createThreadAndReturnId(client, projectPath, resolvedSource.id)
     );

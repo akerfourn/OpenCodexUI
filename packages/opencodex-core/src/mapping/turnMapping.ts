@@ -1,7 +1,8 @@
+import { readFileAttachmentInput } from "../backend/threads/fileAttachments.js";
 import path from "node:path";
 
 import type {
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexLanguage,
   OpenCodexMessage,
   OpenCodexTurn,
@@ -124,10 +125,11 @@ function mapUserMessage(
   const content = Array.isArray(item.content) ? item.content : [];
   const attachments = content
     .map((entry) => mapUserInputAttachment(readObject(entry), readString(item.id)))
-    .filter((attachment): attachment is OpenCodexImageAttachment => attachment !== null);
+    .filter((attachment): attachment is OpenCodexAttachment => attachment !== null);
   const text = content
     .map((entry) => readObject(entry))
-    .filter((entry) => readString(entry.type) === "text")
+    .filter((entry) => readString(entry.type) === "text"
+      && readFileAttachmentInput(readString(entry.text), "") === null)
     .map((entry) => readString(entry.text))
     .join("\n\n");
 
@@ -279,8 +281,13 @@ function readUserMessageKind(value: unknown): string | null {
 function mapUserInputAttachment(
   input: Record<string, unknown>,
   itemId: string
-): OpenCodexImageAttachment | null {
+): OpenCodexAttachment | null {
   const type = readString(input.type);
+  if (type === "text") {
+    const text = readString(input.text);
+    return readFileAttachmentInput(text, createAttachmentId(itemId, text));
+  }
+
 
   if (type === "image") {
     const url = readString(input.url);

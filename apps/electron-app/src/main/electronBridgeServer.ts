@@ -29,7 +29,7 @@ import {
   openProjectTerminal
 } from "./projectSystemActions.js";
 import { openExternalLink } from "./externalLinkOpener.js";
-import { pickImageFiles } from "./imageAttachmentPicker.js";
+import { pickAttachmentFiles } from "./fileAttachmentPicker.js";
 import { readRendererActivityState } from "./rendererActivityPayload.js";
 import { readRendererPerformanceSample } from "./rendererPerformancePayload.js";
 
@@ -103,8 +103,8 @@ export class ElectronBridgeServer {
       pickProjectDirectory: async (mode) => {
         return this.pickProjectDirectory(mode);
       },
-      pickImageFiles: async () => {
-        return pickImageFiles(this.window);
+      pickAttachmentFiles: async () => {
+        return pickAttachmentFiles(this.window);
       },
       pickExecutableFile: async () => {
         return this.pickExecutableFile();

@@ -23,6 +23,9 @@ describe("workspace execution", () => {
     getMetadata: vi.fn(),
     readThread: vi.fn(),
     resumeThread: vi.fn(),
+    getCodexHome: vi.fn(),
+    createDirectory: vi.fn(),
+    writeFile: vi.fn(),
     startTurn: vi.fn()
   };
   const clients = { ensureClient: vi.fn() };
@@ -321,6 +324,27 @@ describe("workspace execution", () => {
 
     expect(await cache.workspaces.listReservations(workspaceId)).toEqual([]);
     expect(clients.ensureClient).not.toHaveBeenCalled();
+  });
+
+  it("should transfer a file before dispatching a file-only turn to the workspace source", async () => {
+    client.getCodexHome.mockResolvedValue("/source/.codex");
+    client.createDirectory.mockResolvedValue({});
+    client.writeFile.mockResolvedValue({});
+    const handler = createHandler();
+
+    await handler.startTurn("thread-a", null, null, "", [{
+      id: "document", kind: "file", source: "dataUrl", name: "notes.md",
+      value: "data:application/octet-stream;base64,aGVsbG8="
+    }], [], null, null, null);
+
+    const uploadedPath = client.writeFile.mock.calls[0]?.[0];
+    expect(uploadedPath).toMatch(/^\/source\/\.codex\/opencodex-ui\/attachments\//);
+    expect(client.startTurn).toHaveBeenCalledWith(expect.objectContaining({
+      threadId: "thread-a", cwd: "/source/repo",
+      input: [{ type: "text", text: expect.stringContaining(uploadedPath), text_elements: [] }]
+    }));
+    expect(JSON.stringify(client.startTurn.mock.calls)).not.toContain("aGVsbG8=");
+    expect(client.writeFile.mock.invocationCallOrder[0]).toBeLessThan(client.startTurn.mock.invocationCallOrder[0]!);
   });
 
   it("should allow a new turn after Codex reports a system error", async () => {

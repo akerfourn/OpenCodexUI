@@ -7,7 +7,7 @@ import type {
   OpenCodexApplicationCloseRequest,
   OpenCodexClientTransport,
   OpenCodexEvent,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexRequest,
   OpenCodexSettings
 } from "@open-codex-ui/opencodex-protocol";
@@ -205,12 +205,12 @@ export class RootStore {
   }
 
   /**
-   * Opens the native image picker for composer attachments.
+   * Opens the native file picker for composer attachments.
    *
-   * @returns Selected image attachments.
+   * @returns Selected file attachments.
    */
-  async pickImageAttachments(): Promise<OpenCodexImageAttachment[]> {
-    return this.transport.request<OpenCodexImageAttachment[]>({ type: "attachments.pickImages" });
+  async pickFileAttachments(): Promise<OpenCodexAttachment[]> {
+    return this.transport.request<OpenCodexAttachment[]>({ type: "attachments.pickFiles" });
   }
 
   /**

@@ -1,10 +1,11 @@
+import { fileAttachmentInput } from "./fileAttachments.js";
 /**
  * Builds Codex turn input payloads.
  */
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexComposerReference,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexTurnDiagnosticInput
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -17,7 +18,7 @@ import type {
  */
 export function buildTurnInput(
   text: string,
-  attachments: OpenCodexImageAttachment[],
+  attachments: OpenCodexAttachment[],
   references: OpenCodexComposerReference[] = []
 ): v2.UserInput[] {
   const input: v2.UserInput[] = [];
@@ -33,7 +34,8 @@ export function buildTurnInput(
   }
 
   for (const attachment of attachments) {
-    if (attachment.kind !== "image") {
+    if (attachment.kind === "file") {
+      input.push({ type: "text", text: fileAttachmentInput(attachment), text_elements: [] });
       continue;
     }
 

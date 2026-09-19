@@ -182,7 +182,7 @@ export function createBackendServiceGraph(
     projectPath: options.projectPath,
     projects: projectRuntimeHandler,
     pickExecutableFile: options.pickExecutableFile,
-    pickImageFiles: options.pickImageFiles,
+    pickAttachmentFiles: options.pickAttachmentFiles,
     openExternalLink: options.openExternalLink,
     openProjectFolder: options.openProjectFolder,
     openProjectTerminal: options.openProjectTerminal

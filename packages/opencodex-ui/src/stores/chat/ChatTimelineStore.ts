@@ -5,7 +5,7 @@ import { makeAutoObservable, observable, runInAction } from "mobx";
 
 import type {
   OpenCodexActivity,
-  OpenCodexImageAttachment,
+  OpenCodexAttachment,
   OpenCodexMessage,
   OpenCodexMessagePhase,
   OpenCodexThreadTokenUsage,
@@ -339,7 +339,7 @@ export class ChatTimelineStore {
   createOptimisticUserTurn(
     threadId: string,
     content: string,
-    attachments: OpenCodexImageAttachment[]
+    attachments: OpenCodexAttachment[]
   ): string {
     const turnId = `pending:${Date.now()}`;
     const created: OpenCodexTurn = {
@@ -377,7 +377,7 @@ export class ChatTimelineStore {
   createOptimisticSteerItem(
     turnId: string,
     content: string,
-    attachments: OpenCodexImageAttachment[]
+    attachments: OpenCodexAttachment[]
   ): string {
     const turn = findOrCreateTurn(this, this.parent.thread.id, turnId);
     const itemId = `${turnId}:steer:${Date.now()}:${Math.random().toString(16).slice(2)}`;

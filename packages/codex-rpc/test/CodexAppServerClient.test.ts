@@ -55,6 +55,19 @@ describe("parseJsonRpcLine", () => {
 });
 
 describe("CodexAppServerClient", () => {
+  it("should expose the source Codex home from initialization without issuing a second handshake", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+    const methods: string[] = [];
+    respondToRequests(fakeProcess, (request) => {
+      methods.push(request.method);
+      fakeProcess.stdout.write(JSON.stringify({ id: request.id, result: { codexHome: "C:\\remote\\.codex" } }) + "\n");
+    });
+    await expect(client.getCodexHome()).resolves.toBe("C:\\remote\\.codex");
+    await expect(client.getCodexHome()).resolves.toBe("C:\\remote\\.codex");
+    expect(methods).toEqual(["initialize", "initialized"]);
+  });
+
   it("should start concurrently with one process and one initialization handshake", async () => {
     const fakeProcess = new FakeProcess();
     const processFactory = vi.fn(() => fakeProcess);
