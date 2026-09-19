@@ -87,6 +87,8 @@ type ComposerPlainTextInputProps = {
 export interface ComposerPlainTextInputHandle {
   /** Inserts plain text at the current editor selection. */
   insertText(text: string): void;
+  /** Appends dictated text without replacing selected draft content. */
+  appendText(text: string): void;
 }
 
 /**
@@ -177,7 +179,18 @@ export const ComposerPlainTextInput = forwardRef<
     });
   }, [disabled]);
 
-  useImperativeHandle(ref, () => ({ insertText }), [insertText]);
+  const appendText = useCallback((text: string): void => {
+    const editor = lexicalEditorRef.current;
+    if (disabled || editor === null || text.trim().length === 0) return;
+    editor.update(() => {
+      const root = $getRoot();
+      const existing = root.getTextContent();
+      const separator = existing.length > 0 && !/\s$/.test(existing) ? " " : "";
+      root.selectEnd().insertText(separator + text.trim());
+    });
+  }, [disabled]);
+
+  useImperativeHandle(ref, () => ({ insertText, appendText }), [insertText, appendText]);
 
   useEffect(() => {
     activeTriggerRef.current = activeTrigger;

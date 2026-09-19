@@ -1,3 +1,6 @@
+import { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
+import { CodexDictationService } from "./backend/dictation/CodexDictationService.js";
+import { resolveSourceCommand } from "./backend/sources/sourceMapping.js";
 import { resolveWorkspaceToolRequest } from "./backend/workspaces/workspaceToolContext.js";
 import { initializeDefaultWorkspaceRoot } from "./backend/workspaces/initializeDefaultWorkspaceRoot.js";
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
@@ -41,6 +44,8 @@ import type {
 export class OpenCodexBackendRuntime {
   /** Whether this runtime belongs to an application pre-release build. */
   readonly isPrerelease: boolean;
+  /** Isolated experimental speech transcription, outside normal conversation execution. */
+  readonly dictation: CodexDictationService;
   /** Fully wired services owned by this runtime instance. */
   private readonly services: BackendServiceGraph;
   /** Stable public facades backed by this runtime's private service graph. */
@@ -57,6 +62,14 @@ export class OpenCodexBackendRuntime {
     this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.services = createBackendServiceGraph(options, this.isPrerelease);
     this.apis = new BackendRuntimeApis(this.services, options);
+    this.dictation = new CodexDictationService(async (sourceId) => {
+      const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
+      return new CodexAppServerClient({
+        command: resolveSourceCommand(source, this.settings.get().codexCommand),
+        clientInfo: { name: "OpenCodexUI_dictation", version: options.appVersion ?? "unknown" },
+        experimentalApi: true, requestTimeoutMs: 20_000
+      });
+    });
   }
 
   /** Resolves physical tool identity before transport dispatch. */
@@ -204,6 +217,7 @@ export class OpenCodexBackendRuntime {
    * @returns Promise resolved when resources are disposed.
    */
   async dispose(): Promise<void> {
+    await this.dictation.dispose();
     this.services.notificationCoordinator.flushAll();
     await this.services.clientPool.dispose();
     await this.services.applicationLogService.dispose();

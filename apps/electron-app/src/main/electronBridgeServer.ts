@@ -1,3 +1,4 @@
+import { DictationHostService } from "./dictation/DictationHostService.js";
 /**
  * Hosts the Electron-side bridge between renderer IPC requests and the backend.
  */
@@ -50,6 +51,8 @@ type ElectronBridgeServerOptions = {
  */
 export class ElectronBridgeServer {
   private readonly runtime: OpenCodexBackendRuntime;
+  /** Routes microphone recordings without adding them to the core request log. */
+  private readonly dictation: DictationHostService;
   private readonly requestRouter: OpenCodexRequestRouter;
   private readonly discordPresenceService: DiscordPresenceService;
   private readonly performanceMonitoringService: PerformanceMonitoringService;
@@ -131,6 +134,11 @@ export class ElectronBridgeServer {
       emit: (event) => this.emit(event)
     });
     this.requestRouter = new OpenCodexRequestRouter(this.runtime);
+    this.dictation = new DictationHostService(
+      options.userDataPath, path.join(__dirname, "dictation.worker.mjs"),
+      () => this.runtime.settings.get(), this.runtime.dictation,
+      (state) => this.emit({ type: "dictation.models.state", state })
+    );
     this.performanceMonitoringService = new PerformanceMonitoringService(options.settings, {
       createLog: async (message, details) => {
         await this.runtime.logs.create("warning", message, details, "performanceSlowdown");
@@ -163,6 +171,19 @@ export class ElectronBridgeServer {
    */
   attachWindow(window: BrowserWindow): void {
     this.window = window;
+    window.webContents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
+      if (!isMainFrame || isInPlace) return;
+      void this.dictation.local.dispose();
+      void this.runtime.dictation.dispose();
+    });
+    window.webContents.on("render-process-gone", () => {
+      void this.dictation.local.dispose();
+      void this.runtime.dictation.dispose();
+    });
+    window.on("closed", () => {
+      void this.dictation.local.dispose();
+      void this.runtime.dictation.dispose();
+    });
     this.emit({ type: "app.update.state", state: this.appUpdateService.getState() });
   }
 
@@ -225,6 +246,11 @@ export class ElectronBridgeServer {
     ipcMain.on("opencodex:application-activity", this.handleApplicationActivity);
     ipcMain.on("opencodex:application-close-response", this.handleApplicationCloseResponse);
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
+      if (request.type.startsWith("dictation.")) {
+        if (_event.sender.id !== this.window?.webContents.id) throw new Error("Dictation is only available in the main window.");
+        return this.dictation.handle(request);
+      }
+
       if (request.type === "emojiCatalog.get") {
         return this.emojiCatalogStore.get();
       }
@@ -299,6 +325,7 @@ export class ElectronBridgeServer {
     this.desktopNotificationService.dispose();
     this.performanceMonitoringService.dispose();
     const results = await Promise.allSettled([
+      this.dictation.local.dispose(),
       this.discordPresenceService.dispose(),
       this.runtime.dispose()
     ]);

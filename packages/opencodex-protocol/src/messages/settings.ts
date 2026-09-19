@@ -1,3 +1,4 @@
+import type { OpenCodexDictationSettings } from "../dictation";
 import type {
   OpenCodexColorScheme,
   OpenCodexCommitMessageLanguage,
@@ -31,6 +32,8 @@ export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
  * Persisted application settings shared by backend and UI.
  */
 export type OpenCodexSettings = {
+  /** Optional for compatibility with settings saved before voice dictation. */
+  dictation?: OpenCodexDictationSettings;
   /** Source-owned workspace storage locations; absent in older settings. */
   workspaceRoots?: OpenCodexWorkspaceRoot[];
   /** Remembers initial local storage setup, including subsequent user removal. */

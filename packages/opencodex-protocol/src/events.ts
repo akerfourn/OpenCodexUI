@@ -1,3 +1,4 @@
+import type { OpenCodexDictationModelState } from "./dictation";
 /**
  * Declares the backend events emitted to the OpenCodex UI.
  */
@@ -32,6 +33,7 @@ import type { OpenCodexCollaborationEvent } from "./collaboration";
  * fields over changing an existing payload in incompatible ways.
  */
 export type OpenCodexEvent =
+  | { type: "dictation.models.state"; state: OpenCodexDictationModelState }
   | { type: "connection.status"; status: "starting" | "ready" | "stopped" | "error"; message?: string }
   | { type: "app.shutdown.started" }
   | { type: "app.update.state"; state: OpenCodexAppUpdateState }

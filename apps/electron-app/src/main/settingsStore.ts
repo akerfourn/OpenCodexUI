@@ -1,3 +1,4 @@
+import { DEFAULT_DICTATION_SETTINGS, normalizeDictationSettings } from "@open-codex-ui/opencodex-protocol";
 /**
  * Persists OpenCodexUI settings inside Electron's user data directory.
  */
@@ -10,6 +11,7 @@ import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
  * Default settings applied when no user configuration has been saved yet.
  */
 export const defaultSettings: OpenCodexSettings = {
+  dictation: { ...DEFAULT_DICTATION_SETTINGS },
   workspaceRoots: [],
   codexCommand: "codex",
   codexReleaseCheck: {
@@ -71,6 +73,7 @@ export class SettingsStore {
       const settings = {
         ...defaultSettings,
         ...parsed,
+        dictation: normalizeDictationSettings(parsed.dictation),
         codexReleaseCheck: {
           ...defaultSettings.codexReleaseCheck,
           ...parsed.codexReleaseCheck

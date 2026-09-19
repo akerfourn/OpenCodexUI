@@ -10,6 +10,8 @@ afterPack: scripts/after-pack.cjs
 files:
   - dist/**/*
   - package.json
+  - "!node_modules/onnxruntime-node/**/libonnxruntime_providers_cuda*"
+  - "!node_modules/onnxruntime-node/**/libonnxruntime_providers_tensorrt*"
 
 extraResources:
   - from: build/icon.ico
@@ -22,6 +24,8 @@ extraResources:
     to: prompt-commit.generation.md
 
 asarUnpack:
+  - "**/node_modules/onnxruntime-node/**/*"
+  - "**/node_modules/@img/**/*"
   - "**/node_modules/better-sqlite3/**/*"
 
 publish:
@@ -44,6 +48,10 @@ deb:
   artifactName: open-codex-ui_${version}_${arch}.${ext}
 
 mac:
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: Record audio for voice dictation in your message drafts.
   icon: build/icon.icns
   target:
     - dmg

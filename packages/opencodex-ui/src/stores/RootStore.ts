@@ -1,3 +1,4 @@
+import { DictationStore } from "./app/DictationStore";
 /**
  * Coordinates application-wide state, project tabs, and backend events.
  */
@@ -39,6 +40,8 @@ export { HOME_TAB_ID, type OpenCodexAppTab } from "./app/NavigationStore";
  */
 export class RootStore {
   readonly appStore = new AppStore(this);
+  /** Dictation preferences, microphone lifecycle, and local model management. */
+  readonly dictationStore = new DictationStore(this);
   readonly appUpdateStore = new AppUpdateStore(this);
   readonly approvalsStore = new ApprovalsStore(this);
   readonly chatEventLogStore = new ChatEventLogStore(this);
@@ -153,6 +156,11 @@ export class RootStore {
    * @returns Nothing.
    */
   handleEvent(event: OpenCodexEvent): void {
+    if (event.type === "dictation.models.state") {
+      this.dictationStore.applyModelState(event.state);
+      return;
+    }
+    if (event.type === "app.shutdown.started") this.dictationStore.cancel();
     if (event.type === "app.navigation.requested") {
       this.projectsStore.navigateToThreadFromNotification(event.sourceId, event.threadId);
       return;

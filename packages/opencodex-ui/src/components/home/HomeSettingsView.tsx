@@ -1,3 +1,4 @@
+import { HomeDictationSettingsX } from "./HomeDictationSettings";
 /**
  * Renders application settings on the Home tab.
  */
@@ -176,6 +177,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
         )}
       />
       <HomeAppUpdateSettingsX store={store} />
+      <HomeDictationSettingsX store={store} />
       <Box
         sx={{
           border: 1,

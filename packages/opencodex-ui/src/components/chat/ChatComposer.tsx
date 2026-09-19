@@ -1,3 +1,5 @@
+import { ComposerDictationX } from "./ComposerDictation";
+import { DictationError } from "./DictationError";
 import { readFileAttachments, readTransferFiles } from "./fileAttachments";
 /**
  * Renders the chat composer component for the OpenCodex UI.
@@ -62,7 +64,7 @@ export function ChatComposer({
   const attachments = composer.attachments;
   const canSteer = chatStore.actions.canSteerActiveTurn;
   const isSteering = isWorking && canSteer;
-  const canSubmit = !isSubmitting && (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
+  const canSubmit = !store.dictationStore.busy && !isSubmitting && (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
   const canShowSubmit = isSubmitting || !isWorking || canSteer;
   const canAttachFiles = !isSubmitting && (!isWorking || canSteer);
   const sourceId = chatStore.sourceId;
@@ -86,6 +88,14 @@ export function ChatComposer({
   ): void {
     composer.setDraft(value, markdown, references);
   }
+
+  /** Appends recognized text without replacing draft content or submitting. */
+  function handleDictationText(text: string): void {
+    if (!composer.isSubmitting) composerInputRef.current?.appendText(text);
+  }
+
+  /** Dismisses dictation diagnostics independently of conversation errors. */
+  function handleDictationErrorClose(): void { store.dictationStore.clearError(); }
 
   function handleEmojiSelect(emoji: string): void {
     if (!composer.isSubmitting) composerInputRef.current?.insertText(emoji);
@@ -249,6 +259,7 @@ export function ChatComposer({
         disabled={isSubmitting}
         onRemoveAttachment={handleRemoveAttachment}
       />
+      <DictationError message={store.dictationStore.error} onClose={handleDictationErrorClose} />
       <Stack className="composer-controls" direction="row" spacing={1}>
         <ModelSettingsFields
           disabled={isSubmitting}
@@ -273,6 +284,10 @@ export function ChatComposer({
           }}
         />
         <ComposerEmojiPicker disabled={isSubmitting} onSelect={handleEmojiSelect} />
+        <ComposerDictationX
+          dictation={store.dictationStore} sourceId={sourceId} composerId={chatStore.viewId}
+          disabled={isSubmitting || projectStore.isReadOnlyFromCache} onText={handleDictationText}
+        />
         {isWorking && !isSubmitting ? (
           <Tooltip title={t("composer.interrupt")}>
             <span>

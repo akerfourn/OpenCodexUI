@@ -11,3 +11,4 @@ export * from "./transport";
 export * from "./workspaces";
 export * from "./workspaceCreations";
 export * from "./workspaceDiscovery";
+export * from "./dictation";

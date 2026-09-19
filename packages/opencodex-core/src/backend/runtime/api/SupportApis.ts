@@ -1,3 +1,4 @@
+import { normalizeDictationSettings } from "@open-codex-ui/opencodex-protocol";
 import { normalizeWorkspaceRoots } from "../../workspaces/workspaceRootsSettings.js";
 import { validateLogPolicies } from "../../support/applicationLogPolicies.js";
 import type {
@@ -312,6 +313,7 @@ export class SettingsApi implements SettingsApiContract {
   /** Publishes settings only after persistence succeeds; a failed write preserves the runtime. */
   private async persist(patch: Partial<OpenCodexSettings>): Promise<OpenCodexSettings> {
     const nextSettings = { ...this.settings.getSettings(), ...patch };
+    if (patch.dictation !== undefined) nextSettings.dictation = normalizeDictationSettings(patch.dictation);
     if (patch.workspaceRoots !== undefined) {
       nextSettings.workspaceRoots = normalizeWorkspaceRoots(patch.workspaceRoots);
     }

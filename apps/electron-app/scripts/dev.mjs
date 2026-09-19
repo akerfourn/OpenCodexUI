@@ -48,10 +48,14 @@ async function main() {
     devServerUrl
   );
 
+  const dictationContext = await createBuildContext(
+    "src/main/dictation/dictation.worker.ts", "dist/main/dictation.worker.mjs", devServerUrl
+  );
+  await dictationContext.watch();
   await mainContext.watch();
   await preloadContext.watch();
 
-  shutdownDevServer = createShutdown(viteServer, [mainContext, preloadContext]);
+  shutdownDevServer = createShutdown(viteServer, [mainContext, preloadContext, dictationContext]);
   startElectron(devServerUrl);
   installShutdownHandlers();
 }
@@ -158,9 +162,9 @@ async function createBuildContext(entryPoint, outfile, devServerUrl) {
     entryPoints: [entryPoint],
     bundle: true,
     platform: "node",
-    format: "cjs",
+    format: outfile.endsWith(".mjs") ? "esm" : "cjs",
     target: "node20",
-    external: ["electron", "better-sqlite3"],
+    external: ["electron", "better-sqlite3", "@huggingface/transformers"],
     outfile,
     plugins: [createWorkspaceResolvePlugin(repoRoot), createRestartPlugin(devServerUrl)]
   });

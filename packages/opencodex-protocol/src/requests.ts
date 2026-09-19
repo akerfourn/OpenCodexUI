@@ -1,3 +1,4 @@
+import type { OpenCodexDictationInput, OpenCodexDictationSettings } from "./dictation";
 import type { OpenCodexWorkspaceCreateInput } from "./workspaceCreations";
 /**
  * Declares the requests sent from the UI to the OpenCodex backend.
@@ -37,6 +38,12 @@ import type { OpenCodexCollaborationQuery } from "./collaboration";
  * transported over Electron IPC today and other transports later.
  */
 export type OpenCodexRequest =
+  | { type: "dictation.models.state" }
+  | { type: "dictation.models.install"; modelId: OpenCodexDictationSettings["modelId"] }
+  | { type: "dictation.models.remove" }
+  | { type: "dictation.models.cancel" }
+  | { type: "dictation.transcribe"; input: OpenCodexDictationInput }
+  | { type: "dictation.cancel"; sessionId: string }
   | { type: "app.bootstrap" }
   | { type: "app.update.state" }
   | { type: "app.update.check"; force?: boolean }
