@@ -1,4 +1,4 @@
-import { readClipboardAttachments, readClipboardFiles } from "./clipboardAttachments";
+import { readFileAttachments, readTransferFiles } from "./fileAttachments";
 /**
  * Renders the chat composer component for the OpenCodex UI.
  */
@@ -210,7 +210,7 @@ export function ChatComposer({
   }, [canOpenFileLinks, store]);
 
   function handlePaste(event: React.ClipboardEvent<HTMLFormElement>): void {
-    const files = readClipboardFiles(event.clipboardData);
+    const files = readTransferFiles(event.clipboardData);
     if (files.length === 0) {
       return;
     }
@@ -226,7 +226,7 @@ export function ChatComposer({
   /** Reads the selection atomically so a failed paste leaves existing attachments intact. */
   async function addClipboardFiles(files: File[]): Promise<void> {
     try {
-      composer.addAttachments(await readClipboardAttachments(files));
+      composer.addAttachments(await readFileAttachments(files));
     } catch (error) {
       store.appStore.applyError({ type: "error", message: error instanceof Error ? error.message : String(error) });
     }

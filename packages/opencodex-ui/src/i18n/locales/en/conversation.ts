@@ -176,6 +176,9 @@ export const enConversation = {
       reviewTitle: "Start a review?"
     },
     attachedImage: "Attached image",
+    dropFiles: "Drop files to attach them to the active chat",
+    dropFilesUnavailable: "Open an available chat to attach files",
+    dropDirectoriesUnsupported: "Drop files, not folders.",
     attachFile: "Attach file",
     emoji: {
       categories: "Emoji categories",

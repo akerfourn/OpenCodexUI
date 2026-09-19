@@ -177,6 +177,9 @@ export const frConversation = {
       reviewTitle: "Lancer une review ?"
     },
     attachedImage: "Image jointe",
+    dropFiles: "Déposez les fichiers pour les joindre au chat actif",
+    dropFilesUnavailable: "Ouvrez un chat disponible pour joindre des fichiers",
+    dropDirectoriesUnsupported: "Déposez des fichiers, pas des dossiers.",
     attachFile: "Ajouter un fichier",
     emoji: {
       categories: "Catégories d'emojis",
