@@ -141,7 +141,10 @@ export const enApp = {
     download: "Download",
     downloaded: "Version {{version}} is ready to install.",
     downloading: "Downloading version {{version}}…",
-    error: "The update failed: {{message}}",
+    error: "Something went wrong with the update.",
+    errorDetails: "Update error details",
+    details: "Details",
+    dismiss: "Dismiss",
     install: "Restart and install",
     retry: "Retry"
   },

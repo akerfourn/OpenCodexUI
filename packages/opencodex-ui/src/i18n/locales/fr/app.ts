@@ -138,7 +138,10 @@ export const frApp = {
     download: "Télécharger",
     downloaded: "La version {{version}} est prête à être installée.",
     downloading: "Téléchargement de la version {{version}}…",
-    error: "La mise à jour a échoué : {{message}}",
+    error: "Oups, quelque chose s’est mal passé avec la mise à jour.",
+    errorDetails: "Détails de l’erreur de mise à jour",
+    details: "Détails",
+    dismiss: "Fermer",
     install: "Redémarrer et installer",
     retry: "Réessayer"
   },

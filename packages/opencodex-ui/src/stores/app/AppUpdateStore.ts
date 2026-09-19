@@ -18,11 +18,20 @@ export class AppUpdateStore {
   /** Latest update state received from the Electron host. */
   state: OpenCodexAppUpdateState = createInitialState();
 
+  /** Whether the current error banner was dismissed in this renderer session. */
+  isErrorDismissed = false;
+
+  /** Prevents duplicate manual checks while a request is pending. */
+  isChecking = false;
+
   /** Creates an application update store over the generic backend request port. */
   constructor(private readonly root: AppUpdateRequestPort) {
     makeObservable<AppUpdateStore, "root">(this, {
       root: false,
       state: observable,
+      isErrorDismissed: observable,
+      isChecking: observable,
+      dismissError: action,
       handleEvent: action
     });
   }
@@ -41,6 +50,13 @@ export class AppUpdateStore {
 
   /** Requests a provider check, bypassing the host cooldown for manual actions. */
   async check(): Promise<void> {
+    if (this.isChecking) {
+      return;
+    }
+    runInAction(() => {
+      this.isChecking = true;
+      this.isErrorDismissed = false;
+    });
     try {
       const state = await this.root.request<OpenCodexAppUpdateState>({
         type: "app.update.check",
@@ -51,6 +67,8 @@ export class AppUpdateStore {
       });
     } catch (error) {
       this.applyRequestError(error);
+    } finally {
+      runInAction(() => { this.isChecking = false; });
     }
   }
 
@@ -86,8 +104,17 @@ export class AppUpdateStore {
     }
   }
 
+  /** Hides the banner without discarding the host error or its diagnostics. */
+  dismissError(): void {
+    this.isErrorDismissed = true;
+  }
+
   /** Replaces the local state with a detached protocol snapshot. */
   private applyState(state: OpenCodexAppUpdateState): void {
+    if (state.status !== this.state.status || state.errorMessage !== this.state.errorMessage
+      || state.checkedAt !== this.state.checkedAt) {
+      this.isErrorDismissed = false;
+    }
     this.state = {
       ...state,
       progress: state.progress === null ? null : { ...state.progress }
@@ -97,6 +124,7 @@ export class AppUpdateStore {
   /** Displays a transport failure in the same state channel as updater failures. */
   private applyRequestError(error: unknown): void {
     runInAction(() => {
+      this.isErrorDismissed = false;
       this.state = {
         ...this.state,
         status: "error",

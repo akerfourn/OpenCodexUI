@@ -1,11 +1,11 @@
 /** Renders the non-blocking application update banner. */
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
-import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import SystemUpdateAltOutlinedIcon from "@mui/icons-material/SystemUpdateAltOutlined";
 import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
+
+import { AppUpdateErrorBannerX } from "./AppUpdateErrorBanner";
 
 import type { AppUpdateStore } from "../../stores/app/AppUpdateStore";
 
@@ -82,23 +82,7 @@ function AppUpdateBanner({ store }: AppUpdateBannerProps) {
     );
   }
 
-  return (
-    <Alert severity="error" icon={<ErrorOutlineOutlinedIcon />}>
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-        <Typography variant="body2">
-          {t("updates.error", { message: state.errorMessage ?? "" })}
-        </Typography>
-        <Button
-          color="inherit"
-          size="small"
-          startIcon={<RefreshOutlinedIcon />}
-          onClick={() => { void store.check(); }}
-        >
-          {t("updates.retry")}
-        </Button>
-      </Stack>
-    </Alert>
-  );
+  return <AppUpdateErrorBannerX store={store} />;
 }
 
 /** Limits the global banner to states that need user attention. */
