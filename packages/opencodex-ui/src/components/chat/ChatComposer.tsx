@@ -1,3 +1,4 @@
+import { readClipboardAttachments, readClipboardFiles } from "./clipboardAttachments";
 /**
  * Renders the chat composer component for the OpenCodex UI.
  */
@@ -14,7 +15,6 @@ import type {
   OpenCodexEnterKeyBehavior,
   OpenCodexFileSearchMode,
   OpenCodexFileSearchResult,
-  OpenCodexAttachment,
   OpenCodexSkillSearchResult
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -210,31 +210,30 @@ export function ChatComposer({
   }, [canOpenFileLinks, store]);
 
   function handlePaste(event: React.ClipboardEvent<HTMLFormElement>): void {
-    const items = Array.from(event.clipboardData.items);
-    const imageFiles = items
-      .filter((item) => item.type.startsWith("image/"))
-      .map((item) => item.getAsFile())
-      .filter((file): file is File => file !== null);
-
-    if (imageFiles.length === 0) {
+    const files = readClipboardFiles(event.clipboardData);
+    if (files.length === 0) {
       return;
     }
-
     event.preventDefault();
-    void addImageFiles(imageFiles);
+    // Lexical must not also insert the file's text representation into the draft.
+    event.stopPropagation();
+    if (!canAttachFiles) {
+      return;
+    }
+    void addClipboardFiles(files);
   }
 
-  async function addImageFiles(imageFiles: File[]): Promise<void> {
+  /** Reads the selection atomically so a failed paste leaves existing attachments intact. */
+  async function addClipboardFiles(files: File[]): Promise<void> {
     try {
-      const pastedAttachments = await Promise.all(imageFiles.map(readImageAttachmentFromFile));
-      composer.addAttachments(pastedAttachments);
-    } catch {
-      // Ignore unreadable clipboard files and leave the composer unchanged.
+      composer.addAttachments(await readClipboardAttachments(files));
+    } catch (error) {
+      store.appStore.applyError({ type: "error", message: error instanceof Error ? error.message : String(error) });
     }
   }
 
   return (
-    <form className="composer" onSubmit={handleSubmit} onPaste={handlePaste}>
+    <form className="composer" onSubmit={handleSubmit} onPasteCapture={handlePaste}>
       <ComposerPlainTextInput
         ref={composerInputRef}
         value={draft}
@@ -310,37 +309,6 @@ export function ChatComposer({
 }
 
 export const ChatComposerX = observer(ChatComposer);
-
-function readImageAttachmentFromFile(file: File): Promise<OpenCodexAttachment> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.addEventListener("load", () => {
-      if (typeof reader.result !== "string") {
-        reject(new Error("Unable to read pasted image."));
-        return;
-      }
-
-      resolve({
-        id: createAttachmentId(),
-        kind: "image",
-        source: "dataUrl",
-        value: reader.result,
-        name: file.name.length > 0 ? file.name : "pasted-image.png"
-      });
-    });
-
-    reader.addEventListener("error", () => {
-      reject(reader.error ?? new Error("Unable to read pasted image."));
-    });
-
-    reader.readAsDataURL(file);
-  });
-}
-
-function createAttachmentId(): string {
-  return `attachment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
 
 function shouldSubmitOnEnter(
   enterKeyBehavior: OpenCodexEnterKeyBehavior,
