@@ -27,11 +27,14 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const list = project.threadListStore;
-  const archiving = list.archivingThreadId === thread.id;
+  const chat = project.chatsById.get(thread.id);
+  const isLocalDraft = chat?.isLocalDraft === true;
+  const isSubmitting = chat?.composer.isSubmitting === true;
+  const archiving = list.archivingThreadId === thread.id || isSubmitting;
   const archiveIcon = list.isShowingArchivedThreads ? <UnarchiveOutlinedIcon fontSize="small" /> : <ArchiveOutlinedIcon fontSize="small" />;
   const archiveLabel = list.isShowingArchivedThreads ? t("sidebar.unarchiveThread") : t("sidebar.archiveThread");
   const workspaceAction = list.isShowingArchivedThreads ? null : (
-    <MenuItem disabled={project.isReadOnlyFromCache || project.workspaces.isBusy} onClick={handleWorkspace}>
+    <MenuItem disabled={project.isReadOnlyFromCache || project.workspaces.isBusy || isSubmitting} onClick={handleWorkspace}>
       <ListItemIcon><AccountTreeOutlinedIcon fontSize="small" /></ListItemIcon>{t("workspaces.switch")}
     </MenuItem>
   );
@@ -83,14 +86,14 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
       <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }}>
         {workspaceAction}
-        <MenuItem onClick={handleArchive}><ListItemIcon>{archiveIcon}</ListItemIcon>{archiveLabel}</MenuItem>
-        <MenuItem onClick={handleSubAgents}>
+        <MenuItem disabled={isLocalDraft || isSubmitting} onClick={handleArchive}><ListItemIcon>{archiveIcon}</ListItemIcon>{archiveLabel}</MenuItem>
+        <MenuItem disabled={isLocalDraft} onClick={handleSubAgents}>
           <ListItemIcon><AccountTreeOutlinedIcon fontSize="small" /></ListItemIcon>{t("sidebar.subAgentThreads")}
         </MenuItem>
-        <MenuItem onClick={handleLog}>
+        <MenuItem disabled={isLocalDraft} onClick={handleLog}>
           <ListItemIcon><EventNoteOutlinedIcon fontSize="small" /></ListItemIcon>{t("sidebar.threadEventLog")}
         </MenuItem>
-        <MenuItem onClick={handleDeleteDialog}>
+        <MenuItem disabled={isSubmitting} onClick={handleDeleteDialog}>
           <ListItemIcon><DeleteOutlineOutlinedIcon color="error" fontSize="small" /></ListItemIcon>{t("sidebar.deleteThread")}
         </MenuItem>
       </Menu>

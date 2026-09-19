@@ -1,5 +1,5 @@
 import Fuse from "fuse.js";
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable } from "mobx";
 
 import type {
   OpenCodexThread
@@ -101,7 +101,7 @@ export class ThreadListStore {
     }
 
     this.isShowingArchivedThreads = value;
-    this.threads = [];
+    this.threads = value ? [] : this.projectStore.drafts.threads;
     this.refresh();
   }
 
@@ -148,18 +148,10 @@ export class ThreadListStore {
     if (workspaceIdOverride !== undefined && (workspace === undefined || workspace.removedAt !== null)) return;
     const workspacePath = workspace?.path ?? this.projectStore.workspacePath ?? this.projectStore.projectPath;
     const workspaceId = workspace?.id ?? this.projectStore.workspaceId;
-    this.isCreatingThread = true;
     this.loadingThreadId = null;
-    if (this.projectStore.workspaces !== undefined) this.projectStore.workspaces.selectedId = workspaceId ?? null;
-    this.projectStore.selectedChatId = null;
-    void this.root.request({
-      type: "threads.create",
-      projectPath: workspacePath,
-      ...(workspaceId === undefined ? {} : { workspaceId }),
-      sourceId: this.projectStore.project.sourceId
-    }).catch(() => {
-      runInAction(() => { this.isCreatingThread = false; });
-    });
+    this.root.appStore.errorMessage = null;
+    this.projectStore.workspaces.selectedId = workspaceId ?? null;
+    this.projectStore.drafts.create(workspacePath, workspaceId);
   }
 
   /**
@@ -179,6 +171,10 @@ export class ThreadListStore {
     const isChangingThread = this.projectStore.selectedChatId !== threadId;
     this.root.appStore.errorMessage = null;
     this.projectStore.selectChat(threadId);
+    if (chatStore?.isLocalDraft === true || chatStore?.composer.isSubmitting === true) {
+      this.loadingThreadId = null;
+      return;
+    }
     this.root.projectsStore.rememberPendingThreadProject(threadId, this.projectStore.project.id);
 
     if (isChangingThread) {
@@ -209,7 +205,8 @@ export class ThreadListStore {
    */
   setThreads(threads: OpenCodexThread[]): void {
     this.threads = deduplicateThreadsById(
-      threads.map((thread) => this.mergeThreadMetadata(thread))
+      [...threads.map((thread) => this.mergeThreadMetadata(thread)),
+        ...(this.isShowingArchivedThreads ? [] : this.projectStore.drafts.threads)]
     );
 
     for (const thread of this.threads) {
@@ -288,6 +285,10 @@ export class ThreadListStore {
       return;
     }
 
+    const chat = this.projectStore.chatsById.get(threadId);
+    if (chat?.composer.isSubmitting === true) return;
+    if (chat?.isLocalDraft === true) return;
+
     this.archivingThreadId = threadId;
     void this.root.request({ type: "threads.archive", threadId })
       .then(() => {
@@ -331,6 +332,13 @@ export class ThreadListStore {
    */
   deleteThread(threadId: string): void {
     if (this.projectStore.isReadOnlyFromCache || this.archivingThreadId !== null) {
+      return;
+    }
+
+    const chat = this.projectStore.chatsById.get(threadId);
+    if (chat?.composer.isSubmitting === true) return;
+    if (chat?.isLocalDraft === true) {
+      this.projectStore.removeThread(threadId);
       return;
     }
 
@@ -391,6 +399,7 @@ export class ThreadListStore {
    * @param threadId Thread identifier.
    */
   removeThread(threadId: string): void {
+    this.projectStore.drafts.forget(threadId);
     this.threads = this.threads.filter((thread) => thread.id !== threadId);
 
     if (this.projectStore.selectedChatId === threadId) {

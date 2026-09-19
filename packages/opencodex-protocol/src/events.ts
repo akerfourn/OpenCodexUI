@@ -61,7 +61,7 @@ export type OpenCodexEvent =
       hasMoreOlderMessages?: boolean;
       tokenUsage?: OpenCodexThreadTokenUsage | null;
     }
-  | { type: "thread.created"; thread: OpenCodexThread; turns: OpenCodexTurn[] }
+  | { type: "thread.created"; clientDraftId?: string; thread: OpenCodexThread; turns: OpenCodexTurn[] }
   | {
       type: "thread.goal.updated";
       sourceId?: string | null;

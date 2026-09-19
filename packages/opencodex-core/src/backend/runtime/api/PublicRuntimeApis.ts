@@ -241,7 +241,8 @@ export interface ThreadsApi {
   create(
     projectPath: string | null,
     sourceId: string | null,
-    workspaceId?: string
+    workspaceId?: string,
+    clientDraftId?: string
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }>;
   updateComposerSettings(
     threadId: string,

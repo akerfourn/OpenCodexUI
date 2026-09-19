@@ -13,6 +13,7 @@ import { readImageAttachmentSrc } from "../messages/imageAttachmentSource";
 
 type ComposerAttachmentListProps = {
   attachments: OpenCodexAttachment[];
+  disabled?: boolean;
   /**
    * Handles remove attachment.
    *
@@ -32,6 +33,7 @@ type ComposerAttachmentListProps = {
  */
 export function ComposerAttachmentList({
   attachments,
+  disabled = false,
   onRemoveAttachment
 }: ComposerAttachmentListProps) {
   const { t } = useTranslation();
@@ -56,7 +58,7 @@ export function ComposerAttachmentList({
       >
         {attachments.map((attachment) => (
           <ComposerAttachmentTileX key={attachment.id} attachment={attachment}
-            onPreview={setPreviewAttachment} onRemove={onRemoveAttachment} />
+            disabled={disabled} onPreview={setPreviewAttachment} onRemove={onRemoveAttachment} />
         ))}
       </Box>
       <Dialog

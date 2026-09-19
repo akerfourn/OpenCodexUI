@@ -14,6 +14,14 @@ import {
 } from "./fixtures/threadCatalogFixture";
 
 describe("ThreadConversationService catalog", () => {
+  it("should correlate a deferred creation event with its local draft", async () => {
+    const fixture = createFixture();
+    const result = await fixture.service.createThread("/workspace/project", "source-requested", undefined, "draft:1");
+    expect(fixture.events).toContainEqual({
+      type: "thread.created", clientDraftId: "draft:1", thread: result.thread, turns: []
+    });
+  });
+
   it("lists online threads cache-first with canonical source and stable event order", async () => {
     const cachedThread = createThread({
       id: "thread-cached",

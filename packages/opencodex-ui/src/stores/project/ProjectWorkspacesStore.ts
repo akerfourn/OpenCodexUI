@@ -108,6 +108,16 @@ export class ProjectWorkspacesStore {
 
   /** Selects a draft context or requests a verified transition for the selected conversation. */
   async select(workspaceId: string, threadId = this.project.selectedChatId): Promise<void> {
+    if (threadId !== null) {
+      const chat = this.project.chatsById.get(threadId);
+      if (chat?.composer.isSubmitting === true) return;
+      if (chat?.isLocalDraft === true) {
+        if (!this.isBusy && !this.project.isReadOnlyFromCache) {
+          this.project.drafts.selectWorkspace(threadId, workspaceId);
+        }
+        return;
+      }
+    }
     await this.perform(async () => {
       if (threadId !== null) {
         await this.root.request({ type: "threads.workspace.select", threadId, workspaceId });

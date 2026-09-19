@@ -20,6 +20,7 @@ import {
 } from "./composerEmojis";
 
 type ComposerEmojiPickerProps = {
+  disabled?: boolean;
   onSelect(emoji: string): void;
 };
 
@@ -34,12 +35,12 @@ const MAX_RECENT_EMOJIS = 12;
  * @param props Picker callbacks.
  * @returns The picker button and its popover.
  */
-export function ComposerEmojiPicker({ onSelect }: ComposerEmojiPickerProps) {
+export function ComposerEmojiPicker({ onSelect, disabled = false }: ComposerEmojiPickerProps) {
   const { t } = useTranslation();
   const [anchorElement, setAnchorElement] = useState<HTMLButtonElement | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<EmojiPickerCategoryId>("emotions");
   const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
-  const isOpen = anchorElement !== null;
+  const isOpen = !disabled && anchorElement !== null;
   const categoryIds: EmojiPickerCategoryId[] = recentEmojis.length > 0
     ? ["recent", "emotions", "reactions"]
     : ["emotions", "reactions"];
@@ -95,6 +96,7 @@ export function ComposerEmojiPicker({ onSelect }: ComposerEmojiPickerProps) {
             type="button"
             aria-label={t("composer.emoji.open")}
             aria-expanded={isOpen}
+            disabled={disabled}
             onMouseDown={(event) => event.preventDefault()}
             onClick={handleToggle}
           >

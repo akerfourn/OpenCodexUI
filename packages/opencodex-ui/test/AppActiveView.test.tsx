@@ -86,6 +86,8 @@ function createRootStore(
   projectTabStores: ProjectStore[]
 ): RootStore {
   return {
+    activeProjectStore,
+    activeChatStore: null,
     appStore: {
       errorMessage: null,
       warningMessage: null,

@@ -7,8 +7,9 @@ import { FileAttachmentTileX } from "../messages/FileAttachmentTile";
 import { readImageAttachmentSrc } from "../messages/imageAttachmentSource";
 
 /** Renders one removable file or image in the composer. */
-export function ComposerAttachmentTile({ attachment, onPreview, onRemove }: {
+export function ComposerAttachmentTile({ attachment, onPreview, onRemove, disabled = false }: {
   attachment: OpenCodexAttachment;
+  disabled?: boolean;
   onPreview(attachment: OpenCodexImageAttachment): void;
   onRemove(id: string): void;
 }) {
@@ -32,7 +33,7 @@ export function ComposerAttachmentTile({ attachment, onPreview, onRemove }: {
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1, border: 1, borderColor: "divider", borderRadius: 1, p: 0.75, maxWidth: 300 }}>
       {preview}
-      <IconButton size="small" aria-label={t("composer.removeAttachment")} onClick={() => onRemove(attachment.id)}>
+      <IconButton disabled={disabled} size="small" aria-label={t("composer.removeAttachment")} onClick={() => onRemove(attachment.id)}>
         <CloseOutlinedIcon sx={{ fontSize: 15 }} />
       </IconButton>
     </Box>

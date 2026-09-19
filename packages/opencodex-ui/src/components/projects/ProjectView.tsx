@@ -73,7 +73,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
           mainPanel={(
             <section className="main-pane">
               <ChatViewX
-                key={projectStore.selectedChatId ?? "empty-chat"}
+                key={projectStore.selectedChat?.viewId ?? "empty-chat"}
                 store={store}
                 projectStore={projectStore}
                 onOpenSubAgentDialog={handleOpenSubAgentDialog}

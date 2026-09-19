@@ -339,9 +339,10 @@ export class ThreadConversationService {
   async createThread(
     projectPath: string | null,
     sourceId: string | null,
-    workspaceId?: string
+    workspaceId?: string,
+    clientDraftId?: string
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.threadCatalogService.createThread(projectPath, sourceId, workspaceId);
+    return await this.threadCatalogService.createThread(projectPath, sourceId, workspaceId, clientDraftId);
   }
 
   /**

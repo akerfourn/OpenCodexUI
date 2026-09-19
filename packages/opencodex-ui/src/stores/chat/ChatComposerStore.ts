@@ -1,7 +1,7 @@
 /**
  * Holds the model settings and draft state for one chat composer.
  */
-import { makeAutoObservable } from "mobx";
+import { makeAutoObservable, runInAction } from "mobx";
 
 import type {
   OpenCodexComposerReference,
@@ -25,6 +25,8 @@ export class ChatComposerStore {
   selectedServiceTier: OpenCodexServiceTier | null = null;
   /** Plain-text draft preserved per chat. */
   draft = "";
+  /** Locks all draft mutations until the send request has been acknowledged. */
+  isSubmitting = false;
   /** Markdown draft with references serialized. */
   draftMarkdown = "";
   /** Structured references embedded in the markdown draft. */
@@ -64,6 +66,7 @@ export class ChatComposerStore {
    * @param value Model identifier, or `null` for the backend default.
    */
   setModel(value: string | null): void {
+    if (this.isSubmitting) return;
     this.selectedModel = value;
     this.selectedServiceTier = resolveAvailableServiceTier(
       value,
@@ -84,6 +87,7 @@ export class ChatComposerStore {
    * @param value Reasoning effort to use for future turns.
    */
   setReasoningEffort(value: OpenCodexReasoningEffort): void {
+    if (this.isSubmitting) return;
     this.reasoningEffort = value;
     this.hasExplicitReasoningEffortSelection = true;
     this.parent.applyComposerThreadMetadata(this.selectedModel, value);
@@ -112,6 +116,7 @@ export class ChatComposerStore {
    * @param value Service tier identifier, or `null` for the Codex default.
    */
   setServiceTier(value: OpenCodexServiceTier | null): void {
+    if (this.isSubmitting) return;
     this.selectedServiceTier = resolveAvailableServiceTier(
       this.selectedModel,
       value,
@@ -147,6 +152,7 @@ export class ChatComposerStore {
     markdown: string,
     references: OpenCodexComposerReference[]
   ): void {
+    if (this.isSubmitting) return;
     this.draft = value;
     this.draftMarkdown = markdown;
     this.draftReferences = cloneComposerReferences(references);
@@ -158,6 +164,7 @@ export class ChatComposerStore {
    * @param attachments Attachments to add.
    */
   addAttachments(attachments: OpenCodexAttachment[]): void {
+    if (this.isSubmitting) return;
     this.attachments = [
       ...this.attachments,
       ...cloneAttachments(attachments)
@@ -170,9 +177,19 @@ export class ChatComposerStore {
    * @param attachmentId Attachment identifier.
    */
   removeAttachment(attachmentId: string): void {
+    if (this.isSubmitting) return;
     this.attachments = this.attachments.filter((attachment) => {
       return attachment.id !== attachmentId;
     });
+  }
+
+  /** Sends the current draft and clears it only after Codex accepts the input. */
+  async submit(): Promise<boolean> {
+    if (this.isSubmitting) return false;
+    const text = this.draftMarkdown.trim().length > 0 ? this.draftMarkdown : this.draft;
+    const accepted = await this.parent.actions.send(text, this.attachments, this.draftReferences);
+    if (accepted) runInAction(() => { this.clearDraft(); });
+    return accepted;
   }
 
   /**

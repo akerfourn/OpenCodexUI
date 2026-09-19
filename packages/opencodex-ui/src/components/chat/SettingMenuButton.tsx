@@ -34,7 +34,7 @@ export function SettingMenuButton<TValue extends string>({
   onChange
 }: SettingMenuButtonProps<TValue>) {
   const [anchorElement, setAnchorElement] = useState<HTMLElement | null>(null);
-  const isOpen = anchorElement !== null;
+  const isOpen = !disabled && anchorElement !== null;
   const selectedOption = options.find((option) => option.value === value);
   const displayedLabel = selectedOption?.label ?? value;
 

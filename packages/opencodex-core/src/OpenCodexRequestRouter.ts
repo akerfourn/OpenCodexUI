@@ -195,6 +195,10 @@ export class OpenCodexRequestRouter {
       case "threads.runtimeStatus.read":
         return this.runtime.threads.readRuntimeStatus(request.threadId);
       case "threads.create":
+        if (request.clientDraftId !== undefined) {
+          return this.runtime.threads.create(request.projectPath ?? null, request.sourceId ?? null,
+            request.workspaceId, request.clientDraftId);
+        }
         return this.runtime.threads.create(request.projectPath ?? null, request.sourceId ?? null,
           ...optionalWorkspaceArgument(request.workspaceId));
       case "threads.rename":

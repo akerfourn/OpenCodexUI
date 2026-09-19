@@ -32,7 +32,7 @@ describe("ChatStore active turn state", () => {
     vi.mocked(rootStore.request).mockReturnValueOnce(startRequest);
     const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
 
-    await expect(chatStore.actions.send("new request")).resolves.toBe(true);
+    const send = chatStore.actions.send("new request");
 
     chatStore.applyMessageStarted({
       id: "old-user-message",
@@ -54,6 +54,7 @@ describe("ChatStore active turn state", () => {
     expect(chatStore.timeline.turns[0]?.items).toHaveLength(1);
 
     resolveStart?.({ turnId: "new-turn" });
+    await expect(send).resolves.toBe(true);
     await flushPromises();
 
     expect(chatStore.runtime.activeTurnId).toBe("new-turn");

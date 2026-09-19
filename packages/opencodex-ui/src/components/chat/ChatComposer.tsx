@@ -6,7 +6,7 @@ import AssistantDirectionRoundedIcon from "@mui/icons-material/AssistantDirectio
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
 import { useCallback, useRef } from "react";
-import { IconButton, Stack, Tooltip } from "@mui/material";
+import { CircularProgress, IconButton, Stack, Tooltip } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
@@ -58,20 +58,19 @@ export function ChatComposer({
   const composer = chatStore.composer;
   const composerInputRef = useRef<ComposerPlainTextInputHandle>(null);
   const draft = composer.draft;
-  const draftMarkdown = composer.draftMarkdown;
-  const draftReferences = composer.draftReferences;
+  const isSubmitting = composer.isSubmitting;
   const attachments = composer.attachments;
   const canSteer = chatStore.actions.canSteerActiveTurn;
   const isSteering = isWorking && canSteer;
-  const canSubmit = (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
-  const canShowSubmit = !isWorking || canSteer;
-  const canAttachFiles = !isWorking || canSteer;
+  const canSubmit = !isSubmitting && (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
+  const canShowSubmit = isSubmitting || !isWorking || canSteer;
+  const canAttachFiles = !isSubmitting && (!isWorking || canSteer);
   const sourceId = chatStore.sourceId;
   const emojiOverrides = store.emojiCatalogStore.overrides;
   const reasoningEfforts = store.appStore.getReasoningEffortOptions(composer.selectedModel);
   const serviceTierOptions = store.appStore.getServiceTierOptions(composer.selectedModel);
   const areAdvancedActionsDisabled = (
-    isWorking ||
+    isSubmitting || chatStore.isLocalDraft || isWorking ||
     chatStore.runtime.isStartingTurn ||
     chatStore.runtime.isEditingLastTurn ||
     chatStore.runtime.isRecovering ||
@@ -89,7 +88,7 @@ export function ChatComposer({
   }
 
   function handleEmojiSelect(emoji: string): void {
-    composerInputRef.current?.insertText(emoji);
+    if (!composer.isSubmitting) composerInputRef.current?.insertText(emoji);
   }
 
   async function submitDraft(): Promise<void> {
@@ -97,14 +96,7 @@ export function ChatComposer({
       return;
     }
 
-    const text = draftMarkdown.trim().length > 0 ? draftMarkdown : draft;
-    const wasAccepted = await chatStore.actions.send(text, attachments, draftReferences);
-
-    if (!wasAccepted) {
-      return;
-    }
-
-    composer.clearDraft();
+    await composer.submit();
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
@@ -232,11 +224,15 @@ export function ChatComposer({
     }
   }
 
+  let submitIcon = isSteering ? <AssistantDirectionRoundedIcon /> : <SendRoundedIcon />;
+  if (isSubmitting) submitIcon = <CircularProgress size={22} color="inherit" />;
+
   return (
-    <form className="composer" onSubmit={handleSubmit} onPasteCapture={handlePaste}>
+    <form aria-busy={isSubmitting} className="composer" onSubmit={handleSubmit} onPasteCapture={handlePaste}>
       <ComposerPlainTextInput
         ref={composerInputRef}
         value={draft}
+        disabled={isSubmitting}
         placeholder={t("composer.messagePlaceholder")}
         canOpenFileLinks={canOpenFileLinks}
         resizeLabel={t("composer.resize")}
@@ -250,10 +246,12 @@ export function ChatComposer({
       />
       <ComposerAttachmentListX
         attachments={attachments}
+        disabled={isSubmitting}
         onRemoveAttachment={handleRemoveAttachment}
       />
       <Stack className="composer-controls" direction="row" spacing={1}>
         <ModelSettingsFields
+          disabled={isSubmitting}
           selectedModel={composer.selectedModel}
           reasoningEffort={composer.reasoningEffort}
           reasoningEfforts={reasoningEfforts}
@@ -274,8 +272,8 @@ export function ChatComposer({
             void handleAttachFiles();
           }}
         />
-        <ComposerEmojiPicker onSelect={handleEmojiSelect} />
-        {isWorking ? (
+        <ComposerEmojiPicker disabled={isSubmitting} onSelect={handleEmojiSelect} />
+        {isWorking && !isSubmitting ? (
           <Tooltip title={t("composer.interrupt")}>
             <span>
               <IconButton
@@ -298,7 +296,7 @@ export function ChatComposer({
                 aria-label={isSteering ? t("composer.steer") : t("composer.send")}
                 disabled={!canSubmit}
               >
-                {isSteering ? <AssistantDirectionRoundedIcon /> : <SendRoundedIcon />}
+                {submitIcon}
               </IconButton>
             </span>
           </Tooltip>

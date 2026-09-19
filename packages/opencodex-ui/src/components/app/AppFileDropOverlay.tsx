@@ -40,7 +40,7 @@ export function getDropTarget(store: RootStore): FileDropTarget | null {
   const project = store.activeProjectStore;
   const chat = store.activeChatStore;
   if (project === null || chat === null || project.isReadOnlyFromCache
-    || store.appStore.isShuttingDown || store.appStore.shouldShowOnboarding) {
+    || chat.composer.isSubmitting || store.appStore.isShuttingDown || store.appStore.shouldShowOnboarding) {
     return null;
   }
   const busy = chat.runtime.isWorking || chat.runtime.isStartingTurn || chat.runtime.isRecovering

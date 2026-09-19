@@ -138,6 +138,7 @@ describe("ChatStore composer characterization", () => {
       path: "/skills/review"
     }];
 
+    vi.mocked(rootStore.request).mockResolvedValueOnce({ turnId: "turn-sent" });
     await expect(chatStore.actions.send("hello", attachments, references)).resolves.toBe(true);
 
     const request = vi.mocked(rootStore.request).mock.calls[0]?.[0];

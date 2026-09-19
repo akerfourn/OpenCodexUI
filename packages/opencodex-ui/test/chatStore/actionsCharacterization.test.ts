@@ -151,7 +151,7 @@ describe("ChatActionsStore actions characterization", () => {
     const accepted = chatStore.actions.send("hello");
     expect(chatStore.timeline.turns).toHaveLength(1);
     expect(chatStore.runtime.isStartingTurn).toBe(true);
-    await expect(accepted).resolves.toBe(true);
+    await expect(accepted).resolves.toBe(false);
 
     await flushPromises();
 
@@ -168,7 +168,7 @@ describe("ChatActionsStore actions characterization", () => {
     vi.mocked(rootStore.request).mockResolvedValueOnce({});
     const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
 
-    await expect(chatStore.actions.send("hello")).resolves.toBe(true);
+    await expect(chatStore.actions.send("hello")).resolves.toBe(false);
     await flushPromises();
 
     expect(chatStore.timeline.turns).toHaveLength(0);

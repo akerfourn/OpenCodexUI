@@ -127,7 +127,7 @@ export const ComposerPlainTextInput = forwardRef<
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [suggestions, setSuggestions] = useState<ComposerReferenceSuggestion[]>([]);
   const emojiSuggestionsState = useComposerEmojiSuggestions(
-    enableEmojiSuggestions,
+    enableEmojiSuggestions && !disabled,
     lexicalEditorRef,
     emojiOverrides
   );
@@ -141,14 +141,15 @@ export const ComposerPlainTextInput = forwardRef<
   } = useComposerResize(editorRef, value, editorMinHeight);
   const initialConfig = useMemo<InitialConfigType>(() => ({
     namespace: "OpenCodexComposer",
+    editable: !disabled,
     nodes: [LinkNode],
     onError(error: Error) {
       throw error;
     }
-  }), []);
+  }), [disabled]);
 
   const insertText = useCallback((text: string): void => {
-    if (text.length === 0) {
+    if (disabled || text.length === 0) {
       return;
     }
 
@@ -174,7 +175,7 @@ export const ComposerPlainTextInput = forwardRef<
         endSelection.insertText(text);
       }
     });
-  }, []);
+  }, [disabled]);
 
   useImperativeHandle(ref, () => ({ insertText }), [insertText]);
 
@@ -249,6 +250,7 @@ export const ComposerPlainTextInput = forwardRef<
   }
 
   function handleEditorKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (disabled) return;
     if (emojiSuggestionsState.handleKeyDown(event)) {
       return;
     }
@@ -353,7 +355,7 @@ export const ComposerPlainTextInput = forwardRef<
   function insertReference(suggestion: ComposerReferenceSuggestion | undefined): void {
     const trigger = activeTriggerRef.current;
 
-    if (trigger === null || suggestion === undefined) {
+    if (disabled || trigger === null || suggestion === undefined) {
       return;
     }
 
@@ -451,7 +453,7 @@ export const ComposerPlainTextInput = forwardRef<
             ignoreSelectionChange={false}
             onChange={handleChange}
           />
-          <ComposerPlainTextValuePlugin value={value} />
+          <ComposerPlainTextValuePlugin value={value} disabled={disabled} />
           <ComposerFileSuggestionKeyPlugin
             hasActiveTrigger={!disabled && activeTrigger !== null}
             highlightedIndex={highlightedIndex}

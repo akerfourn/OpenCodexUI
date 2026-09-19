@@ -151,7 +151,7 @@ export type OpenCodexRequest =
   | { type: "threads.loadOlder"; threadId: string }
   | { type: "threads.recover"; threadId: string }
   | { type: "threads.runtimeStatus.read"; threadId: string }
-  | { type: "threads.create"; workspaceId?: string; projectPath?: string | null; sourceId?: string | null }
+  | { type: "threads.create"; clientDraftId?: string; workspaceId?: string; projectPath?: string | null; sourceId?: string | null }
   | { type: "threads.rename"; threadId: string; name: string }
   | { type: "threads.archive"; threadId: string }
   | { type: "threads.delete"; threadId: string }

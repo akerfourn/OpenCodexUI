@@ -12,6 +12,7 @@ import { useEffect } from "react";
 
 type ComposerPlainTextValuePluginProps = {
   value: string;
+  disabled?: boolean;
 };
 
 /**
@@ -20,8 +21,10 @@ type ComposerPlainTextValuePluginProps = {
  * @param props Component props.
  * @returns Nothing.
  */
-export function ComposerPlainTextValuePlugin({ value }: ComposerPlainTextValuePluginProps) {
+export function ComposerPlainTextValuePlugin({ value, disabled = false }: ComposerPlainTextValuePluginProps) {
   const [editor] = useLexicalComposerContext();
+
+  useEffect(() => { editor.setEditable(!disabled); }, [editor, disabled]);
 
   useEffect(() => {
     const currentValue = editor.getEditorState().read(() => $getRoot().getTextContent());

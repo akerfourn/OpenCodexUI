@@ -60,8 +60,14 @@ export class ProjectThreadEventsStore implements RootChildStore {
       case "threads.updated":
         this.applyThreadsUpdated(event.projectPath, event.threads, event.archived);
         return;
-      case "thread.opened":
       case "thread.created":
+        if (event.clientDraftId !== undefined) {
+          for (const project of this.projectsStore.projectStoresById.values()) {
+            if (project.drafts.adopt(event.clientDraftId, event.thread)) break;
+          }
+          return;
+        }
+      case "thread.opened":
         this.applyThreadOpened(
           event.thread,
           event.turns,

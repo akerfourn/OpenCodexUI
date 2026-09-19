@@ -17,6 +17,7 @@ import type {
 import { SettingMenuButton } from "./SettingMenuButton";
 
 type ModelSettingsFieldsProps = {
+  disabled?: boolean;
   selectedModel: string | null;
   reasoningEffort: OpenCodexReasoningEffort;
   reasoningEfforts: OpenCodexReasoningEffortOption[];
@@ -36,6 +37,7 @@ type ModelSettingsFieldsProps = {
  * @returns Nothing.
  */
 export function ModelSettingsFields({
+  disabled = false,
   selectedModel,
   reasoningEffort,
   reasoningEfforts,
@@ -59,6 +61,7 @@ export function ModelSettingsFields({
   return (
     <Stack direction="row" spacing={0.75} sx={{ minWidth: 0, flexWrap: "wrap" }}>
       <SettingMenuButton
+        disabled={disabled}
         icon={<MemoryOutlinedIcon fontSize="small" />}
         label={t("composer.model")}
         value={modelValue}
@@ -68,6 +71,7 @@ export function ModelSettingsFields({
         }}
       />
       <SettingMenuButton
+        disabled={disabled}
         icon={<PsychologyOutlinedIcon fontSize="small" />}
         label={t("composer.reasoning")}
         value={reasoningEffort}
@@ -82,7 +86,7 @@ export function ModelSettingsFields({
       <SettingMenuButton
         icon={<BoltOutlinedIcon fontSize="small" />}
         label={t("composer.serviceTier")}
-        disabled={serviceTierOptions.length === 0}
+        disabled={disabled || serviceTierOptions.length === 0}
         value={serviceTierValue}
         options={[
           { value: "", label: t("composer.serviceTierDefault") },

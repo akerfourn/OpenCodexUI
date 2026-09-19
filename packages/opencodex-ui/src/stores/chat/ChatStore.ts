@@ -34,6 +34,15 @@ export type { ChatTimelineViewState } from "./ChatTimelineStore";
 export class ChatStore {
   /** Thread metadata for this chat. */
   thread: OpenCodexThread;
+  /** True until the first send binds this in-memory conversation to Codex. */
+  isLocalDraft = false;
+  /** Stable React identity while a local conversation acquires its Codex id. */
+  readonly viewId: string;
+
+  /** Codex identity is absent while only a local draft exists. */
+  get codexThreadId(): string | null {
+    return this.isLocalDraft ? null : this.thread.id;
+  }
   /** Approvals attached to this chat. */
   approvals: OpenCodexApproval[] = [];
   /** User-triggered commands and optimistic mutations for this chat. */
@@ -59,6 +68,7 @@ export class ChatStore {
     private readonly projectStore: ProjectStore,
     private readonly root: RootStore
   ) {
+    this.viewId = thread.id;
     this.thread = projectStore.ensureThreadSource(thread);
     this.composer = new ChatComposerStore(this);
     this.timeline = new ChatTimelineStore(this, projectStore, root);
@@ -187,6 +197,7 @@ export class ChatStore {
     this.actions.syncConfirmedComposerMetadata(model, reasoningEffort);
     this.projectStore.upsertThread(thread);
 
+    if (this.isLocalDraft) return;
     void this.root.request({
       type: "threads.updateComposerSettings",
       threadId: thread.id,

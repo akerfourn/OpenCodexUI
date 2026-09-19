@@ -157,9 +157,10 @@ export class ThreadsApi implements ThreadsApiContract {
   async create(
     projectPath: string | null,
     sourceId: string | null,
-    workspaceId?: string
+    workspaceId?: string,
+    clientDraftId?: string
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
-    return await this.handler.createThread(projectPath, sourceId, workspaceId);
+    return await this.handler.createThread(projectPath, sourceId, workspaceId, clientDraftId);
   }
 
   /** Persists composer settings for a thread. */

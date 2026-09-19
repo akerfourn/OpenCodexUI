@@ -63,6 +63,7 @@ export class ChatGoalStore {
    * @returns Promise resolved when the read finishes.
    */
   async load(force = false): Promise<void> {
+    if (this.chatStore.isLocalDraft) return;
     if (this.loadingPromise !== null) {
       await this.loadingPromise;
       return;
@@ -156,7 +157,7 @@ export class ChatGoalStore {
   async save(patch: OpenCodexThreadGoalPatch): Promise<boolean> {
     const sourceId = this.chatStore.sourceId;
 
-    if (sourceId === null || this.isSaving) {
+    if (sourceId === null || this.isSaving || this.chatStore.isLocalDraft || this.chatStore.composer.isSubmitting) {
       return false;
     }
 
@@ -209,7 +210,7 @@ export class ChatGoalStore {
   async clear(): Promise<boolean> {
     const sourceId = this.chatStore.sourceId;
 
-    if (sourceId === null || this.isSaving) {
+    if (sourceId === null || this.isSaving || this.chatStore.isLocalDraft || this.chatStore.composer.isSubmitting) {
       return false;
     }
 

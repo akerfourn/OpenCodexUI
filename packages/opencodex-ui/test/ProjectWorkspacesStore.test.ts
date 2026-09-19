@@ -46,9 +46,9 @@ describe("workspace UI orchestration", () => {
     await project.workspaces.load();
     await project.workspaces.select("B");
     project.createThread();
-    expect(request).toHaveBeenCalledWith({
-      type: "threads.create", projectPath: "/B", sourceId: "source", workspaceId: "B"
-    });
+    expect(project.selectedChat?.isLocalDraft).toBe(true);
+    expect(project.selectedChat?.thread.projectPath).toBe("/B");
+    expect(request.mock.calls.some(([input]) => input.type === "threads.create")).toBe(false);
     expect(project.projectPath).toBe("/A");
   });
 
@@ -56,7 +56,9 @@ describe("workspace UI orchestration", () => {
     const { project, request } = fixture();
     await project.workspaces.load();
     project.threadListStore.createThread("B");
-    expect(request).toHaveBeenCalledWith({ type: "threads.create", projectPath: "/B", sourceId: "source", workspaceId: "B" });
+    expect(project.selectedChat?.isLocalDraft).toBe(true);
+    expect(project.selectedChat?.thread.projectPath).toBe("/B");
+    expect(request.mock.calls.some(([input]) => input.type === "threads.create")).toBe(false);
     expect(request.mock.calls.some(([input]) => input.type === "threads.workspace.select")).toBe(false);
   });
 

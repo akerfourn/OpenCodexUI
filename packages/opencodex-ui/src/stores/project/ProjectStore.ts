@@ -8,6 +8,7 @@ import type {
   OpenCodexThread
 } from "@open-codex-ui/opencodex-protocol";
 
+import { ProjectDraftsStore } from "./threads/ProjectDraftsStore";
 import { ProjectWorkspacesStore } from "./ProjectWorkspacesStore";
 import { ChatStore } from "../chat/ChatStore";
 import { ProjectCommandsStore } from "./ProjectCommandsStore";
@@ -38,6 +39,8 @@ export class ProjectStore {
   /** Resizable layout state retained outside mounted React views. */
   readonly layoutStore: ProjectViewLayoutStore;
   readonly threadListStore: ThreadListStore;
+  /** Local conversations that have not yet been created in Codex. */
+  readonly drafts: ProjectDraftsStore;
   /** Git state stays attached to its checkout, including pending replies and drafts. */
   private readonly gitStores = new Map<string, ProjectGitStore>();
   readonly commandsStore: ProjectCommandsStore;
@@ -61,6 +64,7 @@ export class ProjectStore {
     this.workspaces = new ProjectWorkspacesStore(this, root);
     this.layoutStore = new ProjectViewLayoutStore();
     this.threadListStore = new ThreadListStore(this, root);
+    this.drafts = new ProjectDraftsStore(this, root);
 
     this.commandsStore = new ProjectCommandsStore(this, root);
     this.composeStore = new ProjectComposeStore(this, root);
@@ -450,6 +454,7 @@ export class ProjectStore {
       this.chatsById.delete(threadId);
     }
 
+    this.drafts.forget(threadId);
     this.threadListStore.removeThread(threadId);
   }
 
@@ -467,6 +472,7 @@ export class ProjectStore {
     this.disposeWorkspaceReaction();
     this.workspaces.dispose();
     this.chatsById.clear();
+    this.drafts.clear();
     this.commandsStore.dispose();
     this.composeStore.reset();
     this.threadListStore.clear();

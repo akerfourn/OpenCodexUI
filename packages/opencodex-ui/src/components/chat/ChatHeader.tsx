@@ -64,10 +64,10 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
 
   useEffect(() => {
     void chatStore.goal.load();
-  }, [chatStore]);
+  }, [chatStore, chatStore.isLocalDraft]);
 
   function handleRenameOpen(): void {
-    if (isReadOnlyProject || chatStore.actions.isRenaming) {
+    if (isReadOnlyProject || chatStore.isLocalDraft || chatStore.composer.isSubmitting || chatStore.actions.isRenaming) {
       return;
     }
 
@@ -110,7 +110,7 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
             aria-label={t("header.rename")}
             title={t("header.rename")}
             size="small"
-            disabled={isReadOnlyProject || chatStore.actions.isRenaming}
+            disabled={isReadOnlyProject || chatStore.isLocalDraft || chatStore.composer.isSubmitting || chatStore.actions.isRenaming}
             onClick={handleRenameOpen}
           >
             <EditOutlinedIcon fontSize="small" />
@@ -122,7 +122,7 @@ export function ChatHeader({ projectStore, chatStore }: ChatHeaderProps) {
               title={t("header.refresh")}
               size="small"
               disabled={
-                isReadOnlyProject ||
+                !chatStore.actions.canRefresh || isReadOnlyProject ||
                 chatStore.runtime.isRefreshing ||
                 chatStore.runtime.isSyncing
               }

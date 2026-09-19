@@ -68,6 +68,7 @@ export class ChatActionsStore {
 
   /** Whether the current thread can be manually refreshed. */
   get canRefresh(): boolean {
+    if (this.parent.isLocalDraft || this.parent.composer.isSubmitting) return false;
     return canRefreshChat({
       isReadOnly: this.projectStore.isReadOnlyFromCache,
       runtime: this.parent.runtime
@@ -104,6 +105,7 @@ export class ChatActionsStore {
 
   /** Whether a last turn edit is currently permitted. */
   private get canEditLastTurn(): boolean {
+    if (this.parent.composer.isSubmitting) return false;
     return canEditLastTurn({
       isReadOnly: this.projectStore.isReadOnlyFromCache,
       runtime: this.parent.runtime,
@@ -127,7 +129,8 @@ export class ChatActionsStore {
    * Starts recovery for a thread after a recoverable backend error.
    */
   recover(): void {
-    if (this.parent.runtime.isRecovering || this.projectStore.isReadOnlyFromCache) {
+    if (this.parent.isLocalDraft || this.parent.composer.isSubmitting
+      || this.parent.runtime.isRecovering || this.projectStore.isReadOnlyFromCache) {
       return;
     }
 
@@ -163,7 +166,7 @@ export class ChatActionsStore {
    * @param serviceTier Optional service tier for the new turn.
    * @returns Promise resolved with whether the request was accepted.
    */
-  send(
+  async send(
     text: string,
     attachments: OpenCodexAttachment[] = [],
     references: OpenCodexComposerReference[] = [],
@@ -180,49 +183,48 @@ export class ChatActionsStore {
       (trimmedText.length === 0 && plainAttachments.length === 0) ||
       this.projectStore.isReadOnlyFromCache ||
       sourceId === null ||
+      this.parent.composer.isSubmitting ||
       this.parent.runtime.isStartingTurn ||
       this.parent.runtime.isEditingLastTurn ||
       this.parent.runtime.isRecovering
     ) {
-      return Promise.resolve(false);
+      return false;
     }
 
-    if (this.parent.runtime.isWorking) {
-      if (!this.canSteerActiveTurn) {
-        return Promise.resolve(false);
+    if (this.parent.runtime.isWorking && !this.canSteerActiveTurn) return false;
+    this.parent.composer.isSubmitting = true;
+    let startAttemptId: number | null = null;
+    try {
+      if (this.parent.runtime.isWorking) {
+        return await this.steerActiveTurn(trimmedText, plainAttachments, plainReferences);
       }
-
-      return this.steerActiveTurn(trimmedText, plainAttachments, plainReferences);
-    }
-
-    const startAttemptId = this.parent.runtime.beginTurnStart(true, trimmedText);
-    this.createOptimisticUserTurn(trimmedText, plainAttachments);
-
-    void this.root.request<{ turnId?: string }>({
-      type: "turn.start",
-      threadId: this.parent.thread.id,
-      projectPath: this.parent.thread.projectPath ?? this.projectStore.projectPath,
-      sourceId,
-      text: trimmedText,
-      attachments: plainAttachments,
-      references: plainReferences,
-      model,
-      reasoningEffort,
-      serviceTier
-    }).then((result) => {
-      const turnId = requireTurnId(result);
-
+      if (this.parent.isLocalDraft) await this.projectStore.drafts.ensureCreated(this.parent);
       runInAction(() => {
-        this.parent.confirmTurnStarted(startAttemptId, turnId);
+        startAttemptId = this.parent.runtime.beginTurnStart(true, trimmedText);
+        this.createOptimisticUserTurn(trimmedText, plainAttachments);
       });
-    }).catch((error: unknown) => {
+      const result = await this.root.request<{ turnId?: string }>({
+        type: "turn.start",
+        threadId: this.parent.thread.id,
+        projectPath: this.parent.thread.projectPath ?? this.projectStore.projectPath,
+        sourceId, text: trimmedText, attachments: plainAttachments, references: plainReferences,
+        model, reasoningEffort, serviceTier
+      });
+      const turnId = requireTurnId(result);
       runInAction(() => {
-        this.clearPendingTurnAfterStartFailure(startAttemptId);
+        if (startAttemptId !== null) this.parent.confirmTurnStarted(startAttemptId, turnId);
+        this.projectStore.drafts.forget(this.parent.thread.id);
+      });
+      return true;
+    } catch (error: unknown) {
+      runInAction(() => {
+        if (startAttemptId !== null) this.clearPendingTurnAfterStartFailure(startAttemptId);
         this.root.appStore.errorMessage = readChatErrorMessage(error);
       });
-    });
-
-    return Promise.resolve(true);
+      return false;
+    } finally {
+      runInAction(() => { this.parent.composer.isSubmitting = false; });
+    }
   }
 
   /**
@@ -339,7 +341,7 @@ export class ChatActionsStore {
     if (
       trimmedName.length === 0 ||
       this.projectStore.isReadOnlyFromCache ||
-      this.isRenaming
+      this.isRenaming || this.parent.isLocalDraft || this.parent.composer.isSubmitting
     ) {
       return;
     }
@@ -408,6 +410,7 @@ export class ChatActionsStore {
 
   /** Whether an advanced Codex action can start a new turn now. */
   private get canRunAdvancedAction(): boolean {
+    if (this.parent.isLocalDraft || this.parent.composer.isSubmitting) return false;
     return canRunAdvancedChatAction({
       isReadOnly: this.projectStore.isReadOnlyFromCache,
       runtime: this.parent.runtime

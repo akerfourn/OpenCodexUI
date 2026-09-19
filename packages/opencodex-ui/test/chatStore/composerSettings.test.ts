@@ -1,5 +1,5 @@
 /** Covers chat-local composer and model settings. */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ChatStore } from "../../src/stores/chat/ChatStore";
 import {
@@ -149,6 +149,7 @@ describe("ChatStore composer model settings", () => {
       rootStore
     );
 
+    vi.mocked(rootStore.request).mockResolvedValueOnce({ turnId: "turn-sent" });
     const wasAccepted = await chatStore.actions.send("hello");
 
     expect(wasAccepted).toBe(true);

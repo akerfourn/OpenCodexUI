@@ -177,7 +177,8 @@ export class ThreadCatalogService {
   async createThread(
     projectPath: string | null,
     sourceId: string | null,
-    workspaceId?: string
+    workspaceId?: string,
+    clientDraftId?: string
   ): Promise<{ thread: OpenCodexThread; turns: OpenCodexTurn[] }> {
     if (sourceId === null) {
       throw new Error("Cannot create a thread for a project without a Codex source.");
@@ -198,7 +199,7 @@ export class ThreadCatalogService {
     }
     const turns: OpenCodexTurn[] = [];
     this.options.threadTurnCache.getOrCreate(thread);
-    this.options.events.emit({ type: "thread.created", thread, turns });
+    this.options.events.emit({ type: "thread.created", thread, turns, ...(clientDraftId === undefined ? {} : { clientDraftId }) });
     await this.options.threadCacheService.writeIndex([thread]);
     return { thread, turns };
   }

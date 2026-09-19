@@ -16,8 +16,8 @@ export function WorkspaceSwitchDialog({ project, thread, onClose }: {
   const [workspaceId, setWorkspaceId] = useState(current?.id ?? "");
   const destination = store.workspaces.find((item) => item.id === workspaceId);
   const chat = project.chatsById.get(thread.id);
-  const empty = chat !== undefined && chat.timeline.turns.length === 0;
-  const disabled = store.isBusy || project.isReadOnlyFromCache || chat?.runtime.isWorking === true;
+  const empty = chat !== undefined && !chat.isLocalDraft && chat.timeline.turns.length === 0;
+  const disabled = chat?.composer.isSubmitting === true || store.isBusy || project.isReadOnlyFromCache || chat?.runtime.isWorking === true;
   const choices = store.workspaces.filter((item) => item.removedAt === null).map((item) => (
     <MenuItem key={item.id} value={item.id}>{workspaceLabel(item, t("workspaces.primary"))}</MenuItem>
   ));
