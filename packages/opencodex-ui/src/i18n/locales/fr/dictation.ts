@@ -21,6 +21,7 @@ export const frDictation = {
     "stop": "Arrêter et transcrire",
     "requesting": "Accès au microphone…",
     "recording": "Enregistrement (2 min maximum)",
+    "recordingProgress": "Enregistrement {{elapsed}} / {{limit}} — arrêter et transcrire",
     "transcribing": "Transcription…",
     "failed": "La dictée n’a pas pu aboutir. Votre brouillon est conservé.",
     "details": "Détails"

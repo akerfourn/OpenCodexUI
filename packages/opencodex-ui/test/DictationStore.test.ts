@@ -34,7 +34,24 @@ function fixture() {
 
 describe("dictation draft lifecycle", () => {
   beforeEach(() => { vi.clearAllMocks(); recording.finish.mockResolvedValue("AAA="); });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+  it("should start the progress clock only after microphone permission and reset it on cancellation", async () => {
+    const { store, microphone, stream } = fixture();
+    const permission = deferred<MediaStream>();
+    microphone.mockReturnValue(permission.promise);
+    const clock = vi.spyOn(performance, "now").mockReturnValue(1000);
+    const started = store.start("source", vi.fn());
+    await Promise.resolve();
+    expect(store.status).toBe("requesting");
+    expect(store.recordingStartedAt).toBeNull();
+    clock.mockReturnValue(60000);
+    permission.resolve(stream);
+    await started;
+    expect(store.recordingStartedAt).toBe(60000);
+    store.cancel();
+    expect(store.recordingStartedAt).toBeNull();
+  });
 
   it("should insert recognized text only after transcription succeeds", async () => {
     const { store } = fixture();

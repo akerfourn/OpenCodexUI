@@ -14,6 +14,8 @@ export class DictationStore {
   };
   /** Drives recording controls and blocks submission until dictation ends. */
   status: "idle" | "requesting" | "recording" | "transcribing" = "idle";
+  /** Monotonic capture start, excluding time spent requesting microphone access. */
+  recordingStartedAt: number | null = null;
   /** Dismissible diagnostics kept separate from conversation errors. */
   error: string | null = null;
   /** Serializes settings changes and model management. */
@@ -112,7 +114,11 @@ export class DictationStore {
       const recording = new AudioRecording(stream, () => { void this.finish(); }, (error) => {
         if (this.sessionId === id) runInAction(() => { this.error = error.message; this.reset(); });
       });
-      runInAction(() => { this.recording = recording; this.status = "recording"; });
+      runInAction(() => {
+        this.recording = recording;
+        this.recordingStartedAt = performance.now();
+        this.status = "recording";
+      });
     } catch (error) {
       stream?.getTracks().forEach((track) => track.stop());
       if (this.sessionId === id) runInAction(() => { this.error = errorMessage(error); this.reset(); });
@@ -161,6 +167,7 @@ export class DictationStore {
   /** Releases callbacks and audio references after completion or cancellation. */
   private reset(): void {
     this.recording = null;
+    this.recordingStartedAt = null;
     this.sessionId = null;
     this.onText = null;
     this.recordingSettings = null;

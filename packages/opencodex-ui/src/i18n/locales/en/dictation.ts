@@ -24,6 +24,7 @@ export const enDictation = {
     "stop": "Stop and transcribe",
     "requesting": "Requesting microphone access…",
     "recording": "Recording (2 minutes maximum)",
+    "recordingProgress": "Recording {{elapsed}} / {{limit}} — stop and transcribe",
     "transcribing": "Transcribing…",
     "failed": "Dictation could not finish. Your draft has been preserved.",
     "details": "Details"

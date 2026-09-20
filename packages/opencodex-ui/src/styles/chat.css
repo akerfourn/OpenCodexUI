@@ -177,6 +177,12 @@
   margin: 0;
 }
 
+.composer-editor[aria-disabled="true"] {
+  color: var(--vscode-descriptionForeground);
+  background: color-mix(in srgb, var(--vscode-descriptionForeground) 8%, transparent);
+  cursor: wait;
+}
+
 .composer-editor-placeholder {
   position: absolute;
   top: 16px;
@@ -203,6 +209,12 @@
   border-color: color-mix(in srgb, #a855f7 55%, transparent);
   background: color-mix(in srgb, #a855f7 16%, transparent);
   color: #c084fc;
+}
+
+.composer-editor[aria-disabled="true"] a {
+  color: inherit;
+  background: transparent;
+  border-color: currentColor;
 }
 
 .composer-file-suggestions {
