@@ -454,7 +454,7 @@ export class OpenCodexRequestRouter {
           request.projectId,
           request.name,
           request.command,
-          request.allowParallel,
+          request.executionMode,
           request.persistLogs
         );
       case "projectCommands.update":

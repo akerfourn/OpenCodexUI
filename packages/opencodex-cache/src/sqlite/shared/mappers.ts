@@ -232,7 +232,7 @@ export function mapProjectCommandRow(row: ProjectCommandRow): CachedProjectComma
     projectId: row.project_id,
     name: row.name,
     command: row.command,
-    allowParallel: row.allow_parallel === 1,
+    executionMode: row.execution_mode,
     persistLogs: row.persist_logs === 1,
     sortOrder: row.sort_order,
     createdAt: row.created_at,

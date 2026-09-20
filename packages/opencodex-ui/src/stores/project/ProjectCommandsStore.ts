@@ -1,7 +1,9 @@
 /**
  * Holds project command definitions and live run state.
  */
-import { makeAutoObservable, runInAction } from "mobx";
+import { commandExecutionConflicts, type OpenCodexCommandExecutionContext } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexCommandExecutionMode } from "@open-codex-ui/opencodex-protocol";
+import { makeAutoObservable, observable, runInAction } from "mobx";
 
 import type {
   OpenCodexEvent,
@@ -22,7 +24,7 @@ export type { ProjectCommandLogLine, ProjectCommandRunView } from "./ProjectComm
 export type ProjectCommandFormInput = {
   name: string;
   command: string;
-  allowParallel: boolean;
+  executionMode: OpenCodexCommandExecutionMode;
   persistLogs: boolean;
 };
 
@@ -38,8 +40,11 @@ export class ProjectCommandsStore {
   isLoading = false;
   /** Whether command configuration is being persisted. */
   isSaving = false;
-  /** Whether a run request is currently in flight. */
-  isRunningCommand = false;
+  /** Captured contexts of launch requests awaiting backend acknowledgement. */
+  private readonly startingRuns = new Set<OpenCodexCommandExecutionContext>();
+
+  /** Keeps shutdown activity accurate when several launch requests overlap. */
+  get isRunningCommand(): boolean { return this.startingRuns.size > 0; }
   /** Live and completed command runs grouped by command id. */
   get runsByCommandId(): Map<string, ProjectCommandRunView[]> {
     return this.commandRunsStore.runsByCommandId;
@@ -76,12 +81,13 @@ export class ProjectCommandsStore {
     private readonly root: RootStore
   ) {
     this.commandRunsStore = new ProjectCommandRunsStore();
-    makeAutoObservable<ProjectCommandsStore, "projectStore" | "root" | "commandRunsStore">(
+    makeAutoObservable<ProjectCommandsStore, "projectStore" | "root" | "commandRunsStore" | "startingRuns">(
       this,
       {
         projectStore: false,
         root: false,
-        commandRunsStore: false
+        commandRunsStore: false,
+        startingRuns: observable.shallow
       },
       {
         autoBind: true
@@ -287,15 +293,16 @@ export class ProjectCommandsStore {
       return;
     }
 
-    this.isRunningCommand = true;
+    const execution = this.executionContext(command.id);
+    this.startingRuns.add(execution);
 
     try {
       const run = await this.root.request<OpenCodexProjectCommandRun>({
         type: "projectCommands.run",
         commandId: command.id,
-        projectPath: (this.projectStore.workspacePath ?? this.projectStore.projectPath),
-        ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
-        sourceId: this.projectStore.project.sourceId
+        projectPath: execution.cwd,
+        ...(execution.workspaceId === undefined ? {} : { workspaceId: execution.workspaceId }),
+        sourceId: execution.sourceId ?? null
       });
 
       runInAction(() => {
@@ -305,7 +312,7 @@ export class ProjectCommandsStore {
       this.reportError(error);
     } finally {
       runInAction(() => {
-        this.isRunningCommand = false;
+        this.startingRuns.delete(execution);
       });
     }
   }
@@ -370,11 +377,25 @@ export class ProjectCommandsStore {
       return false;
     }
 
-    if (command.allowParallel) {
-      return true;
-    }
+    const execution = this.executionContext(command.id);
+    const active = [...this.getRuns(command.id).filter((run) => run.status === "running"), ...this.startingRuns];
+    return !active.some((run) => commandExecutionConflicts(command.executionMode, execution, run));
+  }
 
-    return !this.getRuns(command.id).some((run) => run.status === "running");
+  /** Captures the selected physical context before starting asynchronous work. */
+  private executionContext(commandId: string): OpenCodexCommandExecutionContext & { cwd: string } {
+    return {
+      commandId, sourceId: this.projectStore.project.sourceId,
+      workspaceId: this.projectStore.workspaceId,
+      cwd: this.projectStore.workspacePath ?? this.projectStore.projectPath,
+    };
+  }
+
+  /** Identifies each run even after the user switches to another workspace. */
+  getRunWorkspaceLabel(run: ProjectCommandRunView): string {
+    const workspace = this.projectStore.workspaces?.workspaces.find((item) =>
+      item.id === run.workspaceId || item.path === run.cwd);
+    return workspace?.name ?? run.cwd ?? "";
   }
 
   /**
@@ -471,7 +492,7 @@ function normalizeCommandFormInput(input: ProjectCommandFormInput): ProjectComma
   return {
     name: input.name.trim(),
     command: input.command.trim(),
-    allowParallel: input.allowParallel,
+    executionMode: input.executionMode,
     persistLogs: input.persistLogs
   };
 }

@@ -40,6 +40,20 @@ describe("project tooling persistence", () => {
       .toEqual({ ...secondary, generatedHash: "new-hash" });
   });
 
+  it("should persist workspace execution limits across updates and reopening", async () => {
+    const project = await repository.upsertProject("/repo");
+    const command = await repository.createProjectCommand({ projectId: project.id,
+      name: "Build", command: "npm test", executionMode: "workspace", persistLogs: false });
+    await repository.updateProjectCommand(command.id, { name: "Tests" });
+    await repository.close();
+    repository = createOpenCodexSqliteCacheRepository({ directory });
+    expect(await repository.getProjectCommand(command.id)).toMatchObject({
+      name: "Tests", executionMode: "workspace" });
+    await expect(repository.updateProjectCommand(command.id, { executionMode: "invalid" as never }))
+      .rejects.toThrow("Invalid command execution mode");
+    expect(await repository.getProjectCommand(command.id)).toMatchObject({ executionMode: "workspace" });
+  });
+
   it("should persist project commands", async () => {
     const project = await repository.upsertProject("/tmp/commands-project");
 
@@ -47,14 +61,14 @@ describe("project tooling persistence", () => {
       projectId: project.id,
       name: "Dev",
       command: "npm run dev",
-      allowParallel: false,
+      executionMode: "project",
       persistLogs: true
     });
     const secondCommand = await repository.createProjectCommand({
       projectId: project.id,
       name: "Build",
       command: "npm run build",
-      allowParallel: false,
+      executionMode: "project",
       persistLogs: false
     });
 
@@ -64,7 +78,7 @@ describe("project tooling persistence", () => {
         projectId: project.id,
         name: "Dev",
         command: "npm run dev",
-        allowParallel: false,
+        executionMode: "project",
         persistLogs: true,
         sortOrder: 0
       },
@@ -73,7 +87,7 @@ describe("project tooling persistence", () => {
         projectId: project.id,
         name: "Build",
         command: "npm run build",
-        allowParallel: false,
+        executionMode: "project",
         persistLogs: false,
         sortOrder: 1
       }
@@ -89,14 +103,14 @@ describe("project tooling persistence", () => {
 
     const updatedCommand = await repository.updateProjectCommand(command.id, {
       name: "Dev server",
-      allowParallel: true
+      executionMode: "parallel"
     });
 
     expect(updatedCommand).toMatchObject({
       id: command.id,
       name: "Dev server",
       command: "npm run dev",
-      allowParallel: true,
+      executionMode: "parallel",
       persistLogs: true
     });
 
@@ -212,7 +226,7 @@ describe("project tooling persistence", () => {
       projectId: project.id,
       name: "Dev",
       command: "npm run dev",
-      allowParallel: false,
+      executionMode: "project",
       persistLogs: false
     });
     await repository.createProjectTask({

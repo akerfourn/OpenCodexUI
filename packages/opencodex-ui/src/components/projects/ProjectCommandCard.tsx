@@ -63,7 +63,7 @@ export function ProjectCommandCard({
   return (
     <Box className="project-command-card">
       <Stack className="project-command-card-main" direction="row" spacing={1.5}>
-        <Tooltip title={t("commands.run")}>
+        <Tooltip title={t(canRun ? "commands.run" : "commands.runUnavailable")}>
           <span>
             <IconButton
               className="project-command-play"
@@ -81,6 +81,9 @@ export function ProjectCommandCard({
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap>
             {command.command}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+            {t(`commands.executionModes.${command.executionMode}`)}
           </Typography>
         </Box>
         <Tooltip title={t("commands.edit")}>
@@ -121,6 +124,7 @@ export function ProjectCommandCard({
             <ProjectCommandRunRowX
               key={run.id}
               run={run}
+              workspaceLabel={commandsStore.getRunWorkspaceLabel(run)}
               onCloseRun={commandsStore.closeRun}
               onOpenLogs={onOpenLogs}
               onStopRun={commandsStore.stopRun}

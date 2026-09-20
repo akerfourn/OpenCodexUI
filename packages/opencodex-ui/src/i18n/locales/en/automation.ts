@@ -7,7 +7,18 @@ import type { frAutomation } from "../fr/automation.js";
 export const enAutomation = {
   commands: {
     add: "Add",
-    allowParallel: "Allow parallel instances",
+    executionMode: "Concurrent executions",
+    executionModes: {
+      project: "One execution per project",
+      workspace: "One execution per workspace",
+      parallel: "Multiple executions"
+    },
+    executionModeHelp: {
+      project: "Run this command only once across all workspaces in the project.",
+      workspace: "Run this command in several workspaces, once in each.",
+      parallel: "Run this command multiple times, including in the same workspace."
+    },
+    runUnavailable: "Source unavailable or concurrent execution limit reached.",
     cancel: "Cancel",
     closeRun: "Close instance",
     command: "Command",

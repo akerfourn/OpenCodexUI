@@ -103,13 +103,69 @@ describe("ProjectCommandsStore run lifecycle", () => {
   it("should allow parallel commands while a previous run is active", () => {
     const { store } = createStoreFixture();
     const run = createRun();
-    const serialCommand = createCommand({ allowParallel: false });
-    const parallelCommand = createCommand({ allowParallel: true });
+    const serialCommand = createCommand({ executionMode: "project" });
+    const parallelCommand = createCommand({ executionMode: "parallel" });
 
     startRun(store, run);
 
     expect(store.canRunCommand(serialCommand)).toBe(false);
     expect(store.canRunCommand(parallelCommand)).toBe(true);
+  });
+
+  it("should block only the matching workspace for workspace-scoped commands", () => {
+    const { store } = createStoreFixture();
+    const command = createCommand({ executionMode: "workspace" });
+    startRun(store, createRun({ cwd: "/other", sourceId: "source-1" }));
+    expect(store.canRunCommand(command)).toBe(true);
+    expect(store.canRunCommand(createCommand({ executionMode: "project" }))).toBe(false);
+    startRun(store, createRun({ id: "current", cwd: "/workspace/project", sourceId: "source-1" }));
+    expect(store.canRunCommand(command)).toBe(false);
+    expect(store.canRunCommand(createCommand({ executionMode: "parallel" }))).toBe(true);
+  });
+
+  it("should reserve pending launches against their original workspace", async () => {
+    let resolve!: (run: OpenCodexProjectCommandRun) => void;
+    const request = vi.fn(() => new Promise<OpenCodexProjectCommandRun>((done) => { resolve = done; }));
+    const { store, projectStore } = createStoreFixture(request as RootStore["request"]);
+    const command = createCommand({ executionMode: "workspace" });
+    const pending = store.runCommand(command);
+    expect(store.canRunCommand(command)).toBe(false);
+    await store.runCommand(command);
+    expect(request).toHaveBeenCalledOnce();
+    projectStore.project.path = "/other";
+    Object.defineProperty(projectStore, "projectPath", { value: "/other", configurable: true });
+    expect(store.canRunCommand(command)).toBe(true);
+    expect(store.canRunCommand(createCommand({ executionMode: "project" }))).toBe(false);
+    resolve(createRun({ cwd: "/workspace/project", sourceId: "source-1" }));
+    await pending;
+    expect(store.isRunningCommand).toBe(false);
+    expect(store.canRunCommand(command)).toBe(true);
+    expect(request.mock.calls[0]?.[0]).toMatchObject({ projectPath: "/workspace/project" });
+  });
+
+  it("should retain pending activity until all parallel launches settle", async () => {
+    const completions: Array<(run: OpenCodexProjectCommandRun) => void> = [];
+    const request = vi.fn(() => new Promise<OpenCodexProjectCommandRun>((resolve) => completions.push(resolve)));
+    const { store } = createStoreFixture(request as RootStore["request"]);
+    const command = createCommand({ executionMode: "parallel" });
+    const first = store.runCommand(command);
+    const second = store.runCommand(command);
+    expect(request).toHaveBeenCalledTimes(2);
+    completions[0]!(createRun());
+    await first;
+    expect(store.isRunningCommand).toBe(true);
+    completions[1]!(createRun({ id: "second" }));
+    await second;
+    expect(store.isRunningCommand).toBe(false);
+    expect(store.getRuns(command.id)).toHaveLength(2);
+  });
+
+  it("should send the explicit execution mode when saving a command", async () => {
+    const request = vi.fn(async () => createCommand({ executionMode: "workspace" }));
+    const { store } = createStoreFixture(request as RootStore["request"]);
+    await store.createCommand({ name: " Build ", command: " npm test ", executionMode: "workspace", persistLogs: false });
+    expect(request).toHaveBeenCalledWith({ type: "projectCommands.create", projectId: "project-1",
+      name: "Build", command: "npm test", executionMode: "workspace", persistLogs: false });
   });
 
   it("should expose whether a command run is active", () => {
@@ -170,7 +226,7 @@ describe("ProjectCommandsStore run lifecycle", () => {
 /** Creates an inert command store and its observable request mock. */
 function createStoreFixture(
   request: RootStore["request"] = vi.fn() as unknown as RootStore["request"]
-): { store: ProjectCommandsStore; root: RootStore } {
+): { store: ProjectCommandsStore; root: RootStore; projectStore: ProjectStore } {
   const projectStore = {
     project: {
       id: "project-1",
@@ -185,7 +241,7 @@ function createStoreFixture(
     appStore: { errorMessage: null }
   } as unknown as RootStore;
 
-  return { store: new ProjectCommandsStore(projectStore, root), root };
+  return { store: new ProjectCommandsStore(projectStore, root), root, projectStore };
 }
 
 /** Creates one deterministic command definition. */
@@ -197,7 +253,7 @@ function createCommand(
     projectId: "project-1",
     name: "Test command",
     command: "echo test",
-    allowParallel: false,
+    executionMode: "project",
     persistLogs: false,
     sortOrder: 0,
     createdAt: "2026-07-14T00:00:00.000Z",

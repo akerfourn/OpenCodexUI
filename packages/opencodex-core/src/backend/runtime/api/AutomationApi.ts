@@ -49,14 +49,14 @@ export class CommandsApi implements CommandsApiContract {
     projectId: Parameters<CommandsHandler["createProjectCommand"]>[0],
     name: Parameters<CommandsHandler["createProjectCommand"]>[1],
     command: Parameters<CommandsHandler["createProjectCommand"]>[2],
-    allowParallel: Parameters<CommandsHandler["createProjectCommand"]>[3],
+    executionMode: Parameters<CommandsHandler["createProjectCommand"]>[3],
     persistLogs: Parameters<CommandsHandler["createProjectCommand"]>[4]
   ): ReturnType<CommandsHandler["createProjectCommand"]> {
     return await this.handler.createProjectCommand(
       projectId,
       name,
       command,
-      allowParallel,
+      executionMode,
       persistLogs
     );
   }

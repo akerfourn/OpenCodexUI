@@ -1,3 +1,4 @@
+import type { OpenCodexCommandExecutionMode } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceDiscoveryResult } from "@open-codex-ui/opencodex-protocol";
 import type {
   OpenCodexApprovalDecision,
@@ -312,12 +313,12 @@ export interface CommandsApi {
     projectId: string,
     name: string,
     command: string,
-    allowParallel: boolean,
+    executionMode: OpenCodexCommandExecutionMode,
     persistLogs: boolean
   ): Promise<OpenCodexProjectCommand>;
   update(
     commandId: string,
-    patch: { name?: string; command?: string; allowParallel?: boolean; persistLogs?: boolean }
+    patch: { name?: string; command?: string; executionMode?: OpenCodexCommandExecutionMode; persistLogs?: boolean }
   ): Promise<OpenCodexProjectCommand>;
   reorder(projectId: string, commandIds: string[]): Promise<OpenCodexProjectCommand[]>;
   delete(commandId: string): Promise<{ ok: true }>;

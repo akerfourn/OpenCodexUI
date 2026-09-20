@@ -13,6 +13,7 @@ import type { ProjectCommandRunView } from "../../stores/project/ProjectCommands
 
 type ProjectCommandRunRowProps = {
   run: ProjectCommandRunView;
+  workspaceLabel: string;
   onCloseRun(commandId: string, runId: string): void;
   onOpenLogs(run: ProjectCommandRunView): void;
   onStopRun(runId: string): void;
@@ -26,6 +27,7 @@ type ProjectCommandRunRowProps = {
  */
 export function ProjectCommandRunRow({
   run,
+  workspaceLabel,
   onCloseRun,
   onOpenLogs,
   onStopRun
@@ -83,6 +85,9 @@ export function ProjectCommandRunRow({
             {formatDuration(durationMs)}
           </Typography>
         </Stack>
+        <Typography variant="caption" color="text.secondary" noWrap title={run.cwd}>
+          {workspaceLabel}
+        </Typography>
       </Box>
       <Tooltip title={t("commands.openLogs")}>
         <IconButton size="small" color={logsColor} onClick={handleOpenLogs}>

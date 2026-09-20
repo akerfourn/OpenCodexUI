@@ -1,6 +1,7 @@
 /**
  * Internal SQLite row shapes used by cache queries and mappers.
  */
+import type { OpenCodexCommandExecutionMode } from "@open-codex-ui/opencodex-protocol";
 import type {
   CachedCommandRuleDecision,
   CachedLogCategory,
@@ -164,7 +165,7 @@ export type ProjectCommandRow = {
   project_id: string;
   name: string;
   command: string;
-  allow_parallel: number;
+  execution_mode: OpenCodexCommandExecutionMode;
   persist_logs: number;
   sort_order: number;
   created_at: string;

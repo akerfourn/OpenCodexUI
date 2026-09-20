@@ -63,13 +63,13 @@ describe("ProjectAutomationRuntimeHandler", () => {
       "project-1",
       "Build",
       "npm run build",
-      true,
+      "parallel",
       false
     )).resolves.toMatchObject({
       projectId: "project-1",
       name: "Build",
       command: "npm run build",
-      allowParallel: true,
+      executionMode: "parallel",
       persistLogs: false
     });
 
@@ -89,7 +89,7 @@ describe("ProjectAutomationRuntimeHandler", () => {
       projectId: "project-1",
       name: "Build",
       command: "npm run build",
-      allowParallel: true,
+      executionMode: "parallel",
       persistLogs: false
     });
     expect(updateProjectCommand).toHaveBeenCalledWith("command-1", patch);
@@ -244,7 +244,7 @@ function createCommand(id: string, projectId = "project-1"): CachedProjectComman
     projectId,
     name: "Build",
     command: "npm run build",
-    allowParallel: false,
+    executionMode: "project",
     persistLogs: true,
     sortOrder: 0,
     createdAt: "2026-08-09T10:00:00.000Z",

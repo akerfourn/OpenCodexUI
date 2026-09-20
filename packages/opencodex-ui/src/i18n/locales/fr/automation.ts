@@ -4,7 +4,18 @@
 export const frAutomation = {
   commands: {
     add: "Ajouter",
-    allowParallel: "Autoriser plusieurs instances en parallèle",
+    executionMode: "Exécutions simultanées",
+    executionModes: {
+      project: "Une exécution par projet",
+      workspace: "Une exécution par workspace",
+      parallel: "Plusieurs exécutions"
+    },
+    executionModeHelp: {
+      project: "Cette commande ne peut tourner qu’une fois dans le projet, tous workspaces confondus.",
+      workspace: "Cette commande peut tourner dans plusieurs workspaces, une fois dans chacun.",
+      parallel: "Cette commande peut tourner plusieurs fois, y compris dans le même workspace."
+    },
+    runUnavailable: "Source indisponible ou limite d’exécutions simultanées atteinte.",
     cancel: "Annuler",
     closeRun: "Retirer l'instance",
     command: "Commande",

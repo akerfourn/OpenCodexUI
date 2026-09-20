@@ -1,8 +1,9 @@
-import type { OpenCodexDictationInput, OpenCodexDictationSettings } from "./dictation";
-import type { OpenCodexWorkspaceCreateInput } from "./workspaceCreations";
 /**
  * Declares the requests sent from the UI to the OpenCodex backend.
  */
+import type { OpenCodexCommandExecutionMode } from "./commandExecution";
+import type { OpenCodexDictationInput, OpenCodexDictationSettings } from "./dictation";
+import type { OpenCodexWorkspaceCreateInput } from "./workspaceCreations";
 import type {
   OpenCodexApprovalDecision,
   OpenCodexCommitMessageLanguage,
@@ -348,7 +349,7 @@ export type OpenCodexRequest =
       projectId: string;
       name: string;
       command: string;
-      allowParallel: boolean;
+      executionMode: OpenCodexCommandExecutionMode;
       persistLogs: boolean;
     }
   | {
@@ -357,7 +358,7 @@ export type OpenCodexRequest =
       patch: {
         name?: string;
         command?: string;
-        allowParallel?: boolean;
+        executionMode?: OpenCodexCommandExecutionMode;
         persistLogs?: boolean;
       };
     }

@@ -35,6 +35,44 @@ describe("ProjectCommandService", () => {
     expect(request).toHaveBeenLastCalledWith("process/kill", { processHandle: primary.processHandle });
   });
 
+  it("should enforce a project limit across simultaneous workspace launches", async () => {
+    const { service, request } = createService(createLocalSource(), "project");
+    const results = await Promise.allSettled([
+      service.runCommand("command-1", "/primary", "source-1"),
+      service.runCommand("command-1", "/secondary", "source-1")
+    ]);
+    expect(results.map((result) => result.status)).toEqual(["fulfilled", "rejected"]);
+    expect(request).toHaveBeenCalledOnce();
+    expect(results[1]).toMatchObject({ reason: new Error("This command is already running.") });
+  });
+
+  it("should allow simultaneous starts in separate workspaces", async () => {
+    const { service, request } = createService();
+    const runs = await Promise.all([
+      service.runCommand("command-1", "/primary", "source-1"),
+      service.runCommand("command-1", "/secondary", "source-1")
+    ]);
+    expect(runs.map((run) => run.cwd)).toEqual(["/primary", "/secondary"]);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it("should allow parallel starts in the same workspace", async () => {
+    const { service, request } = createService(createLocalSource(), "parallel");
+    await Promise.all([
+      service.runCommand("command-1", "/primary", "source-1"),
+      service.runCommand("command-1", "/primary", "source-1")
+    ]);
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it("should release the project limit after a failed spawn", async () => {
+    const { service, request } = createService(createLocalSource(), "project");
+    request.mockRejectedValueOnce(new Error("Spawn failed"));
+    await expect(service.runCommand("command-1", "/primary", "source-1")).rejects.toThrow("Spawn failed");
+    await expect(service.runCommand("command-1", "/secondary", "source-1"))
+      .resolves.toMatchObject({ cwd: "/secondary", status: "running" });
+  });
+
   it("should preserve the run, output, and exit event sequence", async () => {
     const { service, request, emit } = createService();
 
@@ -196,8 +234,8 @@ describe("ProjectCommandService", () => {
 });
 
 /** Creates a service with deterministic cache, client, and event ports. */
-function createService(source: CachedSource = createLocalSource()) {
-  const command = createCommand();
+function createService(source: CachedSource = createLocalSource(), mode: CachedProjectCommand["executionMode"] = "workspace") {
+  const command = { ...createCommand(), executionMode: mode };
   const repository = {
     getProjectCommand: vi.fn(async () => command)
   } as unknown as OpenCodexCacheRepository;
@@ -266,7 +304,7 @@ function createCommand(): CachedProjectCommand {
     projectId: "project-1",
     name: "Tests",
     command: "npm test",
-    allowParallel: false,
+    executionMode: "project",
     persistLogs: false,
     sortOrder: 0,
     createdAt: "2026-08-12T10:00:00.000Z",

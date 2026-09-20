@@ -32,7 +32,7 @@ export async function listProjectCommands(
         project_id,
         name,
         command,
-        allow_parallel,
+        execution_mode,
         persist_logs,
         sort_order,
         created_at,
@@ -65,7 +65,8 @@ export async function createProjectCommand(
     projectId: command.projectId,
     name: command.name,
     command: command.command,
-    allowParallel: command.allowParallel ? 1 : 0,
+    executionMode: command.executionMode,
+    allowParallel: command.executionMode === "parallel" ? 1 : 0,
     persistLogs: command.persistLogs ? 1 : 0,
     sortOrder,
     createdAt: now,
@@ -79,6 +80,7 @@ export async function createProjectCommand(
         project_id,
         name,
         command,
+        execution_mode,
         allow_parallel,
         persist_logs,
         sort_order,
@@ -90,6 +92,7 @@ export async function createProjectCommand(
         @projectId,
         @name,
         @command,
+        @executionMode,
         @allowParallel,
         @persistLogs,
         @sortOrder,
@@ -120,7 +123,7 @@ export async function updateProjectCommand(
     projectId: current.projectId,
     name: patch.name ?? current.name,
     command: patch.command ?? current.command,
-    allowParallel: patch.allowParallel ?? current.allowParallel,
+    executionMode: patch.executionMode ?? current.executionMode,
     persistLogs: patch.persistLogs ?? current.persistLogs
   });
 
@@ -129,6 +132,7 @@ export async function updateProjectCommand(
       UPDATE project_commands SET
         name = @name,
         command = @command,
+        execution_mode = @executionMode,
         allow_parallel = @allowParallel,
         persist_logs = @persistLogs,
         updated_at = @updatedAt
@@ -138,7 +142,8 @@ export async function updateProjectCommand(
       commandId,
       name: next.name,
       command: next.command,
-      allowParallel: next.allowParallel ? 1 : 0,
+      executionMode: next.executionMode,
+      allowParallel: next.executionMode === "parallel" ? 1 : 0,
       persistLogs: next.persistLogs ? 1 : 0,
       updatedAt: new Date().toISOString()
     });
@@ -229,7 +234,7 @@ export async function readProjectCommand(
         project_id,
         name,
         command,
-        allow_parallel,
+        execution_mode,
         persist_logs,
         sort_order,
         created_at,
@@ -290,11 +295,15 @@ function normalizeCommandInput(
     throw new Error("Command is required.");
   }
 
+  if (!["project", "workspace", "parallel"].includes(input.executionMode)) {
+    throw new Error("Invalid command execution mode.");
+  }
+
   return {
     projectId,
     name,
     command,
-    allowParallel: input.allowParallel,
+    executionMode: input.executionMode,
     persistLogs: input.persistLogs
   };
 }

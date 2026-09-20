@@ -1,3 +1,4 @@
+import type { OpenCodexCommandExecutionMode } from "@open-codex-ui/opencodex-protocol";
 import type {
   CachedProjectCommandRuleCreateInput,
   CachedProjectCommandRuleUpdateInput,
@@ -102,7 +103,7 @@ export class ProjectAutomationRuntimeHandler {
    * @param projectId Project identifier.
    * @param name Command display name.
    * @param command Command line.
-   * @param allowParallel Whether multiple instances may run at once.
+   * @param executionMode Scope of the command concurrency limit.
    * @param persistLogs Whether output should be written to disk.
    * @returns Created command.
    */
@@ -110,14 +111,14 @@ export class ProjectAutomationRuntimeHandler {
     projectId: string,
     name: string,
     command: string,
-    allowParallel: boolean,
+    executionMode: OpenCodexCommandExecutionMode,
     persistLogs: boolean
   ): Promise<OpenCodexProjectCommand> {
     return await this.projectCommandService.createCommand({
       projectId,
       name,
       command,
-      allowParallel,
+      executionMode,
       persistLogs
     });
   }
@@ -134,7 +135,7 @@ export class ProjectAutomationRuntimeHandler {
     patch: {
       name?: string;
       command?: string;
-      allowParallel?: boolean;
+      executionMode?: OpenCodexCommandExecutionMode;
       persistLogs?: boolean;
     }
   ): Promise<OpenCodexProjectCommand> {

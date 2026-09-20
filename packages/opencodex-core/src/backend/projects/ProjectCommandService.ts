@@ -1,6 +1,7 @@
 /**
  * Runs user-configured project commands through Codex app-server process APIs.
  */
+import { commandExecutionConflicts, type OpenCodexCommandExecutionContext } from "@open-codex-ui/opencodex-protocol";
 import crypto from "node:crypto";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
 
@@ -55,7 +56,7 @@ type ActiveProjectCommandRun = OpenCodexProjectCommandRun & {
  */
 export class ProjectCommandService {
   /** Serializes non-parallel starts before their process handles are registered. */
-  private readonly startingRuns = new Set<string>();
+  private readonly startingRuns = new Set<OpenCodexCommandExecutionContext>();
   private readonly runsById = new Map<string, ActiveProjectCommandRun>();
   private readonly runsByProcessHandle = new Map<string, ActiveProjectCommandRun>();
   private readonly stoppingRunIds = new Set<string>();
@@ -154,17 +155,12 @@ export class ProjectCommandService {
       sourceId = workspace.sourceId;
     }
     const source = await this.options.resolveSource(sourceId);
-    const executionKey = JSON.stringify([command.id, source.id, projectPath]);
-    const runningRuns = this.readRunningRunsForCommand(command.id).filter((run) =>
-      run.cwd === projectPath && run.sourceId === source.id);
-
-    if (!command.allowParallel && (runningRuns.length > 0 || this.startingRuns.has(executionKey))) {
+    const execution = { commandId: command.id, sourceId: source.id, cwd: projectPath, workspaceId };
+    const active = [...this.readRunningRunsForCommand(command.id), ...this.startingRuns];
+    if (active.some((run) => commandExecutionConflicts(command.executionMode, execution, run))) {
       throw new Error("This command is already running.");
     }
-
-    if (!command.allowParallel) {
-      this.startingRuns.add(executionKey);
-    }
+    this.startingRuns.add(execution);
     try {
       const client = await this.options.clients.ensureClient(source.id);
       const run = await this.createRun(command, projectPath, source.id, workspaceId);
@@ -199,9 +195,7 @@ export class ProjectCommandService {
 
       return protocolRun;
     } finally {
-      if (!command.allowParallel) {
-        this.startingRuns.delete(executionKey);
-      }
+      this.startingRuns.delete(execution);
     }
   }
 

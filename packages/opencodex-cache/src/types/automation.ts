@@ -1,12 +1,13 @@
 /**
  * Project-local command configured by the user.
  */
+import type { OpenCodexCommandExecutionMode } from "@open-codex-ui/opencodex-protocol";
 export type CachedProjectCommand = {
   id: string;
   projectId: string;
   name: string;
   command: string;
-  allowParallel: boolean;
+  executionMode: OpenCodexCommandExecutionMode;
   persistLogs: boolean;
   sortOrder: number;
   createdAt: string;
@@ -20,7 +21,7 @@ export type CachedProjectCommandCreateInput = {
   projectId: string;
   name: string;
   command: string;
-  allowParallel: boolean;
+  executionMode: OpenCodexCommandExecutionMode;
   persistLogs: boolean;
 };
 
@@ -30,7 +31,7 @@ export type CachedProjectCommandCreateInput = {
 export type CachedProjectCommandUpdateInput = {
   name?: string;
   command?: string;
-  allowParallel?: boolean;
+  executionMode?: OpenCodexCommandExecutionMode;
   persistLogs?: boolean;
 };
 

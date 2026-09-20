@@ -1,12 +1,13 @@
 /**
  * User-configured project command definition.
  */
+import type { OpenCodexCommandExecutionMode } from "../commandExecution";
 export type OpenCodexProjectCommand = {
   id: string;
   projectId: string;
   name: string;
   command: string;
-  allowParallel: boolean;
+  executionMode: OpenCodexCommandExecutionMode;
   persistLogs: boolean;
   sortOrder: number;
   createdAt: string;

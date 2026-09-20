@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  MenuItem,
   Stack,
   TextField,
   Tooltip
@@ -18,7 +19,7 @@ import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { OpenCodexProjectCommand } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexCommandExecutionMode, OpenCodexProjectCommand } from "@open-codex-ui/opencodex-protocol";
 import type {
   ProjectCommandFormInput,
   ProjectCommandsStore
@@ -35,7 +36,7 @@ type ProjectCommandDialogProps = {
 const emptyInput: ProjectCommandFormInput = {
   name: "",
   command: "",
-  allowParallel: false,
+  executionMode: "project",
   persistLogs: false
 };
 
@@ -66,7 +67,7 @@ export function ProjectCommandDialog({
     setInput(command === null ? emptyInput : {
       name: command.name,
       command: command.command,
-      allowParallel: command.allowParallel,
+      executionMode: command.executionMode,
       persistLogs: command.persistLogs
     });
   }, [command, open]);
@@ -79,8 +80,9 @@ export function ProjectCommandDialog({
     setInput({ ...input, command: event.target.value });
   }
 
-  function handleAllowParallelChange(event: ChangeEvent<HTMLInputElement>): void {
-    setInput({ ...input, allowParallel: event.target.checked });
+  /** Selects the scope of this command's concurrent executions. */
+  function handleExecutionModeChange(event: ChangeEvent<HTMLInputElement>): void {
+    setInput({ ...input, executionMode: event.target.value as OpenCodexCommandExecutionMode });
   }
 
   function handlePersistLogsChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -142,15 +144,13 @@ export function ProjectCommandDialog({
               minRows={2}
               onChange={handleCommandChange}
             />
-            <FormControlLabel
-              control={(
-                <Checkbox
-                  checked={input.allowParallel}
-                  onChange={handleAllowParallelChange}
-                />
-              )}
-              label={t("commands.allowParallel")}
-            />
+            <TextField select fullWidth label={t("commands.executionMode")}
+              value={input.executionMode} onChange={handleExecutionModeChange}
+              helperText={t(`commands.executionModeHelp.${input.executionMode}`)}>
+              <MenuItem value="project">{t("commands.executionModes.project")}</MenuItem>
+              <MenuItem value="workspace">{t("commands.executionModes.workspace")}</MenuItem>
+              <MenuItem value="parallel">{t("commands.executionModes.parallel")}</MenuItem>
+            </TextField>
             <FormControlLabel
               control={(
                 <Checkbox
