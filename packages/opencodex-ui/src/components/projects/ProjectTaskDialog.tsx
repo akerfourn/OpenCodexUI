@@ -101,6 +101,12 @@ export function ProjectTaskDialog({ open, task, tasksStore, onClose }: ProjectTa
     setEditing(true);
   }
 
+  /** Prevents an outside click from discarding the task form. */
+  function handleDialogClose(_event: unknown, reason: "backdropClick" | "escapeKeyDown"): void {
+    if (reason === "backdropClick") return;
+    onClose();
+  }
+
   function handleCopyDescription(): void {
     void navigator.clipboard.writeText(description);
   }
@@ -179,7 +185,7 @@ export function ProjectTaskDialog({ open, task, tasksStore, onClose }: ProjectTa
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <Dialog open={open} onClose={handleDialogClose} fullWidth maxWidth="md">
         <DialogTitle>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
