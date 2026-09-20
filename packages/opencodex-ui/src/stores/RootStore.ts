@@ -1,7 +1,9 @@
-import { DictationStore } from "./app/DictationStore";
 /**
  * Coordinates application-wide state, project tabs, and backend events.
  */
+import type { FileDocument } from "./files/FileDocument";
+import { FileCloseStore } from "./files/FileCloseStore";
+import { DictationStore } from "./app/DictationStore";
 import { makeAutoObservable } from "mobx";
 
 import type {
@@ -39,6 +41,8 @@ export { HOME_TAB_ID, type OpenCodexAppTab } from "./app/NavigationStore";
  * Root store for the desktop UI.
  */
 export class RootStore {
+  /** Central guard shared by document, project and application close actions. */
+  readonly fileCloseStore = new FileCloseStore();
   readonly appStore = new AppStore(this);
   /** Dictation preferences, microphone lifecycle, and local model management. */
   readonly dictationStore = new DictationStore(this);
@@ -109,7 +113,8 @@ export class RootStore {
    */
   get hasPendingProjectActivity(): boolean {
     return this.navigationStore.projectTabStores.some((projectStore) => (
-      projectStore.hasSidePanelActivity
+      projectStore.hasSidePanelActivity ||
+      Array.from(projectStore.files.documents.values()).some(document => document.isDirty || document.isSaving)
     ));
   }
 
@@ -132,7 +137,24 @@ export class RootStore {
    */
   respondToApplicationClose(shouldClose: boolean): void {
     this.applicationCloseRequest = null;
-    this.transport.respondToApplicationClose?.(shouldClose);
+    if (shouldClose) {
+      this.fileCloseStore.request(this.openFileDocuments,
+        () => this.transport.respondToApplicationClose?.(true),
+        () => this.transport.respondToApplicationClose?.(false));
+    } else {
+      this.transport.respondToApplicationClose?.(false);
+    }
+  }
+
+  /** All open buffers, including projects that are not currently visible. */
+  get openFileDocuments(): FileDocument[] {
+    return Array.from(this.projectsStore.projectStoresById.values())
+      .flatMap(project => Array.from(project.files.documents.values()));
+  }
+
+  /** Protects edits before an updater-triggered restart. */
+  confirmFileClose(proceed: () => void): void {
+    this.fileCloseStore.request(this.openFileDocuments, proceed);
   }
 
   /**

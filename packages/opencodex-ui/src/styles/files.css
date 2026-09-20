@@ -1,0 +1,44 @@
+.files-explorer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.files-document,
+.files-central-chat,
+.files-central-editor {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.files-central-chat[hidden],
+.files-central-editor[hidden] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.files-editor {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.files-central-stack {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.files-central-chat,
+.files-central-editor {
+  position: absolute;
+  inset: 0;
+}

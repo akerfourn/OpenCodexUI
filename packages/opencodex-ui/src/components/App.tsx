@@ -1,6 +1,7 @@
 /**
  * Renders the app component for the OpenCodex UI.
  */
+import { FileCloseDialogX } from "./files/FileCloseDialog";
 import { observer } from "mobx-react-lite";
 import { Box, Button, Snackbar } from "@mui/material";
 import { useTranslation } from "react-i18next";
@@ -42,7 +43,7 @@ export function App({ store }: AppProps) {
   const shutdownOverlay = (
     <AppShutdownOverlay open={store.appStore.isShuttingDown || isInstalling} mode={overlayMode} />
   );
-  const closeConfirmation = <AppCloseConfirmationDialogX store={store} />;
+  const closeConfirmation = <><AppCloseConfirmationDialogX store={store} /><FileCloseDialogX store={store.fileCloseStore} /></>;
   const fileDropOverlay = <AppFileDropOverlayX store={store} />;
   const activityReporter = <ApplicationActivityReporterX store={store} />;
 

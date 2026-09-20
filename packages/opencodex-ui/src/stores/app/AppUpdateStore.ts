@@ -8,6 +8,8 @@ import type {
 
 /** Backend request capability required by application update actions. */
 export type AppUpdateRequestPort = {
+  /** Defers application restart until edited files have been resolved. */
+  confirmFileClose?(proceed: () => void): void;
   request<TResponse = unknown>(request: OpenCodexRequest): Promise<TResponse>;
 };
 
@@ -87,6 +89,16 @@ export class AppUpdateStore {
 
   /** Starts the explicit native install/relaunch sequence. */
   install(): void {
+    if (!this.state.isSupported || this.state.status !== "downloaded") return;
+    if (this.root.confirmFileClose !== undefined) {
+      this.root.confirmFileClose(() => this.installConfirmed());
+      return;
+    }
+    this.installConfirmed();
+  }
+
+  /** Starts installation only after unsaved documents have been resolved. */
+  private installConfirmed(): void {
     if (!this.state.isSupported || this.state.status !== "downloaded") return;
     runInAction(() => {
       this.state = { ...this.state, status: "installing", errorMessage: null, progress: null };

@@ -170,6 +170,7 @@ export class ThreadListStore {
     const chatStore = thread === null ? null : this.projectStore.getOrCreateChat(thread);
     const isChangingThread = this.projectStore.selectedChatId !== threadId;
     this.root.appStore.errorMessage = null;
+    this.projectStore.files.showChat();
     this.projectStore.selectChat(threadId);
     if (chatStore?.isLocalDraft === true || chatStore?.composer.isSubmitting === true) {
       this.loadingThreadId = null;

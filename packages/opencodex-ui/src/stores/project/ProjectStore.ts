@@ -1,6 +1,7 @@
 /**
  * Holds the observable UI state for one opened project tab.
  */
+import { ProjectFilesStore } from "../files/ProjectFilesStore";
 import { makeAutoObservable, reaction, type IReactionDisposer } from "mobx";
 
 import type {
@@ -31,6 +32,8 @@ export type ThreadIndicatorState = "idle" | "running" | "unseen";
 export class ProjectStore {
   /** Workspace catalogue and selection for this logical project. */
   readonly workspaces: ProjectWorkspacesStore;
+  /** Workspace explorer and retained central documents. */
+  readonly files: ProjectFilesStore;
   /** Releases the checkout invalidation reaction when this tab closes. */
   private readonly disposeWorkspaceReaction: IReactionDisposer;
   project: OpenCodexProject;
@@ -62,6 +65,7 @@ export class ProjectStore {
   ) {
     this.project = project;
     this.workspaces = new ProjectWorkspacesStore(this, root);
+    this.files = new ProjectFilesStore(this, root);
     this.layoutStore = new ProjectViewLayoutStore();
     this.threadListStore = new ThreadListStore(this, root);
     this.drafts = new ProjectDraftsStore(this, root);
@@ -471,6 +475,7 @@ export class ProjectStore {
 
     this.disposeWorkspaceReaction();
     this.workspaces.dispose();
+    this.files.dispose();
     this.chatsById.clear();
     this.drafts.clear();
     this.commandsStore.dispose();

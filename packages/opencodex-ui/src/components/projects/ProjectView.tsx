@@ -1,6 +1,8 @@
 /**
  * Renders one opened project workspace.
  */
+import { FileDocumentTabsX } from "../files/FileDocumentTabs";
+import { FileDocumentViewX } from "../files/FileDocumentView";
 import { observer } from "mobx-react-lite";
 import { useCallback, useState } from "react";
 
@@ -50,6 +52,12 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
     setSubAgentDialogRequest(null);
   }
 
+  const files = projectStore.files;
+  const fileContent = files.active === null ? null : (
+    <FileDocumentViewX key={files.active.id} document={files.active} files={files}
+      root={store} visible={files.isVisible} />
+  );
+
   return (
     <>
       <ResizableSidebarLayout
@@ -72,12 +80,20 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
           isSidePanelCollapsed={layoutStore.isSidePanelCollapsed}
           mainPanel={(
             <section className="main-pane">
-              <ChatViewX
-                key={projectStore.selectedChat?.viewId ?? "empty-chat"}
-                store={store}
-                projectStore={projectStore}
-                onOpenSubAgentDialog={handleOpenSubAgentDialog}
-              />
+              <FileDocumentTabsX files={files} />
+              <div className="files-central-stack">
+                <div className="files-central-chat" hidden={files.isVisible}>
+                  <ChatViewX
+                    key={projectStore.selectedChat?.viewId ?? "empty-chat"}
+                    store={store}
+                    projectStore={projectStore}
+                    onOpenSubAgentDialog={handleOpenSubAgentDialog}
+                  />
+                </div>
+                <div className="files-central-editor" hidden={!files.isVisible}>
+                  {fileContent}
+                </div>
+              </div>
             </section>
           )}
           sidePanel={(

@@ -13,3 +13,5 @@ export * from "./workspaceCreations";
 export * from "./workspaceDiscovery";
 export * from "./dictation";
 export * from "./commandExecution";
+
+export * from "./files";

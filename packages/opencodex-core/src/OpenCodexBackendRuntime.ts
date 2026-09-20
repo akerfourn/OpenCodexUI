@@ -1,3 +1,4 @@
+import { WorkspaceFilesService } from "./backend/files/WorkspaceFilesService.js";
 import { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import { CodexDictationService } from "./backend/dictation/CodexDictationService.js";
 import { resolveSourceCommand } from "./backend/sources/sourceMapping.js";
@@ -44,6 +45,8 @@ import type {
 export class OpenCodexBackendRuntime {
   /** Whether this runtime belongs to an application pre-release build. */
   readonly isPrerelease: boolean;
+  /** Source-aware filesystem service for workspace documents. */
+  readonly files: WorkspaceFilesService;
   /** Isolated experimental speech transcription, outside normal conversation execution. */
   readonly dictation: CodexDictationService;
   /** Fully wired services owned by this runtime instance. */
@@ -62,6 +65,8 @@ export class OpenCodexBackendRuntime {
     this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.services = createBackendServiceGraph(options, this.isPrerelease);
     this.apis = new BackendRuntimeApis(this.services, options);
+    this.files = new WorkspaceFilesService(this.services.cacheRepository,
+      this.services.projectRuntimeHandler, this.services.clientPool);
     this.dictation = new CodexDictationService(async (sourceId) => {
       const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
       return new CodexAppServerClient({

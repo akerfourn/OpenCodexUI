@@ -235,9 +235,9 @@ export class ProjectsStore implements RootChildStore {
    * @returns Nothing.
    */
   deleteProject(projectId: string): void {
-    void this.root.request({
-      type: "projects.delete",
-      projectId
+    const documents = Array.from(this.projectStoresById.get(projectId)?.files.documents.values() ?? []);
+    this.root.fileCloseStore.request(documents, () => {
+      void this.root.request({ type: "projects.delete", projectId });
     });
   }
 

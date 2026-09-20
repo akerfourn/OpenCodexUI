@@ -45,6 +45,11 @@ export class OpenCodexRequestRouter {
    */
   private async handleValidRequest(request: OpenCodexRequest): Promise<unknown> {
     switch (request.type) {
+      case "workspaceFiles.list":
+      case "workspaceFiles.read":
+      case "workspaceFiles.check":
+      case "workspaceFiles.save":
+        return this.runtime.files.execute(request);
       case "app.bootstrap":
         return this.runtime.bootstrap();
       case "app.openDevTools":

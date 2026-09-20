@@ -1,6 +1,7 @@
 /**
  * Declares the requests sent from the UI to the OpenCodex backend.
  */
+import type { OpenCodexFileRequest } from "./files";
 import type { OpenCodexCommandExecutionMode } from "./commandExecution";
 import type { OpenCodexDictationInput, OpenCodexDictationSettings } from "./dictation";
 import type { OpenCodexWorkspaceCreateInput } from "./workspaceCreations";
@@ -39,6 +40,7 @@ import type { OpenCodexCollaborationQuery } from "./collaboration";
  * transported over Electron IPC today and other transports later.
  */
 export type OpenCodexRequest =
+  | OpenCodexFileRequest
   | { type: "dictation.models.state" }
   | { type: "dictation.models.install"; modelId: OpenCodexDictationSettings["modelId"] }
   | { type: "dictation.models.remove" }

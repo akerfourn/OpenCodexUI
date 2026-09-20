@@ -41,6 +41,7 @@ export class ProjectDraftsStore {
       this.project.threadListStore.setShowingArchivedThreads(false);
     }
     this.project.upsertThread(thread);
+    this.project.files.showChat();
     this.project.selectChat(thread.id);
   }
 

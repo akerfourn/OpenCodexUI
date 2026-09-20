@@ -157,6 +157,13 @@ export class NavigationStore {
       return;
     }
 
+    this.root.fileCloseStore.request(Array.from(projectStore.files.documents.values()),
+      () => this.closeProject(projectStore));
+  }
+
+  /** Releases a project only after its documents passed save/discard confirmation. */
+  private closeProject(projectStore: ProjectStore): void {
+    if (this.hasRunningTurnInProject(projectStore.project.id)) return;
     projectStore.clearMemory();
     this.root.projectsStore.projectStoresById.delete(projectStore.project.id);
     this.tabs = this.tabs.filter((tab) => tab.id !== projectStore.project.id);

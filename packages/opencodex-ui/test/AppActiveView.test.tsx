@@ -1,6 +1,7 @@
 /**
  * Verifies that the application mounts only its active heavyweight view.
  */
+import { FileCloseStore } from "../src/stores/files/FileCloseStore";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -86,6 +87,7 @@ function createRootStore(
   projectTabStores: ProjectStore[]
 ): RootStore {
   return {
+    fileCloseStore: new FileCloseStore(),
     activeProjectStore,
     activeChatStore: null,
     appStore: {

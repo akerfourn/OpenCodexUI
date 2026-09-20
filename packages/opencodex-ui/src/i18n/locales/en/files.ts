@@ -1,0 +1,41 @@
+import type { TranslationShape } from "../../translationShape.js";
+import type { frFiles } from "../fr/files.js";
+
+export const enFiles = {
+  files: {
+    viewerFailed: "The editor could not load. Your content is still available to copy or save.",
+    title: "Files",
+    documents: "Open documents",
+    chat: "Return to conversation",
+    close: "Close {{name}}",
+    save: "Save",
+    reload: "Reload from disk",
+    refresh: "Refresh file tree",
+    retry: "Retry",
+    external: "Open with an external application",
+    emptyFolder: "Empty folder",
+    showMore: "Show more",
+    noWorkspace: "Select a workspace to browse its files.",
+    sourceUnavailable: "The source is unavailable. Already opened documents remain readable.",
+    readOnly: "Read only",
+    mixedEol: "This file has mixed line endings. It remains read only to preserve its format.",
+    conflict:
+      "This file changed on disk. Your edits are preserved. Explicitly reload to resolve the conflict, or keep the document open to inspect and copy your content.",
+    details: "Technical details",
+    unsavedTitle: "Unsaved changes",
+    unsavedDescription:
+      "Save these documents before continuing? Their contents will be preserved if saving fails.",
+    discard: "Discard changes",
+    errors: {
+      unavailable: "Cannot access this source. Remote sources require Node.js and the Codex process API.",
+      inaccessible: "The file is inaccessible or was deleted. Already opened content is preserved.",
+      symlink: "Symbolic links are shown but are not opened in this version.",
+      tooLarge: "Limit reached: files up to 2 MiB and directories up to 10,000 entries.",
+      binary: "This file is not a supported text file.",
+      encoding: "Only UTF-8 text files, with or without a BOM, can be edited.",
+      conflict: "The file changed on disk. It has not been overwritten.",
+      readOnly: "This file is read only.",
+      invalidPath: "This path is not allowed in the selected workspace."
+    }
+  }
+} as const satisfies TranslationShape<typeof frFiles>;

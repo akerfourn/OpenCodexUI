@@ -1,6 +1,8 @@
 /**
  * Renders the right-side project tool panel.
  */
+import { FilesExplorerX } from "../files/FilesExplorer";
+import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import ChecklistOutlinedIcon from "@mui/icons-material/ChecklistOutlined";
 import FlagOutlinedIcon from "@mui/icons-material/FlagOutlined";
@@ -29,7 +31,7 @@ import { ProjectSidePanelTabLabel } from "./ProjectSidePanelTabLabel";
 import { ProjectTasksPanelX } from "./ProjectTasksPanel";
 import { ProjectGoalsPanelX } from "./ProjectGoalsPanel";
 
-type ProjectSidePanelTab = "git" | "commands" | "rules" | "context" | "tasks" | "goals" | "compose";
+type ProjectSidePanelTab = "files" | "git" | "commands" | "rules" | "context" | "tasks" | "goals" | "compose";
 type ProjectSidePanelTabDefinition = {
   value: ProjectSidePanelTab;
   label: string;
@@ -102,6 +104,7 @@ export function ProjectSidePanel({
   const goalsLabel = t("projectTools.goals");
   const composeLabel = t("projectTools.compose");
   const tabs: ProjectSidePanelTabDefinition[] = [
+    { value: "files", label: t("files.title"), icon: <FolderOutlinedIcon fontSize="small" />, activity: "none" },
     {
       value: "git",
       label: gitLabel,
@@ -167,6 +170,10 @@ export function ProjectSidePanel({
   }
 
   let panelContent = <ProjectGitPanelX store={store} projectStore={projectStore} />;
+
+  if (selectedTab === "files") {
+    panelContent = <FilesExplorerX projectStore={projectStore} />;
+  }
 
   if (selectedTab === "commands") {
     panelContent = <ProjectCommandsPanelX projectStore={projectStore} />;
