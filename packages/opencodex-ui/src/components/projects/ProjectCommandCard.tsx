@@ -124,7 +124,7 @@ export function ProjectCommandCard({
             <ProjectCommandRunRowX
               key={run.id}
               run={run}
-              workspaceLabel={commandsStore.getRunWorkspaceLabel(run)}
+              workspaceLabel={commandsStore.getRunWorkspaceLabel(run, t("workspaces.primary"))}
               onCloseRun={commandsStore.closeRun}
               onOpenLogs={onOpenLogs}
               onStopRun={commandsStore.stopRun}

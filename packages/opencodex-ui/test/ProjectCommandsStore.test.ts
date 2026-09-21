@@ -191,6 +191,15 @@ describe("ProjectCommandsStore run lifecycle", () => {
     expect(store.hasActiveRun).toBe(false);
   });
 
+  it("should display the localized label for the primary workspace", () => {
+    const { store } = createStoreFixture();
+
+    expect(store.getRunWorkspaceLabel(createRun({
+      cwd: "/workspace/project",
+      workspaceId: "workspace-primary"
+    }), "Principal")).toBe("Principal");
+  });
+
   it("should send the command run payload and retain the accepted run", async () => {
     const run = createRun();
     const command = createCommand();
@@ -234,6 +243,18 @@ function createStoreFixture(
       sourceId: "source-1"
     },
     projectPath: "/workspace/project",
+    workspaces: {
+      workspaces: [{
+        id: "workspace-primary",
+        name: null,
+        projectId: "project-1",
+        sourceId: "source-1",
+        path: "/workspace/project",
+        isPrimary: true,
+        managed: false,
+        removedAt: null
+      }]
+    },
     isCodexSourceReady: true
   } as ProjectStore;
   const root = {

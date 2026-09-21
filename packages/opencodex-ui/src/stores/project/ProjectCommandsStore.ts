@@ -16,6 +16,7 @@ import {
   type ProjectCommandRunView
 } from "./ProjectCommandRunsStore";
 import type { ProjectStore } from "./ProjectStore";
+import { workspaceLabel as formatWorkspaceLabel } from "./threads/workspaceThreadGroups";
 import type { RootStore } from "../RootStore";
 
 export type { ProjectCommandLogLine, ProjectCommandRunView } from "./ProjectCommandRunsStore";
@@ -392,10 +393,10 @@ export class ProjectCommandsStore {
   }
 
   /** Identifies each run even after the user switches to another workspace. */
-  getRunWorkspaceLabel(run: ProjectCommandRunView): string {
+  getRunWorkspaceLabel(run: ProjectCommandRunView, primaryLabel: string): string {
     const workspace = this.projectStore.workspaces?.workspaces.find((item) =>
       item.id === run.workspaceId || item.path === run.cwd);
-    return workspace?.name ?? run.cwd ?? "";
+    return workspace === undefined ? run.cwd ?? "" : formatWorkspaceLabel(workspace, primaryLabel);
   }
 
   /**
