@@ -212,6 +212,7 @@ export const frConversation = {
     max: "Maximum"
   },
   message: {
+    useSuggestedPrompt: "Ajouter au brouillon (sans envoyer)",
     attachedImage: "Image jointe",
     activityType: {
       activity: "Activité",

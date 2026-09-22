@@ -1,7 +1,7 @@
 /**
  * Builds and caches the expensive unified Markdown render tree.
  */
-import { createContext, useContext, type ReactElement, type ReactNode } from "react";
+import { useContext, type ReactElement, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex, { type Options as RehypeKatexOptions } from "rehype-katex";
@@ -12,17 +12,15 @@ import { MarkdownLink } from "./MarkdownLink";
 import { InlineCode } from "./InlineCode";
 import { PreBlock } from "./PreBlock";
 import { getCachedMarkdownRender } from "./markdownRenderCache";
+import { remarkCodexDirectives } from "./remarkCodexDirectives";
+import { CodexDirectiveSpanX } from "./CodexDirectiveSpan";
+import { MarkdownLinkContext } from "./MarkdownLinkContext";
 
 export type MarkdownRenderVariant = "streaming" | "standard" | "highlighted";
 
-export type MarkdownLinkContextValue = {
-  requireModifiedClick: boolean;
-  onOpenLink(href: string): void;
-};
+export { MarkdownLinkContext, type MarkdownLinkContextValue } from "./MarkdownLinkContext";
 
-export const MarkdownLinkContext = createContext<MarkdownLinkContextValue | null>(null);
-
-const remarkPlugins = [remarkGfm, remarkMath];
+const remarkPlugins = [remarkGfm, remarkMath, remarkCodexDirectives];
 const rehypeKatexOptions: RehypeKatexOptions = {
   strict: "ignore",
   trust: false
@@ -35,7 +33,8 @@ const mathRehypePlugins = [katexPlugin];
 const highlightedRehypePlugins = [katexPlugin, rehypeHighlight];
 const plainRehypePlugins: [] = [];
 
-const markdownComponents: Components = {
+const markdownComponents: Components & { "codex-directive": typeof CodexDirectiveSpanX } = {
+  "codex-directive": CodexDirectiveSpanX,
   pre: PreBlock,
   code: InlineCode,
   a: ContextualMarkdownLink

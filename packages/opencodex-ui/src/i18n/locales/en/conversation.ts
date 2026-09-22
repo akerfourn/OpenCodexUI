@@ -211,6 +211,7 @@ export const enConversation = {
     max: "Maximum"
   },
   message: {
+    useSuggestedPrompt: "Add to draft (without sending)",
     attachedImage: "Attached image",
     activityType: {
       activity: "Activity",

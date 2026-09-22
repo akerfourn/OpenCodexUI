@@ -1,3 +1,4 @@
+import { CodexFollowupContext } from "./CodexFollowupContext";
 /**
  * Renders the chat message list component for the OpenCodex UI.
  */
@@ -209,6 +210,7 @@ export function ChatMessageList({
   }
 
   return (
+    <CodexFollowupContext.Provider value={chatStore.composer}>
     <Box
       sx={{
         display: "flex",
@@ -391,6 +393,7 @@ export function ChatMessageList({
         />
       ) : null}
     </Box>
+    </CodexFollowupContext.Provider>
   );
 }
 

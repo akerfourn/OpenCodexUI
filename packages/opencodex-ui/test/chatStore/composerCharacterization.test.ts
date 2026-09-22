@@ -16,6 +16,21 @@ import {
 } from "./chatStoreFixtures";
 
 describe("ChatStore composer characterization", () => {
+  it("should queue suggestions without replacing a draft and ignore them during submission", () => {
+    const chat = createChatStore({});
+    const references: OpenCodexComposerReference[] = [{ type: "skill", name: "review", path: "/skills/review" }];
+    chat.composer.setDraft("existing", "existing", references);
+    chat.composer.suggestPrompt("first suggestion");
+    chat.composer.suggestPrompt("second suggestion");
+    expect(chat.composer.draft).toBe("existing");
+    expect(chat.composer.draftReferences).toEqual(references);
+    expect(chat.composer.takeSuggestedPrompts()).toEqual(["first suggestion", "second suggestion"]);
+    expect(chat.composer.takeSuggestedPrompts()).toEqual([]);
+    chat.composer.isSubmitting = true;
+    chat.composer.suggestPrompt("during send");
+    expect(chat.composer.pendingSuggestions).toEqual([]);
+  });
+
   it("should isolate composer references and attachments from caller mutations", () => {
     const chatStore = createChatStore({});
     const references: OpenCodexComposerReference[] = [{

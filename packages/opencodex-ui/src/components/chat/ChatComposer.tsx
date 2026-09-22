@@ -7,7 +7,7 @@ import { readFileAttachments, readTransferFiles } from "./fileAttachments";
 import AssistantDirectionRoundedIcon from "@mui/icons-material/AssistantDirectionRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { CircularProgress, IconButton, Stack, Tooltip } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
@@ -59,6 +59,11 @@ export function ChatComposer({
   const { t } = useTranslation();
   const composer = chatStore.composer;
   const composerInputRef = useRef<ComposerPlainTextInputHandle>(null);
+  const pendingSuggestionCount = composer.pendingSuggestions.length;
+  useEffect(() => {
+    if (composerInputRef.current === null) return;
+    for (const prompt of composer.takeSuggestedPrompts()) composerInputRef.current.appendText(prompt);
+  }, [composer, pendingSuggestionCount, composer.isSubmitting]);
   const draft = composer.draft;
   const isSubmitting = composer.isSubmitting;
   const attachments = composer.attachments;

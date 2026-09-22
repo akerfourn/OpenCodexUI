@@ -23,6 +23,9 @@ export class ChatComposerStore {
   reasoningEffort: OpenCodexReasoningEffort = "medium";
   /** Optional service tier selected for future turns in this chat. */
   selectedServiceTier: OpenCodexServiceTier | null = null;
+  /** Suggestions waiting to be appended by the mounted rich-text composer. */
+  pendingSuggestions: string[] = [];
+
   /** Plain-text draft preserved per chat. */
   draft = "";
   /** Locks all draft mutations until the send request has been acknowledged. */
@@ -58,6 +61,20 @@ export class ChatComposerStore {
       },
       { autoBind: true }
     );
+  }
+
+  /** Queues user-selected text without submitting or replacing existing references. */
+  suggestPrompt(prompt: string): void {
+    if (this.isSubmitting || prompt.trim().length === 0) return;
+    this.pendingSuggestions.push(prompt);
+  }
+
+  /** Consumes queued suggestions once, including under React strict effect replay. */
+  takeSuggestedPrompts(): string[] {
+    if (this.isSubmitting) return [];
+    const prompts = [...this.pendingSuggestions];
+    this.pendingSuggestions = [];
+    return prompts;
   }
 
   /**
