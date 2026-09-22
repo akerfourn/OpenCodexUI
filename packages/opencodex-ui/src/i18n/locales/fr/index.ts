@@ -1,3 +1,4 @@
+import { frFileLanguages } from "./fileLanguages.js";
 import { frFiles } from "./files.js";
 import { frDictation } from "./dictation.js";
 import { frWorkspaces } from "./workspaces.js";
@@ -14,6 +15,7 @@ import { frSupport } from "./support.js";
 import { frUsage } from "./usage.js";
 
 export const frTranslation = {
+  ...frFileLanguages,
   ...frFiles,
   ...frDictation,
   ...frWorkspaces,

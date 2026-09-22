@@ -1,3 +1,4 @@
+import { enFileLanguages } from "./fileLanguages.js";
 import { enFiles } from "./files.js";
 import { enDictation } from "./dictation.js";
 import { enWorkspaces } from "./workspaces.js";
@@ -17,6 +18,7 @@ import { enSupport } from "./support.js";
 import { enUsage } from "./usage.js";
 
 export const enTranslation = {
+  ...enFileLanguages,
   ...enFiles,
   ...enDictation,
   ...enWorkspaces,

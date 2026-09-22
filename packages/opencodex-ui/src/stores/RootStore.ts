@@ -1,3 +1,4 @@
+import { FileLanguagesStore } from "./files/FileLanguagesStore";
 /**
  * Coordinates application-wide state, project tabs, and backend events.
  */
@@ -44,6 +45,8 @@ export class RootStore {
   /** Central guard shared by document, project and application close actions. */
   readonly fileCloseStore = new FileCloseStore();
   readonly appStore = new AppStore(this);
+  /** Catalogue preferences shared by Home and all file editors. */
+  readonly fileLanguagesStore = new FileLanguagesStore(this);
   /** Dictation preferences, microphone lifecycle, and local model management. */
   readonly dictationStore = new DictationStore(this);
   readonly appUpdateStore = new AppUpdateStore(this);

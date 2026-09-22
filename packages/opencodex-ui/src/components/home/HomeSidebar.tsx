@@ -1,3 +1,4 @@
+import CodeOutlinedIcon from "@mui/icons-material/CodeOutlined";
 /**
  * Renders the Home vertical navigation.
  */
@@ -40,6 +41,11 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
 
   function selectProjects(): void {
     selectSection("projects");
+  }
+
+  /** Opens the syntax-highlighting catalogue. */
+  function selectFileLanguages(): void {
+    selectSection("fileLanguages");
   }
 
   function selectSettings(): void {
@@ -130,6 +136,10 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
             <ExtensionOutlinedIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText primary={t("home.plugins")} />
+        </ListItemButton>
+        <ListItemButton selected={selectedSection === "fileLanguages"} onClick={selectFileLanguages}>
+          <ListItemIcon><CodeOutlinedIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary={t("home.fileLanguages")} />
         </ListItemButton>
         <ListItemButton selected={selectedSection === "emojis"} onClick={selectEmojis}>
           <ListItemIcon>

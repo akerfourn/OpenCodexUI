@@ -36,6 +36,8 @@ export interface FileDocumentError {
 export class FileDocument {
   /** Editable text uses LF internally; the backend restores the original line endings. */
   content = "";
+  /** Optional viewer language choice; null retains automatic detection. */
+  languageOverride: string | null = null;
   /** Last confirmed text, used to detect edits and undo back to a clean document. */
   savedContent = "";
   /** Original format and optimistic disk revision. */
@@ -90,6 +92,11 @@ export class FileDocument {
   /** Unsupported format, virtual content and initial reads cannot be edited. */
   get isReadOnly(): boolean {
     return this.target === null || this.snapshot === null || this.snapshot.readOnly || this.isLoading;
+  }
+
+  /** Changes syntax highlighting without modifying the document buffer. */
+  setLanguageOverride(language: string | null): void {
+    this.languageOverride = language;
   }
 
   /** Captures an edit without discarding any disk-conflict indication. */

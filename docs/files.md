@@ -77,6 +77,34 @@ loaded on demand. There is no CDN or runtime model download. JSON schema network
 requests are disabled. Full TypeScript project services and language servers
 are deliberately excluded.
 
+## Syntax highlighting
+
+Home's Syntax highlighting section searches the bundled Shiki catalogue and
+persists per-language activation in `settings.json` (`disabledFileLanguages`).
+All catalogue entries are enabled by default; disabling one displays its files
+as plain text. Changes apply to mounted editors and to retained documents when
+they are shown again, without recreating models or changing their undo history.
+The document toolbar can override automatic language detection for unusual names
+or grammars without filename associations. This choice lasts for the document's
+in-memory lifetime and never modifies its contents.
+
+`shiki` and `@shikijs/monaco` reuse maintained TextMate grammars instead of local
+TOML/Just tokenizers. The engine, themes, and grammar chunks are bundled for
+offline use. The catalogue page imports metadata only. Opening a recognized
+file loads its grammar and embedded dependencies; failed loads leave the editor
+usable as plain text. Theme changes update all loaded tokenizers. The adapter
+uses a private Monaco facade so lazy registrations cannot repeatedly patch
+global editor functions. Monaco editing configurations retain comment/bracket
+behavior independently of the TextMate tokenizers.
+
+`npm run generate:file-languages` regenerates catalogue associations and lazy
+configuration loaders from installed Shiki/Monaco packages. Run it after updating
+those dependencies. Generated metadata uses exact filenames before longest
+suffix matches, including Dockerfile variants and Justfiles. Custom TextMate
+imports and extension marketplace installation are future additions.
+
+## Integration with other viewers
+
 Other modules can call `project.files.open(target, workspaceName, position)`.
 `position` supports a line/column and optional end position. For generated or
 debugger-owned sources, `openVirtual(id, name, content, language, position)` adds

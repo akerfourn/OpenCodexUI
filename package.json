@@ -22,7 +22,8 @@
     "check": "npm run check:path-casing && npm run typecheck",
     "test:path-casing": "node --test scripts/check-path-casing.test.mjs",
     "test": "npm run rebuild:sqlite:node && npm run test:path-casing && npm run test --workspaces --if-present",
-    "generate:codex-types": "codex app-server generate-ts --experimental --out packages/codex-rpc/src/generated"
+    "generate:codex-types": "codex app-server generate-ts --experimental --out packages/codex-rpc/src/generated",
+    "generate:file-languages": "node scripts/generate-file-languages.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.12",

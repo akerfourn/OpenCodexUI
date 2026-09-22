@@ -1,12 +1,19 @@
+import { useTranslation } from "react-i18next";
+import { useFileHighlighting } from "./useFileHighlighting";
+import type { FileLanguagesStore } from "../../stores/files/FileLanguagesStore";
 import { runInAction } from "mobx";
 import { useEffect, useRef } from "react";
-import { useTheme } from "@mui/material";
+import { Alert, useTheme } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { FileDocument } from "../../stores/files/FileDocument";
-import { modelFor, monaco } from "./monacoRuntime";
+import { fileHighlighting, modelFor, monaco } from "./monacoRuntime";
 
 /** Lazy text viewer; models and view state survive chat and project navigation. */
-export function MonacoFileEditor({ document, visible }: { document: FileDocument; visible: boolean }) {
+export function MonacoFileEditor({ document, visible, languages }: {
+  document: FileDocument; visible: boolean; languages: FileLanguagesStore;
+}) {
+  const { t } = useTranslation();
+  const highlightingError = useFileHighlighting(document, languages);
   const container = useRef<HTMLDivElement>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const theme = useTheme();
@@ -48,7 +55,7 @@ export function MonacoFileEditor({ document, visible }: { document: FileDocument
     editorRef.current?.updateOptions({ readOnly });
   }, [readOnly]);
   useEffect(() => {
-    monaco.editor.setTheme(theme.palette.mode === "dark" ? "vs-dark" : "vs");
+    fileHighlighting.setTheme(theme.palette.mode);
   }, [theme.palette.mode]);
   useEffect(() => {
     const editor = editorRef.current;
@@ -101,7 +108,13 @@ export function MonacoFileEditor({ document, visible }: { document: FileDocument
     editor?.focus();
   }, [document, position, visible]);
 
-  return <div ref={container} className="files-editor" />;
+  let feedback = null;
+  if (highlightingError !== null) {
+    feedback = <Alert severity="warning">{t("fileLanguages.loadError")}
+      <details><summary>{t("fileLanguages.details")}</summary>{highlightingError}</details>
+    </Alert>;
+  }
+  return <>{feedback}<div ref={container} className="files-editor" /></>;
 }
 
 export const MonacoFileEditorX = observer(MonacoFileEditor);

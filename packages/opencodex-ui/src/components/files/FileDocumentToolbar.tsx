@@ -1,3 +1,4 @@
+import { FileLanguageSelectX } from "./FileLanguageSelect";
 import { runInAction } from "mobx";
 import { observer } from "mobx-react-lite";
 import { Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@mui/material";
@@ -90,6 +91,7 @@ export function FileDocumentToolbar({
         </Tooltip>
         {readOnly}
       </Box>
+      <FileLanguageSelectX document={document} store={root.fileLanguagesStore} />
       {external}
       {reloadButton}
       <Button

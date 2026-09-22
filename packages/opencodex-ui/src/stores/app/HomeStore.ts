@@ -6,6 +6,7 @@ import { makeAutoObservable } from "mobx";
 export type HomeSection =
   | "projects"
   | "workspaces"
+  | "fileLanguages"
   | "sources"
   | "plugins"
   | "emojis"

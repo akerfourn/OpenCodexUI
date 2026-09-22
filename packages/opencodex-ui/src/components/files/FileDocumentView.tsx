@@ -67,7 +67,7 @@ export function FileDocumentView({
     ) : null;
   const editor =
     document.snapshot !== null || document.target === null ? (
-      <Editor document={document} visible={visible} />
+      <Editor document={document} visible={visible} languages={root.fileLanguagesStore} />
     ) : null;
   return (
     <div className="files-document">

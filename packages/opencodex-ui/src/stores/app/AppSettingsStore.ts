@@ -435,6 +435,7 @@ function createDefaultSettings(): OpenCodexSettings {
 function cloneSettings(settings: OpenCodexSettings): OpenCodexSettings {
   return {
     ...settings,
+    disabledFileLanguages: settings.disabledFileLanguages?.slice(),
     workspaceRoots: settings.workspaceRoots?.map((root) => ({ ...root })),
     codexReleaseCheck: { ...settings.codexReleaseCheck },
     desktopNotifications: { ...settings.desktopNotifications },

@@ -32,6 +32,8 @@ export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
  * Persisted application settings shared by backend and UI.
  */
 export type OpenCodexSettings = {
+  /** Disabled bundled syntax grammars; absent means all languages are enabled. */
+  disabledFileLanguages?: string[];
   /** Optional for compatibility with settings saved before voice dictation. */
   dictation?: OpenCodexDictationSettings;
   /** Source-owned workspace storage locations; absent in older settings. */

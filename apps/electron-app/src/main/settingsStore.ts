@@ -1,3 +1,4 @@
+import { normalizeDisabledFileLanguages } from "@open-codex-ui/opencodex-protocol";
 import { DEFAULT_DICTATION_SETTINGS, normalizeDictationSettings } from "@open-codex-ui/opencodex-protocol";
 /**
  * Persists OpenCodexUI settings inside Electron's user data directory.
@@ -73,6 +74,7 @@ export class SettingsStore {
       const settings = {
         ...defaultSettings,
         ...parsed,
+        disabledFileLanguages: normalizeDisabledFileLanguages(parsed.disabledFileLanguages),
         dictation: normalizeDictationSettings(parsed.dictation),
         codexReleaseCheck: {
           ...defaultSettings.codexReleaseCheck,

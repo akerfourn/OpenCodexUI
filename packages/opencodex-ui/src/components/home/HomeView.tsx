@@ -1,3 +1,4 @@
+import { HomeFileLanguagesViewX } from "./HomeFileLanguagesView";
 /**
  * Renders the Home tab.
  */
@@ -30,6 +31,10 @@ type HomeViewProps = {
  */
 export function HomeView({ store }: HomeViewProps) {
   let mainContent = <HomeProjectsViewX store={store} />;
+
+  if (store.homeStore.selectedSection === "fileLanguages") {
+    mainContent = <HomeFileLanguagesViewX store={store} />;
+  }
 
   if (store.homeStore.selectedSection === "workspaces") {
     mainContent = <HomeWorkspacesView store={store} />;
