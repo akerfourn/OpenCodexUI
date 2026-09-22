@@ -1,3 +1,4 @@
+import { canOpenProjectFileLinks } from "../chat/projectFileLinkAccess";
 /**
  * Renders Git controls for one opened project.
  */
@@ -56,11 +57,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const tagStore = gitStore.tagStore;
   const projectPath = projectStore.workspacePath;
   const sourceId = projectStore.project.sourceId;
-  const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
-  const canOpenFiles = source !== undefined &&
-    store.sourcesStore.hasLocalAccess(source.id) &&
-    "openFileCommand" in source.settings &&
-    source.settings.openFileCommand !== null;
+  const canOpenFiles = canOpenProjectFileLinks(store, sourceId);
   const gitLabelsKey = store.appStore.settingsStore.settings.versioningVocabulary === "technical"
     ? "git.technical"
     : "git.simple";
@@ -158,7 +155,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   }
 
   function handleOpenFile(path: string): void {
-    store.openExternalLink(path);
+    projectStore.openLink(path);
   }
 
   const generateTooltip = commitStore.canGenerateCommitMessage

@@ -32,6 +32,8 @@ export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
  * Persisted application settings shared by backend and UI.
  */
 export type OpenCodexSettings = {
+  /** Preferred destination for project file links; omitted settings use the integrated editor. */
+  fileOpeningMode?: "integrated" | "external";
   /** Disabled bundled syntax grammars; absent means all languages are enabled. */
   disabledFileLanguages?: string[];
   /** Optional for compatibility with settings saved before voice dictation. */

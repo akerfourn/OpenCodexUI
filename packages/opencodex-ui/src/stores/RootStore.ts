@@ -1,3 +1,4 @@
+import { openApplicationLink } from "./files/openApplicationLink";
 import { FileLanguagesStore } from "./files/FileLanguagesStore";
 /**
  * Coordinates application-wide state, project tabs, and backend events.
@@ -247,12 +248,18 @@ export class RootStore {
   }
 
   /**
-   * Requests opening of an external link.
+   * Opens a URL or project file using the configured destination.
    *
    * @param href Link target to open.
    *
    * @returns Nothing.
    */
+  openLink(href: string, project: ProjectStore | null = this.activeProjectStore,
+    workspacePath?: string | null, sourceId?: string | null): void {
+    openApplicationLink(this, href, project, workspacePath, sourceId);
+  }
+
+  /** Always uses the external opener for explicitly external actions. */
   openExternalLink(href: string): void {
     const trimmedHref = href.trim();
 

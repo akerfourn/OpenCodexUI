@@ -314,6 +314,9 @@ export class SettingsApi implements SettingsApiContract {
   /** Publishes settings only after persistence succeeds; a failed write preserves the runtime. */
   private async persist(patch: Partial<OpenCodexSettings>): Promise<OpenCodexSettings> {
     const nextSettings = { ...this.settings.getSettings(), ...patch };
+    if (patch.fileOpeningMode !== undefined && patch.fileOpeningMode !== "integrated" && patch.fileOpeningMode !== "external") {
+      throw new Error("Invalid file opening mode");
+    }
     if (patch.disabledFileLanguages !== undefined) {
       nextSettings.disabledFileLanguages = normalizeDisabledFileLanguages(patch.disabledFileLanguages);
     }

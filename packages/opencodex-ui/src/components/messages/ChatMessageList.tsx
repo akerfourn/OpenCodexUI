@@ -77,8 +77,8 @@ export function ChatMessageList({
   const isWorking = chatStore.runtime.isWorking || chatStore.runtime.isStartingTurn;
   const sourceId = chatStore.sourceId;
   const handleOpenLink = useCallback((href: string) => {
-    store.openExternalLink(href);
-  }, [store]);
+    chatStore.openLink(href);
+  }, [chatStore]);
   const handleNavigateThread = useCallback((threadId: string) => {
     onOpenSubAgentDialog(currentThread, threadId);
   }, [currentThread, onOpenSubAgentDialog]);

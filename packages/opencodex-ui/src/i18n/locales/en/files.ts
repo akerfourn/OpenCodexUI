@@ -3,6 +3,12 @@ import type { frFiles } from "../fr/files.js";
 
 export const enFiles = {
   files: {
+    openingMode: "Open file links with",
+    openingIntegrated: "OpenCodexUI (built-in editor)",
+    openingExternal: "The application configured for the source",
+    openingDescription: "Applies to links in chats and the Git panel. Files outside the workspace use the external application. The Files explorer always opens the built-in editor.",
+    openingSaveError: "Could not save this preference. The previous setting has been kept.",
+
     viewerFailed: "The editor could not load. Your content is still available to copy or save.",
     title: "Files",
     documents: "Open documents",

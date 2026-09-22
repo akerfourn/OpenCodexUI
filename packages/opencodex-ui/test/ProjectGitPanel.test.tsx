@@ -318,7 +318,8 @@ function createRootStore(): RootStore {
     appStore: {
       settingsStore: {
         settings: {
-          versioningVocabulary: "technical"
+          versioningVocabulary: "technical",
+          fileOpeningMode: "external"
         }
       }
     },

@@ -147,8 +147,8 @@ export class ProjectStore {
    *
    * @returns Nothing.
    */
-  openExternalLink(href: string): void {
-    this.root.openExternalLink(href);
+  openLink(href: string, workspacePath?: string | null, sourceId?: string | null): void {
+    this.root.openLink(href, this, workspacePath, sourceId);
   }
 
   /**

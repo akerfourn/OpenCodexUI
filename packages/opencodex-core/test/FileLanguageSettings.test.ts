@@ -5,6 +5,17 @@ import { SettingsApi } from "../src/backend/runtime/api/SupportApis";
 import { RuntimeSettingsStore } from "../src/backend/runtime/RuntimeSettingsStore";
 
 describe("syntax language settings", () => {
+  it("should validate and persist the file opening preference", async () => {
+    const runtime = new RuntimeSettingsStore({} as OpenCodexSettings);
+    const save = vi.fn();
+    const api = new SettingsApi(runtime, save);
+    await api.update({ fileOpeningMode: "external" });
+    expect(api.get().fileOpeningMode).toBe("external");
+    await expect(api.update({ fileOpeningMode: "invalid" as never })).rejects.toThrow("Invalid file opening mode");
+    expect(save).toHaveBeenCalledOnce();
+    expect(api.get().fileOpeningMode).toBe("external");
+  });
+
   it("should normalize legacy and malformed persisted preferences", () => {
     expect(normalizeDisabledFileLanguages(undefined)).toEqual([]);
     expect(normalizeDisabledFileLanguages({})).toEqual([]);

@@ -98,6 +98,11 @@ export class ChatStore {
     });
   }
 
+  /** Opens references in this conversation's source and physical workspace. */
+  openLink(href: string): void {
+    this.projectStore.openLink(href, this.thread.projectPath, this.sourceId);
+  }
+
   /**
    * Returns the Codex source that owns this chat.
    *

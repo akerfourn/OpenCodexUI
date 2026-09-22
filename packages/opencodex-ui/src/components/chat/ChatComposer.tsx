@@ -208,8 +208,8 @@ export function ChatComposer({
       return;
     }
 
-    store.openExternalLink(href);
-  }, [canOpenFileLinks, store]);
+    chatStore.openLink(href);
+  }, [canOpenFileLinks, chatStore]);
 
   function handlePaste(event: React.ClipboardEvent<HTMLFormElement>): void {
     const files = readTransferFiles(event.clipboardData);

@@ -1,10 +1,12 @@
 import type { RootStore } from "../../stores/RootStore";
 
-/** Returns whether the current source can open project file references locally. */
+/** Checks whether the selected destination can handle project file references. */
 export function canOpenProjectFileLinks(store: RootStore, sourceId: string | null): boolean {
   if (sourceId === null) {
     return false;
   }
+
+  if (store.appStore.settingsStore.settings.fileOpeningMode !== "external") return true;
 
   const source = store.sourcesStore.sources.find((entry) => entry.id === sourceId);
 

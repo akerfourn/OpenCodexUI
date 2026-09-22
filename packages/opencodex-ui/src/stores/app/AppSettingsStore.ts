@@ -123,6 +123,16 @@ export class AppSettingsStore {
     });
   }
 
+  /** Confirms persistence before changing how file links are opened. */
+  async setFileOpeningMode(fileOpeningMode: "integrated" | "external"): Promise<void> {
+    const saved = await this.root.request<OpenCodexSettings>({
+      type: "settings.update", patch: { fileOpeningMode }
+    });
+    runInAction(() => {
+      this.settings = { ...this.settings, fileOpeningMode: saved.fileOpeningMode ?? "integrated" };
+    });
+  }
+
   /** Persists log policies before publishing them to the observable snapshot. */
   async setLogPolicies(logPolicies: OpenCodexLogPolicies): Promise<void> {
     const patchLogPolicies = cloneLogPolicies(logPolicies);
@@ -390,6 +400,7 @@ export class AppSettingsStore {
  */
 function createDefaultSettings(): OpenCodexSettings {
   return {
+    fileOpeningMode: "integrated",
     workspaceRoots: [],
     codexCommand: "codex",
     codexReleaseCheck: {

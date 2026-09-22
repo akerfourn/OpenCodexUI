@@ -1,3 +1,4 @@
+import { HomeFileOpeningSettingsX } from "./HomeFileOpeningSettings";
 import { HomeDictationSettingsX } from "./HomeDictationSettings";
 /**
  * Renders application settings on the Home tab.
@@ -177,6 +178,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
         )}
       />
       <HomeAppUpdateSettingsX store={store} />
+      <HomeFileOpeningSettingsX store={store} />
       <HomeDictationSettingsX store={store} />
       <Box
         sx={{

@@ -282,7 +282,7 @@ export function ProjectGoalDialog({
                 onChange={handleObjectiveChange}
                 onSearchFiles={searchFiles}
                 onSearchSkills={searchSkills}
-                onOpenFileLink={(href) => store.openExternalLink(href)}
+                onOpenFileLink={(href) => projectStore.openLink(href)}
                 onKeyDown={handleObjectiveKeyDown}
               />
               <Box

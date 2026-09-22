@@ -227,8 +227,8 @@ export function SubAgentThreadsDialog({
   }, []);
 
   const handleOpenLink = useCallback((href: string): void => {
-    projectStore.openExternalLink(href);
-  }, [projectStore]);
+    projectStore.openLink(href, currentThread?.projectPath, selectedThreadSourceId);
+  }, [projectStore, currentThread, selectedThreadSourceId]);
 
   const handleIgnoredEdit = useCallback((): void => {
     // Readonly sub-agent inspection intentionally disables message editing.

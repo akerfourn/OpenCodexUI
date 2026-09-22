@@ -85,7 +85,7 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
   }
 
   function handleOpenLink(href: string): void {
-    store.openExternalLink(href);
+    store.openLink(href);
   }
 
   function handleModelChange(event: ChangeEvent<HTMLInputElement>): void {

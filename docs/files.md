@@ -5,6 +5,14 @@ is independent of that tool. Opening a different tool does not close a document.
 Documents are retained in memory until individually closed or their project is
 closed. They are not persisted across application restarts.
 
+The Home settings page selects whether file links in chats and Git open in the
+integrated editor (default) or the source's external application. Routing uses
+the originating project, source and conversation workspace, including line and
+column hints. Web URLs and paths outside that workspace retain the external
+opener. Explorer clicks and explicit external-open actions keep their respective
+intent regardless of this preference. The setting is persisted in
+`settings.json` as `fileOpeningMode`.
+
 ## Responsibilities
 
 - `WorkspaceFilesService` validates persisted workspace ownership and the exact

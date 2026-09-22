@@ -1,5 +1,11 @@
 export const frFiles = {
   files: {
+    openingMode: "Ouvrir les liens de fichiers avec",
+    openingIntegrated: "OpenCodexUI (éditeur intégré)",
+    openingExternal: "L’application configurée dans la source",
+    openingDescription: "Ce choix s’applique aux liens dans les chats et le panneau Git. Les fichiers hors du workspace utilisent l’application externe. L’explorateur Fichiers ouvre toujours l’éditeur intégré.",
+    openingSaveError: "Impossible d’enregistrer ce choix. Le réglage précédent est conservé.",
+
     viewerFailed:
       "L’éditeur ne peut pas être chargé. Votre contenu reste disponible pour être copié ou sauvegardé.",
     title: "Fichiers",
