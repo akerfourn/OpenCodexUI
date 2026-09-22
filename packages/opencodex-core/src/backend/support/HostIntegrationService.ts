@@ -1,3 +1,4 @@
+import type { FolderLinkOptions } from "../../types.js";
 import { normalizeProjectPath, type CachedSource } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexAttachment } from "@open-codex-ui/opencodex-protocol";
 
@@ -23,7 +24,8 @@ export type HostIntegrationServiceOptions = {
   openExternalLink?: (
     href: string,
     projectPath: string | null,
-    openerCommand: string | null
+    openerCommand: string | null,
+    folders?: FolderLinkOptions
   ) => Promise<void> | void;
   /** Opens a local project folder with the host file manager. */
   openProjectFolder?: (projectPath: string) => Promise<void> | void;
@@ -86,11 +88,15 @@ export class HostIntegrationService {
     const source = sourceId === null ? null : await this.options.projects.resolveSource(sourceId);
     const openerCommand = readOpenFileCommand(source);
 
-    await this.options.openExternalLink(
-      target,
-      this.resolveCurrentProjectPath(projectPath),
-      openerCommand
-    );
+    const contextPath = this.resolveCurrentProjectPath(projectPath);
+    if (source !== null && sourceHasLocalAccess(source)) {
+      await this.options.openExternalLink(target, contextPath, openerCommand, {
+        mode: this.options.settings.getSettings().folderOpeningMode ?? "external",
+        command: readOpenFolderCommand(source)
+      });
+    } else {
+      await this.options.openExternalLink(target, contextPath, openerCommand);
+    }
     return { ok: true };
   }
 

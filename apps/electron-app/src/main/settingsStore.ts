@@ -13,6 +13,7 @@ import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
  */
 export const defaultSettings: OpenCodexSettings = {
   fileOpeningMode: "integrated",
+  folderOpeningMode: "external",
   dictation: { ...DEFAULT_DICTATION_SETTINGS },
   workspaceRoots: [],
   codexCommand: "codex",
@@ -75,6 +76,7 @@ export class SettingsStore {
       const settings = {
         ...defaultSettings,
         ...parsed,
+        folderOpeningMode: parsed.folderOpeningMode === "system" ? "system" as const : "external" as const,
         fileOpeningMode: parsed.fileOpeningMode === "external" ? "external" as const : "integrated" as const,
         disabledFileLanguages: normalizeDisabledFileLanguages(parsed.disabledFileLanguages),
         dictation: normalizeDictationSettings(parsed.dictation),

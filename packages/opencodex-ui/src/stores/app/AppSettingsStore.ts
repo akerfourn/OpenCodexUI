@@ -133,6 +133,16 @@ export class AppSettingsStore {
     });
   }
 
+  /** Persists folder link handling independently from file link preferences. */
+  async setFolderOpeningMode(folderOpeningMode: "external" | "system"): Promise<void> {
+    const saved = await this.root.request<OpenCodexSettings>({
+      type: "settings.update", patch: { folderOpeningMode }
+    });
+    runInAction(() => {
+      this.settings = { ...this.settings, folderOpeningMode: saved.folderOpeningMode ?? "external" };
+    });
+  }
+
   /** Persists log policies before publishing them to the observable snapshot. */
   async setLogPolicies(logPolicies: OpenCodexLogPolicies): Promise<void> {
     const patchLogPolicies = cloneLogPolicies(logPolicies);
@@ -401,6 +411,7 @@ export class AppSettingsStore {
 function createDefaultSettings(): OpenCodexSettings {
   return {
     fileOpeningMode: "integrated",
+    folderOpeningMode: "external",
     workspaceRoots: [],
     codexCommand: "codex",
     codexReleaseCheck: {

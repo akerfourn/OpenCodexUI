@@ -13,6 +13,15 @@ opener. Explorer clicks and explicit external-open actions keep their respective
 intent regardless of this preference. The setting is persisted in
 `settings.json` as `fileOpeningMode`.
 
+Folder links have a separate `folderOpeningMode`: the source folder command
+(default), or the host file manager. A bounded source-side stat distinguishes
+folders from files before integrated navigation; it does not scan directories.
+The host asynchronously checks host-accessible paths, including links outside a
+workspace, before choosing the folder command or file manager. Remote paths are
+never inspected on the host without an explicit local-access capability. Source
+folder commands receive the clicked directory as `%D`, not the workspace root.
+Explicit IDE/file-manager actions in the project menu bypass these preferences.
+
 ## Responsibilities
 
 - `WorkspaceFilesService` validates persisted workspace ownership and the exact

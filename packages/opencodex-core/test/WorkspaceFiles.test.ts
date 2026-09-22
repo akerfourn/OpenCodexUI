@@ -30,6 +30,17 @@ async function snapshot(): Promise<OpenCodexFileSnapshot> {
 }
 
 describe("workspace filesystem", () => {
+  it("should distinguish a dotted directory from an extensionless file without reading contents", async () => {
+    await mkdir(join(root, "folder.with.dots"));
+    await writeFile(join(root, "LICENSE"), "text");
+    expect(await runLocalFileOperation({ type: "workspaceFiles.stat", target: { ...target, path: "folder.with.dots" } }))
+      .toEqual({ ok: true, value: { kind: "directory" } });
+    expect(await runLocalFileOperation({ type: "workspaceFiles.stat", target: { ...target, path: "LICENSE" } }))
+      .toEqual({ ok: true, value: { kind: "file" } });
+    expect(await runLocalFileOperation({ type: "workspaceFiles.stat", target: { ...target, path: "" } }))
+      .toEqual({ ok: true, value: { kind: "directory" } });
+  });
+
   it("should list dotfiles and untracked children with directories first without recursing", async () => {
     await mkdir(join(root, "node_modules"));
     await writeFile(join(root, ".env"), "KEY=value");

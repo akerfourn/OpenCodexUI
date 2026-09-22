@@ -83,6 +83,10 @@ async function readSnapshot(full, root) {
 /** Performs one bounded list/read/check/save operation. */
 async function execute(request) {
   const { full, root } = await resolveTarget(request.target);
+  if (request.type === 'workspaceFiles.stat') {
+    const metadata = await fs.stat(full);
+    return { kind: metadata.isDirectory() ? 'directory' : metadata.isFile() ? 'file' : 'other' };
+  }
   if (request.type === 'workspaceFiles.list') {
     const directory = await fs.opendir(full);
     const entries = [];

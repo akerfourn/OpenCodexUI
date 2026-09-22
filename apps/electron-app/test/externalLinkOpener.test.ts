@@ -60,7 +60,7 @@ describe("external open target helpers", () => {
     expect(resolveOpenTarget(fileUrl, "/workspace/project")).toEqual({
       type: "path",
       value: fileURLToPath(new URL(fileUrl)),
-      line: null,
+      line: "12",
       column: null
     });
 
@@ -84,12 +84,14 @@ describe("external open target helpers", () => {
     });
   });
 
-  it("should_keep_a_windows_drive_prefix_as_the_current_url_scheme", () => {
+  it("should_recognize_windows_drive_paths_without_opening_them_as_URLs", () => {
     const windowsPath = "C:\\Users\\alice\\app.ts";
 
     expect(resolveOpenTarget(windowsPath, "/workspace/project")).toEqual({
-      type: "url",
-      value: windowsPath
+      type: "path",
+      value: windowsPath,
+      line: null,
+      column: null
     });
   });
 

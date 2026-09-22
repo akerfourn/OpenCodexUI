@@ -8,6 +8,12 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 
+/** Folder handling supplied only when source paths are accessible on the host. */
+export interface FolderLinkOptions {
+  mode: "external" | "system";
+  command: string | null;
+}
+
 export type OpenCodexBackendOptions = {
   settings: OpenCodexSettings;
   projectPath: string | null;
@@ -43,7 +49,8 @@ export type OpenCodexBackendOptions = {
   openExternalLink?(
     href: string,
     projectPath: string | null,
-    openerCommand: string | null
+    openerCommand: string | null,
+    folders?: FolderLinkOptions
   ): Promise<void> | void;
   /**
    * Opens a local project folder with the host file manager.

@@ -26,11 +26,22 @@ export type OpenCommandContext = {
  * @returns Normalized target description that can be opened by Electron.
  */
 export function resolveOpenTarget(href: string, projectPath: string | null): OpenTarget {
+  // URL would treat a Windows drive letter as a protocol.
+  if (/^[A-Za-z]:[\\/]|^\\\\/.test(href)) {
+    const location = readLocation(href);
+    return { type: "path", value: location.path, line: location.line, column: location.column };
+  }
+  if (/^[^:]+:\d+(?::\d+)?$/.test(href) && !href.includes("://")) {
+    const location = readLocation(href);
+    return { type: "path", value: path.resolve(projectPath ?? process.cwd(), location.path),
+      line: location.line, column: location.column };
+  }
   try {
     const url = new URL(href);
 
     if (url.protocol === "file:") {
-      const location = readLocation(fileURLToPath(url));
+      const anchor = /^#L\d+(?:-L\d+)?$/i.test(url.hash) ? url.hash : "";
+      const location = readLocation(fileURLToPath(url) + anchor);
       return {
         type: "path",
         value: location.path,

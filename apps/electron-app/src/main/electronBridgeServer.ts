@@ -99,8 +99,8 @@ export class ElectronBridgeServer {
       defaultCommitPromptPath: resolveDefaultCommitPromptPath(),
       generationCommitPromptPath: resolveGenerationCommitPromptPath(),
       saveSettings: options.saveSettings,
-      openExternalLink: async (href, projectPath, openerCommand) => {
-        await openExternalLink(href, projectPath, openerCommand);
+      openExternalLink: async (href, projectPath, openerCommand, folders) => {
+        await openExternalLink(href, projectPath, openerCommand, folders);
       },
       openProjectFolder,
       openProjectTerminal,

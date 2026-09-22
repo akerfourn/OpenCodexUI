@@ -43,6 +43,7 @@ export type OpenCodexFileResult<T> =
 
 /** Dedicated requests keep filesystem operations separate from composer search. */
 export type OpenCodexFileRequest =
+  | { type: "workspaceFiles.stat"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.list"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.read"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.check"; target: OpenCodexFileTarget; revision: string }

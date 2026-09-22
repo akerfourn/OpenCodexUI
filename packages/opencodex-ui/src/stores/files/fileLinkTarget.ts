@@ -32,7 +32,7 @@ export function parseFileLink(href: string): FileLinkLocation | null {
 }
 
 /** Converts a contained source path to the relative path required by workspace file access. */
-export function relativeWorkspacePath(path: string, root: string): string | null {
+export function relativeWorkspacePath(path: string, root: string, allowRoot = false): string | null {
   const windows = /^[A-Za-z]:[\\/]|^[\\/]{2}/.test(root);
   const normalize = (value: string): string => windows ? value.replaceAll("\\", "/") : value;
   const base = normalize(root).replace(/\/+$/, "");
@@ -40,7 +40,9 @@ export function relativeWorkspacePath(path: string, root: string): string | null
   const absolute = value.startsWith("/") || /^[A-Za-z]:/.test(value);
   if (absolute) {
     const comparable = windows ? value.toLowerCase() : value;
-    const prefix = `${windows ? base.toLowerCase() : base}/`;
+    const normalizedBase = windows ? base.toLowerCase() : base;
+    if (comparable.replace(/\/+$/, "") === normalizedBase) return allowRoot ? "" : null;
+    const prefix = `${normalizedBase}/`;
     if (!comparable.startsWith(prefix)) return null;
     value = value.slice(prefix.length);
   }
@@ -52,6 +54,7 @@ export function relativeWorkspacePath(path: string, root: string): string | null
       parts.pop();
     } else parts.push(part);
   }
-  if (parts.length === 0 || parts.some(part => part.includes("\0"))) return null;
+  if (parts.some(part => part.includes("\0"))) return null;
+  if (parts.length === 0) return allowRoot ? "" : null;
   return parts.join("/");
 }

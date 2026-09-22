@@ -1,3 +1,5 @@
+import { stat } from "node:fs/promises";
+import type { FolderLinkOptions } from "@open-codex-ui/opencodex-core";
 import { shell } from "electron";
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -20,7 +22,8 @@ import {
 export async function openExternalLink(
   href: string,
   projectPath: string | null,
-  openerCommand: string | null
+  openerCommand: string | null,
+  folders?: FolderLinkOptions
 ): Promise<void> {
   const target = href.trim();
 
@@ -32,6 +35,18 @@ export async function openExternalLink(
 
   if (resolved.type === "url") {
     await shell.openExternal(resolved.value);
+    return;
+  }
+
+  if (folders !== undefined && await isDirectory(resolved.value)) {
+    if (folders.mode === "system") {
+      const error = await shell.openPath(resolved.value);
+      if (error.length > 0) throw new Error(error);
+    } else if (folders.command !== null) {
+      openDetachedCommand(folders.command, {
+        projectPath: resolved.value, filePath: resolved.value, relativePath: ".", line: null, column: null
+      });
+    }
     return;
   }
 
@@ -74,4 +89,14 @@ export function openDetachedCommand(commandLine: string, context: OpenCommandCon
   });
 
   child.unref();
+}
+
+/** Inspects only host-accessible paths; nonexistent files retain their usual editor behavior. */
+async function isDirectory(filePath: string): Promise<boolean> {
+  try { return (await stat(filePath)).isDirectory(); }
+  catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return false;
+    throw error;
+  }
 }

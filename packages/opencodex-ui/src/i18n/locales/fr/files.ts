@@ -1,5 +1,9 @@
 export const frFiles = {
   files: {
+    folderOpeningMode: "Ouvrir les liens de dossiers avec",
+    folderOpeningSystem: "L’explorateur du système",
+    folderOpeningDescription: "Pour les sources accessibles localement. Le mode application utilise la commande d’ouverture des dossiers configurée dans la source. Les actions explicites du menu projet restent inchangées.",
+
     openingMode: "Ouvrir les liens de fichiers avec",
     openingIntegrated: "OpenCodexUI (éditeur intégré)",
     openingExternal: "L’application configurée dans la source",

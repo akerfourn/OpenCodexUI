@@ -28,7 +28,7 @@ describe("source file link targets", () => {
 /** Isolates navigation effects while retaining real source path routing. */
 function fixture(mode?: "integrated" | "external") {
   const open = vi.fn().mockResolvedValue(undefined);
-  const request = vi.fn().mockResolvedValue({ ok: true });
+  const request = vi.fn().mockResolvedValue({ ok: true, value: { kind: "file" } });
   const root = { settings: { fileOpeningMode: mode }, request } as unknown as RootStore;
   const project = {
     project: { id: "project", sourceId: "wsl" },
@@ -43,27 +43,75 @@ function fixture(mode?: "integrated" | "external") {
 }
 
 describe("file opening preference", () => {
-  it("should default to the integrated editor using the originating conversation workspace", () => {
+  it("should preserve document error handling if path inspection cannot reach the backend", async () => {
     const { root, project, open, request } = fixture();
-    openApplicationLink(root, "src/app.ts:12:4", project, "/work/feature", "wsl");
-    expect(open).toHaveBeenCalledWith({ sourceId: "wsl", projectId: "project", workspaceId: "feature",
-      workspacePath: "/work/feature", path: "src/app.ts" }, "Feature", { line: 12, column: 4 });
-    expect(request).not.toHaveBeenCalled();
+    request.mockRejectedValue(new Error("Disconnected source"));
+    await openApplicationLink(root, "app.ts", project);
+    expect(open).toHaveBeenCalledOnce();
   });
 
-  it("should preserve the source opener and original location in external mode", () => {
+  it("should discard a pending inspection when its project has been closed", async () => {
+    const { root, project, open } = fixture();
+    const pending = openApplicationLink(root, "app.ts", project);
+    project.files.isDisposed = true;
+    await pending;
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it("should persist folder handling without changing file handling", async () => {
+    const request = vi.fn().mockResolvedValueOnce({ folderOpeningMode: "system" })
+      .mockRejectedValueOnce(new Error("Disk full"));
+    const settings = new AppSettingsStore({ request });
+    await settings.setFolderOpeningMode("system");
+    expect(settings.settings.fileOpeningMode).toBe("integrated");
+    await expect(settings.setFolderOpeningMode("external")).rejects.toThrow("Disk full");
+    expect(settings.settings.folderOpeningMode).toBe("system");
+  });
+
+  it("should route actual directories, including the workspace root, through the host folder preference", async () => {
+    const { root, project, open, request } = fixture();
+    request.mockResolvedValue({ ok: true, value: { kind: "directory" } });
+    await openApplicationLink(root, "/work/main", project);
+    expect(open).not.toHaveBeenCalled();
+    expect(request).toHaveBeenLastCalledWith({ type: "system.openLink", href: "/work/main",
+      sourceId: "wsl", projectPath: "/work/main" });
+    expect(request.mock.calls[0][0].target.path).toBe("");
+  });
+
+  it("should ignore a late folder inspection after another file link was selected", async () => {
+    const { root, project, open, request } = fixture();
+    let finish!: (value: unknown) => void;
+    request.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const old = openApplicationLink(root, "old-folder", project);
+    await openApplicationLink(root, "latest.ts", project);
+    finish({ ok: true, value: { kind: "directory" } });
+    await old;
+    expect(open).toHaveBeenCalledOnce();
+    expect(open.mock.calls[0][0].path).toBe("latest.ts");
+    expect(request.mock.calls.every(([value]) => value.type === "workspaceFiles.stat")).toBe(true);
+  });
+
+  it("should default to the integrated editor using the originating conversation workspace", async () => {
+    const { root, project, open, request } = fixture();
+    await openApplicationLink(root, "src/app.ts:12:4", project, "/work/feature", "wsl");
+    expect(open).toHaveBeenCalledWith({ sourceId: "wsl", projectId: "project", workspaceId: "feature",
+      workspacePath: "/work/feature", path: "src/app.ts" }, "Feature", { line: 12, column: 4 });
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ type: "workspaceFiles.stat" }));
+  });
+
+  it("should preserve the source opener and original location in external mode", async () => {
     const { root, project, open, request } = fixture("external");
-    openApplicationLink(root, "src/app.ts:12:4", project, "/work/feature", "wsl");
+    await openApplicationLink(root, "src/app.ts:12:4", project, "/work/feature", "wsl");
     expect(open).not.toHaveBeenCalled();
     expect(request).toHaveBeenCalledWith({ type: "system.openLink", href: "src/app.ts:12:4",
       sourceId: "wsl", projectPath: "/work/feature" });
   });
 
-  it("should keep URLs and out-of-workspace files external without reading the wrong source", () => {
+  it("should keep URLs and out-of-workspace files external without reading the wrong source", async () => {
     const { root, project, open, request } = fixture();
-    openApplicationLink(root, "https://example.org", project);
-    openApplicationLink(root, "/outside/app.ts", project);
-    openApplicationLink(root, "app.ts", project, "/work/main", "other-source");
+    await openApplicationLink(root, "https://example.org", project);
+    await openApplicationLink(root, "/outside/app.ts", project);
+    await openApplicationLink(root, "app.ts", project, "/work/main", "other-source");
     expect(open).not.toHaveBeenCalled();
     expect(request).toHaveBeenCalledTimes(3);
   });

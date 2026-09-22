@@ -20,6 +20,16 @@ export function HomeFileOpeningSettings({ store }: { store: RootStore }) {
     catch (reason) { setError(String(reason)); }
     finally { setSaving(false); }
   }
+  /** Saves folder handling without changing the file preference. */
+  async function changeFolder(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const mode = event.target.value;
+    if (saving || (mode !== "system" && mode !== "external")) return;
+    setSaving(true);
+    setError(null);
+    try { await settings.setFolderOpeningMode(mode); }
+    catch (reason) { setError(String(reason)); }
+    finally { setSaving(false); }
+  }
   let feedback = null;
   if (error !== null) {
     feedback = <Alert severity="error">{t("files.openingSaveError")}
@@ -33,6 +43,12 @@ export function HomeFileOpeningSettings({ store }: { store: RootStore }) {
         helperText={t("files.openingDescription")} onChange={change}>
         <MenuItem value="integrated">{t("files.openingIntegrated")}</MenuItem>
         <MenuItem value="external">{t("files.openingExternal")}</MenuItem>
+      </TextField>
+      <TextField select fullWidth size="small" disabled={saving}
+        label={t("files.folderOpeningMode")} value={settings.settings.folderOpeningMode ?? "external"}
+        helperText={t("files.folderOpeningDescription")} onChange={changeFolder}>
+        <MenuItem value="external">{t("files.openingExternal")}</MenuItem>
+        <MenuItem value="system">{t("files.folderOpeningSystem")}</MenuItem>
       </TextField>
       {feedback}
     </Stack>

@@ -11,6 +11,14 @@ import {
 } from "../src/backend/support/HostIntegrationService";
 
 describe("HostIntegrationService", () => {
+  it("should forward the persisted system folder destination only for host-accessible sources", async () => {
+    const openExternalLink = vi.fn();
+    const service = createService({ openExternalLink, folderOpeningMode: "system" });
+    await service.openLink("folder", "/work", "local-source");
+    expect(openExternalLink).toHaveBeenCalledWith("folder", "/work", null,
+      expect.objectContaining({ mode: "system" }));
+  });
+
   it("should delegate host pickers and return safe defaults when unavailable", async () => {
     const images: OpenCodexImageAttachment[] = [{
       id: "image-1",
@@ -68,7 +76,8 @@ describe("HostIntegrationService", () => {
     expect(openExternalLink).toHaveBeenCalledWith(
       "https://example.com/docs",
       "/workspace/project/",
-      "code --reuse-window"
+      "code --reuse-window",
+      { mode: "external", command: "code" }
     );
   });
 
@@ -88,7 +97,8 @@ describe("HostIntegrationService", () => {
     expect(openExternalLink).toHaveBeenCalledWith(
       "https://example.com",
       "/workspace/fallback/",
-      "xdg-open"
+      "xdg-open",
+      { mode: "external", command: null }
     );
   });
 
@@ -215,6 +225,7 @@ describe("HostIntegrationService", () => {
 function createService(
   overrides: Partial<HostIntegrationServiceOptions> & {
     source?: CachedSource;
+    folderOpeningMode?: "external" | "system";
     language?: "en" | "fr";
     projectPath?: string | null;
     resolveSource?: (sourceId: string) => Promise<CachedSource>;
@@ -225,7 +236,7 @@ function createService(
 
   return new HostIntegrationService({
     settings: {
-      getSettings: () => ({ language: overrides.language ?? "en" } as OpenCodexSettings)
+      getSettings: () => ({ language: overrides.language ?? "en", folderOpeningMode: overrides.folderOpeningMode } as OpenCodexSettings)
     },
     projectPath: overrides.projectPath ?? null,
     projects: { resolveSource },

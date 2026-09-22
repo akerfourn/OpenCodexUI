@@ -256,7 +256,7 @@ export class RootStore {
    */
   openLink(href: string, project: ProjectStore | null = this.activeProjectStore,
     workspacePath?: string | null, sourceId?: string | null): void {
-    openApplicationLink(this, href, project, workspacePath, sourceId);
+    void openApplicationLink(this, href, project, workspacePath, sourceId);
   }
 
   /** Always uses the external opener for explicitly external actions. */

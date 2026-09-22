@@ -15,6 +15,8 @@ export class ProjectFilesStore {
   activeId: string | null = null;
   /** Central content choice is independent of the selected project tool. */
   isVisible = false;
+  /** Blocks late navigation after project shutdown. */
+  isDisposed = false;
 
   /** Binds document requests and close protection to this project. */
   constructor(
@@ -123,6 +125,7 @@ export class ProjectFilesStore {
 
   /** Releases documents and invalidates all pending explorer requests. */
   dispose(): void {
+    this.isDisposed = true;
     for (const document of this.documents.values()) document.dispose();
     for (const tree of this.trees.values()) tree.dispose();
     this.documents.clear();

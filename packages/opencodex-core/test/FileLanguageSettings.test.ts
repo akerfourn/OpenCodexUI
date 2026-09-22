@@ -5,6 +5,15 @@ import { SettingsApi } from "../src/backend/runtime/api/SupportApis";
 import { RuntimeSettingsStore } from "../src/backend/runtime/RuntimeSettingsStore";
 
 describe("syntax language settings", () => {
+  it("should persist the folder preference independently and reject invalid destinations", async () => {
+    const runtime = new RuntimeSettingsStore({ fileOpeningMode: "integrated" } as OpenCodexSettings);
+    const api = new SettingsApi(runtime, vi.fn());
+    await api.update({ folderOpeningMode: "system" });
+    expect(api.get()).toMatchObject({ fileOpeningMode: "integrated", folderOpeningMode: "system" });
+    await expect(api.update({ folderOpeningMode: "invalid" as never })).rejects.toThrow("Invalid folder opening mode");
+    expect(api.get().folderOpeningMode).toBe("system");
+  });
+
   it("should validate and persist the file opening preference", async () => {
     const runtime = new RuntimeSettingsStore({} as OpenCodexSettings);
     const save = vi.fn();

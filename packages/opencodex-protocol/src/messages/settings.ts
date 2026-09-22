@@ -34,6 +34,8 @@ export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
 export type OpenCodexSettings = {
   /** Preferred destination for project file links; omitted settings use the integrated editor. */
   fileOpeningMode?: "integrated" | "external";
+  /** Folder links use the source application by default, or the host file manager. */
+  folderOpeningMode?: "external" | "system";
   /** Disabled bundled syntax grammars; absent means all languages are enabled. */
   disabledFileLanguages?: string[];
   /** Optional for compatibility with settings saved before voice dictation. */
