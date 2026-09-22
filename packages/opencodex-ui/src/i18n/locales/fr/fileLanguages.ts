@@ -9,6 +9,7 @@ export const frFileLanguages = {
     enabledOnly: "Afficher uniquement les langages activés",
     enabled: "Activé",
     toggle: "Activer la coloration {{language}}",
+    showMore: "Afficher la suite",
     empty: "Aucun langage ne correspond à cette recherche.",
     saveError: "Impossible d’enregistrer ce choix. Le réglage précédent est conservé.",
     loadError: "La coloration n’a pas pu être chargée. Le fichier reste modifiable en texte brut.",

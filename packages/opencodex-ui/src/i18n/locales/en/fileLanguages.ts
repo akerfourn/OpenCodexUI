@@ -12,6 +12,7 @@ export const enFileLanguages = {
     enabledOnly: "Show enabled languages only",
     enabled: "Enabled",
     toggle: "Enable {{language}} highlighting",
+    showMore: "Show more",
     empty: "No languages match this search.",
     saveError: "Could not save this preference. The previous setting has been kept.",
     loadError: "Syntax highlighting could not be loaded. You can still edit the file as plain text.",
