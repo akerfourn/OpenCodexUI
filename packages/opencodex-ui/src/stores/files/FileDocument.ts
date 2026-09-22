@@ -91,7 +91,8 @@ export class FileDocument {
 
   /** Unsupported format, virtual content and initial reads cannot be edited. */
   get isReadOnly(): boolean {
-    return this.target === null || this.snapshot === null || this.snapshot.readOnly || this.isLoading;
+    return this.target === null || this.snapshot === null || this.snapshot.readOnly || this.isLoading ||
+      this.error?.code === "accessDenied" || this.error?.code === "readOnly";
   }
 
   /** Changes syntax highlighting without modifying the document buffer. */
@@ -170,6 +171,27 @@ export class FileDocument {
       runInAction(() => {
         this.isSaving = false;
       });
+    }
+  }
+
+  /** Updates access flags only; even revoked documents retain their editable buffer. */
+  async refreshAccess(): Promise<void> {
+    if (this.target === null || this.disposed) return;
+    try {
+      const result = await this.port.request<OpenCodexFileResult<{ readOnly: boolean }>>({
+        type: "workspaceFiles.stat", target: { ...this.target }
+      });
+      if (this.disposed) return;
+      runInAction(() => {
+        if (!result.ok) {
+          this.error = result;
+          return;
+        }
+        if (this.snapshot !== null) this.snapshot.readOnly = result.value.readOnly || this.snapshot.eol === "mixed";
+        if (this.error?.code === "accessDenied" || this.error?.code === "readOnly") this.error = null;
+      });
+    } catch (error) {
+      this.fail(error);
     }
   }
 

@@ -35,11 +35,21 @@ export const frFiles = {
     unsavedDescription:
       "Sauvegarder ces documents avant de continuer ? En cas d’erreur, leur contenu sera conservé.",
     discard: "Abandonner les modifications",
+    access: {
+      manage: "Gérer l’accès…",
+      description: "Ce droit s’applique au module Fichiers, pour tous les liens vers cette destination dans ce workspace. Il ne modifie pas les permissions de Codex ou des commandes. Les liens vers d’autres destinations externes demandent une autorisation distincte.",
+      denied: "Interdit",
+      readOnly: "Lecture seule",
+      readWrite: "Lecture et écriture",
+      cancel: "Annuler",
+      saveError: "Impossible d’enregistrer cette autorisation. Actualisez l’arborescence si la destination du lien a changé."
+    },
     errors: {
+      accessDenied: "L’accès à cette destination externe n’est pas autorisé. Clic droit sur le lien pour gérer l’accès.",
       unavailable:
         "Impossible d’accéder à cette source. Les sources distantes nécessitent Node.js et l’API process de Codex.",
       inaccessible: "Le fichier est inaccessible ou a été supprimé. Le contenu déjà ouvert est conservé.",
-      symlink: "Les liens symboliques sont visibles mais ne sont pas ouverts dans cette version.",
+      symlink: "Ce lien symbolique forme une boucle et ne peut pas être suivi.",
       tooLarge: "Limite atteinte : fichiers de 2 Mio maximum et dossiers de 10 000 entrées maximum.",
       binary: "Ce fichier n’est pas un fichier texte pris en charge.",
       encoding: "Seuls les fichiers texte UTF-8, avec ou sans BOM, peuvent être modifiés.",

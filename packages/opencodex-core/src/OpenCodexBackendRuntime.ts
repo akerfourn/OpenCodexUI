@@ -66,7 +66,7 @@ export class OpenCodexBackendRuntime {
     this.services = createBackendServiceGraph(options, this.isPrerelease);
     this.apis = new BackendRuntimeApis(this.services, options);
     this.files = new WorkspaceFilesService(this.services.cacheRepository,
-      this.services.projectRuntimeHandler, this.services.clientPool);
+      this.services.projectRuntimeHandler, this.services.clientPool, this.settings);
     this.dictation = new CodexDictationService(async (sourceId) => {
       const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
       return new CodexAppServerClient({

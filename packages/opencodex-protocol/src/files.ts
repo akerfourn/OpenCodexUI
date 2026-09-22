@@ -11,10 +11,32 @@ export interface OpenCodexFileTarget extends OpenCodexFileContext {
   path: string;
 }
 
-/** One direct child; symbolic links are deliberately not followed. */
+/** File-module permission for one canonical external destination. */
+export type OpenCodexFileAccess = "denied" | "readOnly" | "readWrite";
+
+/** Persisted permission scoped to an immutable workspace and source identity. */
+export interface OpenCodexFileGrant extends OpenCodexFileContext {
+  destination: string;
+  access: OpenCodexFileAccess;
+}
+
+/** Metadata available without reading a symbolic link's target contents. */
+export interface OpenCodexFileLinkAccess {
+  destination: string;
+  access: OpenCodexFileAccess;
+  external: boolean;
+}
+
+/** One direct child; accessible symbolic links expose the resolved target kind. */
 export interface OpenCodexFileEntry {
   name: string;
   kind: "directory" | "file" | "symlink" | "other";
+  /** Raw link destination for display only, never a host filesystem path. */
+  linkTarget?: string;
+  /** Reason a symbolic link cannot be followed inside this workspace. */
+  linkError?: OpenCodexFileErrorCode;
+  /** Canonical destination and effective permission, resolved by the source. */
+  linkAccess?: OpenCodexFileLinkAccess;
 }
 
 /** UTF-8 document snapshot, including the format needed for lossless saves. */
@@ -28,6 +50,7 @@ export interface OpenCodexFileSnapshot {
 
 /** Expected failures remain structured across IPC rather than losing error codes. */
 export type OpenCodexFileErrorCode =
+  | "accessDenied"
   | "unavailable"
   | "inaccessible"
   | "symlink"
@@ -43,6 +66,9 @@ export type OpenCodexFileResult<T> =
 
 /** Dedicated requests keep filesystem operations separate from composer search. */
 export type OpenCodexFileRequest =
+  | { type: "workspaceFiles.linkAccess"; target: OpenCodexFileTarget }
+  | { type: "workspaceFiles.setLinkAccess"; target: OpenCodexFileTarget;
+      destination: string; access: OpenCodexFileAccess }
   | { type: "workspaceFiles.stat"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.list"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.read"; target: OpenCodexFileTarget }

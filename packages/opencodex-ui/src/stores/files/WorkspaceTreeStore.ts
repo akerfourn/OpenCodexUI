@@ -1,5 +1,6 @@
 import { makeAutoObservable, observable, runInAction } from "mobx";
 import type {
+  OpenCodexFileAccess,
   OpenCodexFileContext,
   OpenCodexFileEntry,
   OpenCodexFileResult
@@ -72,6 +73,14 @@ export class WorkspaceTreeStore {
         });
       });
     }
+  }
+
+  /** Saves an access choice without sending observable entry objects through IPC. */
+  async setLinkAccess(path: string, destination: string, access: OpenCodexFileAccess): Promise<void> {
+    const result = await this.port.request<OpenCodexFileResult<unknown>>({
+      type: "workspaceFiles.setLinkAccess", target: { ...this.context, path }, destination, access
+    });
+    if (!result.ok) throw new Error(result.details);
   }
 
   /** Reloads the root; expanded descendants load when their rows are rendered. */

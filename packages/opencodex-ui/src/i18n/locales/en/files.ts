@@ -36,10 +36,20 @@ export const enFiles = {
     unsavedDescription:
       "Save these documents before continuing? Their contents will be preserved if saving fails.",
     discard: "Discard changes",
+    access: {
+      manage: "Manage access…",
+      description: "This permission applies to the Files module, for all links to this destination in this workspace. It does not change Codex or command permissions. Links to other external destinations require separate authorization.",
+      denied: "Blocked",
+      readOnly: "Read only",
+      readWrite: "Read and write",
+      cancel: "Cancel",
+      saveError: "Could not save this permission. Refresh the tree if the link destination changed."
+    },
     errors: {
+      accessDenied: "Access to this external destination is not authorized. Right-click the link to manage access.",
       unavailable: "Cannot access this source. Remote sources require Node.js and the Codex process API.",
       inaccessible: "The file is inaccessible or was deleted. Already opened content is preserved.",
-      symlink: "Symbolic links are shown but are not opened in this version.",
+      symlink: "This symbolic link forms a loop and cannot be followed.",
       tooLarge: "Limit reached: files up to 2 MiB and directories up to 10,000 entries.",
       binary: "This file is not a supported text file.",
       encoding: "Only UTF-8 text files, with or without a BOM, can be edited.",

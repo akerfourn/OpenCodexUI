@@ -50,8 +50,23 @@ Explicit IDE/file-manager actions in the project menu bypass these preferences.
 The initial limit is 2 MiB per text file and 10,000 direct children per folder.
 The explorer initially renders 200 entries and exposes additional batches on
 request. It includes dotfiles and untracked files and never recursively scans a
-workspace when opened. Symbolic links are listed but refused at every path
-component below the canonical workspace root. Special files are not opened.
+workspace when opened. Internal symbolic links can be followed; cycles and
+broken links remain visible but blocked. External links expose target metadata
+without reading directory contents. Their context menu offers workspace-scoped
+blocked, read-only and read/write access. Special files are not opened.
+
+External grants are stored in `settings.json` under `fileLinkGrants`, keyed by
+source, project, workspace, workspace path and canonical destination. The backend
+resolves destinations on the source and injects only matching grants into its
+file worker. Renderer-supplied grants are ignored. A changed destination requires
+new consent; nested external links require their own grants. Read-only ancestor
+links also constrain descendant writes. These permissions affect only the Files
+module, not Codex, commands or explicit external application actions.
+
+Permission changes refresh the tree and the access state of open documents
+without replacing their buffers. Already loaded contents remain available after
+revocation. A grant acknowledges a path, not a permanent inode identity; normal
+file replacement at the same location remains possible.
 
 Only valid UTF-8 is editable. UTF-8 BOM and LF/CRLF are preserved on save. Binary,
 UTF-16 and invalid UTF-8 data are rejected. Mixed line endings remain read only
@@ -60,7 +75,7 @@ because Monaco normalizes them internally. The UI keeps its text in LF form.
 Every save checks a revision combining the canonical location, file identity,
 modification timestamp and SHA-256 of the bytes. This catches external edits,
 replacement and moves even when timestamps alone are insufficient. The backend
-serializes saves to the same source path within one runtime. It writes and syncs
+serializes saves and permission changes within one runtime. It writes and syncs
 an exclusive temporary file beside the destination, checks the revision again,
 then replaces the destination using rename. Regular Unix permission bits and
 ownership are retained; platform-specific ACLs and extended attributes are not

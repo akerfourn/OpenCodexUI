@@ -51,6 +51,24 @@ describe("file documents", () => {
     });
   });
 
+  it("should preserve a dirty buffer across access revocation and restoration", async () => {
+    const { document, request } = await fixture();
+    document.edit("unsaved text");
+    request.mockResolvedValueOnce({ ok: true, value: { readOnly: true } });
+    await document.refreshAccess();
+    expect(document.isReadOnly).toBe(true);
+    expect(document.content).toBe("unsaved text");
+    request.mockResolvedValueOnce({ ok: false, code: "accessDenied", details: "Revoked" });
+    await document.refreshAccess();
+    expect(document.isReadOnly).toBe(true);
+    expect(document.isDirty).toBe(true);
+    request.mockResolvedValueOnce({ ok: true, value: { readOnly: false } });
+    await document.refreshAccess();
+    expect(document.isReadOnly).toBe(false);
+    expect(document.content).toBe("unsaved text");
+    expect(document.error).toBeNull();
+  });
+
   it("should keep edits made during a save dirty after acknowledgement", async () => {
     const { document, request } = await fixture();
     const reply = deferred<unknown>();

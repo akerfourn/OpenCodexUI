@@ -1,7 +1,8 @@
 /**
  * Source-portable Node helper. The same program runs in a local worker or through
  * the source's process API. Input is JSON data, never interpolated into code.
- * Symlinks below the selected root are refused. Hash comparison is optimistic:
+ * Symlinks require workspace-scoped grants outside the selected root.
+ * Hash comparison is optimistic:
  * filesystems do not expose a portable compare-and-rename against other tools.
  */
 export const fileWorkerScript = String.raw`
@@ -17,8 +18,14 @@ function fail(code, message) {
   throw Object.assign(new Error(message), { fileCode: code });
 }
 
-/** Resolves only canonical, source-relative paths beneath the workspace. */
-async function resolveTarget(target) {
+/** Tests containment using the source OS path rules, not host-side heuristics. */
+function contains(root, full) {
+  const distance = path.relative(root, full);
+  return distance !== '..' && !distance.startsWith('..' + path.sep) && !path.isAbsolute(distance);
+}
+
+/** Resolves paths, checking each external link before reading any target contents. */
+async function resolveTarget(target, permissions = [], inspectLink = false) {
   const relative = target.path;
   if (typeof relative !== 'string' || relative.includes('\\') || relative.includes('\0') ||
       relative.startsWith('/') || relative.includes(':') ||
@@ -27,21 +34,45 @@ async function resolveTarget(target) {
   }
   const root = await fs.realpath(target.workspacePath);
   let full = root;
-  for (const part of relative.split('/').filter(Boolean)) {
-    full = path.join(full, part);
-    const metadata = await fs.lstat(full);
-    if (metadata.isSymbolicLink()) fail('symlink', 'Symbolic links are not opened by the file editor.');
+  let readOnly = false;
+  let linkAccess;
+  const ancestors = new Set([root]);
+  const parts = relative.split('/').filter(Boolean);
+  for (const [index, part] of parts.entries()) {
+    const next = path.join(full, part);
+    const metadata = await fs.lstat(next);
+    full = await fs.realpath(next);
+    if (ancestors.has(full)) fail('symlink', 'Symbolic link points to an ancestor directory.');
+    ancestors.add(full);
+    const external = !contains(root, full);
+    if (metadata.isSymbolicLink()) {
+      let access = 'readWrite';
+      if (external) {
+        const grant = permissions.find(item => item.destination === full);
+        access = grant?.access || 'denied';
+      }
+      if (readOnly && access === 'readWrite') access = 'readOnly';
+      linkAccess = { destination: full, external, access };
+      if (access === 'denied' && !(inspectLink && index === parts.length - 1)) {
+        fail('accessDenied', 'Access to this external symbolic link has not been authorized.');
+      }
+      readOnly ||= access !== 'readWrite';
+    } else {
+      linkAccess = undefined;
+    }
   }
-  const canonical = await fs.realpath(full);
-  const distance = path.relative(root, canonical);
-  if (distance.startsWith('..' + path.sep) || distance === '..' || path.isAbsolute(distance)) {
-    fail('invalidPath', 'Path escapes the selected workspace.');
-  }
-  return { full, root };
+  return { full, root, readOnly, linkAccess };
+}
+
+/** Inspects a final link only; parent paths still require normal authorization. */
+async function inspectAccess(target, permissions) {
+  const resolved = await resolveTarget(target, permissions, true);
+  if (!resolved.linkAccess) fail('invalidPath', 'The selected entry is no longer a symbolic link.');
+  return resolved;
 }
 
 /** Reads at most the supported limit, including when a file grows while reading. */
-async function readSnapshot(full, root) {
+async function readSnapshot(full, root, policyReadOnly = false) {
   const handle = await fs.open(full, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
   try {
     const before = await handle.stat({ bigint: true });
@@ -76,30 +107,56 @@ async function readSnapshot(full, root) {
     let writable = (Number(after.mode) & 0o222) !== 0;
     try { await fs.access(full, constants.W_OK); } catch { writable = false; }
     return { content, revision, bom, eol: mixed ? 'mixed' : crlf ? 'crlf' : 'lf',
-      readOnly: !writable || mixed, mode: Number(after.mode), uid: Number(after.uid), gid: Number(after.gid) };
+      readOnly: policyReadOnly || !writable || mixed, mode: Number(after.mode), uid: Number(after.uid), gid: Number(after.gid) };
   } finally { await handle.close(); }
+}
+
+/** Describes links without traversing their children or hiding broken targets. */
+async function describeEntry(item, request, full) {
+  if (!item.isSymbolicLink()) {
+    return { name: item.name, kind: item.isDirectory() ? 'directory' : item.isFile() ? 'file' : 'other' };
+  }
+  const entry = { name: item.name, kind: 'symlink' };
+  try {
+    entry.linkTarget = await fs.readlink(path.join(full, item.name));
+    const relative = [request.target.path, item.name].filter(Boolean).join('/');
+    const resolved = await inspectAccess({ ...request.target, path: relative }, request.permissions);
+    entry.linkAccess = resolved.linkAccess;
+    if (resolved.linkAccess.access === 'denied') entry.linkError = 'accessDenied';
+    const metadata = await fs.stat(resolved.full);
+    entry.kind = metadata.isDirectory() ? 'directory' : metadata.isFile() ? 'file' : 'other';
+  } catch (error) {
+    entry.linkError = error.fileCode || (error.code === 'ELOOP' ? 'symlink' : 'inaccessible');
+  }
+  return entry;
 }
 
 /** Performs one bounded list/read/check/save operation. */
 async function execute(request) {
-  const { full, root } = await resolveTarget(request.target);
+  if (request.type === 'workspaceFiles.linkAccess') {
+    return (await inspectAccess(request.target, request.permissions)).linkAccess;
+  }
+  const { full, root, readOnly } = await resolveTarget(request.target, request.permissions);
+  if (request.type === 'workspaceFiles.save' && readOnly) fail('readOnly', 'External access is read-only.');
   if (request.type === 'workspaceFiles.stat') {
     const metadata = await fs.stat(full);
-    return { kind: metadata.isDirectory() ? 'directory' : metadata.isFile() ? 'file' : 'other' };
+    let writable = (metadata.mode & 0o222) !== 0;
+    try { await fs.access(full, constants.W_OK); } catch { writable = false; }
+    return { kind: metadata.isDirectory() ? 'directory' : metadata.isFile() ? 'file' : 'other',
+      readOnly: readOnly || !writable };
   }
   if (request.type === 'workspaceFiles.list') {
     const directory = await fs.opendir(full);
     const entries = [];
     for await (const item of directory) {
       if (entries.length >= 10000) fail('tooLarge', 'Directory contains more than 10,000 entries.');
-      entries.push({ name: item.name, kind: item.isSymbolicLink() ? 'symlink' :
-        item.isDirectory() ? 'directory' : item.isFile() ? 'file' : 'other' });
+      entries.push(await describeEntry(item, request, full));
     }
     entries.sort((a, b) => Number(b.kind === 'directory') - Number(a.kind === 'directory') ||
       (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     return entries;
   }
-  const current = await readSnapshot(full, root);
+  const current = await readSnapshot(full, root, readOnly);
   if (request.type === 'workspaceFiles.check') return current.revision === request.revision;
   if (request.type === 'workspaceFiles.read') return current;
   if (request.type !== 'workspaceFiles.save') fail('invalidPath', 'Unknown file operation.');
@@ -125,13 +182,13 @@ async function execute(request) {
       }
       await handle.sync();
     } finally { await handle.close(); }
-    const latestTarget = await resolveTarget(request.target);
+    const latestTarget = await resolveTarget(request.target, request.permissions);
     if (latestTarget.full !== full || latestTarget.root !== root ||
-        (await readSnapshot(full, root)).revision !== current.revision) {
+        (await readSnapshot(full, root, readOnly)).revision !== current.revision) {
       fail('conflict', 'File changed before the save could complete.');
     }
     await fs.rename(temporary, full);
-    return await readSnapshot(full, root);
+    return await readSnapshot(full, root, readOnly);
   } finally { await fs.rm(temporary, { force: true }); }
 }
 
@@ -139,7 +196,7 @@ async function execute(request) {
 async function respond(request) {
   try { return { ok: true, value: await execute(request) }; }
   catch (error) {
-    return { ok: false, code: error.fileCode || 'inaccessible', details: error.message };
+    return { ok: false, code: error.fileCode || (error.code === 'ELOOP' ? 'symlink' : 'inaccessible'), details: error.message };
   }
 }
 

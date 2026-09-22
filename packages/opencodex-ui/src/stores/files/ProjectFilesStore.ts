@@ -1,5 +1,5 @@
 import { makeAutoObservable, observable } from "mobx";
-import type { OpenCodexFileTarget } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexFileContext, OpenCodexFileTarget } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
 import type { ProjectStore } from "../project/ProjectStore";
 import { FileDocument, type DocumentPosition } from "./FileDocument";
@@ -52,6 +52,14 @@ export class ProjectFilesStore {
       this.trees.set(key, tree);
     }
     return tree;
+  }
+
+  /** Rechecks permissions on open documents without discarding unsaved edits. */
+  async refreshAccess(context: OpenCodexFileContext): Promise<void> {
+    const documents = [...this.documents.values()].filter(document =>
+      document.target?.workspaceId === context.workspaceId && document.target.sourceId === context.sourceId &&
+      document.target.workspacePath === context.workspacePath);
+    await Promise.all(documents.map(document => document.refreshAccess()));
   }
 
   /** Opens one source document; future tools can supply a source position. */

@@ -45,6 +45,8 @@ export class OpenCodexRequestRouter {
    */
   private async handleValidRequest(request: OpenCodexRequest): Promise<unknown> {
     switch (request.type) {
+      case "workspaceFiles.linkAccess":
+      case "workspaceFiles.setLinkAccess":
       case "workspaceFiles.stat":
       case "workspaceFiles.list":
       case "workspaceFiles.read":

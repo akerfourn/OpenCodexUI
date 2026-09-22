@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
-import type { OpenCodexFileRequest, OpenCodexFileResult } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexFileGrant, OpenCodexFileRequest, OpenCodexFileResult } from "@open-codex-ui/opencodex-protocol";
 import { fileWorkerScript } from "./fileWorkerScript.js";
 
+/** Backend-enriched payload; the renderer cannot supply effective grants. */
+export type FileWorkerRequest = OpenCodexFileRequest & { permissions?: OpenCodexFileGrant[] };
+
 /** Runs bounded filesystem work off the local main thread. */
-export function runLocalFileOperation(request: OpenCodexFileRequest): Promise<OpenCodexFileResult<unknown>> {
+export function runLocalFileOperation(request: FileWorkerRequest): Promise<OpenCodexFileResult<unknown>> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(fileWorkerScript, { eval: true, workerData: request });
     const timeout = setTimeout(() => {
@@ -24,7 +27,7 @@ export function runLocalFileOperation(request: OpenCodexFileRequest): Promise<Op
 /** Runs the same helper in the source filesystem; Node.js must exist on that source. */
 export async function runSourceFileOperation(
   client: Pick<CodexAppServerClient, "request" | "onNotification">,
-  request: OpenCodexFileRequest
+  request: FileWorkerRequest
 ): Promise<OpenCodexFileResult<unknown>> {
   const processHandle = `opencodex-files-${randomUUID()}`;
   let isFinished = false;

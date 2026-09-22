@@ -1,3 +1,4 @@
+import type { OpenCodexFileGrant } from "../files";
 import type { OpenCodexDictationSettings } from "../dictation";
 import type {
   OpenCodexColorScheme,
@@ -32,6 +33,8 @@ export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
  * Persisted application settings shared by backend and UI.
  */
 export type OpenCodexSettings = {
+  /** File explorer permissions only; does not affect Codex or command execution. */
+  fileLinkGrants?: OpenCodexFileGrant[];
   /** Preferred destination for project file links; omitted settings use the integrated editor. */
   fileOpeningMode?: "integrated" | "external";
   /** Folder links use the source application by default, or the host file manager. */

@@ -1,3 +1,4 @@
+import { normalizeFileLinkGrants } from "@open-codex-ui/opencodex-protocol";
 import { normalizeDisabledFileLanguages } from "@open-codex-ui/opencodex-protocol";
 import { normalizeDictationSettings } from "@open-codex-ui/opencodex-protocol";
 import { normalizeWorkspaceRoots } from "../../workspaces/workspaceRootsSettings.js";
@@ -319,6 +320,9 @@ export class SettingsApi implements SettingsApiContract {
     }
     if (patch.fileOpeningMode !== undefined && patch.fileOpeningMode !== "integrated" && patch.fileOpeningMode !== "external") {
       throw new Error("Invalid file opening mode");
+    }
+    if (patch.fileLinkGrants !== undefined) {
+      nextSettings.fileLinkGrants = normalizeFileLinkGrants(patch.fileLinkGrants);
     }
     if (patch.disabledFileLanguages !== undefined) {
       nextSettings.disabledFileLanguages = normalizeDisabledFileLanguages(patch.disabledFileLanguages);
