@@ -15,7 +15,8 @@ export function FileLanguageSelect({ document, store }: { document: FileDocument
   }
   return (
     <TextField select size="small" label={t("fileLanguages.language")} sx={{ width: 150 }}
-      value={document.languageOverride ?? ""} onChange={select} slotProps={{ select: { native: true } }}>
+      value={document.languageOverride ?? ""} onChange={select}
+      slotProps={{ inputLabel: { shrink: true }, select: { native: true } }}>
       <option value="">{t("fileLanguages.automatic")}</option>
       <option value="plaintext">{t("fileLanguages.plaintext")}</option>
       {fileLanguages.map(language => <option key={language.id} value={language.id}
