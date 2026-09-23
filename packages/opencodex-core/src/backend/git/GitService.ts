@@ -6,6 +6,8 @@ import type {
   OpenCodexGitBranchKind,
   OpenCodexGitCommitDetails,
   OpenCodexGitCommitResult,
+  OpenCodexGitDiffComparison,
+  OpenCodexGitFileDiff,
   OpenCodexGitLogPage,
   OpenCodexGitRemote,
   OpenCodexGitStatus,
@@ -14,6 +16,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { GitWorktreeService } from "./GitWorktreeService.js";
+import { readGitFileDiff } from "./gitFileDiffActions.js";
 
 import { createRunGit } from "./gitCommandRunner.js";
 import {
@@ -99,6 +102,16 @@ export class GitService {
       sourceId,
       async (path, id) => await listGitRemotes(this.referenceContext, path, id)
     );
+  }
+
+  /** Reads the Git snapshots used by the integrated file diff viewer. */
+  async fileDiff(
+    projectPath: string,
+    sourceId: string | null,
+    path: string,
+    comparison: OpenCodexGitDiffComparison
+  ): Promise<OpenCodexGitFileDiff> {
+    return await readGitFileDiff(this.repositoryContext, projectPath, sourceId, path, comparison);
   }
 
   /**

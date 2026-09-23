@@ -373,6 +373,16 @@ export class OpenCodexRequestRouter {
         return this.runtime.git.readVersion();
       case "git.status":
         return this.runtime.git.readStatus(request.projectPath, request.sourceId);
+      case "git.fileDiff.read":
+        if (request.workspaceId.trim().length === 0) {
+          throw new Error("Git file diffs require an explicit workspace context.");
+        }
+        return this.runtime.git.readFileDiff(
+          request.projectPath,
+          request.sourceId,
+          request.path,
+          request.comparison
+        );
       case "git.init":
         return this.runtime.git.initializeRepository(request.projectPath, request.sourceId);
       case "git.remotes":

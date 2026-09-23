@@ -8,6 +8,8 @@ import type {
   OpenCodexGitBranchKind,
   OpenCodexGitCommitDetails,
   OpenCodexGitCommitResult,
+  OpenCodexGitDiffComparison,
+  OpenCodexGitFileDiff,
   OpenCodexGitLogPage,
   OpenCodexGitRemote,
   OpenCodexGitStatus,
@@ -83,6 +85,16 @@ export class GitRuntimeHandler {
   /** Reads Git status for a project through its source. */
   async readGitStatus(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
     return await this.gitService.status(projectPath, sourceId);
+  }
+
+  /** Reads the Git snapshots used by the integrated file diff viewer. */
+  async readGitFileDiff(
+    projectPath: string,
+    sourceId: string | null,
+    path: string,
+    comparison: OpenCodexGitDiffComparison
+  ): Promise<OpenCodexGitFileDiff> {
+    return await this.gitService.fileDiff(projectPath, sourceId, path, comparison);
   }
 
   /** Initializes a Git repository and returns its refreshed status. */

@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
+import type { OpenCodexGitDiffComparison, OpenCodexGitFile } from "@open-codex-ui/opencodex-protocol";
 import { CommitMessageGenerationDialogX } from "./CommitMessageGenerationDialog";
 import { ProjectBranchMergeDialogX } from "./ProjectBranchMergeDialog";
 import { ProjectBranchSwitcherDialogX } from "./ProjectBranchSwitcherDialog";
@@ -154,8 +155,15 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     void referencesStore.pull();
   }
 
-  function handleOpenFile(path: string): void {
-    projectStore.openLink(path);
+  function handleOpenFile(
+    path: string,
+    comparison: OpenCodexGitDiffComparison,
+    fileState: OpenCodexGitFile["status"]
+  ): void {
+    projectStore.openLink(path, undefined, undefined, {
+      origin: "git",
+      gitDiff: { comparison, fileState }
+    });
   }
 
   const generateTooltip = commitStore.canGenerateCommitMessage

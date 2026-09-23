@@ -22,6 +22,20 @@ export type OpenCodexGitFile = {
   unstagedStatus: OpenCodexGitFileState | null;
 };
 
+/** Which Git snapshot is compared with the current file. */
+export type OpenCodexGitDiffComparison = "workingTree" | "staged";
+
+/** Why a Git file comparison cannot be rendered as text. */
+export type OpenCodexGitDiffIssue = "binary" | "tooLarge" | "conflicted";
+
+/** Text snapshots used by the integrated Git diff viewer. */
+export type OpenCodexGitFileDiff = {
+  originalContent: string;
+  /** Null means the modified side is the current editable document buffer. */
+  modifiedContent: string | null;
+  issue: OpenCodexGitDiffIssue | null;
+};
+
 /**
  * Git remote endpoints grouped by remote name.
  */

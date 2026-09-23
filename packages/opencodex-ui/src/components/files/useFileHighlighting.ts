@@ -6,7 +6,10 @@ import { canonicalLanguage, detectFileLanguage } from "../../features/fileLangua
 import { fileHighlighting, modelFor, monaco } from "./monacoRuntime";
 
 /** Applies only the current document/preferences after asynchronous grammar loading. */
-export function useFileHighlighting(document: FileDocument, store: FileLanguagesStore): string | null {
+export function useFileHighlighting(
+  document: FileDocument,
+  store: FileLanguagesStore
+): { error: string | null; language: string } {
   const [error, setError] = useState<string | null>(null);
   const automaticLanguage = document.virtualLanguage === undefined
     ? detectFileLanguage(document.name)
@@ -21,5 +24,5 @@ export function useFileHighlighting(document: FileDocument, store: FileLanguages
       setLanguage: id => monaco.editor.setModelLanguage(model, id)
     }, enabled ? language : "plaintext", id => fileHighlighting.ensureLanguage(id), setError);
   }, [document, enabled, language]);
-  return error;
+  return { error, language: enabled ? language : "plaintext" };
 }

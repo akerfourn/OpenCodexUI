@@ -18,7 +18,10 @@ import {
 import type { MouseEvent, ReactNode } from "react";
 import { useState } from "react";
 
-import type { OpenCodexGitFile } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexGitDiffComparison,
+  OpenCodexGitFile
+} from "@open-codex-ui/opencodex-protocol";
 
 type ProjectGitFileRowProps = {
   actionIcon: ReactNode;
@@ -29,11 +32,12 @@ type ProjectGitFileRowProps = {
   deferDirectoryLabel?: string;
   deferFileLabel?: string;
   disabled?: boolean;
+  diffComparison: OpenCodexGitDiffComparison;
   file: OpenCodexGitFile;
   onDeferDirectory?(path: string): void;
   onDeferFile?(path: string): void;
   onAction(path: string): void;
-  onOpenFile(path: string): void;
+  onOpenFile(path: string, comparison: OpenCodexGitDiffComparison, fileState: OpenCodexGitFile["status"]): void;
   onToggle?(path: string): void;
 };
 
@@ -53,6 +57,7 @@ export function ProjectGitFileRow({
   deferDirectoryLabel,
   deferFileLabel,
   disabled = false,
+  diffComparison,
   file,
   onDeferDirectory,
   onDeferFile,
@@ -101,7 +106,8 @@ export function ProjectGitFileRow({
   }
 
   function handleOpenFile(): void {
-    onOpenFile(file.path);
+    const fileState = diffComparison === "staged" ? file.stagedStatus : file.unstagedStatus;
+    onOpenFile(file.path, diffComparison, fileState ?? file.status);
   }
 
   const fileDisplay = splitGitPath(file.path);

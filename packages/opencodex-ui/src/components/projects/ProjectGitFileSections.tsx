@@ -8,6 +8,7 @@ import { Box, Button, Divider, Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
+import type { OpenCodexGitDiffComparison, OpenCodexGitFile } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectGitChangesStore } from "../../stores/project/git/ProjectGitChangesStore";
 import { GitSectionHeader } from "./GitSectionHeader";
 import { ProjectGitFileRow } from "./ProjectGitFileRow";
@@ -16,7 +17,11 @@ type ProjectGitFileSectionsProps = {
   canOpenFiles: boolean;
   gitLabelsKey: "git.simple" | "git.technical";
   changesStore: ProjectGitChangesStore;
-  onOpenFile(path: string): void;
+  onOpenFile(
+    path: string,
+    comparison: OpenCodexGitDiffComparison,
+    fileState: OpenCodexGitFile["status"]
+  ): void;
 };
 
 /**
@@ -66,6 +71,7 @@ export function ProjectGitFileSections({
                 deferDirectoryLabel={t("git.deferDirectory")}
                 deferFileLabel={t("git.deferFile")}
                 disabled={changesStore.isBusy}
+                diffComparison="workingTree"
                 file={file}
                 onDeferDirectory={changesStore.deferPath}
                 onDeferFile={changesStore.deferPath}
@@ -107,6 +113,7 @@ export function ProjectGitFileSections({
                 canOpenFile={canOpenFiles}
                 checked={false}
                 disabled={changesStore.isBusy}
+                diffComparison="workingTree"
                 file={file}
                 onAction={changesStore.restoreDeferredPath}
                 onOpenFile={onOpenFile}
@@ -143,6 +150,7 @@ export function ProjectGitFileSections({
                 canOpenFile={canOpenFiles}
                 checked={changesStore.selectedStagedPaths.includes(file.path)}
                 disabled={changesStore.isBusy}
+                diffComparison="staged"
                 file={file}
                 onAction={changesStore.unstagePath}
                 onOpenFile={onOpenFile}

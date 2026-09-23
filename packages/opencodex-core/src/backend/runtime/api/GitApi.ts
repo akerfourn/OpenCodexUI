@@ -6,6 +6,8 @@ import type {
   OpenCodexGitBranchKind,
   OpenCodexGitCommitDetails,
   OpenCodexGitCommitResult,
+  OpenCodexGitDiffComparison,
+  OpenCodexGitFileDiff,
   OpenCodexGitLogPage,
   OpenCodexGitRemote,
   OpenCodexGitStatus,
@@ -25,6 +27,7 @@ type GitApiHandler = Pick<
   GitRuntimeHandler,
   | "readGitVersion"
   | "readGitStatus"
+  | "readGitFileDiff"
   | "initializeGitRepository"
   | "listGitRemotes"
   | "upsertGitRemote"
@@ -111,6 +114,16 @@ export class GitApi implements GitApiContract {
   /** Reads Git status for a project through its source. */
   async readStatus(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
     return await this.handler.readGitStatus(projectPath, sourceId);
+  }
+
+  /** Reads the Git snapshots used by the integrated file diff viewer. */
+  async readFileDiff(
+    projectPath: string,
+    sourceId: string | null,
+    path: string,
+    comparison: OpenCodexGitDiffComparison
+  ): Promise<OpenCodexGitFileDiff> {
+    return await this.handler.readGitFileDiff(projectPath, sourceId, path, comparison);
   }
 
   /** Initializes a Git repository and returns its refreshed status. */

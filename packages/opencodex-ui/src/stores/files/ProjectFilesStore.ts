@@ -3,6 +3,7 @@ import type { OpenCodexFileContext, OpenCodexFileTarget } from "@open-codex-ui/o
 import type { RootStore } from "../RootStore";
 import type { ProjectStore } from "../project/ProjectStore";
 import { FileDocument, type DocumentPosition } from "./FileDocument";
+import { type FileOpenIntent, resolveInitialFileView } from "./fileOpenIntent";
 import { WorkspaceTreeStore } from "./WorkspaceTreeStore";
 
 /** Project document catalogue independent of the right tool and viewer lifetime. */
@@ -63,7 +64,12 @@ export class ProjectFilesStore {
   }
 
   /** Opens one source document; future tools can supply a source position. */
-  async open(target: OpenCodexFileTarget, workspaceName: string, position?: DocumentPosition): Promise<void> {
+  async open(
+    target: OpenCodexFileTarget,
+    workspaceName: string,
+    position?: DocumentPosition,
+    intent: FileOpenIntent = { origin: "explorer" }
+  ): Promise<void> {
     const id = JSON.stringify([
       target.sourceId,
       target.projectId,
@@ -82,6 +88,7 @@ export class ProjectFilesStore {
       );
       this.documents.set(id, document);
     }
+    document.configureOpen(intent, resolveInitialFileView(intent));
     this.show(id);
     if (position !== undefined) document.position = { ...position };
     if (document.snapshot === null) await document.reload();

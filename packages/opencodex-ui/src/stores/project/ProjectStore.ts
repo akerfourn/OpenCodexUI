@@ -22,6 +22,7 @@ import { ProjectTasksStore } from "./ProjectTasksStore";
 import { ProjectViewLayoutStore } from "./ProjectViewLayoutStore";
 import type { ProjectTrustRequest } from "./ProjectTrustStore";
 import type { RootStore } from "../RootStore";
+import type { FileOpenIntent } from "../files/fileOpenIntent";
 import { ThreadListStore } from "./threads/ThreadListStore";
 
 export type ThreadIndicatorState = "idle" | "running" | "unseen";
@@ -147,8 +148,13 @@ export class ProjectStore {
    *
    * @returns Nothing.
    */
-  openLink(href: string, workspacePath?: string | null, sourceId?: string | null): void {
-    this.root.openLink(href, this, workspacePath, sourceId);
+  openLink(
+    href: string,
+    workspacePath?: string | null,
+    sourceId?: string | null,
+    intent: FileOpenIntent = { origin: "link" }
+  ): void {
+    this.root.openLink(href, this, workspacePath, sourceId, intent);
   }
 
   /**

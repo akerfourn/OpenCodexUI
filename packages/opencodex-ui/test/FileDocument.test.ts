@@ -51,6 +51,37 @@ describe("file documents", () => {
     });
   });
 
+  it("should load the Git snapshots for the document's staged comparison", async () => {
+    const { document, request } = await fixture();
+    request.mockResolvedValueOnce({
+      originalContent: "committed version",
+      modifiedContent: "staged version",
+      issue: null
+    });
+    document.configureOpen({
+      origin: "git",
+      gitDiff: { comparison: "staged", fileState: "modified" }
+    }, "diff");
+
+    await document.loadGitDiff();
+
+    expect(request).toHaveBeenLastCalledWith({
+      type: "git.fileDiff.read",
+      workspaceId: context.workspaceId,
+      projectId: context.projectId,
+      projectPath: context.workspacePath,
+      sourceId: context.sourceId,
+      path: "file.txt",
+      comparison: "staged"
+    });
+    expect(document.gitDiffSnapshot).toEqual({
+      originalContent: "committed version",
+      modifiedContent: "staged version",
+      issue: null
+    });
+    expect(document.isGitDiffReadOnly).toBe(true);
+  });
+
   it("should preserve a dirty buffer across access revocation and restoration", async () => {
     const { document, request } = await fixture();
     document.edit("unsaved text");

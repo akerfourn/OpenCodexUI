@@ -28,6 +28,21 @@ export const enFiles = {
     noWorkspace: "Select a workspace to browse its files.",
     sourceUnavailable: "The source is unavailable. Already opened documents remain readable.",
     readOnly: "Read only",
+    viewMode: "File display mode",
+    viewFile: "File",
+    viewDiff: "Diff",
+    diffLayout: "Diff layout",
+    diffSideBySide: "Side by side",
+    diffInline: "Inline",
+    diffOriginal: "Original version",
+    diffModified: "Modified version",
+    diffReadError: "Could not load the Git comparison.",
+    gitDiffReadOnly: "Git comparison is read only. Switch to File mode to edit the contents.",
+    diffIssues: {
+      binary: "This file is binary and cannot be compared as text.",
+      tooLarge: "This file exceeds the 2 MiB limit for diff display.",
+      conflicted: "This file has conflicts. Resolve them before viewing a reliable diff."
+    },
     mixedEol: "This file has mixed line endings. It remains read only to preserve its format.",
     conflict:
       "This file changed on disk. Your edits are preserved. Explicitly reload to resolve the conflict, or keep the document open to inspect and copy your content.",

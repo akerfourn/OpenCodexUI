@@ -1,4 +1,5 @@
 import { openApplicationLink } from "./files/openApplicationLink";
+import type { FileOpenIntent } from "./files/fileOpenIntent";
 import { FileLanguagesStore } from "./files/FileLanguagesStore";
 /**
  * Coordinates application-wide state, project tabs, and backend events.
@@ -255,8 +256,9 @@ export class RootStore {
    * @returns Nothing.
    */
   openLink(href: string, project: ProjectStore | null = this.activeProjectStore,
-    workspacePath?: string | null, sourceId?: string | null): void {
-    void openApplicationLink(this, href, project, workspacePath, sourceId);
+    workspacePath?: string | null, sourceId?: string | null,
+    intent: FileOpenIntent = { origin: "link" }): void {
+    void openApplicationLink(this, href, project, workspacePath, sourceId, intent);
   }
 
   /** Always uses the external opener for explicitly external actions. */

@@ -41,11 +41,24 @@ export function FileDocumentView({
       window.removeEventListener("focus", check);
     };
   }, [document, visible]);
+  useEffect(() => {
+    if (visible && !document.isLoading && document.viewMode === "diff") {
+      void document.loadGitDiff();
+    }
+  }, [document, document.isLoading, document.viewMode, visible]);
   /** Requests explicit resolution before replacing local content. */
   function reload(): void {
     files.reload(document);
   }
-  const error = document.error === null ? null : <FileErrorX error={document.error} />;
+  const diffCanRenderWithoutFile = document.gitDiffContext?.comparison === "staged" ||
+    document.gitDiffContext?.fileState === "deleted";
+  const hasDiffResult = document.gitDiffSnapshot !== null;
+  const diffIssue = document.gitDiffSnapshot?.issue ?? null;
+  const fileErrorIsDiffIssue = document.viewMode === "diff" && (
+    diffIssue !== null ||
+    (document.gitDiffContext?.fileState === "deleted" && document.error?.code === "inaccessible")
+  );
+  const error = document.error === null || fileErrorIsDiffIssue ? null : <FileErrorX error={document.error} />;
   const conflict = document.hasConflict ? (
     <Alert
       severity="warning"
@@ -61,18 +74,39 @@ export function FileDocumentView({
   const format =
     document.snapshot?.eol === "mixed" ? <Alert severity="info">{t("files.mixedEol")}</Alert> : null;
   const loading = document.isLoading ? <LinearProgress /> : null;
+  const diffLoading = document.isGitDiffLoading ? <LinearProgress /> : null;
+  const diffError = document.gitDiffError === null ? null : (
+    <Alert
+      severity="error"
+      action={(
+        <Button size="small" color="inherit" onClick={() => document.retryGitDiff()}>
+          {t("files.retry")}
+        </Button>
+      )}
+    >
+      {t("files.diffReadError")}
+      <details>
+        <summary>{t("files.details")}</summary>
+        {document.gitDiffError}
+      </details>
+    </Alert>
+  );
   const unavailable =
     document.target !== null && !root.sourcesStore.isSourceReady(document.target.sourceId) ? (
       <Alert severity="warning">{t("files.sourceUnavailable")}</Alert>
     ) : null;
-  const editor =
-    document.snapshot !== null || document.target === null ? (
+  const shouldShowEditor = document.viewMode === "diff"
+    ? hasDiffResult && (diffCanRenderWithoutFile || document.snapshot !== null || diffIssue !== null)
+    : document.snapshot !== null || document.target === null;
+  const editor = shouldShowEditor ? (
       <Editor document={document} visible={visible} languages={root.fileLanguagesStore} />
     ) : null;
   return (
     <div className="files-document">
       <FileDocumentToolbarX document={document} files={files} root={root} />
       {loading}
+      {diffLoading}
+      {diffError}
       {unavailable}
       {error}
       {conflict}

@@ -11,6 +11,7 @@ import type {
   OpenCodexComposerReference,
   OpenCodexFileSearchMode,
   OpenCodexAttachment,
+  OpenCodexGitDiffComparison,
   OpenCodexLogCategory,
   OpenCodexLogType,
   OpenCodexLogRetentionUnit,
@@ -290,6 +291,15 @@ export type OpenCodexRequest =
     }
   | { type: "git.version" }
   | { type: "git.status"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | {
+      type: "git.fileDiff.read";
+      workspaceId: string;
+      projectId: string;
+      projectPath: string;
+      sourceId: string | null;
+      path: string;
+      comparison: OpenCodexGitDiffComparison;
+    }
   | { type: "git.init"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "git.remotes"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "git.remote.upsert"; workspaceId?: string; projectPath: string; sourceId: string | null; name: string; url: string }

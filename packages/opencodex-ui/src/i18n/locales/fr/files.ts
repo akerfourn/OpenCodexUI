@@ -26,6 +26,21 @@ export const frFiles = {
     noWorkspace: "Sélectionnez un workspace pour parcourir ses fichiers.",
     sourceUnavailable: "La source est indisponible. Les documents déjà ouverts restent consultables.",
     readOnly: "Lecture seule",
+    viewMode: "Mode d’affichage du fichier",
+    viewFile: "Fichier",
+    viewDiff: "Diff",
+    diffLayout: "Disposition du diff",
+    diffSideBySide: "Côte à côte",
+    diffInline: "Intégré",
+    diffOriginal: "Version d’origine",
+    diffModified: "Version modifiée",
+    diffReadError: "Impossible de charger la comparaison Git.",
+    gitDiffReadOnly: "Comparaison Git en lecture seule. Passez en mode Fichier pour modifier le contenu.",
+    diffIssues: {
+      binary: "Ce fichier est binaire et ne peut pas être comparé comme du texte.",
+      tooLarge: "Ce fichier dépasse la limite de 2 Mio pour l’affichage du diff.",
+      conflicted: "Ce fichier est en conflit. Résolvez le conflit avant d’afficher un diff fiable."
+    },
     mixedEol:
       "Ce fichier utilise des fins de ligne mixtes. Il reste en lecture seule pour préserver son format.",
     conflict:

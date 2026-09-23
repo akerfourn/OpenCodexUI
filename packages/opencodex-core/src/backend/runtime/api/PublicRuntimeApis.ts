@@ -19,6 +19,8 @@ import type {
   OpenCodexGitBranchKind,
   OpenCodexGitCommitDetails,
   OpenCodexGitCommitResult,
+  OpenCodexGitDiffComparison,
+  OpenCodexGitFileDiff,
   OpenCodexGitLogPage,
   OpenCodexGitRemote,
   OpenCodexGitStatus,
@@ -393,6 +395,12 @@ export interface GitApi {
   readonly commitMessage: CommitMessageApi;
   readVersion(): Promise<OpenCodexToolVersionStatus>;
   readStatus(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
+  readFileDiff(
+    projectPath: string,
+    sourceId: string | null,
+    path: string,
+    comparison: OpenCodexGitDiffComparison
+  ): Promise<OpenCodexGitFileDiff>;
   initializeRepository(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
   listRemotes(projectPath: string, sourceId: string | null): Promise<OpenCodexGitRemote[]>;
   upsertRemote(

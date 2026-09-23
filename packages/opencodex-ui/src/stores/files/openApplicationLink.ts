@@ -2,6 +2,7 @@ import type { OpenCodexFileResult, OpenCodexFileEntry } from "@open-codex-ui/ope
 import type { RootStore } from "../RootStore";
 import type { ProjectStore } from "../project/ProjectStore";
 import { parseFileLink, relativeWorkspacePath } from "./fileLinkTarget";
+import type { FileOpenIntent } from "./fileOpenIntent";
 
 /** Discards older inspections when another link is selected in the same project. */
 const requests = new WeakMap<ProjectStore, number>();
@@ -12,7 +13,8 @@ export async function openApplicationLink(
   href: string,
   project: ProjectStore | null,
   workspacePath?: string | null,
-  sourceId?: string | null
+  sourceId?: string | null,
+  intent: FileOpenIntent = { origin: "link" }
 ): Promise<void> {
   const trimmed = href.trim();
   if (trimmed.length === 0) return;
@@ -49,7 +51,7 @@ export async function openApplicationLink(
           await root.request({ type: "system.openLink", href: trimmed,
             projectPath: contextPath, sourceId: contextSource });
         } else {
-          await project.files.open(target, workspace.name ?? workspace.path, position);
+          await project.files.open(target, workspace.name ?? workspace.path, position, intent);
         }
         return;
       }

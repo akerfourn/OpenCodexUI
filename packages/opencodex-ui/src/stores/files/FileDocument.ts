@@ -4,8 +4,10 @@ import type {
   OpenCodexFileSnapshot,
   OpenCodexFileResult,
   OpenCodexFileErrorCode,
-  OpenCodexRequest
+  OpenCodexRequest,
+  OpenCodexGitFileDiff
 } from "@open-codex-ui/opencodex-protocol";
+import type { FileDiffLayout, FileOpenIntent, FileViewMode } from "./fileOpenIntent";
 
 /** Backend port shared by documents and lazy explorers. */
 export interface FileRequestPort {
@@ -64,6 +66,20 @@ export class FileDocument {
   version = 0;
   /** Optional diagnostics supplied by another module, without debugger coupling. */
   annotations: DocumentAnnotation[] = [];
+  /** Current integrated viewer mode selected for this document. */
+  viewMode: FileViewMode = "file";
+  /** Monaco diff presentation; kept on the document for stable navigation. */
+  diffLayout: FileDiffLayout = "side-by-side";
+  /** Comparison context exists only when opened from a Git file row. */
+  gitDiffContext: Extract<FileOpenIntent, { origin: "git" }>["gitDiff"] | null = null;
+  /** Last source-owned Git snapshot used by the diff editor. */
+  gitDiffSnapshot: OpenCodexGitFileDiff | null = null;
+  /** Git comparison request feedback. */
+  gitDiffError: string | null = null;
+  /** Whether the current Git comparison request is pending. */
+  isGitDiffLoading = false;
+  /** Invalidates diff results after a new open intent or view transition. */
+  private gitDiffRequestGeneration = 0;
 
   /** Creates either a disk-backed document or an immutable in-memory document. */
   constructor(
@@ -74,19 +90,120 @@ export class FileDocument {
     private readonly port: FileRequestPort,
     readonly virtualLanguage?: string
   ) {
-    makeAutoObservable<this, "port" | "disposed" | "isChecking" | "viewState" | "disposers">(this, {
+    makeAutoObservable<this, "port" | "disposed" | "isChecking" | "viewState" | "disposers" |
+      "gitDiffRequestGeneration">(this, {
       port: false,
       target: false,
       disposed: false,
       isChecking: false,
       viewState: false,
-      disposers: false
+      disposers: false,
+      gitDiffRequestGeneration: false
     });
   }
 
   /** True only when the current buffer differs from its last confirmed baseline. */
   get isDirty(): boolean {
     return this.content !== this.savedContent;
+  }
+
+  /** Whether the selected Git comparison must not edit the file buffer. */
+  get isGitDiffReadOnly(): boolean {
+    return this.gitDiffContext?.comparison === "staged" ||
+      this.gitDiffContext?.fileState === "deleted" ||
+      this.gitDiffContext?.fileState === "conflicted";
+  }
+
+  /** Applies the entry-point default and drops snapshots from an older Git view. */
+  configureOpen(intent: FileOpenIntent, initialView: FileViewMode): void {
+    this.gitDiffContext = intent.origin === "git" ? { ...intent.gitDiff } : null;
+    this.viewMode = initialView;
+    this.gitDiffSnapshot = null;
+    this.gitDiffError = null;
+    this.isGitDiffLoading = false;
+    this.gitDiffRequestGeneration += 1;
+  }
+
+  /** Selects file or diff mode while ensuring a newly opened diff is fresh. */
+  setViewMode(viewMode: FileViewMode): void {
+    if (this.viewMode === viewMode) return;
+    this.viewMode = viewMode;
+    if (viewMode === "diff") {
+      this.gitDiffSnapshot = null;
+      this.gitDiffError = null;
+      this.isGitDiffLoading = false;
+      this.gitDiffRequestGeneration += 1;
+    }
+  }
+
+  /** Selects Monaco's side-by-side or inline diff presentation. */
+  setDiffLayout(layout: FileDiffLayout): void {
+    this.diffLayout = layout;
+  }
+
+  /** Reads the Git side of the active comparison without using host paths. */
+  async loadGitDiff(): Promise<void> {
+    const target = this.target;
+    const gitDiffContext = this.gitDiffContext;
+    if (
+      target === null ||
+      gitDiffContext === null ||
+      this.isLoading ||
+      this.gitDiffSnapshot !== null ||
+      this.isGitDiffLoading ||
+      this.disposed
+    ) return;
+
+    const generation = this.gitDiffRequestGeneration;
+    if (gitDiffContext.fileState === "conflicted") {
+      this.gitDiffSnapshot = { originalContent: "", modifiedContent: null, issue: "conflicted" };
+      return;
+    }
+    if (this.error?.code === "binary" || this.error?.code === "tooLarge") {
+      this.gitDiffSnapshot = {
+        originalContent: "",
+        modifiedContent: null,
+        issue: this.error.code === "binary" ? "binary" : "tooLarge"
+      };
+      return;
+    }
+    this.isGitDiffLoading = true;
+    this.gitDiffError = null;
+    try {
+      const result = await this.port.request<OpenCodexGitFileDiff>({
+        type: "git.fileDiff.read",
+        workspaceId: target.workspaceId,
+        projectId: target.projectId,
+        projectPath: target.workspacePath,
+        sourceId: target.sourceId,
+        path: target.path,
+        comparison: gitDiffContext.comparison
+      });
+      if (this.disposed || generation !== this.gitDiffRequestGeneration) return;
+      runInAction(() => {
+        this.gitDiffSnapshot = result;
+      });
+    } catch (error) {
+      if (this.disposed || generation !== this.gitDiffRequestGeneration) return;
+      runInAction(() => {
+        this.gitDiffError = String(error);
+      });
+    } finally {
+      if (!this.disposed && generation === this.gitDiffRequestGeneration) {
+        runInAction(() => {
+          this.isGitDiffLoading = false;
+        });
+      }
+    }
+  }
+
+  /** Clears the last failed result and retries the source-owned diff request. */
+  retryGitDiff(): void {
+    if (this.isGitDiffLoading || this.gitDiffContext === null) return;
+    this.gitDiffSnapshot = null;
+    this.gitDiffError = null;
+    this.gitDiffRequestGeneration += 1;
+    void this.loadGitDiff();
   }
 
   /** Unsupported format, virtual content and initial reads cannot be edited. */
