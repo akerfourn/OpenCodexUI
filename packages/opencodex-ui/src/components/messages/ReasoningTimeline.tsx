@@ -143,7 +143,7 @@ export function ReasoningTimeline({
           px: 1.25,
           position: isRunning ? "sticky" : "static",
           top: 0,
-          zIndex: isRunning ? 2 : "auto",
+          zIndex: isRunning ? 0 : "auto",
           bgcolor: "background.paper",
           "& .MuiAccordionSummary-content": {
             alignItems: "center",
