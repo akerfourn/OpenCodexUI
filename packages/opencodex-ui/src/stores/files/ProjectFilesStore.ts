@@ -84,7 +84,9 @@ export class ProjectFilesStore {
         target.path.split("/").at(-1) ?? target.path,
         Object.freeze({ ...target }),
         workspaceName,
-        this.root
+        this.root,
+        undefined,
+        (savedTarget) => this.refreshGitStatus(savedTarget)
       );
       this.documents.set(id, document);
     }
@@ -155,5 +157,15 @@ export class ProjectFilesStore {
       this.activeId = Array.from(this.documents.keys()).at(-1) ?? null;
       if (this.activeId === null) this.isVisible = false;
     }
+  }
+
+  /** Refreshes status for the saved document's captured workspace. */
+  private refreshGitStatus(target: Readonly<OpenCodexFileTarget>): void {
+    const gitStore = this.project.getGitStoreForWorkspace({
+      path: target.workspacePath,
+      sourceId: target.sourceId,
+      workspaceId: target.workspaceId
+    });
+    void gitStore.statusStore.refresh();
   }
 }

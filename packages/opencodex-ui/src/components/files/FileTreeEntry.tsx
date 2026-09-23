@@ -13,9 +13,14 @@ import LinkOutlined from "@mui/icons-material/LinkOutlined";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import { useTranslation } from "react-i18next";
-import type { OpenCodexFileEntry } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexFileEntry,
+  OpenCodexGitFileState
+} from "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceTreeStore } from "../../stores/files/WorkspaceTreeStore";
 import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
+import type { ProjectGitStatusStore } from "../../stores/project/git/ProjectGitStatusStore";
+import { createExplorerFileOpenIntent } from "../../stores/files/fileOpenIntent";
 import { FileTreeDirectoryX } from "./FileTreeDirectory";
 
 /** One accessible entry; external links expose workspace-scoped access controls. */
@@ -23,6 +28,7 @@ export function FileTreeEntry({
   entry,
   tree,
   files,
+  gitStatusStore,
   parentPath,
   workspaceName,
   depth
@@ -30,6 +36,7 @@ export function FileTreeEntry({
   entry: OpenCodexFileEntry;
   tree: WorkspaceTreeStore;
   files: ProjectFilesStore;
+  gitStatusStore: ProjectGitStatusStore;
   parentPath: string;
   workspaceName: string;
   depth: number;
@@ -40,6 +47,7 @@ export function FileTreeEntry({
   const [managing, setManaging] = useState(false);
   const path = parentPath.length === 0 ? entry.name : `${parentPath}/${entry.name}`;
   const directory = entry.kind === "directory";
+  const gitFile = directory ? undefined : gitStatusStore.filesByPath.get(path);
   const blocked = entry.linkError !== undefined;
   const expanded = directory && !blocked && tree.expanded.has(path);
   const ariaExpanded = directory ? expanded : undefined;
@@ -63,6 +71,7 @@ export function FileTreeEntry({
     <FileTreeDirectoryX
       tree={tree}
       files={files}
+      gitStatusStore={gitStatusStore}
       path={path}
       workspaceName={workspaceName}
       depth={depth + 1}
@@ -75,6 +84,10 @@ export function FileTreeEntry({
     tooltip = `${path} → ${entry.linkTarget}`;
   }
   if (entry.linkError !== undefined) tooltip += ` — ${t(`files.errors.${entry.linkError}`)}`;
+  const gitStatusLabel = gitFile === undefined
+    ? null
+    : t(`files.gitStatus.${gitFile.status}`);
+  if (gitStatusLabel !== null) tooltip += ` — ${gitStatusLabel}`;
   let color = directory ? "primary.main" : "text.primary";
   let lock = null;
   if (entry.linkAccess?.external) {
@@ -122,8 +135,24 @@ export function FileTreeEntry({
   function open(): void {
     if (disabled) return;
     if (directory) tree.toggle(path);
-    else void files.open({ ...tree.context, path }, workspaceName);
+    else void files.open(
+      { ...tree.context, path },
+      workspaceName,
+      undefined,
+      createExplorerFileOpenIntent(gitFile)
+    );
   }
+  const gitStatusBadge = gitFile === undefined || gitStatusLabel === null ? null : (
+    <Box
+      component="span"
+      className={`git-file-state git-file-state-${gitFile.status}`}
+      title={gitStatusLabel}
+      aria-label={gitStatusLabel}
+      sx={{ ml: "auto" }}
+    >
+      {getStatusDisplay(gitFile.status)}
+    </Box>
+  );
   return (
     <>
       <Tooltip title={tooltip} placement="left">
@@ -144,6 +173,7 @@ export function FileTreeEntry({
             <Typography variant="body2" noWrap>
               {entry.name}
             </Typography>
+            {gitStatusBadge}
           </ListItemButton>
         </Box>
       </Tooltip>
@@ -153,4 +183,16 @@ export function FileTreeEntry({
     </>
   );
 }
+
+/** Returns the compact Git state marker shared with the Git panel convention. */
+function getStatusDisplay(status: OpenCodexGitFileState): string {
+  if (status === "added" || status === "untracked") return "A";
+  if (status === "modified") return "M";
+  if (status === "deleted") return "D";
+  if (status === "renamed") return "R";
+  if (status === "copied") return "C";
+  if (status === "conflicted") return "!";
+  return "?";
+}
+
 export const FileTreeEntryX = observer(FileTreeEntry);

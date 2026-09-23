@@ -1,6 +1,7 @@
 import { observer } from "mobx-react-lite";
 import { Alert, Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import Refresh from "@mui/icons-material/Refresh";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { FileTreeDirectoryX } from "./FileTreeDirectory";
@@ -10,11 +11,18 @@ export function FilesExplorer({ projectStore }: { projectStore: ProjectStore }) 
   const { t } = useTranslation();
   const files = projectStore.files;
   const tree = files.tree;
+  const gitStatusStore = projectStore.gitStore.statusStore;
   const workspace = projectStore.workspaces.current;
   const workspaceName = workspace?.name ?? t("files.title");
+  useEffect(() => {
+    if (tree !== null && !gitStatusStore.hasLoaded && !gitStatusStore.isLoading) {
+      void gitStatusStore.refresh();
+    }
+  }, [tree, gitStatusStore]);
   /** Invalidates old directory replies and reloads the root. */
   function refresh(): void {
     tree?.refresh();
+    if (!gitStatusStore.isLoading) void gitStatusStore.refresh();
   }
   let content = <Alert severity="info">{t("files.noWorkspace")}</Alert>;
   if (tree !== null)
@@ -23,6 +31,7 @@ export function FilesExplorer({ projectStore }: { projectStore: ProjectStore }) 
         key={JSON.stringify(tree.context)}
         tree={tree}
         files={files}
+        gitStatusStore={gitStatusStore}
         path=""
         workspaceName={workspaceName}
       />

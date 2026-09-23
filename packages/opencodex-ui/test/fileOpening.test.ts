@@ -95,7 +95,8 @@ describe("file opening preference", () => {
     const { root, project, open, request } = fixture();
     await openApplicationLink(root, "src/app.ts:12:4", project, "/work/feature", "wsl");
     expect(open).toHaveBeenCalledWith({ sourceId: "wsl", projectId: "project", workspaceId: "feature",
-      workspacePath: "/work/feature", path: "src/app.ts" }, "Feature", { line: 12, column: 4 });
+      workspacePath: "/work/feature", path: "src/app.ts" }, "Feature", { line: 12, column: 4 },
+    { origin: "link" });
     expect(request).toHaveBeenCalledWith(expect.objectContaining({ type: "workspaceFiles.stat" }));
   });
 

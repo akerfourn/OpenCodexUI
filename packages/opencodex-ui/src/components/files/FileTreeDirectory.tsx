@@ -4,6 +4,7 @@ import { Button, CircularProgress, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { WorkspaceTreeStore } from "../../stores/files/WorkspaceTreeStore";
 import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
+import type { ProjectGitStatusStore } from "../../stores/project/git/ProjectGitStatusStore";
 import { FileTreeEntryX } from "./FileTreeEntry";
 import { FileErrorX } from "./FileError";
 
@@ -11,12 +12,14 @@ import { FileErrorX } from "./FileError";
 export function FileTreeDirectory({
   tree,
   files,
+  gitStatusStore,
   path,
   workspaceName,
   depth = 0
 }: {
   tree: WorkspaceTreeStore;
   files: ProjectFilesStore;
+  gitStatusStore: ProjectGitStatusStore;
   path: string;
   workspaceName: string;
   depth?: number;
@@ -57,6 +60,7 @@ export function FileTreeDirectory({
         entry={entry}
         tree={tree}
         files={files}
+        gitStatusStore={gitStatusStore}
         parentPath={path}
         workspaceName={workspaceName}
         depth={depth}

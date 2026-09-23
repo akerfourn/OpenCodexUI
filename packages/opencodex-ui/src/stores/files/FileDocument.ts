@@ -7,7 +7,7 @@ import type {
   OpenCodexRequest,
   OpenCodexGitFileDiff
 } from "@open-codex-ui/opencodex-protocol";
-import type { FileDiffLayout, FileOpenIntent, FileViewMode } from "./fileOpenIntent";
+import type { FileDiffLayout, FileGitDiffContext, FileOpenIntent, FileViewMode } from "./fileOpenIntent";
 
 /** Backend port shared by documents and lazy explorers. */
 export interface FileRequestPort {
@@ -70,8 +70,8 @@ export class FileDocument {
   viewMode: FileViewMode = "file";
   /** Monaco diff presentation; kept on the document for stable navigation. */
   diffLayout: FileDiffLayout = "side-by-side";
-  /** Comparison context exists only when opened from a Git file row. */
-  gitDiffContext: Extract<FileOpenIntent, { origin: "git" }>["gitDiff"] | null = null;
+  /** Optional comparison context supplied by a Git or Files entry point. */
+  gitDiffContext: FileGitDiffContext | null = null;
   /** Last source-owned Git snapshot used by the diff editor. */
   gitDiffSnapshot: OpenCodexGitFileDiff | null = null;
   /** Git comparison request feedback. */
@@ -88,17 +88,19 @@ export class FileDocument {
     readonly target: Readonly<OpenCodexFileTarget> | null,
     readonly workspaceName: string,
     private readonly port: FileRequestPort,
-    readonly virtualLanguage?: string
+    readonly virtualLanguage?: string,
+    private readonly onSaveSuccess?: (target: Readonly<OpenCodexFileTarget>) => void
   ) {
     makeAutoObservable<this, "port" | "disposed" | "isChecking" | "viewState" | "disposers" |
-      "gitDiffRequestGeneration">(this, {
+      "gitDiffRequestGeneration" | "onSaveSuccess">(this, {
       port: false,
       target: false,
       disposed: false,
       isChecking: false,
       viewState: false,
       disposers: false,
-      gitDiffRequestGeneration: false
+      gitDiffRequestGeneration: false,
+      onSaveSuccess: false
     });
   }
 
@@ -116,7 +118,9 @@ export class FileDocument {
 
   /** Applies the entry-point default and drops snapshots from an older Git view. */
   configureOpen(intent: FileOpenIntent, initialView: FileViewMode): void {
-    this.gitDiffContext = intent.origin === "git" ? { ...intent.gitDiff } : null;
+    this.gitDiffContext = "gitDiff" in intent && intent.gitDiff !== undefined
+      ? { ...intent.gitDiff }
+      : null;
     this.viewMode = initialView;
     this.gitDiffSnapshot = null;
     this.gitDiffError = null;
@@ -280,6 +284,7 @@ export class FileDocument {
           this.hasConflict ||= result.code === "conflict";
         }
       });
+      if (result.ok && this.target !== null) this.onSaveSuccess?.(this.target);
       return result.ok && !this.isDirty;
     } catch (error) {
       this.fail(error);

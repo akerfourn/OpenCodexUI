@@ -1,12 +1,13 @@
 /**
  * Holds Git repository status and repository lifecycle actions for one project.
  */
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable, observable, runInAction } from "mobx";
 
-import type { OpenCodexGitStatus } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexGitFile, OpenCodexGitStatus } from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectGitStore } from "./ProjectGitStore";
 import { readErrorMessage } from "./gitErrorMessage";
+import { areGitFileStatusesEqual, createGitFileStatusIndex } from "./gitFileStatusIndex";
 
 /** Empty status used when the project has no usable Git repository. */
 const emptyGitStatus: OpenCodexGitStatus = {
@@ -27,6 +28,8 @@ const emptyGitStatus: OpenCodexGitStatus = {
 export class ProjectGitStatusStore {
   /** Last Git status snapshot for the project. */
   status: OpenCodexGitStatus = emptyGitStatus;
+  /** Git state indexed by workspace-relative path for file-tree rows. */
+  readonly filesByPath = observable.map<string, OpenCodexGitFile>({}, { deep: false });
   /** Whether an initial status request has completed. */
   hasLoaded = false;
   /** Whether Git status is loading or mutating. */
@@ -40,9 +43,9 @@ export class ProjectGitStatusStore {
    * @param parent Owning Git store used for project context and coordination.
    */
   constructor(private readonly parent: ProjectGitStore) {
-    makeAutoObservable<ProjectGitStatusStore, "parent">(
+    makeAutoObservable<ProjectGitStatusStore, "parent" | "filesByPath">(
       this,
-      { parent: false },
+      { parent: false, filesByPath: false },
       { autoBind: true }
     );
   }
@@ -59,7 +62,7 @@ export class ProjectGitStatusStore {
    */
   async refresh(): Promise<void> {
     if (!this.parent.isAvailable) {
-      this.status = emptyGitStatus;
+      this.applyStatus(emptyGitStatus);
       this.hasLoaded = true;
       return;
     }
@@ -144,6 +147,21 @@ export class ProjectGitStatusStore {
    */
   applyStatus(status: OpenCodexGitStatus): void {
     this.status = status;
+    this.reconcileFileStatuses(createGitFileStatusIndex(status));
     this.parent.reconcileStatus(status);
+  }
+
+  /** Reconciles paths incrementally so unchanged file rows do not rerender. */
+  private reconcileFileStatuses(nextFiles: Map<string, OpenCodexGitFile>): void {
+    for (const path of this.filesByPath.keys()) {
+      if (!nextFiles.has(path)) this.filesByPath.delete(path);
+    }
+
+    for (const [path, nextFile] of nextFiles) {
+      const currentFile = this.filesByPath.get(path);
+      if (currentFile === undefined || !areGitFileStatusesEqual(currentFile, nextFile)) {
+        this.filesByPath.set(path, nextFile);
+      }
+    }
   }
 }

@@ -109,12 +109,23 @@ export class ProjectStore {
 
   /** Retains independent Git state so old replies cannot populate another checkout. */
   get gitStore(): ProjectGitStore {
-    const key = `${this.project.sourceId}:${this.workspacePath}`;
+    return this.getGitStoreForWorkspace({
+      path: this.workspacePath,
+      sourceId: this.project.sourceId,
+      workspaceId: this.workspaceId
+    });
+  }
+
+  /** Returns the Git aggregate for an explicit workspace, including retained documents. */
+  getGitStoreForWorkspace(workspace: {
+    path: string;
+    sourceId: string | null;
+    workspaceId?: string;
+  }): ProjectGitStore {
+    const key = `${workspace.sourceId}:${workspace.path}`;
     let store = this.gitStores.get(key);
     if (store === undefined) {
-      store = new ProjectGitStore(this, this.root, {
-        path: this.workspacePath, sourceId: this.project.sourceId, workspaceId: this.workspaceId
-      });
+      store = new ProjectGitStore(this, this.root, workspace);
       this.gitStores.set(key, store);
     }
     return store;

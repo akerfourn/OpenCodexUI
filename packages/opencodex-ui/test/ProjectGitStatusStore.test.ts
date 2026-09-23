@@ -193,6 +193,9 @@ describe("ProjectGitStore Git status", () => {
       sourceReady: false,
       status: createStatus({ branchName: "feature/status" })
     });
+    fixture.gitStore.statusStore.applyStatus(createStatus({
+      changedFiles: [createFile("src/stale.ts")]
+    }));
 
     await fixture.gitStore.statusStore.refresh();
 
@@ -208,6 +211,7 @@ describe("ProjectGitStore Git status", () => {
       changedFiles: [],
       stagedFiles: []
     });
+    expect(fixture.gitStore.statusStore.filesByPath.has("src/stale.ts")).toBe(false);
     expect(fixture.gitStore.statusStore.hasLoaded).toBe(true);
     expect(fixture.gitStore.statusStore.isLoading).toBe(false);
   });
@@ -274,6 +278,34 @@ describe("ProjectGitStore Git status", () => {
 
     expect(fixture.gitStore.changesStore.selectedChangedPaths).toEqual(["keep.ts"]);
     expect(fixture.gitStore.changesStore.selectedStagedPaths).toEqual(["staged.ts"]);
+  });
+
+  it("should index staged and unstaged file states and preserve unchanged entries", () => {
+    const fixture = createProjectGitStatusFixture();
+    const file = {
+      path: "src/combined.ts",
+      originalPath: null,
+      status: "modified" as const,
+      stagedStatus: "modified" as const,
+      unstagedStatus: "deleted" as const
+    };
+
+    fixture.gitStore.statusStore.applyStatus(createStatus({
+      changedFiles: [file],
+      stagedFiles: [file]
+    }));
+
+    const indexedFile = fixture.gitStore.statusStore.filesByPath.get(file.path);
+    expect(indexedFile).toEqual({ ...file, status: "deleted" });
+
+    fixture.gitStore.statusStore.applyStatus(createStatus({
+      changedFiles: [file],
+      stagedFiles: [file]
+    }));
+    expect(fixture.gitStore.statusStore.filesByPath.get(file.path)).toBe(indexedFile);
+
+    fixture.gitStore.statusStore.applyStatus(createStatus());
+    expect(fixture.gitStore.statusStore.filesByPath.has(file.path)).toBe(false);
   });
 
   it("should expose observable status fields and bind detached refresh calls", async () => {

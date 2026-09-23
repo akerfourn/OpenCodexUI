@@ -51,6 +51,30 @@ describe("file documents", () => {
     });
   });
 
+  it("should notify the workspace status store after a successful save", async () => {
+    const onSaveSuccess = vi.fn();
+    const request = vi.fn().mockResolvedValue({ ok: true, value: baseline });
+    const target = { ...context, path: "file.txt" };
+    const document = new FileDocument(
+      "id",
+      "file.txt",
+      target,
+      "Main",
+      { request },
+      undefined,
+      onSaveSuccess
+    );
+    await document.reload();
+    document.edit("updated");
+    request.mockResolvedValueOnce({
+      ok: true,
+      value: { ...baseline, content: "updated", revision: "v2" }
+    });
+
+    expect(await document.save()).toBe(true);
+    expect(onSaveSuccess).toHaveBeenCalledWith(target);
+  });
+
   it("should load the Git snapshots for the document's staged comparison", async () => {
     const { document, request } = await fixture();
     request.mockResolvedValueOnce({
