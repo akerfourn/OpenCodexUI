@@ -14,6 +14,8 @@ files:
   - "!node_modules/onnxruntime-node/**/libonnxruntime_providers_tensorrt*"
 
 extraResources:
+  - from: build/debug-adapter/1.140.0/js-debug
+    to: debug-adapter/js-debug
   - from: build/icon.ico
     to: icon.ico
   - from: build/icon.png

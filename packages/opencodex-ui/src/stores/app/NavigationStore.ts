@@ -181,6 +181,7 @@ export class NavigationStore {
    * @returns Whether any chat is active or recovering.
    */
   private hasRunningTurnInProject(projectId: string): boolean {
+    if (this.root.debugStore?.active && this.root.debugStore.snapshot.session?.configuration.context.projectId === projectId) return true;
     const projectStore = this.root.projectsStore.projectStoresById.get(projectId) ?? null;
 
     if (projectStore === null) {

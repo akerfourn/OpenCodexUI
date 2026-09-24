@@ -88,6 +88,7 @@ export class ProjectFilesStore {
         undefined,
         (savedTarget) => this.refreshGitStatus(savedTarget)
       );
+      this.root.debugStore?.bindDocument(document);
       this.documents.set(id, document);
     }
     document.configureOpen(intent, resolveInitialFileView(intent));

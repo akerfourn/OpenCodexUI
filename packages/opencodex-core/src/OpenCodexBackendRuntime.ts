@@ -1,3 +1,5 @@
+import { DebugService } from "./backend/debug/DebugService.js";
+import { requireToolWorkspace } from "./backend/workspaces/workspaceToolContext.js";
 import { WorkspaceFilesService } from "./backend/files/WorkspaceFilesService.js";
 import { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import { CodexDictationService } from "./backend/dictation/CodexDictationService.js";
@@ -47,6 +49,8 @@ export class OpenCodexBackendRuntime {
   readonly isPrerelease: boolean;
   /** Source-aware filesystem service for workspace documents. */
   readonly files: WorkspaceFilesService;
+  /** Local debugger owns its lifecycle independently of Codex conversations. */
+  readonly debug: DebugService;
   /** Isolated experimental speech transcription, outside normal conversation execution. */
   readonly dictation: CodexDictationService;
   /** Fully wired services owned by this runtime instance. */
@@ -67,6 +71,14 @@ export class OpenCodexBackendRuntime {
     this.apis = new BackendRuntimeApis(this.services, options);
     this.files = new WorkspaceFilesService(this.services.cacheRepository,
       this.services.projectRuntimeHandler, this.services.clientPool, this.settings);
+    this.debug = new DebugService(this.settings, async context => {
+      const workspace = await requireToolWorkspace(this.services.cacheRepository, context.workspaceId, context.projectId);
+      if (workspace.sourceId !== context.sourceId || workspace.path !== context.workspacePath) {
+        throw new Error("Workspace context changed. Recreate the debug configuration.");
+      }
+      const source = await this.services.projectRuntimeHandler.resolveRequestedSource(context.sourceId);
+      if (source.kind !== "local") throw new Error("Debug currently supports host-local sources only (no WSL, Docker or remote).");
+    }, snapshot => options.emit({ type: "debug.state", snapshot }), options.debugAdapter);
     this.dictation = new CodexDictationService(async (sourceId) => {
       const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
       return new CodexAppServerClient({
@@ -222,6 +234,7 @@ export class OpenCodexBackendRuntime {
    * @returns Promise resolved when resources are disposed.
    */
   async dispose(): Promise<void> {
+    await this.debug.dispose();
     await this.dictation.dispose();
     this.services.notificationCoordinator.flushAll();
     await this.services.clientPool.dispose();
@@ -247,6 +260,7 @@ export class OpenCodexBackendRuntime {
       appVersion: this.options.appVersion ?? null,
       isPrerelease: this.isPrerelease
     });
+    this.options.emit({ type: "debug.state", snapshot: this.debug.snapshot() });
     await this.projects.list();
     await this.groups.list();
     await this.models.list();

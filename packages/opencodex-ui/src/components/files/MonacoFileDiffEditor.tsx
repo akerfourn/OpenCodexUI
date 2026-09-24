@@ -1,3 +1,4 @@
+import { attachDocumentGutter } from "./documentGutter";
 import { Alert, LinearProgress } from "@mui/material";
 import { runInAction } from "mobx";
 import { observer } from "mobx-react-lite";
@@ -73,9 +74,12 @@ export function MonacoFileDiffEditor({ document, visible, language }: {
         () => void document.save()
       );
     }
+    const detachGutter = modifiedUsesDocument
+      ? attachDocumentGutter(editor.getModifiedEditor(), document) : () => undefined;
     editorRef.current = editor;
 
     return () => {
+      detachGutter();
       editor.dispose();
       original.dispose();
       if (!modifiedUsesDocument) modified.dispose();

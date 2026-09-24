@@ -1,0 +1,21 @@
+.debug-glyph::after {
+  content: "";
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: auto;
+  border-radius: 50%;
+  border: 2px solid #d32f2f;
+  box-sizing: border-box;
+}
+.debug-glyph-verified::after { background: #d32f2f; }
+.debug-glyph-requested::after { background: #d32f2f80; }
+.debug-glyph-unresolved::after { border-style: dashed; }
+.debug-glyph-disabled::after { border-color: #888; background: #8885; }
+.debug-glyph-execution::after {
+  border-radius: 0;
+  border: none;
+  background: #d99c00;
+  clip-path: polygon(0 20%, 55% 20%, 55% 0, 100% 50%, 55% 100%, 55% 80%, 0 80%);
+}
+.debug-execution-line { background: #d99c0030; }

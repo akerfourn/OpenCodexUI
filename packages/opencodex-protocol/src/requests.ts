@@ -1,3 +1,4 @@
+import type { OpenCodexDebugRequest } from "./debug";
 /**
  * Declares the requests sent from the UI to the OpenCodex backend.
  */
@@ -42,6 +43,7 @@ import type { OpenCodexCollaborationQuery } from "./collaboration";
  */
 export type OpenCodexRequest =
   | OpenCodexFileRequest
+  | OpenCodexDebugRequest
   | { type: "dictation.models.state" }
   | { type: "dictation.models.install"; modelId: OpenCodexDictationSettings["modelId"] }
   | { type: "dictation.models.remove" }

@@ -32,6 +32,8 @@ export class OpenCodexRequestRouter {
         ? await this.runtime.resolveToolRequest(request) : request;
       return await this.handleValidRequest(resolved);
     } catch (error) {
+      // Debug owns its error feedback and never initiates Codex thread recovery.
+      if (request.type === "debug") throw error;
       this.runtime.handleRequestError(request, error);
     }
   }
@@ -45,6 +47,8 @@ export class OpenCodexRequestRouter {
    */
   private async handleValidRequest(request: OpenCodexRequest): Promise<unknown> {
     switch (request.type) {
+      case "debug":
+        return this.runtime.debug.execute(request.action);
       case "workspaceFiles.linkAccess":
       case "workspaceFiles.setLinkAccess":
       case "workspaceFiles.stat":

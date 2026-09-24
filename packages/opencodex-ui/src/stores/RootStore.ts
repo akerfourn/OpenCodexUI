@@ -1,3 +1,4 @@
+import { DebugStore } from "./debug/DebugStore";
 import { openApplicationLink } from "./files/openApplicationLink";
 import type { FileOpenIntent } from "./files/fileOpenIntent";
 import { FileLanguagesStore } from "./files/FileLanguagesStore";
@@ -46,6 +47,8 @@ export { HOME_TAB_ID, type OpenCodexAppTab } from "./app/NavigationStore";
 export class RootStore {
   /** Central guard shared by document, project and application close actions. */
   readonly fileCloseStore = new FileCloseStore();
+  /** Survives project-tool navigation and document unmounts. */
+  readonly debugStore = new DebugStore(this);
   readonly appStore = new AppStore(this);
   /** Catalogue preferences shared by Home and all file editors. */
   readonly fileLanguagesStore = new FileLanguagesStore(this);
@@ -117,7 +120,7 @@ export class RootStore {
    * @returns `true` when at least one project should display an activity marker.
    */
   get hasPendingProjectActivity(): boolean {
-    return this.navigationStore.projectTabStores.some((projectStore) => (
+    return this.debugStore.active || this.navigationStore.projectTabStores.some((projectStore) => (
       projectStore.hasSidePanelActivity ||
       Array.from(projectStore.files.documents.values()).some(document => document.isDirty || document.isSaving)
     ));
@@ -183,6 +186,7 @@ export class RootStore {
    * @returns Nothing.
    */
   handleEvent(event: OpenCodexEvent): void {
+    if (event.type === "debug.state") { this.debugStore.apply(event.snapshot); return; }
     if (event.type === "dictation.models.state") {
       this.dictationStore.applyModelState(event.state);
       return;

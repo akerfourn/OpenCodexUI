@@ -1,3 +1,4 @@
+import type { DebugPreferences } from "../debug";
 import type { OpenCodexFileGrant } from "../files";
 import type { OpenCodexDictationSettings } from "../dictation";
 import type {
@@ -33,6 +34,8 @@ export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
  * Persisted application settings shared by backend and UI.
  */
 export type OpenCodexSettings = {
+  /** Local debugger configurations, workspace breakpoints and watch expressions. */
+  debug?: DebugPreferences;
   /** File explorer permissions only; does not affect Codex or command execution. */
   fileLinkGrants?: OpenCodexFileGrant[];
   /** Preferred destination for project file links; omitted settings use the integrated editor. */

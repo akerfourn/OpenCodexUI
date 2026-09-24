@@ -1,3 +1,4 @@
+import { attachDocumentGutter } from "./documentGutter";
 import { runInAction } from "mobx";
 import { observer } from "mobx-react-lite";
 import { useEffect, useRef } from "react";
@@ -34,6 +35,7 @@ export function MonacoFileTextEditor({ document, visible }: {
       ariaLabel: document.name,
       fixedOverflowWidgets: true
     });
+    const detachGutter = attachDocumentGutter(editor, document);
     editorRef.current = editor;
     editor.restoreViewState(document.viewState as monaco.editor.ICodeEditorViewState | null);
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -41,6 +43,7 @@ export function MonacoFileTextEditor({ document, visible }: {
     });
     return () => {
       document.viewState = editor.saveViewState();
+      detachGutter();
       editor.dispose();
       editorRef.current = null;
     };

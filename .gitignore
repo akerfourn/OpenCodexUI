@@ -9,3 +9,5 @@ release/
 .codex
 /.count
 /.count-cache
+
+/apps/electron-app/build/debug-adapter/

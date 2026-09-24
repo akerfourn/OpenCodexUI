@@ -37,6 +37,10 @@ export function CloseProjectDialog({ store }: CloseProjectDialogProps) {
   const isOpen = projectStore !== null;
   const hasRunningTurn = projectStore === null ? false : hasRunningChat(projectStore);
   const projectName = projectStore?.displayName ?? "";
+  const hasDebugSession = store.debugStore?.active &&
+    store.debugStore.snapshot.session?.configuration.context.projectId === projectStore?.project.id;
+  let debugWarning;
+  if (hasDebugSession) debugWarning = <Typography color="error" variant="body2" sx={{ mb: 2 }}>{t("debug.closeProject")}</Typography>;
 
   function handleCancel(): void {
     setIsConfirmed(false);
@@ -66,6 +70,7 @@ export function CloseProjectDialog({ store }: CloseProjectDialogProps) {
             {t("closeProject.runningTurn")}
           </Typography>
         ) : null}
+        {debugWarning}
         <FormControlLabel
           control={<Checkbox checked={isConfirmed} onChange={handleConfirmToggle} />}
           label={t("closeProject.confirmCheckbox")}
@@ -79,7 +84,7 @@ export function CloseProjectDialog({ store }: CloseProjectDialogProps) {
           type="button"
           variant="contained"
           color="error"
-          disabled={!isConfirmed || hasRunningTurn}
+          disabled={!isConfirmed || hasRunningTurn || hasDebugSession}
           onClick={handleSubmit}
         >
           {t("closeProject.submit")}

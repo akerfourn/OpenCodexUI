@@ -1,3 +1,4 @@
+import { prepareDebugAdapter } from "./prepare-debug-adapter.mjs";
 /**
  * Runs the Electron development workflow with Vite, esbuild, and automatic restarts.
  */
@@ -34,6 +35,7 @@ main().catch((error) => {
  * @returns Promise resolved once the dev workflow has been initialized.
  */
 async function main() {
+  await prepareDebugAdapter();
   await rebuildNativeDependenciesForElectron();
 
   const { server: viteServer, url: devServerUrl } = await startViteServer();

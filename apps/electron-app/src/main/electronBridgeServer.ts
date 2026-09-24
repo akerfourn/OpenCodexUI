@@ -1,3 +1,5 @@
+import { resolveDebugAdapterPath } from "./debugAdapterPath.js";
+import { isDebugActive } from "@open-codex-ui/opencodex-protocol";
 import { DictationHostService } from "./dictation/DictationHostService.js";
 /**
  * Hosts the Electron-side bridge between renderer IPC requests and the backend.
@@ -91,6 +93,11 @@ export class ElectronBridgeServer {
     }, isAutomaticUpdateSupported() ? createNativeAppUpdater() : undefined);
 
     this.runtime = new OpenCodexBackendRuntime({
+      debugAdapter: {
+        executable: process.execPath,
+        electron: true,
+        entrypoint: resolveDebugAdapterPath(app.isPackaged, process.resourcesPath, app.getAppPath(), process.cwd())
+      },
       settings: options.settings,
       projectPath: options.projectPath,
       appVersion: options.appVersion,
@@ -208,7 +215,7 @@ export class ElectronBridgeServer {
    * @returns Whether at least one project has pending tool activity.
    */
   hasPendingProjectActivity(): boolean {
-    return this.pendingProjectActivity;
+    return this.pendingProjectActivity || isDebugActive(this.runtime.debug.snapshot().session);
   }
 
   /**

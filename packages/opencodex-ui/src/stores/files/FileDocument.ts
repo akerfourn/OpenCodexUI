@@ -34,8 +34,21 @@ export interface FileDocumentError {
   details: string;
 }
 
+/** Optional margin decorations shared by text viewers and external tools. */
+export interface DocumentGutterMarker {
+  line: number;
+  kind: "requested" | "verified" | "disabled" | "unresolved" | "execution";
+  message?: string;
+}
+export interface DocumentGutter {
+  readonly markers: DocumentGutterMarker[];
+  toggle(line: number): void;
+}
+
 /** Viewer-independent document state; disk identity never follows UI selection. */
 export class FileDocument {
+  /** Tool-owned margin state, independent of the document content. */
+  gutter: DocumentGutter | null = null;
   /** Editable text uses LF internally; the backend restores the original line endings. */
   content = "";
   /** Optional viewer language choice; null retains automatic detection. */
