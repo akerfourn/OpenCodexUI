@@ -3,6 +3,24 @@ import type { frDebug } from "../fr/debug.js";
 
 export const enDebug = {
   "debug": {
+    "helpLabel": "Help: {{field}}",
+    "help": {
+      "name": "A name to identify this configuration, such as “Frontend” or “Node API”.",
+      "target": "Choose Node.js for a script or server running with Node. Choose Chrome for JavaScript running in a web page (React, Vue, etc.).",
+      "launchNode": "OpenCodexUI starts the specified program with Node and connects the debugger. Stopping the session also stops that program.",
+      "launchChrome": "OpenCodexUI opens Chrome with a dedicated profile. Start your development server first (for example, npm run dev): the debugger does not start that server.",
+      "attach": "Connects the debugger to a program or browser already running with debugging enabled. Enter its debug port. Disconnecting leaves it running.",
+      "program": "The file to execute, such as src/index.js or dist/index.js. Paths are relative to the working directory, or absolute. For compiled TypeScript, select the generated JavaScript; source maps let you debug the .ts file.",
+      "arguments": "Arguments passed to the program as a JSON array. Leave [] for no arguments. Example: [\"--port\", \"3000\"]. Do not enter a full command such as npm run dev.",
+      "url": "The address of your running web application, such as http://localhost:5173. Use the URL shown by your development server.",
+      "urlFilter": "Identifies the tab to attach to. Example: http://localhost:5173/*, where * matches part of the URL. The filter must match exactly one open tab.",
+      "webRoot": "The local folder containing your web application sources. Leave . for the workspace root, or enter a subfolder such as frontend. This mapping helps locate files in Monaco.",
+      "runtimeNode": "Leave empty to use node found on PATH. Otherwise, enter the path to the Node executable. Enter the JavaScript file to debug in “Program”.",
+      "runtimeChrome": "Leave empty to detect Chrome automatically. Otherwise, enter the path to its executable. Enter your application URL in “URL to open”.",
+      "portNode": "The Node Inspector port, usually 9229. Example: node --inspect=9229 dist/index.js. This is separate from your application’s HTTP port.",
+      "portChrome": "Chrome’s remote debugging port, often 9222, enabled with --remote-debugging-port=9222 and a dedicated profile (--user-data-dir). Use the existing browser’s port, not the web server’s port.",
+      "cwd": "The program’s working directory. . means the workspace root; backend means its backend subfolder. The program path and its relative file accesses start from this directory."
+    },
     "error": "The debug request failed. Check the details to adjust the configuration or try again.",
     "details": "Details",
     "title": "Debug",

@@ -1,9 +1,10 @@
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField } from "@mui/material";
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DebugConfiguration, OpenCodexFileContext } from "@open-codex-ui/opencodex-protocol";
 import type { DebugStore } from "../../stores/debug/DebugStore";
+import { DebugConfigurationField } from "./DebugConfigurationField";
 
 /** Edits the explicitly supported subset of js-debug parameters; never imports launch.json. */
 export function DebugConfigurationDialog({ store, context, configuration, onClose }: {
@@ -31,38 +32,74 @@ export function DebugConfigurationDialog({ store, context, configuration, onClos
     } catch (failure) { setError(String(failure)); }
     finally { setSaving(false); }
   }
+  let modeHelp = t("debug.help.launchNode");
+  let runtimeHelp = t("debug.help.runtimeNode");
+  let portHelp = t("debug.help.portNode");
+  if (draft.target === "chrome") {
+    modeHelp = t("debug.help.launchChrome");
+    runtimeHelp = t("debug.help.runtimeChrome");
+    portHelp = t("debug.help.portChrome");
+  }
+  if (draft.request === "attach") {
+    modeHelp = t("debug.help.attach");
+  }
   let targetFields;
   if (draft.target === "node" && draft.request === "launch") {
     targetFields = <>
-      <TextField label={t("debug.program")} value={draft.program ?? ""} onChange={event => field("program", event.target.value)} />
-      <TextField label={t("debug.arguments")} value={args} onChange={event => setArgs(event.target.value)} helperText={t("debug.argsHelp")} />
+      <DebugConfigurationField label={t("debug.program")}
+        help={t("debug.help.program")} value={draft.program ?? ""}
+        onChange={event => field("program", event.target.value)} />
+      <DebugConfigurationField label={t("debug.arguments")}
+        help={t("debug.help.arguments")} value={args}
+        onChange={event => setArgs(event.target.value)} helperText={t("debug.argsHelp")} />
     </>;
   } else if (draft.target === "chrome") {
-    let urlField = <TextField label={t("debug.url")} value={draft.url ?? ""} onChange={event => field("url", event.target.value)} />;
-    if (draft.request === "attach") urlField = <TextField label={t("debug.urlFilter")} value={draft.urlFilter ?? ""}
-      onChange={event => field("urlFilter", event.target.value)} helperText={t("debug.urlFilterHelp")} />;
-    targetFields = <>{urlField}<TextField label={t("debug.webRoot")} value={draft.webRoot ?? "."}
-      onChange={event => field("webRoot", event.target.value)} /></>;
+    let urlField = <DebugConfigurationField label={t("debug.url")}
+      help={t("debug.help.url")} value={draft.url ?? ""}
+      onChange={event => field("url", event.target.value)} />;
+    if (draft.request === "attach") {
+      urlField = <DebugConfigurationField label={t("debug.urlFilter")}
+        help={t("debug.help.urlFilter")} value={draft.urlFilter ?? ""}
+        onChange={event => field("urlFilter", event.target.value)} helperText={t("debug.urlFilterHelp")} />;
+    }
+    targetFields = <>
+      {urlField}
+      <DebugConfigurationField label={t("debug.webRoot")}
+        help={t("debug.help.webRoot")} value={draft.webRoot ?? "."}
+        onChange={event => field("webRoot", event.target.value)} />
+    </>;
   }
-  let connectionField = <TextField label={t("debug.runtime")} value={draft.runtime ?? ""}
+  let connectionField = <DebugConfigurationField label={t("debug.runtime")}
+    help={runtimeHelp} value={draft.runtime ?? ""}
     onChange={event => field("runtime", event.target.value)} helperText={t("debug.runtimeHelp")} />;
-  if (draft.request === "attach") connectionField = <TextField label={t("debug.port")} type="number"
-    value={draft.port ?? ""} onChange={event => field("port", Number(event.target.value))} helperText={t("debug.loopback")} />;
+  if (draft.request === "attach") {
+    connectionField = <DebugConfigurationField label={t("debug.port")}
+      help={portHelp} type="number" value={draft.port ?? ""}
+      onChange={event => field("port", Number(event.target.value))} helperText={t("debug.loopback")} />;
+  }
   let errorContent;
   if (error) errorContent = <Alert severity="error">{error}</Alert>;
   return <Dialog open fullWidth maxWidth="sm" onClose={(_event, reason) => { if (reason !== "backdropClick" && !saving) onClose(); }}>
     <DialogTitle>{t("debug.configuration")}</DialogTitle>
     <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
       {errorContent}
-      <TextField label={t("debug.name")} value={draft.name} onChange={event => field("name", event.target.value)} />
-      <TextField select label={t("debug.target")} value={draft.target} onChange={event => field("target", event.target.value)}>
+      <DebugConfigurationField label={t("debug.name")}
+        help={t("debug.help.name")} value={draft.name}
+        onChange={event => field("name", event.target.value)} />
+      <DebugConfigurationField select label={t("debug.target")}
+        help={t("debug.help.target")} value={draft.target}
+        onChange={event => field("target", event.target.value)}>
         <MenuItem value="node">Node.js / TypeScript</MenuItem><MenuItem value="chrome">Chrome / JavaScript</MenuItem>
-      </TextField>
-      <TextField select label={t("debug.mode")} value={draft.request} onChange={event => field("request", event.target.value)}>
+      </DebugConfigurationField>
+      <DebugConfigurationField select label={t("debug.mode")}
+        help={modeHelp} value={draft.request}
+        onChange={event => field("request", event.target.value)}>
         <MenuItem value="launch">{t("debug.launch")}</MenuItem><MenuItem value="attach">{t("debug.attach")}</MenuItem>
-      </TextField>
+      </DebugConfigurationField>
       {targetFields}{connectionField}
-      <TextField label={t("debug.cwd")} value={draft.cwd ?? "."} onChange={event => field("cwd", event.target.value)} />
+      <DebugConfigurationField label={t("debug.cwd")}
+        help={t("debug.help.cwd")} value={draft.cwd ?? "."}
+        onChange={event => field("cwd", event.target.value)} />
       <Alert severity="info">{t("debug.configScope", { path: context.workspacePath })}</Alert>
     </Stack></DialogContent>
     <DialogActions><Button onClick={onClose} disabled={saving}>{t("debug.cancel")}</Button>

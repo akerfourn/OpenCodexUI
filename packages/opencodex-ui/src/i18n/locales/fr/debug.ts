@@ -1,5 +1,23 @@
 export const frDebug = {
   "debug": {
+    "helpLabel": "Aide : {{field}}",
+    "help": {
+      "name": "Un nom libre pour retrouver cette configuration, par exemple « Frontend » ou « API Node ».",
+      "target": "Choisissez Node.js pour un script ou un serveur exécuté avec Node. Choisissez Chrome pour le JavaScript exécuté dans une page web (React, Vue, etc.).",
+      "launchNode": "OpenCodexUI démarre le programme indiqué avec Node et y connecte le debugger. Arrêter la session arrête aussi ce programme.",
+      "launchChrome": "OpenCodexUI ouvre Chrome avec un profil dédié. Démarrez d’abord votre serveur de développement (par exemple npm run dev) : le debugger ne lance pas ce serveur.",
+      "attach": "Connecte le debugger à un programme ou un navigateur déjà lancé avec le debug activé. Vous devez indiquer son port de debug. Se déconnecter le laisse tourner.",
+      "program": "Le fichier à exécuter, par exemple src/index.js ou dist/index.js. Le chemin est relatif au répertoire de travail, ou absolu. Pour du TypeScript compilé, indiquez le JavaScript produit ; les source maps permettent de déboguer le .ts.",
+      "arguments": "Arguments transmis au programme, sous forme de tableau JSON. Laissez [] si aucun argument. Exemple : [\"--port\", \"3000\"]. Ne saisissez pas une commande complète comme npm run dev.",
+      "url": "L’adresse de l’application web déjà démarrée, par exemple http://localhost:5173. Utilisez l’URL affichée par votre serveur de développement.",
+      "urlFilter": "Identifie l’onglet auquel se connecter. Exemple : http://localhost:5173/*, où * remplace une partie de l’URL. Le filtre doit correspondre à un seul onglet ouvert.",
+      "webRoot": "Le dossier local correspondant aux sources de votre application web. Laissez . si elles sont à la racine du workspace ; sinon indiquez par exemple frontend. Cette correspondance aide à retrouver les fichiers dans Monaco.",
+      "runtimeNode": "Laissez vide pour utiliser node trouvé dans le PATH. Sinon, indiquez le chemin de l’exécutable Node à utiliser. Le fichier JavaScript à déboguer se renseigne dans « Programme ».",
+      "runtimeChrome": "Laissez vide pour détecter Chrome automatiquement. Sinon, indiquez le chemin de son exécutable. L’URL de votre application se renseigne dans « URL à ouvrir ».",
+      "portNode": "Le port Inspector de Node, généralement 9229. Exemple de démarrage : node --inspect=9229 dist/index.js. Ce port est distinct du port HTTP de votre application.",
+      "portChrome": "Le port de débogage distant de Chrome, souvent 9222, activé avec --remote-debugging-port=9222 et un profil dédié (--user-data-dir). Utilisez le port du navigateur existant, pas celui du serveur web.",
+      "cwd": "Le dossier de travail du programme. . désigne la racine du workspace ; backend désigne son sous-dossier backend. Le chemin du programme et ses accès relatifs aux fichiers partent de ce dossier."
+    },
     "error": "La demande de debug n’a pas abouti. Consultez les détails pour corriger la configuration ou réessayer.",
     "details": "Détails",
     "title": "Debug",
