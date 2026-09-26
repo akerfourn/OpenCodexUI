@@ -34,7 +34,7 @@ export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
  * Persisted application settings shared by backend and UI.
  */
 export type OpenCodexSettings = {
-  /** Local debugger configurations, workspace breakpoints and watch expressions. */
+  /** @deprecated Read only to migrate legacy debugger data to SQLite, then removed. */
   debug?: DebugPreferences;
   /** File explorer permissions only; does not affect Codex or command execution. */
   fileLinkGrants?: OpenCodexFileGrant[];

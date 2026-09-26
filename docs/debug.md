@@ -16,7 +16,13 @@ Chrome installed on the host.
   scripts use js-debug's internal source-map entry pauses so initial breakpoints
   can be installed before the first compiled statements execute.
 
-Configurations, breakpoints and watches live in the existing settings JSON.
+Configurations, breakpoints and watches live in the application's SQLite
+database. Profiles and breakpoints retain their full source, project and
+workspace context (including the captured path); watches remain application-wide.
+Records are updated individually or per workspace, independently of global
+settings. Legacy `settings.json` debug data is imported once in a transaction;
+the JSON section is removed only after successful import and loading. A retry
+cannot overwrite database changes or restore deleted profiles.
 Relative paths are resolved against the configuration's captured workspace.
 Neither opening a project nor loading settings starts a program.
 

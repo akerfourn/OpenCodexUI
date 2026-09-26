@@ -73,5 +73,6 @@ export {
 } from "./SqliteOpenCodexCacheRepository.js";
 export { createProjectIdentity, normalizeProjectPath, type ProjectIdentity } from "./projectIdentity.js";
 export type { WorkspaceCacheRepository, WorkspaceExecutionReservation } from "./types/workspaces.js";
+export type { DebugRepository } from "./types/debug.js";
 export type { WorkspaceTransitionRecord, WorkspaceTransitionRepository } from "./types/workspaceTransitions.js";
 export type { WorkspaceCreationInput, WorkspaceCreationRepository } from "./types/workspaceCreations.js";

@@ -10,6 +10,7 @@ import type {
   SourceCacheRepository
 } from "./repositoryTooling.js";
 import type { ProjectGoalCacheRepository } from "./repositoryGoals.js";
+import type { DebugRepository } from "./debug.js";
 
 /**
  * Describes the storage contract implemented by cache backends.
@@ -24,6 +25,8 @@ export interface OpenCodexCacheRepository
     ThreadCacheRepository {
   /** Workspace catalogue and atomic execution reservations. */
   readonly workspaces: WorkspaceCacheRepository;
+  /** Persisted debugger profiles, breakpoints and watches. */
+  readonly debug: DebugRepository;
   /**
    * Closes resources owned by the repository.
    *

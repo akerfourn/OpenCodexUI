@@ -71,14 +71,14 @@ export class OpenCodexBackendRuntime {
     this.apis = new BackendRuntimeApis(this.services, options);
     this.files = new WorkspaceFilesService(this.services.cacheRepository,
       this.services.projectRuntimeHandler, this.services.clientPool, this.settings);
-    this.debug = new DebugService(this.settings, async context => {
+    this.debug = new DebugService(this.services.cacheRepository?.debug ?? null, async context => {
       const workspace = await requireToolWorkspace(this.services.cacheRepository, context.workspaceId, context.projectId);
       if (workspace.sourceId !== context.sourceId || workspace.path !== context.workspacePath) {
         throw new Error("Workspace context changed. Recreate the debug configuration.");
       }
       const source = await this.services.projectRuntimeHandler.resolveRequestedSource(context.sourceId);
       if (source.kind !== "local") throw new Error("Debug currently supports host-local sources only (no WSL, Docker or remote).");
-    }, snapshot => options.emit({ type: "debug.state", snapshot }), options.debugAdapter);
+    }, snapshot => options.emit({ type: "debug.state", snapshot }), options.debugAdapter, this.settings);
     this.dictation = new CodexDictationService(async (sourceId) => {
       const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
       return new CodexAppServerClient({
@@ -248,6 +248,7 @@ export class OpenCodexBackendRuntime {
    * @returns Success result.
    */
   async bootstrap(): Promise<{ ok: true }> {
+    await this.debug.initialize();
     await this.services.applicationLogService.start();
     await this.services.projectRuntimeHandler.ensureSourcesInitialized();
     await this.ensureDefaultWorkspaceRoot();

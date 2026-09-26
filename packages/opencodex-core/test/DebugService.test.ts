@@ -1,24 +1,32 @@
 import { describe, test, expect, vi } from "vitest";
-import type { OpenCodexSettings, DebugConfiguration, DebugSnapshot } from "@open-codex-ui/opencodex-protocol";
+import type { DebugConfiguration, DebugSnapshot } from "@open-codex-ui/opencodex-protocol";
 import { DebugService } from "../src/backend/debug/DebugService.js";
 
 const context = { sourceId: "local", projectId: "project", workspaceId: "one", workspacePath: "/project" };
 const config: DebugConfiguration = { id: "config", name: "Node", adapter: "javascript", target: "node",
   request: "launch", program: "test.js", context };
 
-/** Minimal settings persistence captures real read-modify-write operations. */
-function fixture(validate = vi.fn(async () => undefined)) {
-  let settings = { debug: { configurations: [config], breakpoints: [], watches: [] } } as unknown as OpenCodexSettings;
-  const update = vi.fn(async (patch: Partial<OpenCodexSettings>) => { settings = { ...settings, ...patch }; return settings; });
-  const service = new DebugService({ get: () => settings, update }, validate, vi.fn(), {
+/** Isolates database writes while exercising session and workspace behavior. */
+async function fixture(validate = vi.fn(async () => undefined)) {
+  const update = vi.fn(async () => undefined);
+  const repository = {
+    read: vi.fn(async () => ({ configurations: [config], breakpoints: [], watches: [] })),
+    importLegacy: vi.fn(async () => undefined),
+    saveConfiguration: vi.fn(async () => undefined),
+    deleteConfiguration: vi.fn(async () => undefined),
+    replaceBreakpoints: update,
+    replaceWatches: vi.fn(async () => undefined)
+  };
+  const service = new DebugService(repository, validate, vi.fn(), {
     executable: "unused", entrypoint: "/missing/opencodex-debug-test.js"
   });
+  await service.initialize();
   return { service, update, validate };
 }
 describe("debug service", () => {
   test("reserves the session slot before asynchronous validation and recovers after failure", async () => {
     let validate!: () => void;
-    const { service } = fixture(vi.fn(() => new Promise<void>(resolve => { validate = resolve; })));
+    const { service } = await fixture(vi.fn(() => new Promise<void>(resolve => { validate = resolve; })));
     const first = service.execute({ kind: "start", configurationId: "config" });
     const original = service.snapshot().session!.id;
     await expect(service.execute({ kind: "start", configurationId: "config" })).rejects.toThrow("already active");
@@ -31,14 +39,14 @@ describe("debug service", () => {
     await service.dispose();
   });
   test("rejects unavailable/non-local contexts before any launch and preserves persisted configurations", async () => {
-    const { service } = fixture(vi.fn(async () => { throw new Error("Local sources only"); }));
+    const { service } = await fixture(vi.fn(async () => { throw new Error("Local sources only"); }));
     const result = await service.execute({ kind: "start", configurationId: "config" }) as DebugSnapshot;
     expect(result.session).toMatchObject({ state: "failed", error: "Error: Local sources only" });
     expect(result.preferences.configurations).toEqual([config]);
     await service.dispose();
   });
   test("keeps breakpoint updates scoped and preserves old preferences on failed persistence", async () => {
-    const { service, update } = fixture();
+    const { service, update } = await fixture();
     await service.execute({ kind: "breakpoints", context, breakpoints: [
       { id: "one", context, path: "file.ts", line: 1, enabled: true }
     ] });
