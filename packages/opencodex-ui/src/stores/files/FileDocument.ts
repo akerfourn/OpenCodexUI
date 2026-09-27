@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import { canonicalLanguage, detectFileLanguage } from "../../features/fileLanguages/catalogue";
 import type {
   OpenCodexFileTarget,
   OpenCodexFileSnapshot,
@@ -81,6 +82,11 @@ export class FileDocument {
   annotations: DocumentAnnotation[] = [];
   /** Current integrated viewer mode selected for this document. */
   viewMode: FileViewMode = "file";
+  /** Retains the Markdown presentation independently of Git comparisons. */
+  markdownPreview = true;
+  /** Retained reading position and optional heading requested by a document link. */
+  previewScrollTop = 0;
+  previewAnchor: string | null = null;
   /** Monaco diff presentation; kept on the document for stable navigation. */
   diffLayout: FileDiffLayout = "side-by-side";
   /** Optional comparison context supplied by a Git or Files entry point. */
@@ -120,6 +126,36 @@ export class FileDocument {
   /** True only when the current buffer differs from its last confirmed baseline. */
   get isDirty(): boolean {
     return this.content !== this.savedContent;
+  }
+
+  /** Recognizes Markdown without loading Monaco or a syntax grammar. */
+  get canPreviewMarkdown(): boolean {
+    const language = this.languageOverride ?? this.virtualLanguage ?? detectFileLanguage(this.name);
+    return canonicalLanguage(language) === "markdown";
+  }
+
+  /** Git comparisons retain priority over the document's preview preference. */
+  get isMarkdownPreview(): boolean {
+    return this.viewMode === "file" && this.canPreviewMarkdown && this.markdownPreview;
+  }
+
+  /** Changes presentation without modifying the buffer, undo history or saved baseline. */
+  setMarkdownPreview(enabled: boolean): void {
+    this.setViewMode("file");
+    this.markdownPreview = enabled;
+  }
+
+  /** Explicit source locations always reveal Monaco rather than a rendered preview. */
+  navigateTo(position: DocumentPosition): void {
+    this.setMarkdownPreview(false);
+    this.position = { ...position };
+  }
+
+  /** Requests a heading in the rendered buffer, superseding a pending source position. */
+  navigateToHeading(anchor: string): void {
+    this.setMarkdownPreview(true);
+    this.position = null;
+    this.previewAnchor = anchor;
   }
 
   /** Whether the selected Git comparison must not edit the file buffer. */

@@ -28,6 +28,11 @@ export const frFiles = {
     readOnly: "Lecture seule",
     viewMode: "Mode d’affichage du fichier",
     viewFile: "Fichier",
+    viewSource: "Source",
+    viewPreview: "Aperçu",
+    previewTooLarge: "Ce document est trop volumineux pour l’aperçu Markdown (100 000 caractères ou 5 000 lignes maximum). Utilisez le mode Source pour le consulter.",
+    previewImageLink: "Image : {{name}} (ouvrir)",
+    previewLinkError: "Impossible d’ouvrir ce lien depuis le document.",
     viewDiff: "Diff",
     gitStatus: {
       added: "Ajouté",

@@ -93,7 +93,10 @@ export class ProjectFilesStore {
     }
     document.configureOpen(intent, resolveInitialFileView(intent));
     this.show(id);
-    if (position !== undefined) document.position = { ...position };
+    if (intent.origin === "link" && intent.markdownAnchor !== undefined && document.canPreviewMarkdown) {
+      document.navigateToHeading(intent.markdownAnchor);
+    }
+    if (position !== undefined) document.navigateTo(position);
     if (document.snapshot === null) await document.reload();
   }
 
@@ -112,7 +115,7 @@ export class ProjectFilesStore {
       document.setVirtualContent(content);
       this.documents.set(key, document);
     }
-    if (position !== undefined) document.position = { ...position };
+    if (position !== undefined) document.navigateTo(position);
     this.show(key);
     return document;
   }

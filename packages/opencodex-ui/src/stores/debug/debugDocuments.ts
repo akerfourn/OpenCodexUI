@@ -33,7 +33,7 @@ export async function openDebugSource(store: DebugStore, session: DebugSessionSn
     if (candidate?.snapshot && candidate.content === normalized && !candidate.isDirty) {
       document = candidate;
       document.configureOpen({ origin: "link" }, "file");
-      document.position = { line, column };
+      document.navigateTo({ line, column });
       project.files.show(document.id);
     }
   }

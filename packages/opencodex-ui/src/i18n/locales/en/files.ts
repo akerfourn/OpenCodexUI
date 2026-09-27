@@ -30,6 +30,11 @@ export const enFiles = {
     readOnly: "Read only",
     viewMode: "File display mode",
     viewFile: "File",
+    viewSource: "Source",
+    viewPreview: "Preview",
+    previewTooLarge: "This document is too large for Markdown preview (up to 100,000 characters or 5,000 lines). Use Source mode to read it.",
+    previewImageLink: "Image: {{name}} (open)",
+    previewLinkError: "This link could not be opened from the document.",
     viewDiff: "Diff",
     gitStatus: {
       added: "Added",

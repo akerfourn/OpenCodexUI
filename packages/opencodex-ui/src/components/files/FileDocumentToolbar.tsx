@@ -7,8 +7,6 @@ import {
   CircularProgress,
   IconButton,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography
 } from "@mui/material";
@@ -16,11 +14,10 @@ import SaveOutlined from "@mui/icons-material/SaveOutlined";
 import Refresh from "@mui/icons-material/Refresh";
 import OpenInNew from "@mui/icons-material/OpenInNew";
 import { useTranslation } from "react-i18next";
-import type { MouseEvent } from "react";
 import type { FileDocument } from "../../stores/files/FileDocument";
 import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
 import type { RootStore } from "../../stores/RootStore";
-import type { FileDiffLayout, FileViewMode } from "../../stores/files/fileOpenIntent";
+import { FileDocumentViewControlsX } from "./FileDocumentViewControls";
 
 /** Source context and explicit disk actions for the selected document. */
 export function FileDocumentToolbar({
@@ -43,14 +40,6 @@ export function FileDocumentToolbar({
   /** Routes disk reload through unsaved-change protection. */
   function reload(): void {
     files.reload(document);
-  }
-  /** Applies a toolbar view choice to this document only. */
-  function changeView(_event: MouseEvent<HTMLElement>, value: FileViewMode | null): void {
-    if (value !== null) document.setViewMode(value);
-  }
-  /** Applies a Monaco diff layout choice to this document only. */
-  function changeDiffLayout(_event: MouseEvent<HTMLElement>, value: FileDiffLayout | null): void {
-    if (value !== null) document.setDiffLayout(value);
   }
   /** Uses only an explicitly supported local opener. */
   async function openExternal(): Promise<void> {
@@ -100,30 +89,6 @@ export function FileDocumentToolbar({
       {gitDiffReadOnly ? t("files.gitDiffReadOnly") : t("files.readOnly")}
     </Typography>
   ) : null;
-  const viewControls = document.gitDiffContext === null ? null : (
-    <ToggleButtonGroup
-      exclusive
-      size="small"
-      value={document.viewMode}
-      aria-label={t("files.viewMode")}
-      onChange={changeView}
-    >
-      <ToggleButton value="file">{t("files.viewFile")}</ToggleButton>
-      <ToggleButton value="diff">{t("files.viewDiff")}</ToggleButton>
-    </ToggleButtonGroup>
-  );
-  const layoutControls = document.viewMode === "diff" && document.gitDiffContext !== null ? (
-    <ToggleButtonGroup
-      exclusive
-      size="small"
-      value={document.diffLayout}
-      aria-label={t("files.diffLayout")}
-      onChange={changeDiffLayout}
-    >
-      <ToggleButton value="side-by-side">{t("files.diffSideBySide")}</ToggleButton>
-      <ToggleButton value="inline">{t("files.diffInline")}</ToggleButton>
-    </ToggleButtonGroup>
-  ) : null;
   return (
     <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", px: 1, py: 0.5, flexShrink: 0 }}>
       <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -136,8 +101,7 @@ export function FileDocumentToolbar({
         </Tooltip>
         {readOnly}
       </Box>
-      {viewControls}
-      {layoutControls}
+      <FileDocumentViewControlsX document={document} />
       <FileLanguageSelectX document={document} store={root.fileLanguagesStore} />
       {external}
       {reloadButton}

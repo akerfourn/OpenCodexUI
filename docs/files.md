@@ -22,6 +22,24 @@ never inspected on the host without an explicit local-access capability. Source
 folder commands receive the clicked directory as `%D`, not the workspace root.
 Explicit IDE/file-manager actions in the project menu bypass these preferences.
 
+## Markdown preview
+
+Markdown documents offer Source and Preview in the document toolbar. New
+documents default to Preview; explicit line navigation selects Source and Git
+entry points retain Diff. The document remembers its presentation and reading
+position while open. Preview uses the current buffer, including unsaved edits;
+switching views retains Monaco's model and undo history. Saving remains explicit,
+including Ctrl/Cmd+S in Preview.
+
+The lazily loaded preview supports GFM tables, task lists, highlighted code and
+heading anchors. It does not enable raw HTML or chat-specific Codex directives.
+Relative links use the document's directory and captured source/workspace;
+paths escaping the workspace are rejected. Local images appear as links to the
+source's external opener; HTTP(S) images render inline. Binary image loading
+through the source filesystem and a split editor/preview are not included.
+Documents exceeding 100,000 characters or 5,000 lines remain available in Source
+mode without running the Markdown renderer.
+
 ## Responsibilities
 
 - `WorkspaceFilesService` validates persisted workspace ownership and the exact

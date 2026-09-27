@@ -14,6 +14,10 @@ const Editor = lazy(async () => {
   const module = await import("./MonacoFileEditor");
   return { default: module.MonacoFileEditorX };
 });
+const MarkdownPreview = lazy(async () => {
+  const module = await import("./FileMarkdownPreview");
+  return { default: module.FileMarkdownPreviewX };
+});
 
 /** Holds document feedback independently of the editor and its lazy bundle. */
 export function FileDocumentView({
@@ -98,9 +102,13 @@ export function FileDocumentView({
   const shouldShowEditor = document.viewMode === "diff"
     ? hasDiffResult && (diffCanRenderWithoutFile || document.snapshot !== null || diffIssue !== null)
     : document.snapshot !== null || document.target === null;
-  const editor = shouldShowEditor ? (
+  let editor = shouldShowEditor ? (
       <Editor document={document} visible={visible} languages={root.fileLanguagesStore} />
     ) : null;
+  if (document.isMarkdownPreview) {
+    editor = visible && shouldShowEditor
+      ? <MarkdownPreview key={document.id} document={document} files={files} port={root} /> : null;
+  }
   return (
     <div className="files-document">
       <FileDocumentToolbarX document={document} files={files} root={root} />

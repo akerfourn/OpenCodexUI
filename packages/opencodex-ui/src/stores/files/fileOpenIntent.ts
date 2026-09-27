@@ -14,7 +14,7 @@ export interface FileGitDiffContext {
 
 export type FileOpenIntent =
   | { origin: "explorer"; gitDiff?: FileGitDiffContext }
-  | { origin: "link" }
+  | { origin: "link"; markdownAnchor?: string }
   | {
       origin: "git";
       gitDiff: FileGitDiffContext;

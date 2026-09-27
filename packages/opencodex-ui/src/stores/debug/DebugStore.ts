@@ -140,7 +140,7 @@ export class DebugStore {
     const prefix = `virtual:debug:${session.id}:${source.sourceReference ?? 0}:${source.path ?? source.name}:`;
     const previous = [...project.files.documents.values()].filter(item => item.id.startsWith(prefix)).at(-1);
     if (previous) {
-      previous.position = { line, column };
+      previous.navigateTo({ line, column });
       project.files.show(previous.id);
       return;
     }
