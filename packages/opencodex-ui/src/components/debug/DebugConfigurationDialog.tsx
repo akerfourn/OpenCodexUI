@@ -103,7 +103,8 @@ export function DebugConfigurationDialog({ store, context, configuration, import
       <DebugConfigurationField select label={t("debug.target")}
         help={t("debug.help.target")} value={draft.target}
         onChange={event => field("target", event.target.value)}>
-        <MenuItem value="node">Node.js / TypeScript</MenuItem><MenuItem value="chrome">Chrome / JavaScript</MenuItem>
+        <MenuItem value="node">{t("debug.targetNode")}</MenuItem>
+        <MenuItem value="chrome">{t("debug.targetBrowser")}</MenuItem>
       </DebugConfigurationField>
       <DebugConfigurationField select label={t("debug.mode")}
         help={modeHelp} value={draft.request}
