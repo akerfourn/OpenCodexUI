@@ -2,6 +2,7 @@ import type { DebugAction } from "@open-codex-ui/opencodex-protocol";
 
 /** Clones nested observable values even when the action wrapper itself is already plain. */
 export function debugPayload(action: DebugAction): DebugAction {
+  if (action.kind === "previewImport") return { ...action, context: { ...action.context } };
   if (action.kind === "saveConfiguration") {
     const config = action.configuration;
     return { ...action, configuration: { ...config, context: { ...config.context },

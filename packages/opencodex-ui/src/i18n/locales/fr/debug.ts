@@ -1,7 +1,28 @@
 export const frDebug = {
   "debug": {
+    "import": {
+      "button": "Importer depuis VS Code",
+      "detected": "Configuration VS Code détectée",
+      "title": "Importer une configuration VS Code",
+      "description": "Choisissez un profil de .vscode/launch.json, puis vérifiez le formulaire avant de l’enregistrer. Une copie indépendante est créée ; le fichier original reste inchangé et aucun programme n’est lancé.",
+      "loading": "Lecture de launch.json",
+      "empty": "Aucun profil de debug dans ce fichier.",
+      "complete": "Compatible",
+      "partial": "Import partiel",
+      "unsupported": "Non pris en charge",
+      "reload": "Relire le fichier",
+      "review": "Vérifier et compléter",
+      "partialHelp": "Ces éléments ne seront pas repris automatiquement. Vérifiez les conséquences avant de lancer le profil importé.",
+      "issues": {
+        "ignored": "Option non importée : {{field}}",
+        "invalid": "Champ à vérifier ou à compléter : {{field}}",
+        "variable": "Variable non résolue, champ à compléter : {{field}}",
+        "unsupported": "Configuration non prise en charge : {{field}}"
+      }
+    },
     "helpLabel": "Aide : {{field}}",
     "help": {
+      "argumentsChrome": "Options passées à Chrome lors de son lancement. Correspond à runtimeArgs dans launch.json, par exemple [\"--disable-extensions\"].",
       "name": "Un nom libre pour retrouver cette configuration, par exemple « Frontend » ou « API Node ».",
       "target": "Choisissez Node.js pour un script ou un serveur exécuté avec Node. Choisissez Chrome pour le JavaScript exécuté dans une page web (React, Vue, etc.).",
       "launchNode": "OpenCodexUI démarre le programme indiqué avec Node et y connecte le debugger. Arrêter la session arrête aussi ce programme.",
@@ -29,6 +50,7 @@ export const frDebug = {
     "attach": "Se connecter",
     "start": "Démarrer",
     "program": "Programme (chemin relatif ou absolu)",
+    "browserArguments": "Arguments du navigateur (tableau JSON)",
     "arguments": "Arguments (tableau JSON)",
     "argsHelp": "[\"--port\", \"3000\"] par exemple",
     "argsError": "Les arguments doivent être un tableau de chaînes.",

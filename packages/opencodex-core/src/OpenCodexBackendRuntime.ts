@@ -78,7 +78,7 @@ export class OpenCodexBackendRuntime {
       }
       const source = await this.services.projectRuntimeHandler.resolveRequestedSource(context.sourceId);
       if (source.kind !== "local") throw new Error("Debug currently supports host-local sources only (no WSL, Docker or remote).");
-    }, snapshot => options.emit({ type: "debug.state", snapshot }), options.debugAdapter, this.settings);
+    }, snapshot => options.emit({ type: "debug.state", snapshot }), options.debugAdapter, this.settings, this.files);
     this.dictation = new CodexDictationService(async (sourceId) => {
       const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
       return new CodexAppServerClient({

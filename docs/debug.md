@@ -26,6 +26,29 @@ cannot overwrite database changes or restore deleted profiles.
 Relative paths are resolved against the configuration's captured workspace.
 Neither opening a project nor loading settings starts a program.
 
+### Importing VS Code profiles
+
+The panel detects `.vscode/launch.json` with a source-aware file stat. An explicit
+import reads the file, previews individual configurations and opens the normal
+editor before saving an independent profile in SQLite. It never modifies the
+source file, executes substitutions, runs tasks or starts a debug session.
+
+The importer accepts `node`, `pwa-node`, `chrome` and `pwa-chrome`, and copies
+only fields supported by the current configuration form. It expands
+`${workspaceFolder}`, `${workspaceFolderBasename}`, `${pathSeparator}` and
+`${/}` using the captured workspace, and applies the current host's platform
+override. Other variables and unsupported fields are reported in both the
+preview and the editor. Explicit remote or process-id attachment targets are
+rejected rather than replaced with a local default. Compounds, tasks, environment
+overrides and custom source-map settings are not imported.
+
+JSON5 is a direct core dependency for safe parsing of comments and trailing
+commas (a superset of VS Code's JSONC syntax), without evaluating JavaScript.
+Preview input is bounded to 512 KiB and 100 profiles. This is a partial import,
+not general compatibility with VS Code launch configurations or extensions.
+
+### Breakpoints and sources
+
 Set breakpoints in the Monaco gutter. Requested, verified, unresolved and
 disabled points have distinct markers. The panel also supports conditions,
 enable/disable, individual removal and clearing the workspace's breakpoints.
@@ -62,7 +85,7 @@ boundary; the DAP transport also bounds individual messages.
   `startDebugging`, even for a single Node program. Further targets are rejected
   with console feedback. General workers, child processes and compound launches
   are outside this version's scope.
-- No terminal reverse request, hot reload, agent control, `launch.json` import,
+- No terminal reverse request, hot reload, agent control,
   embedded browser or integration with Commands is provided.
 
 The protocol DTOs are in `opencodex-protocol/src/debug.ts`. Core separates

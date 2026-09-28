@@ -3,8 +3,29 @@ import type { frDebug } from "../fr/debug.js";
 
 export const enDebug = {
   "debug": {
+    "import": {
+      "button": "Import from VS Code",
+      "detected": "VS Code configuration detected",
+      "title": "Import a VS Code configuration",
+      "description": "Choose a profile from .vscode/launch.json, then review the form before saving. This creates an independent copy; the original file stays unchanged and no program is started.",
+      "loading": "Reading launch.json",
+      "empty": "No debug profiles in this file.",
+      "complete": "Compatible",
+      "partial": "Partial import",
+      "unsupported": "Unsupported",
+      "reload": "Reload file",
+      "review": "Review and complete",
+      "partialHelp": "These elements will not be carried over automatically. Review the implications before starting the imported profile.",
+      "issues": {
+        "ignored": "Option not imported: {{field}}",
+        "invalid": "Field to check or complete: {{field}}",
+        "variable": "Unresolved variable, complete this field: {{field}}",
+        "unsupported": "Unsupported configuration: {{field}}"
+      }
+    },
     "helpLabel": "Help: {{field}}",
     "help": {
+      "argumentsChrome": "Options passed to Chrome at launch. Matches runtimeArgs in launch.json, for example [\"--disable-extensions\"].",
       "name": "A name to identify this configuration, such as “Frontend” or “Node API”.",
       "target": "Choose Node.js for a script or server running with Node. Choose Chrome for JavaScript running in a web page (React, Vue, etc.).",
       "launchNode": "OpenCodexUI starts the specified program with Node and connects the debugger. Stopping the session also stops that program.",
@@ -32,6 +53,7 @@ export const enDebug = {
     "attach": "Attach",
     "start": "Start",
     "program": "Program (relative or absolute path)",
+    "browserArguments": "Browser arguments (JSON array)",
     "arguments": "Arguments (JSON array)",
     "argsHelp": "For example: [\"--port\", \"3000\"]",
     "argsError": "Arguments must be an array of strings.",

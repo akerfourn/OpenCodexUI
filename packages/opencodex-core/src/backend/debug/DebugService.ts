@@ -1,4 +1,5 @@
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import type { DebugRepository } from "@open-codex-ui/opencodex-cache";
 import { isDebugActive, sameDebugContext } from "@open-codex-ui/opencodex-protocol";
 import type { DebugAction, DebugSnapshot, DebugPreferences, OpenCodexFileContext,
@@ -6,6 +7,9 @@ import type { DebugAction, DebugSnapshot, DebugPreferences, OpenCodexFileContext
 import { DebugSession } from "./DebugSession.js";
 import type { DebugAdapterRuntime } from "./DebugAdapterProcess.js";
 import { validateDebugConfiguration } from "./javascriptConfiguration.js";
+import { previewDebugImport } from "./debugConfigurationImport.js";
+import { importObject } from "./debugImportValues.js";
+import type { WorkspaceFilesService } from "../files/WorkspaceFilesService.js";
 
 interface DebugSettings {
   get(): OpenCodexSettings;
@@ -34,7 +38,8 @@ export class DebugService {
     private readonly validateContext: (context: OpenCodexFileContext) => Promise<void>,
     private readonly emit: (snapshot: DebugSnapshot) => void,
     private readonly runtime?: DebugAdapterRuntime,
-    private readonly legacySettings?: DebugSettings) {}
+    private readonly legacySettings?: DebugSettings,
+    private readonly files?: Pick<WorkspaceFilesService, "execute">) {}
 
   /** Exposes detached plain DTOs, never the mutable session implementation. */
   snapshot(): DebugSnapshot {
@@ -75,6 +80,17 @@ export class DebugService {
     if (!this.initialized) await this.initialize();
     if (this.disposed) throw new Error("Debugger is shutting down.");
     if (action.kind === "snapshot") return this.snapshot();
+    if (action.kind === "previewImport") {
+      await this.validateContext(action.context);
+      if (this.files === undefined) throw new Error("Workspace file access is unavailable.");
+      const result = await this.files.execute({
+        type: "workspaceFiles.read", target: { ...action.context, path: ".vscode/launch.json" }
+      });
+      if (!result.ok) throw new Error(`Cannot read .vscode/launch.json: ${result.details}`);
+      const content = importObject(result.value)?.content;
+      if (typeof content !== "string") throw new Error("Invalid launch.json file response.");
+      return previewDebugImport(content, action.context, process.platform, randomUUID());
+    }
     if (["saveConfiguration", "deleteConfiguration", "breakpoints", "watches"].includes(action.kind)) {
       const mutation = this.mutations.then(() => this.persist(action));
       this.mutations = mutation.catch(() => undefined);

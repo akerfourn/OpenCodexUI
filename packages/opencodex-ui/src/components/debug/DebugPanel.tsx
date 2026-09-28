@@ -13,6 +13,7 @@ import { DebugStackX } from "./DebugStack";
 import { DebugBreakpointsX } from "./DebugBreakpoints";
 import { DebugWatchesX } from "./DebugWatches";
 import { DebugConsoleX } from "./DebugConsole";
+import { DebugImportButtonX } from "./DebugImportButton";
 
 /** Workspace configuration selector with application-owned execution state below it. */
 export function DebugPanel({ store: root, projectStore }: { store: RootStore; projectStore: ProjectStore }) {
@@ -46,6 +47,8 @@ export function DebugPanel({ store: root, projectStore }: { store: RootStore; pr
   }
   let breakpointContent;
   if (context) breakpointContent = <DebugBreakpointsX store={store} context={context} />;
+  let importContent;
+  if (context) importContent = <DebugImportButtonX key={JSON.stringify(context)} root={root} context={context} />;
   return <Box sx={{ overflow: "auto", flex: 1, minWidth: 0, p: 1.5 }}>
     <Stack spacing={1.5} divider={<Divider />}>
       <Stack spacing={1}>
@@ -64,6 +67,7 @@ export function DebugPanel({ store: root, projectStore }: { store: RootStore; pr
           <Button disabled={!current || store.active} onClick={() => { if (current) void store.run({ kind: "deleteConfiguration", id: current.id }); }}>{t("debug.remove")}</Button>
           <Button variant="contained" disabled={!current || store.active || store.busy} onClick={() => { if (current) void store.start(current.id); }}>{t("debug.start")}</Button>
         </Stack>
+        {importContent}
       </Stack>
       {sessionContent}{breakpointContent}<DebugWatchesX store={store} /><DebugConsoleX store={store} />
     </Stack>{dialog}

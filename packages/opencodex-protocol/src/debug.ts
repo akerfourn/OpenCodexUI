@@ -91,6 +91,7 @@ export interface DebugSnapshot {
 /** Every execution operation names its session; suspended queries also name their epoch. */
 export type DebugAction =
   | { kind: "snapshot" }
+  | { kind: "previewImport"; context: OpenCodexFileContext }
   | { kind: "saveConfiguration"; configuration: DebugConfiguration }
   | { kind: "deleteConfiguration"; id: string }
   | { kind: "breakpoints"; context: OpenCodexFileContext; breakpoints: DebugBreakpoint[] }

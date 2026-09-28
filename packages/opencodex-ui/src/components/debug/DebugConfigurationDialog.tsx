@@ -2,13 +2,15 @@ import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuI
 import { observer } from "mobx-react-lite";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { DebugConfiguration, OpenCodexFileContext } from "@open-codex-ui/opencodex-protocol";
+import type { DebugConfiguration, DebugImportIssue, OpenCodexFileContext } from "@open-codex-ui/opencodex-protocol";
 import type { DebugStore } from "../../stores/debug/DebugStore";
 import { DebugConfigurationField } from "./DebugConfigurationField";
+import { DebugImportIssuesX } from "./DebugImportIssues";
 
-/** Edits the explicitly supported subset of js-debug parameters; never imports launch.json. */
-export function DebugConfigurationDialog({ store, context, configuration, onClose }: {
-  store: DebugStore; context: OpenCodexFileContext; configuration?: DebugConfiguration; onClose(): void;
+/** Edits supported js-debug parameters, including explicitly reviewed import drafts. */
+export function DebugConfigurationDialog({ store, context, configuration, importIssues = [], onClose }: {
+  store: DebugStore; context: OpenCodexFileContext; configuration?: DebugConfiguration;
+  importIssues?: DebugImportIssue[]; onClose(): void;
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<DebugConfiguration>(() => ({ id: crypto.randomUUID(),
@@ -62,11 +64,18 @@ export function DebugConfigurationDialog({ store, context, configuration, onClos
         help={t("debug.help.urlFilter")} value={draft.urlFilter ?? ""}
         onChange={event => field("urlFilter", event.target.value)} helperText={t("debug.urlFilterHelp")} />;
     }
+    let browserArguments;
+    if (draft.request === "launch") {
+      browserArguments = <DebugConfigurationField label={t("debug.browserArguments")}
+        help={t("debug.help.argumentsChrome")} value={args}
+        onChange={event => setArgs(event.target.value)} helperText={t("debug.argsHelp")} />;
+    }
     targetFields = <>
       {urlField}
       <DebugConfigurationField label={t("debug.webRoot")}
         help={t("debug.help.webRoot")} value={draft.webRoot ?? "."}
         onChange={event => field("webRoot", event.target.value)} />
+      {browserArguments}
     </>;
   }
   let connectionField = <DebugConfigurationField label={t("debug.runtime")}
@@ -83,6 +92,7 @@ export function DebugConfigurationDialog({ store, context, configuration, onClos
     <DialogTitle>{t("debug.configuration")}</DialogTitle>
     <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
       {errorContent}
+      <DebugImportIssuesX issues={importIssues} />
       <DebugConfigurationField label={t("debug.name")}
         help={t("debug.help.name")} value={draft.name}
         onChange={event => field("name", event.target.value)} />
