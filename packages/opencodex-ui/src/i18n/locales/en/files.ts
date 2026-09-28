@@ -3,6 +3,7 @@ import type { frFiles } from "../fr/files.js";
 
 export const enFiles = {
   files: {
+    frontmatter: "YAML metadata",
     folderOpeningMode: "Open folder links with",
     folderOpeningSystem: "The system file manager",
     folderOpeningDescription: "For sources with local access. Application mode uses the folder-opening command configured for the source. Explicit project menu actions remain unchanged.",

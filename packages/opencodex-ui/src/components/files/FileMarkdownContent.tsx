@@ -9,6 +9,10 @@ import { InlineCode } from "../messages/InlineCode";
 import { MarkdownPreviewImage } from "./MarkdownPreviewImage";
 import { remarkFileHeadings } from "./markdownHeadings";
 
+import { splitMarkdownFrontmatter } from "./splitMarkdownFrontmatter";
+import { MarkdownFrontmatter } from "./MarkdownFrontmatter";
+import { markdownHeadingStyles } from "../messages/markdownHeadingStyles";
+
 const remarkPlugins = [remarkGfm, remarkFileHeadings];
 const rehypePlugins = [rehypeHighlight];
 const components = { pre: PreBlock, code: InlineCode, img: MarkdownPreviewImage };
@@ -26,8 +30,12 @@ export function FileMarkdownContent({ content }: { content: string }) {
   if (content.length > MAX_MARKDOWN_PREVIEW_LENGTH || content.split("\n").length > 5000) {
     return <Alert severity="info">{t("files.previewTooLarge")}</Alert>;
   }
+  const { yaml, markdown } = splitMarkdownFrontmatter(content);
+  let metadata;
+  if (yaml !== null) metadata = <MarkdownFrontmatter yaml={yaml} />;
   return (
     <Box className="markdown-message files-markdown-content" sx={{
+      ...markdownHeadingStyles,
       maxWidth: 960, mx: "auto", lineHeight: 1.6, overflowWrap: "anywhere",
       "& a": { color: "primary.main" },
       "& img": { maxWidth: "100%" },
@@ -38,9 +46,10 @@ export function FileMarkdownContent({ content }: { content: string }) {
       "& > :first-of-type": { mt: 0 },
       "& pre": { overflowX: "auto" }
     }}>
+      {metadata}
       <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}
         urlTransform={transformDocumentUrl} skipHtml>
-        {content}
+        {markdown}
       </ReactMarkdown>
     </Box>
   );

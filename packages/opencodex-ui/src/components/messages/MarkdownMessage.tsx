@@ -1,6 +1,7 @@
 /**
  * Renders Markdown messages with bounded previews and lazy expensive work.
  */
+import { markdownHeadingStyles } from "./markdownHeadingStyles";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import {
   memo,
@@ -205,10 +206,7 @@ function RenderedMarkdown({
         "& hr": {
           my: 1
         },
-        "& h1, & h2, & h3, & h4, & h5, & h6": {
-          mt: 1,
-          mb: 0.5
-        },
+        ...markdownHeadingStyles,
         "& table": {
           width: "100%",
           my: 1,
