@@ -6,6 +6,8 @@ import type { DebugConfiguration, DebugImportIssue, OpenCodexFileContext } from 
 import type { DebugStore } from "../../stores/debug/DebugStore";
 import { DebugConfigurationField } from "./DebugConfigurationField";
 import { DebugImportIssuesX } from "./DebugImportIssues";
+import { DebugAdvancedFieldsX } from "./DebugAdvancedFields";
+import { createDebugAdvancedDraft, parseDebugAdvancedDraft } from "../../stores/debug/debugAdvancedDraft";
 
 /** Edits supported js-debug parameters, including explicitly reviewed import drafts. */
 export function DebugConfigurationDialog({ store, context, configuration, importIssues = [], onClose }: {
@@ -17,6 +19,7 @@ export function DebugConfigurationDialog({ store, context, configuration, import
     name: "Node.js", adapter: "javascript", context: { ...context }, target: "node", request: "launch",
     program: "", cwd: ".", port: 9229, ...configuration }));
   const [args, setArgs] = useState(JSON.stringify(configuration?.args ?? []));
+  const [advanced, setAdvanced] = useState(() => createDebugAdvancedDraft(configuration?.advanced));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   /** Updates plain draft data rather than observable transport objects. */
@@ -29,7 +32,8 @@ export function DebugConfigurationDialog({ store, context, configuration, import
     try {
       const parsed: unknown = JSON.parse(args);
       if (!Array.isArray(parsed) || !parsed.every(item => typeof item === "string")) throw new Error(t("debug.argsError"));
-      if (await store.saveConfiguration({ ...draft, args: parsed })) onClose();
+      const options = parseDebugAdvancedDraft(advanced, draft.target, draft.request);
+      if (await store.saveConfiguration({ ...draft, args: parsed, advanced: options })) onClose();
       else setError(store.error);
     } catch (failure) { setError(String(failure)); }
     finally { setSaving(false); }
@@ -110,6 +114,7 @@ export function DebugConfigurationDialog({ store, context, configuration, import
       <DebugConfigurationField label={t("debug.cwd")}
         help={t("debug.help.cwd")} value={draft.cwd ?? "."}
         onChange={event => field("cwd", event.target.value)} />
+      <DebugAdvancedFieldsX draft={advanced} target={draft.target} request={draft.request} onChange={setAdvanced} />
       <Alert severity="info">{t("debug.configScope", { path: context.workspacePath })}</Alert>
     </Stack></DialogContent>
     <DialogActions><Button onClick={onClose} disabled={saving}>{t("debug.cancel")}</Button>

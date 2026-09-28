@@ -1,5 +1,31 @@
 export const frDebug = {
   "debug": {
+    "advanced": {
+      "title": "Options avancées",
+      "environment": "Variables d’environnement",
+      "envName": "Nom",
+      "envValue": "Valeur",
+      "addEnv": "Ajouter une variable",
+      "removeEnv": "Retirer cette variable",
+      "unsetEnv": "Supprimer de l’environnement hérité",
+      "envFile": "Fichier d’environnement (.env)",
+      "envFileHelp": "Chemin absolu ou relatif au workspace. Les valeurs définies ci-dessus ont priorité sur le fichier. Le fichier est lu au lancement.",
+      "runtimeArgs": "Arguments Node (tableau JSON)",
+      "runtimeArgsHelp": "Arguments du runtime, distincts de ceux du programme, par exemple [\"--enable-source-maps\"]. Les variables ${workspaceFolder}, ${workspaceFolderBasename} et ${pathSeparator} sont disponibles.",
+      "stopOnEntry": "Suspendre dès le démarrage du programme",
+      "nodeOnly": "Des options de lancement Node sont présentes. Revenez à ce mode ou retirez-les avant d’enregistrer.",
+      "clearNode": "Retirer les options Node",
+      "jsonButton": "Afficher / masquer les options JSON",
+      "jsonHelp": "Réglages supplémentaires de source maps et de pas-à-pas. Ctrl+Espace affiche les options disponibles. Les champs du formulaire ne doivent pas être répétés ici. Les tâches, terminaux et sessions multiples ne sont pas pris en charge.",
+      "options": {
+        "sourceMaps": "Utiliser les source maps pour retrouver les sources originales (activé par défaut).",
+        "smartStep": "Passer automatiquement le code généré sans correspondance dans les sources.",
+        "skipFiles": "Motifs des fichiers à ignorer pendant le pas-à-pas, par exemple [\"<node_internals>/**\"].",
+        "outFiles": "Motifs des fichiers JavaScript compilés, par exemple [\"${workspaceFolder}/dist/**/*.js\"]. Remplace la liste par défaut.",
+        "resolveSourceMapLocations": "Motifs des emplacements autorisés pour les source maps ; préfixer par ! pour exclure. Remplace la liste par défaut.",
+        "sourceMapPathOverrides": "Correspondances entre chemins des source maps et chemins locaux, par exemple {\"webpack:///./*\": \"${workspaceFolder}/*\"}."
+      }
+    },
     "import": {
       "button": "Importer depuis VS Code",
       "detected": "Configuration VS Code détectée",

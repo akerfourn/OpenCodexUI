@@ -3,6 +3,32 @@ import type { frDebug } from "../fr/debug.js";
 
 export const enDebug = {
   "debug": {
+    "advanced": {
+      "title": "Advanced options",
+      "environment": "Environment variables",
+      "envName": "Name",
+      "envValue": "Value",
+      "addEnv": "Add variable",
+      "removeEnv": "Remove variable",
+      "unsetEnv": "Remove from inherited environment",
+      "envFile": "Environment file (.env)",
+      "envFileHelp": "Absolute path or path relative to the workspace. Values entered above override the file. The file is read at launch.",
+      "runtimeArgs": "Node arguments (JSON array)",
+      "runtimeArgsHelp": "Runtime arguments, separate from program arguments, for example [\"--enable-source-maps\"]. Supports ${workspaceFolder}, ${workspaceFolderBasename} and ${pathSeparator}.",
+      "stopOnEntry": "Pause when the program starts",
+      "nodeOnly": "Node launch options are present. Switch back to that mode or remove them before saving.",
+      "clearNode": "Remove Node options",
+      "jsonButton": "Show / hide JSON options",
+      "jsonHelp": "Additional source map and stepping settings. Ctrl+Space lists supported options. Do not repeat form fields here. Tasks, terminals and multiple sessions are not supported.",
+      "options": {
+        "sourceMaps": "Use source maps to find original sources (enabled by default).",
+        "smartStep": "Automatically step over generated code without a source mapping.",
+        "skipFiles": "File patterns to skip when stepping, for example [\"<node_internals>/**\"].",
+        "outFiles": "Compiled JavaScript patterns, for example [\"${workspaceFolder}/dist/**/*.js\"]. Replaces the default list.",
+        "resolveSourceMapLocations": "Allowed source map location patterns; prefix with ! to exclude. Replaces the default list.",
+        "sourceMapPathOverrides": "Map source map paths to local paths, for example {\"webpack:///./*\": \"${workspaceFolder}/*\"}."
+      }
+    },
     "import": {
       "button": "Import from VS Code",
       "detected": "VS Code configuration detected",

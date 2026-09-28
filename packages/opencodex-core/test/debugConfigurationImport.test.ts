@@ -65,7 +65,7 @@ describe("VS Code debug configuration import", () => {
     expect(result.entries[0]?.issues).toEqual(expect.arrayContaining([
       { kind: "variable", field: "program: ${file}" },
       { kind: "variable", field: "args: ${command:pickValue}" },
-      ...["env", "envFile", "runtimeArgs", "preLaunchTask", "outFiles", "skipFiles"]
+      ...["preLaunchTask"]
         .map(field => ({ kind: "ignored", field }))
     ]));
   });

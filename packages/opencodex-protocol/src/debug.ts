@@ -1,4 +1,5 @@
 import type { OpenCodexFileContext } from "./files";
+import type { DebugAdvancedOptions } from "./debugAdvanced";
 
 /** Persisted launch parameters. Relative paths belong to the captured workspace. */
 export interface DebugConfiguration {
@@ -16,6 +17,7 @@ export interface DebugConfiguration {
   url?: string;
   urlFilter?: string;
   webRoot?: string;
+  advanced?: DebugAdvancedOptions;
 }
 
 /** Workspace breakpoints are independent from adapter-assigned identifiers. */

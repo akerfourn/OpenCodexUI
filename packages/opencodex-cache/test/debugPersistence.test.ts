@@ -22,6 +22,19 @@ describe("debug persistence", () => {
   });
   afterEach(() => database.close());
 
+  it("should retain advanced JSON alongside old profiles and remove cleared options on subsequent saves", async () => {
+    await repository.importLegacy(preferences);
+    const profile = { ...preferences.configurations[0], id: "advanced", advanced: {
+      env: { MODE: "test", REMOVE: null }, runtimeArgs: ["--enable-source-maps"],
+      sourceMaps: false, sourceMapPathOverrides: { "source/*": "/workspace/*" }
+    } };
+    await repository.saveConfiguration(profile);
+    const reopened = new SqliteDebugRepository(database);
+    expect((await reopened.read()).configurations).toEqual([preferences.configurations[0], profile]);
+    await reopened.saveConfiguration({ ...profile, advanced: {} });
+    expect((await reopened.read()).configurations[1].advanced).toEqual({});
+  });
+
   it("should retain all legacy data across repeated schema migrations and repository recreation", async () => {
     await repository.importLegacy(preferences);
     runMigrations(database);

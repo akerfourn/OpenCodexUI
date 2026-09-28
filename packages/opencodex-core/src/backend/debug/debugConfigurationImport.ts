@@ -3,6 +3,7 @@ import type {
   DebugConfiguration, DebugImportEntry, DebugImportIssue, DebugImportPreview, OpenCodexFileContext
 } from "@open-codex-ui/opencodex-protocol";
 import { importObject, readImportArguments, readImportString } from "./debugImportValues.js";
+import { importDebugAdvancedOptions } from "./debugAdvancedImport.js";
 
 /** Parses comment-friendly launch files and projects only explicitly supported adapter fields. */
 export function previewDebugImport(
@@ -99,8 +100,9 @@ function convertConfiguration(
     if (target === "chrome") copy("urlFilter", "urlFilter");
   }
 
+  importDebugAdvancedOptions(raw, config, platform, consumed, issues);
   for (const [field, equivalent] of Object.entries({
-    sourceMaps: true, autoAttachChildProcesses: false, stopOnEntry: false,
+    autoAttachChildProcesses: false, stopOnEntry: false,
     restart: false, console: "internalConsole"
   })) {
     if (raw[field] === equivalent) consumed.add(field);

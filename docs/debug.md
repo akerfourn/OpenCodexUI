@@ -26,6 +26,32 @@ cannot overwrite database changes or restore deleted profiles.
 Relative paths are resolved against the configuration's captured workspace.
 Neither opening a project nor loading settings starts a program.
 
+### Advanced configuration
+
+Profiles can include an optional `advanced` object inside their existing SQLite
+`data_json` record. Old profiles retain their defaults; no schema change or
+separate configuration file is needed.
+
+The advanced form exposes Node launch environment variables (including `null`
+to unset inherited values), an `envFile`, Node `runtimeArgs` and `stopOnEntry`.
+The environment file is resolved against the captured workspace and read by the
+adapter at launch. Explicit environment values override the file.
+
+A lazily loaded Monaco JSON editor handles the common source/stepping options:
+`sourceMaps`, `smartStep`, `skipFiles`, `outFiles`, `resolveSourceMapLocations`
+and `sourceMapPathOverrides`. Its local schema provides completion, descriptions
+and diagnostics without fetching anything. The form and JSON own disjoint fields;
+duplicate form fields in the JSON editor are rejected. JSON uses strict syntax.
+Explicit option lists replace adapter defaults, including empty lists.
+
+The protocol validator is shared by the UI and backend. Unknown keys, invalid
+types and Node launch options used with other targets are rejected before saving
+or starting a session. Invalid drafts and incompatible fields survive edits and
+mode changes until corrected or explicitly removed. Supported workspace
+variables are resolved using the profile's captured context; environment and
+command substitutions are not evaluated. The adapter still owns terminal mode,
+single-target behavior, browser profiles and `ELECTRON_RUN_AS_NODE` cleanup.
+
 ### Importing VS Code profiles
 
 The panel detects `.vscode/launch.json` with a source-aware file stat. An explicit
@@ -39,8 +65,11 @@ only fields supported by the current configuration form. It expands
 `${/}` using the captured workspace, and applies the current host's platform
 override. Other variables and unsupported fields are reported in both the
 preview and the editor. Explicit remote or process-id attachment targets are
-rejected rather than replaced with a local default. Compounds, tasks, environment
-overrides and custom source-map settings are not imported.
+rejected rather than replaced with a local default. Supported advanced options
+are imported for the selected target and mode, with warnings for invalid values
+or unresolved variables. An invalid argument vector or environment map is omitted
+as a whole. Compounds, tasks, interactive terminals and child-process debugging
+remain unsupported; these options are reported rather than passed through.
 
 JSON5 is a direct core dependency for safe parsing of comments and trailing
 commas (a superset of VS Code's JSONC syntax), without evaluating JavaScript.

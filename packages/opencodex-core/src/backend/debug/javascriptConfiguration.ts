@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { DebugConfiguration } from "@open-codex-ui/opencodex-protocol";
+import { resolveDebugAdvancedOptions } from "./debugAdvancedOptions.js";
 
 /** Adapter catalogue is explicit; future adapters can supply their own parameter resolver. */
 export const DEBUG_ADAPTERS = [{ id: "javascript", name: "JavaScript / TypeScript", version: "1.140.0" }] as const;
@@ -28,31 +29,34 @@ export function validateDebugConfiguration(config: DebugConfiguration): void {
   if (config.args && (!Array.isArray(config.args) || !config.args.every(arg => typeof arg === "string"))) {
     throw new Error("Program arguments must be an array of strings.");
   }
+  resolveDebugAdvancedOptions(config);
 }
 
 /** Resolves only local paths after the service has validated the workspace source. */
 export function javascriptLaunchArguments(config: DebugConfiguration, profilePath: string, mappedBreakpoints = false): Record<string, unknown> {
   validateDebugConfiguration(config);
   const cwd = path.resolve(config.context.workspacePath, config.cwd || ".");
+  const advanced = resolveDebugAdvancedOptions(config);
   const common = {
     type: config.target === "node" ? "pwa-node" : "pwa-chrome",
     request: config.request, name: config.name, cwd,
-    sourceMaps: true, pauseForSourceMap: true, timeout: 15_000,
+    sourceMaps: true, pauseForSourceMap: advanced.sourceMaps !== false, timeout: 15_000,
     rootPath: config.context.workspacePath, __workspaceFolder: config.context.workspacePath,
     // This client exposes a single debuggee, including its required DAP target channel.
     autoAttachChildProcesses: false,
     // Standalone Node sessions need an entry pause while source maps are installed.
-    runtimeSourcemapPausePatterns: mappedBreakpoints
+    runtimeSourcemapPausePatterns: mappedBreakpoints && advanced.sourceMaps !== false
       ? [path.join(config.context.workspacePath, "**/*.{js,cjs,mjs}").replaceAll("\\", "/")] : [],
     attachExistingChildren: false,
     resolveSourceMapLocations: ["**", "!**/node_modules/**"],
-    outFiles: [path.join(config.context.workspacePath, "**/*.{js,cjs,mjs}").replaceAll("\\", "/"), "!**/node_modules/**"]
+    outFiles: [path.join(config.context.workspacePath, "**/*.{js,cjs,mjs}").replaceAll("\\", "/"), "!**/node_modules/**"],
+    ...advanced
   };
   if (config.target === "node") {
     if (config.request === "attach") return { ...common, address: "127.0.0.1", port: config.port, restart: false };
     return { ...common, program: path.resolve(cwd, config.program!), args: config.args ?? [],
       runtimeExecutable: config.runtime || "node", console: "internalConsole", outputCapture: "std",
-      env: { ELECTRON_RUN_AS_NODE: null }, stopOnEntry: false };
+      env: { ...advanced.env, ELECTRON_RUN_AS_NODE: null }, stopOnEntry: advanced.stopOnEntry ?? false };
   }
   const browser = { ...common, webRoot: path.resolve(config.context.workspacePath, config.webRoot || ".") };
   if (config.request === "attach") {

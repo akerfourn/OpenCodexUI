@@ -1,4 +1,5 @@
 import type { DebugAction } from "@open-codex-ui/opencodex-protocol";
+import { parseDebugAdvancedOptions } from "@open-codex-ui/opencodex-protocol";
 
 /** Clones nested observable values even when the action wrapper itself is already plain. */
 export function debugPayload(action: DebugAction): DebugAction {
@@ -6,7 +7,9 @@ export function debugPayload(action: DebugAction): DebugAction {
   if (action.kind === "saveConfiguration") {
     const config = action.configuration;
     return { ...action, configuration: { ...config, context: { ...config.context },
-      args: config.args === undefined ? undefined : [...config.args] } };
+      args: config.args === undefined ? undefined : [...config.args],
+      advanced: config.advanced === undefined ? undefined :
+        parseDebugAdvancedOptions(config.advanced, config.target, config.request) } };
   }
   if (action.kind === "breakpoints") return { ...action, context: { ...action.context },
     breakpoints: action.breakpoints.map(item => ({ ...item, context: { ...item.context } })) };

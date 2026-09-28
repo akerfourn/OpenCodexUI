@@ -21,9 +21,22 @@ async function fixture(validate = vi.fn(async () => undefined)) {
     executable: "unused", entrypoint: "/missing/opencodex-debug-test.js"
   });
   await service.initialize();
-  return { service, update, validate };
+  return { service, update, validate, repository };
 }
 describe("debug service", () => {
+  test("rejects unsupported advanced fields and preserves the saved profile when persistence fails", async () => {
+    const { service, repository } = await fixture();
+    await expect(service.execute({ kind: "saveConfiguration",
+      configuration: { ...config, advanced: { console: "integratedTerminal" } } as DebugConfiguration
+    })).rejects.toThrow("Unsupported advanced option: console");
+    expect(repository.saveConfiguration).not.toHaveBeenCalled();
+    repository.saveConfiguration.mockRejectedValueOnce(new Error("Disk full"));
+    await expect(service.execute({ kind: "saveConfiguration", configuration: {
+      ...config, advanced: { envFile: ".env", stopOnEntry: true }
+    } })).rejects.toThrow("Disk full");
+    expect(service.snapshot().preferences.configurations).toEqual([config]);
+    await service.dispose();
+  });
   test("reserves the session slot before asynchronous validation and recovers after failure", async () => {
     let validate!: () => void;
     const { service } = await fixture(vi.fn(() => new Promise<void>(resolve => { validate = resolve; })));
