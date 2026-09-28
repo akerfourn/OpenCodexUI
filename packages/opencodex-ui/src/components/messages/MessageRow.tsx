@@ -17,6 +17,7 @@ import type {
 import { CopyIconButton } from "../common/CopyIconButton";
 import { TurnDetailsDialog } from "../dialogs/TurnDetailsDialog";
 import { ActivityKindIcon } from "./ActivityKindIcon";
+import { AutoApprovalReviewRowX } from "./AutoApprovalReviewRow";
 import { CommandActivityRow } from "./CommandActivityRow";
 import { FileChangeActivityRow } from "./FileChangeActivityRow";
 import { EditableMessageActionX } from "./EditableMessageAction";
@@ -224,7 +225,10 @@ export function MessageRow({
         } : {})
       }}
     >
-      {role === "activity" && isCommandActivityKind(kind) ? (
+      {role === "activity" && kind === "autoApprovalReview" &&
+        item.autoApprovalReview !== undefined && item.autoApprovalReview !== null ? (
+        <AutoApprovalReviewRowX review={item.autoApprovalReview} />
+      ) : role === "activity" && isCommandActivityKind(kind) ? (
         <CommandActivityRow
           content={content}
           details={details}

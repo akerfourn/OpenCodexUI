@@ -15,6 +15,11 @@ import {
 import { createActivity, readPlanSnapshot } from "./activityHelpers.js";
 import { createId, readObject, readString } from "./primitives.js";
 import { sanitizeTerminalOutput } from "../backend/threads/terminalOutput.js";
+import {
+  createAutoApprovalReviewItem,
+  isAutoApprovalReviewNotification,
+  mapAutoApprovalReviewItem
+} from "./autoApprovalReviewMapping.js";
 
 /**
  * Creates a streaming activity record from a Codex notification.
@@ -31,6 +36,23 @@ export function createActivityFromNotification(notification: CodexNotification):
 
   if (threadId.length === 0) {
     return null;
+  }
+
+  if (isAutoApprovalReviewNotification(notification.method)) {
+    const item = createAutoApprovalReviewItem(params);
+    if (item === null || turnId.length === 0) {
+      return null;
+    }
+    const mapped = mapAutoApprovalReviewItem(item);
+    return {
+      id: mapped.id,
+      content: mapped.content,
+      autoApprovalReview: mapped.autoApprovalReview,
+      kind: "autoApprovalReview",
+      threadId,
+      title: turnId,
+      status: mapped.status === "streaming" ? "running" : mapped.status
+    };
   }
 
   if (notification.method === "item/reasoning/summaryTextDelta") {

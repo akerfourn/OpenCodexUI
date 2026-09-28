@@ -211,6 +211,23 @@ export const enConversation = {
     max: "Maximum"
   },
   message: {
+    autoApprovalReview: {
+      details: "Automatic approval review details",
+      action: "Reviewed action",
+      rationale: "Decision rationale",
+      noRationale: "Codex did not provide a rationale.",
+      noAction: "No action details available.",
+      risk: "Assessed risk",
+      authorization: "Assessed user authorization",
+      status: {
+        inProgress: "Automatic review in progress",
+        approved: "Automatically approved",
+        denied: "Automatically denied",
+        timedOut: "Automatic review timed out",
+        aborted: "Automatic review interrupted",
+        unknown: "Automatic review: unknown outcome"
+      }
+    },
     useSuggestedPrompt: "Add to draft (without sending)",
     attachedImage: "Attached image",
     activityType: {

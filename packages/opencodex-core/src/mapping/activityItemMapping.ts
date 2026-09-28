@@ -18,6 +18,7 @@ import {
 import { readV2Action } from "./collaborationReaders.js";
 import { createActivity, readPlanSnapshot } from "./activityHelpers.js";
 import { createId, readObject, readString } from "./primitives.js";
+import { mapAutoApprovalReviewItem } from "./autoApprovalReviewMapping.js";
 
 /**
  * Maps a raw activity item to a structured turn item.
@@ -32,6 +33,10 @@ export function mapActivityTurnItem(
   language: OpenCodexLanguage
 ): OpenCodexTurnItem | null {
   const type = readString(item.type);
+
+  if (type === "autoApprovalReview") {
+    return mapAutoApprovalReviewItem(item);
+  }
 
   if (type.length === 0) {
     return null;
@@ -78,6 +83,10 @@ export function mapActivityMessage(
   turnDurationMs: number | null
 ): OpenCodexMessage | null {
   const type = readString(item.type);
+
+  if (type === "autoApprovalReview") {
+    return { ...mapAutoApprovalReviewItem(item), threadId, turnId, turnDurationMs };
+  }
 
   if (type.length === 0) {
     return null;

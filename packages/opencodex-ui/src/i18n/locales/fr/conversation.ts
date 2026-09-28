@@ -212,6 +212,23 @@ export const frConversation = {
     max: "Maximum"
   },
   message: {
+    autoApprovalReview: {
+      details: "Détails de la vérification automatique",
+      action: "Action vérifiée",
+      rationale: "Motif de la décision",
+      noRationale: "Codex n’a pas fourni de motif.",
+      noAction: "Aucun détail disponible sur l’action.",
+      risk: "Risque évalué",
+      authorization: "Autorisation utilisateur évaluée",
+      status: {
+        inProgress: "Vérification automatique en cours",
+        approved: "Autorisé automatiquement",
+        denied: "Refusé automatiquement",
+        timedOut: "Délai de vérification automatique dépassé",
+        aborted: "Vérification automatique interrompue",
+        unknown: "Vérification automatique : résultat inconnu"
+      }
+    },
     useSuggestedPrompt: "Ajouter au brouillon (sans envoyer)",
     attachedImage: "Image jointe",
     activityType: {

@@ -13,6 +13,10 @@ import {
 } from "../../mapping/activitySummary.js";
 import { sanitizeTerminalOutput } from "./terminalOutput.js";
 import { createId } from "./turnInput.js";
+import {
+  createAutoApprovalReviewItem,
+  isAutoApprovalReviewNotification
+} from "../../mapping/autoApprovalReviewMapping.js";
 
 export type LiveTurnMutation = {
   entry: ThreadTurnCacheEntry;
@@ -45,6 +49,14 @@ export function recordLiveNotification(
 
   if (turnId.length === 0) {
     return null;
+  }
+
+  if (isAutoApprovalReviewNotification(notification.method)) {
+    const item = createAutoApprovalReviewItem(params);
+    if (item === null) {
+      return null;
+    }
+    return threadTurnCache.recordLiveItem(threadId, turnId, item);
   }
 
   if (notification.method === "item/started" || notification.method === "item/completed") {
@@ -135,7 +147,8 @@ export function recordLiveNotification(
  * @returns `true` when the updated turn should be persisted.
  */
 export function shouldPersistLiveNotification(method: string): boolean {
-  return method === "item/started" ||
+  return isAutoApprovalReviewNotification(method) ||
+    method === "item/started" ||
     method === "item/completed" ||
     method === "rawResponseItem/completed" ||
     method === "turn/plan/updated" ||

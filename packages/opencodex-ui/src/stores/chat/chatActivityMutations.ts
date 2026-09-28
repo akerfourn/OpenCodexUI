@@ -39,7 +39,10 @@ export function appendActivityItem(
 
   const turn = findOrCreateTurn(timeline, threadId, turnId);
   const existing = findExistingActivityItem(turn, activity);
-  turn.status = "running";
+  // A late review decision describes an action, not the execution state of its turn.
+  if (activity.kind !== "autoApprovalReview") {
+    turn.status = "running";
+  }
 
   if (existing !== undefined) {
     if (activity.summary !== undefined && activity.summary !== null) {
@@ -54,7 +57,11 @@ export function appendActivityItem(
       existing.plan = activity.plan;
     }
 
-    if (activity.kind === "fileChange" || activity.kind === "plan") {
+    if (activity.autoApprovalReview !== undefined) {
+      existing.autoApprovalReview = activity.autoApprovalReview;
+    }
+
+    if (activity.kind === "fileChange" || activity.kind === "plan" || activity.kind === "autoApprovalReview") {
       existing.content = activity.content;
       existing.status = toMessageStatus(activity.status);
 
@@ -86,7 +93,8 @@ export function appendActivityItem(
     kind: activity.kind,
     summary: activity.summary,
     details: activity.details,
-    plan: activity.plan
+    plan: activity.plan,
+    autoApprovalReview: activity.autoApprovalReview
   });
 
   if (activity.kind === "plan") {

@@ -94,6 +94,10 @@ export function toTurnItem(message: OpenCodexMessage): OpenCodexTurnItem {
     item.plan = message.plan;
   }
 
+  if (message.autoApprovalReview !== undefined) {
+    item.autoApprovalReview = message.autoApprovalReview;
+  }
+
   if (message.attachments !== undefined) {
     item.attachments = message.attachments;
   }

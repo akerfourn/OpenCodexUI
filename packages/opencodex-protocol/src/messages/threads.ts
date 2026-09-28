@@ -3,6 +3,7 @@ import type {
   OpenCodexMessagePhase,
   OpenCodexReasoningEffort
 } from "./foundations.js";
+import type { OpenCodexAutoApprovalReview } from "./autoApprovalReview.js";
 import type { OpenCodexServiceTier } from "./sources.js";
 import type { OpenCodexThreadTokenUsage } from "./usage.js";
 
@@ -141,6 +142,7 @@ export type OpenCodexMessage = {
   summary?: string | null;
   details?: string | null;
   plan?: OpenCodexPlanSnapshot | null;
+  autoApprovalReview?: OpenCodexAutoApprovalReview | null;
   attachments?: OpenCodexAttachment[];
 };
 
@@ -158,6 +160,7 @@ export type OpenCodexTurnItem = {
   summary?: string | null;
   details?: string | null;
   plan?: OpenCodexPlanSnapshot | null;
+  autoApprovalReview?: OpenCodexAutoApprovalReview | null;
   attachments?: OpenCodexAttachment[];
 };
 
@@ -289,6 +292,7 @@ export type OpenCodexActivity = {
   summary?: string | null;
   details?: string | null;
   plan?: OpenCodexPlanSnapshot | null;
+  autoApprovalReview?: OpenCodexAutoApprovalReview | null;
   status: "running" | "completed" | "error";
 };
 
