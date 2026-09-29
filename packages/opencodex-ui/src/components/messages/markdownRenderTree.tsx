@@ -20,6 +20,8 @@ export type MarkdownRenderVariant = "streaming" | "standard" | "highlighted";
 
 export { MarkdownLinkContext, type MarkdownLinkContextValue } from "./MarkdownLinkContext";
 
+const textRemarkPlugins = [remarkGfm, remarkCodexDirectives];
+const syntaxRehypePlugins = [rehypeHighlight];
 const remarkPlugins = [remarkGfm, remarkMath, remarkCodexDirectives];
 const rehypeKatexOptions: RehypeKatexOptions = {
   strict: "ignore",
@@ -53,11 +55,12 @@ const markdownComponents: Components & { "codex-directive": typeof CodexDirectiv
  */
 export function createMarkdownRenderTree(
   markdown: string,
-  variant: MarkdownRenderVariant
+  variant: MarkdownRenderVariant,
+  renderMath = true
 ): ReactElement {
   const createTree = (): ReactElement => ReactMarkdown({
-    remarkPlugins,
-    rehypePlugins: getRehypePlugins(variant),
+    remarkPlugins: renderMath ? remarkPlugins : textRemarkPlugins,
+    rehypePlugins: getRehypePlugins(variant, renderMath),
     components: markdownComponents,
     children: markdown
   });
@@ -67,7 +70,7 @@ export function createMarkdownRenderTree(
   }
 
   return getCachedMarkdownRender(
-    [variant, markdown].join("\u0000"),
+    [variant, String(renderMath), markdown].join("\u0000"),
     markdown.length,
     createTree
   );
@@ -79,7 +82,8 @@ export function createMarkdownRenderTree(
  * @param variant Rendering pipeline variant.
  * @returns Rehype plugins used by the renderer.
  */
-function getRehypePlugins(variant: MarkdownRenderVariant) {
+function getRehypePlugins(variant: MarkdownRenderVariant, renderMath: boolean) {
+  if (!renderMath) return variant === "highlighted" ? syntaxRehypePlugins : plainRehypePlugins;
   if (variant === "streaming") {
     return plainRehypePlugins;
   }

@@ -173,3 +173,57 @@ describe("MarkdownMessage", () => {
     expect(markup).not.toContain("hljs-keyword");
   });
 });
+
+
+describe("message rendering preferences", () => {
+  it("should leave CLI dollars readable without disabling ordinary Markdown", () => {
+    const markdown = "**Terminal**\n\nuser@host:/project$ echo $PATH\nuser@host:/project$ pwd";
+    const markup = renderToStaticMarkup(<MarkdownMessage markdown={markdown} renderMath={false} onOpenLink={vi.fn()} />);
+    expect(markup).toContain("<strong>Terminal</strong>");
+    expect(markup).toContain("user@host:/project$ echo $PATH");
+    expect(markup).not.toContain("katex");
+    expect(markup).not.toContain("math-inline");
+  });
+
+  it("should keep cached trees isolated when math is toggled on, off and on", () => {
+    const markdown = String.raw`Inline $x^2$, \(y^2\) and block:
+
+$$
+z^2
+$$
+
+\[a^2\]
+`;
+    const render = (renderMath: boolean) => renderToStaticMarkup(
+      <MarkdownMessage markdown={markdown} renderMath={renderMath} onOpenLink={vi.fn()} />
+    );
+    expect(render(true)).toContain('class="katex');
+    const plainMath = render(false);
+    expect(plainMath).not.toContain("katex");
+    expect(plainMath).toContain("$x^2$");
+    expect(plainMath).toContain("$$");
+    expect(render(true)).toContain('class="katex');
+  });
+
+  it("should show original source including delimiters when Markdown is disabled", () => {
+    const markdown = String.raw`# Title
+**bold** and $x^2$ and \(y^2\)`;
+    const markup = renderToStaticMarkup(
+      <MarkdownMessage markdown={markdown} renderMarkdown={false} renderMath onOpenLink={vi.fn()} />
+    );
+    expect(markup).toContain(markdown);
+    expect(markup).toContain("markdown-message-plain");
+    expect(markup).not.toContain("<strong>");
+    expect(markup).not.toContain("katex");
+  });
+
+  it("should bypass math parsing during streaming and for explicit math code fences", () => {
+    for (const isStreaming of [true, false]) {
+      const markup = renderToStaticMarkup(<MarkdownMessage
+        markdown={"$PATH$\n\n```math\nx^2\n```"} renderMath={false} isStreaming={isStreaming} onOpenLink={vi.fn()} />);
+      expect(markup).toContain("$PATH$");
+      expect(markup).not.toContain("katex");
+      expect(markup).not.toContain("math-inline");
+    }
+  });
+});

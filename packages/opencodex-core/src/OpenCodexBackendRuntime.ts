@@ -1,3 +1,4 @@
+import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
 import { DebugService } from "./backend/debug/DebugService.js";
 import { requireToolWorkspace } from "./backend/workspaces/workspaceToolContext.js";
 import { WorkspaceFilesService } from "./backend/files/WorkspaceFilesService.js";
@@ -51,6 +52,8 @@ export class OpenCodexBackendRuntime {
   readonly files: WorkspaceFilesService;
   /** Local debugger owns its lifecycle independently of Codex conversations. */
   readonly debug: DebugService;
+  /** Durable presentation preferences never alter model inputs. */
+  readonly messageRendering: MessageRenderingService;
   /** Isolated experimental speech transcription, outside normal conversation execution. */
   readonly dictation: CodexDictationService;
   /** Fully wired services owned by this runtime instance. */
@@ -69,6 +72,7 @@ export class OpenCodexBackendRuntime {
     this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.services = createBackendServiceGraph(options, this.isPrerelease);
     this.apis = new BackendRuntimeApis(this.services, options);
+    this.messageRendering = new MessageRenderingService(this.services.cacheRepository);
     this.files = new WorkspaceFilesService(this.services.cacheRepository,
       this.services.projectRuntimeHandler, this.services.clientPool, this.settings);
     this.debug = new DebugService(this.services.cacheRepository?.debug ?? null, async context => {

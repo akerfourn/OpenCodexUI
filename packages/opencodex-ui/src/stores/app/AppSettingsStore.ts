@@ -1,6 +1,6 @@
 import { action, makeObservable, observable, runInAction } from "mobx";
 
-import { DEFAULT_LOG_POLICIES } from "@open-codex-ui/opencodex-protocol";
+import { normalizeMessageRenderingDefaults, DEFAULT_LOG_POLICIES } from "@open-codex-ui/opencodex-protocol";
 
 import type {
   OpenCodexCodexReleaseCheck,
@@ -457,6 +457,9 @@ function createDefaultSettings(): OpenCodexSettings {
 function cloneSettings(settings: OpenCodexSettings): OpenCodexSettings {
   return {
     ...settings,
+    messageRendering: settings.messageRendering === undefined
+      ? undefined
+      : normalizeMessageRenderingDefaults(settings.messageRendering),
     disabledFileLanguages: settings.disabledFileLanguages?.slice(),
     workspaceRoots: settings.workspaceRoots?.map((root) => ({ ...root })),
     codexReleaseCheck: { ...settings.codexReleaseCheck },

@@ -1,3 +1,4 @@
+import { enMessageRendering } from "./messageRendering.js";
 import { enDebug } from "./debug.js";
 import { enFileLanguages } from "./fileLanguages.js";
 import { enFiles } from "./files.js";
@@ -19,6 +20,7 @@ import { enSupport } from "./support.js";
 import { enUsage } from "./usage.js";
 
 export const enTranslation = {
+  ...enMessageRendering,
   ...enDebug,
   ...enFileLanguages,
   ...enFiles,

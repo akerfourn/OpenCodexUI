@@ -1,3 +1,4 @@
+import { normalizeMessageRenderingDefaults } from "@open-codex-ui/opencodex-protocol";
 import { normalizeFileLinkGrants } from "@open-codex-ui/opencodex-protocol";
 import { normalizeDisabledFileLanguages } from "@open-codex-ui/opencodex-protocol";
 import { normalizeDictationSettings } from "@open-codex-ui/opencodex-protocol";
@@ -315,6 +316,9 @@ export class SettingsApi implements SettingsApiContract {
   /** Publishes settings only after persistence succeeds; a failed write preserves the runtime. */
   private async persist(patch: Partial<OpenCodexSettings>): Promise<OpenCodexSettings> {
     const nextSettings = { ...this.settings.getSettings(), ...patch };
+    if (patch.messageRendering !== undefined) {
+      nextSettings.messageRendering = normalizeMessageRenderingDefaults(patch.messageRendering);
+    }
     if (patch.folderOpeningMode !== undefined && patch.folderOpeningMode !== "external" && patch.folderOpeningMode !== "system") {
       throw new Error("Invalid folder opening mode");
     }

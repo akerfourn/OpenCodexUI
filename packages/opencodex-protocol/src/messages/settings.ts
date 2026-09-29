@@ -1,3 +1,4 @@
+import type { MessageRenderingDefaults } from "../messageRendering";
 import type { DebugPreferences } from "../debug";
 import type { OpenCodexFileGrant } from "../files";
 import type { OpenCodexDictationSettings } from "../dictation";
@@ -34,6 +35,8 @@ export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
  * Persisted application settings shared by backend and UI.
  */
 export type OpenCodexSettings = {
+  /** Presentation defaults; individual message exceptions live in SQLite. */
+  messageRendering?: MessageRenderingDefaults;
   /** @deprecated Read only to migrate legacy debugger data to SQLite, then removed. */
   debug?: DebugPreferences;
   /** File explorer permissions only; does not affect Codex or command execution. */

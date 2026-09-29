@@ -1,3 +1,4 @@
+import { normalizeMessageRenderingDefaults } from "@open-codex-ui/opencodex-protocol";
 import { normalizeDisabledFileLanguages, normalizeFileLinkGrants } from "@open-codex-ui/opencodex-protocol";
 import { DEFAULT_DICTATION_SETTINGS, normalizeDictationSettings } from "@open-codex-ui/opencodex-protocol";
 /**
@@ -12,6 +13,7 @@ import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
  * Default settings applied when no user configuration has been saved yet.
  */
 export const defaultSettings: OpenCodexSettings = {
+  messageRendering: normalizeMessageRenderingDefaults(),
   fileOpeningMode: "integrated",
   folderOpeningMode: "external",
   dictation: { ...DEFAULT_DICTATION_SETTINGS },
@@ -76,6 +78,7 @@ export class SettingsStore {
       const settings = {
         ...defaultSettings,
         ...parsed,
+        messageRendering: normalizeMessageRenderingDefaults(parsed.messageRendering),
         folderOpeningMode: parsed.folderOpeningMode === "system" ? "system" as const : "external" as const,
         fileOpeningMode: parsed.fileOpeningMode === "external" ? "external" as const : "integrated" as const,
         fileLinkGrants: normalizeFileLinkGrants(parsed.fileLinkGrants),

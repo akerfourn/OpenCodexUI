@@ -1,3 +1,4 @@
+import { HomeMessageRenderingSettingsX } from "./HomeMessageRenderingSettings";
 import { HomeFileOpeningSettingsX } from "./HomeFileOpeningSettings";
 import { HomeDictationSettingsX } from "./HomeDictationSettings";
 /**
@@ -179,6 +180,7 @@ export function HomeSettingsView({ store }: HomeSettingsViewProps) {
       />
       <HomeAppUpdateSettingsX store={store} />
       <HomeFileOpeningSettingsX store={store} />
+      <HomeMessageRenderingSettingsX store={store} />
       <HomeDictationSettingsX store={store} />
       <Box
         sx={{

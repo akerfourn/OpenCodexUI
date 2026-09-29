@@ -48,9 +48,14 @@ export type MarkdownMessageProps = {
   onOpenLink(href: string): void;
   /** Enables progressive rendering for completed large content. */
   optimizeLargeContent?: boolean;
+  /** Shows the original message as plain text when false. */
+  renderMarkdown?: boolean;
+  /** Bypasses math parsing and delimiter normalization when false. */
+  renderMath?: boolean;
 };
 
 type RenderedMarkdownProps = {
+  renderMath: boolean;
   markdown: string;
   isStreaming: boolean;
   shouldHighlightSyntax: boolean;
@@ -74,7 +79,9 @@ export function MarkdownMessage({
   isStreaming = false,
   requireModifiedClick = false,
   onOpenLink,
-  optimizeLargeContent = true
+  optimizeLargeContent = true,
+  renderMarkdown,
+  renderMath = true
 }: MarkdownMessageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentProfile = useMemo<MarkdownContentProfile>(
@@ -84,7 +91,8 @@ export function MarkdownMessage({
   const isLargeContent = optimizeLargeContent && contentProfile.isLarge && !isStreaming;
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<MarkdownViewMode>("markdown");
-  const isPlainTextVisible = isLargeContent && viewMode === "plainText";
+  const isPlainTextVisible = renderMarkdown === false ||
+    (renderMarkdown === undefined && isLargeContent && viewMode === "plainText");
   const displayedMarkdown = isLargeContent && !isExpanded
     ? contentProfile.preview.markdown
     : markdown;
@@ -109,6 +117,7 @@ export function MarkdownMessage({
     <PlainTextMessage markdown={displayedMarkdown} />
   ) : (
     <RenderedMarkdownM
+      renderMath={renderMath}
       markdown={renderedMarkdown}
       isStreaming={isStreaming}
       shouldHighlightSyntax={shouldHighlightSyntax}
@@ -125,7 +134,8 @@ export function MarkdownMessage({
         <LargeMarkdownControls
           profile={contentProfile}
           isExpanded={isExpanded}
-          viewMode={viewMode}
+          viewMode={isPlainTextVisible ? "plainText" : "markdown"}
+          allowViewToggle={renderMarkdown === undefined}
           onToggleExpanded={() => setIsExpanded((current) => !current)}
           onToggleViewMode={() => setViewMode((current) => (
             current === "markdown" ? "plainText" : "markdown"
@@ -145,6 +155,7 @@ export const MarkdownMessageM = memo(MarkdownMessage);
  * @returns Rendered Markdown content.
  */
 function RenderedMarkdown({
+  renderMath,
   markdown,
   isStreaming,
   shouldHighlightSyntax,
@@ -156,8 +167,8 @@ function RenderedMarkdown({
     ? performance.now()
     : null;
   const markdownForRendering = useMemo(
-    () => (isStreaming ? markdown : normalizeLatexDelimiters(markdown)),
-    [isStreaming, markdown]
+    () => (isStreaming || !renderMath ? markdown : normalizeLatexDelimiters(markdown)),
+    [isStreaming, markdown, renderMath]
   );
   const renderVariant: MarkdownRenderVariant = isStreaming
     ? "streaming"
@@ -165,8 +176,8 @@ function RenderedMarkdown({
       ? "highlighted"
       : "standard";
   const markdownTree = useMemo(
-    () => createMarkdownRenderTree(markdownForRendering, renderVariant),
-    [markdownForRendering, renderVariant]
+    () => createMarkdownRenderTree(markdownForRendering, renderVariant, renderMath),
+    [markdownForRendering, renderVariant, renderMath]
   );
   const linkContext = useMemo<MarkdownLinkContextValue>(() => ({
     requireModifiedClick,
@@ -276,6 +287,7 @@ type LargeMarkdownControlsProps = {
   profile: MarkdownContentProfile;
   isExpanded: boolean;
   viewMode: MarkdownViewMode;
+  allowViewToggle: boolean;
   onToggleExpanded(): void;
   onToggleViewMode(): void;
 };
@@ -290,6 +302,7 @@ function LargeMarkdownControls({
   profile,
   isExpanded,
   viewMode,
+  allowViewToggle,
   onToggleExpanded,
   onToggleViewMode
 }: LargeMarkdownControlsProps) {
@@ -318,6 +331,7 @@ function LargeMarkdownControls({
       </Button>
       <Button
         size="small"
+        sx={{ display: allowViewToggle ? "inline-flex" : "none" }}
         aria-pressed={viewMode === "plainText"}
         onClick={onToggleViewMode}
       >

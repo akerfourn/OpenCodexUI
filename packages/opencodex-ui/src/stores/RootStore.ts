@@ -1,3 +1,4 @@
+import { MessageRenderingStore } from "./chat/MessageRenderingStore";
 import { DebugStore } from "./debug/DebugStore";
 import { openApplicationLink } from "./files/openApplicationLink";
 import type { FileOpenIntent } from "./files/fileOpenIntent";
@@ -49,6 +50,8 @@ export class RootStore {
   readonly fileCloseStore = new FileCloseStore();
   /** Survives project-tool navigation and document unmounts. */
   readonly debugStore = new DebugStore(this);
+  /** Local rendering exceptions never mutate thread items. */
+  readonly messageRenderingStore = new MessageRenderingStore(this);
   readonly appStore = new AppStore(this);
   /** Catalogue preferences shared by Home and all file editors. */
   readonly fileLanguagesStore = new FileLanguagesStore(this);

@@ -1,7 +1,7 @@
 /**
  * Renders the message row component for the OpenCodex UI.
  */
-import { useState, type RefObject } from "react";
+import { useContext, useState, type RefObject } from "react";
 import { observer } from "mobx-react-lite";
 import { Box, IconButton, Paper, Tooltip } from "@mui/material";
 import BugReportOutlinedIcon from "@mui/icons-material/BugReportOutlined";
@@ -14,6 +14,9 @@ import type {
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
+import { resolveMessageRendering } from "@open-codex-ui/opencodex-protocol";
+import { MessageRenderingContext } from "./MessageRenderingContext";
+import { MessageRenderingSettingsX } from "./MessageRenderingSettings";
 import { CopyIconButton } from "../common/CopyIconButton";
 import { TurnDetailsDialog } from "../dialogs/TurnDetailsDialog";
 import { ActivityKindIcon } from "./ActivityKindIcon";
@@ -86,6 +89,14 @@ export function MessageRow({
     details,
     plan = null
   } = item;
+  const renderingContext = useContext(MessageRenderingContext);
+  const renderingRole = role === "user" ? "user" : "assistant";
+  let rendering = resolveMessageRendering(undefined, renderingRole);
+  let renderingSettings = null;
+  if (renderingContext !== null && turnId !== undefined && (role === "user" || role === "assistant")) {
+    rendering = renderingContext.store.resolve(renderingContext.context, turnId, item.id, role);
+    renderingSettings = <MessageRenderingSettingsX turnId={turnId} itemId={item.id} role={role} />;
+  }
   const isStreaming = isRunning && item.status === "streaming";
   const [isTurnDetailsOpen, setTurnDetailsOpen] = useState(false);
   const articleRef = isLast ? lastMessageRef : undefined;
@@ -146,7 +157,7 @@ export function MessageRow({
             overflowWrap: "anywhere"
           }}
         >
-          <MarkdownMessageM
+          <MarkdownMessageM renderMarkdown={rendering.markdown} renderMath={rendering.math}
             markdown={content}
             requireModifiedClick
             onOpenLink={onOpenLink}
@@ -178,6 +189,7 @@ export function MessageRow({
             {messageTimestamp}
           </Box>
           <Box sx={{ display: "flex", gap: 0.5 }}>
+            {renderingSettings}
             {chatActions !== undefined && turnId !== undefined && onStartEdit !== undefined ? (
               <EditableMessageActionX
                 actions={chatActions}
@@ -258,17 +270,18 @@ export function MessageRow({
             ? <ActivityKindIcon kind="reasoning" />
             : <ActivityKindIcon kind={kind} />}
           <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-            <MarkdownMessageM
+            <MarkdownMessageM renderMarkdown={rendering.markdown} renderMath={rendering.math}
               markdown={content}
               isStreaming={isStreaming}
               requireModifiedClick
               onOpenLink={onOpenLink}
             />
           </Box>
+          {renderingSettings}
         </Box>
       ) : (
         <>
-          <MarkdownMessageM
+          <MarkdownMessageM renderMarkdown={rendering.markdown} renderMath={rendering.math}
             markdown={content}
             isStreaming={isStreaming}
             requireModifiedClick
@@ -299,6 +312,7 @@ export function MessageRow({
               {messageTimestamp}
             </Box>
             <Box sx={{ display: "flex", gap: 0.5 }}>
+              {renderingSettings}
               {showTurnDiagnostic && turnId !== undefined && onOpenTurnDiagnostic !== undefined ? (
                 <Tooltip title={t("turnDiagnostics.title")}>
                   <IconButton

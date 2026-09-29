@@ -1,3 +1,4 @@
+import { MessageRenderingProvider } from "./MessageRenderingProvider";
 import { CodexFollowupContext } from "./CodexFollowupContext";
 /**
  * Renders the chat message list component for the OpenCodex UI.
@@ -210,6 +211,7 @@ export function ChatMessageList({
   }
 
   return (
+    <MessageRenderingProvider store={store.messageRenderingStore} sourceId={sourceId} threadId={currentThread.id}>
     <CodexFollowupContext.Provider value={chatStore.composer}>
     <Box
       sx={{
@@ -394,6 +396,7 @@ export function ChatMessageList({
       ) : null}
     </Box>
     </CodexFollowupContext.Provider>
+    </MessageRenderingProvider>
   );
 }
 

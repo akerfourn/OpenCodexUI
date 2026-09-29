@@ -80,7 +80,9 @@ import { SqliteSourceCacheRepository } from "./sqlite/sources/SqliteSourceCacheR
 import { SqliteThreadCacheRepository } from "./sqlite/threads/SqliteThreadCacheRepository.js";
 import { SqliteWorkspaceCacheRepository } from "./sqlite/projects/SqliteWorkspaceCacheRepository.js";
 import type { WorkspaceCacheRepository } from "./types/workspaces.js";
+import type { MessageRenderingRepository } from "./types/messageRendering.js";
 import type { DebugRepository } from "./types/debug.js";
+import { SqliteMessageRenderingRepository } from "./sqlite/SqliteMessageRenderingRepository.js";
 import { SqliteDebugRepository } from "./sqlite/debug/SqliteDebugRepository.js";
 
 export type SqliteOpenCodexCacheRepositoryOptions = {
@@ -106,6 +108,8 @@ export function createOpenCodexSqliteCacheRepository(
 export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository {
   /** Debugger data on the shared database connection. */
   readonly debug: DebugRepository;
+  /** Local presentation overrides, kept separately from Codex content. */
+  readonly messageRendering: MessageRenderingRepository;
   /** Workspace identity and execution persistence on the shared connection. */
   readonly workspaces: WorkspaceCacheRepository;
   /** SQLite connection owned by this facade. */
@@ -149,6 +153,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     this.sources = new SqliteSourceCacheRepository(this.database);
     this.workspaces = new SqliteWorkspaceCacheRepository(this.database);
     this.debug = new SqliteDebugRepository(this.database);
+    this.messageRendering = new SqliteMessageRenderingRepository(this.database);
     this.collaboration = new SqliteCollaborationCacheRepository(this.database);
     this.projects = new SqliteProjectCacheRepository(this.database);
     this.logs = new SqliteLogCacheRepository(this.database);

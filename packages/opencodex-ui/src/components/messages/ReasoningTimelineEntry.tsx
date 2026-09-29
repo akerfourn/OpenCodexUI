@@ -46,6 +46,7 @@ export function ReasoningTimelineEntry({
   return (
     <MessageRowX
       item={entry.item}
+      turnId={turn.id}
       fallbackCreatedAt={turn.startedAt}
       isLast={false}
       lastMessageRef={lastMessageRef}

@@ -19,6 +19,7 @@ export * from "./files";
 
 export * from "./fileLinkGrants";
 
+export * from "./messageRendering";
 export * from "./debug";
 export * from "./debugImport";
 export * from "./debugAdvanced";

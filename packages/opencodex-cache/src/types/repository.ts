@@ -10,6 +10,7 @@ import type {
   SourceCacheRepository
 } from "./repositoryTooling.js";
 import type { ProjectGoalCacheRepository } from "./repositoryGoals.js";
+import type { MessageRenderingRepository } from "./messageRendering.js";
 import type { DebugRepository } from "./debug.js";
 
 /**
@@ -27,6 +28,8 @@ export interface OpenCodexCacheRepository
   readonly workspaces: WorkspaceCacheRepository;
   /** Persisted debugger profiles, breakpoints and watches. */
   readonly debug: DebugRepository;
+  /** Local presentation overrides, kept separately from Codex content. */
+  readonly messageRendering: MessageRenderingRepository;
   /**
    * Closes resources owned by the repository.
    *
