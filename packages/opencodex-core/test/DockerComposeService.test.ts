@@ -11,6 +11,48 @@ import {
 import type { SourceDockerProcessClient } from "../src/backend/docker/SourceDockerCommandExecutor";
 
 describe("DockerComposeService", () => {
+  it("should discover named variants and require a choice without invoking Docker", async () => {
+    const client = new FakeSourceClient({ "docker-compose.yaml": true, "docker-compose.local.yaml": true,
+      "docker-compose.prod.yml": true, "compose.debug.yaml": true, "other.yaml": true });
+    const service = new DockerComposeService({ clients: { ensureClient: async () => client } });
+    const snapshot = await service.readSnapshot("/workspace/app", "source-1");
+    expect(snapshot).toMatchObject({ composeFile: null, selectionIssue: "required", services: [],
+      composeFiles: ["compose.debug.yaml", "docker-compose.local.yaml", "docker-compose.prod.yml", "docker-compose.yaml"] });
+    await expect(service.up("/workspace/app", "source-1", "mongo")).rejects.toThrow("Select a Docker Compose file");
+    expect(client.spawnedCommands).toEqual([]);
+  });
+
+  it("should pin discovery, lifecycle operations and logs to the local configuration", async () => {
+    const client = new FakeSourceClient({ "docker-compose.yaml": true, "docker-compose.local.yaml": true,
+      configuredServices: ["mongo"] });
+    const service = new DockerComposeService({ clients: { ensureClient: async () => client } });
+    const file = "docker-compose.local.yaml";
+    expect((await service.readSnapshot("/workspace/app", "source-1", undefined, file)).composeFile).toBe(file);
+    await service.up("/workspace/app", "source-1", "mongo", undefined, file);
+    await service.stop("/workspace/app", "source-1", "mongo", undefined, file);
+    await service.restart("/workspace/app", "source-1", "mongo", undefined, file);
+    await service.readLogs("/workspace/app", "source-1", "mongo", 10, undefined, file);
+    expect(client.spawnedCommands).toHaveLength(6);
+    for (const command of client.spawnedCommands) {
+      expect(command.slice(0, 4)).toEqual(["docker", "compose", "--file", file]);
+      expect(command).not.toContain("docker-compose.yaml");
+    }
+  });
+
+  it("should never fall back when the chosen file disappears or contains a path", async () => {
+    const client = new FakeSourceClient({ "docker-compose.yaml": true });
+    const service = new DockerComposeService({ clients: { ensureClient: async () => client } });
+    const file = "docker-compose.local.yaml";
+    expect(await service.readSnapshot("/workspace/app", "source-1", undefined, file))
+      .toMatchObject({ composeFile: null, composeFiles: ["docker-compose.yaml"], selectionIssue: "missing", services: [] });
+    await expect(service.up("/workspace/app", "source-1", "mongo", undefined, file))
+      .rejects.toThrow("no longer available");
+    await expect(service.up("/workspace/app", "source-1", "mongo", undefined, "../docker-compose.yaml"))
+      .rejects.toThrow("Select a Docker Compose file");
+    expect(client.spawnedCommands).toEqual([]);
+  });
+
+
   it("should isolate secondary stacks while retaining the primary Compose project name", async () => {
     const client = new FakeSourceClient({ "compose.yaml": true });
     const repository = { workspaces: { get: async (id: string) => ({
@@ -19,9 +61,9 @@ describe("DockerComposeService", () => {
     }) } } as unknown as OpenCodexCacheRepository;
     const service = new DockerComposeService({ cacheRepository: repository,
       clients: { ensureClient: async () => client } });
-    await service.up("/workspace/app", "source-1", "web", "primary");
-    await service.up("/workspace/app", "source-1", "web", "secondary");
-    await service.stop("/workspace/app", "source-1", "web", "secondary");
+    await service.up("/workspace/app", "source-1", "web", "primary", "compose.yaml");
+    await service.up("/workspace/app", "source-1", "web", "secondary", "compose.yaml");
+    await service.stop("/workspace/app", "source-1", "web", "secondary", "compose.yaml");
     expect(client.spawnedCommands[0]).not.toContain("--project-name");
     const secondary = client.spawnedCommands[1];
     const nameIndex = secondary.indexOf("--project-name") + 1;
@@ -40,6 +82,8 @@ describe("DockerComposeService", () => {
       projectPath: "/workspace/app",
       sourceId: "source-1",
       composeFile: null,
+      composeFiles: [],
+      selectionIssue: null,
       errorMessage: null,
       services: []
     } satisfies OpenCodexDockerComposeSnapshot);
@@ -85,6 +129,8 @@ describe("DockerComposeService", () => {
       projectPath: "/workspace/app",
       sourceId: "source-1",
       composeFile: "compose.yaml",
+      composeFiles: ["compose.yaml"],
+      selectionIssue: null,
       errorMessage: null,
       services: [
         {
@@ -117,16 +163,13 @@ describe("DockerComposeService", () => {
         { name: "database", state: "missing", containers: [] }
       ]
     });
-    expect(client.metadataPaths).toEqual([
-      "/workspace/app/compose.yaml"
-    ]);
+    expect(client.directoryPaths).toEqual(["/workspace/app"]);
     expect(JSON.stringify(snapshot)).not.toContain(sensitiveCommand);
   });
 
   it("should detect Compose files in a Windows source path", async () => {
     const client = new FakeSourceClient({
-      "docker-compose.yml": true,
-      missingPathError: "cannot find the file specified"
+      "docker-compose.yml": true
     });
     const service = new DockerComposeService({
       clients: { ensureClient: async () => client }
@@ -138,12 +181,7 @@ describe("DockerComposeService", () => {
       composeFile: "docker-compose.yml",
       errorMessage: null
     });
-    expect(client.metadataPaths).toEqual([
-      "C:\\workspace\\app\\compose.yaml",
-      "C:\\workspace\\app\\compose.yml",
-      "C:\\workspace\\app\\docker-compose.yaml",
-      "C:\\workspace\\app\\docker-compose.yml"
-    ]);
+    expect(client.directoryPaths).toEqual(["C:\\workspace\\app"]);
     expect(client.spawnedCwds).toEqual([
       "C:\\workspace\\app",
       "C:\\workspace\\app"
@@ -156,19 +194,19 @@ describe("DockerComposeService", () => {
       clients: { ensureClient: async () => client }
     });
 
-    await service.up("/workspace/app", "source-1", "web");
-    await service.stop("/workspace/app", "source-1", "web");
-    await service.restart("/workspace/app", "source-1", "web");
-    await expect(service.readLogs("/workspace/app", "source-1", "web", 10)).resolves.toMatchObject({
+    await service.up("/workspace/app", "source-1", "web", undefined, "compose.yml");
+    await service.stop("/workspace/app", "source-1", "web", undefined, "compose.yml");
+    await service.restart("/workspace/app", "source-1", "web", undefined, "compose.yml");
+    await expect(service.readLogs("/workspace/app", "source-1", "web", 10, undefined, "compose.yml")).resolves.toMatchObject({
       serviceName: "web",
       stdout: "service logs"
     });
 
     expect(client.spawnedCommands.map((entry) => entry.slice(1))).toEqual([
-      ["compose", "up", "--detach", "web"],
-      ["compose", "stop", "web"],
-      ["compose", "restart", "web"],
-      ["compose", "logs", "--no-color", "--tail", "10", "web"]
+      ["compose", "--file", "compose.yml", "up", "--detach", "web"],
+      ["compose", "--file", "compose.yml", "stop", "web"],
+      ["compose", "--file", "compose.yml", "restart", "web"],
+      ["compose", "--file", "compose.yml", "logs", "--no-color", "--tail", "10", "web"]
     ]);
   });
 
@@ -214,10 +252,10 @@ describe("DockerComposeService", () => {
     expect(JSON.stringify(snapshot)).not.toContain(sensitiveToken);
 
     const operationErrors = [
-      () => service.up("/workspace/app", "source-1", "web"),
-      () => service.stop("/workspace/app", "source-1", "web"),
-      () => service.restart("/workspace/app", "source-1", "web"),
-      () => service.readLogs("/workspace/app", "source-1", "web")
+      () => service.up("/workspace/app", "source-1", "web", undefined, "compose.yaml"),
+      () => service.stop("/workspace/app", "source-1", "web", undefined, "compose.yaml"),
+      () => service.restart("/workspace/app", "source-1", "web", undefined, "compose.yaml"),
+      () => service.readLogs("/workspace/app", "source-1", "web", undefined, undefined, "compose.yaml")
     ];
 
     for (const operation of operationErrors) {
@@ -247,7 +285,7 @@ describe("DockerComposeService", () => {
 
 /** Minimal source client double that executes process/spawn notifications. */
 class FakeSourceClient implements SourceDockerProcessClient {
-  readonly metadataPaths: string[] = [];
+  readonly directoryPaths: string[] = [];
   readonly spawnedCommands: string[][] = [];
   readonly spawnedCwds: string[] = [];
   private readonly listeners = new Set<(notification: CodexNotification) => void>();
@@ -257,22 +295,17 @@ class FakeSourceClient implements SourceDockerProcessClient {
     this.options = options;
   }
 
-  async getMetadata(path: string): Promise<{ isFile: boolean; isDirectory: boolean; isSymlink: boolean; createdAtMs: number; modifiedAtMs: number }> {
-    this.metadataPaths.push(path);
-    const fileName = path.split(/[\\/]/u).pop() ?? "";
-    if (this.options[fileName as keyof FakeSourceClientOptions] === true) {
-      return { isFile: true, isDirectory: false, isSymlink: false, createdAtMs: 0, modifiedAtMs: 0 };
-    }
-
-    throw new Error(this.options.missingPathError ?? "ENOENT: file does not exist");
-  }
-
   onNotification(listener: (notification: CodexNotification) => void): Disposable {
     this.listeners.add(listener);
     return { dispose: () => this.listeners.delete(listener) };
   }
 
   async request<T>(method: string, params?: unknown): Promise<T> {
+    if (method === "fs/readDirectory") {
+      this.directoryPaths.push((params as { path: string }).path);
+      return { entries: Object.entries(this.options).filter(([, value]) => value === true)
+        .map(([fileName]) => ({ fileName, isFile: true, isDirectory: false })) } as T;
+    }
     if (method !== "process/spawn") {
       return {} as T;
     }
@@ -280,7 +313,7 @@ class FakeSourceClient implements SourceDockerProcessClient {
     const spawnParams = params as { command: string[]; processHandle: string };
     this.spawnedCommands.push(spawnParams.command);
     this.spawnedCwds.push(String((params as { cwd?: string }).cwd));
-    const operation = spawnParams.command[2];
+    const operation = spawnParams.command.find(arg => ["config", "ps", "up", "stop", "restart", "logs"].includes(arg));
     const stdout = operation === "logs"
       ? "service logs"
       : operation === "config"
@@ -310,11 +343,14 @@ class FakeSourceClient implements SourceDockerProcessClient {
 }
 
 type FakeSourceClientOptions = {
+  "docker-compose.local.yaml"?: boolean;
+  "docker-compose.prod.yml"?: boolean;
+  "compose.debug.yaml"?: boolean;
+  "other.yaml"?: boolean;
   "compose.yaml"?: boolean;
   "compose.yml"?: boolean;
   "docker-compose.yaml"?: boolean;
   "docker-compose.yml"?: boolean;
-  missingPathError?: string;
   configuredServices?: string[];
   services?: Record<string, unknown>[];
   exitCode?: number;

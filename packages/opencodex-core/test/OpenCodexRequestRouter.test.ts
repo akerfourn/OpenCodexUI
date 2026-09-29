@@ -65,29 +65,34 @@ describe("OpenCodexRequestRouter Docker Compose routes", () => {
     const requests: OpenCodexRequest[] = [
       {
         type: "docker.compose.snapshot.read",
+        composeFile: "docker-compose.local.yaml",
         projectPath: "/workspace/app",
         sourceId: "source-1"
       },
       {
         type: "docker.compose.service.up",
+        composeFile: "docker-compose.local.yaml",
         projectPath: "/workspace/app",
         sourceId: "source-1",
         serviceName: "web"
       },
       {
         type: "docker.compose.service.stop",
+        composeFile: "docker-compose.local.yaml",
         projectPath: "/workspace/app",
         sourceId: "source-1",
         serviceName: "web"
       },
       {
         type: "docker.compose.service.restart",
+        composeFile: "docker-compose.local.yaml",
         projectPath: "/workspace/app",
         sourceId: "source-1",
         serviceName: "web"
       },
       {
         type: "docker.compose.service.logs.read",
+        composeFile: "docker-compose.local.yaml",
         projectPath: "/workspace/app",
         sourceId: "source-1",
         serviceName: "web",
@@ -99,15 +104,17 @@ describe("OpenCodexRequestRouter Docker Compose routes", () => {
       await router.handleRequest(request);
     }
 
-    expect(dockerCompose.readSnapshot).toHaveBeenCalledWith("/workspace/app", "source-1");
-    expect(dockerCompose.up).toHaveBeenCalledWith("/workspace/app", "source-1", "web");
-    expect(dockerCompose.stop).toHaveBeenCalledWith("/workspace/app", "source-1", "web");
-    expect(dockerCompose.restart).toHaveBeenCalledWith("/workspace/app", "source-1", "web");
+    expect(dockerCompose.readSnapshot).toHaveBeenCalledWith("/workspace/app", "source-1", undefined, "docker-compose.local.yaml");
+    expect(dockerCompose.up).toHaveBeenCalledWith("/workspace/app", "source-1", "web", undefined, "docker-compose.local.yaml");
+    expect(dockerCompose.stop).toHaveBeenCalledWith("/workspace/app", "source-1", "web", undefined, "docker-compose.local.yaml");
+    expect(dockerCompose.restart).toHaveBeenCalledWith("/workspace/app", "source-1", "web", undefined, "docker-compose.local.yaml");
     expect(dockerCompose.readLogs).toHaveBeenCalledWith(
       "/workspace/app",
       "source-1",
       "web",
-      50
+      50,
+      undefined,
+      "docker-compose.local.yaml"
     );
   });
 });

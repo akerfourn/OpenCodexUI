@@ -267,27 +267,27 @@ export type OpenCodexRequest =
   | { type: "docker.host.container.stop"; containerId: string }
   | { type: "docker.host.container.restart"; containerId: string }
   | { type: "docker.host.container.logs.read"; containerId: string; tail?: number }
-  | { type: "docker.compose.snapshot.read"; workspaceId?: string; projectPath: string; sourceId: string }
+  | { type: "docker.compose.snapshot.read"; composeFile?: string; workspaceId?: string; projectPath: string; sourceId: string }
   | {
-      type: "docker.compose.service.up"; workspaceId?: string;
+      type: "docker.compose.service.up"; composeFile?: string; workspaceId?: string;
       projectPath: string;
       sourceId: string;
       serviceName: string;
     }
   | {
-      type: "docker.compose.service.stop"; workspaceId?: string;
+      type: "docker.compose.service.stop"; composeFile?: string; workspaceId?: string;
       projectPath: string;
       sourceId: string;
       serviceName: string;
     }
   | {
-      type: "docker.compose.service.restart"; workspaceId?: string;
+      type: "docker.compose.service.restart"; composeFile?: string; workspaceId?: string;
       projectPath: string;
       sourceId: string;
       serviceName: string;
     }
   | {
-      type: "docker.compose.service.logs.read"; workspaceId?: string;
+      type: "docker.compose.service.logs.read"; composeFile?: string; workspaceId?: string;
       projectPath: string;
       sourceId: string;
       serviceName: string;

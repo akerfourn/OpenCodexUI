@@ -22,6 +22,9 @@ type ComposeActionRequestType =
  * Stores bounded Compose discovery, service actions, and logs for one project.
  */
 export class ProjectComposeStore {
+  /** Explicit choices are retained per source/workspace for this project tab's lifetime. */
+  private readonly selectedFiles = new Map<string, string>();
+
   /** Latest Compose project snapshot, or `null` before the first read. */
   snapshot: OpenCodexDockerComposeSnapshot | null = null;
   /** Service whose detail section is selected. */
@@ -70,6 +73,32 @@ export class ProjectComposeStore {
       root: false,
       snapshotRequest: false
     });
+  }
+
+  /** Includes workspace identity so identical paths from different sources never share a choice. */
+  private get composeContextKey(): string {
+    return JSON.stringify([this.projectStore.project.sourceId, this.projectStore.workspaceId,
+      this.projectStore.workspacePath ?? this.projectStore.projectPath]);
+  }
+
+  /** Exposes the active or missing remembered filename for the selector. */
+  get selectedComposeFile(): string | null {
+    return this.selectedFiles.get(this.composeContextKey) ?? this.snapshot?.composeFile ?? null;
+  }
+
+  /** Lists detected candidates without inventing a fallback selection. */
+  get composeFiles(): string[] {
+    return this.snapshot?.composeFiles ?? [];
+  }
+
+  /** Changes configuration only between operations and invalidates all old responses and dialogs. */
+  async selectComposeFile(file: string): Promise<void> {
+    if (this.pendingServiceNames.size > 0 || !this.composeFiles.includes(file)) return;
+    const previous = this.snapshot;
+    this.selectedFiles.set(this.composeContextKey, file);
+    this.reset();
+    if (previous !== null) this.snapshot = { ...previous, composeFile: null, services: [], errorMessage: null };
+    await this.load({ force: true });
   }
 
   /** Returns whether the project has a detected Compose file. */
@@ -193,7 +222,8 @@ export class ProjectComposeStore {
     const sourceId = this.projectStore.project.sourceId;
     const projectPath = (this.projectStore.workspacePath ?? this.projectStore.projectPath);
 
-    if (sourceId === null || sourceId === undefined || !this.isAvailable) {
+    if (sourceId === null || sourceId === undefined || !this.isAvailable ||
+      !this.hasComposeFile || this.isLoading) {
       return;
     }
 
@@ -211,6 +241,7 @@ export class ProjectComposeStore {
         ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         sourceId,
         serviceName,
+        composeFile: this.snapshot!.composeFile!,
         tail: 200
       });
 
@@ -265,7 +296,7 @@ export class ProjectComposeStore {
     const projectPath = (this.projectStore.workspacePath ?? this.projectStore.projectPath);
 
     if (sourceId === null || sourceId === undefined || !this.isAvailable ||
-      this.pendingServiceNames.has(serviceName)) {
+      this.pendingServiceNames.has(serviceName) || !this.hasComposeFile || this.isLoading) {
       return;
     }
 
@@ -281,7 +312,8 @@ export class ProjectComposeStore {
         projectPath,
         ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         sourceId,
-        serviceName
+        serviceName,
+        composeFile: this.snapshot!.composeFile!
       });
       if (this.isCurrentProject(projectPath, sourceId, projectIdentityId)) {
         await this.load({ force: true });
@@ -319,6 +351,8 @@ export class ProjectComposeStore {
     try {
       const snapshot = await this.root.request<OpenCodexDockerComposeSnapshot>({
         type: "docker.compose.snapshot.read",
+        ...(this.selectedFiles.has(this.composeContextKey)
+          ? { composeFile: this.selectedFiles.get(this.composeContextKey)! } : {}),
         projectPath,
         ...(this.projectStore.workspaceId === undefined ? {} : { workspaceId: this.projectStore.workspaceId }),
         sourceId

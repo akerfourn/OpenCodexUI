@@ -123,6 +123,7 @@ describe("ProjectComposeStore", () => {
     });
     const store = createStore(request);
 
+    store.snapshot = createSnapshot();
     await store.stop("web");
 
     expect(request.mock.calls.map(([value]) => value)).toEqual([
@@ -130,7 +131,8 @@ describe("ProjectComposeStore", () => {
         type: "docker.compose.service.stop",
         projectPath: "/workspace/project",
         sourceId: "source-1",
-        serviceName: "web"
+        serviceName: "web",
+        composeFile: "compose.yaml"
       },
       {
         type: "docker.compose.snapshot.read",
@@ -161,9 +163,11 @@ describe("ProjectComposeStore", () => {
       return Promise.resolve(createSnapshot("stopped"));
     });
     const store = createStore(request);
+    store.snapshot = createSnapshot();
     const firstAction = store.stop("web");
 
     store.reset();
+    store.snapshot = createSnapshot();
     const secondAction = store.stop("web");
 
     resolveFirstAction?.({ ok: true });
@@ -186,6 +190,7 @@ describe("ProjectComposeStore", () => {
     const request = vi.fn(async () => logs);
     const store = createStore(request);
 
+    store.snapshot = createSnapshot();
     await store.openLogs("web");
 
     expect(request).toHaveBeenCalledWith({
@@ -193,6 +198,7 @@ describe("ProjectComposeStore", () => {
       projectPath: "/workspace/project",
       sourceId: "source-1",
       serviceName: "web",
+      composeFile: "compose.yaml",
       tail: 200
     });
     expect(store.selectedLogs).toEqual(logs);
@@ -238,6 +244,7 @@ describe("ProjectComposeStore", () => {
       return Promise.resolve(createSnapshot());
     });
     const store = createStore(request);
+    store.snapshot = createSnapshot();
     const loading = store.openLogs("web");
 
     store.closeLogs();
@@ -287,3 +294,81 @@ function createSnapshot(state: "running" | "stopped" = "running"): OpenCodexDock
     }]
   };
 }
+
+describe("Compose file selection", () => {
+  const files = ["docker-compose.yaml", "docker-compose.local.yaml"];
+  const initial = { ...createSnapshot(), composeFile: null, composeFiles: files, services: [], selectionIssue: "required" as const };
+
+  it("should block operations until a file is chosen and include it in every subsequent request", async () => {
+    const request = vi.fn(async (value: OpenCodexRequest) => {
+      if (value.type === "docker.compose.snapshot.read") {
+        if (value.composeFile === undefined) return initial;
+        return { ...createSnapshot(), composeFiles: files, composeFile: value.composeFile };
+      }
+      return { ok: true };
+    });
+    const store = createStore(request);
+    await store.load();
+    await store.up("web");
+    expect(request).toHaveBeenCalledTimes(1);
+    await store.selectComposeFile(files[1]);
+    await store.up("web");
+    await store.openLogs("web");
+    for (const [value] of request.mock.calls.slice(1)) {
+      expect(value).toMatchObject({ composeFile: "docker-compose.local.yaml" });
+    }
+  });
+
+  it("should discard snapshot and log replies from the previous file", async () => {
+    let finishSnapshot!: (value: unknown) => void;
+    let finishLogs!: (value: unknown) => void;
+    const request = vi.fn((value: OpenCodexRequest): Promise<unknown> => {
+      if (value.type === "docker.compose.service.logs.read") return new Promise(resolve => { finishLogs = resolve; });
+      if (value.type === "docker.compose.snapshot.read" && value.composeFile === files[1]) {
+        return Promise.resolve({ ...createSnapshot(), composeFiles: files, composeFile: files[1] });
+      }
+      return new Promise(resolve => { finishSnapshot = resolve; });
+    });
+    const store = createStore(request);
+    store.snapshot = { ...createSnapshot(), composeFiles: files, composeFile: files[0] };
+    const oldLogs = store.openLogs("web");
+    const oldSnapshot = store.load();
+    await store.selectComposeFile(files[1]);
+    finishSnapshot({ ...createSnapshot(), composeFile: files[0], composeFiles: files });
+    finishLogs({ serviceName: "web", stdout: "wrong-file", stderr: "" });
+    await Promise.all([oldLogs, oldSnapshot]);
+    expect(store.snapshot?.composeFile).toBe(files[1]);
+    expect(store.selectedLogs).toBeNull();
+    expect(store.isLogsOpen).toBe(false);
+  });
+
+  it("should keep explicit choices separate between workspaces and retain missing selections", async () => {
+    const project = { project: { sourceId: "source-1" }, projectPath: "/project", workspaceId: "primary",
+      workspacePath: "/project", isCodexSourceReady: true };
+    let missing = false;
+    const request = vi.fn(async (value: OpenCodexRequest) => {
+      if (value.type !== "docker.compose.snapshot.read") return { ok: true };
+      if (value.composeFile === undefined) return initial;
+      if (missing) return { ...initial, composeFiles: [files[0]], selectionIssue: "missing" };
+      return { ...createSnapshot(), composeFile: value.composeFile, composeFiles: files };
+    });
+    const store = new ProjectComposeStore(project as unknown as ProjectStore, { request } as never);
+    await store.load();
+    await store.selectComposeFile(files[1]);
+    project.workspaceId = "other";
+    project.workspacePath = "/other";
+    store.reset();
+    await store.load();
+    expect(store.selectedComposeFile).toBeNull();
+    project.workspaceId = "primary";
+    project.workspacePath = "/project";
+    store.reset();
+    missing = true;
+    await store.load();
+    expect(store.selectedComposeFile).toBe(files[1]);
+    expect(store.hasComposeFile).toBe(false);
+    const count = request.mock.calls.length;
+    await store.up("web");
+    expect(request).toHaveBeenCalledTimes(count);
+  });
+});

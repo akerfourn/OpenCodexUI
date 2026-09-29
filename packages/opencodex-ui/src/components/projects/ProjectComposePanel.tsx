@@ -1,3 +1,4 @@
+import { ProjectComposeFileSelectorX } from "./ProjectComposeFileSelector";
 /**
  * Renders Docker Compose services for one opened project.
  */
@@ -111,11 +112,7 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
           <Typography variant="caption" color="text.secondary">
             {t("docker.compose.description")}
           </Typography>
-          {composeStore.snapshot?.composeFile !== null && composeStore.snapshot?.composeFile !== undefined ? (
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }} noWrap>
-              {t("docker.compose.composeFile", { file: composeStore.snapshot.composeFile })}
-            </Typography>
-          ) : null}
+
         </Box>
         <Tooltip title={t("docker.compose.actions.refresh")}>
           <span>
@@ -131,6 +128,7 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
         </Tooltip>
       </Stack>
 
+      <ProjectComposeFileSelectorX store={composeStore} />
       {composeStore.isLoading ? <LinearProgress /> : null}
       {composeStore.errorMessage !== null ? (
         <Alert severity="error" className="project-compose-error">
@@ -158,7 +156,7 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
             </Typography>
           </Stack>
         ) : null}
-        {composeStore.hasLoaded && composeStore.services.length === 0 ? (
+        {composeStore.hasLoaded && composeStore.services.length === 0 && composeStore.snapshot?.selectionIssue == null ? (
           <Typography variant="body2" color="text.secondary">
             {t("docker.compose.empty")}
           </Typography>
@@ -168,8 +166,9 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
 
       <ProjectComposeServiceDialogX
         service={selectedService}
+        composeFile={composeStore.snapshot?.composeFile ?? null}
         isPending={isSelectedServicePending}
-        isAvailable={isAvailable}
+        isAvailable={isAvailable && !composeStore.isLoading && composeStore.hasComposeFile}
         onClose={handleCloseDetails}
         onStart={handleStart}
         onStop={handleStop}

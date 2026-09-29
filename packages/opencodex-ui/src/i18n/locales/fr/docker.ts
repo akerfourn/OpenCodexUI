@@ -32,6 +32,11 @@ export const frDocker = {
     title: "Docker local",
     unavailableTitle: "Docker n’est pas disponible",
     compose: {
+      fileSelection: "Fichier Compose",
+      chooseFile: "Choisir un fichier Compose",
+      fileMissing: "Le fichier sélectionné a disparu. Choisissez un autre fichier ; aucun remplacement automatique ne sera effectué.",
+      fileSelectionHelp: "Un seul fichier est utilisé, sans fusion automatique. Les variantes d’un même dossier peuvent partager leurs conteneurs et volumes.",
+
       actions: {
         logs: "Voir les logs",
         refresh: "Rafraîchir",

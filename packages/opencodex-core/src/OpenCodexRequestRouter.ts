@@ -346,27 +346,27 @@ export class OpenCodexRequestRouter {
       case "docker.host.container.logs.read":
         return this.runtime.docker.readLogs(request.containerId, request.tail);
       case "docker.compose.snapshot.read":
-        return this.runtime.dockerCompose.readSnapshot(request.projectPath, request.sourceId, ...optionalWorkspaceArgument(request.workspaceId));
+        return this.runtime.dockerCompose.readSnapshot(request.projectPath, request.sourceId, request.workspaceId, request.composeFile);
       case "docker.compose.service.up":
         return this.runtime.dockerCompose.up(
           request.projectPath,
           request.sourceId,
           request.serviceName,
-          ...optionalWorkspaceArgument(request.workspaceId)
+          request.workspaceId, request.composeFile
         );
       case "docker.compose.service.stop":
         return this.runtime.dockerCompose.stop(
           request.projectPath,
           request.sourceId,
           request.serviceName,
-          ...optionalWorkspaceArgument(request.workspaceId)
+          request.workspaceId, request.composeFile
         );
       case "docker.compose.service.restart":
         return this.runtime.dockerCompose.restart(
           request.projectPath,
           request.sourceId,
           request.serviceName,
-          ...optionalWorkspaceArgument(request.workspaceId)
+          request.workspaceId, request.composeFile
         );
       case "docker.compose.service.logs.read":
         return this.runtime.dockerCompose.readLogs(
@@ -374,7 +374,7 @@ export class OpenCodexRequestRouter {
           request.sourceId,
           request.serviceName,
           request.tail,
-          ...optionalWorkspaceArgument(request.workspaceId)
+          request.workspaceId, request.composeFile
         );
       case "git.version":
         return this.runtime.git.readVersion();

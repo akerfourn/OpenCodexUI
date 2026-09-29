@@ -74,6 +74,10 @@ export interface OpenCodexDockerComposeSnapshot {
   projectPath: string;
   sourceId: string;
   composeFile: string | null;
+  /** Direct workspace candidates; one explicit file is used for every Docker call. */
+  composeFiles?: string[];
+  /** No automatic fallback when a remembered file disappears. */
+  selectionIssue?: "required" | "missing" | null;
   errorMessage: string | null;
   services: OpenCodexDockerComposeService[];
 }

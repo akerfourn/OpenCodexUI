@@ -470,16 +470,17 @@ export interface DockerApi {
 
 /** Public source-scoped Docker Compose operations for a project. */
 export interface DockerComposeApi {
-  readSnapshot(projectPath: string, sourceId: string, workspaceId?: string): Promise<OpenCodexDockerComposeSnapshot>;
-  up(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }>;
-  stop(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }>;
-  restart(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }>;
+  readSnapshot(projectPath: string, sourceId: string, workspaceId?: string, composeFile?: string): Promise<OpenCodexDockerComposeSnapshot>;
+  up(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string, composeFile?: string): Promise<{ ok: true }>;
+  stop(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string, composeFile?: string): Promise<{ ok: true }>;
+  restart(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string, composeFile?: string): Promise<{ ok: true }>;
   readLogs(
     projectPath: string,
     sourceId: string,
     serviceName: string,
     tail?: number,
-    workspaceId?: string
+    workspaceId?: string,
+    composeFile?: string
   ): Promise<OpenCodexDockerComposeLogs>;
 }
 

@@ -34,6 +34,11 @@ export const enDocker = {
     title: "Local Docker",
     unavailableTitle: "Docker is unavailable",
     compose: {
+      fileSelection: "Compose file",
+      chooseFile: "Choose a Compose file",
+      fileMissing: "The selected file is missing. Choose another file; no automatic fallback will be used.",
+      fileSelectionHelp: "Only this file is used, without automatic merging. Variants in the same directory can share containers and volumes.",
+
       actions: {
         logs: "View logs",
         refresh: "Refresh",

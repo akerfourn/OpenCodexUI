@@ -1,3 +1,4 @@
+import { ComposeFileSelectionError, discoverComposeFiles, requireComposeFile } from "./composeFiles.js";
 import { createHash } from "node:crypto";
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
@@ -22,14 +23,7 @@ import {
   type SourceDockerProcessClient
 } from "./SourceDockerCommandExecutor.js";
 import type { ClientPort } from "../runtime/runtimePorts.js";
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 
-const COMPOSE_FILE_NAMES = [
-  "compose.yaml",
-  "compose.yml",
-  "docker-compose.yaml",
-  "docker-compose.yml"
-] as const;
 const DEFAULT_LOG_TAIL = 200;
 const MAX_LOG_TAIL = 2_000;
 const MAX_LOG_CHARACTERS_PER_STREAM = 250_000;
@@ -48,9 +42,9 @@ export class DockerComposeService {
   constructor(private readonly options: DockerComposeServiceOptions) {}
 
   /** Reads a bounded Compose snapshot without invoking Docker when no file exists. */
-  async readSnapshot(projectPath: string, sourceId: string, workspaceId?: string): Promise<OpenCodexDockerComposeSnapshot> {
+  async readSnapshot(projectPath: string, sourceId: string, workspaceId?: string, selectedFile?: string): Promise<OpenCodexDockerComposeSnapshot> {
     requireProjectInput(projectPath, sourceId);
-    let client: SourceDockerFilesystemClient;
+    let client: SourceDockerProcessClient;
 
     try {
       client = await this.options.clients.ensureClient(sourceId);
@@ -58,53 +52,58 @@ export class DockerComposeService {
       return createErrorSnapshot(projectPath, sourceId, null, "snapshot", error);
     }
 
-    let composeFile: string | null;
+    let composeFiles: string[];
     try {
-      composeFile = await findComposeFile(client, projectPath);
+      composeFiles = await discoverComposeFiles(client, projectPath);
     } catch (error: unknown) {
       return createErrorSnapshot(projectPath, sourceId, null, "snapshot", error);
     }
-
+    let composeFile: string | null = null;
+    let selectionIssue: "required" | "missing" | null = null;
+    if (selectedFile !== undefined) {
+      if (composeFiles.includes(selectedFile)) composeFile = selectedFile;
+      else selectionIssue = "missing";
+    } else if (composeFiles.length === 1) {
+      composeFile = composeFiles[0] ?? null;
+    } else if (composeFiles.length > 1) {
+      selectionIssue = "required";
+    }
     if (composeFile === null) {
-      return {
-        projectPath,
-        sourceId,
-        composeFile: null,
-        errorMessage: null,
-        services: []
-      };
+      return { projectPath, sourceId, composeFile, composeFiles, selectionIssue, errorMessage: null, services: [] };
     }
 
     try {
-      const services = await createComposeClient(client, projectPath,
+      const services = await createComposeClient(client, projectPath, composeFile,
         await this.projectName(projectPath, sourceId, workspaceId)).services.list();
       return {
         projectPath,
         sourceId,
         composeFile,
+        composeFiles,
+        selectionIssue: null,
         errorMessage: null,
         services: services.map(mapComposeService)
       };
     } catch (error: unknown) {
-      return createErrorSnapshot(projectPath, sourceId, composeFile, "snapshot", error);
+      return { ...createErrorSnapshot(projectPath, sourceId, composeFile, "snapshot", error), composeFiles };
     }
   }
 
   /** Creates or starts one configured Compose service. */
-  async up(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }> {
-    await this.runServiceAction(projectPath, sourceId, serviceName, "up", workspaceId);
+  async up(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string, selectedFile?: string): Promise<{ ok: true }> {
+    await this.runServiceAction(projectPath, sourceId, serviceName, "up", workspaceId, selectedFile);
     return { ok: true };
   }
 
   /** Stops one configured Compose service without removing its container. */
-  async stop(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }> {
-    await this.runServiceAction(projectPath, sourceId, serviceName, "stop", workspaceId);
+  async stop(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string, selectedFile?: string): Promise<{ ok: true }> {
+    await this.runServiceAction(projectPath, sourceId, serviceName, "stop", workspaceId, selectedFile);
     return { ok: true };
   }
 
   /** Restarts one configured Compose service. */
-  async restart(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string): Promise<{ ok: true }> {
-    await this.runServiceAction(projectPath, sourceId, serviceName, "restart", workspaceId);
+  async restart(projectPath: string, sourceId: string, serviceName: string, workspaceId?: string, selectedFile?: string): Promise<{ ok: true }> {
+    await this.runServiceAction(projectPath, sourceId, serviceName, "restart", workspaceId, selectedFile);
     return { ok: true };
   }
 
@@ -114,13 +113,14 @@ export class DockerComposeService {
     sourceId: string,
     serviceName: string,
     tail = DEFAULT_LOG_TAIL,
-    workspaceId?: string
+    workspaceId?: string,
+    selectedFile?: string
   ): Promise<OpenCodexDockerComposeLogs> {
     requireProjectInput(projectPath, sourceId);
     requireServiceName(serviceName);
     requireLogTail(tail);
     try {
-      const client = await this.requireComposeClient(projectPath, sourceId, workspaceId);
+      const client = await this.requireComposeClient(projectPath, sourceId, workspaceId, selectedFile);
       const logs = await client.services.logs([serviceName], { tail });
       const stdout = boundText(logs.stdout, MAX_LOG_CHARACTERS_PER_STREAM);
       const stderr = boundText(logs.stderr, MAX_LOG_CHARACTERS_PER_STREAM);
@@ -143,12 +143,13 @@ export class DockerComposeService {
     sourceId: string,
     serviceName: string,
     action: "up" | "stop" | "restart",
-    workspaceId?: string
+    workspaceId?: string,
+    selectedFile?: string
   ): Promise<void> {
     requireProjectInput(projectPath, sourceId);
     requireServiceName(serviceName);
     try {
-      const client = await this.requireComposeClient(projectPath, sourceId, workspaceId);
+      const client = await this.requireComposeClient(projectPath, sourceId, workspaceId, selectedFile);
 
       if (action === "up") {
         await client.services.up([serviceName]);
@@ -182,16 +183,12 @@ export class DockerComposeService {
   private async requireComposeClient(
     projectPath: string,
     sourceId: string,
-    workspaceId?: string
+    workspaceId?: string,
+    selectedFile?: string
   ): Promise<DockerComposeClient> {
     const sourceClient = await this.options.clients.ensureClient(sourceId);
-    const composeFile = await findComposeFile(sourceClient, projectPath);
-
-    if (composeFile === null) {
-      throw new Error("No Docker Compose file found.");
-    }
-
-    return createComposeClient(sourceClient, projectPath,
+    const composeFile = await requireComposeFile(sourceClient, projectPath, selectedFile);
+    return createComposeClient(sourceClient, projectPath, composeFile,
       await this.projectName(projectPath, sourceId, workspaceId));
   }
 }
@@ -256,78 +253,10 @@ function mapComposeContainer(container: ClientDockerComposeContainer): OpenCodex
 }
 
 /** Creates a Docker client whose process calls stay inside one source. */
-function createComposeClient(sourceClient: SourceDockerProcessClient, projectPath: string, projectName?: string): DockerComposeClient {
+function createComposeClient(sourceClient: SourceDockerProcessClient, projectPath: string, composeFile: string, projectName?: string): DockerComposeClient {
   return new DockerClient({
     executor: new SourceDockerCommandExecutor(sourceClient)
-  }).compose({ projectPath, projectName });
-}
-
-/** Finds the first standard Compose file through the source filesystem API. */
-async function findComposeFile(
-  client: SourceDockerFilesystemClient,
-  projectPath: string
-): Promise<string | null> {
-  for (const fileName of COMPOSE_FILE_NAMES) {
-    try {
-      const metadata = await client.getMetadata(joinSourcePath(projectPath, fileName));
-      if (metadata.isFile) {
-        return fileName;
-      }
-    } catch (error: unknown) {
-      if (!isMissingPathError(error)) {
-        throw error;
-      }
-    }
-  }
-
-  return null;
-}
-
-/** Joins a source-local project path and filename without changing path style. */
-function joinSourcePath(projectPath: string, fileName: string): string {
-  if (projectPath.endsWith("/") || projectPath.endsWith("\\")) {
-    return `${projectPath}${fileName}`;
-  }
-
-  return `${projectPath}${projectPath.includes("\\") && !projectPath.includes("/") ? "\\" : "/"}${fileName}`;
-}
-
-/** Checks whether one source filesystem failure means a path is absent. */
-function isMissingPathError(error: unknown): boolean {
-  if (hasMissingPathCode(error)) {
-    return true;
-  }
-
-  const message = error instanceof Error ? error.message : String(error);
-  const normalizedMessage = message.toLowerCase();
-
-  return [
-    "enoent",
-    "no such file",
-    "does not exist",
-    "not exist",
-    "path not found",
-    "cannot find the file specified"
-  ]
-    .some((marker) => normalizedMessage.includes(marker));
-}
-
-/** Recognizes common filesystem error codes from local and remote transports. */
-function hasMissingPathCode(error: unknown): boolean {
-  if (!isRecord(error)) {
-    return false;
-  }
-
-  if (isMissingPathCode(error.code)) {
-    return true;
-  }
-
-  return isRecord(error.data) && isMissingPathCode(error.data.code);
-}
-
-/** Checks a filesystem code without depending on one transport's error class. */
-function isMissingPathCode(value: unknown): boolean {
-  return value === "ENOENT" || value === "ENOTDIR" || value === 2 || value === 3;
+  }).compose({ projectPath, projectName, files: [composeFile] });
 }
 
 /** Validates explicit source and project identifiers at the transport boundary. */
@@ -410,6 +339,7 @@ type ComposeOperation = "snapshot" | "up" | "stop" | "restart" | "logs";
 
 /** Replaces Docker errors with a bounded message that never contains output. */
 function createSafeComposeError(operation: ComposeOperation, error: unknown): Error {
+  if (error instanceof ComposeFileSelectionError) return error;
   if (error instanceof DockerCommandError) {
     const exitCode = error.result.exitCode;
     const suffix = typeof exitCode === "number" ? ` (exit code ${exitCode})` : "";
@@ -422,12 +352,3 @@ function createSafeComposeError(operation: ComposeOperation, error: unknown): Er
 
   return new Error(`Docker Compose ${operation} failed.`);
 }
-
-/** Checks whether a transport value is a non-array object. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** Source client surface needed to inspect files before invoking Docker. */
-type SourceDockerFilesystemClient = SourceDockerProcessClient &
-  Pick<CodexAppServerClient, "getMetadata">;

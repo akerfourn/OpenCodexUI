@@ -35,6 +35,8 @@ type ComposeServiceCapabilities = {
 
 type ProjectComposeServiceDialogProps = {
   service: ComposeService | null;
+  /** Exact configuration used by the controls in this dialog. */
+  composeFile?: string | null;
   isPending: boolean;
   isAvailable: boolean;
   onClose(): void;
@@ -47,6 +49,7 @@ type ProjectComposeServiceDialogProps = {
 /** Renders one selected Compose service in a spacious, actionable dialog. */
 export function ProjectComposeServiceDialog({
   service,
+  composeFile = null,
   isPending,
   isAvailable,
   onClose,
@@ -82,6 +85,12 @@ export function ProjectComposeServiceDialog({
     }
   }
 
+  let fileLabel = null;
+  if (composeFile !== null) {
+    fileLabel = <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
+      {t("docker.compose.composeFile", { file: composeFile })}
+    </Typography>;
+  }
   const dialogContent = service === null ? null : (
     <>
       <DialogTitle component="div" className="project-compose-dialog-title">
@@ -91,6 +100,7 @@ export function ProjectComposeServiceDialog({
             <Typography component="h2" variant="h6" noWrap>
               {service.name}
             </Typography>
+            {fileLabel}
             <Typography variant="body2" color="text.secondary">
               {t(`docker.compose.status.${service.state}`)}
             </Typography>
