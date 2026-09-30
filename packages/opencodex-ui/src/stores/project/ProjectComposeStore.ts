@@ -101,7 +101,12 @@ export class ProjectComposeStore {
     await this.load({ force: true });
   }
 
-  /** Returns whether the project has a detected Compose file. */
+  /** Keeps discovery accessible before selection, including older single-file snapshots. */
+  get hasDetectedComposeFiles(): boolean {
+    return this.composeFiles.length > 0 || this.hasComposeFile;
+  }
+
+  /** Returns whether a Compose file is selected for service operations. */
   get hasComposeFile(): boolean {
     return this.snapshot?.composeFile !== null && this.snapshot?.composeFile !== undefined;
   }

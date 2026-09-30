@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { RootStore } from "../src/stores/RootStore";
 import type { ProjectStore } from "../src/stores/project/ProjectStore";
+import { ProjectComposeStore } from "../src/stores/project/ProjectComposeStore";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key })
@@ -87,6 +88,7 @@ describe("ProjectSidePanel", () => {
         hasActiveRun: true
       },
       composeStore: {
+        hasDetectedComposeFiles: true,
         hasComposeFile: true,
         isAvailable: true,
         hasNonStoppedContainer: true
@@ -136,6 +138,7 @@ describe("ProjectSidePanel", () => {
   it("should expose Compose only when a Compose file is detected", () => {
     const projectStore = {
       composeStore: {
+        hasDetectedComposeFiles: true,
         hasComposeFile: true,
         isAvailable: true,
         hasLoaded: true,
@@ -162,6 +165,7 @@ describe("ProjectSidePanel", () => {
   it("should hide Compose for an orphan project even with stale snapshot state", () => {
     const projectStore = {
       composeStore: {
+        hasDetectedComposeFiles: true,
         hasComposeFile: true,
         hasLoaded: true,
         isLoading: false,
@@ -183,5 +187,37 @@ describe("ProjectSidePanel", () => {
     );
 
     expect(markup).not.toContain('aria-label="projectTools.compose"');
+  });
+
+  it.each([true, false])("should expose Compose before choosing a file (collapsed: %s)", async (isCollapsed) => {
+    const project = {
+      project: { path: "/workspace/project", sourceId: "source-1" },
+      projectPath: "/workspace/project",
+      isCodexSourceReady: true
+    };
+    const root = {
+      request: vi.fn(async () => ({
+        projectPath: "/workspace/project",
+        sourceId: "source-1",
+        composeFile: null,
+        composeFiles: ["docker-compose.yaml", "docker-compose.local.yaml"],
+        selectionIssue: "required",
+        errorMessage: null,
+        services: []
+      }))
+    } as unknown as RootStore;
+    const projectStore = {
+      ...project,
+      composeStore: new ProjectComposeStore(project as unknown as ProjectStore, root)
+    } as unknown as ProjectStore;
+
+    await projectStore.composeStore.load();
+    const markup = renderToStaticMarkup(
+      <ProjectSidePanel store={root} projectStore={projectStore}
+        isCollapsed={isCollapsed} onCollapsedChange={vi.fn()} />
+    );
+
+    expect(markup).toContain('aria-label="projectTools.compose"');
+    expect(projectStore.composeStore.selectedComposeFile).toBeNull();
   });
 });

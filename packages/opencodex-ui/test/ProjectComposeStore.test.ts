@@ -299,6 +299,43 @@ describe("Compose file selection", () => {
   const files = ["docker-compose.yaml", "docker-compose.local.yaml"];
   const initial = { ...createSnapshot(), composeFile: null, composeFiles: files, services: [], selectionIssue: "required" as const };
 
+  it("should detect Compose files while an explicit selection is required", async () => {
+    const store = createStore(vi.fn(async () => initial));
+
+    await store.load();
+
+    expect(store.hasDetectedComposeFiles).toBe(true);
+    expect(store.hasComposeFile).toBe(false);
+  });
+
+  it("should keep remaining files discoverable when the selected file disappears", async () => {
+    const snapshot = { ...initial, composeFiles: [files[0]], selectionIssue: "missing" as const };
+    const store = createStore(vi.fn(async () => snapshot));
+
+    await store.load();
+
+    expect(store.hasDetectedComposeFiles).toBe(true);
+    expect(store.hasComposeFile).toBe(false);
+  });
+
+  it("should hide Compose discovery when no files exist", async () => {
+    const store = createStore(vi.fn(async () => ({ ...initial, composeFiles: [], selectionIssue: null })));
+
+    await store.load();
+
+    expect(store.hasDetectedComposeFiles).toBe(false);
+    expect(store.hasComposeFile).toBe(false);
+  });
+
+  it("should recognize a selected file in snapshots without a candidate list", async () => {
+    const store = createStore(vi.fn(async () => createSnapshot()));
+
+    await store.load();
+
+    expect(store.hasDetectedComposeFiles).toBe(true);
+    expect(store.hasComposeFile).toBe(true);
+  });
+
   it("should block operations until a file is chosen and include it in every subsequent request", async () => {
     const request = vi.fn(async (value: OpenCodexRequest) => {
       if (value.type === "docker.compose.snapshot.read") {

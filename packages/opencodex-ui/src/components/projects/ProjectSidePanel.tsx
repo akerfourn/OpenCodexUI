@@ -67,8 +67,8 @@ export function ProjectSidePanel({
   const projectPath = projectStore.workspacePath ?? projectStore.project?.path;
   const projectId = projectStore.project?.id;
   const sourceId = projectStore.project?.sourceId;
-  const hasComposeFile = sourceId !== null && sourceId !== undefined &&
-    composeStore?.isAvailable === true && composeStore.hasComposeFile === true;
+  const hasComposeFiles = sourceId !== null && sourceId !== undefined &&
+    composeStore?.isAvailable === true && composeStore.hasDetectedComposeFiles === true;
 
   useEffect(() => {
     if (composeStore !== undefined &&
@@ -94,10 +94,10 @@ export function ProjectSidePanel({
   }, [projectId, projectStore.goalsStore]);
 
   useEffect(() => {
-    if (selectedTab === "compose" && !hasComposeFile) {
+    if (selectedTab === "compose" && !hasComposeFiles) {
       setSelectedTab("git");
     }
-  }, [hasComposeFile, selectedTab]);
+  }, [hasComposeFiles, selectedTab]);
   const gitLabel = t("projectTools.git");
   const commandsLabel = t("projectTools.commands");
   const rulesLabel = t("projectTools.rules");
@@ -146,7 +146,7 @@ export function ProjectSidePanel({
     }
   ];
 
-  if (hasComposeFile) {
+  if (hasComposeFiles) {
     tabs.push({
       value: "compose",
       label: composeLabel,
@@ -202,7 +202,7 @@ export function ProjectSidePanel({
     panelContent = <ProjectGoalsPanelX store={store} projectStore={projectStore} />;
   }
 
-  if (selectedTab === "compose" && composeStore !== undefined && hasComposeFile) {
+  if (selectedTab === "compose" && composeStore !== undefined && hasComposeFiles) {
     panelContent = <ProjectComposePanelX projectStore={projectStore} />;
   }
 
