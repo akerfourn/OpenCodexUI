@@ -12,6 +12,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { parentPort, workerData } = require('node:worker_threads');
 const MAX_BYTES = 2 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 /** Creates a structured filesystem failure. */
 function fail(code, message) {
@@ -71,26 +72,57 @@ async function inspectAccess(target, permissions) {
   return resolved;
 }
 
-/** Reads at most the supported limit, including when a file grows while reading. */
-async function readSnapshot(full, root, policyReadOnly = false) {
+/** Recognizes supported image headers; filenames alone never turn arbitrary bytes into images. */
+function imageMimeType(header, full) {
+  const hex = header.subarray(0, 12).toString('hex');
+  if (hex.startsWith('89504e470d0a1a0a')) return 'image/png';
+  if (hex.startsWith('ffd8ff')) return 'image/jpeg';
+  const text = header.toString('utf8');
+  if (text.startsWith('GIF87a') || text.startsWith('GIF89a')) return 'image/gif';
+  if (text.startsWith('RIFF') && text.slice(8, 12) === 'WEBP') return 'image/webp';
+  if (hex.startsWith('424d')) return 'image/bmp';
+  if (hex.startsWith('00000100')) return 'image/x-icon';
+  if (text.slice(4, 8) === 'ftyp' && ['avif', 'avis'].includes(text.slice(8, 12))) return 'image/avif';
+  if (path.extname(full).toLowerCase() === '.svg' &&
+      /^\uFEFF?\s*(?:<\?xml[\s\S]*?\?>\s*|<!--[\s\S]*?-->\s*)*<svg(?:\s|>)/.test(text)) {
+    return 'image/svg+xml';
+  }
+  return null;
+}
+
+/** Reads bounded text or image bytes, including when a file grows while reading. */
+async function readSnapshot(full, root, policyReadOnly = false, previewImages = false) {
   const handle = await fs.open(full, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
   try {
     const before = await handle.stat({ bigint: true });
-    if (!before.isFile()) fail('binary', 'Only regular text files can be opened.');
-    if (before.size > BigInt(MAX_BYTES)) fail('tooLarge', 'Maximum supported size: 2 MiB.');
-    const bytes = Buffer.alloc(MAX_BYTES + 1);
-    let length = 0;
+    if (!before.isFile()) fail('binary', 'Only regular files can be opened.');
+    const header = Buffer.alloc(4096);
+    const first = await handle.read(header, 0, header.length, null);
+    const mimeType = previewImages ? imageMimeType(header.subarray(0, first.bytesRead), full) : null;
+    const limit = mimeType === null ? MAX_BYTES : MAX_IMAGE_BYTES;
+    const limitMessage = mimeType === null ? 'Maximum supported text size: 2 MiB.' : 'Maximum supported image size: 10 MiB.';
+    if (before.size > BigInt(limit)) fail('tooLarge', limitMessage);
+    const bytes = Buffer.alloc(limit + 1);
+    header.copy(bytes, 0, 0, first.bytesRead);
+    let length = first.bytesRead;
     while (length < bytes.length) {
       const next = await handle.read(bytes, length, bytes.length - length, null);
       if (next.bytesRead === 0) break;
       length += next.bytesRead;
     }
-    if (length > MAX_BYTES) fail('tooLarge', 'Maximum supported size: 2 MiB.');
+    if (length > limit) fail('tooLarge', limitMessage);
     const after = await handle.stat({ bigint: true });
     if (before.mtimeNs !== after.mtimeNs || before.size !== after.size) {
       fail('conflict', 'File changed while being read; retry.');
     }
     const data = bytes.subarray(0, length);
+    const revision = crypto.createHash('sha256').update(root).update(full)
+      .update(String(after.dev) + ':' + String(after.ino) + ':' + String(after.mtimeNs))
+      .update(data).digest('hex');
+    if (mimeType !== null) {
+      return { kind: 'image', dataUrl: 'data:' + mimeType + ';base64,' + data.toString('base64'),
+        mimeType, byteLength: length, revision, readOnly: true };
+    }
     if (data.includes(0)) fail('binary', 'Binary or UTF-16 files are not supported.');
     let content;
     try { content = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(data); }
@@ -101,9 +133,6 @@ async function readSnapshot(full, root, policyReadOnly = false) {
     const crlf = content.includes('\r\n');
     const remainder = content.replaceAll('\r\n', '');
     const mixed = remainder.includes('\r') || (crlf && remainder.includes('\n'));
-    const revision = crypto.createHash('sha256').update(root).update(full)
-      .update(String(after.dev) + ':' + String(after.ino) + ':' + String(after.mtimeNs))
-      .update(data).digest('hex');
     let writable = (Number(after.mode) & 0o222) !== 0;
     try { await fs.access(full, constants.W_OK); } catch { writable = false; }
     return { content, revision, bom, eol: mixed ? 'mixed' : crlf ? 'crlf' : 'lf',
@@ -156,7 +185,8 @@ async function execute(request) {
       (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     return entries;
   }
-  const current = await readSnapshot(full, root, readOnly);
+  const previewImages = request.type !== 'workspaceFiles.save' && request.previewImages === true;
+  const current = await readSnapshot(full, root, readOnly, previewImages);
   if (request.type === 'workspaceFiles.check') return current.revision === request.revision;
   if (request.type === 'workspaceFiles.read') return current;
   if (request.type !== 'workspaceFiles.save') fail('invalidPath', 'Unknown file operation.');

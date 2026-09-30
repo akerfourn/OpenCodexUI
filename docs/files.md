@@ -35,10 +35,27 @@ The lazily loaded preview supports GFM tables, task lists, highlighted code and
 heading anchors. It does not enable raw HTML or chat-specific Codex directives.
 Relative links use the document's directory and captured source/workspace;
 paths escaping the workspace are rejected. Local images appear as links to the
-source's external opener; HTTP(S) images render inline. Binary image loading
-through the source filesystem and a split editor/preview are not included.
+source's external opener; HTTP(S) images render inline. Inline local images
+and a split editor/preview are not included in the Markdown preview.
 Documents exceeding 100,000 characters or 5,000 lines remain available in Source
 mode without running the Markdown renderer.
+
+## Image viewer
+
+Opening a PNG, JPEG, GIF, WebP, BMP, ICO, AVIF or SVG in Files displays a
+read-only image viewer in the document tab. It provides fit-to-window, actual
+size, zoom from 10% to 800%, pixel dimensions and a checkerboard background for
+transparency. Zoom is retained while the document remains open. Reload and
+automatic disk-change checks also apply to images. Git comparisons report
+images as binary; selecting File displays the current image.
+
+Image-aware reads recognize file signatures, with an SVG header check for
+`.svg` files. Bytes travel as a bounded data URL from the captured source,
+including remote sources, through the existing workspace and symlink access
+checks. The viewer never opens a source path on the Electron host. SVG is
+rendered in an image element without enabling inline HTML or scripts. Images
+are limited to 10 MiB; unsupported or corrupt images report an error.
+Text-only callers retain the existing UTF-8 read contract.
 
 ## Responsibilities
 
@@ -65,7 +82,8 @@ mode without running the Markdown renderer.
 
 ## Filesystem guarantees and limits
 
-The initial limit is 2 MiB per text file and 10,000 direct children per folder.
+The limits are 2 MiB per text file, 10 MiB per image and 10,000 direct children
+per folder.
 The explorer initially renders 200 entries and exposes additional batches on
 request. It includes dotfiles and untracked files and never recursively scans a
 workspace when opened. Internal symbolic links can be followed; cycles and
@@ -87,7 +105,8 @@ revocation. A grant acknowledges a path, not a permanent inode identity; normal
 file replacement at the same location remains possible.
 
 Only valid UTF-8 is editable. UTF-8 BOM and LF/CRLF are preserved on save. Binary,
-UTF-16 and invalid UTF-8 data are rejected. Mixed line endings remain read only
+UTF-16 and invalid UTF-8 data are rejected by text reads. Supported images use
+the separate read-only image snapshot. Mixed line endings remain read only
 because Monaco normalizes them internally. The UI keeps its text in LF form.
 
 Every save checks a revision combining the canonical location, file identity,
@@ -194,3 +213,6 @@ Manual checks before release:
 6. Exercise local Windows/macOS, WSL and SSH separately. Local Linux tests and
    source transport tests do not establish native behavior on those platforms.
 7. Open the packaged application offline and verify editor worker loading.
+8. Open transparent and animated images, exercise fit, actual size and zoom,
+   then switch tabs and chat. Change the image on disk and check reload.
+   Repeat with a remote source, a blocked link and a corrupt image.

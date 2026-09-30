@@ -89,6 +89,18 @@ export function FileDocumentToolbar({
       {gitDiffReadOnly ? t("files.gitDiffReadOnly") : t("files.readOnly")}
     </Typography>
   ) : null;
+  const language = document.imageSnapshot === null
+    ? <FileLanguageSelectX document={document} store={root.fileLanguagesStore} /> : null;
+  const saveButton = document.imageSnapshot === null ? (
+    <Button
+      size="small"
+      startIcon={icon}
+      onClick={save}
+      disabled={!document.isDirty || document.isReadOnly || gitDiffReadOnly || busy}
+    >
+      {t("files.save")}
+    </Button>
+  ) : null;
   return (
     <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", px: 1, py: 0.5, flexShrink: 0 }}>
       <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -102,17 +114,10 @@ export function FileDocumentToolbar({
         {readOnly}
       </Box>
       <FileDocumentViewControlsX document={document} />
-      <FileLanguageSelectX document={document} store={root.fileLanguagesStore} />
+      {language}
       {external}
       {reloadButton}
-      <Button
-        size="small"
-        startIcon={icon}
-        onClick={save}
-        disabled={!document.isDirty || document.isReadOnly || gitDiffReadOnly || busy}
-      >
-        {t("files.save")}
-      </Button>
+      {saveButton}
     </Stack>
   );
 }

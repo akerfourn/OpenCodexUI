@@ -97,7 +97,7 @@ export class ProjectFilesStore {
       document.navigateToHeading(intent.markdownAnchor);
     }
     if (position !== undefined) document.navigateTo(position);
-    if (document.snapshot === null) await document.reload();
+    if (document.snapshot === null && document.imageSnapshot === null) await document.reload();
   }
 
   /** Adds an immutable generated/debugger source without a filesystem target. */

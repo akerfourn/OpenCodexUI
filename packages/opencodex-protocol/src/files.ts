@@ -48,6 +48,19 @@ export interface OpenCodexFileSnapshot {
   readOnly: boolean;
 }
 
+/** Read-only image bytes transported from the owning source without host paths. */
+export interface OpenCodexImageSnapshot {
+  kind: "image";
+  dataUrl: string;
+  mimeType: string;
+  byteLength: number;
+  revision: string;
+  readOnly: true;
+}
+
+/** Image-aware reads retain the existing UTF-8 snapshot shape for text files. */
+export type OpenCodexFileReadSnapshot = OpenCodexFileSnapshot | OpenCodexImageSnapshot;
+
 /** Expected failures remain structured across IPC rather than losing error codes. */
 export type OpenCodexFileErrorCode =
   | "accessDenied"
@@ -71,8 +84,8 @@ export type OpenCodexFileRequest =
       destination: string; access: OpenCodexFileAccess }
   | { type: "workspaceFiles.stat"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.list"; target: OpenCodexFileTarget }
-  | { type: "workspaceFiles.read"; target: OpenCodexFileTarget }
-  | { type: "workspaceFiles.check"; target: OpenCodexFileTarget; revision: string }
+  | { type: "workspaceFiles.read"; target: OpenCodexFileTarget; previewImages?: boolean }
+  | { type: "workspaceFiles.check"; target: OpenCodexFileTarget; revision: string; previewImages?: boolean }
   | {
       type: "workspaceFiles.save";
       target: OpenCodexFileTarget;

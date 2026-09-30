@@ -60,6 +60,22 @@ function sourceProcessClient() {
 }
 
 describe("workspace source routing", () => {
+  it("should transfer image bytes through the source process without interpreting source paths on the host", async () => {
+    const root = await mkdtemp(join(tmpdir(), "files-image-source-"));
+    try {
+      const target = { sourceId: "remote", projectId: "project", workspaceId: "ws",
+        workspacePath: root, path: "remote.png" };
+      const bytes = Buffer.from("89504e470d0a1a0a00000000", "hex");
+      await writeFile(join(root, target.path), bytes);
+      const { client } = sourceProcessClient();
+      expect(await runSourceFileOperation(client, { type: "workspaceFiles.read", target, previewImages: true }))
+        .toMatchObject({ ok: true, value: { kind: "image", readOnly: true,
+          dataUrl: `data:image/png;base64,${bytes.toString("base64")}` } });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("should transfer multilingual documents through source stdin without shell interpolation", async () => {
     const root = await mkdtemp(join(tmpdir(), "files-source-"));
     try {

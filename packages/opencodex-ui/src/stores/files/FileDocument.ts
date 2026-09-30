@@ -3,6 +3,8 @@ import { canonicalLanguage, detectFileLanguage } from "../../features/fileLangua
 import type {
   OpenCodexFileTarget,
   OpenCodexFileSnapshot,
+  OpenCodexFileReadSnapshot,
+  OpenCodexImageSnapshot,
   OpenCodexFileResult,
   OpenCodexFileErrorCode,
   OpenCodexRequest,
@@ -58,6 +60,10 @@ export class FileDocument {
   savedContent = "";
   /** Original format and optimistic disk revision. */
   snapshot: OpenCodexFileSnapshot | null = null;
+  /** Read-only image content, retained independently of mounted viewers. */
+  imageSnapshot: OpenCodexImageSnapshot | null = null;
+  /** Image magnification; null fits the image to the available viewport. */
+  imageZoom: number | null = null;
   /** Errors leave both the editable text and baseline intact. */
   error: FileDocumentError | null = null;
   /** Initial or explicitly requested read in progress. */
@@ -130,6 +136,7 @@ export class FileDocument {
 
   /** Recognizes Markdown without loading Monaco or a syntax grammar. */
   get canPreviewMarkdown(): boolean {
+    if (this.imageSnapshot !== null) return false;
     const language = this.languageOverride ?? this.virtualLanguage ?? detectFileLanguage(this.name);
     return canonicalLanguage(language) === "markdown";
   }
@@ -212,11 +219,11 @@ export class FileDocument {
       this.gitDiffSnapshot = { originalContent: "", modifiedContent: null, issue: "conflicted" };
       return;
     }
-    if (this.error?.code === "binary" || this.error?.code === "tooLarge") {
+    if (this.imageSnapshot !== null || this.error?.code === "binary" || this.error?.code === "tooLarge") {
       this.gitDiffSnapshot = {
         originalContent: "",
         modifiedContent: null,
-        issue: this.error.code === "binary" ? "binary" : "tooLarge"
+        issue: this.error?.code === "tooLarge" ? "tooLarge" : "binary"
       };
       return;
     }
@@ -265,6 +272,11 @@ export class FileDocument {
       this.error?.code === "accessDenied" || this.error?.code === "readOnly";
   }
 
+  /** Retains image magnification independently of the mounted viewer. */
+  setImageZoom(zoom: number | null): void {
+    this.imageZoom = zoom;
+  }
+
   /** Changes syntax highlighting without modifying the document buffer. */
   setLanguageOverride(language: string | null): void {
     this.languageOverride = language;
@@ -288,9 +300,10 @@ export class FileDocument {
     if (this.target === null || this.isLoading || this.isSaving || this.disposed) return;
     this.isLoading = true;
     try {
-      const result = await this.port.request<OpenCodexFileResult<OpenCodexFileSnapshot>>({
+      const result = await this.port.request<OpenCodexFileResult<OpenCodexFileReadSnapshot>>({
         type: "workspaceFiles.read",
-        target: { ...this.target }
+        target: { ...this.target },
+        previewImages: true
       });
       if (this.disposed) return;
       runInAction(() => {
@@ -368,24 +381,26 @@ export class FileDocument {
 
   /** Checks disk changes on focus/interval; local edits are never silently replaced. */
   async checkExternal(): Promise<void> {
+    const snapshot = this.imageSnapshot ?? this.snapshot;
     if (
       this.target === null ||
-      this.snapshot === null ||
+      snapshot === null ||
       this.isLoading ||
       this.isSaving ||
       this.isChecking ||
       this.disposed
     )
       return;
-    const revision = this.snapshot.revision;
+    const revision = snapshot.revision;
     this.isChecking = true;
     try {
       const result = await this.port.request<OpenCodexFileResult<boolean>>({
         type: "workspaceFiles.check",
         target: { ...this.target },
-        revision
+        revision,
+        previewImages: true
       });
-      if (this.disposed || this.isSaving || this.snapshot.revision !== revision) return;
+      if (this.disposed || this.isSaving || (this.imageSnapshot ?? this.snapshot)?.revision !== revision) return;
       if (!result.ok) {
         runInAction(() => {
           this.error = result;
@@ -425,9 +440,16 @@ export class FileDocument {
   }
 
   /** Applies an acknowledged disk read while preserving viewer-owned position state. */
-  private acceptSnapshot(snapshot: OpenCodexFileSnapshot): void {
-    this.snapshot = snapshot;
-    this.content = normalizeText(snapshot.content);
+  private acceptSnapshot(snapshot: OpenCodexFileReadSnapshot): void {
+    if ("kind" in snapshot) {
+      this.imageSnapshot = snapshot;
+      this.snapshot = null;
+      this.content = "";
+    } else {
+      this.snapshot = snapshot;
+      this.imageSnapshot = null;
+      this.content = normalizeText(snapshot.content);
+    }
     this.savedContent = this.content;
     this.hasConflict = false;
     this.error = null;

@@ -9,6 +9,7 @@ import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
 import type { RootStore } from "../../stores/RootStore";
 import { FileDocumentToolbarX } from "./FileDocumentToolbar";
 import { FileErrorX } from "./FileError";
+import { FileImageViewerX } from "./FileImageViewer";
 
 const Editor = lazy(async () => {
   const module = await import("./MonacoFileEditor");
@@ -108,6 +109,9 @@ export function FileDocumentView({
   if (document.isMarkdownPreview) {
     editor = visible && shouldShowEditor
       ? <MarkdownPreview key={document.id} document={document} files={files} port={root} /> : null;
+  }
+  if (document.viewMode === "file" && document.imageSnapshot !== null) {
+    editor = <FileImageViewerX key={`${document.id}:${document.version}`} document={document} />;
   }
   return (
     <div className="files-document">
