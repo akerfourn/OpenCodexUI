@@ -27,7 +27,8 @@ export class WorkspaceFilesService {
 
   /** Keeps reads independent while serializing writes and authorization changes. */
   async execute(request: OpenCodexFileRequest): Promise<OpenCodexFileResult<unknown>> {
-    if (request.type !== "workspaceFiles.save" && request.type !== "workspaceFiles.setLinkAccess") {
+    if (!["workspaceFiles.save", "workspaceFiles.setLinkAccess", "workspaceFiles.copy",
+      "workspaceFiles.rename", "workspaceFiles.delete"].includes(request.type)) {
       return await this.perform(request);
     }
     const operation = this.mutations.then(() => this.perform(request));

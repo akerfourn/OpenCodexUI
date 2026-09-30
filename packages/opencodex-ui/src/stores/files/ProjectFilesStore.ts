@@ -1,13 +1,16 @@
-import { makeAutoObservable, observable } from "mobx";
+import { makeAutoObservable, observable, runInAction } from "mobx";
 import type { OpenCodexFileContext, OpenCodexFileTarget } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
 import type { ProjectStore } from "../project/ProjectStore";
 import { FileDocument, type DocumentPosition } from "./FileDocument";
 import { type FileOpenIntent, resolveInitialFileView } from "./fileOpenIntent";
 import { WorkspaceTreeStore } from "./WorkspaceTreeStore";
+import { FileOperationsStore } from "./FileOperationsStore";
 
 /** Project document catalogue independent of the right tool and viewer lifetime. */
 export class ProjectFilesStore {
+  /** Entry operations retain their clipboard and source context across tool navigation. */
+  readonly operations: FileOperationsStore;
   /** Retained document instances keyed by their complete source identity. */
   readonly documents = observable.map<string, FileDocument>({}, { deep: false });
   /** Explorer instances retain expansion and isolate asynchronous results. */
@@ -24,6 +27,7 @@ export class ProjectFilesStore {
     private readonly project: ProjectStore,
     private readonly root: RootStore
   ) {
+    this.operations = new FileOperationsStore(this, root);
     makeAutoObservable<this, "project" | "root" | "trees">(this, {
       project: false,
       root: false,
@@ -144,6 +148,56 @@ export class ProjectFilesStore {
     });
   }
 
+  /** Finds open descendants only in the operation's exact source/workspace identity. */
+  documentsAt(target: OpenCodexFileTarget): FileDocument[] {
+    return [...this.documents.values()].filter(document => {
+      const current = document.target;
+      return current !== null && current.sourceId === target.sourceId && current.projectId === target.projectId &&
+        current.workspaceId === target.workspaceId && current.workspacePath === target.workspacePath &&
+        (current.path === target.path || current.path.startsWith(`${target.path}/`));
+    });
+  }
+
+  /** Reopens renamed identities after confirmation and retains content if the subsequent read fails. */
+  async completeEntryMutation(documents: FileDocument[], target: OpenCodexFileTarget, newPath: string | null): Promise<void> {
+    const selectedId = this.activeId;
+    const wasVisible = this.isVisible;
+    let renamedSelection: string | null = null;
+    for (const document of documents) {
+      if (this.isDisposed) return;
+      if (newPath !== null && document.target !== null) {
+        const path = newPath + document.target.path.slice(target.path.length);
+        const renamedTarget = { ...document.target, path };
+        await this.open(renamedTarget, document.workspaceName);
+        const replacement = this.documentsAt(renamedTarget).find(item => item.target?.path === path);
+        if (replacement !== undefined) {
+          if (replacement.snapshot === null && replacement.imageSnapshot === null) {
+            runInAction(() => {
+              replacement.snapshot = document.snapshot;
+              replacement.imageSnapshot = document.imageSnapshot;
+              replacement.content = document.savedContent;
+              replacement.savedContent = document.savedContent;
+            });
+          }
+          replacement.setImageZoom(document.imageZoom);
+          replacement.setLanguageOverride(document.languageOverride);
+          replacement.setMarkdownPreview(document.markdownPreview);
+          runInAction(() => {
+            replacement.previewScrollTop = document.previewScrollTop;
+            replacement.viewState = document.viewState;
+          });
+          if (document.id === selectedId) renamedSelection = replacement.id;
+        }
+      }
+      runInAction(() => { this.remove(document); });
+    }
+    runInAction(() => {
+      if (renamedSelection !== null) this.activeId = renamedSelection;
+      else if (selectedId !== null && this.documents.has(selectedId)) this.activeId = selectedId;
+      this.isVisible = wasVisible && this.activeId !== null;
+    });
+  }
+
   /** Releases documents and invalidates all pending explorer requests. */
   dispose(): void {
     this.isDisposed = true;
@@ -164,7 +218,7 @@ export class ProjectFilesStore {
   }
 
   /** Refreshes status for the saved document's captured workspace. */
-  private refreshGitStatus(target: Readonly<OpenCodexFileTarget>): void {
+  refreshGitStatus(target: Readonly<OpenCodexFileTarget>): void {
     const gitStore = this.project.getGitStoreForWorkspace({
       path: target.workspacePath,
       sourceId: target.sourceId,

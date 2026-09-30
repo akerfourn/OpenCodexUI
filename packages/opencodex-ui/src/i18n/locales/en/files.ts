@@ -72,6 +72,18 @@ export const enFiles = {
     unsavedDescription:
       "Save these documents before continuing? Their contents will be preserved if saving fails.",
     discard: "Discard changes",
+    operations: {
+      copy: "Copy",
+      paste: "Paste…",
+      rename: "Rename…",
+      delete: "Delete",
+      name: "File or folder name",
+      destination: "Destination folder: {{path}}",
+      deleteWarning: "This file or folder and all its contents will be permanently deleted, without using the trash. Unsaved changes will be handled before deletion.",
+      deleteLinkWarning: "This symbolic link will be permanently deleted. The file or folder it points to will be kept.",
+      confirm: "Confirm",
+      cancel: "Cancel"
+    },
     access: {
       manage: "Manage access…",
       description: "This permission applies to the Files module, for all links to this destination in this workspace. It does not change Codex or command permissions. Links to other external destinations require separate authorization.",
@@ -82,6 +94,9 @@ export const enFiles = {
       saveError: "Could not save this permission. Refresh the tree if the link destination changed."
     },
     errors: {
+      alreadyExists: "This name already exists in the destination folder. Choose another name.",
+      operationLimit: "The operation exceeds the limit of 10,000 entries or 256 MiB for a copy.",
+      unsupported: "Special files are not supported by this operation.",
       accessDenied: "Access to this external destination is not authorized. Right-click the link to manage access.",
       unavailable: "Cannot access this source. Remote sources require Node.js and the Codex process API.",
       inaccessible: "The file is inaccessible or was deleted. Already opened content is preserved.",

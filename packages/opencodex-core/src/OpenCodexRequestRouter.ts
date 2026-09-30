@@ -59,6 +59,9 @@ export class OpenCodexRequestRouter {
       case "workspaceFiles.read":
       case "workspaceFiles.check":
       case "workspaceFiles.save":
+      case "workspaceFiles.copy":
+      case "workspaceFiles.rename":
+      case "workspaceFiles.delete":
         return this.runtime.files.execute(request);
       case "app.bootstrap":
         return this.runtime.bootstrap();

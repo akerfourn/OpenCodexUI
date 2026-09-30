@@ -5,6 +5,8 @@
  * Hash comparison is optimistic:
  * filesystems do not expose a portable compare-and-rename against other tools.
  */
+import { fileMutationScript } from "./fileMutationScript.js";
+
 export const fileWorkerScript = String.raw`
 const fs = require('node:fs/promises');
 const constants = require('node:fs').constants;
@@ -71,6 +73,8 @@ async function inspectAccess(target, permissions) {
   if (!resolved.linkAccess) fail('invalidPath', 'The selected entry is no longer a symbolic link.');
   return resolved;
 }
+
+${fileMutationScript}
 
 /** Recognizes supported image headers; filenames alone never turn arbitrary bytes into images. */
 function imageMimeType(header, full) {
@@ -162,6 +166,9 @@ async function describeEntry(item, request, full) {
 
 /** Performs one bounded list/read/check/save operation. */
 async function execute(request) {
+  if (['workspaceFiles.copy', 'workspaceFiles.rename', 'workspaceFiles.delete'].includes(request.type)) {
+    return await mutateEntry(request);
+  }
   if (request.type === 'workspaceFiles.linkAccess') {
     return (await inspectAccess(request.target, request.permissions)).linkAccess;
   }

@@ -71,6 +71,18 @@ export const frFiles = {
     unsavedDescription:
       "Sauvegarder ces documents avant de continuer ? En cas d’erreur, leur contenu sera conservé.",
     discard: "Abandonner les modifications",
+    operations: {
+      copy: "Copier",
+      paste: "Coller…",
+      rename: "Renommer…",
+      delete: "Supprimer",
+      name: "Nom du fichier ou du dossier",
+      destination: "Dossier de destination : {{path}}",
+      deleteWarning: "Ce fichier ou dossier et tout son contenu seront supprimés définitivement, sans passer par la corbeille. Les modifications non sauvegardées seront traitées avant la suppression.",
+      deleteLinkWarning: "Ce lien symbolique sera supprimé définitivement. Le fichier ou dossier vers lequel il pointe sera conservé.",
+      confirm: "Confirmer",
+      cancel: "Annuler"
+    },
     access: {
       manage: "Gérer l’accès…",
       description: "Ce droit s’applique au module Fichiers, pour tous les liens vers cette destination dans ce workspace. Il ne modifie pas les permissions de Codex ou des commandes. Les liens vers d’autres destinations externes demandent une autorisation distincte.",
@@ -81,6 +93,9 @@ export const frFiles = {
       saveError: "Impossible d’enregistrer cette autorisation. Actualisez l’arborescence si la destination du lien a changé."
     },
     errors: {
+      alreadyExists: "Ce nom existe déjà dans le dossier de destination. Choisissez un autre nom.",
+      operationLimit: "L’opération dépasse la limite de 10 000 entrées ou de 256 Mio pour une copie.",
+      unsupported: "Les fichiers spéciaux ne sont pas pris en charge par cette opération.",
       accessDenied: "L’accès à cette destination externe n’est pas autorisé. Clic droit sur le lien pour gérer l’accès.",
       unavailable:
         "Impossible d’accéder à cette source. Les sources distantes nécessitent Node.js et l’API process de Codex.",

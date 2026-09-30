@@ -72,6 +72,9 @@ export type OpenCodexFileErrorCode =
   | "encoding"
   | "conflict"
   | "readOnly"
+  | "alreadyExists"
+  | "operationLimit"
+  | "unsupported"
   | "invalidPath";
 
 export type OpenCodexFileResult<T> =
@@ -79,6 +82,9 @@ export type OpenCodexFileResult<T> =
 
 /** Dedicated requests keep filesystem operations separate from composer search. */
 export type OpenCodexFileRequest =
+  | { type: "workspaceFiles.copy"; target: OpenCodexFileTarget; destinationPath: string; name: string }
+  | { type: "workspaceFiles.rename"; target: OpenCodexFileTarget; name: string }
+  | { type: "workspaceFiles.delete"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.linkAccess"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.setLinkAccess"; target: OpenCodexFileTarget;
       destination: string; access: OpenCodexFileAccess }

@@ -90,6 +90,15 @@ export class WorkspaceTreeStore {
     void this.load("");
   }
 
+  /** Keeps expanded descendants aligned with a successful rename or deletion. */
+  relocateExpansion(path: string, destination: string | null): void {
+    for (const expanded of [...this.expanded]) {
+      if (expanded !== path && !expanded.startsWith(`${path}/`)) continue;
+      this.expanded.delete(expanded);
+      if (destination !== null) this.expanded.add(destination + expanded.slice(path.length));
+    }
+  }
+
   /** Invalidates outstanding responses when the owning project closes. */
   dispose(): void {
     this.generation += 1;

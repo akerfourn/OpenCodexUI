@@ -60,6 +60,25 @@ function sourceProcessClient() {
 }
 
 describe("workspace source routing", () => {
+  it("should copy, rename and delete through the source process using data-only filenames", async () => {
+    const root = await mkdtemp(join(tmpdir(), "files-mutation-source-"));
+    try {
+      const target = { sourceId: "remote", projectId: "project", workspaceId: "ws",
+        workspacePath: root, path: "original.txt" };
+      await writeFile(join(root, target.path), "keep");
+      const { client } = sourceProcessClient();
+      const name = "copy ' $literal.txt";
+      expect(await runSourceFileOperation(client, { type: "workspaceFiles.copy", target, destinationPath: "", name }))
+        .toMatchObject({ ok: true, value: { path: name } });
+      expect(await readFile(join(root, name), "utf8")).toBe("keep");
+      expect(await runSourceFileOperation(client, { type: "workspaceFiles.rename", target: { ...target, path: name }, name: "renamed.txt" }))
+        .toMatchObject({ ok: true });
+      expect(await runSourceFileOperation(client, { type: "workspaceFiles.delete", target: { ...target, path: "renamed.txt" } }))
+        .toMatchObject({ ok: true });
+      expect(await readFile(join(root, target.path), "utf8")).toBe("keep");
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   it("should transfer image bytes through the source process without interpreting source paths on the host", async () => {
     const root = await mkdtemp(join(tmpdir(), "files-image-source-"));
     try {

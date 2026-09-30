@@ -22,6 +22,39 @@ never inspected on the host without an explicit local-access capability. Source
 folder commands receive the clicked directory as `%D`, not the workspace root.
 Explicit IDE/file-manager actions in the project menu bypass these preferences.
 
+## Explorer entry operations
+
+Right-click a file or folder to copy, rename or delete it. Paste is available
+on directories, on files (using their parent), and on the workspace header or
+empty tree area. The internal clipboard is limited to the same project,
+source and workspace. It references the current saved filesystem contents,
+not unsaved editor buffers or the operating system clipboard.
+
+Paste and rename ask for a destination name. Existing entries, including
+dangling links, are never deliberately overwritten. Copying a folder into
+itself is rejected, including through directory aliases. Names must be valid
+portable basenames, without path separators or Windows device names.
+
+Delete requires explicit confirmation and is permanent; it does not use a
+host trash service. Rename and delete first resolve affected unsaved documents
+through save/discard/cancel. A failed operation keeps open documents intact.
+Successful renames reopen affected tabs under their new identities; successful
+deletes close them. The tree and source-specific Git status refresh afterwards.
+
+Operations execute in the captured source filesystem, including remote
+sources. Mutations and permission changes are serialized by the backend.
+Parent directory permissions and external-link grants apply. Symbolic links
+are copied verbatim, renamed or removed as links; their destinations are never
+traversed by recursive copy/delete. Mutating a link itself requires write
+access to its parent, rather than access to its target.
+
+Recursive operations are bounded to 10,000 entries, and copies to 256 MiB.
+Copies stage in a private sibling directory before publication. Filesystem
+operations retain the worker's timeout and optimistic path checks: concurrent
+changes by other programs are not a portable filesystem transaction. A failed
+or interrupted recursive delete may be partial; a forcibly stopped copy can
+leave a hidden staging directory. The original copy source is kept.
+
 ## Markdown preview
 
 Markdown documents offer Source and Preview in the document toolbar. New

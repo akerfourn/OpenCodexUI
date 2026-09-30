@@ -1,7 +1,7 @@
 import { useState, type MouseEvent } from "react";
 import { useTheme } from "@mui/material/styles";
 import { observer } from "mobx-react-lite";
-import { Box, ListItemButton, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
+import { Box, ListItemButton, Tooltip, Typography } from "@mui/material";
 import FolderOutlined from "@mui/icons-material/FolderOutlined";
 import FolderOpenOutlined from "@mui/icons-material/FolderOpenOutlined";
 import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
@@ -22,6 +22,7 @@ import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
 import type { ProjectGitStatusStore } from "../../stores/project/git/ProjectGitStatusStore";
 import { createExplorerFileOpenIntent } from "../../stores/files/fileOpenIntent";
 import { FileTreeDirectoryX } from "./FileTreeDirectory";
+import { FileTreeContextMenuX } from "./FileTreeContextMenu";
 
 /** One accessible entry; external links expose workspace-scoped access controls. */
 export function FileTreeEntry({
@@ -102,7 +103,6 @@ export function FileTreeEntry({
 
   /** Keeps the context menu usable even when normal opening is prohibited. */
   function contextMenu(event: MouseEvent): void {
-    if (!entry.linkAccess?.external) return;
     event.preventDefault();
     event.stopPropagation();
     setMenu({ left: event.clientX, top: event.clientY });
@@ -114,12 +114,15 @@ export function FileTreeEntry({
     setManaging(true);
   }
 
+  /** Dismisses the menu without altering the selected document. */
+  function closeMenu(): void {
+    setMenu(null);
+  }
+
   let contextMenuContent = null;
   if (menu !== null) {
-    contextMenuContent = <Menu open onClose={() => setMenu(null)} anchorReference="anchorPosition"
-      anchorPosition={menu}>
-      <MenuItem onClick={manage}>{t("files.access.manage")}</MenuItem>
-    </Menu>;
+    contextMenuContent = <FileTreeContextMenuX entry={entry} path={path} tree={tree} files={files}
+      anchor={menu} onClose={closeMenu} onManage={manage} />;
   }
   let accessDialog = null;
   if (managing && entry.linkAccess?.external) {
