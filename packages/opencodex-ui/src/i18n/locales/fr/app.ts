@@ -123,7 +123,7 @@ export const frApp = {
     activeTurnsDetail: "La fermeture interrompra le travail actuellement exécuté par Codex.",
     description: "Vérifiez les éléments ci-dessous avant de quitter l'application.",
     pendingProjectActivity: "Une activité de projet est encore en cours ou en attente.",
-    pendingProjectActivityDetail: "Une commande, un conteneur ou un brouillon de commit peut rester en cours ou non traité.",
+    pendingProjectActivityDetail: "Une session de debug, une commande, un conteneur ou un brouillon de commit peut rester en cours ou non traité.",
     quit: "Quitter",
     quitAnyway: "Quitter malgré tout",
     title: "Fermer OpenCodexUI ?",

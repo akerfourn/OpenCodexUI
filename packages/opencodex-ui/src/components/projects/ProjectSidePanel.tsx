@@ -106,7 +106,7 @@ export function ProjectSidePanel({
   const goalsLabel = t("projectTools.goals");
   const composeLabel = t("projectTools.compose");
   const tabs: ProjectSidePanelTabDefinition[] = [
-    { value: "debug", label: t("debug.title"), icon: <BugReportOutlinedIcon fontSize="small" />, activity: "none" },
+    { value: "debug", label: t("debug.title"), icon: <BugReportOutlinedIcon fontSize="small" />, activity: "debug" },
     { value: "files", label: t("files.title"), icon: <FolderOutlinedIcon fontSize="small" />, activity: "none" },
     {
       value: "git",

@@ -92,3 +92,57 @@ describe("debug documents and lifecycle", () => {
     expect(workspaceRelativeSource("/project", "/project/../outside.js")).toBeNull();
   });
 });
+
+describe("debug activity and closing", () => {
+  test.each(["preparing", "connecting", "running", "paused", "stopping"] as const)(
+    "marks the owning project and blocks closing while the debugger is %s", state => {
+      const { root, project, store } = fixture();
+      store.snapshot = { revision: 1, preferences, session: { ...session, state } };
+      expect(project.hasActiveDebugSession).toBe(true);
+      expect(project.hasSidePanelActivity).toBe(true);
+      expect(root.hasPendingProjectActivity).toBe(true);
+      expect(store.isActiveForProject("other", "local")).toBe(false);
+      expect(store.isActiveForProject("project", "other-source")).toBe(false);
+      root.navigationStore.requestCloseProject("project");
+      root.navigationStore.confirmCloseProject();
+      expect(root.projectsStore.projectStoresById.has("project")).toBe(true);
+      expect(root.navigationStore.projectCloseRequest).toBe(project);
+    }
+  );
+
+  test.each(["terminated", "failed"] as const)("releases activity and closing after a %s session", state => {
+    const { root, project, store } = fixture();
+    store.snapshot = { revision: 1, preferences, session: { ...session, state } };
+    expect(project.hasActiveDebugSession).toBe(false);
+    expect(project.hasSidePanelActivity).toBe(false);
+    expect(root.hasPendingProjectActivity).toBe(false);
+    root.navigationStore.requestCloseProject("project");
+    root.navigationStore.confirmCloseProject();
+    expect(root.projectsStore.projectStoresById.has("project")).toBe(false);
+  });
+
+  test("protects the project before the start response and clears the marker on transport failure", async () => {
+    const { root, project, store, request } = fixture();
+    store.snapshot.preferences.configurations.push(session.configuration);
+    let rejectStart!: (error: Error) => void;
+    request.mockImplementation((value: OpenCodexRequest) => {
+      if (value.type === "debug" && value.action.kind === "start") {
+        return new Promise((_resolve, reject) => { rejectStart = reject; });
+      }
+      return Promise.resolve([]);
+    });
+    const starting = store.start("config");
+    expect(store.snapshot.session).toBeNull();
+    expect(project.hasActiveDebugSession).toBe(true);
+    expect(project.hasSidePanelActivity).toBe(true);
+    expect(root.hasPendingProjectActivity).toBe(true);
+    root.navigationStore.requestCloseProject("project");
+    root.navigationStore.confirmCloseProject();
+    expect(root.projectsStore.projectStoresById.has("project")).toBe(true);
+    rejectStart(new Error("Connection lost"));
+    await starting;
+    expect(project.hasActiveDebugSession).toBe(false);
+    expect(root.hasPendingProjectActivity).toBe(false);
+    expect(store.error).toContain("Connection lost");
+  });
+});

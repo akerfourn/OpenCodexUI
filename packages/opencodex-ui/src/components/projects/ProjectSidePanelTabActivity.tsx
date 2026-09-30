@@ -5,7 +5,7 @@ import { observer } from "mobx-react-lite";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { ProjectSidePanelTabIndicator } from "./ProjectSidePanelTabIndicator";
 
-export type ProjectSidePanelActivity = "git" | "commands" | "goals" | "compose" | "none";
+export type ProjectSidePanelActivity = "git" | "commands" | "goals" | "compose" | "debug" | "none";
 
 type ProjectSidePanelTabActivityProps = {
   projectStore: ProjectStore;
@@ -58,6 +58,10 @@ function readActivityState(
     return {
       hasActivity: projectStore.goalsStore?.hasAttention === true
     };
+  }
+
+  if (activity === "debug") {
+    return { hasActivity: projectStore.hasActiveDebugSession === true };
   }
 
   if (activity === "compose") {

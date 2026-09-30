@@ -262,10 +262,15 @@ export class ProjectStore {
     return Array.from(this.chatsById.values()).some((chatStore) => chatStore.runtime.isSyncing);
   }
 
+  /** Keeps debug activity attached to the owning project even when another workspace is selected. */
+  get hasActiveDebugSession(): boolean {
+    return this.root.debugStore.isActiveForProject(this.project.id, this.project.sourceId ?? null);
+  }
+
   /**
    * Returns whether one visible project tool needs attention.
    *
-   * @returns `true` when Git, commands, Compose, or goals should display an activity marker.
+   * @returns `true` when Git, commands, Compose, debug, or goals should display an activity marker.
    */
   get hasSidePanelActivity(): boolean {
     const hasComposeActivity = this.composeStore.isAvailable &&
@@ -275,6 +280,7 @@ export class ProjectStore {
     return this.gitStore.commitStore.hasDraftMessage ||
       [...this.gitStores.values()].some((store) => store.commitStore.hasDraftMessage) ||
       this.commandsStore.hasActiveRun ||
+      this.hasActiveDebugSession ||
       hasComposeActivity ||
       this.goalsStore.hasAttention;
   }

@@ -37,8 +37,7 @@ export function CloseProjectDialog({ store }: CloseProjectDialogProps) {
   const isOpen = projectStore !== null;
   const hasRunningTurn = projectStore === null ? false : hasRunningChat(projectStore);
   const projectName = projectStore?.displayName ?? "";
-  const hasDebugSession = store.debugStore?.active &&
-    store.debugStore.snapshot.session?.configuration.context.projectId === projectStore?.project.id;
+  const hasDebugSession = projectStore?.hasActiveDebugSession === true;
   let debugWarning;
   if (hasDebugSession) debugWarning = <Typography color="error" variant="body2" sx={{ mb: 2 }}>{t("debug.closeProject")}</Typography>;
 

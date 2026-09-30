@@ -68,6 +68,16 @@ describe("ProjectSidePanel", () => {
     expect(markup).toContain('aria-pressed="true"');
   });
 
+  it("should mark the Debug tool while its project owns a session", () => {
+    const markup = renderToStaticMarkup(
+      <ProjectSidePanel store={{} as RootStore}
+        projectStore={{ hasActiveDebugSession: true } as ProjectStore}
+        isCollapsed={true} onCollapsedChange={vi.fn()} />
+    );
+    expect(markup.match(/project-side-panel-tab-indicator is-active/gu)).toHaveLength(1);
+    expect(markup).toContain('aria-label="debug.title"');
+  });
+
   it("should mark Git, commands, and Compose tools with active work", () => {
     const projectStore = {
       gitStore: {

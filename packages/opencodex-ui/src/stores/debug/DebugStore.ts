@@ -15,6 +15,8 @@ export class DebugStore {
   error: string | null = null;
   /** Guards repeated start clicks until the backend answers. */
   busy = false;
+  /** Captures launch ownership before the first backend session notification arrives. */
+  private startingContext: OpenCodexFileContext | null = null;
   /** Prevents duplicate stepping requests before a continued event is received. */
   controlPending = false;
   /** Threads reported by the current paused target. */
@@ -44,7 +46,16 @@ export class DebugStore {
   }
 
   /** A single active slot is visible across all project panels. */
-  get active(): boolean { return isDebugActive(this.snapshot.session); }
+  get active(): boolean { return this.startingContext !== null || isDebugActive(this.snapshot.session); }
+
+  /** Attributes activity to its original project/source, regardless of the selected workspace. */
+  isActiveForProject(projectId: string, sourceId: string | null): boolean {
+    const session = this.snapshot.session;
+    const contexts = [this.startingContext];
+    if (isDebugActive(session) && session !== null) contexts.push(session.configuration.context);
+    return contexts.some(context => context !== null &&
+      context.projectId === projectId && context.sourceId === sourceId);
+  }
 
   /** Refreshes backend-owned state when the panel is first opened or the renderer reconnects. */
   async load(): Promise<void> { await this.run({ kind: "snapshot" }); }
@@ -79,8 +90,10 @@ export class DebugStore {
   async start(configurationId: string): Promise<void> {
     if (this.busy || this.active) return;
     this.busy = true;
+    const configuration = this.snapshot.preferences.configurations.find(item => item.id === configurationId);
+    this.startingContext = configuration === undefined ? null : { ...configuration.context };
     try { await this.run({ kind: "start", configurationId }); }
-    finally { runInAction(() => { this.busy = false; }); }
+    finally { runInAction(() => { this.busy = false; this.startingContext = null; }); }
   }
 
   /** Uses backend-captured ownership to choose termination versus detachment. */

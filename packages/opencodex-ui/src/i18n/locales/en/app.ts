@@ -126,7 +126,7 @@ export const enApp = {
     activeTurnsDetail: "Closing the application will interrupt work currently handled by Codex.",
     description: "Review the items below before leaving the application.",
     pendingProjectActivity: "Project activity is still running or pending.",
-    pendingProjectActivityDetail: "A command, container, or commit draft may remain active or unfinished.",
+    pendingProjectActivityDetail: "A debug session, command, container, or commit draft may still be active or pending.",
     quit: "Quit",
     quitAnyway: "Quit anyway",
     title: "Quit OpenCodexUI?",

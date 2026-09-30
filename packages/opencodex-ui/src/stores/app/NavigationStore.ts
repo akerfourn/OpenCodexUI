@@ -178,15 +178,16 @@ export class NavigationStore {
    * Checks whether a project has work that should block closing.
    *
    * @param projectId Project identifier.
-   * @returns Whether any chat is active or recovering.
+   * @returns Whether a chat is active/recovering or this project owns an active debugger.
    */
   private hasRunningTurnInProject(projectId: string): boolean {
-    if (this.root.debugStore?.active && this.root.debugStore.snapshot.session?.configuration.context.projectId === projectId) return true;
     const projectStore = this.root.projectsStore.projectStoresById.get(projectId) ?? null;
 
     if (projectStore === null) {
       return false;
     }
+
+    if (projectStore.hasActiveDebugSession) return true;
 
     for (const chatStore of projectStore.chatsById.values()) {
       if (
