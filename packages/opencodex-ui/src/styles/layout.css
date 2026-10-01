@@ -112,6 +112,7 @@
 .home-content-panel {
   width: 100%;
   max-width: 920px;
+  margin-inline: auto;
 }
 
 .side-header,
