@@ -3,6 +3,8 @@
  */
 import { resolve } from "node:path";
 
+import { pdfAssets } from "./scripts/pdfAssets.js";
+
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { createWorkspaceAliases } from "./scripts/workspaceAliases.js";
@@ -22,7 +24,7 @@ export default defineConfig(({ command }) => {
   return {
     base: isDevServer ? "/" : "./",
     root: resolve(appRoot, "src", "renderer"),
-    plugins: [react()],
+    plugins: [react(), pdfAssets(repoRoot)],
     resolve: {
       alias: createWorkspaceAliases(repoRoot)
     },

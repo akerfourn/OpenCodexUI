@@ -11,6 +11,11 @@ import { FileDocumentToolbarX } from "./FileDocumentToolbar";
 import { FileErrorX } from "./FileError";
 import { FileImageViewerX } from "./FileImageViewer";
 
+const PdfViewer = lazy(async () => {
+  const module = await import("./FilePdfViewer");
+  return { default: module.FilePdfViewerX };
+});
+
 const Editor = lazy(async () => {
   const module = await import("./MonacoFileEditor");
   return { default: module.MonacoFileEditorX };
@@ -112,6 +117,9 @@ export function FileDocumentView({
   }
   if (document.viewMode === "file" && document.imageSnapshot !== null) {
     editor = <FileImageViewerX key={`${document.id}:${document.version}`} document={document} />;
+  }
+  if (document.viewMode === "file" && document.pdfSnapshot !== null) {
+    editor = visible ? <PdfViewer key={`${document.id}:${document.version}`} document={document} /> : null;
   }
   return (
     <div className="files-document">

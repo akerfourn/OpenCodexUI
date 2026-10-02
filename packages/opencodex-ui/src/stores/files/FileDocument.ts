@@ -5,6 +5,7 @@ import type {
   OpenCodexFileSnapshot,
   OpenCodexFileReadSnapshot,
   OpenCodexImageSnapshot,
+  OpenCodexPdfSnapshot,
   OpenCodexFileResult,
   OpenCodexFileErrorCode,
   OpenCodexRequest,
@@ -62,6 +63,12 @@ export class FileDocument {
   snapshot: OpenCodexFileSnapshot | null = null;
   /** Read-only image content, retained independently of mounted viewers. */
   imageSnapshot: OpenCodexImageSnapshot | null = null;
+  /** Immutable source-owned PDF bytes and retained reading position. */
+  pdfSnapshot: OpenCodexPdfSnapshot | null = null;
+  /** Page retained when switching between conversations and files. */
+  pdfPage = 1;
+  /** Null fits the page width; otherwise stores the explicit PDF scale. */
+  pdfZoom: number | null = null;
   /** Image magnification; null fits the image to the available viewport. */
   imageZoom: number | null = null;
   /** Errors leave both the editable text and baseline intact. */
@@ -136,7 +143,7 @@ export class FileDocument {
 
   /** Recognizes Markdown without loading Monaco or a syntax grammar. */
   get canPreviewMarkdown(): boolean {
-    if (this.imageSnapshot !== null) return false;
+    if (this.imageSnapshot !== null || this.pdfSnapshot !== null) return false;
     const language = this.languageOverride ?? this.virtualLanguage ?? detectFileLanguage(this.name);
     return canonicalLanguage(language) === "markdown";
   }
@@ -219,7 +226,7 @@ export class FileDocument {
       this.gitDiffSnapshot = { originalContent: "", modifiedContent: null, issue: "conflicted" };
       return;
     }
-    if (this.imageSnapshot !== null || this.error?.code === "binary" || this.error?.code === "tooLarge") {
+    if (this.imageSnapshot !== null || this.pdfSnapshot !== null || this.error?.code === "binary" || this.error?.code === "tooLarge") {
       this.gitDiffSnapshot = {
         originalContent: "",
         modifiedContent: null,
@@ -303,7 +310,8 @@ export class FileDocument {
       const result = await this.port.request<OpenCodexFileResult<OpenCodexFileReadSnapshot>>({
         type: "workspaceFiles.read",
         target: { ...this.target },
-        previewImages: true
+        previewImages: true,
+        previewPdf: true
       });
       if (this.disposed) return;
       runInAction(() => {
@@ -381,7 +389,7 @@ export class FileDocument {
 
   /** Checks disk changes on focus/interval; local edits are never silently replaced. */
   async checkExternal(): Promise<void> {
-    const snapshot = this.imageSnapshot ?? this.snapshot;
+    const snapshot = this.pdfSnapshot ?? this.imageSnapshot ?? this.snapshot;
     if (
       this.target === null ||
       snapshot === null ||
@@ -398,9 +406,10 @@ export class FileDocument {
         type: "workspaceFiles.check",
         target: { ...this.target },
         revision,
-        previewImages: true
+        previewImages: true,
+        previewPdf: true
       });
-      if (this.disposed || this.isSaving || (this.imageSnapshot ?? this.snapshot)?.revision !== revision) return;
+      if (this.disposed || this.isSaving || (this.pdfSnapshot ?? this.imageSnapshot ?? this.snapshot)?.revision !== revision) return;
       if (!result.ok) {
         runInAction(() => {
           this.error = result;
@@ -441,8 +450,11 @@ export class FileDocument {
 
   /** Applies an acknowledged disk read while preserving viewer-owned position state. */
   private acceptSnapshot(snapshot: OpenCodexFileReadSnapshot): void {
+    this.pdfSnapshot = null;
+    this.imageSnapshot = null;
     if ("kind" in snapshot) {
-      this.imageSnapshot = snapshot;
+      if (snapshot.kind === "pdf") this.pdfSnapshot = snapshot;
+      else this.imageSnapshot = snapshot;
       this.snapshot = null;
       this.content = "";
     } else {

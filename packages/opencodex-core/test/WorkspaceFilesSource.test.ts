@@ -60,6 +60,20 @@ function sourceProcessClient() {
 }
 
 describe("workspace source routing", () => {
+  it("should transport PDF bytes through the source process", async () => {
+    const root = await mkdtemp(join(tmpdir(), "files-pdf-source-"));
+    try {
+      const target = { sourceId: "remote", projectId: "project", workspaceId: "ws",
+        workspacePath: root, path: "remote.pdf" };
+      const bytes = Buffer.from("%PDF-1.7\nremote data\n%%EOF");
+      await writeFile(join(root, target.path), bytes);
+      const { client } = sourceProcessClient();
+      expect(await runSourceFileOperation(client, { type: "workspaceFiles.read", target, previewPdf: true }))
+        .toMatchObject({ ok: true, value: { kind: "pdf", readOnly: true,
+          dataBase64: bytes.toString("base64") } });
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   it("should copy, rename and delete through the source process using data-only filenames", async () => {
     const root = await mkdtemp(join(tmpdir(), "files-mutation-source-"));
     try {

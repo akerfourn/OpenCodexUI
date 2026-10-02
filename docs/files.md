@@ -90,6 +90,33 @@ rendered in an image element without enabling inline HTML or scripts. Images
 are limited to 10 MiB; unsupported or corrupt images report an error.
 Text-only callers retain the existing UTF-8 read contract.
 
+## PDF viewer
+
+PDF files open in a lazy, read-only viewer with page navigation, fit-to-width,
+zoom and selectable text where a text layer exists. Page and zoom remain attached
+to the document when switching tabs or conversations. Only the current page is
+rendered, with a bounded canvas backing store; hiding the viewer destroys its
+worker. The normal reload and external-change checks apply.
+
+`pdfjs-dist` supplies the PDF decoder and text layer rather than introducing a
+custom parser or relying on an Electron browser plugin. Its legacy browser build
+supports the application's bundled Chromium. Version 5.5.207 is pinned to
+retain Node 20.19+ build compatibility while avoiding versions affected by
+GHSA-hq66-cqwq-w95j. Vite packages the worker, CMaps,
+fonts, image decoders and their licenses via `scripts/pdfAssets.ts`; no CDN is
+used. Keep those resources matched to the pinned engine version when upgrading.
+The viewer does not instantiate PDF scripting, interactive forms or annotation
+editing. Password-protected documents require an external reader. Search, OCR,
+printing and continuous multi-page scrolling are outside this initial viewer.
+
+PDF-aware reads opt in through `previewPdf`. A `.pdf` extension or PDF signature
+selects a bounded binary snapshot, transferred as base64 through the existing
+source service. The 10 MiB limit also fits within the remote process output cap.
+Workspace and symlink permissions remain enforced. Failed source reads retain
+previously loaded bytes; invalid or unsupported PDFs show a local error with
+technical details. PDF bytes are never passed to the text editor or text save
+operation, including ASCII-only PDFs.
+
 ## Responsibilities
 
 - `WorkspaceFilesService` validates persisted workspace ownership and the exact
@@ -215,8 +242,8 @@ an immutable document with no disk target. Producers can call
 renders these as markers; the explorer has no debugger-specific logic.
 
 A future detached window must share document ownership rather than independently
-editing copies of the same file. Window synchronization, specialized binary
-viewers and persistent drafts are not implemented here.
+editing copies of the same file. Window synchronization, additional specialized viewers and persistent drafts
+are not implemented here.
 
 ## Validation
 
@@ -249,3 +276,7 @@ Manual checks before release:
 8. Open transparent and animated images, exercise fit, actual size and zoom,
    then switch tabs and chat. Change the image on disk and check reload.
    Repeat with a remote source, a blocked link and a corrupt image.
+
+9. Open multi-page, rotated, scanned, corrupt and password-protected PDFs in
+   both themes. Check page navigation, zoom, text selection, tab/chat switching,
+   offline worker/font loading, external replacement and remote read failures.

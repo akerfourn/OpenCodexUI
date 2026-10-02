@@ -94,8 +94,8 @@ function imageMimeType(header, full) {
   return null;
 }
 
-/** Reads bounded text or image bytes, including when a file grows while reading. */
-async function readSnapshot(full, root, policyReadOnly = false, previewImages = false) {
+/** Reads bounded text, image or PDF bytes, including when a file grows while reading. */
+async function readSnapshot(full, root, policyReadOnly = false, previewImages = false, previewPdf = false) {
   const handle = await fs.open(full, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
   try {
     const before = await handle.stat({ bigint: true });
@@ -103,8 +103,15 @@ async function readSnapshot(full, root, policyReadOnly = false, previewImages = 
     const header = Buffer.alloc(4096);
     const first = await handle.read(header, 0, header.length, null);
     const mimeType = previewImages ? imageMimeType(header.subarray(0, first.bytesRead), full) : null;
-    const limit = mimeType === null ? MAX_BYTES : MAX_IMAGE_BYTES;
-    const limitMessage = mimeType === null ? 'Maximum supported text size: 2 MiB.' : 'Maximum supported image size: 10 MiB.';
+    const isPdf = path.extname(full).toLowerCase() === '.pdf' ||
+      header.subarray(0, Math.min(first.bytesRead, 5)).equals(Buffer.from('%PDF-'));
+    if (isPdf && !previewPdf) fail('binary', 'PDF documents are read-only previews.');
+    let limit = MAX_BYTES;
+    let limitMessage = 'Maximum supported text size: 2 MiB.';
+    if (isPdf || mimeType !== null) {
+      limit = MAX_IMAGE_BYTES;
+      limitMessage = isPdf ? 'Maximum supported PDF size: 10 MiB.' : 'Maximum supported image size: 10 MiB.';
+    }
     if (before.size > BigInt(limit)) fail('tooLarge', limitMessage);
     const bytes = Buffer.alloc(limit + 1);
     header.copy(bytes, 0, 0, first.bytesRead);
@@ -123,6 +130,8 @@ async function readSnapshot(full, root, policyReadOnly = false, previewImages = 
     const revision = crypto.createHash('sha256').update(root).update(full)
       .update(String(after.dev) + ':' + String(after.ino) + ':' + String(after.mtimeNs))
       .update(data).digest('hex');
+    if (isPdf) return { kind: 'pdf', dataBase64: data.toString('base64'),
+      byteLength: length, revision, readOnly: true };
     if (mimeType !== null) {
       return { kind: 'image', dataUrl: 'data:' + mimeType + ';base64,' + data.toString('base64'),
         mimeType, byteLength: length, revision, readOnly: true };
@@ -193,7 +202,8 @@ async function execute(request) {
     return entries;
   }
   const previewImages = request.type !== 'workspaceFiles.save' && request.previewImages === true;
-  const current = await readSnapshot(full, root, readOnly, previewImages);
+  const previewPdf = request.type !== 'workspaceFiles.save' && request.previewPdf === true;
+  const current = await readSnapshot(full, root, readOnly, previewImages, previewPdf);
   if (request.type === 'workspaceFiles.check') return current.revision === request.revision;
   if (request.type === 'workspaceFiles.read') return current;
   if (request.type !== 'workspaceFiles.save') fail('invalidPath', 'Unknown file operation.');

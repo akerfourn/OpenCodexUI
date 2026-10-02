@@ -58,8 +58,17 @@ export interface OpenCodexImageSnapshot {
   readOnly: true;
 }
 
-/** Image-aware reads retain the existing UTF-8 snapshot shape for text files. */
-export type OpenCodexFileReadSnapshot = OpenCodexFileSnapshot | OpenCodexImageSnapshot;
+/** Bounded PDF bytes transported from the owning source, never a host filesystem URL. */
+export interface OpenCodexPdfSnapshot {
+  kind: "pdf";
+  dataBase64: string;
+  byteLength: number;
+  revision: string;
+  readOnly: true;
+}
+
+/** Binary previews retain the existing UTF-8 snapshot shape for text files. */
+export type OpenCodexFileReadSnapshot = OpenCodexFileSnapshot | OpenCodexImageSnapshot | OpenCodexPdfSnapshot;
 
 /** Expected failures remain structured across IPC rather than losing error codes. */
 export type OpenCodexFileErrorCode =
@@ -90,8 +99,8 @@ export type OpenCodexFileRequest =
       destination: string; access: OpenCodexFileAccess }
   | { type: "workspaceFiles.stat"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.list"; target: OpenCodexFileTarget }
-  | { type: "workspaceFiles.read"; target: OpenCodexFileTarget; previewImages?: boolean }
-  | { type: "workspaceFiles.check"; target: OpenCodexFileTarget; revision: string; previewImages?: boolean }
+  | { type: "workspaceFiles.read"; target: OpenCodexFileTarget; previewImages?: boolean; previewPdf?: boolean }
+  | { type: "workspaceFiles.check"; target: OpenCodexFileTarget; revision: string; previewImages?: boolean; previewPdf?: boolean }
   | {
       type: "workspaceFiles.save";
       target: OpenCodexFileTarget;

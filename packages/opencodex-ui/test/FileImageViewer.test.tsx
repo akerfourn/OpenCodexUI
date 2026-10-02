@@ -52,7 +52,7 @@ describe("image file presentation", () => {
     expect(document.imageSnapshot).toEqual(image);
     expect(document.imageZoom).toBe(2);
     expect(request).toHaveBeenCalledOnce();
-    expect(request).toHaveBeenCalledWith({ type: "workspaceFiles.read", target, previewImages: true });
+    expect(request).toHaveBeenCalledWith({ type: "workspaceFiles.read", target, previewImages: true, previewPdf: true });
   });
 
   it("should reload changed images without losing zoom and preserve loaded bytes if access disappears", async () => {
@@ -62,7 +62,7 @@ describe("image file presentation", () => {
     request.mockResolvedValueOnce({ ok: true, value: false }).mockResolvedValueOnce({ ok: true, value: updated });
     await document.checkExternal();
     expect(request).toHaveBeenNthCalledWith(2, { type: "workspaceFiles.check", target,
-      revision: "v1", previewImages: true });
+      revision: "v1", previewImages: true, previewPdf: true });
     expect(document.imageSnapshot).toEqual(updated);
     expect(document.imageZoom).toBe(0.5);
     request.mockResolvedValueOnce({ ok: false, code: "accessDenied", details: "Access revoked" });
