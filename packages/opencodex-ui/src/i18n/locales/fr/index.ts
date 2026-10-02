@@ -1,4 +1,5 @@
 import { frMessageRendering } from "./messageRendering.js";
+import { frBrowserPermissions } from "./browserPermissions.js";
 import { frDebug } from "./debug.js";
 import { frFileLanguages } from "./fileLanguages.js";
 import { frFiles } from "./files.js";
@@ -17,6 +18,7 @@ import { frSupport } from "./support.js";
 import { frUsage } from "./usage.js";
 
 export const frTranslation = {
+  ...frBrowserPermissions,
   ...frMessageRendering,
   ...frDebug,
   ...frFileLanguages,

@@ -25,7 +25,7 @@ describe("DockerComposeApi", () => {
     await expect(api.readSnapshot("/workspace/app", "source-1")).resolves.toBe(snapshot);
     await api.stop("/workspace/app", "source-1", "web");
 
-    expect(service.readSnapshot).toHaveBeenCalledWith("/workspace/app", "source-1");
-    expect(service.stop).toHaveBeenCalledWith("/workspace/app", "source-1", "web");
+    expect(service.readSnapshot).toHaveBeenCalledWith("/workspace/app", "source-1", undefined, undefined);
+    expect(service.stop).toHaveBeenCalledWith("/workspace/app", "source-1", "web", undefined, undefined);
   });
 });

@@ -23,3 +23,4 @@ export * from "./messageRendering";
 export * from "./debug";
 export * from "./debugImport";
 export * from "./debugAdvanced";
+export * from "./browserPermissions";

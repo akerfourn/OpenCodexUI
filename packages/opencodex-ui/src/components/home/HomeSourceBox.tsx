@@ -43,6 +43,7 @@ import {
   getSourceKindLabelKey
 } from "./sourcePresentation";
 import { UsageResetCreditsDialogX } from "./UsageResetCreditsDialog";
+import { BrowserPermissionsSourceButtonX } from "../browser/BrowserPermissionsSourceButton";
 
 type HomeSourceBoxProps = {
   source: OpenCodexSource;
@@ -415,6 +416,7 @@ export function HomeSourceBox({
               </IconButton>
             </span>
           </Tooltip>
+          <BrowserPermissionsSourceButtonX root={store} source={source} />
           <Tooltip title={t("sources.edit")}>
             <IconButton
               className="source-edit-action"

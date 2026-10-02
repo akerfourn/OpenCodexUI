@@ -1,4 +1,5 @@
 import type { MessageRenderingRequest } from "./messageRendering";
+import type { BrowserPermissionsRequest } from "./browserPermissions";
 import type { OpenCodexDebugRequest } from "./debug";
 /**
  * Declares the requests sent from the UI to the OpenCodex backend.
@@ -43,6 +44,7 @@ import type { OpenCodexCollaborationQuery } from "./collaboration";
  * transported over Electron IPC today and other transports later.
  */
 export type OpenCodexRequest =
+  | BrowserPermissionsRequest
   | MessageRenderingRequest
   | OpenCodexFileRequest
   | OpenCodexDebugRequest

@@ -16,6 +16,7 @@
     "@open-codex-ui/docker-client": "file:../docker-client",
     "@open-codex-ui/opencodex-cache": "file:../opencodex-cache",
     "@open-codex-ui/opencodex-protocol": "file:../opencodex-protocol",
-    "json5": "2.2.3"
+    "json5": "2.2.3",
+    "smol-toml": "1.9.0"
   }
 }

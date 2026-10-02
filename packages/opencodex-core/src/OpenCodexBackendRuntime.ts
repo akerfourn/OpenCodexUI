@@ -1,4 +1,5 @@
 import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
+import { BrowserPermissionsService } from "./backend/browser/BrowserPermissionsService.js";
 import { DebugService } from "./backend/debug/DebugService.js";
 import { requireToolWorkspace } from "./backend/workspaces/workspaceToolContext.js";
 import { WorkspaceFilesService } from "./backend/files/WorkspaceFilesService.js";
@@ -54,6 +55,8 @@ export class OpenCodexBackendRuntime {
   readonly debug: DebugService;
   /** Durable presentation preferences never alter model inputs. */
   readonly messageRendering: MessageRenderingService;
+  /** Source and conversation permissions saved by the Browser plugin. */
+  readonly browserPermissions: BrowserPermissionsService;
   /** Isolated experimental speech transcription, outside normal conversation execution. */
   readonly dictation: CodexDictationService;
   /** Fully wired services owned by this runtime instance. */
@@ -73,6 +76,9 @@ export class OpenCodexBackendRuntime {
     this.services = createBackendServiceGraph(options, this.isPrerelease);
     this.apis = new BackendRuntimeApis(this.services, options);
     this.messageRendering = new MessageRenderingService(this.services.cacheRepository);
+    this.browserPermissions = new BrowserPermissionsService(this.services.cacheRepository,
+      this.services.projectRuntimeHandler, this.services.clientPool,
+      () => this.services.notificationCoordinator.hasActiveTurns());
     this.files = new WorkspaceFilesService(this.services.cacheRepository,
       this.services.projectRuntimeHandler, this.services.clientPool, this.settings);
     this.debug = new DebugService(this.services.cacheRepository?.debug ?? null, async context => {

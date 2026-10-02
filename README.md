@@ -18,6 +18,7 @@ You must already have Codex CLI installed and configured on your machine.
 - Local Electron desktop application.
 - Uses the existing local Codex CLI installation.
 - Project and source management.
+- [Browser permissions](docs/browser-permissions.md) per local source and chat.
 - Codex conversation list with local SQLite caching.
 - Conversation creation, opening, renaming, and last-message editing.
 - Streaming assistant responses.

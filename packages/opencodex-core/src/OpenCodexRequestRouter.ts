@@ -32,8 +32,9 @@ export class OpenCodexRequestRouter {
         ? await this.runtime.resolveToolRequest(request) : request;
       return await this.handleValidRequest(resolved);
     } catch (error) {
-      // Debug owns its error feedback and never initiates Codex thread recovery.
-      if (request.type === "debug" || request.type.startsWith("messageRendering.")) throw error;
+      // Tool and settings dialogs own their error feedback without recovering a chat.
+      if (request.type === "debug" || request.type.startsWith("messageRendering.") ||
+        request.type.startsWith("browserPermissions.")) throw error;
       this.runtime.handleRequestError(request, error);
     }
   }
@@ -47,6 +48,10 @@ export class OpenCodexRequestRouter {
    */
   private async handleValidRequest(request: OpenCodexRequest): Promise<unknown> {
     switch (request.type) {
+      case "browserPermissions.read":
+      case "browserPermissions.change":
+      case "browserPermissions.reload":
+        return this.runtime.browserPermissions.execute(request);
       case "messageRendering.read":
       case "messageRendering.set":
         return this.runtime.messageRendering.execute(request);
