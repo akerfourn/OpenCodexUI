@@ -3,6 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Button, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import NavigateBefore from "@mui/icons-material/NavigateBefore";
 import NavigateNext from "@mui/icons-material/NavigateNext";
+import ViewDay from "@mui/icons-material/ViewDay";
 import ZoomIn from "@mui/icons-material/ZoomIn";
 import ZoomOut from "@mui/icons-material/ZoomOut";
 import { useTranslation } from "react-i18next";
@@ -13,7 +14,10 @@ export function FilePdfToolbar({ document, pageCount, scale }: { document: FileD
   const { t } = useTranslation();
   /** Moves to an existing page only. */
   function changePage(delta: number): void {
-    runInAction(() => { document.pdfPage = Math.max(1, Math.min(pageCount, document.pdfPage + delta)); });
+    runInAction(() => {
+      document.pdfPage = Math.max(1, Math.min(pageCount, document.pdfPage + delta));
+      document.pdfPageOffset = 0;
+    });
   }
   /** Applies a bounded, explicit scale; fitting remains a separate mode. */
   function zoom(factor: number): void {
@@ -22,6 +26,10 @@ export function FilePdfToolbar({ document, pageCount, scale }: { document: FileD
   /** Restores automatic fitting to the panel width. */
   function fit(): void {
     runInAction(() => { document.pdfZoom = null; });
+  }
+  /** Keeps the reading mode with this document while retaining the current page. */
+  function toggleContinuous(): void {
+    runInAction(() => { document.pdfContinuous = !document.pdfContinuous; });
   }
   const label = document.pdfZoom === null ? t("files.pdfFitWidth") : `${Math.round(document.pdfZoom * 100)} %`;
   return (
@@ -44,6 +52,12 @@ export function FilePdfToolbar({ document, pageCount, scale }: { document: FileD
         <IconButton aria-label={t("files.imageZoomIn")} size="small" disabled={pageCount === 0 || document.pdfZoom === 4}
           onClick={() => zoom(1.25)}><ZoomIn /></IconButton>
       </span></Tooltip>
+      <Tooltip title={t("files.pdfContinuous")}>
+        <IconButton size="small" aria-label={t("files.pdfContinuous")} aria-pressed={document.pdfContinuous}
+          color={document.pdfContinuous ? "primary" : "default"} onClick={toggleContinuous}>
+          <ViewDay />
+        </IconButton>
+      </Tooltip>
       <Button size="small" onClick={fit} disabled={pageCount === 0}>{t("files.pdfFitWidth")}</Button>
     </Stack>
   );

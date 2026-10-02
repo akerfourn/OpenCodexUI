@@ -4,11 +4,13 @@ import { Alert, LinearProgress } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { TextLayer } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
+import type { PdfPageSize } from "./pdfPageLayout";
 import { pdfPixelRatio } from "./pdfRuntime";
 
 /** Renders one page at a time, bounding canvas memory and cancelling superseded work. */
-export function FilePdfPage({ pdf, pageNumber, zoom, width, onScale }: {
+export function FilePdfPage({ pdf, pageNumber, zoom, width, onScale, onSize }: {
   pdf: PDFDocumentProxy; pageNumber: number; zoom: number | null; width: number; onScale: (scale: number) => void;
+  onSize?: (page: number, size: PdfPageSize) => void;
 }) {
   const { t } = useTranslation();
   const container = useRef<HTMLDivElement>(null);
@@ -27,6 +29,7 @@ export function FilePdfPage({ pdf, pageNumber, zoom, width, onScale }: {
         page = await pdf.getPage(pageNumber);
         if (disposed || element === null) return;
         const original = page.getViewport({ scale: 1 });
+        onSize?.(pageNumber, { width: original.width, height: original.height });
         const scale = zoom ?? Math.max(0.1, (width - 32) / original.width);
         onScale(scale);
         const viewport = page.getViewport({ scale });
@@ -62,7 +65,7 @@ export function FilePdfPage({ pdf, pageNumber, zoom, width, onScale }: {
       // The document owns final cleanup; page cleanup can defer while rendering is cancelled.
       page?.cleanup();
     };
-  }, [pdf, pageNumber, zoom, width, onScale]);
+  }, [pdf, pageNumber, zoom, width, onScale, onSize]);
   const loading = busy ? <LinearProgress /> : null;
   const feedback = error === null ? null : (
     <Alert severity="warning">{t("files.pdfUnavailable")}

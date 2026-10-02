@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { FileDocument } from "../../stores/files/FileDocument";
 import { loadPdf } from "./pdfRuntime";
+import { FilePdfContinuousX } from "./FilePdfContinuous";
 import { FilePdfPageX } from "./FilePdfPage";
 import { FilePdfToolbarX } from "./FilePdfToolbar";
 import "./pdfViewer.css";
@@ -60,10 +61,14 @@ export function FilePdfViewer({ document }: { document: FileDocument }) {
       <details><summary>{t("files.details")}</summary>{error}</details>
     </Alert>
   );
-  const page = pdf === null || width === 0 ? null : (
+  let page = pdf === null || width === 0 ? null : (
     <FilePdfPageX key={`${document.pdfPage}:${document.pdfZoom}:${width}`} pdf={pdf}
       pageNumber={document.pdfPage} zoom={document.pdfZoom} width={width} onScale={setScale} />
   );
+  if (pdf !== null && width > 0 && viewport.current !== null && document.pdfContinuous) {
+    page = <FilePdfContinuousX document={document} pdf={pdf} width={width}
+      viewport={viewport.current} onScale={setScale} />;
+  }
   return (
     <div className="files-pdf-viewer">
       <FilePdfToolbarX document={document} pageCount={pdf?.numPages ?? 0} scale={scale} />

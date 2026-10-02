@@ -67,6 +67,10 @@ export class FileDocument {
   pdfSnapshot: OpenCodexPdfSnapshot | null = null;
   /** Page retained when switching between conversations and files. */
   pdfPage = 1;
+  /** Continuous reading is the default; the choice lasts for this document. */
+  pdfContinuous = true;
+  /** Relative vertical position within the current page, preserved across viewer mounts. */
+  pdfPageOffset = 0;
   /** Null fits the page width; otherwise stores the explicit PDF scale. */
   pdfZoom: number | null = null;
   /** Image magnification; null fits the image to the available viewport. */

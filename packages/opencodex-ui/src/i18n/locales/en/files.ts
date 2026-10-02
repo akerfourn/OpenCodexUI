@@ -33,6 +33,7 @@ export const enFiles = {
     viewFile: "File",
     viewSource: "Source",
     viewPreview: "Preview",
+    pdfContinuous: "Continuous reading",
     pdfFitWidth: "Fit to width",
     pdfPrevious: "Previous page",
     pdfNext: "Next page",

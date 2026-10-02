@@ -31,6 +31,7 @@ export const frFiles = {
     viewFile: "Fichier",
     viewSource: "Source",
     viewPreview: "Aperçu",
+    pdfContinuous: "Lecture continue",
     pdfFitWidth: "Ajuster à la largeur",
     pdfPrevious: "Page précédente",
     pdfNext: "Page suivante",

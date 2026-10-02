@@ -17,12 +17,17 @@ describe("PDF documents", () => {
   it("should remain read-only and isolate reading position between workspaces", async () => {
     const first = await fixture();
     const second = await fixture("other");
+    expect(first.document.pdfContinuous).toBe(true);
+    first.document.pdfContinuous = false;
+    first.document.pdfPageOffset = 0.5;
     first.document.pdfPage = 3;
     first.document.pdfZoom = 2;
     first.document.edit("cannot overwrite PDF");
     expect(first.document.isReadOnly).toBe(true);
     expect(first.document.isDirty).toBe(false);
     expect(first.document.canPreviewMarkdown).toBe(false);
+    expect(second.document.pdfContinuous).toBe(true);
+    expect(second.document.pdfPageOffset).toBe(0);
     expect(second.document.pdfPage).toBe(1);
     expect(second.document.pdfZoom).toBeNull();
     expect(first.request).toHaveBeenCalledWith({ type: "workspaceFiles.read", target, previewImages: true, previewPdf: true });

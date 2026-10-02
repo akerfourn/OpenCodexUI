@@ -94,9 +94,12 @@ Text-only callers retain the existing UTF-8 read contract.
 
 PDF files open in a lazy, read-only viewer with page navigation, fit-to-width,
 zoom and selectable text where a text layer exists. Page and zoom remain attached
-to the document when switching tabs or conversations. Only the current page is
-rendered, with a bounded canvas backing store; hiding the viewer destroys its
-worker. The normal reload and external-change checks apply.
+to the document when switching tabs or conversations. Continuous reading is the
+initial mode; a toolbar toggle restores single-page reading. Continuous mode
+renders only the visible pages and one neighbor on each side, with placeholders
+for the rest. Page dimensions are discovered as needed; a page-relative scroll
+anchor preserves the reading position as dimensions or zoom change. Hiding the
+viewer destroys its worker. The normal reload and external-change checks apply.
 
 `pdfjs-dist` supplies the PDF decoder and text layer rather than introducing a
 custom parser or relying on an Electron browser plugin. Its legacy browser build
@@ -107,7 +110,7 @@ fonts, image decoders and their licenses via `scripts/pdfAssets.ts`; no CDN is
 used. Keep those resources matched to the pinned engine version when upgrading.
 The viewer does not instantiate PDF scripting, interactive forms or annotation
 editing. Password-protected documents require an external reader. Search, OCR,
-printing and continuous multi-page scrolling are outside this initial viewer.
+and printing are outside this viewer.
 
 PDF-aware reads opt in through `previewPdf`. A `.pdf` extension or PDF signature
 selects a bounded binary snapshot, transferred as base64 through the existing
