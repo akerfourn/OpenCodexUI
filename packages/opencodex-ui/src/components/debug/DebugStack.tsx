@@ -5,10 +5,11 @@ import type { DebugStore } from "../../stores/debug/DebugStore";
 import { DebugVariableNodeX } from "./DebugVariableNode";
 
 /** Displays a bounded call stack and lazily expandable scopes for the selected frame. */
-export function DebugStack({ store }: { store: DebugStore }) {
+export function DebugStack({ store, hideTitle = false }: { store: DebugStore; hideTitle?: boolean }) {
   const { t } = useTranslation();
+  const title = hideTitle ? null : <Typography variant="subtitle2">{t("debug.stack")}</Typography>;
   return <Box>
-    <Typography variant="subtitle2">{t("debug.stack")}</Typography>
+    {title}
     <List dense disablePadding sx={{ maxHeight: 220, overflow: "auto" }}>{store.frames.map(frame =>
       <ListItemButton key={frame.id} selected={store.selectedFrame?.id === frame.id} onClick={() => void store.selectFrame(frame)}>
         <ListItemText primary={frame.name} secondary={`${frame.source?.name ?? frame.source?.path ?? ""}:${frame.line}`}

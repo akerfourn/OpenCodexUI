@@ -19,7 +19,11 @@ describe("debug panel rendering", () => {
     const markup = renderToStaticMarkup(<ThemeProvider theme={createTheme({ palette: { mode } })}>
       <DebugPanelX store={root} projectStore={project} />
     </ThemeProvider>);
-    expect(markup).toContain("debug.limits");
+    expect(markup).toContain('aria-label="debug.about"');
+    expect(markup).not.toContain("debug.limits");
+    expect(markup).not.toContain("debug.import.button");
+    expect(markup).toContain('aria-label="debug.manageConfigurations"');
+    expect(markup).toContain('aria-label="debug.openConsoleWindow"');
     expect(markup).toContain('aria-label="debug.disconnect"');
     expect(markup).toContain("debug.states.running");
     expect(markup).toContain("debug.breakpoints");

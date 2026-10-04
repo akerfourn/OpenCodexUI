@@ -1,76 +1,88 @@
-import { DebugError } from "./DebugError";
-import { Alert, Box, Button, Divider, LinearProgress, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Chip, Dialog, DialogContent, DialogTitle, IconButton, LinearProgress, Stack, Tooltip, Typography } from "@mui/material";
+import InfoOutlined from "@mui/icons-material/InfoOutlined";
+import Close from "@mui/icons-material/Close";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { sameDebugContext } from "@open-codex-ui/opencodex-protocol";
-import type { DebugConfiguration, OpenCodexFileContext } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
-import { DebugConfigurationDialogX } from "./DebugConfigurationDialog";
+import { DebugError } from "./DebugError";
 import { DebugControlsX } from "./DebugControls";
 import { DebugStackX } from "./DebugStack";
 import { DebugBreakpointsX } from "./DebugBreakpoints";
 import { DebugWatchesX } from "./DebugWatches";
 import { DebugConsoleX } from "./DebugConsole";
-import { DebugImportButtonX } from "./DebugImportButton";
+import { DebugConfigurationBarX } from "./DebugConfigurationBar";
+import { DebugSection } from "./DebugSection";
 
-/** Workspace configuration selector with application-owned execution state below it. */
+/** Prioritizes execution and console output while keeping setup and inspection discoverable. */
 export function DebugPanel({ store: root, projectStore }: { store: RootStore; projectStore: ProjectStore }) {
   const { t } = useTranslation();
   const store = root.debugStore;
   const workspace = projectStore.workspaces.current;
-  const [selected, setSelected] = useState("");
-  const [editing, setEditing] = useState<{ context: OpenCodexFileContext; configuration?: DebugConfiguration } | null>(null);
+  const [help, setHelp] = useState(false);
   useEffect(() => { void store.load(); }, [store]);
   const context = workspace?.sourceId ? { sourceId: workspace.sourceId, projectId: projectStore.project.id,
     workspaceId: workspace.id, workspacePath: workspace.path } : null;
-  const configurations = store.snapshot.preferences.configurations.filter(item => context && sameDebugContext(item.context, context));
-  const current = configurations.find(item => item.id === selected) ?? configurations[0];
   const session = store.snapshot.session;
-  let dialog;
-  if (editing) dialog = <DebugConfigurationDialogX store={store} context={editing.context}
-    configuration={editing.configuration} onClose={() => setEditing(null)} />;
-  let error;
-  if (store.error) error = <DebugError details={store.error} onClose={() => { store.error = null; }} />;
+  const error = store.error === null ? null : <DebugError details={store.error} onClose={() => { store.error = null; }} />;
   let sessionContent;
-  if (session) {
-    let failure;
-    if (session.error) failure = <DebugError details={session.error} />;
-    let progress;
-    if (["preparing", "connecting", "stopping"].includes(session.state)) progress = <LinearProgress />;
-    sessionContent = <>
-      <Typography variant="body2">{session.configuration.name} — {t(`debug.states.${session.state}`)}</Typography>
-      <Typography variant="caption" sx={{ overflowWrap: "anywhere" }}>{session.configuration.context.workspacePath}</Typography>
-      {progress}{failure}<DebugControlsX store={store} /><DebugStackX store={store} />
-    </>;
-  }
-  let breakpointContent;
-  if (context) breakpointContent = <DebugBreakpointsX store={store} context={context} />;
-  let importContent;
-  if (context) importContent = <DebugImportButtonX key={JSON.stringify(context)} root={root} context={context} />;
-  return <Box sx={{ overflow: "auto", flex: 1, minWidth: 0, p: 1.5 }}>
-    <Stack spacing={1.5} divider={<Divider />}>
-      <Stack spacing={1}>
-        <Typography variant="subtitle1">{t("debug.title")}</Typography>
-        <Typography variant="caption" sx={{ overflowWrap: "anywhere" }}>{workspace?.name} — {workspace?.path}</Typography>
-        <Alert severity="info" sx={{ fontSize: 12 }}>{t("debug.limits")}</Alert>
-        {error}
-        <TextField size="small" select fullWidth label={t("debug.configuration")} value={current?.id ?? ""}
-          onChange={event => setSelected(event.target.value)}>
-          <MenuItem value="" disabled>{t("debug.noConfiguration")}</MenuItem>
-          {configurations.map(config => <MenuItem key={config.id} value={config.id}>{config.name}</MenuItem>)}
-        </TextField>
-        <Stack direction="row" sx={{ flexWrap: "wrap" }}>
-          <Button disabled={!context} onClick={() => { if (context) setEditing({ context }); }}>{t("debug.add")}</Button>
-          <Button disabled={!current} onClick={() => { if (current && context) setEditing({ context, configuration: current }); }}>{t("debug.edit")}</Button>
-          <Button disabled={!current || store.active} onClick={() => { if (current) void store.run({ kind: "deleteConfiguration", id: current.id }); }}>{t("debug.remove")}</Button>
-          <Button variant="contained" disabled={!current || store.active || store.busy} onClick={() => { if (current) void store.start(current.id); }}>{t("debug.start")}</Button>
-        </Stack>
-        {importContent}
+  let stack;
+  if (session !== null) {
+    const failure = session.error === undefined ? null : <DebugError details={session.error} />;
+    const progress = ["preparing", "connecting", "stopping"].includes(session.state) ? <LinearProgress /> : null;
+    let color: "warning" | "success" | "default" = "default";
+    if (session.state === "paused") color = "warning";
+    if (session.state === "running") color = "success";
+    const otherWorkspace = context === null || !sameDebugContext(session.configuration.context, context);
+    const workspaceHint = otherWorkspace ? <Alert severity="info" sx={{ py: 0 }}>{t("debug.sessionOtherWorkspace")}</Alert> : null;
+    const controls = store.active ? <DebugControlsX store={store} /> : null;
+    sessionContent = <Stack spacing={0.5} sx={{ flexShrink: 0 }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+        <Tooltip title={session.configuration.context.workspacePath}><Typography variant="body2" noWrap sx={{ flex: 1 }}>
+          {session.configuration.name}
+        </Typography></Tooltip>
+        <Chip size="small" color={color} label={t(`debug.states.${session.state}`)} />
       </Stack>
-      {sessionContent}{breakpointContent}<DebugWatchesX store={store} /><DebugConsoleX store={store} />
-    </Stack>{dialog}
+      {workspaceHint}{progress}{failure}{controls}
+    </Stack>;
+    if (session.state === "paused") stack = <DebugSection key={`${session.id}:${session.epoch}`} title={t("debug.stack")} count={store.frames.length} defaultExpanded>
+      <DebugStackX store={store} hideTitle />
+    </DebugSection>;
+  }
+  let configuration;
+  let breakpoints;
+  if (context !== null) {
+    configuration = <DebugConfigurationBarX key={JSON.stringify(context)} root={root} context={context} />;
+    const count = store.snapshot.preferences.breakpoints.filter(item => sameDebugContext(item.context, context)).length;
+    breakpoints = <DebugSection title={t("debug.breakpoints")} count={count}>
+      <DebugBreakpointsX store={store} context={context} hideTitle />
+    </DebugSection>;
+  }
+  return <Box sx={{ overflow: "auto", flex: 1, minWidth: 0, minHeight: 0, p: 1.5, display: "flex", flexDirection: "column", gap: 1.25 }}>
+    <Stack spacing={1} sx={{ flexShrink: 0 }}>
+      <Stack direction="row" sx={{ alignItems: "center" }}>
+        <Typography variant="subtitle1" sx={{ flex: 1 }}>{t("debug.title")}</Typography>
+        <Tooltip title={t("debug.about")}><IconButton size="small" aria-label={t("debug.about")} onClick={() => setHelp(true)}><InfoOutlined fontSize="small" /></IconButton></Tooltip>
+      </Stack>
+      <Tooltip title={workspace?.path ?? ""}><Typography variant="caption" noWrap color="text.secondary">
+        {workspace?.name || workspace?.path}
+      </Typography></Tooltip>
+      {error}{configuration}
+    </Stack>
+    {sessionContent}
+    <Box sx={{ flexShrink: 0 }}>{stack}{breakpoints}
+      <DebugSection title={t("debug.watches")} count={store.snapshot.preferences.watches.length}>
+        <DebugWatchesX store={store} hideTitle />
+      </DebugSection>
+    </Box>
+    <DebugConsoleX store={store} />
+    <Dialog open={help} onClose={() => setHelp(false)} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: "flex", alignItems: "center" }}>{t("debug.about")}
+        <IconButton size="small" aria-label={t("debug.close")} sx={{ ml: "auto" }} onClick={() => setHelp(false)}><Close /></IconButton>
+      </DialogTitle><DialogContent><Typography variant="body2">{t("debug.limits")}</Typography></DialogContent>
+    </Dialog>
   </Box>;
 }
 export const DebugPanelX = observer(DebugPanel);

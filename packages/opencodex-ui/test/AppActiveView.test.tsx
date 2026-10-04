@@ -11,6 +11,9 @@ import type { RootStore } from "../src/stores/RootStore";
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
+vi.mock("../src/components/debug/DebugConsoleWindow", () => ({
+  DebugConsoleWindowX: () => <div data-testid="debug-console-window" />
+}));
 vi.mock("../src/components/app/AppTabs", () => ({
   AppTabsX: () => <div data-testid="tabs" />
 }));
@@ -46,6 +49,7 @@ describe("App active view", () => {
     const markup = renderToStaticMarkup(<App store={store} />);
 
     expect(markup).toContain("data-project-view=\"project-2\"");
+    expect(markup).toContain("data-testid=\"debug-console-window\"");
     expect(markup).not.toContain("data-project-view=\"project-1\"");
     expect(markup).not.toContain("data-testid=\"home-view\"");
   });
@@ -57,6 +61,7 @@ describe("App active view", () => {
     const markup = renderToStaticMarkup(<App store={store} />);
 
     expect(markup).toContain("data-testid=\"home-view\"");
+    expect(markup).toContain("data-testid=\"debug-console-window\"");
     expect(markup).not.toContain("data-project-view");
   });
 });

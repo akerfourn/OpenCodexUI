@@ -1,3 +1,4 @@
+import { DebugConsoleWindowStore } from "./DebugConsoleWindowStore";
 import { debugPayload } from "./debugPayload";
 import { makeAutoObservable, runInAction } from "mobx";
 import { isDebugActive, sameDebugContext } from "@open-codex-ui/opencodex-protocol";
@@ -9,6 +10,12 @@ import { bindDebugDocument, openDebugSource, workspaceRelativeSource } from "./d
 
 /** Application-lifetime debug state, independent of panel and project selection. */
 export class DebugStore {
+  /** The detached console shares this store instead of creating another debug session. */
+  readonly consoleWindow = new DebugConsoleWindowStore();
+  /** Expression draft shared by the panel and detached window. */
+  consoleInput = "";
+  /** Prevents duplicate evaluations across both console views. */
+  consolePending = false;
   /** Last accepted backend state; persists across panel unmounts. */
   snapshot: DebugSnapshot = { revision: -1, preferences: { configurations: [], breakpoints: [], watches: [] }, session: null };
   /** Request failure shown in the Debug panel. */
@@ -174,6 +181,20 @@ export class DebugStore {
     if (this.selectedFrame === null) return false;
     try { await this.query({ kind: "evaluate", frameId: this.selectedFrame.id, expression, context: "repl" }); return true; }
     catch (error) { runInAction(() => { this.error = String(error); }); return false; }
+  }
+
+  /** Preserves drafts on failure or session changes while an evaluation is in flight. */
+  async evaluateConsole(): Promise<void> {
+    const input = this.consoleInput;
+    const sessionId = this.snapshot.session?.id;
+    if (input.trim().length === 0 || this.consolePending) return;
+    this.consolePending = true;
+    try {
+      const success = await this.evaluate(input);
+      runInAction(() => {
+        if (success && this.snapshot.session?.id === sessionId && this.consoleInput === input) this.consoleInput = "";
+      });
+    } finally { runInAction(() => { this.consolePending = false; }); }
   }
 
   /** Persists expressions and immediately refreshes their current values when paused. */

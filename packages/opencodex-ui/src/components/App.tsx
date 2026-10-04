@@ -1,6 +1,7 @@
 /**
  * Renders the app component for the OpenCodex UI.
  */
+import { DebugConsoleWindowX } from "./debug/DebugConsoleWindow";
 import { FileCloseDialogX } from "./files/FileCloseDialog";
 import { observer } from "mobx-react-lite";
 import { Box, Button, Snackbar } from "@mui/material";
@@ -45,6 +46,7 @@ export function App({ store }: AppProps) {
   );
   const closeConfirmation = <><AppCloseConfirmationDialogX store={store} /><FileCloseDialogX store={store.fileCloseStore} /></>;
   const fileDropOverlay = <AppFileDropOverlayX store={store} />;
+  const debugConsoleWindow = <DebugConsoleWindowX store={store.debugStore} />;
   const activityReporter = <ApplicationActivityReporterX store={store} />;
 
   function handleCloseNotification(): void {
@@ -96,6 +98,7 @@ export function App({ store }: AppProps) {
         <OnboardingViewX store={store} />
         {fileDropOverlay}
         {activityReporter}
+        {debugConsoleWindow}
         {snackbar}
         {closeConfirmation}
         {shutdownOverlay}
@@ -115,6 +118,7 @@ export function App({ store }: AppProps) {
       <CloseProjectDialogX store={store} />
       {fileDropOverlay}
       {activityReporter}
+      {debugConsoleWindow}
       {snackbar}
       {closeConfirmation}
       {shutdownOverlay}

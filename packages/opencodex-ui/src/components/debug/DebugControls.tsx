@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import type { DebugStore } from "../../stores/debug/DebugStore";
 
 /** Compact toolbar disables execution commands outside their valid lifecycle states. */
-export function DebugControls({ store }: { store: DebugStore }) {
+export function DebugControls({ store, tooltipContainer }: { store: DebugStore; tooltipContainer?: HTMLElement }) {
   const { t } = useTranslation();
   const session = store.snapshot.session;
   const paused = session?.state === "paused";
@@ -28,7 +28,7 @@ export function DebugControls({ store }: { store: DebugStore }) {
     { name: stopLabel, icon: stopIcon, disabled: !store.active || session?.state === "stopping", run: () => store.stop() }
   ];
   return <Box sx={{ display: "flex", flexWrap: "wrap" }}>{actions.map(action =>
-    <Tooltip key={action.name} title={action.name}><span><IconButton aria-label={action.name}
+    <Tooltip key={action.name} title={action.name} slotProps={{ popper: { container: tooltipContainer } }}><span><IconButton aria-label={action.name}
       disabled={action.disabled} onClick={() => void action.run()} size="small">{action.icon}</IconButton></span></Tooltip>
   )}</Box>;
 }

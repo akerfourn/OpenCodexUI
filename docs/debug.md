@@ -176,3 +176,26 @@ checks require follow-up validation on those environments. Theme render tests
 are not a substitute for interactive visual review.
 
 [release]: https://github.com/microsoft/vscode-js-debug/releases/tag/v1.140.0
+
+## Panel and detached console
+
+The configuration selector keeps launch actions visible. Configuration creation,
+editing, deletion and VS Code import live in its overflow menu; source detection
+starts when that menu opens. Stack, breakpoint and watch sections are collapsible.
+
+The console uses the remaining panel height and follows output until the reader
+scrolls back. Its window action creates a same-origin blank Electron child and
+renders a React portal into it. The portal is mounted at application level, so
+changing tools or projects does not close it. It shares the original DebugStore,
+selected frame, output history and expression draft; no second session or event
+stream is created. Closing or docking this window never stops the program.
+
+Electron allows only the named blank console popup and blocks navigation and
+nested popups. `@emotion/cache`, already used by MUI, is declared directly to
+place generated styles in the child document while retaining the application's
+React theme and language contexts. No backend or persistence schema is involved.
+
+Before release, check docking/native closing, copy/paste, tool changes, expression
+failure, output scrollback and light/dark theme changes with a live Electron
+window. Automated tests cover native window policy, lifecycle, rendering and
+shared expression ownership without opening a GUI.

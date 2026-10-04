@@ -146,3 +146,58 @@ describe("debug activity and closing", () => {
     expect(store.error).toContain("Connection lost");
   });
 });
+
+describe("shared console input", () => {
+  test("closing the detached view preserves the session, frame and expression without backend commands", () => {
+    const { store, request } = fixture();
+    store.snapshot = { revision: 1, session, preferences };
+    store.selectedFrame = { id: 42, name: "main", line: 1, column: 1 };
+    store.consoleInput = "value";
+    const close = vi.fn();
+    store.consoleWindow.host = { window: { close } as unknown as Window, container: {} as HTMLElement };
+    store.consoleWindow.close();
+    expect(close).toHaveBeenCalledOnce();
+    expect(request).not.toHaveBeenCalled();
+    expect(store.active).toBe(true);
+    expect(store.selectedFrame?.id).toBe(42);
+    expect(store.consoleInput).toBe("value");
+  });
+
+  test("retains input when execution resumes before an evaluation reply arrives", async () => {
+    const { store, request } = fixture();
+    store.snapshot = { revision: 1, session, preferences };
+    store.selectedFrame = { id: 42, name: "main", line: 1, column: 1 };
+    store.consoleInput = "value";
+    let resolve!: (value: unknown) => void;
+    request.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    const pending = store.evaluateConsole();
+    store.apply({ revision: 2, session: { ...session, epoch: 2, state: "running" }, preferences });
+    resolve({ result: "late result" });
+    await pending;
+    expect(store.consoleInput).toBe("value");
+    expect(store.consolePending).toBe(false);
+  });
+
+  test("keeps the expression on error and prevents duplicate submissions from separate views", async () => {
+    const { store, request } = fixture();
+    store.snapshot = { revision: 1, session, preferences };
+    store.selectedFrame = { id: 42, name: "main", line: 1, column: 1 };
+    store.consoleInput = "value + 1";
+    let reject!: (error: Error) => void;
+    request.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+    const pending = store.evaluateConsole();
+    await store.evaluateConsole();
+    expect(request).toHaveBeenCalledOnce();
+    expect(store.consolePending).toBe(true);
+    reject(new Error("Evaluation failed"));
+    await pending;
+    expect(store.consoleInput).toBe("value + 1");
+    expect(store.consolePending).toBe(false);
+    expect(request.mock.calls[0][0]).toMatchObject({ type: "debug", action: {
+      kind: "evaluate", frameId: 42, sessionId: "session", epoch: 1, expression: "value + 1"
+    } });
+    request.mockResolvedValueOnce({ result: "2" });
+    await store.evaluateConsole();
+    expect(store.consoleInput).toBe("");
+  });
+});

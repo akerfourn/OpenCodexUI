@@ -10,9 +10,9 @@ import { DebugAdvancedFieldsX } from "./DebugAdvancedFields";
 import { createDebugAdvancedDraft, parseDebugAdvancedDraft } from "../../stores/debug/debugAdvancedDraft";
 
 /** Edits supported js-debug parameters, including explicitly reviewed import drafts. */
-export function DebugConfigurationDialog({ store, context, configuration, importIssues = [], onClose }: {
+export function DebugConfigurationDialog({ store, context, configuration, importIssues = [], onClose, onSaved }: {
   store: DebugStore; context: OpenCodexFileContext; configuration?: DebugConfiguration;
-  importIssues?: DebugImportIssue[]; onClose(): void;
+  importIssues?: DebugImportIssue[]; onClose(): void; onSaved?(id: string): void;
 }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<DebugConfiguration>(() => ({ id: crypto.randomUUID(),
@@ -33,7 +33,7 @@ export function DebugConfigurationDialog({ store, context, configuration, import
       const parsed: unknown = JSON.parse(args);
       if (!Array.isArray(parsed) || !parsed.every(item => typeof item === "string")) throw new Error(t("debug.argsError"));
       const options = parseDebugAdvancedDraft(advanced, draft.target, draft.request);
-      if (await store.saveConfiguration({ ...draft, args: parsed, advanced: options })) onClose();
+      if (await store.saveConfiguration({ ...draft, args: parsed, advanced: options })) { onSaved?.(draft.id); onClose(); }
       else setError(store.error);
     } catch (failure) { setError(String(failure)); }
     finally { setSaving(false); }

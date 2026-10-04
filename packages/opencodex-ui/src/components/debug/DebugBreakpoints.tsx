@@ -7,7 +7,7 @@ import type { DebugBreakpoint, OpenCodexFileContext } from "@open-codex-ui/openc
 import type { DebugStore } from "../../stores/debug/DebugStore";
 
 /** Workspace-scoped breakpoint catalogue, including refused and not-yet-resolved requests. */
-export function DebugBreakpoints({ store, context }: { store: DebugStore; context: OpenCodexFileContext }) {
+export function DebugBreakpoints({ store, context, hideTitle = false }: { store: DebugStore; context: OpenCodexFileContext; hideTitle?: boolean }) {
   const { t } = useTranslation();
   const breakpoints = store.snapshot.preferences.breakpoints.filter(item => sameDebugContext(item.context, context));
   const session = store.snapshot.session;
@@ -41,8 +41,9 @@ export function DebugBreakpoints({ store, context }: { store: DebugStore; contex
         onBlur={event => { if (event.target.value !== (item.condition ?? "")) update(item, { condition: event.target.value }); }} />
     </Box>;
   });
+  const title = hideTitle ? null : <Typography variant="subtitle2">{t("debug.breakpoints")}</Typography>;
   return <Box><Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
-    <Typography variant="subtitle2">{t("debug.breakpoints")}</Typography>
+    {title}
     <Button size="small" disabled={breakpoints.length === 0} onClick={() => void store.setBreakpoints(context, [])}>{t("debug.clear")}</Button>
   </Stack><Typography variant="caption" color="text.secondary">{t("debug.breakpointHelp")}</Typography>{rows}</Box>;
 }

@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import type { DebugStore } from "../../stores/debug/DebugStore";
 
 /** Retains expressions between sessions and shows values only for the current paused frame. */
-export function DebugWatches({ store }: { store: DebugStore }) {
+export function DebugWatches({ store, hideTitle = false }: { store: DebugStore; hideTitle?: boolean }) {
   const { t } = useTranslation();
   const [expression, setExpression] = useState("");
   /** Adds without evaluating outside a suspended execution context. */
@@ -16,7 +16,8 @@ export function DebugWatches({ store }: { store: DebugStore }) {
     void store.setWatches([...store.snapshot.preferences.watches, expression.trim()]);
     setExpression("");
   }
-  return <Box><Typography variant="subtitle2">{t("debug.watches")}</Typography>
+  const title = hideTitle ? null : <Typography variant="subtitle2">{t("debug.watches")}</Typography>;
+  return <Box>{title}
     {store.snapshot.preferences.watches.map(item => <Stack key={item} direction="row" sx={{ alignItems: "center" }}>
       <Typography variant="caption" sx={{ flex: 1, overflowWrap: "anywhere", fontFamily: "monospace" }}>{item}: {store.watches[item] ?? "—"}</Typography>
       <IconButton size="small" aria-label={t("debug.remove")} onClick={() => void store.setWatches(store.snapshot.preferences.watches.filter(entry => entry !== item))}><DeleteOutlineIcon fontSize="small" /></IconButton>

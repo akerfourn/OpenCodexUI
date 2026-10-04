@@ -6,6 +6,7 @@ import path from "node:path";
 import { BrowserWindow } from "electron";
 
 import type { ContextMenuLanguage } from "./contextMenuLocale.js";
+import { configureDebugConsoleWindow } from "./debugConsoleWindow.js";
 import { registerContextMenu } from "./contextMenu.js";
 
 type CreateWindowOptions = {
@@ -53,6 +54,7 @@ export function createWindow(options: CreateWindowOptions): BrowserWindow {
   });
   window.setTitle(title);
   registerContextMenu(window, options.contextMenuLanguage);
+  if (windowKind === "main") configureDebugConsoleWindow(window, options.contextMenuLanguage);
 
   window.webContents.on("before-input-event", (event, input) => {
     const isDevToolsShortcut = input.key === "F12" || (
