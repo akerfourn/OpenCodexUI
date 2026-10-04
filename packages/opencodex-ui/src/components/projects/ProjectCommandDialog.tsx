@@ -139,6 +139,7 @@ export function ProjectCommandDialog({
             <TextField
               label={t("commands.command")}
               value={input.command}
+              helperText={t("commands.shellHelp")}
               fullWidth
               multiline
               minRows={2}

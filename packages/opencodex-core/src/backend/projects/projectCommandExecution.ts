@@ -1,6 +1,9 @@
 /** Environment values that may safely be forwarded to a host-local command. */
 export type HostShellEnvironment = Readonly<Record<string, string>>;
 
+/** Windows shells supported by configured project tasks. */
+export type WindowsCommandShell = "pwsh.exe" | "powershell.exe";
+
 const HOST_ENVIRONMENT_VARIABLES = [
   "PATH",
   "HOME",
@@ -43,11 +46,13 @@ export function readHostShellEnvironment(
  *
  * @param command User-configured command.
  * @param projectPath Project working directory.
+ * @param windowsShell PowerShell executable selected on the command's source.
  * @returns Executable and arguments.
  */
 export function createShellCommand(
   command: string,
-  projectPath: string
+  projectPath: string,
+  windowsShell: WindowsCommandShell = "powershell.exe"
 ): string[] {
   const trimmedCommand = command.trim();
 
@@ -56,10 +61,27 @@ export function createShellCommand(
   }
 
   if (isWindowsPath(projectPath)) {
-    return ["cmd.exe", "/d", "/s", "/c", trimmedCommand];
+    return createPowerShellCommand(trimmedCommand, windowsShell);
   }
 
   return ["sh", "-lc", trimmedCommand];
+}
+
+/** Preserves script quoting/Unicode and reports native failures without masking PowerShell errors. */
+function createPowerShellCommand(command: string, shell: WindowsCommandShell): string[] {
+  const script = [
+    command,
+    "if (-not $?) {",
+    "  if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+    "  exit 1",
+    "}",
+    "exit 0"
+  ].join("\n");
+
+  return [
+    shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-OutputFormat", "Text",
+    "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")
+  ];
 }
 
 /**

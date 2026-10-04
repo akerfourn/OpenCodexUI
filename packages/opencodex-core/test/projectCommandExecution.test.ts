@@ -44,14 +44,29 @@ describe("project command execution helpers", () => {
     "C:\\workspace\\project",
     "D:/workspace/project",
     "\\\\server\\share\\project"
-  ])("should build a Windows shell command for %s", (projectPath) => {
-    expect(createShellCommand(" npm test ", projectPath)).toEqual([
-      "cmd.exe",
-      "/d",
-      "/s",
-      "/c",
-      "npm test"
+  ])("should build a PowerShell command for %s", (projectPath) => {
+    const command = createShellCommand(" npm test ", projectPath);
+    expect(command.slice(0, -1)).toEqual([
+      "powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-OutputFormat", "Text", "-EncodedCommand"
     ]);
+    expect(Buffer.from(command.at(-1)!, "base64").toString("utf16le")).toMatch(/^npm test\n/);
+  });
+
+  it("should transport multiline PowerShell with quotes, variables and Unicode without another shell parsing it", () => {
+    const script = [
+      "$message = 'L''été 🐈'",
+      "$env:MODE = 'test'",
+      "& 'C:\\Program Files\\nodejs\\node.exe' -e 'console.log(\"hello\")'",
+      "Write-Output $message # trailing comment"
+    ].join("\n");
+    const command = createShellCommand(script, "C:\\workspace", "pwsh.exe");
+    const decoded = Buffer.from(command.at(-1)!, "base64").toString("utf16le");
+    expect(command[0]).toBe("pwsh.exe");
+    expect(decoded.slice(0, script.length)).toBe(script);
+    expect(decoded.slice(script.length)).toContain("\nif (-not $?)");
+    expect(decoded).toContain("exit $LASTEXITCODE");
+    expect(command).not.toContain("-ExecutionPolicy");
+    expect(command).not.toContain("cmd.exe");
   });
 
   it("should reject an empty configured command", () => {

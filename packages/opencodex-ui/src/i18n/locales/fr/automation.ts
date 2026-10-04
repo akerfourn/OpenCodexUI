@@ -19,6 +19,7 @@ export const frAutomation = {
     cancel: "Annuler",
     closeRun: "Retirer l'instance",
     command: "Commande",
+    shellHelp: "Windows : PowerShell 7 si disponible, sinon Windows PowerShell. Linux, macOS et WSL : sh. Pour la syntaxe CMD, utilisez explicitement cmd.exe /d /s /c 'votre commande'.",
     createTitle: "Ajouter une commande",
     delete: "Supprimer",
     deleteConfirmCheckbox: "Je confirme la suppression de cette commande",
@@ -138,4 +139,3 @@ export const frAutomation = {
     }
   },
 } as const;
-

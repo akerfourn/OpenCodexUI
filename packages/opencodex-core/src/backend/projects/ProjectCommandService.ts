@@ -24,10 +24,8 @@ import type {
 import { toProtocolRun } from "./projectCommandRunMapping.js";
 import { ProjectCommandLog } from "./ProjectCommandLog.js";
 import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
-import {
-  createShellCommand,
-  readHostShellEnvironment
-} from "./projectCommandExecution.js";
+import { readHostShellEnvironment } from "./projectCommandExecution.js";
+import { resolveProjectCommandShell } from "./projectCommandShell.js";
 import {
   decodeBase64Output,
   readExitedStatus,
@@ -163,6 +161,8 @@ export class ProjectCommandService {
     this.startingRuns.add(execution);
     try {
       const client = await this.options.clients.ensureClient(source.id);
+      const environment = shouldUseHostShellEnvironment(source) ? readHostShellEnvironment() : undefined;
+      const shellCommand = await resolveProjectCommandShell(client, command.command, projectPath, environment);
       const run = await this.createRun(command, projectPath, source.id, workspaceId);
       const protocolRun = toProtocolRun(run);
 
@@ -176,7 +176,7 @@ export class ProjectCommandService {
 
       try {
         await client.request<v2.ProcessSpawnResponse>("process/spawn", {
-          command: createShellCommand(command.command, projectPath),
+          command: shellCommand,
           processHandle: run.processHandle,
           cwd: projectPath,
           tty: true,
@@ -184,9 +184,7 @@ export class ProjectCommandService {
           streamStdin: true,
           outputBytesCap: null,
           timeoutMs: null,
-          ...(shouldUseHostShellEnvironment(source)
-            ? { env: readHostShellEnvironment() }
-            : {})
+          ...(environment === undefined ? {} : { env: environment })
         });
       } catch (error) {
         this.failRun(run, error);

@@ -123,6 +123,58 @@ describe("ProjectCommandService", () => {
     }));
   });
 
+  it("should select PowerShell before spawning on a Windows source without forwarding the host environment", async () => {
+    const { service, request } = createService(createRemoteSource());
+    request.mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" });
+
+    const run = await service.runCommand("command-1", "C:\\workspace", "source-1");
+
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenNthCalledWith(1, "command/exec", expect.objectContaining({ cwd: "C:\\workspace" }));
+    expect(request).toHaveBeenNthCalledWith(2, "process/spawn", expect.objectContaining({
+      command: ["pwsh.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-OutputFormat", "Text", "-EncodedCommand", expect.any(String)],
+      cwd: "C:\\workspace", processHandle: run.processHandle
+    }));
+    for (const [, params] of request.mock.calls as unknown as [string, Record<string, unknown>][]) {
+      expect(params).not.toHaveProperty("env");
+    }
+  });
+
+  it("should use the same local environment for detection and Windows PowerShell execution", async () => {
+    const { service, request } = createService();
+    request.mockResolvedValueOnce({ exitCode: 1, stdout: "", stderr: "" });
+
+    await service.runCommand("command-1", "C:/workspace", "source-1");
+
+    const calls = request.mock.calls as unknown as [string, { command: string[]; env?: Record<string, string> }][];
+    expect(calls[1][1].command[0]).toBe("powershell.exe");
+    expect(calls[0][1].env).toEqual(expect.objectContaining({ PATH: expect.any(String) }));
+    expect(calls[1][1].env).toEqual(calls[0][1].env);
+  });
+
+  it("should release a failed shell selection without registering a phantom command run", async () => {
+    const { service, request, emit } = createService();
+    request.mockRejectedValueOnce(new Error("Shell detection timed out"));
+
+    await expect(service.runCommand("command-1", "C:/workspace", "source-1"))
+      .rejects.toThrow("Shell detection timed out");
+    expect(emit).not.toHaveBeenCalled();
+    request.mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" });
+    await expect(service.runCommand("command-1", "C:/workspace", "source-1"))
+      .resolves.toMatchObject({ status: "running" });
+  });
+
+  it("should not retry a failed PowerShell task in a different shell", async () => {
+    const { service, request, emit } = createService();
+    request.mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" });
+    request.mockRejectedValueOnce(new Error("PowerShell failed to start"));
+
+    await expect(service.runCommand("command-1", "C:/workspace", "source-1"))
+      .rejects.toThrow("PowerShell failed to start");
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenLastCalledWith(expect.objectContaining({ type: "projectCommand.exited", status: "failed" }));
+  });
+
   it("should ignore malformed and unrelated process notifications", async () => {
     const { service, emit } = createService();
     const run = await service.runCommand("command-1", "/workspace/project", "source-1");

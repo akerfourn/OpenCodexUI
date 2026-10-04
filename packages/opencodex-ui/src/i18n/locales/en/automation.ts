@@ -22,6 +22,7 @@ export const enAutomation = {
     cancel: "Cancel",
     closeRun: "Close instance",
     command: "Command",
+    shellHelp: "Windows: PowerShell 7 when available, otherwise Windows PowerShell. Linux, macOS and WSL: sh. For CMD syntax, explicitly use cmd.exe /d /s /c 'your command'.",
     createTitle: "Add command",
     delete: "Delete",
     deleteConfirmCheckbox: "I confirm I want to delete this command",

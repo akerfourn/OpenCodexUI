@@ -230,6 +230,15 @@ The settings file is merged with application defaults. Current defaults include:
 - Some historical Codex activity details may not be available from the CLI API.
 - Local command execution is intended for user-defined project tasks; review
   commands before running them.
+- Windows workspace commands use PowerShell 7 (`pwsh.exe`) when available on
+  the source's `PATH`, falling back to Windows PowerShell (`powershell.exe`).
+  Linux, macOS and WSL workspaces use `sh -lc`. Shell selection runs on the
+  workspace's source before starting the task; failures never retry the task
+  with another shell. PowerShell profiles are not loaded and the system's
+  script execution policy is respected. If that policy blocks an npm `.ps1`
+  shim, use `npm.cmd`. Existing CMD-specific commands need to be adapted or
+  wrapped explicitly, for example `cmd.exe /d /s /c 'echo %USERPROFILE%'`.
+  This affects the Commands module, not the shell selected by the Codex agent.
 - Cross-platform support covers Linux and Windows, with macOS intended as a
   supported target once packaging is tested there.
 - The renderer bundle is still a single large bundle, so Vite may report a
