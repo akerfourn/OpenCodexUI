@@ -67,7 +67,7 @@ win:
     - portable
 
 nsis:
-  artifactName: OpenCodexUI Setup ${version}.${ext}
+  artifactName: OpenCodexUI-Setup-${version}.${ext}
 
 portable:
-  artifactName: OpenCodexUI Portable ${version}.${ext}
+  artifactName: OpenCodexUI-Portable-${version}.${ext}
