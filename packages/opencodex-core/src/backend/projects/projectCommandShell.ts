@@ -5,6 +5,7 @@ import { createShellCommand, isWindowsPath, type HostShellEnvironment } from "./
 /**
  * Selects PowerShell on the execution source, never from the Electron host.
  * Only a missing pwsh falls back to Windows PowerShell; user commands are never retried.
+ * Keeps the default output cap for Windows sandbox compatibility.
  */
 export async function resolveProjectCommandShell(
   client: Pick<CodexAppServerClient, "request">,
@@ -21,7 +22,6 @@ export async function resolveProjectCommandShell(
     command: ["where.exe", "/q", "$PATH:pwsh.exe"],
     cwd: projectPath,
     timeoutMs: 5000,
-    outputBytesCap: 4096,
     ...(environment === undefined ? {} : { env: environment })
   });
 

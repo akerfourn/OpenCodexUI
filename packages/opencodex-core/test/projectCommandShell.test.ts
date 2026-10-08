@@ -11,14 +11,15 @@ function fixture() {
 }
 
 describe("project command shell selection", () => {
-  it("should prefer PowerShell 7 using the source's PATH and captured working directory", async () => {
+  it("should detect PowerShell 7 without a custom output cap for the Windows sandbox", async () => {
     const { client, request } = fixture();
     const command = await resolveProjectCommandShell(client, "Write-Output 'ok'", "D:\\worktree");
 
     expect(request).toHaveBeenCalledOnce();
     expect(request).toHaveBeenCalledWith("command/exec", {
       command: ["where.exe", "/q", "$PATH:pwsh.exe"],
-      cwd: "D:\\worktree", timeoutMs: 5000, outputBytesCap: 4096
+      cwd: "D:\\worktree",
+      timeoutMs: 5000
     });
     expect(command[0]).toBe("pwsh.exe");
   });
