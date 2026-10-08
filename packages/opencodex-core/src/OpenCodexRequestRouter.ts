@@ -48,6 +48,8 @@ export class OpenCodexRequestRouter {
    */
   private async handleValidRequest(request: OpenCodexRequest): Promise<unknown> {
     switch (request.type) {
+      case "images.read":
+        return this.runtime.files.readImage(request);
       case "browserPermissions.read":
       case "browserPermissions.change":
       case "browserPermissions.reload":

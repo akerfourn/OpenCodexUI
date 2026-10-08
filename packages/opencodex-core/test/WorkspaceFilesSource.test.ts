@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -60,6 +60,21 @@ function sourceProcessClient() {
 }
 
 describe("workspace source routing", () => {
+  it("should read generated images through the source process outside the project directory", async () => {
+    const root = await mkdtemp(join(tmpdir(), "files-generated-source-"));
+    try {
+      const projectPath = join(root, "project");
+      await mkdir(projectPath);
+      const path = join(root, "génération #1.png");
+      const bytes = Buffer.from("89504e470d0a1a0a00000000", "hex");
+      await writeFile(path, bytes);
+      const { client } = sourceProcessClient();
+      expect(await runSourceFileOperation(client, { type: "images.read", sourceId: "remote", projectPath, path }))
+        .toMatchObject({ ok: true, value: { kind: "image", dataUrl: `data:image/png;base64,${bytes.toString("base64")}` } });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
   it("should transport PDF bytes through the source process", async () => {
     const root = await mkdtemp(join(tmpdir(), "files-pdf-source-"));
     try {

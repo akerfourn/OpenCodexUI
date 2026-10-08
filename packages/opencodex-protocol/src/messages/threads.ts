@@ -99,7 +99,7 @@ export type OpenCodexPlanSnapshot = {
 };
 
 /**
- * Image attachment sent with a user message.
+ * Image attachment sent or produced in a conversation.
  */
 export type OpenCodexImageAttachment = {
   id: string;
@@ -293,6 +293,7 @@ export type OpenCodexActivity = {
   details?: string | null;
   plan?: OpenCodexPlanSnapshot | null;
   autoApprovalReview?: OpenCodexAutoApprovalReview | null;
+  attachments?: OpenCodexAttachment[];
   status: "running" | "completed" | "error";
 };
 

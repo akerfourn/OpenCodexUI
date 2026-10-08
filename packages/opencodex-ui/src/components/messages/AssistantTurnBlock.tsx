@@ -12,6 +12,7 @@ import type {
 
 import { PersistentPlanSectionX } from "./PersistentPlanSection";
 import { ReasoningTimelineX } from "./ReasoningTimeline";
+import { ActivityImageResultsX } from "./ActivityImageResults";
 
 type AssistantTurnBlockProps = {
   turn: OpenCodexTurn;
@@ -71,6 +72,7 @@ export function AssistantTurnBlock({
         onOpenLink={onOpenLink}
         onNavigateThread={onNavigateThread}
       />
+      <ActivityImageResultsX items={preludeItems} />
       <PersistentPlanSectionX
         preludeItems={preludeItems}
         isRunning={isRunning}

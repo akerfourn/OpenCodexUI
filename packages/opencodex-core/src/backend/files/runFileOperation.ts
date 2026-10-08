@@ -1,11 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
-import type { OpenCodexFileGrant, OpenCodexFileRequest, OpenCodexFileResult } from "@open-codex-ui/opencodex-protocol";
+import type {
+  OpenCodexFileGrant, OpenCodexFileRequest, OpenCodexFileResult, OpenCodexImageReadRequest
+} from "@open-codex-ui/opencodex-protocol";
 import { fileWorkerScript } from "./fileWorkerScript.js";
 
 /** Backend-enriched payload; the renderer cannot supply effective grants. */
-export type FileWorkerRequest = OpenCodexFileRequest & { permissions?: OpenCodexFileGrant[] };
+export type FileWorkerRequest = (OpenCodexFileRequest | OpenCodexImageReadRequest) & {
+  permissions?: OpenCodexFileGrant[];
+};
 
 /** Runs bounded filesystem work off the local main thread. */
 export function runLocalFileOperation(request: FileWorkerRequest): Promise<OpenCodexFileResult<unknown>> {
@@ -68,7 +72,7 @@ export async function runSourceFileOperation(
     await client.request("process/spawn", {
       command: ["node", "-e", fileWorkerScript],
       processHandle,
-      cwd: request.target.workspacePath,
+      cwd: request.type === "images.read" ? request.projectPath : request.target.workspacePath,
       streamStdin: true,
       outputBytesCap: 16 * 1024 * 1024,
       timeoutMs: 30_000

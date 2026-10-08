@@ -1,7 +1,7 @@
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import { normalizeFileLinkGrants } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexFileRequest, OpenCodexFileResult, OpenCodexFileLinkAccess,
-  OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
+  OpenCodexSettings, OpenCodexImageReadRequest, OpenCodexImageSnapshot } from "@open-codex-ui/opencodex-protocol";
 import type { ClientPort, ProjectSourcePort } from "../runtime/runtimePorts.js";
 import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
 import { runLocalFileOperation, runSourceFileOperation, type FileWorkerRequest } from "./runFileOperation.js";
@@ -24,6 +24,28 @@ export class WorkspaceFilesService {
     private readonly clients: Pick<ClientPort, "ensureClient">,
     private readonly settings?: FileAccessSettings
   ) {}
+
+  /** Reads only bounded image bytes, including generated artifacts outside the workspace. */
+  async readImage(request: OpenCodexImageReadRequest): Promise<OpenCodexFileResult<OpenCodexImageSnapshot>> {
+    try {
+      if (typeof request.sourceId !== "string" || request.sourceId.trim().length === 0) {
+        throw new Error("An explicit image source is required.");
+      }
+      const source = await this.sources.resolveRequestedSource(request.sourceId);
+      const payload: OpenCodexImageReadRequest = {
+        type: "images.read", sourceId: source.id, projectPath: request.projectPath, path: request.path
+      };
+      let result: OpenCodexFileResult<unknown>;
+      if (source.kind === "local") {
+        result = await runLocalFileOperation(payload);
+      } else {
+        result = await runSourceFileOperation(await this.clients.ensureClient(source.id), payload);
+      }
+      return result as OpenCodexFileResult<OpenCodexImageSnapshot>;
+    } catch (error) {
+      return { ok: false, code: "unavailable", details: String(error) };
+    }
+  }
 
   /** Keeps reads independent while serializing writes and authorization changes. */
   async execute(request: OpenCodexFileRequest): Promise<OpenCodexFileResult<unknown>> {

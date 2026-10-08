@@ -19,6 +19,7 @@ import { readV2Action } from "./collaborationReaders.js";
 import { createActivity, readPlanSnapshot } from "./activityHelpers.js";
 import { createId, readObject, readString } from "./primitives.js";
 import { mapAutoApprovalReviewItem } from "./autoApprovalReviewMapping.js";
+import { readActivityImages } from "./activityImages.js";
 
 /**
  * Maps a raw activity item to a structured turn item.
@@ -62,7 +63,8 @@ export function mapActivityTurnItem(
     kind: resolveActivityKind(type),
     summary: summary.length > 0 ? summary : null,
     details: details.length > 0 ? details : null,
-    plan
+    plan,
+    attachments: readActivityImages(item)
   };
 }
 
@@ -116,7 +118,8 @@ export function mapActivityMessage(
     kind: resolveActivityKind(type),
     summary: summary.length > 0 ? summary : null,
     details: details.length > 0 ? details : null,
-    plan
+    plan,
+    attachments: readActivityImages(item)
   };
 }
 
@@ -155,7 +158,7 @@ export function createThreadItemActivity(
     );
   }
 
-  return createActivity(
+  const activity = createActivity(
     mappedItem.id,
     threadId,
     mappedItem.kind ?? type,
@@ -165,6 +168,8 @@ export function createThreadItemActivity(
     mappedItem.summary,
     mappedItem.details
   );
+  activity.attachments = mappedItem.attachments;
+  return activity;
 }
 
 /**
@@ -232,7 +237,7 @@ export function createRawResponseItemActivity(
     );
   }
 
-  return createActivity(
+  const activity = createActivity(
     readString(item.call_id) || createId("raw"),
     threadId,
     type.length > 0 ? type : "rawResponseItem",
@@ -242,6 +247,8 @@ export function createRawResponseItemActivity(
     null,
     summarizeActivityDetails(item)
   );
+  activity.attachments = readActivityImages(item);
+  return activity;
 }
 
 /** Resolves a semantic UI kind for raw shell, collaboration, and dynamic calls. */

@@ -8,7 +8,7 @@ import { useState } from "react";
 
 import type { OpenCodexAttachment } from "@open-codex-ui/opencodex-protocol";
 
-import { ImageAttachmentPreviewTile } from "./ImageAttachmentPreviewTile";
+import { ImageAttachmentPreviewTileX } from "./ImageAttachmentPreviewTile";
 
 type ImageAttachmentPreviewGridProps = {
   attachments: OpenCodexAttachment[];
@@ -41,7 +41,7 @@ export function ImageAttachmentPreviewGrid({ attachments }: ImageAttachmentPrevi
     if (attachment.kind === "file") {
       return <FileAttachmentTileX key={attachment.id} attachment={attachment} />;
     }
-    return <ImageAttachmentPreviewTile key={attachment.id} attachment={attachment} onOpen={handleOpenImage} />;
+    return <ImageAttachmentPreviewTileX key={attachment.id} attachment={attachment} onOpen={handleOpenImage} />;
   });
 
   return (

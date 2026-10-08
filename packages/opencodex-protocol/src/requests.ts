@@ -4,7 +4,7 @@ import type { OpenCodexDebugRequest } from "./debug";
 /**
  * Declares the requests sent from the UI to the OpenCodex backend.
  */
-import type { OpenCodexFileRequest } from "./files";
+import type { OpenCodexFileRequest, OpenCodexImageReadRequest } from "./files";
 import type { OpenCodexCommandExecutionMode } from "./commandExecution";
 import type { OpenCodexDictationInput, OpenCodexDictationSettings } from "./dictation";
 import type { OpenCodexWorkspaceCreateInput } from "./workspaceCreations";
@@ -47,6 +47,7 @@ export type OpenCodexRequest =
   | BrowserPermissionsRequest
   | MessageRenderingRequest
   | OpenCodexFileRequest
+  | OpenCodexImageReadRequest
   | OpenCodexDebugRequest
   | { type: "dictation.models.state" }
   | { type: "dictation.models.install"; modelId: OpenCodexDictationSettings["modelId"] }

@@ -22,6 +22,20 @@ never inspected on the host without an explicit local-access capability. Source
 folder commands receive the clicked directory as `%D`, not the workspace root.
 Explicit IDE/file-manager actions in the project menu bypass these preferences.
 
+## Chat image previews
+
+Chat Markdown preserves native Windows paths and `file:` links for the existing
+source-aware file opener. Markdown images, image-generation results and typed
+tool image outputs display inline with a click-to-zoom view. Tool result images
+remain visible when the reasoning history is collapsed.
+
+Local previews read image bytes from the conversation's explicit source,
+including generated artifacts outside its workspace. Reads are limited to
+supported image formats and 10 MiB per file; they cannot return text files or
+modify files. Remote previews require the source process API and Node.js.
+Unavailable images retain their label and file link without using the host
+filesystem as a fallback.
+
 ## Explorer entry operations
 
 Right-click a file or folder to copy, rename or delete it. Paste is available

@@ -70,6 +70,14 @@ export interface OpenCodexPdfSnapshot {
 /** Binary previews retain the existing UTF-8 snapshot shape for text files. */
 export type OpenCodexFileReadSnapshot = OpenCodexFileSnapshot | OpenCodexImageSnapshot | OpenCodexPdfSnapshot;
 
+/** Bounded image-only preview in the conversation's explicit source filesystem. */
+export interface OpenCodexImageReadRequest {
+  type: "images.read";
+  sourceId: string;
+  projectPath: string | null;
+  path: string;
+}
+
 /** Expected failures remain structured across IPC rather than losing error codes. */
 export type OpenCodexFileErrorCode =
   | "accessDenied"

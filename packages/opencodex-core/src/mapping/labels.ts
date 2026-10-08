@@ -51,13 +51,13 @@ export function getCoreLabels(language: OpenCodexLanguage): CoreLabels {
     command: "Commande",
     contextCompaction: "Compactage du contexte",
     dynamicTool: "Outil dynamique",
-    enteredReviewMode: "EntrÃ©e en mode revue",
+    enteredReviewMode: "Entrée en mode revue",
     exitedReviewMode: "Sortie du mode revue",
     fileChange: "Modification fichier",
-    imageGeneration: "GÃ©nÃ©ration image",
+    imageGeneration: "Génération image",
     inProgress: "en cours",
     mcpTool: "Outil MCP",
-    permissionsRequested: "Permissions supplÃ©mentaires demandÃ©es",
+    permissionsRequested: "Permissions supplémentaires demandées",
     webSearch: "Recherche web"
   };
 }

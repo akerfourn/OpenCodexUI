@@ -15,6 +15,8 @@ import { getCachedMarkdownRender } from "./markdownRenderCache";
 import { remarkCodexDirectives } from "./remarkCodexDirectives";
 import { CodexDirectiveSpanX } from "./CodexDirectiveSpan";
 import { MarkdownLinkContext } from "./MarkdownLinkContext";
+import { transformMarkdownUrl } from "./markdownUrls";
+import { ChatImage } from "./ChatImage";
 
 export type MarkdownRenderVariant = "streaming" | "standard" | "highlighted";
 
@@ -39,7 +41,8 @@ const markdownComponents: Components & { "codex-directive": typeof CodexDirectiv
   "codex-directive": CodexDirectiveSpanX,
   pre: PreBlock,
   code: InlineCode,
-  a: ContextualMarkdownLink
+  a: ContextualMarkdownLink,
+  img: ChatImage
 };
 
 /**
@@ -62,6 +65,7 @@ export function createMarkdownRenderTree(
     remarkPlugins: renderMath ? remarkPlugins : textRemarkPlugins,
     rehypePlugins: getRehypePlugins(variant, renderMath),
     components: markdownComponents,
+    urlTransform: transformMarkdownUrl,
     children: markdown
   });
 

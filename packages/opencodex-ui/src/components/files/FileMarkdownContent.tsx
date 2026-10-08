@@ -1,6 +1,6 @@
 import { Alert, Box } from "@mui/material";
 import { memo } from "react";
-import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
+import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { useTranslation } from "react-i18next";
@@ -12,17 +12,12 @@ import { remarkFileHeadings } from "./markdownHeadings";
 import { splitMarkdownFrontmatter } from "./splitMarkdownFrontmatter";
 import { MarkdownFrontmatter } from "./MarkdownFrontmatter";
 import { markdownHeadingStyles } from "../messages/markdownHeadingStyles";
+import { transformMarkdownUrl } from "../messages/markdownUrls";
 
 const remarkPlugins = [remarkGfm, remarkFileHeadings];
 const rehypePlugins = [rehypeHighlight];
 const components = { pre: PreBlock, code: InlineCode, img: MarkdownPreviewImage };
 export const MAX_MARKDOWN_PREVIEW_LENGTH = 100_000;
-
-/** Local file URLs are handled by the source-aware click handler, never loaded by the browser. */
-function transformDocumentUrl(url: string): string {
-  if (/^file:/i.test(url)) return url;
-  return defaultUrlTransform(url);
-}
 
 /** Renders ordinary Markdown without chat directives or executable HTML. */
 export function FileMarkdownContent({ content }: { content: string }) {
@@ -48,7 +43,7 @@ export function FileMarkdownContent({ content }: { content: string }) {
     }}>
       {metadata}
       <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}
-        urlTransform={transformDocumentUrl} skipHtml>
+        urlTransform={transformMarkdownUrl} skipHtml>
         {markdown}
       </ReactMarkdown>
     </Box>

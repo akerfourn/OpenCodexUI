@@ -57,6 +57,10 @@ export function appendActivityItem(
       existing.plan = activity.plan;
     }
 
+    if (activity.attachments !== undefined) {
+      existing.attachments = activity.attachments;
+    }
+
     if (activity.autoApprovalReview !== undefined) {
       existing.autoApprovalReview = activity.autoApprovalReview;
     }
@@ -94,7 +98,8 @@ export function appendActivityItem(
     summary: activity.summary,
     details: activity.details,
     plan: activity.plan,
-    autoApprovalReview: activity.autoApprovalReview
+    autoApprovalReview: activity.autoApprovalReview,
+    attachments: activity.attachments
   });
 
   if (activity.kind === "plan") {

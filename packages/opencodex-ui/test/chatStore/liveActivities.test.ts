@@ -9,6 +9,37 @@ import {
 } from "./chatStoreFixtures";
 
 describe("ChatStore live activities", () => {
+  it("should enrich a running image generation with the completed image without adding another activity", () => {
+    const chatStore = createChatStore({});
+    const activity = {
+      id: "image-1",
+      threadId: "thread-1",
+      kind: "imageGeneration",
+      title: "turn-1",
+      content: "Génération image",
+      status: "running" as const
+    };
+    const attachments = [{
+      id: "image-1:attachment",
+      kind: "image" as const,
+      source: "localPath" as const,
+      value: "C:/generated/génération.png"
+    }];
+
+    chatStore.timeline.applyActivityUpdated(activity, "turn-1", null);
+    chatStore.timeline.applyActivityUpdated({
+      ...activity,
+      status: "completed",
+      attachments
+    }, "turn-1", null);
+
+    expect(chatStore.timeline.turns[0]?.items).toHaveLength(1);
+    expect(chatStore.timeline.turns[0]?.items[0]).toMatchObject({
+      status: "completed",
+      attachments
+    });
+  });
+
   it("should keep the latest command details when output arrives later", () => {
     const chatStore = createChatStore({});
 

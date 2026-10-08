@@ -175,6 +175,18 @@ async function describeEntry(item, request, full) {
 
 /** Performs one bounded list/read/check/save operation. */
 async function execute(request) {
+  if (request.type === 'images.read') {
+    if (typeof request.path !== 'string' || request.path.length === 0 || request.path.includes('\0')) {
+      fail('invalidPath', 'An image path is required.');
+    }
+    if (!path.isAbsolute(request.path) && !request.projectPath) {
+      fail('invalidPath', 'Relative images require a project path.');
+    }
+    const full = await fs.realpath(path.resolve(request.projectPath || process.cwd(), request.path));
+    const snapshot = await readSnapshot(full, path.dirname(full), true, true);
+    if (snapshot.kind !== 'image') fail('unsupported', 'Only image files can be previewed.');
+    return snapshot;
+  }
   if (['workspaceFiles.copy', 'workspaceFiles.rename', 'workspaceFiles.delete'].includes(request.type)) {
     return await mutateEntry(request);
   }
