@@ -1,12 +1,6 @@
-import { useTranslation } from "react-i18next";
+import { ChatImage } from "../messages/ChatImage";
 
-/** Leaves local images as navigable links until source-aware binary reads are available. */
+/** Displays local and embedded image bytes through the document's workspace-aware image context. */
 export function MarkdownPreviewImage({ src, alt, title }: { src?: string; alt?: string; title?: string }) {
-  const { t } = useTranslation();
-  if (src !== undefined && /^https?:\/\//i.test(src)) {
-    return <img src={src} alt={alt ?? ""} title={title} loading="lazy" referrerPolicy="no-referrer" />;
-  }
-  return <a href={src} title={title} data-markdown-image="true">
-    {t("files.previewImageLink", { name: alt || src || "image" })}
-  </a>;
+  return <ChatImage src={src} alt={alt} title={title} />;
 }

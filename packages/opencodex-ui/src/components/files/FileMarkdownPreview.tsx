@@ -1,12 +1,13 @@
 import { Alert, Box } from "@mui/material";
 import { runInAction } from "mobx";
 import { observer } from "mobx-react-lite";
-import { useEffect, useRef, useState, type MouseEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { FileDocument, FileRequestPort } from "../../stores/files/FileDocument";
 import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
 import { openMarkdownLink } from "../../stores/files/markdownLinks";
 import { FileMarkdownContentM } from "./FileMarkdownContent";
+import { FileMarkdownImageProvider } from "./FileMarkdownImageProvider";
 
 /** Previews the live buffer while leaving disk state and the Monaco model untouched. */
 export function FileMarkdownPreview({ document, files, port }: {
@@ -16,6 +17,11 @@ export function FileMarkdownPreview({ document, files, port }: {
   const container = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const anchor = document.previewAnchor;
+  const handleOpenImageLink = useCallback((href: string): void => {
+    setError(null);
+    void openMarkdownLink(href, document, files, port)
+      .catch(failure => setError(String(failure)));
+  }, [document, files, port]);
   useEffect(() => {
     const element = container.current;
     if (element === null) return;
@@ -34,6 +40,7 @@ export function FileMarkdownPreview({ document, files, port }: {
 
   /** Keeps internal links in the document's immutable workspace and exposes failures locally. */
   function handleClick(event: MouseEvent<HTMLDivElement>): void {
+    if (event.defaultPrevented) return;
     if (event.button > 1) return;
     if (!(event.target instanceof Element)) return;
     const link = event.target.closest("a");
@@ -41,7 +48,7 @@ export function FileMarkdownPreview({ document, files, port }: {
     if (href === undefined || href === null || link === null || !event.currentTarget.contains(link)) return;
     event.preventDefault();
     setError(null);
-    void openMarkdownLink(href, document, files, port, link.hasAttribute("data-markdown-image"))
+    void openMarkdownLink(href, document, files, port)
       .catch(failure => setError(String(failure)));
   }
   /** Explicit save remains available while the editor is unmounted. */
@@ -62,7 +69,9 @@ export function FileMarkdownPreview({ document, files, port }: {
       onClick={handleClick} onAuxClick={handleClick} onKeyDown={handleKeyDown}
       sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 3, bgcolor: "background.paper" }}>
       {feedback}
-      <FileMarkdownContentM content={document.content} />
+      <FileMarkdownImageProvider target={document.target} port={port} onOpenLink={handleOpenImageLink}>
+        <FileMarkdownContentM content={document.content} />
+      </FileMarkdownImageProvider>
     </Box>
   );
 }

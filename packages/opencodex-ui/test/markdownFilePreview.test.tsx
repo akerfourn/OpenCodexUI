@@ -7,6 +7,7 @@ import { FileDocument } from "../src/stores/files/FileDocument";
 import { ProjectFilesStore } from "../src/stores/files/ProjectFilesStore";
 import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import type { RootStore } from "../src/stores/RootStore";
+import { FileMarkdownImageProvider } from "../src/components/files/FileMarkdownImageProvider";
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({
   t: (key: string, options?: { name?: string }) => options?.name ?? key
@@ -106,16 +107,28 @@ describe("Markdown file presentation", () => {
     expect(markup).toContain("hljs-keyword");
   });
 
-  it("should keep HTML inactive and local images as links rather than host file requests", () => {
-    const markup = renderToStaticMarkup(<FileMarkdownContent content={
+  it("should keep HTML inactive and pending local images navigable without host file requests", () => {
+    const markup = renderToStaticMarkup(<FileMarkdownImageProvider target={target}
+      port={{ request: vi.fn() }} onOpenLink={vi.fn()}><FileMarkdownContent content={
       '<script>alert(1)</script>\n\n![Diagram](./diagram.png)\n\n[unsafe](javascript:alert(1))\n\n[local](file:///repo/README.md)'
-    } />);
+    } /></FileMarkdownImageProvider>);
     expect(markup).not.toContain("<script");
     expect(markup).not.toContain("javascript:");
     expect(markup).not.toContain("<img");
     expect(markup).toContain('href="./diagram.png"');
-    expect(markup).toContain('data-markdown-image="true"');
+    expect(markup).toContain("Diagram");
     expect(markup).toContain('href="file:///repo/README.md"');
+  });
+
+  it("should display image bytes inline with zoom and keep web images inline", () => {
+    const dataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=";
+    const markup = renderToStaticMarkup(<FileMarkdownContent
+      content={`![Diagram](${dataUrl})\n\n![Web](https://example.org/image.png)`} />);
+
+    expect(markup).toContain(`src="${dataUrl}"`);
+    expect(markup).toContain('src="https://example.org/image.png"');
+    expect(markup).toContain('aria-label="message.openImage"');
+    expect(markup).not.toContain('data-markdown-image="true"');
   });
 
   it("should avoid parsing oversized documents", () => {

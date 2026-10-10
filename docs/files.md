@@ -81,11 +81,19 @@ including Ctrl/Cmd+S in Preview.
 The lazily loaded preview supports GFM tables, task lists, highlighted code and
 heading anchors. It does not enable raw HTML or chat-specific Codex directives.
 Relative links use the document's directory and captured source/workspace;
-paths escaping the workspace are rejected. Local images appear as links to the
-source's external opener; HTTP(S) images render inline. Inline local images
-and a split editor/preview are not included in the Markdown preview.
+paths escaping the workspace are rejected. Local, embedded and HTTP(S) images
+render inline with click-to-zoom. Local images use workspace-aware reads from
+the document's source, including external-link permissions and the 10 MiB limit.
+Failed previews retain their label and a link to the integrated file viewer.
+A split editor/preview is not included in the Markdown preview.
 Documents exceeding 100,000 characters or 5,000 lines remain available in Source
 mode without running the Markdown renderer.
+
+External editor launchers use `cross-spawn` for Windows `.cmd`/`.bat` support
+and argument escaping. `which` resolves the configured executable before launch
+so a missing command is reported through the UI rather than becoming an
+uncaught Electron process error. These dependencies replace platform-specific
+launcher parsing; commands remain detached after successful startup.
 
 ## Image viewer
 

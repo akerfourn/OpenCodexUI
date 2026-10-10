@@ -9,6 +9,20 @@ import type {
 import { RootStore } from "../src/stores/RootStore";
 
 describe("RootStore project activity", () => {
+  it("should show rejected link and editor launches in the interface without an unhandled rejection", async () => {
+    const request = vi.fn().mockRejectedValue(new Error("Unable to start file opener: code ENOENT"));
+    const root = new RootStore({ request, onEvent: vi.fn(() => () => undefined) });
+
+    root.openLink("C:/images/image.png", null, null, "local");
+    await vi.waitFor(() => expect(root.appStore.errorMessage).toContain("code ENOENT"));
+    root.appStore.clearErrorMessage();
+    root.openExternalLink("C:/images/image.png");
+    await vi.waitFor(() => expect(root.appStore.errorMessage).toContain("code ENOENT"));
+    root.appStore.clearErrorMessage();
+    root.openProjectInIde("C:/work", "local");
+    await vi.waitFor(() => expect(root.appStore.errorMessage).toContain("code ENOENT"));
+  });
+
   it("should aggregate project tool activity for the host lifecycle", () => {
     const reportApplicationActivity = vi.fn();
     const root = new RootStore(createTransport(reportApplicationActivity));

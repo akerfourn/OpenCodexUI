@@ -1,11 +1,13 @@
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+import { EventEmitter } from "node:events";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   openExternal: vi.fn(),
   spawn: vi.fn(),
+  which: vi.fn(),
   unref: vi.fn()
 }));
 
@@ -15,9 +17,8 @@ vi.mock("electron", () => ({
   }
 }));
 
-vi.mock("node:child_process", () => ({
-  spawn: mocks.spawn
-}));
+vi.mock("cross-spawn", () => ({ default: mocks.spawn }));
+vi.mock("which", () => ({ default: mocks.which }));
 
 import { openExternalLink } from "../src/main/externalLinkOpener.js";
 import {
@@ -56,7 +57,7 @@ describe("external open target helpers", () => {
       value: "mailto:user@example.com"
     });
 
-    const fileUrl = "file:///tmp/notes%20draft.ts#L12-L19";
+    const fileUrl = `${pathToFileURL(path.resolve("/tmp/notes draft.ts"))}#L12-L19`;
     expect(resolveOpenTarget(fileUrl, "/workspace/project")).toEqual({
       type: "path",
       value: fileURLToPath(new URL(fileUrl)),
@@ -66,7 +67,7 @@ describe("external open target helpers", () => {
 
     expect(resolveOpenTarget("/tmp/app.ts:18:4", "/workspace/project")).toEqual({
       type: "path",
-      value: "/tmp/app.ts",
+      value: path.resolve("/tmp/app.ts"),
       line: "18",
       column: "4"
     });
@@ -157,7 +158,12 @@ describe("openExternalLink", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.openExternal.mockResolvedValue(undefined);
-    mocks.spawn.mockReturnValue({ unref: mocks.unref });
+    mocks.which.mockImplementation(async (command: string) => command);
+    mocks.spawn.mockImplementation(() => {
+      const child = Object.assign(new EventEmitter(), { unref: mocks.unref });
+      queueMicrotask(() => child.emit("spawn"));
+      return child;
+    });
   });
 
   it("should_ignore_an_empty_link", async () => {
@@ -194,7 +200,7 @@ describe("openExternalLink", () => {
       {
         detached: true,
         stdio: "ignore",
-        windowsHide: false
+        windowsHide: true
       }
     );
     expect(mocks.unref).toHaveBeenCalledOnce();
@@ -222,6 +228,36 @@ describe("openExternalLink", () => {
 
     await expect(
       openExternalLink("/tmp/app.ts", null, "editor %F")
-    ).rejects.toBe(spawnError);
+    ).rejects.toThrow('Unable to start file opener "editor": Error: spawn failed');
+  });
+
+  it("should reject an unavailable executable before starting a shell", async () => {
+    mocks.which.mockRejectedValueOnce(new Error("not found: code"));
+
+    await expect(openExternalLink("C:/work/image.png", null, "code %F"))
+      .rejects.toThrow('Unable to start file opener "code": Error: not found: code');
+    expect(mocks.spawn).not.toHaveBeenCalled();
+  });
+
+  it("should pass a resolved Windows launcher and source filenames as distinct arguments", async () => {
+    mocks.which.mockResolvedValueOnce("C:\\Program Files\\Editor\\bin\\code.cmd");
+    const file = "C:\\work\\génération & %PATH%.png";
+
+    await openExternalLink(file, null, "code --goto %F");
+
+    expect(mocks.spawn).toHaveBeenCalledWith("C:\\Program Files\\Editor\\bin\\code.cmd",
+      ["--goto", file], { detached: true, stdio: "ignore", windowsHide: true });
+  });
+
+  it("should propagate asynchronous spawn errors instead of leaving an uncaught child error", async () => {
+    mocks.spawn.mockImplementationOnce(() => {
+      const child = Object.assign(new EventEmitter(), { unref: mocks.unref });
+      queueMicrotask(() => child.emit("error", new Error("spawn code ENOENT")));
+      return child;
+    });
+
+    await expect(openExternalLink("C:/work/image.png", null, "code %F"))
+      .rejects.toThrow("spawn code ENOENT");
+    expect(mocks.unref).not.toHaveBeenCalled();
   });
 });

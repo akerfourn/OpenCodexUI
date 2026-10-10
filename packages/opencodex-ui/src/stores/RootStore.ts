@@ -265,7 +265,8 @@ export class RootStore {
   openLink(href: string, project: ProjectStore | null = this.activeProjectStore,
     workspacePath?: string | null, sourceId?: string | null,
     intent: FileOpenIntent = { origin: "link" }): void {
-    void openApplicationLink(this, href, project, workspacePath, sourceId, intent);
+    void openApplicationLink(this, href, project, workspacePath, sourceId, intent)
+      .catch((error: unknown) => this.reportHostActionError(error));
   }
 
   /** Always uses the external opener for explicitly external actions. */
@@ -281,7 +282,7 @@ export class RootStore {
       href: trimmedHref,
       projectPath: this.activeProjectStore?.projectPath ?? null,
       sourceId: this.activeProjectStore?.project.sourceId ?? null
-    });
+    }).catch((error: unknown) => this.reportHostActionError(error));
   }
 
   /**
@@ -301,7 +302,7 @@ export class RootStore {
       type: "system.openProject",
       projectPath,
       sourceId
-    });
+    }).catch((error: unknown) => this.reportHostActionError(error));
   }
 
   /**
@@ -359,6 +360,11 @@ export class RootStore {
       type: "app.openUsageHistory",
       sourceId
     });
+  }
+
+  /** Makes failures from fire-and-forget host actions visible without an unhandled rejection. */
+  private reportHostActionError(error: unknown): void {
+    this.appStore.applyError({ type: "error", message: String(error) });
   }
 
   /**

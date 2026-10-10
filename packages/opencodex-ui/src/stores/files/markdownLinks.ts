@@ -8,6 +8,26 @@ export type MarkdownLinkTarget =
   | { kind: "anchor"; anchor: string }
   | { kind: "file"; target: OpenCodexFileTarget; position?: DocumentPosition; anchor?: string };
 
+/** Resolves an already decoded source path relative to the owning document's directory. */
+export function resolveMarkdownFileTarget(
+  path: string, target: Readonly<OpenCodexFileTarget> | null
+): OpenCodexFileTarget {
+  if (target === null) throw new Error("This document has no filesystem context.");
+  const absolute = /^[\\/]|^[A-Za-z]:[\\/]/.test(path);
+  const directory = target.path.split("/").slice(0, -1).join("/");
+  let sourcePath = path;
+  if (!absolute && directory.length > 0) sourcePath = `${directory}/${path}`;
+  const relative = relativeWorkspacePath(sourcePath, target.workspacePath);
+  if (relative === null) throw new Error("The link is outside the document workspace.");
+  return {
+    sourceId: target.sourceId,
+    projectId: target.projectId,
+    workspaceId: target.workspaceId,
+    workspacePath: target.workspacePath,
+    path: relative
+  };
+}
+
 /** Resolves Markdown URLs in the document's source filesystem, never the Electron host. */
 export function resolveMarkdownLink(href: string, target: Readonly<OpenCodexFileTarget> | null): MarkdownLinkTarget {
   const value = href.trim();
@@ -20,11 +40,7 @@ export function resolveMarkdownLink(href: string, target: Readonly<OpenCodexFile
   const location = parseFileLink(source);
   if (location === null) throw new Error("Unsupported link protocol.");
   const path = /^file:/i.test(source) ? location.path : decodeURIComponent(location.path);
-  const absolute = /^[\\/]|^[A-Za-z]:[\\/]/.test(path);
-  const directory = target.path.split("/").slice(0, -1).join("/");
-  const relativePath = directory.length === 0 ? path : `${directory}/${path}`;
-  const relative = relativeWorkspacePath(absolute ? path : relativePath, target.workspacePath);
-  if (relative === null) throw new Error("The link is outside the document workspace.");
+  const fileTarget = resolveMarkdownFileTarget(path, target);
   const lineFragment = fragment === undefined ? null : /^L(\d+)(?:C(\d+))?(?:-L\d+)?$/i.exec(fragment);
   let position: DocumentPosition | undefined;
   if (lineFragment !== null) {
@@ -32,7 +48,7 @@ export function resolveMarkdownLink(href: string, target: Readonly<OpenCodexFile
   } else if (location.line !== undefined) {
     position = { line: location.line, column: location.column };
   }
-  return { kind: "file", target: { ...target, path: relative }, position,
+  return { kind: "file", target: fileTarget, position,
     anchor: position === undefined ? fragment : undefined };
 }
 
