@@ -12,22 +12,18 @@ import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { LinkNode } from "@lexical/link";
 import DragHandleRoundedIcon from "@mui/icons-material/DragHandleRounded";
 import {
-  $getNodeByKey,
   $getRoot,
   $getSelection,
   $isRangeSelection,
-  $isTextNode,
   type EditorState,
   type LexicalEditor
 } from "lexical";
 import {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
   useMemo,
-  useRef,
-  useState
+  useRef
 } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, UIEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -44,15 +40,8 @@ import { ComposerFileSuggestionKeyPlugin } from "./ComposerFileSuggestionKeyPlug
 import { ComposerPlainTextValuePlugin } from "./ComposerPlainTextValuePlugin";
 import { ComposerSuggestionPopups } from "./ComposerSuggestionPopups";
 import {
-  createTriggerKey,
   isSkillUrl,
-  mapFileSuggestions,
-  mapSkillSuggestions,
-  readReferenceTrigger,
-  replaceTriggerWithReferenceLink,
-  serializeComposerContent,
-  type ComposerReferenceSuggestion,
-  type ReferenceTriggerState
+  serializeComposerContent
 } from "./composerReferences";
 import {
   COMPOSER_MIN_HEIGHT_PX,
@@ -60,6 +49,7 @@ import {
   readComposerMaxHeight
 } from "./composerResize";
 import { useComposerEmojiSuggestions } from "./useComposerEmojiSuggestions";
+import { useComposerReferenceSuggestions } from "./useComposerReferenceSuggestions";
 import { useComposerResize } from "./useComposerResize";
 
 type ComposerPlainTextInputProps = {
@@ -123,16 +113,14 @@ export const ComposerPlainTextInput = forwardRef<
   const lexicalEditorRef = useRef<LexicalEditor | null>(null);
   const previousMarkdownRef = useRef<string | null>(null);
   const shouldStickToBottomRef = useRef(true);
-  const activeTriggerRef = useRef<ReferenceTriggerState | null>(null);
-  const [activeTrigger, setActiveTrigger] = useState<ReferenceTriggerState | null>(null);
-  const [cancelledTriggerKey, setCancelledTriggerKey] = useState<string | null>(null);
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const [suggestions, setSuggestions] = useState<ComposerReferenceSuggestion[]>([]);
   const emojiSuggestionsState = useComposerEmojiSuggestions(
     enableEmojiSuggestions && !disabled,
     lexicalEditorRef,
     emojiOverrides
   );
+  const referenceSuggestionsState = useComposerReferenceSuggestions({
+    disabled, editorRef: lexicalEditorRef, onSearchFiles, onSearchSkills
+  });
   const {
     editorHeight,
     manualEditorHeight,
@@ -192,42 +180,6 @@ export const ComposerPlainTextInput = forwardRef<
 
   useImperativeHandle(ref, () => ({ insertText, appendText }), [insertText, appendText]);
 
-  useEffect(() => {
-    activeTriggerRef.current = activeTrigger;
-  }, [activeTrigger]);
-
-  useEffect(() => {
-    if (activeTrigger === null) {
-      setSuggestions([]);
-      return;
-    }
-
-    let isCurrent = true;
-    const timeout = window.setTimeout(() => {
-      const searchPromise = activeTrigger.kind === "file"
-        ? onSearchFiles(activeTrigger.query, activeTrigger.searchMode).then(mapFileSuggestions)
-        : onSearchSkills(activeTrigger.query).then(mapSkillSuggestions);
-
-      void searchPromise.then((results) => {
-        if (!isCurrent) {
-          return;
-        }
-
-        setSuggestions(results);
-        setHighlightedIndex(0);
-      }).catch(() => {
-        if (isCurrent) {
-          setSuggestions([]);
-        }
-      });
-    }, 120);
-
-    return () => {
-      isCurrent = false;
-      window.clearTimeout(timeout);
-    };
-  }, [activeTrigger, onSearchFiles, onSearchSkills]);
-
   function handleChange(editorState: EditorState): void {
     let didChangeContent = false;
 
@@ -240,7 +192,7 @@ export const ComposerPlainTextInput = forwardRef<
         onChange($getRoot().getTextContent(), serialized.markdown, serialized.references);
       }
 
-      updateReferenceTrigger();
+      referenceSuggestionsState.updateFromEditor();
       emojiSuggestionsState.updateFromEditor();
     });
 
@@ -268,7 +220,7 @@ export const ComposerPlainTextInput = forwardRef<
       return;
     }
 
-    if (handleSuggestionKeyDown(event)) {
+    if (referenceSuggestionsState.handleKeyDown(event)) {
       return;
     }
 
@@ -311,89 +263,6 @@ export const ComposerPlainTextInput = forwardRef<
     onOpenFileLink(href);
   }
 
-  function handleSuggestionKeyDown(event: KeyboardEvent<HTMLDivElement>): boolean {
-    if (activeTriggerRef.current === null || suggestions.length === 0) {
-      if (event.key === "Escape" && activeTriggerRef.current !== null) {
-        cancelActiveTrigger();
-        event.stopPropagation();
-        event.preventDefault();
-        return true;
-      }
-
-      return false;
-    }
-
-    if (event.key === "Escape") {
-      cancelActiveTrigger();
-      event.stopPropagation();
-      event.preventDefault();
-      return true;
-    }
-
-    if (event.key === "ArrowDown") {
-      setHighlightedIndex((current) => Math.min(current + 1, suggestions.length - 1));
-      event.stopPropagation();
-      event.preventDefault();
-      return true;
-    }
-
-    if (event.key === "ArrowUp") {
-      setHighlightedIndex((current) => Math.max(current - 1, 0));
-      event.stopPropagation();
-      event.preventDefault();
-      return true;
-    }
-
-    if (event.key === "Enter" || event.key === "Tab") {
-      insertReference(suggestions[highlightedIndex] ?? suggestions[0]);
-      event.stopPropagation();
-      event.preventDefault();
-      return true;
-    }
-
-    return false;
-  }
-
-  function cancelActiveTrigger(): void {
-    const trigger = activeTriggerRef.current;
-
-    if (trigger !== null) {
-      setCancelledTriggerKey(createTriggerKey(trigger));
-    }
-
-    setActiveTrigger(null);
-    setSuggestions([]);
-  }
-
-  function insertReference(suggestion: ComposerReferenceSuggestion | undefined): void {
-    const trigger = activeTriggerRef.current;
-
-    if (disabled || trigger === null || suggestion === undefined) {
-      return;
-    }
-
-    setActiveTrigger(null);
-    setSuggestions([]);
-    setCancelledTriggerKey(null);
-
-    const editor = lexicalEditorRef.current;
-
-    if (editor === null) {
-      return;
-    }
-
-    editor.focus();
-    editor.update(() => {
-      const node = $getNodeByKey(trigger.nodeKey);
-
-      if (!$isTextNode(node)) {
-        return;
-      }
-
-      replaceTriggerWithReferenceLink(node, trigger, suggestion);
-    });
-  }
-
   const placeholderContent = (
     <span className="composer-editor-placeholder">
       {placeholder}
@@ -430,14 +299,14 @@ export const ComposerPlainTextInput = forwardRef<
           anchorElement={suggestionsAnchor}
           disabled={disabled}
           renderInPortal={renderSuggestionsInPortal}
-          fileSuggestions={suggestions}
-          fileHighlightedIndex={highlightedIndex}
+          fileSuggestions={referenceSuggestionsState.suggestions}
+          fileHighlightedIndex={referenceSuggestionsState.highlightedIndex}
           emojiEnabled={enableEmojiSuggestions}
           emojiActive={emojiSuggestionsState.activeTrigger !== null}
           emojiHighlightedIndex={emojiSuggestionsState.highlightedIndex}
           emojiSuggestions={emojiSuggestionsState.suggestions}
           emojiEmptyMessage={t("composer.emoji.noMatch")}
-          onFileSelect={insertReference}
+          onFileSelect={referenceSuggestionsState.insertReference}
           onEmojiSelect={emojiSuggestionsState.insertEmoji}
         />
         <div className={editorShellClassName}>
@@ -468,37 +337,19 @@ export const ComposerPlainTextInput = forwardRef<
           />
           <ComposerPlainTextValuePlugin value={value} disabled={disabled} />
           <ComposerFileSuggestionKeyPlugin
-            hasActiveTrigger={!disabled && activeTrigger !== null}
-            highlightedIndex={highlightedIndex}
-            suggestions={disabled ? [] : suggestions}
-            onSelect={insertReference}
+            hasActiveTrigger={!disabled && referenceSuggestionsState.activeTrigger !== null}
+            highlightedIndex={referenceSuggestionsState.highlightedIndex}
+            suggestions={disabled ? [] : referenceSuggestionsState.suggestions}
+            onSelect={referenceSuggestionsState.insertReference}
           />
           <EditorRefPlugin editorRef={lexicalEditorRef} />
         </div>
       </div>
     </LexicalComposer>
   );
-
-  function updateReferenceTrigger(): void {
-    const trigger = readReferenceTrigger();
-
-    if (trigger === null) {
-      setActiveTrigger(null);
-      setCancelledTriggerKey(null);
-      return;
-    }
-
-    const currentKey = createTriggerKey(trigger);
-
-    if (currentKey === cancelledTriggerKey) {
-      setActiveTrigger(null);
-      return;
-    }
-
-    setActiveTrigger(trigger);
-  }
 });
 
+/** Identifies skill tokens so ordinary file-link opening does not handle them. */
 function isSkillLink(link: HTMLAnchorElement): boolean {
   return link.relList.contains("opencodex-skill") || isSkillUrl(link.getAttribute("href") ?? "");
 }

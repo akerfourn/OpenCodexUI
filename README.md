@@ -111,6 +111,11 @@ Run tests:
 npm test
 ```
 
+Composer hook tests opt into a `jsdom` environment to exercise React effects,
+keyboard handling and Lexical insertion with controlled source responses.
+This development dependency stays on 26.x to support the project's Node.js
+20 minimum without raising its minor-version requirement.
+
 Build the app without packaging:
 
 ```bash
