@@ -1,8 +1,4 @@
 import type { CodexNotification } from "@open-codex-ui/codex-rpc";
-import type {
-  OpenCodexThread,
-  OpenCodexTurnExecutionMetadata
-} from "@open-codex-ui/opencodex-protocol";
 
 import type { ThreadTurnCache } from "../../ThreadTurnCache.js";
 import { readObject, readString } from "../../mapping.js";
@@ -10,6 +6,7 @@ import type { CollaborationService } from "../collaboration/CollaborationService
 import type { NotificationService } from "../support/NotificationService.js";
 import type { ProjectCommandService } from "../projects/ProjectCommandService.js";
 import { StreamingNotificationBatcher } from "./StreamingNotificationBatcher.js";
+import { TurnExecutionMetadataRecorder } from "./TurnExecutionMetadataRecorder.js";
 import type { ThreadCacheService } from "../threads/ThreadCacheService.js";
 import type { ThreadConversationService } from "../threads/ThreadConversationService.js";
 import type { ThreadRuntimeHandler } from "../threads/ThreadRuntimeHandler.js";
@@ -72,6 +69,8 @@ export type RuntimeNotificationCoordinatorOptions = {
 export class RuntimeNotificationCoordinator {
   /** Combines high-frequency streaming notifications before processing them. */
   private readonly streamingNotificationBatcher: StreamingNotificationBatcher;
+  /** Enriches and persists execution settings without changing pipeline ordering. */
+  private readonly turnExecutionMetadataRecorder: TurnExecutionMetadataRecorder;
   /** Active turn identifiers grouped by Codex source. */
   private readonly activeTurnIdsBySourceId = new Map<string, Set<string>>();
 
@@ -84,6 +83,11 @@ export class RuntimeNotificationCoordinator {
     /** Service adapters and runtime callbacks used by the pipeline. */
     private readonly options: RuntimeNotificationCoordinatorOptions
   ) {
+    this.turnExecutionMetadataRecorder = new TurnExecutionMetadataRecorder({
+      threadTurnCache: options.threadTurnCache,
+      threadCacheService: options.threadCacheService,
+      collaborationService: options.collaborationService
+    });
     this.streamingNotificationBatcher = new StreamingNotificationBatcher({
       process: (notification, sourceId) => this.processNotification(notification, sourceId)
     });
@@ -191,7 +195,7 @@ export class RuntimeNotificationCoordinator {
         void this.options.threadConversationService.recordStartedThread(thread, sourceId);
       }
 
-      this.recordTurnExecutionNotification(notification, sourceId);
+      this.turnExecutionMetadataRecorder.recordNotification(notification, sourceId);
       this.trackActiveTurnNotification(notification, sourceId);
       this.options.projectCommandService.handleNotification(notification);
       this.options.notificationService.handleNotification(notification, sourceId);
@@ -245,153 +249,6 @@ export class RuntimeNotificationCoordinator {
       notification.method,
       performance.now() - startedAt
     );
-  }
-
-  /**
-   * Records execution metadata from turn-start and model-reroute notifications.
-   *
-   * @param notification Notification ready for cache processing.
-   * @param sourceId Source that produced the notification.
-   * @returns Nothing.
-   */
-  private recordTurnExecutionNotification(
-    notification: CodexNotification,
-    sourceId: string
-  ): void {
-    const params = readObject(notification.params);
-    const threadId = readString(params.threadId);
-
-    if (threadId.length === 0) {
-      return;
-    }
-
-    if (notification.method === "turn/started") {
-      const turnId = readString(readObject(params.turn).id);
-
-      if (turnId.length === 0) {
-        return;
-      }
-
-      const thread = this.options.threadTurnCache.get(threadId)?.thread;
-      const current = this.options.threadTurnCache.getTurnExecutionMetadata(threadId, turnId);
-      const spawnMetadata = this.options.collaborationService.getSpawnExecutionMetadata?.(
-        sourceId,
-        threadId,
-        thread?.parentThreadId ?? null,
-        thread?.subAgentSource?.agentPath ?? null
-      ) ?? null;
-      const metadata: OpenCodexTurnExecutionMetadata = {
-        requestedModel: current?.requestedModel ?? spawnMetadata?.model ?? null,
-        effectiveModel: current?.effectiveModel ?? spawnMetadata?.model ?? thread?.model ?? null,
-        requestedReasoningEffort:
-          current?.requestedReasoningEffort ?? spawnMetadata?.reasoningEffort ?? null,
-        effectiveReasoningEffort:
-          current?.effectiveReasoningEffort ??
-          spawnMetadata?.reasoningEffort ??
-          thread?.reasoningEffort ??
-          null,
-        serviceTier: current?.serviceTier ?? null
-      };
-
-      if (current === null || !executionMetadataEqual(current, metadata)) {
-        void this.options.threadCacheService.writeTurnExecutionMetadata(
-          sourceId,
-          threadId,
-          turnId,
-          metadata
-        );
-      }
-
-      if (spawnMetadata === null && thread !== undefined && thread.parentThreadId !== null) {
-        this.resolveSpawnExecutionMetadata(
-          sourceId,
-          threadId,
-          turnId,
-          thread,
-          current
-        );
-      }
-      return;
-    }
-
-    if (notification.method !== "model/rerouted") {
-      return;
-    }
-
-    const turnId = readString(params.turnId);
-    const toModel = readString(params.toModel);
-
-    if (turnId.length === 0 || toModel.length === 0) {
-      return;
-    }
-
-    const current = this.options.threadTurnCache.getTurnExecutionMetadata(threadId, turnId);
-    const metadata: OpenCodexTurnExecutionMetadata = {
-      requestedModel: current?.requestedModel ?? null,
-      effectiveModel: toModel,
-      requestedReasoningEffort: current?.requestedReasoningEffort ?? null,
-      effectiveReasoningEffort: current?.effectiveReasoningEffort ?? null,
-      serviceTier: current?.serviceTier ?? null
-    };
-    void this.options.threadCacheService.writeTurnExecutionMetadata(
-      sourceId,
-      threadId,
-      turnId,
-      metadata
-    );
-  }
-
-  /**
-   * Enriches a child turn after its spawn event is recovered from persisted history.
-   *
-   * @param sourceId Source that produced the turn.
-   * @param threadId Child thread identifier.
-   * @param turnId Turn identifier.
-   * @param thread Known child thread metadata.
-   * @param initialMetadata Metadata written during the immediate turn-start path.
-   */
-  private resolveSpawnExecutionMetadata(
-    sourceId: string,
-    threadId: string,
-    turnId: string,
-    thread: OpenCodexThread,
-    initialMetadata: OpenCodexTurnExecutionMetadata | null
-  ): void {
-    if (this.options.collaborationService.resolveSpawnExecutionMetadata === undefined) {
-      return;
-    }
-
-    void this.options.collaborationService.resolveSpawnExecutionMetadata(
-      sourceId,
-      threadId,
-      thread.parentThreadId,
-      thread.subAgentSource?.agentPath ?? null
-    ).then((spawnMetadata) => {
-      if (spawnMetadata === null) {
-        return;
-      }
-
-      const current = this.options.threadTurnCache.getTurnExecutionMetadata(threadId, turnId)
-        ?? initialMetadata;
-      const metadata: OpenCodexTurnExecutionMetadata = {
-        requestedModel: current?.requestedModel ?? spawnMetadata.model,
-        effectiveModel: current?.effectiveModel ?? spawnMetadata.model,
-        requestedReasoningEffort:
-          current?.requestedReasoningEffort ?? spawnMetadata.reasoningEffort,
-        effectiveReasoningEffort:
-          current?.effectiveReasoningEffort ?? spawnMetadata.reasoningEffort,
-        serviceTier: current?.serviceTier ?? null
-      };
-
-      if (current === null || !executionMetadataEqual(current, metadata)) {
-        void this.options.threadCacheService.writeTurnExecutionMetadata(
-          sourceId,
-          threadId,
-          turnId,
-          metadata
-        );
-      }
-    }).catch(() => undefined);
   }
 
   /**
@@ -519,18 +376,6 @@ export class RuntimeNotificationCoordinator {
       this.activeTurnIdsBySourceId.delete(sourceId);
     }
   }
-}
-
-/** Compares execution metadata before issuing a redundant cache write. */
-function executionMetadataEqual(
-  current: OpenCodexTurnExecutionMetadata,
-  next: OpenCodexTurnExecutionMetadata
-): boolean {
-  return current.requestedModel === next.requestedModel &&
-    current.effectiveModel === next.effectiveModel &&
-    current.requestedReasoningEffort === next.requestedReasoningEffort &&
-    current.effectiveReasoningEffort === next.effectiveReasoningEffort &&
-    current.serviceTier === next.serviceTier;
 }
 
 /**
