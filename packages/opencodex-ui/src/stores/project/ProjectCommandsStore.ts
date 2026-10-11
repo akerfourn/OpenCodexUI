@@ -2,7 +2,6 @@
  * Holds project command definitions and live run state.
  */
 import { commandExecutionConflicts, type OpenCodexCommandExecutionContext } from "@open-codex-ui/opencodex-protocol";
-import type { OpenCodexCommandExecutionMode } from "@open-codex-ui/opencodex-protocol";
 import { makeAutoObservable, observable, runInAction } from "mobx";
 
 import type {
@@ -18,16 +17,15 @@ import {
 import type { ProjectStore } from "./ProjectStore";
 import { workspaceLabel as formatWorkspaceLabel } from "./threads/workspaceThreadGroups";
 import type { RootStore } from "../RootStore";
+import {
+  haveSameCommandOrder,
+  normalizeCommandFormInput,
+  orderCommandsByIds,
+  type ProjectCommandFormInput
+} from "./projectCommandDefinitions";
 
 export type { ProjectCommandLogLine, ProjectCommandRunView } from "./ProjectCommandRunsStore";
-
-/** Editable project command form shape. */
-export type ProjectCommandFormInput = {
-  name: string;
-  command: string;
-  executionMode: OpenCodexCommandExecutionMode;
-  persistLogs: boolean;
-};
+export type { ProjectCommandFormInput } from "./projectCommandDefinitions";
 
 /**
  * Stores project command configuration and live output for one project.
@@ -437,65 +435,6 @@ export class ProjectCommandsStore {
   private reportError(error: unknown): void {
     this.root.appStore.errorMessage = readErrorMessage(error);
   }
-}
-
-/**
- * Orders commands by a requested id list while preserving unknown leftovers.
- *
- * @param commands Current commands.
- * @param commandIds Desired command id order.
- * @returns Reordered commands.
- */
-function orderCommandsByIds(
-  commands: OpenCodexProjectCommand[],
-  commandIds: string[]
-): OpenCodexProjectCommand[] {
-  const commandsById = new Map(commands.map((command) => [command.id, command]));
-  const orderedCommands: OpenCodexProjectCommand[] = [];
-
-  for (const commandId of commandIds) {
-    const command = commandsById.get(commandId);
-
-    if (command !== undefined) {
-      orderedCommands.push(command);
-      commandsById.delete(commandId);
-    }
-  }
-
-  return [...orderedCommands, ...commandsById.values()];
-}
-
-/**
- * Checks whether two command arrays have the same id order.
- *
- * @param currentCommands Current commands.
- * @param nextCommands Next commands.
- * @returns Whether the order is unchanged.
- */
-function haveSameCommandOrder(
-  currentCommands: OpenCodexProjectCommand[],
-  nextCommands: OpenCodexProjectCommand[]
-): boolean {
-  if (currentCommands.length !== nextCommands.length) {
-    return false;
-  }
-
-  return currentCommands.every((command, index) => command.id === nextCommands[index]?.id);
-}
-
-/**
- * Trims command form input before persistence.
- *
- * @param input Raw form input.
- * @returns Normalized command input.
- */
-function normalizeCommandFormInput(input: ProjectCommandFormInput): ProjectCommandFormInput {
-  return {
-    name: input.name.trim(),
-    command: input.command.trim(),
-    executionMode: input.executionMode,
-    persistLogs: input.persistLogs
-  };
 }
 
 /**
