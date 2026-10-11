@@ -1,0 +1,93 @@
+import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
+
+import type { OpenCodexBackendRuntime } from "../../OpenCodexBackendRuntime.js";
+import { optionalWorkspaceArgument } from "../workspaces/workspaceToolContext.js";
+
+/** Protocol requests owned by the project catalogue, group tree and workspace selection. */
+export type ProjectRequest = Extract<OpenCodexRequest, {
+  type: `projects.${string}` | `projectGroups.${string}` | `projectWorkspaces.${string}` |
+    "threads.workspace.select" | "threads.workspace.reconcile";
+}>;
+
+/** Runtime facades used by project routing after shared workspace-context resolution. */
+export interface ProjectRequestRuntime {
+  projects: OpenCodexBackendRuntime["projects"];
+  workspaces: OpenCodexBackendRuntime["workspaces"];
+  groups: OpenCodexBackendRuntime["groups"];
+  context: OpenCodexBackendRuntime["context"];
+  settings: Pick<OpenCodexBackendRuntime["settings"], "get">;
+}
+
+/** Selects the project domain without consuming other thread or project-tool requests. */
+export function isProjectRequest(request: OpenCodexRequest): request is ProjectRequest {
+  return request.type.startsWith("projects.") ||
+    request.type.startsWith("projectGroups.") ||
+    request.type.startsWith("projectWorkspaces.") ||
+    request.type === "threads.workspace.select" ||
+    request.type === "threads.workspace.reconcile";
+}
+
+/** Dispatches a resolved project request; responses and errors retain the facade's behavior. */
+export async function routeProjectRequest(runtime: ProjectRequestRuntime, request: ProjectRequest): Promise<unknown> {
+  switch (request.type) {
+    case "projects.list":
+      return runtime.projects.list();
+    case "projectWorkspaces.discover":
+      return runtime.workspaces.discover(request.projectId, request.sourceId);
+    case "projectWorkspaces.create":
+      return runtime.workspaces.create(request.input);
+    case "projectWorkspaces.creations.list":
+      return runtime.workspaces.pendingCreations(request.projectId);
+    case "projectWorkspaces.creations.reconcile":
+      return runtime.workspaces.reconcileCreation(request.creationId);
+    case "projectWorkspaces.rename":
+      return runtime.workspaces.rename(request.projectId, request.workspaceId, request.name);
+    case "projectWorkspaces.list":
+      return runtime.workspaces.list(request.projectId);
+    case "projectWorkspaces.execution.reconcile":
+      return runtime.workspaces.reconcileWorkspace(request.workspaceId);
+    case "threads.workspace.select":
+      return runtime.workspaces.select(request.threadId, request.workspaceId);
+    case "threads.workspace.reconcile":
+      return runtime.workspaces.reconcile(request.threadId);
+    case "projects.open":
+      return runtime.projects.open(
+        request.projectPath,
+        request.sourceId === undefined ? runtime.settings.get().defaultSourceId : request.sourceId,
+        request.createIfMissing === true
+      );
+    case "projects.statistics.read":
+      return runtime.projects.readStatistics(request.projectPath, request.sourceId);
+    case "projects.pickDirectory":
+      return runtime.projects.pickDirectory(
+        request.mode,
+        request.sourceId === undefined ? runtime.settings.get().defaultSourceId : request.sourceId
+      );
+    case "projects.setHidden":
+      return runtime.projects.setHidden(request.projectId, request.isHidden);
+    case "projects.displayName.update":
+      return runtime.projects.setDisplayName(request.projectId, request.displayName);
+    case "projects.preferences.update":
+      return runtime.projects.updatePreferences(request.projectId, request.patch);
+    case "projects.context.sync":
+      return runtime.context.sync(request.projectId, ...optionalWorkspaceArgument(request.workspaceId));
+    case "projects.context.pickFolder":
+      return runtime.context.pickFolder();
+    case "projects.delete":
+      return runtime.projects.delete(request.projectId);
+    case "projectGroups.list":
+      return runtime.groups.list();
+    case "projectGroups.create":
+      return runtime.groups.create(
+        request.name,
+        request.parentGroupId ?? null,
+        request.color ?? "blue"
+      );
+    case "projectGroups.update":
+      return runtime.groups.update(request.groupId, request.patch);
+    case "projectGroups.delete":
+      return runtime.groups.delete(request.groupId);
+    case "projectGroups.assignProject":
+      return runtime.groups.assignProject(request.projectId, request.groupId);
+  }
+}

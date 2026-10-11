@@ -1,3 +1,5 @@
+import { isGitRequest, routeGitRequest } from "./backend/git/gitRequestRouting.js";
+import { isProjectRequest, routeProjectRequest } from "./backend/projects/projectRequestRouting.js";
 import { optionalWorkspaceArgument } from "./backend/workspaces/workspaceToolContext.js";
 /**
  * Routes protocol requests to the backend runtime.
@@ -47,6 +49,14 @@ export class OpenCodexRequestRouter {
    * @returns Promise resolved with the runtime result.
    */
   private async handleValidRequest(request: OpenCodexRequest): Promise<unknown> {
+    if (isProjectRequest(request)) {
+      return routeProjectRequest(this.runtime, request);
+    }
+
+    if (isGitRequest(request)) {
+      return routeGitRequest(this.runtime, request);
+    }
+
     switch (request.type) {
       case "images.read":
         return this.runtime.files.readImage(request);
@@ -74,65 +84,6 @@ export class OpenCodexRequestRouter {
         return this.runtime.bootstrap();
       case "app.openDevTools":
         throw new Error("Developer tools are not available in this runtime.");
-      case "projects.list":
-        return this.runtime.projects.list();
-      case "projectWorkspaces.discover":
-        return this.runtime.workspaces.discover(request.projectId, request.sourceId);
-      case "projectWorkspaces.create":
-        return this.runtime.workspaces.create(request.input);
-      case "projectWorkspaces.creations.list":
-        return this.runtime.workspaces.pendingCreations(request.projectId);
-      case "projectWorkspaces.creations.reconcile":
-        return this.runtime.workspaces.reconcileCreation(request.creationId);
-      case "projectWorkspaces.rename":
-        return this.runtime.workspaces.rename(request.projectId, request.workspaceId, request.name);
-      case "projectWorkspaces.list":
-        return this.runtime.workspaces.list(request.projectId);
-      case "projectWorkspaces.execution.reconcile":
-        return this.runtime.workspaces.reconcileWorkspace(request.workspaceId);
-      case "threads.workspace.select":
-        return this.runtime.workspaces.select(request.threadId, request.workspaceId);
-      case "threads.workspace.reconcile":
-        return this.runtime.workspaces.reconcile(request.threadId);
-      case "projects.open":
-        return this.runtime.projects.open(
-          request.projectPath,
-          request.sourceId === undefined ? this.runtime.settings.get().defaultSourceId : request.sourceId,
-          request.createIfMissing === true
-        );
-      case "projects.statistics.read":
-        return this.runtime.projects.readStatistics(request.projectPath, request.sourceId);
-      case "projects.pickDirectory":
-        return this.runtime.projects.pickDirectory(
-          request.mode,
-          request.sourceId === undefined ? this.runtime.settings.get().defaultSourceId : request.sourceId
-        );
-      case "projects.setHidden":
-        return this.runtime.projects.setHidden(request.projectId, request.isHidden);
-      case "projects.displayName.update":
-        return this.runtime.projects.setDisplayName(request.projectId, request.displayName);
-      case "projects.preferences.update":
-        return this.runtime.projects.updatePreferences(request.projectId, request.patch);
-      case "projects.context.sync":
-        return this.runtime.context.sync(request.projectId, ...optionalWorkspaceArgument(request.workspaceId));
-      case "projects.context.pickFolder":
-        return this.runtime.context.pickFolder();
-      case "projects.delete":
-        return this.runtime.projects.delete(request.projectId);
-      case "projectGroups.list":
-        return this.runtime.groups.list();
-      case "projectGroups.create":
-        return this.runtime.groups.create(
-          request.name,
-          request.parentGroupId ?? null,
-          request.color ?? "blue"
-        );
-      case "projectGroups.update":
-        return this.runtime.groups.update(request.groupId, request.patch);
-      case "projectGroups.delete":
-        return this.runtime.groups.delete(request.groupId);
-      case "projectGroups.assignProject":
-        return this.runtime.groups.assignProject(request.projectId, request.groupId);
       case "attachments.pickImages":
         return (await this.runtime.host.pickFiles()).filter((attachment) => attachment.kind === "image");
       case "attachments.pickFiles":
@@ -386,102 +337,6 @@ export class OpenCodexRequestRouter {
           request.tail,
           request.workspaceId, request.composeFile
         );
-      case "git.version":
-        return this.runtime.git.readVersion();
-      case "git.status":
-        return this.runtime.git.readStatus(request.projectPath, request.sourceId);
-      case "git.fileDiff.read":
-        if (request.workspaceId.trim().length === 0) {
-          throw new Error("Git file diffs require an explicit workspace context.");
-        }
-        return this.runtime.git.readFileDiff(
-          request.projectPath,
-          request.sourceId,
-          request.path,
-          request.comparison
-        );
-      case "git.init":
-        return this.runtime.git.initializeRepository(request.projectPath, request.sourceId);
-      case "git.remotes":
-        return this.runtime.git.listRemotes(request.projectPath, request.sourceId);
-      case "git.remote.upsert":
-        return this.runtime.git.upsertRemote(
-          request.projectPath,
-          request.sourceId,
-          request.name,
-          request.url
-        );
-      case "git.branches":
-        return this.runtime.git.listBranches(request.projectPath, request.sourceId);
-      case "git.tags":
-        return this.runtime.git.listTags(request.projectPath, request.sourceId);
-      case "git.tags.fetch":
-        return this.runtime.git.fetchTags(request.projectPath, request.sourceId);
-      case "git.tags.push":
-        return this.runtime.git.pushTags(request.projectPath, request.sourceId);
-      case "git.tag.create":
-        return this.runtime.git.createTag(request.projectPath, request.sourceId, request.tagName);
-      case "git.tag.push":
-        return this.runtime.git.pushTag(
-          request.projectPath,
-          request.sourceId,
-          request.tagName,
-          request.force
-        );
-      case "git.tag.commitsSince":
-        return this.runtime.git.countCommitsSinceTag(
-          request.projectPath,
-          request.sourceId,
-          request.tagName
-        );
-      case "git.log":
-        return this.runtime.git.readLog(request.projectPath, request.sourceId, request.limit, request.skip);
-      case "git.commit.details":
-        return this.runtime.git.readCommitDetails(request.projectPath, request.sourceId, request.hash);
-      case "git.checkout":
-        return this.runtime.git.checkoutBranch(
-          request.projectPath,
-          request.sourceId,
-          request.branchName,
-          request.branchKind
-        );
-      case "git.branch.create":
-        return this.runtime.git.createBranch(request.projectPath, request.sourceId, request.branchName);
-      case "git.merge":
-        return this.runtime.git.mergeBranch(request.projectPath, request.sourceId, request.branchName);
-      case "git.merge.to":
-        if (request.allowDirtyWorktree === undefined) {
-          return this.runtime.git.mergeBranchTo(
-            request.projectPath,
-            request.sourceId,
-            request.targetBranchName
-          );
-        }
-
-        return this.runtime.git.mergeBranchTo(
-          request.projectPath,
-          request.sourceId,
-          request.targetBranchName,
-          request.allowDirtyWorktree
-        );
-      case "git.stage":
-        return this.runtime.git.stage(request.projectPath, request.sourceId, request.paths);
-      case "git.unstage":
-        return this.runtime.git.unstage(request.projectPath, request.sourceId, request.paths);
-      case "git.commit":
-        return this.runtime.git.commit(
-          request.projectPath,
-          request.sourceId,
-          request.message,
-          request.projectId,
-          request.workspaceId
-        );
-      case "git.pull":
-        return this.runtime.git.pull(request.projectPath, request.sourceId);
-      case "git.push":
-        return this.runtime.git.push(request.projectPath, request.sourceId);
-      case "git.branch.publish":
-        return this.runtime.git.publishCurrentBranch(request.projectPath, request.sourceId);
       case "projectCommands.list":
         return this.runtime.automation.commands.list(request.projectId);
       case "projectCommands.create":
@@ -562,21 +417,6 @@ export class OpenCodexRequestRouter {
         return this.runtime.goals.unarchive(request.goalId);
       case "projectGoals.delete":
         return this.runtime.goals.delete(request.goalId);
-      case "commitPrompt.get":
-        return this.runtime.git.commitMessage.readPrompt();
-      case "commitPrompt.update":
-        return this.runtime.git.commitMessage.updatePrompt(request.prompt);
-      case "commitPrompt.reset":
-        return this.runtime.git.commitMessage.resetPrompt();
-      case "git.commitMessage.generate":
-        return this.runtime.git.commitMessage.generate(
-          request.projectPath,
-          request.sourceId,
-          request.instruction,
-          request.model,
-          request.reasoningEffort,
-          request.language
-        );
       case "logs.list":
         return this.runtime.logs.list(
           request.beforeCreatedAt ?? null,
