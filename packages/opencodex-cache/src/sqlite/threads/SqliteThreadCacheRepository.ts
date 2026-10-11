@@ -42,9 +42,9 @@ import {
   insertTokenUsageSnapshot,
   listSourceTokenUsageSnapshots,
   listTokenUsageSnapshots,
-  saveThreadTokenUsageAndSnapshot,
-  upsertTurnExecutionMetadata
+  saveThreadTokenUsageAndSnapshot
 } from "../usage/tokenUsageQueries.js";
+import { upsertTurnExecutionMetadata } from "./turnExecutionMetadataQueries.js";
 import {
   insertUsageRateLimitSnapshot,
   listUsageRateLimitSnapshots

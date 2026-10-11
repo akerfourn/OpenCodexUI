@@ -4,7 +4,7 @@
 import type { Database as BetterSqliteDatabase } from "better-sqlite3";
 
 import type { CachedThreadSyncState } from "../../types.js";
-import { upsertTurnExecutionMetadata } from "../usage/tokenUsageQueries.js";
+import { upsertTurnExecutionMetadata } from "./turnExecutionMetadataQueries.js";
 import type { TurnRow } from "../shared/rowTypes.js";
 import {
   normalizeTurn,
