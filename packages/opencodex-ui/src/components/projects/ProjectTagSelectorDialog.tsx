@@ -31,7 +31,7 @@ import { useTranslation } from "react-i18next";
 import type { OpenCodexGitTag } from "@open-codex-ui/opencodex-protocol";
 
 import type { ProjectGitTagStore } from "../../stores/project/git/ProjectGitTagStore";
-import { ProjectTagListItem } from "./ProjectTagListItem";
+import { ProjectTagListItemX } from "./ProjectTagListItem";
 
 type ProjectTagSelectorDialogProps = {
   tagStore: ProjectGitTagStore;
@@ -84,11 +84,7 @@ export function ProjectTagSelectorDialog({
   }
 
   async function handleCreateTag(): Promise<void> {
-    const didCreate = await tagStore.createTag(normalizedSearchTerm);
-
-    if (didCreate) {
-      onClose();
-    }
+    await tagStore.createTag(normalizedSearchTerm);
   }
 
   function handleFetchTags(): void {
@@ -241,7 +237,7 @@ export function ProjectTagSelectorDialog({
                 ) : (
                   <List dense disablePadding>
                     {filteredTags.map((tag) => (
-                      <ProjectTagListItem
+                      <ProjectTagListItemX
                         key={tag.fullName}
                         tag={tag}
                         remoteName={tagStore.tagsRemoteName}

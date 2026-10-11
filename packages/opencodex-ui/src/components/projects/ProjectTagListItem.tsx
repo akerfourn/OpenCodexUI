@@ -18,6 +18,7 @@ import {
   Stack,
   Tooltip
 } from "@mui/material";
+import { observer } from "mobx-react-lite";
 import type { MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -58,35 +59,51 @@ export function ProjectTagListItem({
   const { t } = useTranslation();
   const syncLabel = readTagSyncLabel(tag.syncStatus, remoteName, t);
   const canOpenMenu = remoteName !== null;
+  const hasPublishableStatus = tag.syncStatus === "local-only" || tag.syncStatus === "diverged";
+  const pushColor = tag.syncStatus === "diverged" ? "error" : "warning";
+  let syncContent = (
+    <Tooltip title={syncLabel}>
+      <Box component="span" aria-label={syncLabel} sx={{ display: "inline-flex", alignItems: "center" }}>
+        {readTagSyncIcon(tag.syncStatus)}
+      </Box>
+    </Tooltip>
+  );
+
+  /** Publishes the tag without selecting its row or closing the selector. */
+  function handlePush(event: MouseEvent<HTMLButtonElement>): void {
+    event.stopPropagation();
+    onPush();
+  }
+
+  if ((remoteName !== null && hasPublishableStatus) || isPushing) {
+    let pushIcon = readTagSyncIcon(tag.syncStatus);
+    if (isPushing) {
+      pushIcon = <CircularProgress size={17} color="inherit" />;
+    }
+    syncContent = (
+      <Tooltip title={`${syncLabel} · ${t("git.pushTag")}`}>
+        <span>
+          <IconButton
+            edge="end"
+            size="small"
+            color={pushColor}
+            disabled={!canPush || isOperationBusy || isPushing}
+            aria-label={t("git.pushTag")}
+            onClick={handlePush}
+          >
+            {pushIcon}
+          </IconButton>
+        </span>
+      </Tooltip>
+    );
+  }
 
   return (
     <ListItem
       disablePadding
       secondaryAction={
         <Stack direction="row" spacing={0.25} sx={{ alignItems: "center", pr: 0.5 }}>
-          <TagSyncIndicator
-            tag={tag}
-            remoteName={remoteName}
-          />
-          {canPush ? (
-            <Tooltip title={t("git.pushTag")}>
-              <span>
-                <IconButton
-                  edge="end"
-                  size="small"
-                  disabled={isOperationBusy}
-                  aria-label={t("git.pushTag")}
-                  onClick={onPush}
-                >
-                  {isPushing ? (
-                    <CircularProgress size={17} />
-                  ) : (
-                    <CloudUploadOutlinedIcon fontSize="small" />
-                  )}
-                </IconButton>
-              </span>
-            </Tooltip>
-          ) : null}
+          {syncContent}
           <Tooltip title={t("git.tagActions")}>
             <span>
               <IconButton
@@ -107,7 +124,7 @@ export function ProjectTagListItem({
         selected={isSelected}
         disabled={isOperationBusy}
         onClick={onSelect}
-        sx={{ pr: 15 }}
+        sx={{ pr: 10 }}
       >
         <ListItemIcon sx={{ minWidth: 34 }}>
           <LocalOfferOutlinedIcon fontSize="small" />
@@ -125,31 +142,7 @@ export function ProjectTagListItem({
   );
 }
 
-/**
- * Renders the remote synchronization indicator for one local tag.
- *
- * @param props Tag synchronization state.
- * @returns Tooltip-wrapped synchronization icon.
- */
-function TagSyncIndicator({
-  tag,
-  remoteName
-}: {
-  tag: OpenCodexGitTag;
-  remoteName: string | null;
-}) {
-  const { t } = useTranslation();
-  const icon = readTagSyncIcon(tag.syncStatus);
-  const label = readTagSyncLabel(tag.syncStatus, remoteName, t);
-
-  return (
-    <Tooltip title={label}>
-      <Box component="span" sx={{ display: "inline-flex", alignItems: "center" }}>
-        {icon}
-      </Box>
-    </Tooltip>
-  );
-}
+export const ProjectTagListItemX = observer(ProjectTagListItem);
 
 /**
  * Selects the icon associated with a tag synchronization state.
