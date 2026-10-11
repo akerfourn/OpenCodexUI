@@ -4,14 +4,11 @@ import { DictationHostService } from "./dictation/DictationHostService.js";
 /**
  * Hosts the Electron-side bridge between renderer IPC requests and the backend.
  */
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import { createNativeAppUpdater } from "./asyncDebUpdater.js";
 import type { IpcMainEvent } from "electron";
-import fs from "node:fs/promises";
-import fsSync from "node:fs";
 import path from "node:path";
 
-import { createOpenCodexSqliteCacheRepository } from "@open-codex-ui/opencodex-cache";
 import { OpenCodexBackendRuntime, OpenCodexRequestRouter } from "@open-codex-ui/opencodex-core";
 import type {
   OpenCodexApplicationCloseRequest,
@@ -34,8 +31,13 @@ import {
 } from "./projectSystemActions.js";
 import { openExternalLink } from "./externalLinkOpener.js";
 import { pickAttachmentFiles } from "./fileAttachmentPicker.js";
+import { pickExecutableFile, pickProjectDirectory } from "./projectDialogPickers.js";
 import { readRendererActivityState } from "./rendererActivityPayload.js";
 import { readRendererPerformanceSample } from "./rendererPerformancePayload.js";
+import { createCacheRepository } from "./electronCacheRepository.js";
+import { resolveCommitPromptPath } from "./commitPromptPaths.js";
+import { ensureProjectDirectory } from "./projectDirectory.js";
+import { ElectronNativeRequestHandler } from "./ElectronNativeRequestHandler.js";
 
 type ElectronBridgeServerOptions = {
   settings: OpenCodexSettings;
@@ -57,6 +59,8 @@ export class ElectronBridgeServer {
   /** Routes microphone recordings without adding them to the core request log. */
   private readonly dictation: DictationHostService;
   private readonly requestRouter: OpenCodexRequestRouter;
+  /** Dispatches native IPC requests while preserving the backend fallback. */
+  private readonly nativeRequestHandler: ElectronNativeRequestHandler;
   private readonly discordPresenceService: DiscordPresenceService;
   private readonly performanceMonitoringService: PerformanceMonitoringService;
   private readonly desktopNotificationService: DesktopNotificationService;
@@ -103,8 +107,12 @@ export class ElectronBridgeServer {
       appVersion: options.appVersion,
       cacheRepository,
       userDataPath: options.userDataPath,
-      defaultCommitPromptPath: resolveDefaultCommitPromptPath(),
-      generationCommitPromptPath: resolveGenerationCommitPromptPath(),
+      defaultCommitPromptPath: resolveCommitPromptPath(
+        "prompt-commit.default.md", process.resourcesPath, process.cwd()
+      ),
+      generationCommitPromptPath: resolveCommitPromptPath(
+        "prompt-commit.generation.md", process.resourcesPath, process.cwd()
+      ),
       saveSettings: options.saveSettings,
       openExternalLink: async (href, projectPath, openerCommand, folders) => {
         await openExternalLink(href, projectPath, openerCommand, folders);
@@ -112,13 +120,13 @@ export class ElectronBridgeServer {
       openProjectFolder,
       openProjectTerminal,
       pickProjectDirectory: async (mode) => {
-        return this.pickProjectDirectory(mode);
+        return pickProjectDirectory(this.window, mode);
       },
       pickAttachmentFiles: async () => {
         return pickAttachmentFiles(this.window);
       },
       pickExecutableFile: async () => {
-        return this.pickExecutableFile();
+        return pickExecutableFile(this.window);
       },
       ensureProjectDirectory: async (projectPath, createIfMissing) => {
         return ensureProjectDirectory(projectPath, createIfMissing);
@@ -169,6 +177,16 @@ export class ElectronBridgeServer {
         this.runtime.approvals.resolve(approvalId, decision);
       },
       logger
+    });
+    this.nativeRequestHandler = new ElectronNativeRequestHandler({
+      dictation: this.dictation,
+      emojiCatalog: this.emojiCatalogStore,
+      appUpdates: this.appUpdateService,
+      discordPresence: this.discordPresenceService,
+      getMainWebContentsId: () => this.window?.webContents.id,
+      openDeveloperTools: () => this.openDeveloperTools(),
+      openUsageHistory: (sourceId) => this.openUsageHistoryWindow(sourceId),
+      handleBackendRequest: (request) => this.handleBackendRequest(request)
     });
   }
 
@@ -254,63 +272,25 @@ export class ElectronBridgeServer {
     ipcMain.on("opencodex:application-activity", this.handleApplicationActivity);
     ipcMain.on("opencodex:application-close-response", this.handleApplicationCloseResponse);
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
-      if (request.type.startsWith("dictation.")) {
-        if (_event.sender.id !== this.window?.webContents.id) throw new Error("Dictation is only available in the main window.");
-        return this.dictation.handle(request);
-      }
-
-      if (request.type === "emojiCatalog.get") {
-        return this.emojiCatalogStore.get();
-      }
-
-      if (request.type === "emojiCatalog.update") {
-        return this.emojiCatalogStore.update(request.overrides);
-      }
-
-      if (request.type === "app.openDevTools") {
-        return this.openDeveloperTools();
-      }
-
-      if (request.type === "app.update.state") {
-        return this.appUpdateService.getState();
-      }
-
-      if (request.type === "app.update.check") {
-        return this.appUpdateService.check(request.force === true);
-      }
-
-      if (request.type === "app.update.download") {
-        return this.appUpdateService.download();
-      }
-
-      if (request.type === "app.update.install") {
-        return this.appUpdateService.install();
-      }
-
-      if (request.type === "app.openUsageHistory") {
-        this.openUsageHistoryWindow(request.sourceId);
-        return { ok: true };
-      }
-
-      if (request.type === "discord.reconnect") {
-        await this.discordPresenceService.reconnect();
-        return { ok: true };
-      }
-
-      const response = await this.requestRouter.handleRequest(request);
-
-      if (request.type === "settings.update" && response !== undefined) {
-        const settings = response as OpenCodexSettings;
-        this.discordPresenceService.setEnabled(settings.discordRichPresenceEnabled);
-        this.performanceMonitoringService.setSettings(settings);
-        this.desktopNotificationService.setSettings(settings);
-        this.appUpdateService.setAllowPrerelease(settings.allowPrereleaseUpdates === true);
-        this.closeDeveloperToolsWhenDisabled(settings);
-        this.onSettingsUpdated(settings);
-      }
-
-      return response;
+      return this.nativeRequestHandler.handle(request, _event.sender.id);
     });
+  }
+
+  /** Routes backend requests and applies successful settings updates to host services. */
+  private async handleBackendRequest(request: OpenCodexRequest): Promise<unknown> {
+    const response = await this.requestRouter.handleRequest(request);
+
+    if (request.type === "settings.update" && response !== undefined) {
+      const settings = response as OpenCodexSettings;
+      this.discordPresenceService.setEnabled(settings.discordRichPresenceEnabled);
+      this.performanceMonitoringService.setSettings(settings);
+      this.desktopNotificationService.setSettings(settings);
+      this.appUpdateService.setAllowPrerelease(settings.allowPrereleaseUpdates === true);
+      this.closeDeveloperToolsWhenDisabled(settings);
+      this.onSettingsUpdated(settings);
+    }
+
+    return response;
   }
 
   /**
@@ -480,59 +460,6 @@ export class ElectronBridgeServer {
 
     this.window?.webContents.closeDevTools();
   }
-
-  /**
-   * Opens a native directory picker for project selection.
-   *
-   * @param mode Picker mode requested by the renderer.
-   * @returns Selected directory path, or `null` when cancelled.
-   */
-  private async pickProjectDirectory(mode: "open" | "create"): Promise<string | null> {
-    const properties: Array<"openDirectory" | "createDirectory"> = ["openDirectory"];
-
-    if (mode === "create") {
-      properties.push("createDirectory");
-    }
-
-    const options = {
-      properties,
-      title: mode === "create" ? "Create or select project folder" : "Open project folder"
-    };
-    const result = this.window === null
-      ? await dialog.showOpenDialog(options)
-      : await dialog.showOpenDialog(this.window, options);
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-
-    return result.filePaths[0] ?? null;
-  }
-
-  /**
-   * Opens a native executable picker.
-   *
-   * @returns Selected executable path.
-   */
-  private async pickExecutableFile(): Promise<string | null> {
-    const options = {
-      properties: ["openFile"] as Array<"openFile">,
-      title: "Select Codex executable"
-    };
-    const result = this.window === null
-      ? await dialog.showOpenDialog(options)
-      : await dialog.showOpenDialog(this.window, options);
-
-    if (result.canceled || result.filePaths.length === 0) {
-      return null;
-    }
-
-    return result.filePaths[0] ?? null;
-  }
-}
-
-function resolveDefaultCommitPromptPath(): string {
-  return resolvePackagedMarkdownPath("prompt-commit.default.md");
 }
 
 /** Returns whether this packaged process has a supported auto-update path. */
@@ -547,132 +474,6 @@ function isAutomaticUpdateSupported(): boolean {
 
   return process.env.PORTABLE_EXECUTABLE_FILE === undefined &&
     process.env.PORTABLE_EXECUTABLE_DIR === undefined;
-}
-
-function resolveGenerationCommitPromptPath(): string {
-  return resolvePackagedMarkdownPath("prompt-commit.generation.md");
-}
-
-function resolvePackagedMarkdownPath(fileName: string): string {
-  const packagedResourcesPath = process.resourcesPath === undefined
-    ? null
-    : path.join(process.resourcesPath, fileName);
-
-  const candidates = [
-    packagedResourcesPath,
-    path.resolve(process.cwd(), "..", "..", fileName),
-    path.resolve(process.cwd(), fileName)
-  ].filter((candidate): candidate is string => candidate !== null);
-
-  return candidates.find((candidate) => fsSync.existsSync(candidate))
-    ?? path.resolve(process.cwd(), "..", "..", fileName);
-}
-
-/**
- * Creates the optional SQLite cache repository used by the Electron bridge.
- *
- * @param userDataPath Electron user data directory.
- * @returns Cache repository instance, or `null` when SQLite initialization fails.
- */
-function createCacheRepository(userDataPath: string) {
-  try {
-    const cacheDirectory = path.join(userDataPath, "opencodex-cache");
-    migrateLegacyCacheDirectory(userDataPath, cacheDirectory);
-
-    return createOpenCodexSqliteCacheRepository({
-      directory: cacheDirectory
-    });
-  } catch (error) {
-    console.log(`[OpenCodexUI] SQLite cache unavailable: ${String(error)}`);
-    return null;
-  }
-}
-
-/**
- * Moves the SQLite cache out of the legacy Chromium cache directory when needed.
- *
- * @param userDataPath Electron user data directory.
- * @param cacheDirectory New application cache directory.
- * @returns Nothing.
- */
-function migrateLegacyCacheDirectory(userDataPath: string, cacheDirectory: string): void {
-  const databaseFileName = "opencodex-cache.sqlite";
-  const legacyDirectory = path.join(userDataPath, "cache");
-  const legacyDatabasePath = path.join(legacyDirectory, databaseFileName);
-  const targetDatabasePath = path.join(cacheDirectory, databaseFileName);
-
-  if (!fsSync.existsSync(legacyDatabasePath) || fsSync.existsSync(targetDatabasePath)) {
-    return;
-  }
-
-  fsSync.mkdirSync(cacheDirectory, { recursive: true });
-  moveLegacyCacheFile(legacyDatabasePath, targetDatabasePath);
-  moveLegacyCacheFile(`${legacyDatabasePath}-wal`, `${targetDatabasePath}-wal`);
-  moveLegacyCacheFile(`${legacyDatabasePath}-shm`, `${targetDatabasePath}-shm`);
-}
-
-/**
- * Moves one legacy cache file when it exists.
- *
- * @param sourcePath Source file path.
- * @param targetPath Target file path.
- * @returns Nothing.
- */
-function moveLegacyCacheFile(sourcePath: string, targetPath: string): void {
-  if (!fsSync.existsSync(sourcePath) || fsSync.existsSync(targetPath)) {
-    return;
-  }
-
-  fsSync.renameSync(sourcePath, targetPath);
-}
-
-/**
- * Ensures a project path exists and points to a directory.
- *
- * @param projectPath User-provided project path.
- * @param createIfMissing Whether missing folders should be created.
- * @returns Absolute project directory path.
- */
-async function ensureProjectDirectory(projectPath: string, createIfMissing: boolean): Promise<string> {
-  const trimmedPath = projectPath.trim();
-
-  if (trimmedPath.length === 0) {
-    throw new Error("Project path is required.");
-  }
-
-  const resolvedPath = path.resolve(trimmedPath);
-
-  try {
-    const stats = await fs.stat(resolvedPath);
-
-    if (!stats.isDirectory()) {
-      throw new Error(`Project path is not a directory: ${resolvedPath}`);
-    }
-
-    return resolvedPath;
-  } catch (error) {
-    if (isMissingPathError(error) && createIfMissing) {
-      await fs.mkdir(resolvedPath, { recursive: true });
-      return resolvedPath;
-    }
-
-    throw error;
-  }
-}
-
-/**
- * Checks whether a filesystem error reports a missing path.
- *
- * @param error Error value to inspect.
- * @returns `true` when the path is missing.
- */
-function isMissingPathError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "ENOENT"
-  );
 }
 
 /**
