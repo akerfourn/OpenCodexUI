@@ -79,7 +79,11 @@ switching views retains Monaco's model and undo history. Saving remains explicit
 including Ctrl/Cmd+S in Preview.
 
 The lazily loaded preview supports GFM tables, task lists, highlighted code and
-heading anchors. It does not enable raw HTML or chat-specific Codex directives.
+heading anchors. Embedded HTML supports filtered document formatting, including
+centered images, tables and expandable details. Image dimensions accept pixels
+from 1 to 4096; images remain constrained to the preview's available space.
+Scripts, event handlers, arbitrary styles, author-supplied DOM IDs, frames and
+forms are removed. Chat-specific Codex directives are not enabled.
 Relative links use the document's directory and captured source/workspace;
 paths escaping the workspace are rejected. Local, embedded and HTTP(S) images
 render inline with click-to-zoom. Local images use workspace-aware reads from
@@ -88,6 +92,13 @@ Failed previews retain their label and a link to the integrated file viewer.
 A split editor/preview is not included in the Markdown preview.
 Documents exceeding 100,000 characters or 5,000 lines remain available in Source
 mode without running the Markdown renderer.
+
+`rehype-raw` parses embedded HTML into the Markdown syntax tree, and
+`rehype-sanitize` filters it with an explicit attribute allowlist. These plugins
+avoid custom HTML parsing and run before heading IDs and syntax highlighting
+are generated. Links and image URLs also pass through the existing source-aware
+URL filter; local references never become browser filesystem requests. Chat
+messages retain their existing HTML behavior.
 
 External editor launchers use `cross-spawn` for Windows `.cmd`/`.bat` support
 and argument escaping. `which` resolves the configured executable before launch

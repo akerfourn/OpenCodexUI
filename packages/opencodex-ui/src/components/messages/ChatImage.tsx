@@ -10,6 +10,8 @@ interface ChatImageProps {
   src?: string;
   alt?: string;
   title?: string;
+  width?: number | string;
+  height?: number | string;
   compact?: boolean;
   localPath?: string;
   onOpen?(src: string, alt: string): void;
@@ -22,8 +24,16 @@ interface ImageResolution {
   error?: string;
 }
 
+/** Accepts bounded pixel dimensions without allowing CSS expressions or percentages. */
+function readImageDimension(value: number | string | undefined): number | undefined {
+  if (value === undefined || !/^\d+$/.test(String(value))) return undefined;
+  const dimension = Number(value);
+  if (!Number.isSafeInteger(dimension) || dimension < 1 || dimension > 4096) return undefined;
+  return dimension;
+}
+
 /** Displays source-owned image bytes with zoom and a navigable unavailable-image fallback. */
-export function ChatImage({ src = "", alt, title, compact = false, localPath, onOpen }: ChatImageProps) {
+export function ChatImage({ src = "", alt, title, width, height, compact = false, localPath, onOpen }: ChatImageProps) {
   const { t } = useTranslation();
   const context = useContext(ChatImageContext);
   const links = useContext(MarkdownLinkContext);
@@ -76,12 +86,17 @@ export function ChatImage({ src = "", alt, title, compact = false, localPath, on
     </Tooltip>;
   }
 
-  let imageSize = { maxWidth: "100%", maxHeight: 480, width: "auto", height: "auto" };
+  const imageWidth = readImageDimension(width);
+  const imageHeight = readImageDimension(height);
+  let imageSize: { maxWidth: string; maxHeight: number; width: number | string; height: number | string } = {
+    maxWidth: "100%", maxHeight: 480, width: imageWidth ?? "auto", height: imageHeight ?? "auto"
+  };
   if (compact) imageSize = { maxWidth: "100%", maxHeight: 96, width: "132px", height: "96px" };
   return <>
     <Box component="button" type="button" aria-label={t("message.openImage")} onClick={handleOpen}
       sx={{ display: "inline-block", bgcolor: "transparent", border: 0, p: 0, cursor: "zoom-in", maxWidth: "100%" }}>
-      <Box component="img" src={imageUrl} alt={label} title={title} loading="lazy" referrerPolicy="no-referrer"
+      <Box component="img" src={imageUrl} alt={label} title={title} width={imageWidth} height={imageHeight}
+        loading="lazy" referrerPolicy="no-referrer"
         onError={handleError} sx={{ ...imageSize, display: "block", objectFit: "contain", borderRadius: 1 }} />
     </Box>
     <Dialog open={isOpen} maxWidth="lg" fullWidth onClose={handleClose}>

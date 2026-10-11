@@ -1,29 +1,30 @@
-interface MarkdownNode {
+interface HeadingNode {
   type: string;
+  tagName?: string;
   value?: string;
-  children?: MarkdownNode[];
-  data?: { hProperties?: Record<string, unknown> };
+  children?: HeadingNode[];
+  properties?: Record<string, unknown>;
 }
 
 /** Extracts plain heading text, including emphasis and inline code. */
-function headingText(node: MarkdownNode): string {
+function headingText(node: HeadingNode): string {
   if (node.value !== undefined) return node.value;
   return node.children?.map(headingText).join("") ?? "";
 }
 
-/** Produces document-local heading IDs while keeping repeated headings addressable. */
-export function remarkFileHeadings() {
-  return (tree: MarkdownNode): void => {
+/** Generates document-local IDs after sanitization for both Markdown and HTML headings. */
+export function rehypeFileHeadings() {
+  return (tree: HeadingNode): void => {
     const used = new Set<string>();
-    /** Visits headings without rewriting document content or enabling raw HTML. */
-    function visit(node: MarkdownNode): void {
-      if (node.type === "heading") {
+    /** Assigns unique heading anchors without preserving author-supplied DOM IDs. */
+    function visit(node: HeadingNode): void {
+      if (node.type === "element" && /^h[1-6]$/.test(node.tagName ?? "")) {
         const base = headingText(node).toLowerCase().replace(/[^\p{L}\p{N}\p{M}_\s-]/gu, "").replace(/\s/g, "-");
         let slug = base;
         let suffix = 0;
         while (used.has(slug)) slug = `${base}-${++suffix}`;
         used.add(slug);
-        node.data = { ...node.data, hProperties: { ...node.data?.hProperties, id: `file-markdown-${slug}` } };
+        node.properties = { ...node.properties, id: `file-markdown-${slug}` };
       }
       node.children?.forEach(visit);
     }
