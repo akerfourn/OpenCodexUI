@@ -3,7 +3,6 @@ import type {
   OpenCodexEvent,
   OpenCodexSource
 } from "@open-codex-ui/opencodex-protocol";
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
@@ -84,7 +83,7 @@ describe("SourceUpdateRuntimeHandler", () => {
     );
   });
 
-  it("should update with the current command, restart after success, and return sources", async () => {
+  it("should delegate lifecycle preservation and update the exact selected source", async () => {
     const source = createSource("source-1");
     const updatedSources = [createSource("source-1"), createSource("source-2")];
     const operations: string[] = [];
@@ -94,9 +93,7 @@ describe("SourceUpdateRuntimeHandler", () => {
       expect(fallbackCommand).toBe("codex-current");
       return updatedSources;
     });
-    const restartClient = vi.fn(async () => {
-      operations.push("restart");
-    });
+    const clients = createClientPort();
     const handler = new SourceUpdateRuntimeHandler({
       settings: createSettingsPort(null, "codex-current"),
       projects: { listOpenCodexSources: vi.fn(async () => [source]) },
@@ -105,19 +102,19 @@ describe("SourceUpdateRuntimeHandler", () => {
         updateSource
       },
       hasActiveTurn: () => false,
-      clients: createClientPort(restartClient),
+      clients,
       events: { emit: vi.fn() }
     });
 
     await expect(handler.updateCodexSource(source.id)).resolves.toBe(updatedSources);
 
-    expect(operations).toEqual(["update", "restart"]);
-    expect(restartClient).toHaveBeenCalledWith(source.id);
+    expect(operations).toEqual(["update"]);
+    expect(clients.runSourceUpdate).toHaveBeenCalledWith(source.id, expect.any(Function));
   });
 
-  it("should not restart the source when the update fails", async () => {
+  it("should propagate updater errors to the lifecycle owner", async () => {
     const updateError = new Error("update failed");
-    const restartClient = vi.fn(async () => undefined);
+    const clients = createClientPort();
     const handler = new SourceUpdateRuntimeHandler({
       settings: createSettingsPort(null),
       projects: {
@@ -130,12 +127,12 @@ describe("SourceUpdateRuntimeHandler", () => {
         })
       },
       hasActiveTurn: () => false,
-      clients: createClientPort(restartClient),
+      clients,
       events: { emit: vi.fn() }
     });
 
     await expect(handler.updateCodexSource("source-1")).rejects.toBe(updateError);
-    expect(restartClient).not.toHaveBeenCalled();
+    expect(clients.runSourceUpdate).toHaveBeenCalledOnce();
   });
 });
 
@@ -156,11 +153,10 @@ function createSettingsPort(
   };
 }
 
-function createClientPort(restartClient = vi.fn(async () => undefined)) {
+/** Isolates the lifecycle boundary while keeping handler source selection and error propagation real. */
+function createClientPort() {
   return {
-    ensureClient: vi.fn(async () => undefined as unknown as CodexAppServerClient),
-    getClient: vi.fn(() => undefined),
-    restartClient
+    runSourceUpdate: vi.fn(async <T>(_sourceId: string, update: () => Promise<T>): Promise<T> => await update())
   };
 }
 

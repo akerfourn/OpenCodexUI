@@ -6,6 +6,16 @@ import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("source instance UI state", () => {
+  it("should clear an update-in-progress rejection after a stopped source finishes updating", async () => {
+    const { instances, request } = instanceStore();
+    instances.handleEvent({ type: "sourceInstances.changed", snapshot: instanceSnapshot({ phase: "updating" }) });
+    request.mockRejectedValueOnce(new Error("SOURCE_UPDATING: Wait"));
+    await instances.control("a", "start");
+    expect(instances.errors.get("a")).toContain("SOURCE_UPDATING");
+    instances.handleEvent({ type: "sourceInstances.changed", snapshot: instanceSnapshot({ phase: "stopped" }) });
+    expect(instances.errors.has("a")).toBe(false);
+  });
+
   it("should copy nested reason data from transport snapshots", () => {
     const { instances } = instanceStore();
     const snapshot = instanceSnapshot({ isActive: true, activity: {

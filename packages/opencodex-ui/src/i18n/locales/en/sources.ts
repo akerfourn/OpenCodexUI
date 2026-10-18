@@ -34,6 +34,7 @@ export const enSources = {
     codexUpdateAvailable: "Update available: {{version}}",
     codexUpdateCurrent: "Standalone Codex is up to date",
     codexUpdateUnknown: "Update state unknown",
+    codexUpdateError: "Update failed: {{error}}",
       codexUnavailable: "Codex not detected",
       checkCodexUpdates: "Check Codex updates",
       create: "Create",

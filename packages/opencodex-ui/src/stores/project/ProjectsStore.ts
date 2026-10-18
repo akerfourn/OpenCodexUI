@@ -59,7 +59,9 @@ export class ProjectsStore implements RootChildStore {
 
     switch (event.type) {
       case "sourceInstances.changed":
-        if (event.snapshot.phase === "stopped") this.stopSourceRuntime(event.snapshot.sourceId);
+        if (event.snapshot.phase === "stopped" || event.snapshot.phase === "updating") {
+          this.stopSourceRuntime(event.snapshot.sourceId);
+        }
         return;
       case "projects.updated":
         this.projects = event.projects;

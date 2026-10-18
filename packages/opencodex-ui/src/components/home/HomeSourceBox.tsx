@@ -71,11 +71,15 @@ export function HomeSourceBox({
   const [isDeleteConfirmed, setIsDeleteConfirmed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingCodex, setIsUpdatingCodex] = useState(false);
+  const [codexUpdateError, setCodexUpdateError] = useState<string | null>(null);
   const [isResetCreditsDialogOpen, setIsResetCreditsDialogOpen] = useState(false);
   const sourcesStore = store.sourcesStore;
   const usageState = store.usageStore.getSourceUsage(source.id);
   const resetCredits = usageState?.rateLimitResetCredits;
   const isSyncing = sourcesStore.isSourceSyncing(source.id);
+  const instance = store.sourceInstancesStore.states.get(source.id);
+  const isInstanceBusy = instance?.isActive === true || instance?.phase === "starting"
+    || instance?.phase === "stopping" || instance?.phase === "updating";
 
   useEffect(() => {
     setNameDraft(source.name);
@@ -91,14 +95,20 @@ export function HomeSourceBox({
   }
 
   function handleUpdateCodex(): void {
-    if (!source.codexUpdate.updateAvailable || isUpdatingCodex) {
+    if (!source.codexUpdate.updateAvailable || isUpdatingCodex || isInstanceBusy) {
       return;
     }
 
     setIsUpdatingCodex(true);
-    void sourcesStore.updateCodexSource(source.id).finally(() => {
+    setCodexUpdateError(null);
+    void sourcesStore.updateCodexSource(source.id).catch(handleCodexUpdateError).finally(() => {
       setIsUpdatingCodex(false);
     });
+  }
+
+  /** Keeps native updater failures visible on the source without leaving an unhandled promise rejection. */
+  function handleCodexUpdateError(error: unknown): void {
+    setCodexUpdateError(error instanceof Error ? error.message : String(error));
   }
 
   function handleSetDefaultSource(): void {
@@ -192,6 +202,12 @@ export function HomeSourceBox({
 
   const shouldShowResetCreditsPanel = (usageState?.isLoading && resetCredits === undefined)
     || (resetCredits !== undefined && resetCredits !== null && resetCredits.availableCount > 0);
+  let codexUpdateErrorContent = null;
+  if (codexUpdateError !== null) codexUpdateErrorContent = (
+    <Typography variant="caption" role="alert" color="error.main" sx={{ overflowWrap: "anywhere" }}>
+      {t("sources.codexUpdateError", { error: codexUpdateError })}
+    </Typography>
+  );
 
   return (
     <Box
@@ -300,7 +316,7 @@ export function HomeSourceBox({
                     type="button"
                     size="small"
                     variant="text"
-                    disabled={isUpdatingCodex || isSyncing}
+                    disabled={isUpdatingCodex || isSyncing || isInstanceBusy}
                     startIcon={<UpdateOutlinedIcon fontSize="small" />}
                     onClick={handleUpdateCodex}
                     sx={{ minWidth: 0, py: 0 }}
@@ -310,6 +326,7 @@ export function HomeSourceBox({
                 ) : null}
               </Box>
             ) : null}
+            {codexUpdateErrorContent}
           </Stack>
         </Box>
         {shouldShowResetCreditsPanel ? (

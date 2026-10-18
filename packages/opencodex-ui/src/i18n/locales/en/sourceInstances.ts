@@ -9,6 +9,7 @@ export const enSourceInstances = {
     ready: "Instance running",
     active: "Instance active",
     stopping: "Instance stopping",
+    updating: "Codex update in progress",
     error: "Instance error",
     start: "Start instance",
     stop: "Stop instance",

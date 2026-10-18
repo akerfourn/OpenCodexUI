@@ -41,7 +41,9 @@ export class SourceInstancesStore {
       this.sourceSequences.set(event.snapshot.sourceId, this.eventSequence);
       this.apply(event.snapshot);
       const error = this.errors.get(event.snapshot.sourceId);
-      if (event.snapshot.phase === "ready" && !event.snapshot.isActive && error?.startsWith("SOURCE_BUSY") === true) {
+      const isTransientError = error?.startsWith("SOURCE_BUSY") === true || error?.startsWith("SOURCE_UPDATING") === true;
+      const isIdle = event.snapshot.phase === "ready" || event.snapshot.phase === "stopped";
+      if (isIdle && !event.snapshot.isActive && isTransientError) {
         this.errors.delete(event.snapshot.sourceId);
       }
     }

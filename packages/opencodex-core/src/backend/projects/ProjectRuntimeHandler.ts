@@ -46,7 +46,7 @@ export type ProjectRuntimeHandlerOptions = {
   /** Emits project and source events to the host transport and journal. */
   events: Pick<RuntimeEventPort, "emit">;
   /** Provides source-scoped Codex client lifecycle operations. */
-  clients: Pick<ClientPort, "ensureClient" | "restartClient">;
+  clients: Pick<ClientPort, "ensureClient" | "restartClient" | "runSourceUpdate">;
   /** Reports whether a source currently owns an active turn. */
   hasActiveTurn(sourceId: string): boolean;
   /** Provides source update status, release checks, and update execution. */

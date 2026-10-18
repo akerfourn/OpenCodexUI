@@ -45,9 +45,9 @@ export interface SourceUpdateStatusPort {
    * @returns Protocol update status.
    */
   getSourceUpdateStatus(
-    source: Pick<OpenCodexSource, "kind" | "settings" | "codex" | "resolvedCommand">,
+    source: OpenCodexSource,
     fallbackCommand: string
-  ): OpenCodexCodexUpdateStatus;
+  ): OpenCodexCodexUpdateStatus | Promise<OpenCodexCodexUpdateStatus>;
 }
 
 /**

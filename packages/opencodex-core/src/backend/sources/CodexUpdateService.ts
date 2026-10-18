@@ -1,13 +1,13 @@
 /**
  * Checks and applies standalone Codex CLI updates.
  */
-import { spawn } from "node:child_process";
 import { realpathSync } from "node:fs";
 
 import {
   resolveCodexCommand,
   resolveCodexCommandPath
 } from "@open-codex-ui/codex-rpc";
+import type { ResolvedCodexCommand } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexCodexReleaseCheck,
   OpenCodexCodexUpdateStatus,
@@ -18,18 +18,17 @@ import type {
 
 import { compareVersionNumbers } from "./toolVersionDetection.js";
 import type { RuntimeSettingsPort } from "../runtime/runtimePorts.js";
+import { runCodexUpdateProcess, type CodexUpdateProcessRunner } from "./codexUpdateProcess.js";
+import { isStandaloneCodexPath } from "./codexUpdatePaths.js";
+import { getWslLaunch, resolveWslCodexUpdate } from "./wslCodexUpdate.js";
 
 type CodexUpdateServiceOptions = {
   settings: Pick<RuntimeSettingsPort, "getSettings" | "setSettings">;
   saveSettings(settings: OpenCodexSettings): Promise<void> | void;
   refreshSources(): Promise<OpenCodexSource[]>;
   logger?(message: string): void;
-};
-
-type ProcessResult = {
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
+  /** Isolates process I/O for deterministic tests without touching installed Codex binaries. */
+  runProcess?: CodexUpdateProcessRunner;
 };
 
 const releaseCheckTtlMs = 60 * 60 * 1000;
@@ -81,20 +80,12 @@ export class CodexUpdateService {
    * @returns Refreshed source list after the update attempt.
    */
   async updateSource(source: OpenCodexSource, fallbackCommand: string): Promise<OpenCodexSource[]> {
-    if (!isStandaloneSource(source)) {
-      throw new Error("Codex update is only supported for standalone local sources.");
+    const resolvedCommand = await this.resolveUpdateCommand(source, fallbackCommand);
+    if (resolvedCommand === null) {
+      throw new Error("Codex update is only supported for standalone local or WSL sources.");
     }
 
-    const commandLine = source.kind === "custom"
-      ? source.settings.command ?? fallbackCommand
-      : fallbackCommand;
-    const resolvedCommand = resolveCodexCommand(commandLine, ["update"]);
-    const result = await runProcess(
-      resolvedCommand.command,
-      resolvedCommand.args,
-      resolvedCommand.shell,
-      updateTimeoutMs
-    );
+    const result = await (this.options.runProcess ?? runCodexUpdateProcess)(resolvedCommand, updateTimeoutMs);
     const output = [result.stdout, result.stderr].join("\n").trim();
 
     if (result.exitCode !== 0) {
@@ -103,7 +94,16 @@ export class CodexUpdateService {
 
     this.options.logger?.(output.length > 0 ? output : "Codex update completed.");
     await this.checkLatestRelease(true);
-    return await this.options.refreshSources();
+    const sources = await this.options.refreshSources();
+    const updated = sources.find(candidate => candidate.id === source.id);
+    if (updated === undefined || updated.codex.version === null) {
+      throw new Error("The updated Codex source version could not be verified.");
+    }
+    if (source.codexUpdate.updateAvailable && source.codex.version !== null
+      && compareVersionNumbers(updated.codex.version, source.codex.version) <= 0) {
+      throw new Error("Codex update completed, but this source still reports the old version. Check for a command pinned to an old release.");
+    }
+    return sources;
   }
 
   /**
@@ -113,12 +113,19 @@ export class CodexUpdateService {
    * @param fallbackCommand Global Codex command used by automatic local sources.
    * @returns Update availability status.
    */
-  getSourceUpdateStatus(
-    source: Pick<OpenCodexSource, "kind" | "settings" | "codex" | "resolvedCommand">,
+  async getSourceUpdateStatus(
+    source: OpenCodexSource,
     fallbackCommand: string
-  ): OpenCodexCodexUpdateStatus {
+  ): Promise<OpenCodexCodexUpdateStatus> {
     const releaseCheck = this.options.settings.getSettings().codexReleaseCheck;
-    const isSupported = isStandaloneSourceLike(source, fallbackCommand);
+    let isSupported = false;
+    let message = "Automatic update is only available for standalone Codex installs.";
+    try {
+      isSupported = await this.resolveUpdateCommand(source, fallbackCommand) !== null;
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+      this.options.logger?.(`Codex update detection failed for ${source.id}: ${message}`);
+    }
 
     if (!isSupported) {
       return {
@@ -126,11 +133,22 @@ export class CodexUpdateService {
         updateAvailable: false,
         latestVersion: releaseCheck.latestVersion,
         checkedAt: releaseCheck.checkedAt,
-        message: "Automatic update is only available for standalone Codex installs."
+        message
       };
     }
 
     return createUpdateStatus(source.codex, releaseCheck);
+  }
+
+  /** Resolves eligibility in the executable's own filesystem and rechecks it before every update. */
+  private async resolveUpdateCommand(source: OpenCodexSource, fallbackCommand: string): Promise<ResolvedCodexCommand | null> {
+    const wslLaunch = getWslLaunch(source);
+    if (wslLaunch !== null) {
+      return await resolveWslCodexUpdate(wslLaunch, this.options.runProcess ?? runCodexUpdateProcess);
+    }
+    if (!isStandaloneSourceLike(source, fallbackCommand)) return null;
+    const commandLine = source.kind === "custom" ? source.settings.command ?? fallbackCommand : fallbackCommand;
+    return resolveCodexCommand(commandLine, ["update"]);
   }
 
   /**
@@ -191,7 +209,6 @@ export class CodexUpdateService {
     }
   }
 }
-
 /**
  * Checks whether a cached release check should be refreshed.
  *
@@ -255,21 +272,11 @@ function createUpdateStatus(
 }
 
 /**
- * Checks whether a protocol source can be updated by `codex update`.
+ * Checks host-local standalone eligibility using executable paths rather than command arguments.
  *
- * @param source Source DTO.
+ * @param source Source DTO with the configured executable.
+ * @param fallbackCommand Command used for automatic local sources.
  * @returns Whether automatic update is supported.
- */
-function isStandaloneSource(source: OpenCodexSource): boolean {
-  return isStandaloneSourceLike(source, "codex");
-}
-
-/**
- * Checks standalone eligibility without requiring a full source DTO.
- *
- * @param source Source-like object.
- * @param fallbackCommand Global Codex command.
- * @returns Whether the resolved command points to a standalone install.
  */
 function isStandaloneSourceLike(
   source: Pick<OpenCodexSource, "kind" | "settings" | "resolvedCommand">,
@@ -286,10 +293,13 @@ function isStandaloneSourceLike(
   const resolvedPath = resolvedCommand.command === "codex"
     ? resolveCodexCommandPath("codex")
     : resolvedCommand.command;
-  const pathForCheck = source.resolvedCommand !== "codex" ? source.resolvedCommand : resolvedPath;
+  let pathForCheck = resolvedPath;
+  if (source.resolvedCommand !== "codex") {
+    pathForCheck = resolveCodexCommand(source.resolvedCommand, []).command;
+  }
   const realPathForCheck = readRealPath(pathForCheck);
 
-  return isStandalonePath(pathForCheck) || isStandalonePath(realPathForCheck);
+  return isStandaloneCodexPath(pathForCheck) || isStandaloneCodexPath(realPathForCheck);
 }
 
 /**
@@ -304,17 +314,6 @@ function readRealPath(value: string): string {
   } catch {
     return value;
   }
-}
-
-/**
- * Checks whether a path points inside the managed standalone install.
- *
- * @param value Path to inspect.
- * @returns Whether the path is a standalone Codex executable path.
- */
-function isStandalonePath(value: string): boolean {
-  return value.includes("/.codex/packages/standalone/") ||
-    value.includes("\\.codex\\packages\\standalone\\");
 }
 
 /**
@@ -335,48 +334,4 @@ function normalizeReleaseVersion(value: string | null): string | null {
   return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(normalized)
     ? normalized
     : null;
-}
-
-/**
- * Executes a bounded process and captures output.
- *
- * @param command Executable command.
- * @param args Process arguments.
- * @param shell Whether to spawn through a shell.
- * @param timeoutMs Maximum runtime.
- * @returns Captured process result.
- */
-function runProcess(
-  command: string,
-  args: string[],
-  shell: boolean,
-  timeoutMs: number
-): Promise<ProcessResult> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      shell,
-      stdio: ["ignore", "pipe", "pipe"]
-    });
-    let stdout = "";
-    let stderr = "";
-    const timeout = setTimeout(() => {
-      child.kill();
-      reject(new Error(`Timed out while running ${command}.`));
-    }, timeoutMs);
-
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-    child.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-    child.on("close", (exitCode) => {
-      clearTimeout(timeout);
-      resolve({ exitCode, stdout, stderr });
-    });
-  });
 }

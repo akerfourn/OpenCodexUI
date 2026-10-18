@@ -24,7 +24,7 @@ export function SourceInstanceControlDialog({ sourceId, sourceName, instances, a
   const isBusy = snapshot?.isActive === true || snapshot?.phase === "starting";
   const error = instances.errors.get(sourceId);
   const requiresForce = isBusy || error?.startsWith("SOURCE_BUSY") === true;
-  const canSubmit = snapshot !== undefined && snapshot.phase !== "stopping"
+  const canSubmit = snapshot !== undefined && snapshot.phase !== "stopping" && snapshot.phase !== "updating"
     && !isSubmitting && (!requiresForce || force);
   const titleKey = action === "stop" ? "sourceInstances.confirmStop" : "sourceInstances.confirmRestart";
   const actionKey = action === "stop" ? "sourceInstances.stop" : "sourceInstances.restart";
@@ -49,7 +49,9 @@ export function SourceInstanceControlDialog({ sourceId, sourceName, instances, a
   let startupContent = null;
   if (snapshot?.phase === "starting") startupContent = <DialogContentText>{t("sourceInstances.startingReason")}</DialogContentText>;
   let activityContent = <DialogContentText>{t("sourceInstances.idle")}</DialogContentText>;
-  if (requiresForce) activityContent = (
+  if (snapshot?.phase === "updating") {
+    activityContent = <DialogContentText>{t("sourceInstances.updating")}</DialogContentText>;
+  } else if (requiresForce) activityContent = (
     <Stack spacing={2}>
       <Alert severity="warning">
         {t("sourceInstances.busy")}

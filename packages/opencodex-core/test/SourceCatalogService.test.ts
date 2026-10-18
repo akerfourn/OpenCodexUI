@@ -15,6 +15,20 @@ import {
 } from "../src/backend/sources/SourceCatalogService";
 
 describe("SourceCatalogService", () => {
+  it("should await asynchronous update detection before returning list and mutation DTOs", async () => {
+    const fixture = createFixture();
+    const status = createUpdateStatus(true);
+    fixture.updates.getSourceUpdateStatus.mockResolvedValue(status);
+    const listed = await fixture.service.listOpenCodexSources();
+    const created = await fixture.service.createSource("Created", "custom", {});
+    const updated = await fixture.service.updateSource("source-1", { name: "Renamed" });
+
+    for (const source of [listed[0]!, created.source, updated.source]) {
+      expect(source.codexUpdate).toEqual(status);
+      expect(() => structuredClone(source)).not.toThrow();
+    }
+  });
+
   it("should initialize and persist a generated default source when settings are unset", async () => {
     const fixture = createFixture({ defaultSourceId: null });
 
@@ -335,7 +349,7 @@ function createFixture(options: FixtureOptions = {}) {
     readCommandCandidates: vi.fn(async () => candidates)
   };
   const updates = {
-    getSourceUpdateStatus: vi.fn(() => updateStatus)
+    getSourceUpdateStatus: vi.fn<SourceCatalogServiceOptions["updates"]["getSourceUpdateStatus"]>(() => updateStatus)
   };
   const clients = {
     restartClient: vi.fn(options.onRestart ?? (async () => undefined))

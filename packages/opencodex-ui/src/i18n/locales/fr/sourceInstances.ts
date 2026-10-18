@@ -6,6 +6,7 @@ export const frSourceInstances = {
     ready: "Instance lancée",
     active: "Instance en activité",
     stopping: "Instance en cours d’arrêt",
+    updating: "Mise à jour de Codex en cours",
     error: "Erreur de l’instance",
     start: "Démarrer l’instance",
     stop: "Arrêter l’instance",

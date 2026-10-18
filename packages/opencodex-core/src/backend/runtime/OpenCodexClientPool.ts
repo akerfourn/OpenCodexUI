@@ -36,6 +36,8 @@ export class OpenCodexClientPool {
   private readonly states = new Map<string, SourceInstanceSnapshot>();
   /** Background reads cannot resurrect a source explicitly stopped by the user. */
   private readonly manuallyStopped = new Set<string>();
+  /** Update ownership blocks background reconnection and conflicting lifecycle actions. */
+  private readonly updatingSources = new Set<string>();
   /** Application shutdown prevents late requests from creating new processes. */
   private disposed = false;
 
@@ -45,7 +47,7 @@ export class OpenCodexClientPool {
   /** Waits for all owned processes to exit before releasing the pool. */
   async dispose(): Promise<void> {
     this.disposed = true;
-    await Promise.all([...this.clientsBySourceId.keys()].map(id => this.stopClient(id, true, false)));
+    await Promise.all([...this.clientsBySourceId.keys()].map(id => this.stopOwnedClient(id, true, false)));
   }
 
   /** Reads a snapshot without starting a client or probing an executable. */
@@ -74,6 +76,7 @@ export class OpenCodexClientPool {
     if (this.disposed) throw new Error("Codex client pool is shutting down.");
     const source = await this.options.resolveSource(sourceId);
     if (this.disposed) throw new Error("Codex client pool is shutting down.");
+    this.requireNotUpdating(source.id);
     if (this.manuallyStopped.has(source.id)) throw new Error("SOURCE_STOPPED: Start this source from Home → Sources.");
     if (this.stops.has(source.id) || this.readState(source.id).phase === "stopping") {
       throw new Error("The Codex source is stopping. Wait before retrying.");
@@ -93,6 +96,7 @@ export class OpenCodexClientPool {
 
   /** Explicitly resumes a source after a user-requested stop. */
   async startClient(sourceId: string): Promise<void> {
+    this.requireNotUpdating(sourceId);
     if (this.stops.has(sourceId)) throw new Error("Wait for the source to finish stopping.");
     this.manuallyStopped.delete(sourceId);
     await this.ensureClient(sourceId);
@@ -116,6 +120,12 @@ export class OpenCodexClientPool {
 
   /** Stops only this source; force is explicit and never inferred from an error. */
   async stopClient(sourceId: string, force = false, manual = true): Promise<void> {
+    this.requireNotUpdating(sourceId);
+    await this.stopOwnedClient(sourceId, force, manual);
+  }
+
+  /** Shares an owned shutdown while allowing the update owner to suspend its own connection. */
+  private async stopOwnedClient(sourceId: string, force: boolean, manual: boolean): Promise<void> {
     const stopping = this.stops.get(sourceId);
     if (stopping !== undefined) return await stopping;
     const client = this.clientsBySourceId.get(sourceId);
@@ -136,6 +146,46 @@ export class OpenCodexClientPool {
   async restartClient(sourceId: string, force = false): Promise<void> {
     await this.stopClient(sourceId, force, false);
     await this.startClient(sourceId);
+  }
+
+  /** Updates an idle source exclusively; stopped sources stay stopped and failed updates restore availability. */
+  async runSourceUpdate<T>(sourceId: string, update: () => Promise<T>): Promise<T> {
+    this.requireNotUpdating(sourceId);
+    if (this.disposed) throw new Error("Codex client pool is shutting down.");
+    const client = this.clientsBySourceId.get(sourceId);
+    if (this.starts.has(sourceId) || this.stops.has(sourceId) || client?.isBusy === true) {
+      throw new Error("SOURCE_BUSY: Wait for this source's work to finish before updating Codex.");
+    }
+    const shouldResume = client !== undefined && !this.manuallyStopped.has(sourceId);
+    this.updatingSources.add(sourceId);
+    this.publish(sourceId, "updating");
+    let updateFailed = false;
+    let didStop = false;
+    try {
+      await this.stopOwnedClient(sourceId, false, false);
+      didStop = true;
+      return await update();
+    } catch (error) {
+      updateFailed = true;
+      throw error;
+    } finally {
+      this.updatingSources.delete(sourceId);
+      if (shouldResume && didStop && !this.disposed) {
+        try {
+          await this.ensureClient(sourceId);
+        } catch (error) {
+          if (!updateFailed) throw error;
+          this.options.logger?.(`Codex update and reconnection failed for ${sourceId}: ${String(error)}`);
+        }
+      } else if (didStop) {
+        this.publish(sourceId, "stopped");
+      }
+    }
+  }
+
+  /** Lifecycle controls cannot race a source's owned update operation. */
+  private requireNotUpdating(sourceId: string): void {
+    if (this.updatingSources.has(sourceId)) throw new Error("SOURCE_UPDATING: Wait for this source's Codex update to finish.");
   }
 
   /** Creates and wires a client before sending initialization, retaining its exact identity in callbacks. */
@@ -226,6 +276,7 @@ export class OpenCodexClientPool {
 
   /** Sends content-free transitions rather than emitting once per streamed token. */
   private publish(sourceId: string, phase: SourceInstanceSnapshot["phase"], error: string | null = null): void {
+    if (this.updatingSources.has(sourceId) && phase !== "error") phase = "updating";
     const snapshot: SourceInstanceSnapshot = {
       sourceId,
       phase,

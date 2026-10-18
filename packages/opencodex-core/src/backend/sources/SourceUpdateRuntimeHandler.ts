@@ -21,7 +21,7 @@ export type SourceUpdateRuntimeHandlerOptions = {
   /** Reports whether a source currently has an active turn. */
   hasActiveTurn(sourceId: string): boolean;
   /** Provides source client lifecycle operations. */
-  clients: Pick<ClientPort, "restartClient">;
+  clients: Pick<ClientPort, "runSourceUpdate">;
   /** Emits a source or release event to the UI transport. */
   events: Pick<RuntimeEventPort, "emit">;
 };
@@ -69,11 +69,8 @@ export class SourceUpdateRuntimeHandler {
       throw new Error(`Source not found: ${sourceId}`);
     }
 
-    const sources = await this.options.updates.updateSource(
-      source,
-      this.options.settings.getSettings().codexCommand
-    );
-    await this.options.clients.restartClient(sourceId);
-    return sources;
+    return await this.options.clients.runSourceUpdate(sourceId, async () => {
+      return await this.options.updates.updateSource(source, this.options.settings.getSettings().codexCommand);
+    });
   }
 }

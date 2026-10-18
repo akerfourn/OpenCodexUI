@@ -69,6 +69,8 @@ export interface ClientPort {
   getClient(sourceId: string): CodexAppServerClient | undefined;
   /** Stops and recreates a source client. */
   restartClient(sourceId: string): Promise<void>;
+  /** Suspends an idle source for an update, prevents reconnection, then restores its previous running state. */
+  runSourceUpdate<T>(sourceId: string, update: () => Promise<T>): Promise<T>;
 }
 
 /** Provides best-effort persistence for application diagnostics. */

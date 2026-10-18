@@ -24,14 +24,14 @@ export function HomeSourceInstance({ sourceId, sourceName, instances }: HomeSour
   const statusHint = snapshot?.manuallyStopped === true ? t("sourceInstances.manualStop") : "";
   const pulseAnimation = isActive ? "sourceInstancePulse 1.4s ease-in-out infinite" : "none";
   const isStopped = phase === "stopped";
-  const isDisabled = phase === undefined || phase === "stopping"
+  const isDisabled = phase === undefined || phase === "stopping" || phase === "updating"
     || (instances.pending.has(sourceId) && phase !== "starting");
   const error = instances.errors.get(sourceId) ?? snapshot?.error ?? instances.loadError;
   let label = t("sourceInstances.unknown");
   let color = "text.disabled";
   if (phase !== undefined) label = t(`sourceInstances.${phase}`);
   if (phase === "ready") color = "success.main";
-  if (phase === "starting" || phase === "stopping") color = "warning.main";
+  if (phase === "starting" || phase === "stopping" || phase === "updating") color = "warning.main";
   if (phase === "error") color = "error.main";
   if (isActive) label = t("sourceInstances.active");
 

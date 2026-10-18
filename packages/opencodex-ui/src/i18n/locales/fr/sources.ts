@@ -31,6 +31,7 @@ export const frSources = {
     codexUpdateAvailable: "Mise à jour disponible : {{version}}",
     codexUpdateCurrent: "Codex standalone à jour",
     codexUpdateUnknown: "État de mise à jour inconnu",
+    codexUpdateError: "Échec de la mise à jour : {{error}}",
     codexUnavailable: "Codex non détecté",
     checkCodexUpdates: "Vérifier les mises à jour Codex",
     create: "Créer",

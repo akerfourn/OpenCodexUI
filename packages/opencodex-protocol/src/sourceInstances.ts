@@ -10,7 +10,7 @@ export interface SourceInstanceActivity {
 /** Lifecycle of an app-server owned by OpenCodexUI, independent of CLI version detection. */
 export interface SourceInstanceSnapshot {
   sourceId: string;
-  phase: "stopped" | "starting" | "ready" | "stopping" | "error";
+  phase: "stopped" | "starting" | "ready" | "stopping" | "updating" | "error";
   isActive: boolean;
   manuallyStopped: boolean;
   error: string | null;

@@ -141,7 +141,7 @@ export class SourceCatalogService implements SourceCatalogPort {
       const commandCandidates = await this.options.detection.readCommandCandidates();
 
       return [
-        this.withCodexUpdateStatus(toOpenCodexSource(
+        await this.withCodexUpdateStatus(toOpenCodexSource(
           defaultSource,
           settings.codexCommand,
           0,
@@ -204,7 +204,7 @@ export class SourceCatalogService implements SourceCatalogPort {
     );
 
     return {
-      source: this.withCodexUpdateStatus(source),
+      source: await this.withCodexUpdateStatus(source),
       defaultSourceId: settings.defaultSourceId
     };
   }
@@ -264,7 +264,7 @@ export class SourceCatalogService implements SourceCatalogPort {
     );
 
     return {
-      source: this.withCodexUpdateStatus(source),
+      source: await this.withCodexUpdateStatus(source),
       defaultSourceId: settings.defaultSourceId
     };
   }
@@ -275,10 +275,10 @@ export class SourceCatalogService implements SourceCatalogPort {
    * @param source Source DTO without final update state.
    * @returns Source DTO with update state.
    */
-  private withCodexUpdateStatus(source: OpenCodexSource): OpenCodexSource {
+  private async withCodexUpdateStatus(source: OpenCodexSource): Promise<OpenCodexSource> {
     return {
       ...source,
-      codexUpdate: this.options.updates.getSourceUpdateStatus(
+      codexUpdate: await this.options.updates.getSourceUpdateStatus(
         source,
         this.options.settings.getSettings().codexCommand
       )
