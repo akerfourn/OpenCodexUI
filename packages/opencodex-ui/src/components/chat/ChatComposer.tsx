@@ -69,7 +69,8 @@ export function ChatComposer({
   const attachments = composer.attachments;
   const canSteer = chatStore.actions.canSteerActiveTurn;
   const isSteering = isWorking && canSteer;
-  const canSubmit = !store.dictationStore.busy && !isSubmitting && (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
+  const permissionsBusy = chatStore.permissions.isSaving || chatStore.permissions.isLoading;
+  const canSubmit = !store.dictationStore.busy && !isSubmitting && !permissionsBusy && (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
   const canShowSubmit = isSubmitting || !isWorking || canSteer;
   const canAttachFiles = !isSubmitting && (!isWorking || canSteer);
   const sourceId = chatStore.sourceId;

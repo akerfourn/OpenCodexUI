@@ -8,6 +8,7 @@ import { CollaborationService } from "../collaboration/CollaborationService.js";
 import { NotificationService } from "../support/NotificationService.js";
 import { ThreadCacheService } from "./ThreadCacheService.js";
 import { ThreadConversationService } from "./ThreadConversationService.js";
+import { ThreadPermissionsService } from "./ThreadPermissionsService.js";
 import {
   ThreadRuntimeNotifications,
   type ThreadRuntimeNotificationAdapters
@@ -44,6 +45,7 @@ export type { ThreadRuntimeNotificationAdapters } from "./ThreadRuntimeNotificat
 
 /** Complete service graph owned by one thread runtime handler. */
 export type ThreadRuntimeServices = {
+  permissions: ThreadPermissionsService;
   threadConversationService: ThreadConversationService;
   notifications: ThreadRuntimeNotifications;
   workspaceExecution: WorkspaceExecutionService | undefined;
@@ -117,6 +119,7 @@ export function createThreadRuntimeServices(
   notifications.attachNotificationService(notificationService);
 
   return {
+    permissions: new ThreadPermissionsService(options.clients, workspaceExecution),
     threadConversationService,
     notifications,
     workspaceExecution

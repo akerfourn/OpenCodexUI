@@ -18,6 +18,7 @@ import type {
 
 import type { WorkspaceExecutionService } from "../workspaces/WorkspaceExecutionService.js";
 import { ThreadConversationService } from "./ThreadConversationService.js";
+import type { ThreadPermissionsService } from "./ThreadPermissionsService.js";
 import { ThreadRuntimeNotifications } from "./ThreadRuntimeNotifications.js";
 import {
   createThreadRuntimeServices,
@@ -32,6 +33,8 @@ export type {
 
 /** Owns thread services, thread-scoped state, and their runtime-facing facade. */
 export class ThreadRuntimeHandler {
+  /** Native per-chat permission reads and explicitly requested changes. */
+  readonly permissions: ThreadPermissionsService;
   /** Source-owned context and persistent execution guards. */
   private readonly workspaceExecution: WorkspaceExecutionService | undefined;
   /** Thread conversation and turn lifecycle service. */
@@ -46,6 +49,7 @@ export class ThreadRuntimeHandler {
    */
   constructor(options: ThreadRuntimeHandlerOptions) {
     const services = createThreadRuntimeServices(options);
+    this.permissions = services.permissions;
     this.threadConversationService = services.threadConversationService;
     this.notifications = services.notifications;
     this.workspaceExecution = services.workspaceExecution;

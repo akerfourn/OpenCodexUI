@@ -184,6 +184,7 @@ export class ChatActionsStore {
       this.projectStore.isReadOnlyFromCache ||
       sourceId === null ||
       this.parent.composer.isSubmitting ||
+      this.parent.permissions.isSaving || this.parent.permissions.isLoading ||
       this.parent.runtime.isStartingTurn ||
       this.parent.runtime.isEditingLastTurn ||
       this.parent.runtime.isRecovering

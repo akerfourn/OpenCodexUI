@@ -246,6 +246,22 @@ export class WorkspaceExecutionService {
     reservation.threadId = threadId;
   }
 
+  /** Serializes settings with local starts and selection without inventing an execution reservation. */
+  async runThreadConfiguration<T>(
+    threadId: string, sourceId: string,
+    action: (workspace: OpenCodexProjectWorkspace) => Promise<T>
+  ): Promise<T> {
+    return await this.withThread(threadId, async () => {
+      const workspace = await this.resolve({ threadId, sourceId, projectPath: null });
+      if (await this.repository.transitions.getForThread(threadId) !== null
+        || await this.repository.getReservationForThread(threadId) !== null) {
+        throw new Error("Reconcile pending workspace operations before changing conversation permissions.");
+      }
+      await this.requireIdle(sourceId, threadId, workspace.path);
+      return await action(workspace);
+    });
+  }
+
   /** Records dispatch before sending a start request. */
   async submitting(reservation: WorkspaceExecutionReservation): Promise<void> {
     await this.repository.submitting(reservation.id);

@@ -1,5 +1,6 @@
 import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
 import { BrowserPermissionsService } from "./backend/browser/BrowserPermissionsService.js";
+import type { ThreadPermissionsService } from "./backend/threads/ThreadPermissionsService.js";
 import { DebugService } from "./backend/debug/DebugService.js";
 import { requireToolWorkspace } from "./backend/workspaces/workspaceToolContext.js";
 import { WorkspaceFilesService } from "./backend/files/WorkspaceFilesService.js";
@@ -102,6 +103,11 @@ export class OpenCodexBackendRuntime {
   /** Resolves physical tool identity before transport dispatch. */
   async resolveToolRequest(request: OpenCodexRequest): Promise<OpenCodexRequest> {
     return await resolveWorkspaceToolRequest(this.services.cacheRepository, request);
+  }
+
+  /** Effective permissions of an existing source-owned conversation. */
+  get threadPermissions(): ThreadPermissionsService {
+    return this.services.threadRuntimeHandler.permissions;
   }
 
   /** Public settings API. */

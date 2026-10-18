@@ -36,7 +36,7 @@ export class OpenCodexRequestRouter {
     } catch (error) {
       // Tool and settings dialogs own their error feedback without recovering a chat.
       if (request.type === "debug" || request.type.startsWith("messageRendering.") ||
-        request.type.startsWith("browserPermissions.")) throw error;
+        request.type.startsWith("browserPermissions.") || request.type.startsWith("threadPermissions.")) throw error;
       this.runtime.handleRequestError(request, error);
     }
   }
@@ -58,6 +58,9 @@ export class OpenCodexRequestRouter {
     }
 
     switch (request.type) {
+      case "threadPermissions.read":
+      case "threadPermissions.change":
+        return this.runtime.threadPermissions.execute(request);
       case "images.read":
         return this.runtime.files.readImage(request);
       case "browserPermissions.read":

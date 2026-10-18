@@ -8,6 +8,7 @@ import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined
 import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
+import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
 import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { useTranslation } from "react-i18next";
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
@@ -18,6 +19,8 @@ import { WorkspaceSwitchDialogX } from "../projects/WorkspaceSwitchDialog";
 import { ChatEventLogDialogX } from "../dialogs/ChatEventLogDialog";
 import type { OpenSubAgentDialog } from "./subAgentDialog";
 import { BrowserPermissionsDialogX } from "../browser/BrowserPermissionsDialog";
+import { ChatPermissionsDialogX } from "../chat/ChatPermissionsDialog";
+import type { ChatPermissionsStore } from "../../stores/chat/ChatPermissionsStore";
 
 /** Conversation properties and lifecycle actions operate on the row's explicit thread. */
 export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgentDialog }: {
@@ -30,6 +33,7 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
+  const [permissionsStore, setPermissionsStore] = useState<ChatPermissionsStore | null>(null);
   const list = project.threadListStore;
   const chat = project.chatsById.get(thread.id);
   const isLocalDraft = chat?.isLocalDraft === true;
@@ -45,6 +49,11 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   const workspaceDialog = workspaceOpen
     ? <WorkspaceSwitchDialogX project={project} thread={thread} onClose={() => setWorkspaceOpen(false)} /> : null;
   const sourceId = project.resolveThreadSourceId(thread);
+  const permissionsDisabled = project.isReadOnlyFromCache || sourceId === null
+    || (chat !== undefined && !chat.permissions.isAvailable);
+  const permissionsDialog = permissionsStore === null ? null : (
+    <ChatPermissionsDialogX store={permissionsStore} onClose={handlePermissionsClose} />
+  );
   const canConfigureBrowser = supportsBrowserPermissions(root.sourcesStore.findSource(sourceId));
   const browserAction = canConfigureBrowser ? (
     <MenuItem disabled={isLocalDraft || isSubmitting || project.isReadOnlyFromCache} onClick={handleBrowser}>
@@ -90,6 +99,14 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   }
   /** Releases the snapshot when closing the permission editor. */
   function handleBrowserClose(): void { setBrowserOpen(false); }
+  /** Opens the row's permission store without changing the selected conversation. */
+  function handlePermissions(): void {
+    if (permissionsDisabled) return;
+    setAnchor(null);
+    setPermissionsStore(project.getOrCreateChat(thread).permissions);
+  }
+  /** Discards unsubmitted selections by unmounting the permission dialog. */
+  function handlePermissionsClose(): void { setPermissionsStore(null); }
   /** Requests confirmation for the existing destructive action. */
   function handleDeleteDialog(): void {
     setAnchor(null);
@@ -108,6 +125,9 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }}>
         {workspaceAction}
         {browserAction}
+        <MenuItem disabled={permissionsDisabled} onClick={handlePermissions}>
+          <ListItemIcon><SecurityOutlinedIcon fontSize="small" /></ListItemIcon>{t("threadPermissions.button")}
+        </MenuItem>
         <MenuItem disabled={isLocalDraft || isSubmitting} onClick={handleArchive}><ListItemIcon>{archiveIcon}</ListItemIcon>{archiveLabel}</MenuItem>
         <MenuItem disabled={isLocalDraft} onClick={handleSubAgents}>
           <ListItemIcon><AccountTreeOutlinedIcon fontSize="small" /></ListItemIcon>{t("sidebar.subAgentThreads")}
@@ -121,6 +141,7 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
       </Menu>
       {workspaceDialog}
       {browserDialog}
+      {permissionsDialog}
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
         <DialogTitle>{t("sidebar.deleteThreadTitle")}</DialogTitle>
         <DialogContent><DialogContentText>{t("sidebar.deleteThreadDescription", { thread: title })}</DialogContentText></DialogContent>

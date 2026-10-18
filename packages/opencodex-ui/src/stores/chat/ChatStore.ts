@@ -20,6 +20,7 @@ import type { RootStore } from "../RootStore";
 import { ChatActionsStore } from "./ChatActionsStore";
 import { ChatComposerStore } from "./ChatComposerStore";
 import { ChatGoalStore } from "./ChatGoalStore";
+import { ChatPermissionsStore } from "./ChatPermissionsStore";
 import { ChatLiveTurnEventsStore } from "./ChatLiveTurnEventsStore";
 import { ChatRuntimeStore } from "./ChatRuntimeStore";
 import { ChatTimelineStore } from "./ChatTimelineStore";
@@ -55,6 +56,8 @@ export class ChatStore {
   readonly runtime: ChatRuntimeStore;
   /** Native Codex goal state and actions for this chat. */
   readonly goal: ChatGoalStore;
+  /** Effective native access settings and explicit per-conversation edits. */
+  readonly permissions: ChatPermissionsStore;
   /** Live event correlation and buffering for this chat. */
   readonly liveEvents: ChatLiveTurnEventsStore;
 
@@ -75,6 +78,7 @@ export class ChatStore {
     this.runtime = new ChatRuntimeStore(this);
     this.actions = new ChatActionsStore(this, projectStore, root);
     this.goal = new ChatGoalStore(this, root);
+    this.permissions = new ChatPermissionsStore(this, root);
     this.liveEvents = new ChatLiveTurnEventsStore(this.timeline, this.runtime);
     makeAutoObservable<
       ChatStore,
@@ -85,6 +89,7 @@ export class ChatStore {
       | "timeline"
       | "runtime"
       | "goal"
+      | "permissions"
       | "liveEvents"
     >(this, {
       projectStore: false,
@@ -94,6 +99,7 @@ export class ChatStore {
       timeline: false,
       runtime: false,
       goal: false,
+      permissions: false,
       liveEvents: false
     });
   }
