@@ -25,3 +25,4 @@ export * from "./debugImport";
 export * from "./debugAdvanced";
 export * from "./browserPermissions";
 export * from "./threadPermissions";
+export * from "./sourcePermissions";

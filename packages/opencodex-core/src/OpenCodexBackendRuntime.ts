@@ -1,5 +1,6 @@
 import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
 import { BrowserPermissionsService } from "./backend/browser/BrowserPermissionsService.js";
+import { SourcePermissionsService } from "./backend/sources/SourcePermissionsService.js";
 import type { ThreadPermissionsService } from "./backend/threads/ThreadPermissionsService.js";
 import { DebugService } from "./backend/debug/DebugService.js";
 import { requireToolWorkspace } from "./backend/workspaces/workspaceToolContext.js";
@@ -58,6 +59,8 @@ export class OpenCodexBackendRuntime {
   readonly messageRendering: MessageRenderingService;
   /** Source and conversation permissions saved by the Browser plugin. */
   readonly browserPermissions: BrowserPermissionsService;
+  /** User-level Codex defaults belonging to explicit source connections. */
+  readonly sourcePermissions: SourcePermissionsService;
   /** Isolated experimental speech transcription, outside normal conversation execution. */
   readonly dictation: CodexDictationService;
   /** Fully wired services owned by this runtime instance. */
@@ -76,6 +79,8 @@ export class OpenCodexBackendRuntime {
     this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.services = createBackendServiceGraph(options, this.isPrerelease);
     this.apis = new BackendRuntimeApis(this.services, options);
+    this.sourcePermissions = new SourcePermissionsService(this.services.projectRuntimeHandler,
+      this.services.clientPool, this.services.cacheRepository);
     this.messageRendering = new MessageRenderingService(this.services.cacheRepository);
     this.browserPermissions = new BrowserPermissionsService(this.services.cacheRepository,
       this.services.projectRuntimeHandler, this.services.clientPool,

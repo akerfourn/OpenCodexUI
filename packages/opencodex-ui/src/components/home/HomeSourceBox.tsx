@@ -5,19 +5,14 @@ import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import AutorenewOutlinedIcon from "@mui/icons-material/AutorenewOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
-import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
 import UpdateOutlinedIcon from "@mui/icons-material/UpdateOutlined";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import {
   Box,
   Button,
   Chip,
-  IconButton,
   Paper,
   Stack,
-  Tooltip,
   Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
@@ -30,7 +25,8 @@ import type {
 
 import type { RootStore } from "../../stores/RootStore";
 import { DeleteSourceDialog } from "./DeleteSourceDialog";
-import { EditSourceDialog } from "./EditSourceDialog";
+import { EditSourceDialogX } from "./EditSourceDialog";
+import { HomeSourceActionsX } from "./HomeSourceActions";
 import { getSourceBadgeSx } from "./sourceColor";
 import {
   buildSourceSettings,
@@ -43,7 +39,6 @@ import {
   getSourceKindLabelKey
 } from "./sourcePresentation";
 import { UsageResetCreditsDialogX } from "./UsageResetCreditsDialog";
-import { BrowserPermissionsSourceButtonX } from "../browser/BrowserPermissionsSourceButton";
 
 type HomeSourceBoxProps = {
   source: OpenCodexSource;
@@ -203,13 +198,7 @@ export function HomeSourceBox({
         border: "1px solid",
         borderColor: "divider",
         borderRadius: 1,
-        p: 2,
-        "&:hover .source-edit-action": {
-          opacity: 1
-        },
-        "& .source-edit-action:focus-visible": {
-          opacity: 1
-        }
+        p: 2
       }}
     >
       <Box sx={{ display: "flex", gap: 1.5, alignItems: "flex-start" }}>
@@ -375,64 +364,14 @@ export function HomeSourceBox({
           </Box>
         ) : null}
         </Box>
-        {!isDefault ? (
-          <Tooltip title={t("sources.setDefault")}>
-            <Button
-              size="small"
-              startIcon={<StarBorderOutlinedIcon />}
-              onClick={handleSetDefaultSource}
-              sx={{ flex: "0 0 auto" }}
-            >
-              {t("sources.setDefault")}
-            </Button>
-          </Tooltip>
-        ) : null}
-        <Stack
-          direction={{ xs: "row", sm: "column" }}
-          spacing={0.25}
-          sx={{
-            alignItems: "center",
-            flex: "0 0 auto"
-          }}
-        >
-          <Tooltip title={t("sources.sync")}>
-            <span>
-              <IconButton
-                size="small"
-                aria-label={t("sources.sync")}
-                disabled={isSyncing}
-                onClick={handleSyncSource}
-              >
-                <SyncOutlinedIcon
-                  fontSize="small"
-                  sx={{
-                    animation: isSyncing ? "source-sync-spin 1s linear infinite" : "none",
-                    "@keyframes source-sync-spin": {
-                      from: { transform: "rotate(0deg)" },
-                      to: { transform: "rotate(-360deg)" }
-                    }
-                  }}
-                />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <BrowserPermissionsSourceButtonX root={store} source={source} />
-          <Tooltip title={t("sources.edit")}>
-            <IconButton
-              className="source-edit-action"
-              size="small"
-              aria-label={t("sources.edit")}
-              onClick={handleEdit}
-              sx={{ opacity: 0, transition: "opacity 120ms ease" }}
-            >
-              <EditOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Stack>
+        <HomeSourceActionsX source={source} root={store} isDefault={isDefault} isSyncing={isSyncing}
+          onDefault={handleSetDefaultSource} onSync={handleSyncSource} onConfigure={handleEdit} />
       </Box>
 
-      <EditSourceDialog
+      {isEditing ? <EditSourceDialogX
         open={isEditing}
+        sourceId={source.id}
+        sourceName={source.name}
         name={nameDraft}
         draft={draft}
         store={store}
@@ -445,7 +384,7 @@ export function HomeSourceBox({
         onClose={handleCloseEdit}
         onSubmit={handleSubmit}
         onDelete={handleDelete}
-      />
+      /> : null}
 
       <DeleteSourceDialog
         open={isDeleteConfirmationOpen}
