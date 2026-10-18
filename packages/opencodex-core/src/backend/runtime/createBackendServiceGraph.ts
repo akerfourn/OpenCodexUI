@@ -84,6 +84,7 @@ export function createBackendServiceGraph(
     handleServerRequest,
     handleError: handleClientError,
     handleClose: (sourceId) => {
+      approvalService.clearSource(sourceId);
       projectAutomationRuntimeHandler.handleCodexClientClosed(sourceId);
       handleClientClose(sourceId, {
         notifications: notificationCoordinator,

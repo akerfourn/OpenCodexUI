@@ -2,8 +2,11 @@
  * Provides typed JSON-RPC methods for the local `codex app-server` process.
  */
 import { CodexAppServerTransport } from "./CodexAppServerTransport";
+import { CodexClientActivity } from "./CodexClientActivity";
+import { CodexProcessError, JsonRpcError } from "./types";
 import type {
   CodexAppServerClientOptions,
+  CodexClientActivitySnapshot,
   CodexNotification,
   CodexServerRequest,
   Disposable,
@@ -53,6 +56,10 @@ import type { TurnSteerResponse } from "./generated/v2/TurnSteerResponse";
  */
 export class CodexAppServerClient {
   private readonly transport: CodexAppServerTransport;
+  /** Pending requests and long-running work owned by this connection. */
+  private readonly activity: CodexClientActivity;
+  /** Retired source clients cannot silently restart through a retained reference. */
+  private disposed = false;
 
   /**
    * Creates a client with optional command, timeout, and process overrides.
@@ -61,10 +68,15 @@ export class CodexAppServerClient {
    */
   constructor(options: CodexAppServerClientOptions = {}) {
     this.transport = new CodexAppServerTransport(options);
+    this.activity = new CodexClientActivity(options.onActivityChange, options.onActivityDetailsChange);
+    this.transport.onServerRequest(request => this.activity.requestApproval(request.id));
+    this.transport.onNotification(notification => this.activity.notification(notification));
+    this.transport.onClose(() => this.activity.clear());
   }
 
   /** Returns the source-native storage root, never a path inferred from the UI host. */
   async getCodexHome(): Promise<string> {
+    this.requireAvailable();
     return await this.transport.getCodexHome();
   }
 
@@ -74,6 +86,7 @@ export class CodexAppServerClient {
    * @returns Promise resolved once the client is ready to send requests.
    */
   async start(): Promise<void> {
+    this.requireAvailable();
     return this.transport.start();
   }
 
@@ -83,7 +96,28 @@ export class CodexAppServerClient {
    * @returns Promise resolved once local process state has been cleared.
    */
   async stop(): Promise<void> {
-    return this.transport.stop();
+    await this.transport.stop();
+    this.activity.clear();
+  }
+
+  /** Whether stopping could interrupt work; passive metadata polling does not require confirmation. */
+  get isBusy(): boolean { return this.activity.active; }
+
+  /** Returns fresh content-free activity reasons for source lifecycle diagnostics. */
+  get activityDetails(): CodexClientActivitySnapshot {
+    return this.activity.snapshot;
+  }
+
+  /** Permanently retires this source connection and waits for its owned process to exit. */
+  async dispose(): Promise<void> {
+    this.disposed = true;
+    await this.transport.stop(true);
+    this.activity.clear();
+  }
+
+  /** Rejects late work rather than resurrecting a source stopped by the user. */
+  private requireAvailable(): void {
+    if (this.disposed) throw new CodexProcessError("This Codex source connection was stopped. Retry with a new connection.");
   }
 
   /**
@@ -94,7 +128,18 @@ export class CodexAppServerClient {
    * @returns Promise resolved with the typed JSON-RPC result.
    */
   async request<T>(method: string, params?: unknown): Promise<T> {
-    return this.transport.request<T>(method, params);
+    this.requireAvailable();
+    const activityRequest = this.activity.begin(method, params);
+    let result: T | undefined;
+    try {
+      result = await this.transport.request<T>(method, params);
+      return result;
+    } catch (error) {
+      if (error instanceof JsonRpcError) this.activity.refusedSpawn(method, params);
+      throw error;
+    } finally {
+      this.activity.finish(activityRequest, result, params);
+    }
   }
 
   /**
@@ -105,6 +150,7 @@ export class CodexAppServerClient {
    * @returns Nothing.
    */
   notify(method: string, params?: unknown): void {
+    this.requireAvailable();
     this.transport.notify(method, params);
   }
 
@@ -116,7 +162,9 @@ export class CodexAppServerClient {
    * @returns Nothing.
    */
   respond(id: JsonRpcId, result: unknown): void {
+    this.requireAvailable();
     this.transport.respond(id, result);
+    this.activity.resolveApproval(id);
   }
 
   /**
@@ -127,7 +175,9 @@ export class CodexAppServerClient {
    * @returns Nothing.
    */
   rejectServerRequest(id: JsonRpcId, message: string): void {
+    this.requireAvailable();
     this.transport.rejectServerRequest(id, message);
+    this.activity.resolveApproval(id);
   }
 
   /**

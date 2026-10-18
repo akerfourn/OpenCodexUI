@@ -27,6 +27,7 @@ import type { RootStore } from "../../stores/RootStore";
 import { DeleteSourceDialog } from "./DeleteSourceDialog";
 import { EditSourceDialogX } from "./EditSourceDialog";
 import { HomeSourceActionsX } from "./HomeSourceActions";
+import { HomeSourceInstanceX } from "./HomeSourceInstance";
 import { getSourceBadgeSx } from "./sourceColor";
 import {
   buildSourceSettings,
@@ -280,6 +281,7 @@ export function HomeSourceBox({
                 {getCodexStatusLabel(source.codex.status, source.codex.version, t)}
               </Typography>
             </Box>
+            <HomeSourceInstanceX sourceId={source.id} sourceName={source.name} instances={store.sourceInstancesStore} />
             {source.codexUpdate.supported ? (
               <Box
                 sx={{

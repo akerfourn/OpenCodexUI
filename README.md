@@ -20,6 +20,7 @@ You must already have Codex CLI installed and configured on your machine.
 - Project and source management.
 - [Default Codex permissions](docs/source-permissions.md) per source.
 - [Browser permissions](docs/browser-permissions.md) per local source and chat.
+- [Codex instance status and controls](docs/source-instances.md) per source.
 - [Codex permissions](docs/thread-permissions.md) for an existing conversation.
 - Codex conversation list with local SQLite caching.
 - Conversation creation, opening, renaming, and last-message editing.

@@ -37,7 +37,7 @@ export class OpenCodexRequestRouter {
       // Tool and settings dialogs own their error feedback without recovering a chat.
       if (request.type === "debug" || request.type.startsWith("messageRendering.") ||
         request.type.startsWith("browserPermissions.") || request.type.startsWith("threadPermissions.") ||
-        request.type.startsWith("sourcePermissions.")) throw error;
+        request.type.startsWith("sourcePermissions.") || request.type.startsWith("sourceInstances.")) throw error;
       this.runtime.handleRequestError(request, error);
     }
   }
@@ -59,6 +59,11 @@ export class OpenCodexRequestRouter {
     }
 
     switch (request.type) {
+      case "sourceInstances.list":
+      case "sourceInstances.start":
+      case "sourceInstances.stop":
+      case "sourceInstances.restart":
+        return this.runtime.sourceInstances.execute(request);
       case "sourcePermissions.read":
       case "sourcePermissions.change":
         return this.runtime.sourcePermissions.execute(request);

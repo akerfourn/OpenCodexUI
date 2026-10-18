@@ -34,7 +34,9 @@ export function HomeSourcesView({ store }: HomeSourcesViewProps) {
   const sourceIdsKey = sourcesStore.sources.map((source) => source.id).join("|");
 
   useEffect(() => {
+    void store.sourceInstancesStore.load();
     sourcesStore.sources.forEach((source) => {
+      if (store.sourceInstancesStore.states.get(source.id)?.manuallyStopped === true) return;
       void store.usageStore.load(source.id);
     });
   }, [sourceIdsKey, store, sourcesStore]);

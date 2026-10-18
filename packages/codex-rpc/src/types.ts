@@ -60,6 +60,15 @@ export type ProcessLike = Pick<
 
 export type ProcessFactory = (command: string, args: string[]) => ProcessLike;
 
+/** Content-free reasons why stopping an owned client could interrupt work. */
+export interface CodexClientActivitySnapshot {
+  requestMethods: string[];
+  turnCount: number;
+  threadCount: number;
+  approvalCount: number;
+  processCount: number;
+}
+
 export type CodexAppServerClientOptions = {
   command?: string;
   args?: string[];
@@ -72,6 +81,10 @@ export type CodexAppServerClientOptions = {
   processFactory?: ProcessFactory;
   logger?: (message: string) => void;
   stderr?: (message: string) => void;
+  /** Content-free activity transitions for the owning source connection. */
+  onActivityChange?: (active: boolean) => void;
+  /** Tracks changing reasons even while the overall activity boolean stays true. */
+  onActivityDetailsChange?: (activity: CodexClientActivitySnapshot) => void;
 };
 
 /**

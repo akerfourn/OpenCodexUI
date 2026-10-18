@@ -2,6 +2,7 @@ import type { MessageRenderingRequest } from "./messageRendering";
 import type { BrowserPermissionsRequest } from "./browserPermissions";
 import type { ThreadPermissionsRequest } from "./threadPermissions";
 import type { SourcePermissionsRequest } from "./sourcePermissions";
+import type { SourceInstanceRequest } from "./sourceInstances";
 import type { OpenCodexDebugRequest } from "./debug";
 /**
  * Declares the requests sent from the UI to the OpenCodex backend.
@@ -49,6 +50,7 @@ export type OpenCodexRequest =
   | BrowserPermissionsRequest
   | ThreadPermissionsRequest
   | SourcePermissionsRequest
+  | SourceInstanceRequest
   | MessageRenderingRequest
   | OpenCodexFileRequest
   | OpenCodexImageReadRequest

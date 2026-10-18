@@ -38,6 +38,7 @@ import type { ProjectStore } from "./project/ProjectStore";
 import { ProjectsStore } from "./project/ProjectsStore";
 import { ProjectGroupsStore } from "./project/ProjectGroupsStore";
 import { SourcesStore } from "./app/SourcesStore";
+import { SourceInstancesStore } from "./app/SourceInstancesStore";
 import { UsageStore } from "./app/UsageStore";
 
 export { HOME_TAB_ID, type OpenCodexAppTab } from "./app/NavigationStore";
@@ -72,6 +73,8 @@ export class RootStore {
   readonly projectsStore = new ProjectsStore(this);
   readonly projectGroupsStore = new ProjectGroupsStore(this);
   readonly sourcesStore = new SourcesStore(this);
+  /** Lifecycle of app-server processes owned by each configured source. */
+  readonly sourceInstancesStore = new SourceInstancesStore(this);
   readonly usageStore = new UsageStore(this);
   applicationCloseRequest: OpenCodexApplicationCloseRequest | null = null;
   /**
@@ -213,6 +216,7 @@ export class RootStore {
     this.projectsStore.handleEvent(event);
     this.projectGroupsStore.handleEvent(event);
     this.sourcesStore.handleEvent(event);
+    this.sourceInstancesStore.handleEvent(event);
     this.usageStore.handleEvent(event);
 
     if (event.type === "error") {

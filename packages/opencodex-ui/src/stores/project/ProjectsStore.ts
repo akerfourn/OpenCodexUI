@@ -58,6 +58,9 @@ export class ProjectsStore implements RootChildStore {
     this.trustStore.handleEvent(event);
 
     switch (event.type) {
+      case "sourceInstances.changed":
+        if (event.snapshot.phase === "stopped") this.stopSourceRuntime(event.snapshot.sourceId);
+        return;
       case "projects.updated":
         this.projects = event.projects;
         this.applyProjectMetadata(event.projects);
@@ -88,6 +91,15 @@ export class ProjectsStore implements RootChildStore {
     for (const projectStore of this.projectStoresById.values()) {
       for (const chatStore of projectStore.chatsById.values()) {
         chatStore.composer.reconcileReasoningEffort();
+      }
+    }
+  }
+
+  /** Stops source-owned status polling after an exit without inventing successful turn results. */
+  private stopSourceRuntime(sourceId: string): void {
+    for (const project of this.projectStoresById.values()) {
+      for (const chat of project.chatsById.values()) {
+        if (chat.sourceId === sourceId) chat.runtime.reset();
       }
     }
   }

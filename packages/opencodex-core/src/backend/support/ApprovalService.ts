@@ -31,6 +31,15 @@ export class ApprovalService {
    */
   constructor(private readonly options: ApprovalServiceOptions) {}
 
+  /** Clears prompts whose owning process has exited, without sending a decision to a replacement client. */
+  clearSource(sourceId: string): void {
+    for (const [approvalId, pending] of this.pendingApprovals) {
+      if (pending.sourceId !== sourceId) continue;
+      this.pendingApprovals.delete(approvalId);
+      this.options.events.emit({ type: "approval.resolved", approvalId });
+    }
+  }
+
   /**
    * Stores a server-side approval request and emits it to the UI.
    *
@@ -42,6 +51,7 @@ export class ApprovalService {
   handleServerRequest(request: CodexServerRequest, sourceId: string): void {
     const approval = {
       ...createApprovalRequest(request, this.options.settings.getSettings().language),
+      id: JSON.stringify([sourceId, request.id]),
       sourceId
     };
     this.pendingApprovals.set(approval.id, { request, sourceId });

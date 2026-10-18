@@ -1,6 +1,7 @@
 import { frMessageRendering } from "./messageRendering.js";
 import { frThreadPermissions } from "./threadPermissions.js";
 import { frSourcePermissions } from "./sourcePermissions.js";
+import { frSourceInstances } from "./sourceInstances.js";
 import { frBrowserPermissions } from "./browserPermissions.js";
 import { frDebug } from "./debug.js";
 import { frFileLanguages } from "./fileLanguages.js";
@@ -22,6 +23,7 @@ import { frUsage } from "./usage.js";
 export const frTranslation = {
   ...frThreadPermissions,
   ...frSourcePermissions,
+  ...frSourceInstances,
   ...frBrowserPermissions,
   ...frMessageRendering,
   ...frDebug,

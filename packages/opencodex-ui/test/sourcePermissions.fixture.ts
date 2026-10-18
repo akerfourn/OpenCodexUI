@@ -2,6 +2,7 @@ import { vi } from "vitest";
 import type { OpenCodexSource, SourcePermissionsSnapshot } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../src/stores/RootStore";
 import { SourcePermissionsStore } from "../src/stores/app/SourcePermissionsStore";
+import { SourceInstancesStore } from "../src/stores/app/SourceInstancesStore";
 
 /** Configured defaults are independent of active chats and Home filters. */
 export function sourcePermissionSnapshot(patch: Partial<SourcePermissionsSnapshot> = {}): SourcePermissionsSnapshot {
@@ -31,6 +32,7 @@ export function createSourcePermissionsFixture() {
   }, usageStore: { getSourceUsage: vi.fn(() => undefined) },
     appStore: { settingsStore: { setDefaultSourceId: vi.fn() } }
   } as unknown as RootStore;
+  Object.assign(root, { sourceInstancesStore: new SourceInstancesStore(root) });
   const permissions = new SourcePermissionsStore(root, source.id);
   return { root, request, source, permissions };
 }

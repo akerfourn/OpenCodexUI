@@ -7,6 +7,7 @@ import { createInterface, type Interface } from "node:readline";
 import { createDisposable } from "./disposable";
 import { isRecord, parseJsonRpcLine, stringifyJsonLine } from "./events";
 import { defaultProcessFactory, normalizeProcessError } from "./process";
+import { stopCodexProcess } from "./stopCodexProcess";
 import type {
   CodexAppServerClientOptions,
   CodexNotification,
@@ -105,7 +106,7 @@ export class CodexAppServerTransport {
    *
    * @returns Promise resolved once local process state has been cleared.
    */
-  async stop(): Promise<void> {
+  async stop(waitForExit = false): Promise<void> {
     this.isStopping = true;
     this.rejectPendingRequests(new CodexProcessError("Codex app-server stopped."));
     this.isInitialized = false;
@@ -115,23 +116,25 @@ export class CodexAppServerTransport {
     this.stdoutReader = null;
 
     const process = this.process;
-    this.process = null;
 
     if (process === null) {
       this.isStopping = false;
       return;
     }
 
-    if (process.killed) {
+    if (process.killed && !waitForExit) {
       this.isStopping = false;
       return;
     }
 
     try {
-      process.kill();
+      if (waitForExit) await stopCodexProcess(process);
+      else process.kill();
+      if (this.process === process) this.process = null;
     } catch (error) {
       this.logger(`Codex app-server shutdown kill failed: ${String(error)}`);
       this.isStopping = false;
+      if (waitForExit) throw error;
     }
   }
 

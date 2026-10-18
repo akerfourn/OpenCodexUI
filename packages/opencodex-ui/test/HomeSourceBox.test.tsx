@@ -68,6 +68,7 @@ function createSource(): OpenCodexSource {
 /** Creates the read-only store surface consumed during card rendering. */
 function createRootStore(): RootStore {
   return {
+    sourceInstancesStore: { states: new Map(), pending: new Map(), errors: new Map(), loadError: null },
     sourcesStore: {
       isSourceSyncing: vi.fn(() => false)
     },

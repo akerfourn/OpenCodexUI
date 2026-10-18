@@ -1,6 +1,7 @@
 import { enMessageRendering } from "./messageRendering.js";
 import { enThreadPermissions } from "./threadPermissions.js";
 import { enSourcePermissions } from "./sourcePermissions.js";
+import { enSourceInstances } from "./sourceInstances.js";
 import { enBrowserPermissions } from "./browserPermissions.js";
 import { enDebug } from "./debug.js";
 import { enFileLanguages } from "./fileLanguages.js";
@@ -25,6 +26,7 @@ import { enUsage } from "./usage.js";
 export const enTranslation = {
   ...enThreadPermissions,
   ...enSourcePermissions,
+  ...enSourceInstances,
   ...enBrowserPermissions,
   ...enMessageRendering,
   ...enDebug,

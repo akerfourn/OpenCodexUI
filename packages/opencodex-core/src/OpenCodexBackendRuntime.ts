@@ -1,6 +1,7 @@
 import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
 import { BrowserPermissionsService } from "./backend/browser/BrowserPermissionsService.js";
 import { SourcePermissionsService } from "./backend/sources/SourcePermissionsService.js";
+import { SourceInstancesService } from "./backend/sources/SourceInstancesService.js";
 import type { ThreadPermissionsService } from "./backend/threads/ThreadPermissionsService.js";
 import { DebugService } from "./backend/debug/DebugService.js";
 import { requireToolWorkspace } from "./backend/workspaces/workspaceToolContext.js";
@@ -61,6 +62,8 @@ export class OpenCodexBackendRuntime {
   readonly browserPermissions: BrowserPermissionsService;
   /** User-level Codex defaults belonging to explicit source connections. */
   readonly sourcePermissions: SourcePermissionsService;
+  /** Lifecycle controls and content-free status for source-owned app-servers. */
+  readonly sourceInstances: SourceInstancesService;
   /** Isolated experimental speech transcription, outside normal conversation execution. */
   readonly dictation: CodexDictationService;
   /** Fully wired services owned by this runtime instance. */
@@ -79,6 +82,8 @@ export class OpenCodexBackendRuntime {
     this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.services = createBackendServiceGraph(options, this.isPrerelease);
     this.apis = new BackendRuntimeApis(this.services, options);
+    this.sourceInstances = new SourceInstancesService(this.services.projectRuntimeHandler,
+      this.services.clientPool, this.services.cacheRepository);
     this.sourcePermissions = new SourcePermissionsService(this.services.projectRuntimeHandler,
       this.services.clientPool, this.services.cacheRepository);
     this.messageRendering = new MessageRenderingService(this.services.cacheRepository);
@@ -278,6 +283,7 @@ export class OpenCodexBackendRuntime {
       type: "app.bootstrap",
       settings: this.settings.get(),
       sources: await this.services.projectRuntimeHandler.listOpenCodexSources(),
+      sourceInstances: await this.sourceInstances.list(),
       projectPath: this.options.projectPath,
       appVersion: this.options.appVersion ?? null,
       isPrerelease: this.isPrerelease
