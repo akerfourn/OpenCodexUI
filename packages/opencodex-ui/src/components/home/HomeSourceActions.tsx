@@ -5,13 +5,10 @@ import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
-import type { OpenCodexSource } from "@open-codex-ui/opencodex-protocol";
-import type { RootStore } from "../../stores/RootStore";
-import { BrowserPermissionsSourceButtonX } from "../browser/BrowserPermissionsSourceButton";
 
 /** Keeps every source card's actions visible in the same compact vertical rail. */
-export function HomeSourceActions({ source, root, isDefault, isSyncing, onDefault, onSync, onConfigure }: {
-  source: OpenCodexSource; root: RootStore; isDefault: boolean; isSyncing: boolean;
+export function HomeSourceActions({ isDefault, isSyncing, onDefault, onSync, onConfigure }: {
+  isDefault: boolean; isSyncing: boolean;
   onDefault(): void; onSync(): void; onConfigure(): void;
 }) {
   const { t } = useTranslation();
@@ -31,7 +28,6 @@ export function HomeSourceActions({ source, root, isDefault, isSyncing, onDefaul
         }} />
       </IconButton></span>
     </Tooltip>
-    <BrowserPermissionsSourceButtonX root={root} source={source} />
     <Tooltip title={t("sourcePermissions.configure")}>
       <IconButton size="small" aria-label={t("sourcePermissions.configure")} onClick={onConfigure}>
         <SettingsOutlinedIcon fontSize="small" />

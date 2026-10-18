@@ -17,11 +17,14 @@ import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexCommandCandidate } from "@open-codex-ui/opencodex-protocol";
+import { supportsBrowserPermissions } from "@open-codex-ui/opencodex-protocol";
 
 import type { RootStore } from "../../stores/RootStore";
 import { SourceConfigurationFields, type SourceDraft } from "./sourceConfiguration";
 import { SourcePermissionsStore } from "../../stores/app/SourcePermissionsStore";
 import { SourcePermissionsPanelX } from "./SourcePermissionsPanel";
+import { BrowserPermissionsStore } from "../../stores/app/BrowserPermissionsStore";
+import { BrowserPermissionsPanelX } from "../browser/BrowserPermissionsPanel";
 
 type EditSourceDialogProps = {
   open: boolean;
@@ -62,13 +65,17 @@ export function EditSourceDialog({
   const { t } = useTranslation();
   const [tab, setTab] = useState("connection");
   const [permissions] = useState(() => new SourcePermissionsStore(store, sourceId));
+  const [browser] = useState(() => new BrowserPermissionsStore(store, { sourceId, threadId: null }));
   const canConnect = store.sourcesStore.isSourceReady(sourceId);
+  const canConfigureBrowser = supportsBrowserPermissions(store.sourcesStore.findSource(sourceId));
+  const busy = permissions.isSaving || browser.busy;
 
   /** Prevents dismissal while a native defaults mutation is in flight. */
-  function handleClose(): void { if (!permissions.isSaving) onClose(); }
+  function handleClose(): void { if (!busy) onClose(); }
   /** Keeps connection changes and native defaults in separate forms. */
   function handleTab(_event: SyntheticEvent, value: string): void {
-    if (!permissions.isSaving && (value === "connection" || value === "permissions")) setTab(value);
+    if (busy) return;
+    if (value === "connection" || value === "permissions" || (value === "browser" && canConfigureBrowser)) setTab(value);
   }
 
   let unavailableContent = null;
@@ -94,13 +101,17 @@ export function EditSourceDialog({
     </Box>
   );
   if (tab === "permissions") content = <SourcePermissionsPanelX permissions={permissions} root={store} onClose={handleClose} />;
+  if (tab === "browser") content = <BrowserPermissionsPanelX state={browser} onClose={handleClose} />;
+  let browserTab = null;
+  if (canConfigureBrowser) browserTab = <Tab value="browser" label={t("browserPermissions.title")} disabled={!canConnect || busy} />;
 
   return (
     <Dialog open={open} fullWidth maxWidth="sm" onClose={handleClose} aria-labelledby="source-configuration-title">
       <DialogTitle id="source-configuration-title">{t("sourcePermissions.title", { name: sourceName })}</DialogTitle>
-      <Tabs value={tab} onChange={handleTab} variant="fullWidth" aria-label={t("sourcePermissions.configure")}>
-        <Tab value="connection" label={t("sourcePermissions.connection")} disabled={permissions.isSaving} />
-        <Tab value="permissions" label={t("sourcePermissions.permissions")} disabled={!canConnect || permissions.isSaving} />
+      <Tabs value={tab} onChange={handleTab} variant="scrollable" scrollButtons="auto" aria-label={t("sourcePermissions.configure")}>
+        <Tab value="connection" label={t("sourcePermissions.connection")} disabled={busy} />
+        <Tab value="permissions" label={t("sourcePermissions.permissions")} disabled={!canConnect || busy} />
+        {browserTab}
       </Tabs>
       {content}
     </Dialog>

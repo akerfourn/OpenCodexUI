@@ -1,8 +1,10 @@
 # Source defaults
 
 In **Home → Sources**, select a source's **Configure** icon. The window has
-separate **Connection** and **Default permissions** tabs. Its title identifies
-the source being configured.
+separate **Connection** and **Default permissions** tabs. Sources with local
+file access also expose a **Browser permissions** tab. Its title identifies
+the source being configured. Browser rules use the same editor as the
+conversation menu, scoped to the source's global rules in this tab.
 
 Connection settings belong to OpenCodexUI. Default permissions are read and
 written through that source's Codex app-server API, in its user configuration.

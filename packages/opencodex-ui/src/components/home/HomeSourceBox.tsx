@@ -364,7 +364,7 @@ export function HomeSourceBox({
           </Box>
         ) : null}
         </Box>
-        <HomeSourceActionsX source={source} root={store} isDefault={isDefault} isSyncing={isSyncing}
+        <HomeSourceActionsX isDefault={isDefault} isSyncing={isSyncing}
           onDefault={handleSetDefaultSource} onSync={handleSyncSource} onConfigure={handleEdit} />
       </Box>
 

@@ -1,9 +1,9 @@
 # Permissions du navigateur
 
 Les sources locales et les commandes personnalisées avec accès local disposent
-d’un bouton « Permissions du navigateur — source » sur leur carte dans Home.
-Le menu d’une conversation propose « Permissions du navigateur — chat » pour
-les mêmes sources. Les brouillons sans conversation Codex ne sont pas concernés.
+d’un onglet « Permissions du navigateur » dans Home → Sources → Configurer.
+Le menu « … » d’une conversation propose « Permissions du navigateur » pour les
+mêmes sources. Les brouillons sans conversation Codex ne sont pas concernés.
 
 L’éditeur permet de consulter, autoriser, bloquer ou réinitialiser une décision
 pour l’accès à un site, les téléchargements, l’envoi de fichiers ou l’accès CDP.

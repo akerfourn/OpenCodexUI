@@ -57,7 +57,7 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   const canConfigureBrowser = supportsBrowserPermissions(root.sourcesStore.findSource(sourceId));
   const browserAction = canConfigureBrowser ? (
     <MenuItem disabled={isLocalDraft || isSubmitting || project.isReadOnlyFromCache} onClick={handleBrowser}>
-      <ListItemIcon><LanguageOutlinedIcon fontSize="small" /></ListItemIcon>{t("browserPermissions.chatTitle")}
+      <ListItemIcon><LanguageOutlinedIcon fontSize="small" /></ListItemIcon>{t("browserPermissions.title")}
     </MenuItem>
   ) : null;
   const browserDialog = browserOpen && sourceId !== null ? (

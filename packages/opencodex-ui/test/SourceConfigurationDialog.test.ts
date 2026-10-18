@@ -164,8 +164,67 @@ describe("source configuration and compact actions", () => {
     render(true);
 
     expect((control("sourcePermissions.permissions", "tab") as HTMLButtonElement).disabled).toBe(true);
+    expect((control("browserPermissions.title", "tab") as HTMLButtonElement).disabled).toBe(true);
     expect(document.body.textContent).toContain("sourcePermissions.unavailable");
     expect(fixture.request).not.toHaveBeenCalled();
     expect((control("sources.save") as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("should host browser permissions inside source settings without an extra card action or nested dialog", async () => {
+    render(false);
+    expect(document.querySelector('button[aria-label="browserPermissions.title"]')).toBeNull();
+    render(true);
+    expect(fixture.request).not.toHaveBeenCalled();
+    fixture.request.mockResolvedValueOnce({ context: { sourceId: "source-a", threadId: null },
+      file: { path: "/native/home/browser/config.toml", revision: "browser-1", entries: [] }, global: null });
+
+    await act(async () => { control("browserPermissions.title", "tab").click(); });
+
+    expect(fixture.request.mock.calls).toEqual([[{ type: "browserPermissions.read",
+      context: { sourceId: "source-a", threadId: null } }]]);
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    expect(document.body.textContent).toContain("browserPermissions.globalRules");
+    expect(document.body.textContent).not.toContain("browserPermissions.chatRules");
+  });
+
+  it("should preserve browser reload feedback across tabs and prevent dismissal during a rule write", async () => {
+    const browserSnapshot = { context: { sourceId: "source-a", threadId: null },
+      file: { path: "/native/home/browser/config.toml", revision: "browser-1", entries: [] }, global: null };
+    fixture.request.mockResolvedValue(browserSnapshot);
+    render(true);
+    await act(async () => { control("browserPermissions.title", "tab").click(); });
+    const input = document.querySelector<HTMLInputElement>('input[placeholder="https://example.org"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "https://example.org");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    let finish!: (value: unknown) => void;
+    fixture.request.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+
+    await act(async () => { control("browserPermissions.add").click(); });
+
+    expect(fixture.request.mock.calls[1]![0]).toEqual({ type: "browserPermissions.change",
+      context: { sourceId: "source-a", threadId: null }, revision: "browser-1",
+      change: { resource: "origins", pattern: "https://example.org", decision: "allowed" } });
+    expect((control("sourcePermissions.connection", "tab") as HTMLButtonElement).disabled).toBe(true);
+    expect((control("browserPermissions.close") as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { finish(browserSnapshot); });
+    expect(document.body.textContent).toContain("browserPermissions.reloadNotice");
+    await act(async () => { control("sourcePermissions.connection", "tab").click(); });
+    await act(async () => { control("browserPermissions.title", "tab").click(); });
+    expect(document.body.textContent).toContain("browserPermissions.reloadNotice");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("should hide browser settings when the source has no host-local file access", () => {
+    vi.mocked(fixture.root.sourcesStore.findSource).mockReturnValue({ ...fixture.source, kind: "custom",
+      settings: { color: "blue", commandMode: "custom", command: "remote-codex", hasLocalAccess: false,
+        openFileCommand: null, openFolderCommand: null } });
+
+    render(true);
+
+    expect([...document.querySelectorAll('[role="tab"]')].map(tab => tab.textContent))
+      .toEqual(["sourcePermissions.connection", "sourcePermissions.permissions"]);
+    expect(fixture.request).not.toHaveBeenCalled();
   });
 });

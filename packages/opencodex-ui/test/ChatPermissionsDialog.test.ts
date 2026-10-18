@@ -8,6 +8,7 @@ import { ProjectStore } from "../src/stores/project/ProjectStore";
 import { ChatEventLogStore } from "../src/stores/chat/ChatEventLogStore";
 import { createThread } from "./chatStore/chatStoreFixtures";
 import { createPermissionsFixture, permissionSnapshot } from "./threadPermissions.fixture";
+import { permissionSource } from "./sourcePermissions.fixture";
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
@@ -182,5 +183,24 @@ describe("chat permission controls", () => {
 
     expect(permissionsItem().getAttribute("aria-disabled")).toBe("true");
     expect(fixture.request).not.toHaveBeenCalled();
+  });
+
+  it("should open browser rules from the short menu label while preserving the chat scope", async () => {
+    fixture.root.sourcesStore.findSource = () => ({ ...permissionSource(), id: "source-1" });
+    fixture.request.mockResolvedValueOnce({ context: { sourceId: "source-1", threadId: "thread-1" },
+      file: { path: "/browser/sessions/thread-1.toml", revision: "browser-1", entries: [] },
+      global: { path: "/browser/config.toml", revision: "global-1", entries: [] } });
+    await openMenu();
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .find(element => element.textContent === "browserPermissions.title");
+    expect(item).toBeDefined();
+
+    await act(async () => { item!.click(); });
+
+    expect(fixture.request).toHaveBeenCalledWith({ type: "browserPermissions.read",
+      context: { sourceId: "source-1", threadId: "thread-1" } });
+    expect(document.querySelector('[role="dialog"] h2')?.textContent).toBe("browserPermissions.title");
+    expect(document.body.textContent).toContain("browserPermissions.chatRules");
+    expect(document.body.textContent).toContain("browserPermissions.inherited");
   });
 });

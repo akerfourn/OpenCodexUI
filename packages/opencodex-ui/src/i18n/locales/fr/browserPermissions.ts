@@ -1,7 +1,6 @@
 export const frBrowserPermissions = {
   browserPermissions: {
-    sourceTitle: "Permissions du navigateur — source",
-    chatTitle: "Permissions du navigateur — chat",
+    title: "Permissions du navigateur",
     description: "Gérez les décisions enregistrées pour le navigateur. Réinitialiser une règle permet une nouvelle demande d’autorisation. D’autres politiques Codex peuvent toujours restreindre l’accès.",
     resource: "Permission",
     resources: {
@@ -11,7 +10,7 @@ export const frBrowserPermissions = {
       full_cdp: "Accès avancé au navigateur (CDP)"
     },
     inherited: "Règles globales de la source",
-    precedence: "Un refus, global ou dans ce chat, est prioritaire sur une autorisation. Modifiez les règles globales depuis la carte de la source.",
+    precedence: "Un refus, global ou dans ce chat, est prioritaire sur une autorisation. Modifiez les règles globales depuis Configurer → Permissions du navigateur dans les paramètres de la source.",
     globalRules: "Décisions globales",
     chatRules: "Décisions propres à ce chat",
     empty: "Aucune décision enregistrée pour cette permission.",

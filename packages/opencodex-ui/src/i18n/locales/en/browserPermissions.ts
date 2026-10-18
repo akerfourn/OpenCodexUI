@@ -3,8 +3,7 @@ import type { frBrowserPermissions } from "../fr/browserPermissions.js";
 
 export const enBrowserPermissions = {
   browserPermissions: {
-    sourceTitle: "Browser permissions — source",
-    chatTitle: "Browser permissions — chat",
+    title: "Browser permissions",
     description: "Manage saved browser decisions. Resetting a rule allows a new approval request. Other Codex policies can still restrict access.",
     resource: "Permission",
     resources: {
@@ -14,7 +13,7 @@ export const enBrowserPermissions = {
       full_cdp: "Advanced browser access (CDP)"
     },
     inherited: "Global source rules",
-    precedence: "A denial, globally or in this chat, takes precedence over an approval. Edit global rules from the source card.",
+    precedence: "A denial, globally or in this chat, takes precedence over an approval. Edit global rules under Configure → Browser permissions in the source settings.",
     globalRules: "Global decisions",
     chatRules: "Decisions for this chat",
     empty: "No saved decisions for this permission.",
