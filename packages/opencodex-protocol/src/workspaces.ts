@@ -1,3 +1,5 @@
+import type { OpenCodexWorkspaceWorkStatus } from "./workspaceWorkStatus.js";
+
 /** Source-owned physical context; principal role is independent of Git topology. */
 export interface OpenCodexProjectWorkspace {
   /** Opaque stable workspace identifier. */
@@ -16,6 +18,10 @@ export interface OpenCodexProjectWorkspace {
   managed: boolean;
   /** Logical removal timestamp; physical availability is checked in the source. */
   removedAt: string | null;
+  /** Manual organizational status; absent legacy payloads are active. */
+  workStatus?: OpenCodexWorkspaceWorkStatus;
+  /** End of the current completed period; cleared when work is explicitly reopened. */
+  completedAt?: string | null;
   /** A durable removal currently prevents using this checkout. */
   removalPending?: boolean;
   /** A durable physical move prevents tools from using either checkout path. */

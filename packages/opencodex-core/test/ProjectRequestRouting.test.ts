@@ -19,7 +19,11 @@ const creationInput = {
 };
 const preferences = {};
 const groupPatch = { name: "Renamed", isCollapsed: true };
+const workStatusInput = { projectId: "project", workspaceId: "workspace", sourceId: "source", workspacePath: "/workspace",
+  workStatus: "completed" as const, expectedWorkStatus: "active" as const, expectedCompletedAt: null };
 const cases: RouteCase[] = [
+  { request: { type: "projectWorkspaces.workStatus.update", input: workStatusInput },
+    effect: "workspaces.setWorkStatus", args: [workStatusInput] },
   { request: { type: "projectWorkspaces.lock.read", projectId: "project", workspaceId: "workspace", sourceId: "source" },
     effect: "workspaceLocks.read", args: ["project", "workspace", "source"] },
   { request: { type: "projectWorkspaces.lock.update", input: { projectId: "project", workspaceId: "workspace", sourceId: "source",
@@ -94,7 +98,7 @@ function createProjectRoutingFixture() {
     },
     workspaces: {
       discover: vi.fn(), create: vi.fn(), pendingCreations: vi.fn(), reconcileCreation: vi.fn(),
-      rename: vi.fn(), list: vi.fn(), activity: vi.fn(), reconcileWorkspace: vi.fn(), select: vi.fn(), reconcile: vi.fn()
+      rename: vi.fn(), setWorkStatus: vi.fn(), list: vi.fn(), activity: vi.fn(), reconcileWorkspace: vi.fn(), select: vi.fn(), reconcile: vi.fn()
     },
     groups: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), assignProject: vi.fn() },
     context: { sync: vi.fn(), pickFolder: vi.fn() }

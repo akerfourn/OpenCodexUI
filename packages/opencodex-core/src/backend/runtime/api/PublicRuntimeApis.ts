@@ -1,5 +1,6 @@
 import type { OpenCodexCommandExecutionMode, OpenCodexWorkspacePreparationInput } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceWorkStatusInput } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceDiscoveryResult } from "@open-codex-ui/opencodex-protocol";
 import type {
   OpenCodexApprovalDecision,
@@ -79,6 +80,8 @@ import type {
 
 /** Preparatory workspace catalogue, selection, and explicit execution recovery. */
 export interface WorkspacesApi {
+  /** Persists explicit work progress without performing source operations. */
+  setWorkStatus(input: OpenCodexWorkspaceWorkStatusInput): Promise<OpenCodexProjectWorkspace>;
   /** Reports source-independent cached activity, including archived and historical contexts. */
   activity(projectId: string): Promise<OpenCodexWorkspaceActivity[]>;
   /** Renames secondary display metadata within the explicit logical project. */

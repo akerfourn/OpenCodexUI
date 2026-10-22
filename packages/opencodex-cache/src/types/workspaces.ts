@@ -5,6 +5,7 @@ import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceExecutionContext, Ope
   "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceTransitionRepository } from "./workspaceTransitions.js";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceWorkStatusInput } from "@open-codex-ui/opencodex-protocol";
 
 /** Durable reservation retained across transport failures and application restarts. */
 export interface WorkspaceExecutionReservation extends OpenCodexWorkspaceExecutionContext {
@@ -43,6 +44,8 @@ export interface WorkspaceCacheRepository {
   activity(projectId: string): Promise<OpenCodexWorkspaceActivity[]>;
   /** Renames an available secondary workspace of the explicit project. */
   rename(projectId: string, workspaceId: string, name: string): Promise<void>;
+  /** Sets manual work progress atomically without changing source execution or Git state. */
+  setWorkStatus(input: OpenCodexWorkspaceWorkStatusInput): Promise<OpenCodexProjectWorkspace>;
   /** Reads a workspace by opaque identity. */
   get(workspaceId: string): Promise<OpenCodexProjectWorkspace | null>;
   /** Finds the current stable association of a known thread. */

@@ -2,6 +2,16 @@ import type { TranslationShape } from "../../translationShape.js";
 import type { frWorkspaces } from "../fr/workspaces.js";
 
 export const enWorkspaces = {
+  "workspaceWorkStatus": {
+    "active": "In progress",
+    "completed": "Completed",
+    "complete": "Mark as completed",
+    "reopen": "Mark as in progress",
+    "completedAt": "Completed on {{date}}",
+    "filter": "Work status",
+    "all": "All statuses",
+    "help": "This status describes your work. It does not stop activities, lock the workspace or delete anything. Reopening is manual. The completed-work filter can be combined with the cleanup filter; the delay still uses the last known activity."
+  },
   "workspaceManagement": {
     "title": "Workspace activity and cleanup",
     "help": "Last activity comes from cached Codex conversations and turns, including archived conversations. File changes and external tools are not tracked. Candidates are only suggestions for inspection: removal will recheck files, locks and source activity. Nothing is deleted automatically.",

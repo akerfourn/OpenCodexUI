@@ -3,7 +3,7 @@ import { observer } from "mobx-react-lite";
 import { Alert, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
   FormControlLabel, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceWorkStatus } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { matchingWorkspaceActivity, workspaceManagementStatus } from "../../stores/project/workspaceManagement";
 import { WorkspaceManagementRowX } from "./WorkspaceManagementRow";
@@ -16,6 +16,7 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
   const store = project.workspaces;
   const [inactivityDays, setInactivityDays] = useState(30);
   const [onlyCandidates, setOnlyCandidates] = useState(false);
+  const [workStatusFilter, setWorkStatusFilter] = useState<"all" | OpenCodexWorkspaceWorkStatus>("all");
   const [now, setNow] = useState(Date.now);
   const [properties, setProperties] = useState<OpenCodexProjectWorkspace | null>(null);
   const [removing, setRemoving] = useState<OpenCodexProjectWorkspace | null>(null);
@@ -35,6 +36,10 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
   function handleCloseProperties(): void { setProperties(null); void handleRefresh(); }
   /** Rechecks the retained catalogue instead of hiding an uncertain deletion. */
   function handleCloseRemoval(): void { setRemoving(null); void handleRefresh(); }
+  /** Persists a user declaration while retaining the current inventory and cleanup guards. */
+  function handleWorkStatus(workspace: OpenCodexProjectWorkspace, status: OpenCodexWorkspaceWorkStatus): void {
+    void store.setWorkStatus(workspace, status);
+  }
   const entries = store.workspaces.map(workspace => ({ workspace,
     activity: matchingWorkspaceActivity(workspace, store.activityById.get(workspace.id)), status: workspaceManagementStatus({
       workspace, activity: store.activityById.get(workspace.id), lock: store.lockStates.get(workspace.id),
@@ -42,10 +47,12 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
       sourceAvailable: project.isCodexSourceReady && !project.isReadOnlyFromCache && workspace.sourceId === project.project.sourceId,
       checking: store.isRefreshingManagement || store.loadingLockIds.has(workspace.id), inactivityDays, now
     }) }));
-  const visible = entries.filter(entry => !onlyCandidates || entry.status === "candidate");
-  const candidateCount = entries.filter(entry => entry.status === "candidate").length;
+  const filtered = entries.filter(entry => workStatusFilter === "all" || (entry.workspace.workStatus ?? "active") === workStatusFilter);
+  const visible = filtered.filter(entry => !onlyCandidates || entry.status === "candidate");
+  const candidateCount = filtered.filter(entry => entry.status === "candidate").length;
   const rows = visible.map(entry => <WorkspaceManagementRowX key={entry.workspace.id} {...entry}
-    disabled={busy} onProperties={setProperties} onRemove={setRemoving} />);
+    disabled={busy} workStatusDisabled={busy}
+    onWorkStatus={handleWorkStatus} onProperties={setProperties} onRemove={setRemoving} />);
   const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
   const loading = store.isRefreshingManagement ? <CircularProgress size={20} aria-label={t("workspaceManagement.refresh")} /> : null;
   const empty = visible.length === 0 && !store.isRefreshingManagement
@@ -60,6 +67,13 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
     <DialogContent>
       <Stack spacing={2} sx={{ pt: 1 }}>
         <Alert severity="info">{t("workspaceManagement.help")}</Alert>
+        <Typography variant="body2" color="text.secondary">{t("workspaceWorkStatus.help")}</Typography>
+        <TextField select label={t("workspaceWorkStatus.filter")} value={workStatusFilter}
+          onChange={event => setWorkStatusFilter(event.target.value as "all" | OpenCodexWorkspaceWorkStatus)} disabled={busy}>
+          <MenuItem value="all">{t("workspaceWorkStatus.all")}</MenuItem>
+          <MenuItem value="active">{t("workspaceWorkStatus.active")}</MenuItem>
+          <MenuItem value="completed">{t("workspaceWorkStatus.completed")}</MenuItem>
+        </TextField>
         <TextField select label={t("workspaceManagement.threshold")} value={inactivityDays}
           onChange={event => setInactivityDays(Number(event.target.value))} disabled={busy}>
           {[7, 30, 90].map(days => <MenuItem key={days} value={days}>

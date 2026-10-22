@@ -58,6 +58,16 @@ describe("workspace execution", () => {
     expect(clients.ensureClient).not.toHaveBeenCalled();
   });
 
+  it("should change manual progress without touching Codex and retain the existing thread workspace", async () => {
+    const workspace = (await cache.workspaces.get(workspaceId))!;
+    const completed = await service.setWorkStatus({ projectId: workspace.projectId, workspaceId, sourceId: "source-a",
+      workspacePath: workspace.path, workStatus: "completed", expectedWorkStatus: "active", expectedCompletedAt: null });
+    expect(completed.workStatus).toBe("completed");
+    expect(completed.completedAt).toEqual(expect.any(String));
+    expect((await cache.workspaces.getForThread("thread-a"))?.id).toBe(workspaceId);
+    expect(clients.ensureClient).not.toHaveBeenCalled();
+  });
+
   /** Exercises the production composition with the same persisted workspace guard. */
   function createHandler(): ThreadRuntimeHandler {
     return new ThreadRuntimeHandler({

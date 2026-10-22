@@ -1,5 +1,6 @@
 import type { OpenCodexWorkspaceRoot } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceWorkStatusInput } from "@open-codex-ui/opencodex-protocol";
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import { WorkspaceDiscoveryService } from "./WorkspaceDiscoveryService.js";
 import { WorkspaceCreationService } from "./WorkspaceCreationService.js";
@@ -99,6 +100,11 @@ export class WorkspaceExecutionService {
   /** Updates local display metadata without changing the source execution context. */
   async rename(projectId: string, workspaceId: string, name: string): Promise<void> {
     await this.repository.rename(projectId, workspaceId, name);
+  }
+
+  /** Changes organizational metadata without resuming, stopping or moving any conversation. */
+  async setWorkStatus(input: OpenCodexWorkspaceWorkStatusInput): Promise<OpenCodexProjectWorkspace> {
+    return await this.repository.setWorkStatus(input);
   }
 
   /** Lists the catalogue independently of source connectivity. */

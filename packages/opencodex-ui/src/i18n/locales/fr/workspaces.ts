@@ -1,4 +1,14 @@
 export const frWorkspaces = {
+  "workspaceWorkStatus": {
+    "active": "En cours",
+    "completed": "Terminé",
+    "complete": "Marquer comme terminé",
+    "reopen": "Remettre en cours",
+    "completedAt": "Terminé le {{date}}",
+    "filter": "Statut du travail",
+    "all": "Tous les statuts",
+    "help": "Ce statut décrit votre travail. Il n’arrête aucune activité, ne verrouille pas le workspace et ne supprime rien. Le retour en cours est manuel. Le filtre des travaux terminés peut être combiné au filtre de nettoyage ; le délai reste fondé sur la dernière activité connue."
+  },
   "workspaceManagement": {
     "title": "Activité et nettoyage des workspaces",
     "help": "La dernière activité correspond aux conversations et aux tours Codex conservés dans le cache, y compris les conversations archivées. Les modifications de fichiers et les outils externes ne sont pas suivis. Les candidats sont uniquement à examiner : la suppression vérifiera à nouveau les fichiers, les verrous et les activités dans la source. Aucune suppression n’est automatique.",

@@ -26,6 +26,45 @@ const workspaces: OpenCodexProjectWorkspace[] = [
 ];
 
 describe("workspace UI orchestration", () => {
+  it("should persist a plain reviewed work-status snapshot offline and refresh the resulting metadata", async () => {
+    const { root, project, request } = fixture();
+    vi.mocked(root.sourcesStore.isSourceReady).mockReturnValue(false);
+    let completed = false;
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.workStatus.update") {
+        expect(isObservable(input.input)).toBe(false);
+        expect(() => structuredClone(input)).not.toThrow();
+        completed = true;
+      }
+      if (input.type === "projectWorkspaces.list") return workspaces.map(workspace => ({ ...workspace,
+        workStatus: workspace.id === "B" && completed ? "completed" : "active",
+        completedAt: workspace.id === "B" && completed ? "2026-10-22T12:00:00Z" : null }));
+      return [];
+    });
+    await project.workspaces.load();
+    await project.workspaces.setWorkStatus(project.workspaces.workspaces.find(item => item.id === "B")!, "completed");
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.workStatus.update", input: {
+      projectId: "project", workspaceId: "B", sourceId: "source", workspacePath: "/B", workStatus: "completed",
+      expectedWorkStatus: "active", expectedCompletedAt: null
+    } });
+    expect(project.workspaces.workspaces.find(item => item.id === "B")?.workStatus).toBe("completed");
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.lock.read")).toBe(false);
+    expect(project.workspaces.error).toBeNull();
+  });
+
+  it("should refresh a lost status-write response without replaying it or discarding the error", async () => {
+    const { project, request } = fixture();
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.workStatus.update") throw new Error("reply lost");
+      if (input.type === "projectWorkspaces.list") return workspaces.map(workspace => ({ ...workspace,
+        workStatus: "completed", completedAt: "2026-10-22T12:00:00Z" }));
+      return [];
+    });
+    await project.workspaces.setWorkStatus(workspaces[1]!, "completed");
+    expect(project.workspaces.error).toBe("reply lost");
+    expect(project.workspaces.workspaces.find(item => item.id === "B")?.workStatus).toBe("completed");
+    expect(request.mock.calls.filter(([input]) => input.type === "projectWorkspaces.workStatus.update")).toHaveLength(1);
+  });
   it("should refresh cached activity and native locks without invoking maintenance or changing selection", async () => {
     const { project, request } = fixture();
     request.mockImplementation(async input => {

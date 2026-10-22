@@ -3,6 +3,7 @@ import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import ChevronRightOutlinedIcon from "@mui/icons-material/ChevronRightOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
+import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import { Box, IconButton, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useState, type MouseEvent } from "react";
@@ -49,6 +50,18 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const lockDialog = lockSnapshot === null ? null
     : <WorkspaceLockDialogX project={project} state={lockSnapshot} onClose={() => setLockSnapshot(null)} />;
   const lockLabel = locked ? t("workspaces.unlock") : t("workspaces.lock");
+  const completed = workspace?.workStatus === "completed";
+  const workStatusBadge = completed ? <Tooltip title={t("workspaceWorkStatus.completed")}>
+    <TaskAltOutlinedIcon fontSize="small" color="success" aria-label={t("workspaceWorkStatus.completed")} />
+  </Tooltip> : null;
+  const workStatusAction = completed ? "workspaceWorkStatus.reopen" : "workspaceWorkStatus.complete";
+  const statusDisabled = workspace === null || workspace.removedAt !== null || workspace.movePending === true
+    || workspace.removalPending === true || project.workspaces.isBusy;
+  /** Changes the fixed workspace's manual progress without acting on its conversations or files. */
+  function handleWorkStatus(): void {
+    setAnchor(null);
+    if (workspace !== null) void project.workspaces.setWorkStatus(workspace, completed ? "active" : "completed");
+  }
   let lockAction = null;
   if (workspace !== null && !workspace.isPrimary && workspace.removedAt === null) {
     let label = t("workspaces.lockUnavailable");
@@ -130,7 +143,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
           {expandIcon}
         </IconButton>
         <Typography variant="subtitle2" noWrap sx={{ flex: 1 }} title={name}>{name}</Typography>
-        {lockBadge}
+        {workStatusBadge}{lockBadge}
         <Typography variant="caption" color="text.secondary">{group.threads.length}</Typography>
         <Tooltip title={newConversationLabel}>
           <span style={{ display: "inline-flex" }}>
@@ -145,6 +158,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
       {threads}{empty}{properties}{removal}{relocation}{movement}{lockDialog}{preparation}
       <Menu open={anchor !== null} anchorEl={anchor} onClose={() => setAnchor(null)}>
         <MenuItem onClick={handleProperties}>{t("workspaces.properties")}</MenuItem>
+        <MenuItem disabled={statusDisabled} onClick={handleWorkStatus}>{t(workStatusAction)}</MenuItem>
         <MenuItem disabled={disabled} onClick={handlePrepare}>{t("workspacePreparation.title")}</MenuItem>
         {lockAction}{moveAction}{relocateAction}{removeAction}
       </Menu>

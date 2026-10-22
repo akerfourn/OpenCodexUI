@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceWorkStatus } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { workspaceLabel } from "../../stores/project/threads/workspaceThreadGroups";
+import { WorkspaceWorkStatusControlX } from "./WorkspaceWorkStatusControl";
 
 /** Edits secondary names while presenting the source-owned physical path as a property. */
 export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
@@ -13,6 +14,10 @@ export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
   const { t } = useTranslation();
   const store = project.workspaces;
   const [name, setName] = useState(workspaceLabel(workspace, t("workspaces.primary")));
+  const current = store.workspaces.find(item => item.id === workspace.id);
+  const statusWorkspace = current ?? workspace;
+  const statusDisabled = store.isBusy || current === undefined
+    || current.sourceId !== workspace.sourceId || current.path !== workspace.path;
   useEffect(() => {
     if (!workspace.isPrimary && workspace.removedAt === null) void store.loadLockState(workspace.id);
   }, [store, workspace.id, workspace.isPrimary, workspace.removedAt]);
@@ -35,11 +40,17 @@ export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
     await store.rename(workspace.id, name);
     if (store.error === null) onClose();
   }
+  /** Changes progress independently of renaming, including for principal and imported workspaces. */
+  function handleWorkStatus(target: OpenCodexProjectWorkspace, status: OpenCodexWorkspaceWorkStatus): void {
+    void store.setWorkStatus(target, status);
+  }
   return (
     <Dialog open onClose={store.isBusy ? undefined : onClose} fullWidth maxWidth="sm">
       <DialogTitle>{t("workspaces.properties")}</DialogTitle>
       <DialogContent>
         {help}{lockInfo}
+        <WorkspaceWorkStatusControlX workspace={statusWorkspace} disabled={statusDisabled} onChange={handleWorkStatus} />
+        <Typography variant="caption" color="text.secondary">{t("workspaceWorkStatus.help")}</Typography>
         <TextField label={t("workspaces.name")} value={name} fullWidth margin="normal"
           disabled={readOnly || store.isBusy} onChange={(event) => setName(event.target.value)} />
         <TextField label={t("workspaces.destination")} value={workspace.path} fullWidth margin="normal"

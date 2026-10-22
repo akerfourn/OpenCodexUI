@@ -66,7 +66,8 @@ describe("workspace persistence", () => {
 
     expect(await workspaces.list("legacy-hash")).toEqual([{
       id: "primary:legacy-hash", projectId: "legacy-hash", sourceId: "source-a",
-      path: "/repo", name: null, isPrimary: true, managed: false, removedAt: null
+      path: "/repo", name: null, isPrimary: true, managed: false, removedAt: null,
+      workStatus: "active", completedAt: null
     }]);
     expect(await workspaces.getForThread("legacy-thread")).toMatchObject({ projectId: "legacy-hash" });
     expect(database.prepare("SELECT id, display_name FROM projects").all()).toEqual([

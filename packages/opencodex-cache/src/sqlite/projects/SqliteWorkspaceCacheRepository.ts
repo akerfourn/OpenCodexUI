@@ -1,5 +1,7 @@
 import { relocateWorkspace } from "./relocateWorkspace.js";
 import { readWorkspaceActivity } from "./workspaceActivity.js";
+import { updateWorkspaceWorkStatus } from "./workspaceWorkStatus.js";
+import type { OpenCodexWorkspaceWorkStatusInput } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 import { SqliteWorkspaceMoveRepository } from "./SqliteWorkspaceMoveRepository.js";
 import { validateWorkspaceName } from "./workspaceName.js";
@@ -17,6 +19,7 @@ import { SqliteWorkspaceTransitionRepository } from "./SqliteWorkspaceTransition
 /** SQL projection shared by catalogue and execution-context reads. */
 const workspaceColumns = `id, project_id AS projectId, source_id AS sourceId,
   path, name, is_primary AS isPrimary, managed, removed_at AS removedAt, compose_used AS composeUsed,
+  work_status AS workStatus, completed_at AS completedAt,
   EXISTS(SELECT 1 FROM workspace_removals WHERE workspace_id = project_workspaces.id) AS removalPending,
   EXISTS(SELECT 1 FROM workspace_moves WHERE workspace_id = project_workspaces.id) AS movePending`;
 /** SQL projection for durable execution reservations. */
@@ -95,6 +98,14 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
       WHERE id = ? AND project_id = ? AND is_primary = 0 AND removed_at IS NULL`)
       .run(normalized, workspaceId, projectId);
     if (result.changes !== 1) throw new Error("Only an available secondary workspace of this project can be renamed.");
+  }
+
+  /** Returns the committed metadata without contacting the source or rewriting execution history. */
+  async setWorkStatus(input: OpenCodexWorkspaceWorkStatusInput): Promise<OpenCodexProjectWorkspace> {
+    return this.database.transaction(() => {
+      updateWorkspaceWorkStatus(this.database, input);
+      return this.requireWorkspace(input.workspaceId);
+    })();
   }
 
   /** Reads a workspace without interpreting its source-local path. */

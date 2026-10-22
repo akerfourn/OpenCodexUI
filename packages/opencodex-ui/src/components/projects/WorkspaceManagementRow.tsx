@@ -1,15 +1,18 @@
 import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
-import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceActivity, OpenCodexWorkspaceWorkStatus } from "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceManagementStatus } from "../../stores/project/workspaceManagement";
 import { workspaceLabel } from "../../stores/project/threads/workspaceThreadGroups";
+import { WorkspaceWorkStatusControlX } from "./WorkspaceWorkStatusControl";
 
 /** Shows one source-owned checkout and keeps inspection separate from confirmed deletion. */
-export function WorkspaceManagementRow({ workspace, activity, status, disabled, onProperties, onRemove }: {
+export function WorkspaceManagementRow({ workspace, activity, status, disabled, workStatusDisabled, onWorkStatus, onProperties, onRemove }: {
   workspace: OpenCodexProjectWorkspace; activity?: OpenCodexWorkspaceActivity; status: WorkspaceManagementStatus;
   disabled: boolean; onProperties(workspace: OpenCodexProjectWorkspace): void;
   onRemove(workspace: OpenCodexProjectWorkspace): void;
+  workStatusDisabled: boolean;
+  onWorkStatus(workspace: OpenCodexProjectWorkspace, status: OpenCodexWorkspaceWorkStatus): void;
 }) {
   const { t, i18n } = useTranslation();
   const name = workspaceLabel(workspace, t("workspaces.primary"));
@@ -35,6 +38,7 @@ export function WorkspaceManagementRow({ workspace, activity, status, disabled, 
         <Chip size="small" label={t(`workspaceManagement.status.${status}`)} />
       </Stack>
       <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>{workspace.path}</Typography>
+      <WorkspaceWorkStatusControlX workspace={workspace} disabled={workStatusDisabled} onChange={onWorkStatus} />
       <Typography variant="body2" color="text.secondary">
         {t("workspaceManagement.lastActivity", { date: lastActivity })}</Typography>
       {count}

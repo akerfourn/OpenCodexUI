@@ -4,6 +4,7 @@ import type {
   OpenCodexWorkspaceStart, OpenCodexWorkspaceRoot, OpenCodexWorkspaceLockState
 } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceWorkStatus } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
 import type { ProjectStore } from "./ProjectStore";
 
@@ -291,6 +292,18 @@ export class ProjectWorkspacesStore {
     });
   }
 
+  /** Changes only the reviewed organizational state; a fresh catalogue also resolves a lost response. */
+  async setWorkStatus(workspace: OpenCodexProjectWorkspace, workStatus: OpenCodexWorkspaceWorkStatus): Promise<void> {
+    const input = {
+      projectId: this.project.project.id, workspaceId: workspace.id, sourceId: workspace.sourceId,
+      workspacePath: workspace.path, workStatus, expectedWorkStatus: workspace.workStatus ?? "active",
+      expectedCompletedAt: workspace.completedAt ?? null
+    };
+    await this.perform(async () => {
+      await this.root.request({ type: "projectWorkspaces.workStatus.update", input });
+    }, true);
+  }
+
   /** Selects a draft context or requests a verified transition for the selected conversation. */
   async select(workspaceId: string, threadId = this.project.selectedChatId): Promise<void> {
     if (threadId !== null) {
@@ -344,9 +357,9 @@ export class ProjectWorkspacesStore {
     this.loadingLockIds.clear();
   }
 
-  /** Runs one user operation and always refreshes its durable outcome. */
-  private async perform(action: () => Promise<void>): Promise<void> {
-    if (this.isBusy || this.project.isReadOnlyFromCache) return;
+  /** Refreshes durable outcomes; only explicitly local metadata actions may run without a live source. */
+  private async perform(action: () => Promise<void>, allowCachedMetadata = false): Promise<void> {
+    if (this.isBusy || (this.project.isReadOnlyFromCache && !allowCachedMetadata)) return;
     this.isBusy = true;
     this.error = null;
     try {

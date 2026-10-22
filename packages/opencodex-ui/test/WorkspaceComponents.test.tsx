@@ -31,4 +31,13 @@ describe("workspace sidebar controls", () => {
     expect(html).toContain("workspaces.empty");
     expect(html).not.toContain(workspace.path);
   });
+
+  it("should display a completion marker while keeping the workspace's conversations available", () => {
+    const completed = { ...workspace, workStatus: "completed" as const, completedAt: "2026-10-22T12:00:00Z" };
+    const html = renderToStaticMarkup(<WorkspaceThreadGroup project={project} root={{} as RootStore}
+      group={{ id: "B", workspace: completed, path: completed.path, threads: [] }} onOpenSubAgentDialog={vi.fn()} />);
+    expect(html).toContain("workspaceWorkStatus.completed");
+    expect(html).toContain("workspaces.newConversationIn");
+    expect(html).toContain("Interface");
+  });
 });

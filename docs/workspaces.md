@@ -432,9 +432,43 @@ deletion. It is also available for recent or unknown-activity managed secondarie
 whose native lock has been verified. Actual deletion retains all existing checks
 for dirty/untracked/ignored files, Git locks, processes, conversations and durable
 reservations. No bulk deletion or automatic cleanup is introduced. The overview
-does not measure disk usage, track external tools/file edits, persist a completed
-marker or establish that a checkout is safe to delete. Git locks remain the
+does not measure disk usage, track external tools/file edits or establish that a
+checkout is safe to delete. Git locks remain the
 existing way to protect retained worktrees from removal.
+
+## Manual work progress
+
+Every workspace has a separate user-declared work status: **In progress** or
+**Completed**. Existing and newly created workspaces start in progress. Marking
+one completed records the end of its current work period in UTC. Repeating that
+confirmation preserves the date, including after a lost response. Marking it in
+progress clears the date; completing it again starts a new completed period.
+
+Use the workspace menu, properties or activity inventory to change progress.
+Completed workspaces retain their conversations and display a completion marker
+in the sidebar. The inventory also shows the completion date and offers an
+independent status filter, combinable with the existing cleanup-candidate filter.
+The inactivity threshold continues to use last known Codex activity, not the
+completion date. No new retention deadline or automatic deletion is introduced.
+
+This is an organizational annotation. It does not stop processes, archive
+conversations, move files, change permissions or acquire a Git lock. Conversations
+can continue in a completed workspace; returning to in progress is an explicit
+user action. Cleanup still excludes busy, locked, pending, unavailable and
+insufficiently verified workspaces regardless of this annotation.
+
+The status is stored in the local cache, so it can be read and changed while the
+source is offline or removed. Primary and imported workspaces support the same
+annotation, while their existing restrictions on physical removal remain intact.
+Removed workspaces retain their status/date for reading. Pending physical moves
+or removals prevent updates until their outcomes are recovered.
+
+Updates carry the explicit project, workspace, source, path and reviewed previous
+status/date. The cache validates them transactionally; a changed location or
+reopening another completed period requires a fresh read. No Codex request is
+needed. The UI re-reads the catalogue after a failed response without replaying
+the update and retains the error. Source synchronization, relocation and import
+do not reset work progress.
 
 ## Persistence and validation
 
@@ -442,7 +476,9 @@ Migrations 28–31 establish identity, aliases, reservations, immutable history
 and rule-file scoping. Migrations 32–34 add transition and maintenance/catalogue
 guards; 35–37 add creation journaling, names and frozen storage roots.
 Migration 43 journals removal; migration 44 retains relocation policy reloads.
-Migration 45 reserves physical moves and destination ownership. Preserve
+Migration 45 reserves physical moves and destination ownership. Migration 46
+adds work progress and its consistent nullable completion date, preserving
+existing identities, paths and history. Preserve
 existing data through idempotent migrations instead of rewriting associations.
 
 Run from the repository root:
@@ -484,6 +520,10 @@ updates, frozen destinations, unsaved edits and plain transport snapshots.
 source isolation, unknown timestamps and read-only inspection. Management UI
 and store tests cover thresholds, source/lock uncertainty, local activity,
 late responses, offline reads and the existing deletion confirmation.
+`workspaceWorkStatus` covers migration from version 45, SQLite reopening,
+idempotent dates, explicit reopening, stale contexts, pending maintenance and
+unchanged execution reservations. UI tests cover manual changes, combined
+filters, sidebar markers, offline updates and lost responses without replay.
 
 Moving primary/imported workspaces and automatic per-agent worktrees are not
 implemented. Local guards
