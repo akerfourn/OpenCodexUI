@@ -1,4 +1,5 @@
 import type { OpenCodexCommandExecutionMode, OpenCodexWorkspacePreparationInput } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceDiscoveryResult } from "@open-codex-ui/opencodex-protocol";
 import type {
   OpenCodexApprovalDecision,
@@ -78,6 +79,8 @@ import type {
 
 /** Preparatory workspace catalogue, selection, and explicit execution recovery. */
 export interface WorkspacesApi {
+  /** Reports source-independent cached activity, including archived and historical contexts. */
+  activity(projectId: string): Promise<OpenCodexWorkspaceActivity[]>;
   /** Renames secondary display metadata within the explicit logical project. */
   rename(projectId: string, workspaceId: string, name: string): Promise<void>;
   /** Discovers verified external checkouts without merging existing projects. */

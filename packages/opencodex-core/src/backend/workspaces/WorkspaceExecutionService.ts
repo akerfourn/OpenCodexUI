@@ -1,4 +1,5 @@
 import type { OpenCodexWorkspaceRoot } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import { WorkspaceDiscoveryService } from "./WorkspaceDiscoveryService.js";
 import { WorkspaceCreationService } from "./WorkspaceCreationService.js";
@@ -103,6 +104,11 @@ export class WorkspaceExecutionService {
   /** Lists the catalogue independently of source connectivity. */
   async list(projectId: string): Promise<OpenCodexProjectWorkspace[]> {
     return await this.repository.list(projectId);
+  }
+
+  /** Lists cached activity without connecting to Codex or starting filesystem maintenance. */
+  async activity(projectId: string): Promise<OpenCodexWorkspaceActivity[]> {
+    return await this.repository.activity(projectId);
   }
 
   /** Refreshes external Git entries under an explicit project and source. */

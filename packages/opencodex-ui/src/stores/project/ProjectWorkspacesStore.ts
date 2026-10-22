@@ -3,6 +3,7 @@ import type {
   OpenCodexProjectWorkspace, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRemoval, OpenCodexWorkspaceMove, OpenCodexWorkspaceDiscoveryResult,
   OpenCodexWorkspaceStart, OpenCodexWorkspaceRoot, OpenCodexWorkspaceLockState
 } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
 import type { ProjectStore } from "./ProjectStore";
 
@@ -32,6 +33,12 @@ export class ProjectWorkspacesStore {
   skipped: OpenCodexWorkspaceDiscoveryResult["skipped"] = [];
   /** Discards stale catalogue reads after a later request or disposal. */
   private generation = 0;
+  /** Cached activity is loaded only by the management view, separately from the sidebar catalogue. */
+  activityById = new Map<string, OpenCodexWorkspaceActivity>();
+  /** Covers catalogue, activity and bounded source lock checks during explicit refresh. */
+  isRefreshingManagement = false;
+  /** Invalidates management results after source changes, newer refreshes or disposal. */
+  private activityGeneration = 0;
 
   /** Keeps transport and project references outside observable state. */
   constructor(private readonly project: ProjectStore, private readonly root: RootStore) {
@@ -99,6 +106,44 @@ export class ProjectWorkspacesStore {
       runInAction(() => {
         if (generation === this.generation) this.error = errorMessage(error);
       });
+    }
+  }
+
+  /** Refreshes advisory activity and live locks without starting or recovering any maintenance operation. */
+  async refreshManagement(): Promise<void> {
+    if (this.isRefreshingManagement) return;
+    const generation = ++this.activityGeneration;
+    const sourceId = this.project.project.sourceId;
+    this.isRefreshingManagement = true;
+    this.activityById.clear();
+    this.error = null;
+    try {
+      await this.load();
+      const activity = await this.root.request<OpenCodexWorkspaceActivity[]>({
+        type: "projectWorkspaces.activity", projectId: this.project.project.id
+      });
+      if (generation !== this.activityGeneration || sourceId !== this.project.project.sourceId) return;
+      runInAction(() => {
+        for (const item of activity) {
+          const workspace = this.workspaces.find(workspace => workspace.id === item.workspaceId);
+          if (workspace?.sourceId === item.sourceId && workspace.path === item.workspacePath) {
+            this.activityById.set(item.workspaceId, item);
+          }
+        }
+      });
+      if (!this.project.isCodexSourceReady || this.project.isReadOnlyFromCache) return;
+      const secondary = this.workspaces.filter(item => !item.isPrimary && item.removedAt === null
+        && item.removalPending !== true && item.movePending !== true);
+      for (let offset = 0; offset < secondary.length; offset += 3) {
+        if (generation !== this.activityGeneration || sourceId !== this.project.project.sourceId) return;
+        await Promise.all(secondary.slice(offset, offset + 3).map(item => this.loadLockState(item.id)));
+      }
+    } catch (error) {
+      runInAction(() => {
+        if (generation === this.activityGeneration && sourceId === this.project.project.sourceId) this.error = errorMessage(error);
+      });
+    } finally {
+      runInAction(() => { if (generation === this.activityGeneration) this.isRefreshingManagement = false; });
     }
   }
 
@@ -292,6 +337,9 @@ export class ProjectWorkspacesStore {
   /** Invalidates responses when the project tab closes. */
   dispose(): void {
     this.generation += 1;
+    this.activityGeneration += 1;
+    this.activityById.clear();
+    this.isRefreshingManagement = false;
     for (const [id, generation] of this.lockGenerations) this.lockGenerations.set(id, generation + 1);
     this.loadingLockIds.clear();
   }

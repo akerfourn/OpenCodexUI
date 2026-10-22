@@ -26,6 +26,65 @@ const workspaces: OpenCodexProjectWorkspace[] = [
 ];
 
 describe("workspace UI orchestration", () => {
+  it("should refresh cached activity and native locks without invoking maintenance or changing selection", async () => {
+    const { project, request } = fixture();
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.list") return workspaces;
+      if (input.type === "projectWorkspaces.activity") return [{ workspaceId: "B", sourceId: "source", workspacePath: "/B",
+        lastActivityAt: "2026-01-01T00:00:00Z", conversationCount: 3, activeConversationCount: 0, pendingOperationCount: 0 }];
+      if (input.type === "projectWorkspaces.lock.read") return { workspaceId: "B", sourceId: "source", workspacePath: "/B",
+        supported: true, lockedReason: null };
+      return [];
+    });
+    await project.workspaces.refreshManagement();
+    expect(project.workspaces.activityById.get("B")?.conversationCount).toBe(3);
+    expect(project.workspaces.lockStates.get("B")?.lockedReason).toBeNull();
+    expect(project.workspaces.selectedId).toBeNull();
+    expect(project.workspaces.isRefreshingManagement).toBe(false);
+    expect(request.mock.calls.map(([input]) => input.type)).toEqual([
+      "projectWorkspaces.list", "projectWorkspaces.creations.list", "projectWorkspaces.removals.list", "projectWorkspaces.moves.list",
+      "projectWorkspaces.activity", "projectWorkspaces.lock.read"
+    ]);
+  });
+
+  it("should keep cached activity readable offline without requesting source-owned Git locks", async () => {
+    const { root, project, request } = fixture();
+    vi.mocked(root.sourcesStore.isSourceReady).mockReturnValue(false);
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.list") return workspaces;
+      if (input.type === "projectWorkspaces.activity") return [{ workspaceId: "B", sourceId: "source", workspacePath: "/B",
+        lastActivityAt: null, conversationCount: 0, activeConversationCount: 0, pendingOperationCount: 0 }];
+      return [];
+    });
+    await project.workspaces.refreshManagement();
+    expect(project.workspaces.activityById.get("B")?.lastActivityAt).toBeNull();
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.lock.read")).toBe(false);
+  });
+
+  it.each(["source-change", "dispose"])("should discard an activity response after %s", async scenario => {
+    const { project, request } = fixture();
+    let complete!: (value: unknown) => void;
+    let requested!: () => void;
+    const started = new Promise<void>(resolve => { requested = resolve; });
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.list") return workspaces;
+      if (input.type === "projectWorkspaces.activity") {
+        requested();
+        return await new Promise(resolve => { complete = resolve; });
+      }
+      return [];
+    });
+    const refreshing = project.workspaces.refreshManagement();
+    await started;
+    if (scenario === "source-change") runInAction(() => { project.project.sourceId = "other-source"; });
+    else project.workspaces.dispose();
+    complete([{ workspaceId: "B", sourceId: "source", workspacePath: "/B", lastActivityAt: "2026-01-01T00:00:00Z",
+      conversationCount: 3, activeConversationCount: 0, pendingOperationCount: 0 }]);
+    await refreshing;
+    expect(project.workspaces.activityById.size).toBe(0);
+    expect(project.workspaces.isRefreshingManagement).toBe(false);
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.lock.read")).toBe(false);
+  });
   it("should fetch external lock metadata explicitly and re-read it after a confirmed change", async () => {
     const { project, request } = fixture();
     let reason: string | null = "External lock";

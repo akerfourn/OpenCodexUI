@@ -6,12 +6,14 @@ import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, 
 import { useTranslation } from "react-i18next";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { WorkspaceCreateDialogX } from "./WorkspaceCreateDialog";
+import { WorkspaceManagementDialogX } from "./WorkspaceManagementDialog";
 
 /** Sidebar catalogue actions keep import and recovery separate from conversation properties. */
 export function WorkspaceListActions({ project }: { project: ProjectStore }) {
   const { t } = useTranslation();
   const store = project.workspaces;
   const [creating, setCreating] = useState(false);
+  const [managing, setManaging] = useState(false);
   const [importing, setImporting] = useState(false);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   useEffect(() => { void store.load(); }, [store]);
@@ -38,6 +40,9 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
     </Typography>
   ));
   const creationDialog = creating ? <WorkspaceCreateDialogX store={store} onClose={() => setCreating(false)} /> : null;
+  const managementDialog = managing ? <WorkspaceManagementDialogX project={project} onClose={() => setManaging(false)} /> : null;
+  /** Opens a source-independent inventory; live source checks remain explicit reads. */
+  function handleManagement(): void { setAnchor(null); setManaging(true); }
   /** Makes the scope of the explicit import visible before contacting the source. */
   function handleOpenImport(): void {
     setAnchor(null);
@@ -59,8 +64,9 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
           <MoreVertOutlinedIcon fontSize="small" />
         </IconButton>
       </Box>
-      {error}{pending}{removals}{moves}{skipped}{creationDialog}
+      {error}{pending}{removals}{moves}{skipped}{creationDialog}{managementDialog}
       <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
+        <MenuItem onClick={handleManagement}>{t("workspaceManagement.title")}</MenuItem>
         <MenuItem disabled={disabled} onClick={handleOpenImport}>{t("workspaces.discover")}</MenuItem>
       </Menu>
       <Dialog open={importing} onClose={store.isBusy ? undefined : () => setImporting(false)} fullWidth maxWidth="sm">

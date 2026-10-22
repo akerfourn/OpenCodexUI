@@ -56,7 +56,7 @@ export class ThreadRuntimeHandler {
   }
 
   /** Exposes cache-backed preparatory workspace operations without UI state. */
-  get workspaces(): Pick<WorkspaceExecutionService, "rename" | "list" | "select" | "reconcile" | "reconcileWorkspace" | "create" | "discover" | "pendingCreations" | "reconcileCreation"> {
+  get workspaces(): Pick<WorkspaceExecutionService, "rename" | "list" | "activity" | "select" | "reconcile" | "reconcileWorkspace" | "create" | "discover" | "pendingCreations" | "reconcileCreation"> {
     if (this.workspaceExecution === undefined) {
       throw new Error("Workspace operations require a cache repository.");
     }

@@ -1,4 +1,6 @@
 import { relocateWorkspace } from "./relocateWorkspace.js";
+import { readWorkspaceActivity } from "./workspaceActivity.js";
+import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 import { SqliteWorkspaceMoveRepository } from "./SqliteWorkspaceMoveRepository.js";
 import { validateWorkspaceName } from "./workspaceName.js";
 import { registerDiscoveredWorkspaces } from "./registerDiscoveredWorkspaces.js";
@@ -79,6 +81,11 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
       FROM project_workspaces WHERE project_id = ? ORDER BY is_primary DESC, id`)
       .all(projectId) as WorkspaceRow[];
     return rows.map(mapWorkspace);
+  }
+
+  /** Reads complete cached activity independently of UI chat filters and source connectivity. */
+  async activity(projectId: string): Promise<OpenCodexWorkspaceActivity[]> {
+    return readWorkspaceActivity(this.database, projectId);
   }
 
   /** Renames only secondary metadata; identity, physical path and history stay intact. */

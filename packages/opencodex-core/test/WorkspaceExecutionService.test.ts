@@ -50,6 +50,14 @@ describe("workspace execution", () => {
     service = new WorkspaceExecutionService(cache.workspaces, clients);
   });
 
+  it("should expose cached activity without connecting to its owning source", async () => {
+    const workspace = (await cache.workspaces.get(workspaceId))!;
+    expect(await service.activity(workspace.projectId)).toMatchObject([{
+      workspaceId, sourceId: "source-a", workspacePath: "/source/repo", conversationCount: 1, lastActivityAt: null
+    }]);
+    expect(clients.ensureClient).not.toHaveBeenCalled();
+  });
+
   /** Exercises the production composition with the same persisted workspace guard. */
   function createHandler(): ThreadRuntimeHandler {
     return new ThreadRuntimeHandler({

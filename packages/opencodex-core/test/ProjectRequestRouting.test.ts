@@ -50,6 +50,7 @@ const cases: RouteCase[] = [
   { request: { type: "projectWorkspaces.rename", projectId: "project", workspaceId: "workspace", name: "Feature" },
     effect: "workspaces.rename", args: ["project", "workspace", "Feature"] },
   { request: { type: "projectWorkspaces.list", projectId: "project" }, effect: "workspaces.list", args: ["project"] },
+  { request: { type: "projectWorkspaces.activity", projectId: "project" }, effect: "workspaces.activity", args: ["project"] },
   { request: { type: "projectWorkspaces.execution.reconcile", workspaceId: "workspace" },
     effect: "workspaces.reconcileWorkspace", args: ["workspace"] },
   { request: { type: "threads.workspace.select", threadId: "thread", workspaceId: "workspace" },
@@ -93,7 +94,7 @@ function createProjectRoutingFixture() {
     },
     workspaces: {
       discover: vi.fn(), create: vi.fn(), pendingCreations: vi.fn(), reconcileCreation: vi.fn(),
-      rename: vi.fn(), list: vi.fn(), reconcileWorkspace: vi.fn(), select: vi.fn(), reconcile: vi.fn()
+      rename: vi.fn(), list: vi.fn(), activity: vi.fn(), reconcileWorkspace: vi.fn(), select: vi.fn(), reconcile: vi.fn()
     },
     groups: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), assignProject: vi.fn() },
     context: { sync: vi.fn(), pickFolder: vi.fn() }

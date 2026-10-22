@@ -2,6 +2,37 @@ import type { TranslationShape } from "../../translationShape.js";
 import type { frWorkspaces } from "../fr/workspaces.js";
 
 export const enWorkspaces = {
+  "workspaceManagement": {
+    "title": "Workspace activity and cleanup",
+    "help": "Last activity comes from cached Codex conversations and turns, including archived conversations. File changes and external tools are not tracked. Candidates are only suggestions for inspection: removal will recheck files, locks and source activity. Nothing is deleted automatically.",
+    "threshold": "Inactivity threshold",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "onlyCandidates": "Show only cleanup candidates",
+    "candidates_zero": "No workspaces to inspect for cleanup",
+    "candidates_one": "{{count}} workspace to inspect for cleanup",
+    "candidates_other": "{{count}} workspaces to inspect for cleanup",
+    "conversations_one": "{{count}} associated conversation",
+    "conversations_other": "{{count}} associated conversations",
+    "lastActivity": "Last known Codex activity: {{date}}",
+    "unknown": "Unknown",
+    "refresh": "Refresh information",
+    "empty": "No workspaces match this filter.",
+    "inspectRemoval": "Inspect removal…",
+    "status": {
+      "primary": "Primary — retained",
+      "imported": "Imported — retained",
+      "removed": "Removed — history retained",
+      "pending": "Recovery required",
+      "busy": "Activity or work in progress",
+      "offline": "Source unavailable",
+      "lockUnknown": "Lock needs verification",
+      "locked": "Locked — retained",
+      "activityUnknown": "Unknown activity",
+      "recent": "Recent activity",
+      "candidate": "Inspect for cleanup"
+    }
+  },
   "workspacePreparation": {
     "title": "Prepare workspace",
     "help": "This script runs in the displayed directory with your source’s permissions. Review it before running. Nothing is executed or copied automatically on creation. Interrupting does not restore files already changed or restart the script.",

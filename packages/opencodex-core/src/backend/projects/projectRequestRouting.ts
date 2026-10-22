@@ -79,6 +79,8 @@ export async function routeProjectRequest(runtime: ProjectRequestRuntime, reques
       return runtime.workspaces.rename(request.projectId, request.workspaceId, request.name);
     case "projectWorkspaces.list":
       return runtime.workspaces.list(request.projectId);
+    case "projectWorkspaces.activity":
+      return runtime.workspaces.activity(request.projectId);
     case "projectWorkspaces.execution.reconcile":
       return runtime.workspaces.reconcileWorkspace(request.workspaceId);
     case "threads.workspace.select":

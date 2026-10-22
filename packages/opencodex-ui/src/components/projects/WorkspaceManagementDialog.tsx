@@ -1,0 +1,81 @@
+import { useEffect, useState } from "react";
+import { observer } from "mobx-react-lite";
+import { Alert, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
+  FormControlLabel, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
+import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
+import type { ProjectStore } from "../../stores/project/ProjectStore";
+import { matchingWorkspaceActivity, workspaceManagementStatus } from "../../stores/project/workspaceManagement";
+import { WorkspaceManagementRowX } from "./WorkspaceManagementRow";
+import { WorkspacePropertiesDialogX } from "./WorkspacePropertiesDialog";
+import { WorkspaceRemoveDialogX } from "./WorkspaceRemoveDialog";
+
+/** Reviews cached activity and advisory cleanup candidates without automatic deletion or recovery. */
+export function WorkspaceManagementDialog({ project, onClose }: { project: ProjectStore; onClose(): void }) {
+  const { t } = useTranslation();
+  const store = project.workspaces;
+  const [inactivityDays, setInactivityDays] = useState(30);
+  const [onlyCandidates, setOnlyCandidates] = useState(false);
+  const [now, setNow] = useState(Date.now);
+  const [properties, setProperties] = useState<OpenCodexProjectWorkspace | null>(null);
+  const [removing, setRemoving] = useState<OpenCodexProjectWorkspace | null>(null);
+  // Tool activity is deliberately conservative across this project, including launches awaiting a response.
+  const hasLocalActivity = project.hasRunningChatIndicator || project.commandsStore.hasActiveRun
+    || project.hasActiveDebugSession || project.composeStore.hasNonStoppedContainer
+    || project.composeStore.pendingServiceNames.size > 0;
+  const busy = store.isBusy || store.isRefreshingManagement;
+  useEffect(() => { void store.refreshManagement(); }, [store]);
+
+  /** Refreshes the cached evidence and native lock snapshots explicitly. */
+  async function handleRefresh(): Promise<void> {
+    setNow(Date.now());
+    await store.refreshManagement();
+  }
+  /** Rechecks activity after a metadata edit or successful removal. */
+  function handleCloseProperties(): void { setProperties(null); void handleRefresh(); }
+  /** Rechecks the retained catalogue instead of hiding an uncertain deletion. */
+  function handleCloseRemoval(): void { setRemoving(null); void handleRefresh(); }
+  const entries = store.workspaces.map(workspace => ({ workspace,
+    activity: matchingWorkspaceActivity(workspace, store.activityById.get(workspace.id)), status: workspaceManagementStatus({
+      workspace, activity: store.activityById.get(workspace.id), lock: store.lockStates.get(workspace.id),
+      hasLocalActivity, hasUnsavedDocuments: project.files.hasUnsavedWorkspaceDocuments(workspace.id),
+      sourceAvailable: project.isCodexSourceReady && !project.isReadOnlyFromCache && workspace.sourceId === project.project.sourceId,
+      checking: store.isRefreshingManagement || store.loadingLockIds.has(workspace.id), inactivityDays, now
+    }) }));
+  const visible = entries.filter(entry => !onlyCandidates || entry.status === "candidate");
+  const candidateCount = entries.filter(entry => entry.status === "candidate").length;
+  const rows = visible.map(entry => <WorkspaceManagementRowX key={entry.workspace.id} {...entry}
+    disabled={busy} onProperties={setProperties} onRemove={setRemoving} />);
+  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
+  const loading = store.isRefreshingManagement ? <CircularProgress size={20} aria-label={t("workspaceManagement.refresh")} /> : null;
+  const empty = visible.length === 0 && !store.isRefreshingManagement
+    ? <Typography color="text.secondary">{t("workspaceManagement.empty")}</Typography> : null;
+  const propertiesDialog = properties === null ? null : <WorkspacePropertiesDialogX project={project}
+    workspace={properties} onClose={handleCloseProperties} />;
+  const removeDialog = removing === null ? null : <WorkspaceRemoveDialogX project={project}
+    workspace={removing} onClose={handleCloseRemoval} />;
+
+  return <Dialog open fullWidth maxWidth="md" onClose={store.isBusy ? undefined : onClose}>
+    <DialogTitle>{t("workspaceManagement.title")}</DialogTitle>
+    <DialogContent>
+      <Stack spacing={2} sx={{ pt: 1 }}>
+        <Alert severity="info">{t("workspaceManagement.help")}</Alert>
+        <TextField select label={t("workspaceManagement.threshold")} value={inactivityDays}
+          onChange={event => setInactivityDays(Number(event.target.value))} disabled={busy}>
+          {[7, 30, 90].map(days => <MenuItem key={days} value={days}>
+            {t("workspaceManagement.days", { count: days })}</MenuItem>)}
+        </TextField>
+        <FormControlLabel control={<Checkbox checked={onlyCandidates} onChange={event => setOnlyCandidates(event.target.checked)} />}
+          label={t("workspaceManagement.onlyCandidates")} />
+        <Typography variant="body2">{t("workspaceManagement.candidates", { count: candidateCount })}</Typography>
+        {loading}{error}{rows}{empty}
+      </Stack>
+      {propertiesDialog}{removeDialog}
+    </DialogContent>
+    <DialogActions>
+      <Button disabled={busy} onClick={handleRefresh}>{t("workspaceManagement.refresh")}</Button>
+      <Button disabled={store.isBusy} onClick={onClose}>{t("workspaces.close")}</Button>
+    </DialogActions>
+  </Dialog>;
+}
+export const WorkspaceManagementDialogX = observer(WorkspaceManagementDialog);

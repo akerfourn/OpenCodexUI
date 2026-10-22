@@ -11,6 +11,7 @@ export * from "./requests";
 export * from "./transport";
 export * from "./workspaces";
 export * from "./workspacePreparation";
+export * from "./workspaceActivity";
 export * from "./workspaceCreations";
 export * from "./workspaceRemovals";
 export * from "./workspaceDiscovery";

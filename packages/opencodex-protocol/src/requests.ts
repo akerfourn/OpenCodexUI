@@ -80,6 +80,7 @@ export type OpenCodexRequest =
   | { type: "projectWorkspaces.moves.list"; projectId: string }
   | { type: "projectWorkspaces.moves.reconcile"; moveId: string }
   | { type: "projectWorkspaces.list"; projectId: string }
+  | { type: "projectWorkspaces.activity"; projectId: string }
   | { type: "projectWorkspaces.relocate"; projectId: string; workspaceId: string; sourceId: string;
       destinationPath: string; confirmIdentity: boolean }
   | { type: "projectWorkspaces.remove"; projectId: string; workspaceId: string; sourceId: string }

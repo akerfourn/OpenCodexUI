@@ -1,4 +1,38 @@
 export const frWorkspaces = {
+  "workspaceManagement": {
+    "title": "Activité et nettoyage des workspaces",
+    "help": "La dernière activité correspond aux conversations et aux tours Codex conservés dans le cache, y compris les conversations archivées. Les modifications de fichiers et les outils externes ne sont pas suivis. Les candidats sont uniquement à examiner : la suppression vérifiera à nouveau les fichiers, les verrous et les activités dans la source. Aucune suppression n’est automatique.",
+    "threshold": "Seuil d’inactivité",
+    "days_one": "{{count}} jour",
+    "days_many": "{{count}} jours",
+    "days_other": "{{count}} jours",
+    "onlyCandidates": "Afficher uniquement les candidats au nettoyage",
+    "candidates_zero": "Aucun workspace à examiner pour nettoyage",
+    "candidates_one": "{{count}} workspace à examiner pour nettoyage",
+    "candidates_many": "{{count}} workspaces à examiner pour nettoyage",
+    "candidates_other": "{{count}} workspaces à examiner pour nettoyage",
+    "conversations_one": "{{count}} conversation associée",
+    "conversations_many": "{{count}} conversations associées",
+    "conversations_other": "{{count}} conversations associées",
+    "lastActivity": "Dernière activité Codex connue : {{date}}",
+    "unknown": "Inconnue",
+    "refresh": "Actualiser les informations",
+    "empty": "Aucun workspace ne correspond à ce filtre.",
+    "inspectRemoval": "Examiner la suppression…",
+    "status": {
+      "primary": "Principal — conservé",
+      "imported": "Importé — conservé",
+      "removed": "Supprimé — historique conservé",
+      "pending": "Récupération nécessaire",
+      "busy": "Activité ou travail en cours",
+      "offline": "Source indisponible",
+      "lockUnknown": "Verrou à vérifier",
+      "locked": "Verrouillé — conservé",
+      "activityUnknown": "Activité inconnue",
+      "recent": "Activité récente",
+      "candidate": "À examiner pour nettoyage"
+    }
+  },
   "workspacePreparation": {
     "title": "Préparer le workspace",
     "help": "Ce script s’exécutera dans le dossier indiqué, avec les droits de votre source. Vérifiez son contenu avant de lancer. Rien n’est exécuté ou copié automatiquement à la création. Une interruption ne restaure pas les fichiers déjà modifiés et ne relance pas le script.",

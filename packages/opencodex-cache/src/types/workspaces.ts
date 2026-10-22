@@ -4,6 +4,7 @@ import type { WorkspaceRemovalRepository } from "./workspaceRemovals.js";
 import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceExecutionContext, OpenCodexTurnWorkspaceContext, OpenCodexWorkspaceDiscoverySkipped } from
   "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceTransitionRepository } from "./workspaceTransitions.js";
+import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 
 /** Durable reservation retained across transport failures and application restarts. */
 export interface WorkspaceExecutionReservation extends OpenCodexWorkspaceExecutionContext {
@@ -38,6 +39,8 @@ export interface WorkspaceCacheRepository {
   listTurnContexts(threadId: string): Promise<OpenCodexTurnWorkspaceContext[]>;
   /** Lists a project's catalogue, including logically removed workspaces. */
   list(projectId: string): Promise<OpenCodexProjectWorkspace[]>;
+  /** Aggregates cached activity without reading a source or altering execution history. */
+  activity(projectId: string): Promise<OpenCodexWorkspaceActivity[]>;
   /** Renames an available secondary workspace of the explicit project. */
   rename(projectId: string, workspaceId: string, name: string): Promise<void>;
   /** Reads a workspace by opaque identity. */

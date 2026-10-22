@@ -394,6 +394,48 @@ or installed dependencies already: there is no rollback or completed/prepared
 badge. External clients, file edits and normal source activities are not locked
 out by a preparation run.
 
+## Activity overview and manual cleanup
+
+Open **Manage workspaces → Workspace activity and cleanup** from the project's
+workspace controls. The inventory includes the primary, imported and managed
+secondary workspaces, plus removed entries whose metadata is retained. It shows
+their paths, current conversation counts and last known Codex activity. Opening
+the inventory does not select a workspace, recover an interrupted operation or
+delete files.
+
+Activity is a read-only SQLite projection. Current conversation counts include
+archived conversations and indexed sub-agents, independently of sidebar search
+or pagination. Dates combine cached conversation updates in their current
+workspace with started/completed timestamps of turns whose workspace is proven
+by immutable execution evidence. When a conversation switches workspace, its
+later turns do not refresh the old workspace's activity. Snapshot synchronization
+timestamps are not used as activity dates. Empty or invalid dates remain unknown.
+
+Choose an inactivity threshold of 7, 30 or 90 days; the default is 30. The
+candidate filter suggests only available, managed secondary workspaces with an
+old valid activity date and a matching, explicitly refreshed unlocked Git state.
+Primary, imported, removed and pending-maintenance workspaces are excluded.
+Cached active conversations, execution/transition reservations, unsaved documents
+and known local project activity also exclude candidates. Local chat, command,
+debug and Compose activity is conservatively applied across the whole project.
+An offline source, unknown lock, unknown activity or future timestamp is never
+treated as an inactivity candidate.
+
+Refreshing reads catalogue and activity data first, then checks secondary locks
+through their owning source, in batches of at most three. Late replies from a
+different source/path or a disposed project are ignored. The cache remains
+readable offline. Lock snapshots and activity are observations, not exclusive
+source locks; refresh again when reviewing a long-open inventory.
+
+**Inspect removal** opens the existing name-confirmation dialog, without starting
+deletion. It is also available for recent or unknown-activity managed secondaries
+whose native lock has been verified. Actual deletion retains all existing checks
+for dirty/untracked/ignored files, Git locks, processes, conversations and durable
+reservations. No bulk deletion or automatic cleanup is introduced. The overview
+does not measure disk usage, track external tools/file edits, persist a completed
+marker or establish that a checkout is safe to delete. Git locks remain the
+existing way to protect retained worktrees from removal.
+
 ## Persistence and validation
 
 Migrations 28–31 establish identity, aliases, reservations, immutable history
@@ -438,6 +480,10 @@ interactive validation of creation, switching, errors and restart recovery.
 pending maintenance, source-native Windows paths, early process exit,
 cancellation and connection loss. UI tests cover explicit launch, settings-only
 updates, frozen destinations, unsaved edits and plain transport snapshots.
+`workspaceActivity` covers historical attribution, archived and child threads,
+source isolation, unknown timestamps and read-only inspection. Management UI
+and store tests cover thresholds, source/lock uncertainty, local activity,
+late responses, offline reads and the existing deletion confirmation.
 
 Moving primary/imported workspaces and automatic per-agent worktrees are not
 implemented. Local guards
