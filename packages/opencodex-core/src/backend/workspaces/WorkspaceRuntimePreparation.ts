@@ -1,3 +1,4 @@
+import { prepareRelocatedThread } from "./prepareRelocatedThread.js";
 import type { WorkspaceExecutionReservation } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
 import { workspacePermissionInput } from "./workspacePermissionProfile.js";
@@ -23,6 +24,11 @@ export class WorkspaceRuntimePreparation implements WorkspaceSelectionPreparatio
     this.permissions = new WorkspacePermissionPreparation(repository, clients);
   }
 
+  /** Rebuilds path-bound permissions after explicit metadata relocation. */
+  async prepareRelocated(reservation: WorkspaceExecutionReservation, previousPath: string): Promise<void> {
+    await prepareRelocatedThread(this.repository, this.clients, reservation, previousPath);
+  }
+
   /** Materializes an isolated profile under the new conversation's durable reservation. */
   async prepareCreation(reservation: WorkspaceExecutionReservation,
     primary: OpenCodexProjectWorkspace): Promise<Partial<v2.ThreadStartParams>> {
@@ -34,10 +40,14 @@ export class WorkspaceRuntimePreparation implements WorkspaceSelectionPreparatio
       throw new Error("New conversation source does not own the project.");
     }
     const folders = project.preferences.context?.folders ?? [];
+    let fromPath = primary.path;
+    if (primary.id === reservation.workspaceId) {
+      fromPath = (await this.repository.workspaces.listPathAliases(reservation.workspaceId))[0] ?? primary.path;
+    }
     const input = workspacePermissionInput({ id: reservation.id, threadId: "",
       projectId: reservation.projectId, sourceId: reservation.sourceId,
       fromWorkspaceId: primary.id, toWorkspaceId: reservation.workspaceId,
-      fromPath: primary.path, toPath: reservation.cwd, state: "preparing", expectationJson: null },
+      fromPath, toPath: reservation.cwd, state: "preparing", expectationJson: null },
     folders,
     project.preferences.context?.accessScope);
     for (const value of [primary.path, reservation.cwd, ...input.externalFolders.map((folder) => folder.path)]) {

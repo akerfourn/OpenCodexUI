@@ -8,6 +8,8 @@ import type { WorkspaceResumeExpectation } from "./workspaceResumeVerification.j
 
 /** Backend-only preparation and lifecycle validation; never supplied by UI request payloads. */
 export interface WorkspaceSelectionPreparation {
+  /** Reloads the managed policy for a relocated conversation before submitting a new turn. */
+  prepareRelocated?(reservation: WorkspaceExecutionReservation, previousPath: string): Promise<void>;
   /** Prepares a new conversation directly; no rollout exists yet to resume. */
   prepareCreation?(reservation: WorkspaceExecutionReservation,
     primary: OpenCodexProjectWorkspace): Promise<Partial<v2.ThreadStartParams>>;

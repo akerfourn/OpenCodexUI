@@ -45,8 +45,14 @@ export interface WorkspaceCacheRepository {
   resolvePath(path: string, sourceId: string): Promise<OpenCodexProjectWorkspace>;
   /** Selects a same-project/source workspace when no execution is reserved. */
   select(threadId: string, workspaceId: string): Promise<void>;
+  /** Lists historical paths as evidence for explicit policy reloads, never automatic adoption. */
+  listPathAliases(workspaceId: string): Promise<string[]>;
+  /** Reads the old path only for a conversation still associated with the relocated workspace. */
+  getThreadRelocationPath(threadId: string): Promise<string | null>;
+  /** Clears a pending policy reload only after verifying the thread's current association and path. */
+  confirmThreadRelocation(threadId: string, workspaceId: string, path: string): Promise<void>;
   /** Updates a verified physical location and compatibility paths atomically. */
-  relocate(workspaceId: string, path: string): Promise<void>;
+  relocate(workspaceId: string, path: string, expectedPath?: string): Promise<void>;
   /** Reserves an execution atomically against selection and relocation. */
   reserve(workspaceId: string, threadId: string | null,
     operation?: WorkspaceExecutionReservation["operation"]): Promise<WorkspaceExecutionReservation>;

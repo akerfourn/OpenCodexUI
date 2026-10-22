@@ -97,7 +97,7 @@ describe("workspace removal runtime guards", () => {
   it("should block new source requests throughout an exclusive lifecycle operation", async () => {
     const gate = new WorkspaceActivityGate();
     await gate.exclusive("source", async () => {
-      await expect(gate.run("source", async () => undefined)).rejects.toThrow("removal is running");
+      await expect(gate.run("source", async () => undefined)).rejects.toThrow("lifecycle operation is running");
       await expect(gate.run("other-source", async () => "independent")).resolves.toBe("independent");
     });
     await expect(gate.run("source", async () => "released")).resolves.toBe("released");

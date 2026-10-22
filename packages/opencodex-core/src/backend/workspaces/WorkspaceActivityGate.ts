@@ -8,7 +8,7 @@ export class WorkspaceActivityGate {
   /** Captures activity synchronously before dispatching an asynchronous source operation. */
   async run<T>(sourceId: string | null, action: () => Promise<T>): Promise<T> {
     if (sourceId === null) return await action();
-    if (this.writers.has(sourceId)) throw new Error("A workspace removal is running on this source.");
+    if (this.writers.has(sourceId)) throw new Error("A workspace lifecycle operation is running on this source.");
     this.readers.set(sourceId, (this.readers.get(sourceId) ?? 0) + 1);
     try {
       return await action();
@@ -22,7 +22,7 @@ export class WorkspaceActivityGate {
   /** Fails rather than waiting indefinitely for a source operation or another removal. */
   async exclusive<T>(sourceId: string, action: () => Promise<T>): Promise<T> {
     if (this.writers.has(sourceId) || (this.readers.get(sourceId) ?? 0) > 0) {
-      throw new Error("This source is processing another operation. Retry workspace removal when it finishes.");
+      throw new Error("This source is processing another operation. Retry workspace maintenance when it finishes.");
     }
     this.writers.add(sourceId);
     try {

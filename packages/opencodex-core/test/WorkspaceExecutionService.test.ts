@@ -74,6 +74,26 @@ describe("workspace execution", () => {
     fs.rmSync(directory, { recursive: true, force: true });
   });
 
+  it("should retain a relocated thread's reload requirement on failure and clear it only after verification", async () => {
+    await cache.workspaces.relocate(workspaceId, "/source/moved");
+    const prepareRelocated = vi.fn().mockRejectedValueOnce(new Error("profile mismatch")).mockResolvedValue(undefined);
+    service = new WorkspaceExecutionService(cache.workspaces, clients, undefined, {
+      requireSupported: vi.fn(), prepare: vi.fn(), prepareRelocated
+    });
+    const input = { threadId: "thread-a", sourceId: "source-a", projectPath: "/source/moved", workspaceId };
+    await expect(service.run(input, async reservation => {
+      await service.prepareRelocatedThread(reservation);
+    })).rejects.toThrow("profile mismatch");
+    expect(await cache.workspaces.getThreadRelocationPath("thread-a")).toBe("/source/repo");
+    await service.run(input, async reservation => {
+      expect(await service.prepareRelocatedThread(reservation)).toBe(true);
+      expect(await service.prepareRelocatedThread(reservation)).toBe(false);
+      await cache.workspaces.release(reservation.id);
+    });
+    expect(await cache.workspaces.getThreadRelocationPath("thread-a")).toBeNull();
+    expect(prepareRelocated).toHaveBeenCalledTimes(2);
+  });
+
   it.each(["archiveThread", "deleteThread", "unarchiveThread"] as const)(
     "should block %s before source access while execution recovery is pending",
     async (method) => {

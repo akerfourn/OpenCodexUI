@@ -13,6 +13,17 @@ import {
 import type { SourceDockerProcessClient } from "../src/backend/docker/SourceDockerCommandExecutor";
 
 describe("DockerComposeService", () => {
+  it("should detect a primary Compose stack still running from its previous directory", async () => {
+    const client = new FakeSourceClient({ containerOutput: JSON.stringify({ ID: "fixture", Names: "web", State: "running",
+      Image: "fixture", Labels: "com.docker.compose.project=legacy-name,com.docker.compose.project.working_dir=/previous" }) });
+    const repository = { workspaces: { get: async () => ({ isPrimary: true, composeUsed: true }) } } as unknown as OpenCodexCacheRepository;
+    const service = new DockerComposeService({ cacheRepository: repository, clients: { ensureClient: async () => client } });
+    await expect(service.requireWorkspaceIdle({ projectId: "project", workspaceId: "primary", sourceId: "source-1",
+      workspacePath: "/new" }, "/previous")).rejects.toThrow("Stop Docker Compose services");
+    await expect(service.requireWorkspaceIdle({ projectId: "project", workspaceId: "primary", sourceId: "source-1",
+      workspacePath: "/new" }, "/unrelated")).resolves.toBeUndefined();
+  });
+
   it("should block removal for active containers in the workspace namespace across all Compose variants", async () => {
     const name = `opencodex-${createHash("sha256").update(JSON.stringify(["project", "workspace"])).digest("hex").slice(0, 24)}`;
     const client = new FakeSourceClient({ "compose.yaml": true, "docker-compose.local.yaml": true,

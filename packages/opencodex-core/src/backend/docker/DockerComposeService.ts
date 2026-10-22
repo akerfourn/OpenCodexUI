@@ -1,3 +1,4 @@
+import { isInsideWorkspace } from "../workspaces/WorkspaceRemovalRuntime.js";
 import { ComposeFileSelectionError, discoverComposeFiles, requireComposeFile } from "./composeFiles.js";
 import { createHash } from "node:crypto";
 import type { OpenCodexWorkspaceRemoval } from "@open-codex-ui/opencodex-protocol";
@@ -43,7 +44,8 @@ export class DockerComposeService {
   private readonly usedProjects = new Set<string>();
 
   /** Checks all Compose variants through container labels, never starting or stopping services. */
-  async requireWorkspaceIdle(removal: OpenCodexWorkspaceRemoval): Promise<void> {
+  async requireWorkspaceIdle(removal: Pick<OpenCodexWorkspaceRemoval, "projectId" | "workspaceId" | "sourceId" | "workspacePath">,
+    previousPath?: string): Promise<void> {
     const name = workspaceComposeProjectName(removal.projectId, removal.workspaceId);
     const client = await this.options.clients.ensureClient(removal.sourceId);
     const files = await discoverComposeFiles(client, removal.workspacePath);
@@ -51,9 +53,17 @@ export class DockerComposeService {
     if (files.length === 0 && workspace?.composeUsed !== true && !this.usedProjects.has(name)) return;
     const docker = new DockerClient({ executor: new SourceDockerCommandExecutor(client) });
     const containers = await docker.containers.list();
-    if (containers.some(container => container.labels.split(",").includes(`com.docker.compose.project=${name}`)
-      && !["created", "exited", "dead"].includes(container.state.toLowerCase()))) {
-      throw new Error("Stop Docker Compose services in this workspace before removing it.");
+    if (containers.some(container => {
+      const labels = container.labels.split(",");
+      const workingDirectory = labels.find(label => label.startsWith("com.docker.compose.project.working_dir="))
+        ?.slice("com.docker.compose.project.working_dir=".length);
+      const matchesPrimary = workspace?.isPrimary === true && workingDirectory !== undefined
+        && (isInsideWorkspace(workingDirectory, removal.workspacePath)
+          || (previousPath !== undefined && isInsideWorkspace(workingDirectory, previousPath)));
+      return (matchesPrimary || labels.includes(`com.docker.compose.project=${name}`))
+        && !["created", "exited", "dead"].includes(container.state.toLowerCase());
+    })) {
+      throw new Error("Stop Docker Compose services in this workspace before workspace maintenance.");
     }
   }
   /** Creates a Compose service over source-scoped app-server clients. */
@@ -191,6 +201,7 @@ export class DockerComposeService {
       throw new Error("Compose context does not match the workspace.");
     }
     if (workspace.isPrimary) {
+      if (workspace.composeUsed !== true) await this.options.cacheRepository!.workspaces.markComposeUsed(workspace.id);
       return undefined;
     }
     const name = workspaceComposeProjectName(workspace.projectId, workspace.id);

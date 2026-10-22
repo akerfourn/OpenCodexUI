@@ -108,9 +108,13 @@ export class ThreadTurnStartService {
       await this.options.workspaceExecution!.bind(reservation, targetThreadId);
     }
     let resumedExistingThread = false;
+    if (reservation !== undefined && threadId !== null) {
+      resumedExistingThread = await this.options.workspaceExecution!.prepareRelocatedThread(reservation);
+    }
 
     if (
       threadId !== null &&
+      !resumedExistingThread &&
       shouldResumeExistingThread &&
       shouldResumeThreadBeforeTurn(this.options.threadTurnCache, targetThreadId)
     ) {

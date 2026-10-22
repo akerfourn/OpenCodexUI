@@ -33,7 +33,7 @@ function fixture() {
       sourceId: "source", cwd: "/repo/B", threadId: null, state: "preparing" }]), transitions: { getForThread: vi.fn(async () => transition) } }
   } as unknown as OpenCodexCacheRepository;
   const clients = { ensureClient: vi.fn(async () => client as unknown as CodexAppServerClient) };
-  return { service: new WorkspaceRuntimePreparation(cache, clients), client, clients };
+  return { service: new WorkspaceRuntimePreparation(cache, clients), client, clients, cache };
 }
 
 describe("production workspace preparation", () => {
@@ -50,6 +50,19 @@ describe("production workspace preparation", () => {
     expect(parameters.approvalPolicy).toBeUndefined();
     expect(client.resumeThread).not.toHaveBeenCalled();
     expect(client.readThread).not.toHaveBeenCalled();
+  });
+
+  it("should prepare new chats in a relocated primary without requiring its missing old directory", async () => {
+    const { service, client, cache } = fixture();
+    cache.workspaces.listPathAliases = vi.fn(async () => ["/repo/A"]);
+    const parameters = await service.prepareCreation({ id: "new", workspaceId: "B", projectId: "project",
+      sourceId: "source", cwd: "/repo/B", threadId: null, state: "preparing", operation: "turn", turnId: null },
+    { id: "B", projectId: "project", sourceId: "source", path: "/repo/B", isPrimary: true,
+      managed: false, removedAt: null });
+    expect(parameters.runtimeWorkspaceRoots).toEqual(["/repo/B"]);
+    expect(parameters.permissions).toMatch(/^opencodex-workspace-/u);
+    expect(client.getMetadata).not.toHaveBeenCalledWith("/repo/A");
+    expect(client.resumeThread).not.toHaveBeenCalled();
   });
 
   it("should not replace an explicit read-only default while creating a workspace conversation", async () => {

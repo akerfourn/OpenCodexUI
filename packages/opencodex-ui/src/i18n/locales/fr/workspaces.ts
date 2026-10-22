@@ -18,6 +18,13 @@ export const frWorkspaces = {
     "configureHint": "Vous pouvez définir un espace par défaut dans la rubrique Workspaces. Un chemin personnalisé reste possible ici."
   },
   "workspaces": {
+    "relocate": "Relocaliser le workspace",
+    "relocateHelp": "Indiquez le dossier déjà déplacé dans la même source. L’ancien chemin doit être absent. Aucun fichier ne sera déplacé et aucun lien Git ne sera réparé automatiquement. Les conversations et leur historique seront conservés.",
+    "relocatePrimaryHelp": "L’identité de l’ancien dépôt principal ne peut pas être prouvée après sa disparition. Vérifiez que le dossier choisi contient bien votre projet.",
+    "relocateConfirm": "Je confirme qu’il s’agit du même workspace, déplacé manuellement.",
+    "relocateUnsaved": "Enregistrez ou fermez les documents non enregistrés avant de relocaliser ce workspace.",
+    "previousPath": "Ancien chemin",
+
     "remove": "Supprimer le workspace",
     "removeTitle": "Supprimer le workspace {{name}} ?",
     "removeHelp": "Le dossier sera supprimé définitivement. Les branches Git et l’historique des conversations seront conservés. Changez le workspace des conversations que vous souhaitez poursuivre avant de supprimer celui-ci. Les fichiers modifiés, non suivis ou ignorés et les processus actifs bloquent la suppression ; aucun forçage n’est effectué.",
@@ -29,7 +36,7 @@ export const frWorkspaces = {
     "name": "Nom",
     "properties": "Propriétés du workspace",
     "save": "Enregistrer",
-    "primaryHelp": "Le workspace Principal correspond au dossier de base du projet et ne peut pas être modifié.",
+    "primaryHelp": "Le workspace Principal correspond au dossier de base du projet. Son nom est fixe ; son chemin peut être relocalisé depuis le menu du workspace.",
     "pathHelp": "Chemin du worktree. Renommer le workspace ne déplace pas ce dossier.",
     "unavailable": "Workspace indisponible",
     "empty": "Aucune conversation",

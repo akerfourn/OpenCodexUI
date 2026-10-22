@@ -126,8 +126,30 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
     })();
   }
 
+  /** Reads latest historical paths without treating them as current filesystem ownership. */
+  async listPathAliases(workspaceId: string): Promise<string[]> {
+    const rows = this.database.prepare(`SELECT path FROM workspace_path_aliases
+      WHERE workspace_id = ? ORDER BY id DESC`).all(workspaceId) as { path: string }[];
+    return rows.map(row => row.path);
+  }
+
+  /** Ignores obsolete reloads after an explicit switch to another workspace. */
+  async getThreadRelocationPath(threadId: string): Promise<string | null> {
+    const row = this.database.prepare(`SELECT r.previous_path AS path FROM workspace_thread_relocations r
+      JOIN threads t ON t.id = r.thread_id AND t.current_workspace_id = r.workspace_id
+      WHERE r.thread_id = ?`).get(threadId) as { path: string } | undefined;
+    return row?.path ?? null;
+  }
+
+  /** A verified same-association reload is safe to retry if its local acknowledgement was lost. */
+  async confirmThreadRelocation(threadId: string, workspaceId: string, path: string): Promise<void> {
+    this.database.prepare(`DELETE FROM workspace_thread_relocations WHERE thread_id = ? AND workspace_id = ?
+      AND EXISTS (SELECT 1 FROM threads t JOIN project_workspaces w ON w.id = t.current_workspace_id
+        WHERE t.id = ? AND w.id = ? AND w.path = ?)`).run(threadId, workspaceId, threadId, workspaceId, path);
+  }
+
   /** Relocates identity after backend validation; aliases never drive automatic adoption. */
-  async relocate(workspaceId: string, path: string): Promise<void> {
+  async relocate(workspaceId: string, path: string, expectedPath?: string): Promise<void> {
     const normalizedPath = normalizeProjectPath(path);
     if (normalizedPath === null) {
       throw new Error("Workspace path is required.");
@@ -136,6 +158,24 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
       const workspace = this.requireWorkspace(workspaceId);
       this.requireAvailable(workspace);
       this.requireUnreserved(workspaceId);
+      if (expectedPath !== undefined && workspace.path !== expectedPath) {
+        throw new Error("Workspace path changed during relocation. Reload before retrying.");
+      }
+      if (this.database.prepare(`SELECT id FROM workspace_transitions
+        WHERE from_workspace_id = ? OR to_workspace_id = ?`).get(workspaceId, workspaceId) !== undefined) {
+        throw new Error("Workspace has an unresolved transition.");
+      }
+      if (this.database.prepare(`SELECT id FROM workspace_creations WHERE project_id = ?`)
+        .get(workspace.projectId) !== undefined) {
+        throw new Error("Project has a pending creation. Reconcile it before relocation.");
+      }
+      const owners = this.database.prepare(`SELECT id, path FROM project_workspaces
+        WHERE source_id IS ? AND removed_at IS NULL AND id != ?`)
+        .all(workspace.sourceId, workspaceId) as { id: string; path: string }[];
+      const key = (value: string): string => value.startsWith("/") ? value : value.toLowerCase();
+      if (owners.some(owner => key(owner.path) === key(normalizedPath))) {
+        throw new Error("Another workspace already owns this source path.");
+      }
       if (workspace.path === normalizedPath) {
         return;
       }
@@ -151,6 +191,10 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
         this.database.prepare("UPDATE projects SET path = ?, updated_at = ? WHERE id = ?")
           .run(normalizedPath, now, workspace.projectId);
       }
+      this.database.prepare(`INSERT INTO workspace_thread_relocations (thread_id, workspace_id, previous_path)
+        SELECT id, current_workspace_id, ? FROM threads WHERE current_workspace_id = ?
+        ON CONFLICT(thread_id) DO UPDATE SET workspace_id = excluded.workspace_id,
+          previous_path = excluded.previous_path`).run(workspace.path, workspaceId);
       this.database.prepare("UPDATE threads SET cwd = ? WHERE current_workspace_id = ?")
         .run(normalizedPath, workspaceId);
     })();

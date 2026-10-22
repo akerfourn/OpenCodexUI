@@ -72,6 +72,10 @@ export class ProjectWorkspacesStore {
       ]);
       runInAction(() => {
         if (generation !== this.generation) return;
+        for (const workspace of workspaces) {
+          const previous = this.workspaces.find(item => item.id === workspace.id);
+          if (previous !== undefined && previous.path !== workspace.path) this.applyRelocation(previous, workspace);
+        }
         this.workspaces = workspaces;
         this.pending = pending;
         this.pendingRemovals = removals;
@@ -84,6 +88,38 @@ export class ProjectWorkspacesStore {
         if (generation === this.generation) this.error = errorMessage(error);
       });
     }
+  }
+
+  /** Reconnects a manually moved directory using plain, explicit transport identities. */
+  async relocate(workspaceId: string, destinationPath: string, confirmIdentity: boolean): Promise<void> {
+    await this.perform(async () => {
+      if (this.project.files.hasUnsavedWorkspaceDocuments(workspaceId)) {
+        throw new Error("Save or close unsaved workspace documents before relocating it.");
+      }
+      await this.root.request({ type: "projectWorkspaces.relocate", projectId: this.project.project.id,
+        workspaceId, sourceId: this.requireSource(), destinationPath, confirmIdentity });
+    });
+    this.root.projectsStore.refreshProjects();
+  }
+
+  /** Refreshes current associations while retaining turn snapshots and unsaved documents. */
+  private applyRelocation(previous: OpenCodexProjectWorkspace, workspace: OpenCodexProjectWorkspace): void {
+    this.project.files.closeRemovedWorkspace(workspace.id);
+    const threads = new Map(this.project.threadListStore.threads.map(thread => [thread.id, thread]));
+    for (const chat of this.project.chatsById.values()) threads.set(chat.thread.id, chat.thread);
+    for (const thread of threads.values()) {
+      if (thread.projectPath === previous.path && (thread.sourceId ?? previous.sourceId) === workspace.sourceId) {
+        this.project.upsertThread({ ...thread, projectPath: workspace.path });
+      }
+    }
+    const oldCommit = this.project.getGitStoreForWorkspace({ path: previous.path, sourceId: previous.sourceId,
+      workspaceId: previous.id }).commitStore;
+    const draft = oldCommit.commitMessage;
+    this.project.getGitStoreForWorkspace({ path: workspace.path, sourceId: workspace.sourceId,
+      workspaceId: workspace.id }).commitStore.setCommitMessage(draft);
+    oldCommit.setCommitMessage("");
+    if (workspace.isPrimary) this.project.setProject({ ...this.project.project, path: workspace.path });
+    this.project.composeStore.reset();
   }
 
   /** Deletes only the explicit managed checkout; unsaved buffers are never discarded implicitly. */

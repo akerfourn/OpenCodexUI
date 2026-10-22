@@ -84,7 +84,7 @@ export class WorkspaceExecutionService {
     const context = await this.creationContext(workspaceId, projectPath, sourceId);
     return await this.run({ threadId: null, projectPath, sourceId, workspaceId }, async (reservation) => {
       let parameters: Partial<v2.ThreadStartParams> = {};
-      if (!context.target.isPrimary) {
+      if (!context.target.isPrimary || (await this.repository.listPathAliases(workspaceId)).length > 0) {
         if (this.preparation?.prepareCreation === undefined) throw new Error("Workspace preparation is unavailable.");
         parameters = await this.preparation.prepareCreation(reservation, context.primary);
       }
@@ -123,6 +123,19 @@ export class WorkspaceExecutionService {
   /** Verifies a confirmed checkout or cancels undispatched preparation. */
   async reconcileCreation(creationId: string): Promise<OpenCodexProjectWorkspace | null> {
     return await this.creation.reconcile(creationId);
+  }
+
+  /** Forces a verified policy reload for relocated conversations before their next turn. */
+  async prepareRelocatedThread(reservation: WorkspaceExecutionReservation): Promise<boolean> {
+    if (reservation.threadId === null) return false;
+    const previousPath = await this.repository.getThreadRelocationPath(reservation.threadId);
+    if (previousPath === null) return false;
+    if (this.preparation?.prepareRelocated === undefined) {
+      throw new Error("Relocated conversations require managed permission preparation before sending messages.");
+    }
+    await this.preparation.prepareRelocated(reservation, previousPath);
+    await this.repository.confirmThreadRelocation(reservation.threadId, reservation.workspaceId, reservation.cwd);
+    return true;
   }
 
   /** Holds a thread gate and durable workspace reservation through the RPC response. */

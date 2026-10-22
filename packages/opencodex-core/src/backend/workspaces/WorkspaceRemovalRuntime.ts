@@ -9,7 +9,7 @@ export class WorkspaceRemovalRuntime {
   constructor(private readonly clients: Pick<ClientPort, "ensureClient">) {}
 
   /** Rejects incomplete inventories, active agents, loaded target sessions and live terminals. */
-  async requireIdle(removal: OpenCodexWorkspaceRemoval): Promise<void> {
+  async requireIdle(removal: Pick<OpenCodexWorkspaceRemoval, "sourceId" | "workspacePath" | "projectPath">): Promise<void> {
     const client = await this.clients.ensureClient(removal.sourceId);
     const loaded = await client.request<v2.ThreadLoadedListResponse>("thread/loaded/list", { limit: 100 });
     if (!Array.isArray(loaded.data) || loaded.nextCursor !== null) {
@@ -19,7 +19,7 @@ export class WorkspaceRemovalRuntime {
     for (const id of loaded.data) {
       const { thread } = await client.readThread(id, false);
       if (thread.id !== id || thread.status.type !== "idle") {
-        throw new Error("Finish active conversations and sub-agents on this source before removing a workspace.");
+        throw new Error("Finish active conversations and sub-agents on this source before workspace maintenance.");
       }
       if (isInsideWorkspace(thread.cwd, removal.workspacePath)) {
         targets.push(id);
@@ -28,7 +28,7 @@ export class WorkspaceRemovalRuntime {
         "thread/backgroundTerminals/list", { threadId: id, limit: 100 });
       if (!Array.isArray(terminals.data) || terminals.nextCursor !== null
         || terminals.data.some(terminal => isInsideWorkspace(terminal.cwd, removal.workspacePath))) {
-        throw new Error("Stop background terminals before removing this workspace; their inventory must be complete.");
+        throw new Error("Stop background terminals before workspace maintenance; their inventory must be complete.");
       }
     }
     for (const id of targets) {
@@ -41,7 +41,7 @@ export class WorkspaceRemovalRuntime {
       const remaining = await client.request<v2.ThreadLoadedListResponse>("thread/loaded/list", { limit: 100 });
       if (!Array.isArray(remaining.data) || remaining.nextCursor !== null
         || targets.some(id => remaining.data.includes(id))) {
-        throw new Error("Another client still holds a workspace conversation. Close it before removing this workspace.");
+        throw new Error("Another client still holds a workspace conversation. Close it before workspace maintenance.");
       }
       for (const id of remaining.data) {
         const { thread } = await client.readThread(id, false);
@@ -53,7 +53,7 @@ export class WorkspaceRemovalRuntime {
   }
 
   /** Refuses symbolic-link ancestors and non-directory paths in either checkout. */
-  async requireDirectories(removal: OpenCodexWorkspaceRemoval): Promise<void> {
+  async requireDirectories(removal: Pick<OpenCodexWorkspaceRemoval, "sourceId" | "workspacePath" | "projectPath">): Promise<void> {
     const client = await this.clients.ensureClient(removal.sourceId);
     for (const value of [removal.projectPath, removal.workspacePath]) {
       const syntax = value.startsWith("/") ? path.posix : path.win32;
@@ -61,7 +61,7 @@ export class WorkspaceRemovalRuntime {
       while (true) {
         const metadata = await client.getMetadata(current);
         if (metadata.isDirectory !== true || metadata.isSymlink !== false) {
-          throw new Error("Workspace removal requires literal directories without symbolic-link ancestors.");
+          throw new Error("Workspace maintenance requires literal directories without symbolic-link ancestors.");
         }
         const parent = syntax.dirname(current);
         if (parent === current) break;
@@ -71,7 +71,7 @@ export class WorkspaceRemovalRuntime {
   }
 
   /** Distinguishes a proven absent directory from access errors or a replaced path. */
-  async isMissing(removal: OpenCodexWorkspaceRemoval): Promise<boolean> {
+  async isMissing(removal: Pick<OpenCodexWorkspaceRemoval, "sourceId" | "workspacePath" | "projectPath">): Promise<boolean> {
     const client = await this.clients.ensureClient(removal.sourceId);
     try {
       await client.getMetadata(removal.workspacePath);

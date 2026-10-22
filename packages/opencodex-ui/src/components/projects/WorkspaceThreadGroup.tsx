@@ -12,6 +12,7 @@ import { workspaceLabel, type WorkspaceThreadGroup as ThreadGroup } from "../../
 import { ThreadButtonX } from "../threads/ThreadButton";
 import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 import { WorkspacePropertiesDialogX } from "./WorkspacePropertiesDialog";
+import { WorkspaceRelocateDialogX } from "./WorkspaceRelocateDialog";
 import { WorkspaceRemoveDialogX } from "./WorkspaceRemoveDialog";
 
 /** A named, collapsible workspace owns its chat list and local creation action. */
@@ -22,6 +23,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const [collapsed, setCollapsed] = useState(false);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
+  const [relocating, setRelocating] = useState(false);
   const [removing, setRemoving] = useState(false);
   const workspace = group.workspace;
   let name = workspace === null ? t("workspaces.unavailable") : workspaceLabel(workspace, t("workspaces.primary"));
@@ -42,6 +44,16 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
     : null;
   const removal = removing && workspace !== null
     ? <WorkspaceRemoveDialogX project={project} workspace={workspace} onClose={() => setRemoving(false)} /> : null;
+  const relocation = relocating && workspace !== null
+    ? <WorkspaceRelocateDialogX project={project} workspace={workspace} onClose={() => setRelocating(false)} /> : null;
+  const canRelocate = workspace !== null && workspace.removedAt === null;
+  const relocateAction = canRelocate ? <MenuItem disabled={disabled} onClick={handleRelocate}>
+    {t("workspaces.relocate")}</MenuItem> : null;
+  /** Opens directory reassociation for the chosen workspace, including the primary. */
+  function handleRelocate(): void {
+    setAnchor(null);
+    setRelocating(true);
+  }
   const canRemove = workspace !== null && !workspace.isPrimary && workspace.managed && workspace.removedAt === null;
   const removeAction = canRemove ? <MenuItem disabled={disabled} onClick={handleRemove} sx={{ color: "error.main" }}>
     {t("workspaces.remove")}</MenuItem> : null;
@@ -82,10 +94,10 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
         <IconButton size="small" aria-label={t("workspaces.actions", { name })}
           disabled={workspace === null} onClick={handleMenu}><MoreVertOutlinedIcon fontSize="small" /></IconButton>
       </Box>
-      {threads}{empty}{properties}{removal}
+      {threads}{empty}{properties}{removal}{relocation}
       <Menu open={anchor !== null} anchorEl={anchor} onClose={() => setAnchor(null)}>
         <MenuItem onClick={handleProperties}>{t("workspaces.properties")}</MenuItem>
-        {removeAction}
+        {relocateAction}{removeAction}
       </Menu>
     </Box>
   );

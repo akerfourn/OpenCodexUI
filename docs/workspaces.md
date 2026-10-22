@@ -178,7 +178,7 @@ Compose workspaces have distinct stable project names; primary naming remains
 compatible. Ports and explicitly named resources can still collide.
 Command runs retain their original source, cwd and process handle.
 
-The UI groups conversations by named workspace. Primary properties are fixed;
+The UI groups conversations by named workspace. The primary name is fixed;
 secondary renaming changes metadata only. Conversation switching is exposed
 through the chat menu. Git drafts and responses are scoped to their checkout;
 stale asynchronous results must not update the newly selected workspace.
@@ -219,11 +219,55 @@ Git deregistration and directory absence in the frozen source before marking
 the workspace removed. A positively failed Git command can be cancelled when
 the registered checkout still exists. Ambiguous outcomes remain blocked.
 
+## Relocating an existing workspace
+
+Use **Relocate workspace** in a workspace's menu after moving its directory
+manually within the same source. This works for the primary workspace, including
+non-Git projects, and registered secondary worktrees, including imported ones.
+The previous directory must be absent. The selected destination and its
+ancestors must be literal directories. Source access failures are not treated
+as proof of absence. The operation never moves files or repairs Git links.
+For a linked checkout moved with filesystem tools, run `git worktree repair`
+explicitly before retrying if Git still registers its old location.
+
+Secondaries must be registered at their new root and share the primary's
+Git common directory. The primary repository's identity cannot be proved once
+its old directory disappears: the UI explains this limitation and requires
+explicit confirmation that the selected directory is the same project.
+Relocation cannot merge another cached project or adopt its occupied path.
+Windows destination collisions are compared without case sensitivity.
+
+The shared source gate excludes in-flight tools and process startup. Active
+commands, debug sessions, Compose services and Codex conversations/terminals
+block relocation. Idle affected conversations are unloaded and must disappear
+from the source inventory. Unsaved editor buffers must be saved or closed.
+These checks cover managed activity, not every external OS process.
+
+The cache transaction preserves project/workspace IDs, current conversation
+associations and immutable turn paths. It updates compatibility paths and
+records the old path as a historical alias, never as automatic ownership.
+A repeated request for the committed destination is safe after a lost reply.
+The UI reloads durable results, refreshes conversation groups and project paths,
+closes clean old-path buffers and carries the Git commit draft to the new path.
+Dirty buffers created during the request remain intact.
+
+Migration 44 records which existing conversations still need a policy reload.
+Before their next message, the backend regenerates a path-bound managed
+permission profile and verifies the resumed cwd, runtime roots, sandbox and
+unchanged approval contract. A failure keeps that requirement for retry;
+custom or unrestricted profiles are refused rather than replaced. New chats
+in a relocated primary also receive a freshly prepared managed profile.
+Old empty Codex threads that cannot be resumed remain subject to Codex's empty
+rollout limitation; create a new conversation in the relocated workspace.
+No historical turn cwd is rewritten. Project rules, custom scripts and explicit
+shared-folder paths containing the old location are not rewritten automatically.
+
 ## Persistence and validation
 
 Migrations 28–31 establish identity, aliases, reservations, immutable history
 and rule-file scoping. Migrations 32–34 add transition and maintenance/catalogue
-guards; 35–37 add creation journaling, names and frozen storage roots. Preserve
+guards; 35–37 add creation journaling, names and frozen storage roots.
+Migration 43 journals removal; migration 44 retains relocation policy reloads. Preserve
 existing data through idempotent migrations instead of rewriting associations.
 
 Run from the repository root:
@@ -244,12 +288,12 @@ across SQLite reopening. Cache migration and UI store tests cover preservation,
 source isolation and stale results. `WorkspaceRemoval.test.ts` covers real Git
 and SQLite, dirty/ignored files, locks, detached commits and restart recovery;
 `WorkspaceRemovalRuntime` and cache removal suites cover runtime and durable
-guards. Static component rendering does not replace
+guards. Relocation suites cover real Git movement/repair, source and repository
+validation, durable policy reloads, alias preservation and UI confirmation.
+Static component rendering does not replace
 interactive validation of creation, switching, errors and restart recovery.
 
-Physical move, public relocation, worktree locking, preparation hooks
-and automatic per-agent worktrees are not implemented. The cache's `relocate`
-method is only a transactional persistence primitive: exposing it requires
-source-side identity validation and checks for affected processes. Local guards
+Physical move, worktree locking, preparation hooks and automatic per-agent
+worktrees are not implemented. Local guards
 do not lock out external Git/Codex clients or establish universal filesystem
 identity across mounts and aliases.

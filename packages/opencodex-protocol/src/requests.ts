@@ -72,6 +72,8 @@ export type OpenCodexRequest =
   | { type: "projectWorkspaces.discover"; projectId: string; sourceId: string }
   | { type: "projectWorkspaces.rename"; projectId: string; workspaceId: string; name: string }
   | { type: "projectWorkspaces.list"; projectId: string }
+  | { type: "projectWorkspaces.relocate"; projectId: string; workspaceId: string; sourceId: string;
+      destinationPath: string; confirmIdentity: boolean }
   | { type: "projectWorkspaces.remove"; projectId: string; workspaceId: string; sourceId: string }
   | { type: "projectWorkspaces.removals.list"; projectId: string }
   | { type: "projectWorkspaces.removals.reconcile"; removalId: string }

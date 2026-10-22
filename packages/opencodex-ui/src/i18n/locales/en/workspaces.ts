@@ -21,6 +21,13 @@ export const enWorkspaces = {
     "configureHint": "You can configure a default location in the Workspaces section. You can also enter a custom path here."
   },
   "workspaces": {
+    "relocate": "Relocate workspace",
+    "relocateHelp": "Enter the directory already moved within the same source. The previous path must be absent. No files will be moved and no Git links will be repaired automatically. Conversations and history are preserved.",
+    "relocatePrimaryHelp": "The previous primary repository’s identity cannot be proven after it disappears. Verify that the selected directory contains your project.",
+    "relocateConfirm": "I confirm that this is the same workspace, moved manually.",
+    "relocateUnsaved": "Save or close unsaved documents before relocating this workspace.",
+    "previousPath": "Previous path",
+
     "remove": "Delete workspace",
     "removeTitle": "Delete workspace {{name}}?",
     "removeHelp": "The directory will be permanently deleted. Git branches and conversation history will be retained. Switch conversations you want to continue to another workspace before deleting this one. Modified, untracked or ignored files and active processes block deletion; removal is never forced.",
@@ -32,7 +39,7 @@ export const enWorkspaces = {
     "name": "Name",
     "properties": "Workspace properties",
     "save": "Save",
-    "primaryHelp": "The Primary workspace is the base project directory and cannot be edited.",
+    "primaryHelp": "The Primary workspace is the base project directory. Its name is fixed; its path can be relocated from the workspace menu.",
     "pathHelp": "Worktree path. Renaming the workspace does not move this directory.",
     "unavailable": "Unavailable workspace",
     "empty": "No conversations",

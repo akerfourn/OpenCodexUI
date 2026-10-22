@@ -13,3 +13,11 @@ export function normalizeWorkspaceSourcePath(value: string): string {
   }
   throw new Error("Workspace requires an absolute path in its source.");
 }
+
+/** Compares normalized source paths with native Windows case and separator semantics. */
+export function workspaceSourcePathsEqual(left: string, right: string): boolean {
+  const a = normalizeWorkspaceSourcePath(left);
+  const b = normalizeWorkspaceSourcePath(right);
+  if (a.startsWith("/")) return a === b;
+  return a.toLowerCase() === b.toLowerCase();
+}

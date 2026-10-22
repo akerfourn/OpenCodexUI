@@ -34,6 +34,7 @@ describe("workspace persistence", () => {
       DROP TRIGGER protect_removal_path;
       DROP TRIGGER protect_removal_thread;
       DROP TABLE workspace_removals;
+      DROP TABLE workspace_thread_relocations;
       DROP TRIGGER protect_transition_execution;
       DROP TRIGGER protect_transition_workspace;
       DROP TRIGGER protect_transition_thread;
@@ -158,7 +159,7 @@ describe("workspace persistence", () => {
     const first = await workspaces.resolvePath("/repo", "source-a");
     await workspaces.resolvePath("/occupied", "source-a");
 
-    await expect(workspaces.relocate(first.id, "/occupied")).rejects.toThrow("UNIQUE constraint");
+    await expect(workspaces.relocate(first.id, "/occupied")).rejects.toThrow("already owns this source path");
     expect((await workspaces.get(first.id))?.path).toBe("/repo");
     expect(database.prepare("SELECT * FROM workspace_path_aliases").all()).toEqual([]);
   });

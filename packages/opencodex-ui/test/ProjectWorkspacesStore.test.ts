@@ -26,6 +26,40 @@ const workspaces: OpenCodexProjectWorkspace[] = [
 ];
 
 describe("workspace UI orchestration", () => {
+  it("should retain conversation metadata and the Git draft after a successful relocation", async () => {
+    const { project, request } = fixture();
+    let moved = false;
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.relocate") moved = true;
+      if (input.type === "projectWorkspaces.list") return workspaces.map(item =>
+        item.id === "B" && moved ? { ...item, path: "/moved" } : item);
+      return [];
+    });
+    await project.workspaces.load();
+    project.upsertThread(createThread({ id: "thread", projectPath: "/B", sourceId: "source" }));
+    await project.workspaces.select("B", null);
+    project.gitStore.commitStore.setCommitMessage("Keep this draft");
+    await project.workspaces.relocate("B", "/moved", true);
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.relocate", projectId: "project", workspaceId: "B",
+      sourceId: "source", destinationPath: "/moved", confirmIdentity: true });
+    expect(project.findThread("thread")?.projectPath).toBe("/moved");
+    expect(project.workspaces.current?.path).toBe("/moved");
+    expect(project.gitStore.commitStore.commitMessage).toBe("Keep this draft");
+  });
+
+  it("should refresh relocated metadata after a lost response while retaining the reported error", async () => {
+    const { project, request } = fixture();
+    await project.workspaces.load();
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.relocate") throw new Error("reply lost");
+      if (input.type === "projectWorkspaces.list") return workspaces.map(item => item.id === "A" ? { ...item, path: "/new" } : item);
+      return [];
+    });
+    await project.workspaces.relocate("A", "/new", true);
+    expect(project.project.path).toBe("/new");
+    expect(project.workspaces.error).toBe("reply lost");
+  });
+
   it("should send only stable deletion identities and retain removed workspace metadata", async () => {
     const { project, request } = fixture();
     let removed = false;
