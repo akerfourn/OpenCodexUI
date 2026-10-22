@@ -1,4 +1,4 @@
-import type { OpenCodexCommandExecutionMode } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexCommandExecutionMode, OpenCodexWorkspacePreparationInput } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceDiscoveryResult } from "@open-codex-ui/opencodex-protocol";
 import type {
   OpenCodexApprovalDecision,
@@ -310,6 +310,7 @@ export interface TurnDiagnosticsApi {
 
 /** Public operations for project command definitions and command runs. */
 export interface CommandsApi {
+  prepareWorkspace(input: OpenCodexWorkspacePreparationInput): Promise<OpenCodexProjectCommandRun>;
   list(projectId: string): Promise<OpenCodexProjectCommand[]>;
   create(
     projectId: string,

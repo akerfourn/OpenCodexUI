@@ -172,6 +172,20 @@ describe("project persistence", () => {
     });
   });
 
+  it("should retain the preparation command across reopening and support explicitly disabling it", async () => {
+    const project = await repository.upsertProject("/tmp/preparation");
+    await repository.updateProjectPreferences(project.id, { workspacePreparation: { commandId: "command-1" },
+      git: { referenceTagName: "v1" } });
+    await repository.close();
+    repository = createOpenCodexSqliteCacheRepository({ directory });
+    expect((await repository.listProjects()).find(item => item.id === project.id)?.preferences).toEqual({
+      workspacePreparation: { commandId: "command-1" }, git: { referenceTagName: "v1" }
+    });
+    await repository.updateProjectPreferences(project.id, { workspacePreparation: { commandId: null } });
+    expect((await repository.listProjects()).find(item => item.id === project.id)?.preferences)
+      .toEqual({ workspacePreparation: { commandId: null } });
+  });
+
   it("should persist project context folder preferences", async () => {
     const project = await repository.upsertProject("/tmp/project-context");
 

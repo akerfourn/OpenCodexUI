@@ -25,6 +25,8 @@ import type {
 import { toProtocolRun } from "./projectCommandRunMapping.js";
 import { ProjectCommandLog } from "./ProjectCommandLog.js";
 import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
+import { readWorkspacePreparation } from "../workspaces/workspacePreparation.js";
+import type { OpenCodexWorkspacePreparationInput } from "@open-codex-ui/opencodex-protocol";
 import { readHostShellEnvironment } from "./projectCommandExecution.js";
 import { resolveProjectCommandShell } from "./projectCommandShell.js";
 import {
@@ -162,6 +164,25 @@ export class ProjectCommandService {
       sourceId = workspace.sourceId;
     }
     const source = await this.options.resolveSource(sourceId);
+    return await this.startCommand(command, projectPath, source, workspaceId);
+  }
+
+  /** Runs exactly the reviewed project hook in its fixed workspace, with normal logs and stop support. */
+  async prepareWorkspace(input: OpenCodexWorkspacePreparationInput): Promise<OpenCodexProjectCommandRun> {
+    const source = await this.options.resolveSource(input.sourceId);
+    if (source.id !== input.sourceId) throw new Error("Workspace preparation source changed.");
+    const command = await readWorkspacePreparation(this.requireRepository(), this.options.clients, input);
+    this.requireWorkspaceIdle(input.workspaceId, input.sourceId, input.workspacePath);
+    return await this.startCommand(command, input.workspacePath, source, input.workspaceId);
+  }
+
+  /** Starts a captured definition without re-reading a possibly edited script after confirmation. */
+  private async startCommand(
+    command: CachedProjectCommand,
+    projectPath: string,
+    source: CachedSource,
+    workspaceId?: string
+  ): Promise<OpenCodexProjectCommandRun> {
     const execution = { commandId: command.id, sourceId: source.id, cwd: projectPath, workspaceId };
     const active = [...this.readRunningRunsForCommand(command.id), ...this.startingRuns];
     if (active.some((run) => commandExecutionConflicts(command.executionMode, execution, run))) {
@@ -200,7 +221,7 @@ export class ProjectCommandService {
         throw error;
       }
 
-      return protocolRun;
+      return toProtocolRun(run);
     } finally {
       this.startingRuns.delete(execution);
     }

@@ -11,6 +11,7 @@ export type ProjectRequest = Extract<OpenCodexRequest, {
 
 /** Runtime facades used by project routing after shared workspace-context resolution. */
 export interface ProjectRequestRuntime {
+  automation: OpenCodexBackendRuntime["automation"];
   projects: OpenCodexBackendRuntime["projects"];
   workspaces: OpenCodexBackendRuntime["workspaces"];
   workspaceLocks: OpenCodexBackendRuntime["workspaceLocks"];
@@ -34,6 +35,8 @@ export function isProjectRequest(request: OpenCodexRequest): request is ProjectR
 /** Dispatches a resolved project request; responses and errors retain the facade's behavior. */
 export async function routeProjectRequest(runtime: ProjectRequestRuntime, request: ProjectRequest): Promise<unknown> {
   switch (request.type) {
+    case "projectWorkspaces.prepare":
+      return runtime.automation.commands.prepareWorkspace(request.input);
     case "projectWorkspaces.lock.read":
       if (runtime.workspaceLocks === null) throw new Error("Workspace locks require persistent project storage.");
       return runtime.workspaceLocks.read(request.projectId, request.workspaceId, request.sourceId);

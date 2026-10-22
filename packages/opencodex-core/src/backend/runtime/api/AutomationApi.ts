@@ -16,6 +16,7 @@ type CommandsHandler = Pick<
   | "reorderProjectCommands"
   | "deleteProjectCommand"
   | "runProjectCommand"
+  | "prepareWorkspace"
   | "stopProjectCommandRun"
 >;
 
@@ -36,6 +37,13 @@ type AutomationHandler = CommandsHandler & RulesHandler;
 export class CommandsApi implements CommandsApiContract {
   /** Creates a commands API backed by the supplied automation handler. */
   constructor(private readonly handler: CommandsHandler) {}
+
+  /** Starts the reviewed hook in its explicitly identified workspace. */
+  async prepareWorkspace(
+    input: Parameters<CommandsHandler["prepareWorkspace"]>[0]
+  ): ReturnType<CommandsHandler["prepareWorkspace"]> {
+    return await this.handler.prepareWorkspace(input);
+  }
 
   /** Lists commands configured for a project. */
   async list(

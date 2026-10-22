@@ -16,6 +16,7 @@ describe("project preferences DTO", () => {
       envFilePermission: "read"
     };
     const preferences = {
+      workspacePreparation: { commandId: "prepare" },
       git: {
         referenceTagName: "v1.0.0",
         deferredPaths: ["src/experimental.ts"],
@@ -33,6 +34,7 @@ describe("project preferences DTO", () => {
 
     expect(clonedPreferences).toEqual(preferences);
     expect(clonedPreferences).not.toBe(preferences);
+    expect(clonedPreferences.workspacePreparation).not.toBe(preferences.workspacePreparation);
     expect(clonedPreferences.git).not.toBe(preferences.git);
     expect(clonedPreferences.git?.deferredPaths).not.toBe(preferences.git.deferredPaths);
     expect(clonedPreferences.git?.commitProtectedBranches)

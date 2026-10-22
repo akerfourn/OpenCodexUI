@@ -18,6 +18,7 @@ import { WorkspacePropertiesDialogX } from "./WorkspacePropertiesDialog";
 import { WorkspaceMoveDialogX } from "./WorkspaceMoveDialog";
 import { WorkspaceRelocateDialogX } from "./WorkspaceRelocateDialog";
 import { WorkspaceRemoveDialogX } from "./WorkspaceRemoveDialog";
+import { WorkspacePreparationDialogX } from "./WorkspacePreparationDialog";
 
 /** A named, collapsible workspace owns its chat list and local creation action. */
 export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialog }: {
@@ -31,6 +32,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const [moving, setMoving] = useState(false);
   const [lockSnapshot, setLockSnapshot] = useState<OpenCodexWorkspaceLockState | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const workspace = group.workspace;
   let name = workspace === null ? t("workspaces.unavailable") : workspaceLabel(workspace, t("workspaces.primary"));
   if (workspace?.removedAt != null) name = t("workspaces.removedName", { name });
@@ -66,6 +68,11 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const properties = propertiesOpen && workspace !== null
     ? <WorkspacePropertiesDialogX project={project} workspace={workspace} onClose={() => setPropertiesOpen(false)} />
     : null;
+  const preparation = preparing && workspace !== null
+    ? <WorkspacePreparationDialogX project={project} workspace={workspace}
+      sourceName={root.sourcesStore.findSource(workspace.sourceId)?.name} onClose={() => setPreparing(false)} /> : null;
+  /** Opens explicit preparation independently of the selected chat or workspace. */
+  function handlePrepare(): void { setAnchor(null); setPreparing(true); }
   const removal = removing && workspace !== null
     ? <WorkspaceRemoveDialogX project={project} workspace={workspace} onClose={() => setRemoving(false)} /> : null;
   const relocation = relocating && workspace !== null
@@ -135,9 +142,10 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
         <IconButton size="small" aria-label={t("workspaces.actions", { name })}
           disabled={workspace === null} onClick={handleMenu}><MoreVertOutlinedIcon fontSize="small" /></IconButton>
       </Box>
-      {threads}{empty}{properties}{removal}{relocation}{movement}{lockDialog}
+      {threads}{empty}{properties}{removal}{relocation}{movement}{lockDialog}{preparation}
       <Menu open={anchor !== null} anchorEl={anchor} onClose={() => setAnchor(null)}>
         <MenuItem onClick={handleProperties}>{t("workspaces.properties")}</MenuItem>
+        <MenuItem disabled={disabled} onClick={handlePrepare}>{t("workspacePreparation.title")}</MenuItem>
         {lockAction}{moveAction}{relocateAction}{removeAction}
       </Menu>
     </Box>

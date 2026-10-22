@@ -2,6 +2,21 @@ import type { TranslationShape } from "../../translationShape.js";
 import type { frWorkspaces } from "../fr/workspaces.js";
 
 export const enWorkspaces = {
+  "workspacePreparation": {
+    "title": "Prepare workspace",
+    "help": "This script runs in the displayed directory with your source’s permissions. Review it before running. Nothing is executed or copied automatically on creation. Interrupting does not restore files already changed or restart the script.",
+    "source": "Execution source",
+    "command": "Project preparation command",
+    "commandHelp": "Choose or create a project command to install dependencies, explicitly prepare local files or initialize submodules. For multiple steps, make your script stop on the first error.",
+    "none": "No preparation command",
+    "script": "Script to execute",
+    "edit": "Edit command",
+    "save": "Save for this project",
+    "run": "Run preparation",
+    "unsaved": "Save or close unsaved workspace documents before running preparation.",
+    "unavailable": "The workspace or its source is no longer available at this location. Close this dialog and check the project.",
+    "missing": "The configured command was deleted. Choose another command or disable preparation."
+  },
   "workspaceStorage": {
     "title": "Workspace storage",
     "description": "Configure storage folders for each source. Editing or removing a location does not move or delete existing workspaces.",

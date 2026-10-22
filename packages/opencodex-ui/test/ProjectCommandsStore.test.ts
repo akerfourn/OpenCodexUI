@@ -7,13 +7,38 @@ import type {
   OpenCodexProjectCommand,
   OpenCodexProjectCommandRun
 } from "@open-codex-ui/opencodex-protocol";
-import { autorun } from "mobx";
+import { autorun, observable } from "mobx";
 
 import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import { ProjectCommandsStore } from "../src/stores/project/ProjectCommandsStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("ProjectCommandsStore run lifecycle", () => {
+  it("should clone preparation snapshots and retain their explicit workspace instead of the active selection", async () => {
+    const accepted = createRun({ workspaceId: "B", sourceId: "source-1", cwd: "/secondary" });
+    const request = vi.fn(async () => accepted) as unknown as RootStore["request"];
+    const { store } = createStoreFixture(request);
+    const input = observable({ projectId: "project-1", workspaceId: "B", sourceId: "source-1",
+      workspacePath: "/secondary", command: createCommand() });
+    await store.runPreparation(input);
+    const payload = vi.mocked(request).mock.calls[0]![0];
+    expect(payload).toMatchObject({ type: "projectWorkspaces.prepare", input: { workspaceId: "B", workspacePath: "/secondary" } });
+    expect(() => structuredClone(payload)).not.toThrow();
+    expect(store.getRuns("command-1")[0]).toMatchObject(accepted);
+    expect(store.isRunningCommand).toBe(false);
+  });
+
+  it("should save only the preparation preference and preserve unrelated concurrent preferences", async () => {
+    const updated = { id: "project-1", preferences: { workspacePreparation: { commandId: "prepare" } } };
+    const request = vi.fn(async () => updated) as unknown as RootStore["request"];
+    const { store, projectStore } = createStoreFixture(request);
+    projectStore.setProject = vi.fn();
+    await store.setPreparationCommand("prepare");
+    expect(request).toHaveBeenCalledWith({ type: "projects.preferences.update", projectId: "project-1",
+      patch: { workspacePreparation: { commandId: "prepare" } } });
+    expect(projectStore.setProject).toHaveBeenCalledWith(updated);
+    expect(store.isSaving).toBe(false);
+  });
   it("should preserve the writable run-map property exposed by the facade", () => {
     const { store } = createStoreFixture();
     const run = createRun();
@@ -243,6 +268,7 @@ function createStoreFixture(
       sourceId: "source-1"
     },
     projectPath: "/workspace/project",
+    files: { hasUnsavedWorkspaceDocuments: () => false },
     workspaces: {
       workspaces: [{
         id: "workspace-primary",

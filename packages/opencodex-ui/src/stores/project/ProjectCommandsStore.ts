@@ -7,6 +7,8 @@ import { makeAutoObservable, observable, runInAction } from "mobx";
 import type {
   OpenCodexEvent,
   OpenCodexProjectCommand,
+  OpenCodexProject,
+  OpenCodexWorkspacePreparationInput,
   OpenCodexProjectCommandRun
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -313,6 +315,45 @@ export class ProjectCommandsStore {
       runInAction(() => {
         this.startingRuns.delete(execution);
       });
+    }
+  }
+
+  /** Saves only the preparation preference, preserving unrelated settings and their concurrent edits. */
+  async setPreparationCommand(commandId: string | null): Promise<void> {
+    this.isSaving = true;
+    try {
+      const project = await this.root.request<OpenCodexProject>({
+        type: "projects.preferences.update", projectId: this.projectStore.project.id,
+        patch: { workspacePreparation: { commandId } }
+      });
+      runInAction(() => this.projectStore.setProject(project));
+    } finally {
+      runInAction(() => { this.isSaving = false; });
+    }
+  }
+
+  /** Starts the reviewed physical context independently of whichever chat is currently selected. */
+  async runPreparation(input: OpenCodexWorkspacePreparationInput): Promise<OpenCodexProjectCommandRun> {
+    if (!this.isAvailable || this.projectStore.files.hasUnsavedWorkspaceDocuments(input.workspaceId)) {
+      throw new Error("Save workspace documents and reconnect its source before preparation.");
+    }
+    const execution = { commandId: input.command.id, sourceId: input.sourceId,
+      cwd: input.workspacePath, workspaceId: input.workspaceId };
+    this.startingRuns.add(execution);
+    try {
+      const run = await this.root.request<OpenCodexProjectCommandRun>({
+        type: "projectWorkspaces.prepare", input: {
+          projectId: input.projectId, workspaceId: input.workspaceId,
+          sourceId: input.sourceId, workspacePath: input.workspacePath,
+          command: { id: input.command.id, name: input.command.name, command: input.command.command,
+            updatedAt: input.command.updatedAt, executionMode: input.command.executionMode,
+            persistLogs: input.command.persistLogs }
+        }
+      });
+      runInAction(() => this.commandRunsStore.applyRunStarted(run));
+      return run;
+    } finally {
+      runInAction(() => { this.startingRuns.delete(execution); });
     }
   }
 

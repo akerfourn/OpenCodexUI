@@ -1,4 +1,5 @@
 import type { OpenCodexWorkspaceLockInput } from "./workspaceLocks.js";
+import type { OpenCodexWorkspacePreparationInput } from "./workspacePreparation.js";
 import type { OpenCodexWorkspaceMoveInput } from "./workspaceMoves.js";
 import type { MessageRenderingRequest } from "./messageRendering";
 import type { BrowserPermissionsRequest } from "./browserPermissions";
@@ -381,6 +382,7 @@ export type OpenCodexRequest =
   | { type: "git.push"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "git.branch.publish"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "projectCommands.list"; projectId: string }
+  | { type: "projectWorkspaces.prepare"; input: OpenCodexWorkspacePreparationInput }
   | {
       type: "projectCommands.create";
       projectId: string;

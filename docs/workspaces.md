@@ -351,6 +351,49 @@ cannot be cleared through an old confirmation. Checks are conservative within
 the application; another external Git process can still race between inspection
 and mutation, and lock reasons are not unique owner tokens.
 
+## Explicit workspace preparation
+
+The workspace menu exposes **Prepare workspace** for an available primary or
+secondary checkout, including imported and Git-locked worktrees. Select an
+existing project command or create one in the dialog, then save that selection
+for the project. This stores a command reference in project preferences; no
+schema migration or repository file is needed. Deleting the command leaves an
+explicit missing-command warning until another command is selected or the hook
+is disabled.
+
+Saving or creating a workspace never executes the hook. Each manual launch
+shows the source, fixed destination and full script. The backend checks project
+ownership, current workspace availability, literal directory ancestors and the
+primary project's `trusted` setting in that source's Codex configuration. A
+changed source, path, selected hook or command definition requires another
+review. The exact reviewed definition is passed to the existing command runner.
+Preparation is a user-started shell command with the source user's permissions;
+it does not run inside a conversation's agent sandbox. Command execution modes,
+optional persistent logs and stop controls retain their existing behavior.
+
+Dependencies, local files and submodules are prepared only by commands explicitly
+written by the user. OpenCodexUI does not guess a package manager, copy `.env`
+files or initialize submodules automatically. A hook can invoke a repository
+script to sequence those steps; make that script stop on the first error.
+POSIX paths use the source shell and Windows paths use source-side PowerShell
+detection, as with other project commands. Remote preparation never inherits
+the Electron host's environment.
+
+Unsaved editor documents block launching. An already running or starting project
+command in the target workspace blocks preparation. Once launched, preparation
+appears in the existing command run list, with live output, exit status and stop
+controls also available in the preparation dialog. Closing the dialog keeps the
+process running. Movement, removal and relocation use the existing command
+activity guards. A Git worktree lock does not prevent preparation or file edits.
+
+Failures and connection loss never trigger an automatic retry. An unknown exit
+is reported as failed with no exit code while the UI session remains open.
+Live run state is not persisted across application restart; optional command
+log files remain available on disk. Interrupted scripts may have modified files
+or installed dependencies already: there is no rollback or completed/prepared
+badge. External clients, file edits and normal source activities are not locked
+out by a preparation run.
+
 ## Persistence and validation
 
 Migrations 28–31 establish identity, aliases, reservations, immutable history
@@ -391,7 +434,12 @@ routing. UI lock tests cover confirmation, stale snapshots and plain transport.
 Static component rendering does not replace
 interactive validation of creation, switching, errors and restart recovery.
 
-Moving primary/imported workspaces, preparation hooks and automatic per-agent
-worktrees are not implemented. Local guards
+`WorkspacePreparation` covers trust, changed scripts, source/path ownership,
+pending maintenance, source-native Windows paths, early process exit,
+cancellation and connection loss. UI tests cover explicit launch, settings-only
+updates, frozen destinations, unsaved edits and plain transport snapshots.
+
+Moving primary/imported workspaces and automatic per-agent worktrees are not
+implemented. Local guards
 do not lock out external Git/Codex clients or establish universal filesystem
 identity across mounts and aliases.

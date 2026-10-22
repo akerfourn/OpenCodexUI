@@ -24,6 +24,7 @@ describe("automation runtime APIs", () => {
     const stopProjectCommandRun = vi.fn<ProjectAutomationRuntimeHandler["stopProjectCommandRun"]>(
       async () => ({ ok: true })
     );
+    const prepareWorkspace = vi.fn<ProjectAutomationRuntimeHandler["prepareWorkspace"]>(async () => undefined as never);
     const handler = {
       listProjectCommands,
       createProjectCommand,
@@ -31,6 +32,7 @@ describe("automation runtime APIs", () => {
       reorderProjectCommands,
       deleteProjectCommand,
       runProjectCommand,
+      prepareWorkspace,
       stopProjectCommandRun
     };
     const api = new CommandsApi(handler);
@@ -42,6 +44,11 @@ describe("automation runtime APIs", () => {
     await api.delete("command-1");
     await api.run("command-1", "/workspace/project", "source-1");
     await api.stop("run-1");
+    const preparation = { projectId: "project-1", workspaceId: "secondary", sourceId: "source-1", workspacePath: "/secondary",
+      command: { id: "command-1", name: "Prepare", command: "npm ci", executionMode: "workspace" as const,
+        persistLogs: false, updatedAt: "2026-10-22" } };
+    await api.prepareWorkspace(preparation);
+    expect(prepareWorkspace).toHaveBeenCalledWith(preparation);
 
     expect(listProjectCommands).toHaveBeenCalledWith("project-1");
     expect(createProjectCommand).toHaveBeenCalledWith(
@@ -139,6 +146,7 @@ function createAutomationHandler(): ConstructorParameters<typeof AutomationApi>[
     reorderProjectCommands: async () => [],
     deleteProjectCommand: async () => ({ ok: true }),
     runProjectCommand: async () => undefined as never,
+    prepareWorkspace: async () => undefined as never,
     stopProjectCommandRun: async () => ({ ok: true }),
     listProjectRules: async () => undefined as never,
     createProjectRule: async () => undefined as never,

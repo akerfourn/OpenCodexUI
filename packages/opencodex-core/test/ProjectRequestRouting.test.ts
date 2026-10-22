@@ -108,11 +108,24 @@ function createProjectRoutingFixture() {
   const settings = { get: vi.fn(() => ({ defaultSourceId: "default-source" })) };
   const resolveToolRequest = vi.fn(async (request: OpenCodexRequest) => request);
   const handleRequestError = vi.fn();
-  const runtime = { ...ports, settings, resolveToolRequest, handleRequestError } as unknown as OpenCodexBackendRuntime;
-  return { router: new OpenCodexRequestRouter(requestRoutingRuntime(runtime)), ports, effects, settings, resolveToolRequest, handleRequestError, response };
+  const prepareWorkspace = vi.fn(async (_input: unknown) => response);
+  const runtime = { ...ports, settings, resolveToolRequest, handleRequestError,
+    automation: { commands: { prepareWorkspace } } } as unknown as OpenCodexBackendRuntime;
+  return { router: new OpenCodexRequestRouter(requestRoutingRuntime(runtime)), ports, effects, settings, resolveToolRequest, handleRequestError, response, prepareWorkspace };
 }
 
 describe("project request routing through the shared router", () => {
+  it("should route preparation to command execution and propagate rejection to its dialog", async () => {
+    const fixture = createProjectRoutingFixture();
+    const input = { projectId: "project", workspaceId: "workspace", sourceId: "source", workspacePath: "/secondary",
+      command: { id: "command", name: "Prepare", command: "npm ci", executionMode: "workspace" as const,
+        persistLogs: false, updatedAt: "2026-10-22" } };
+    expect(await fixture.router.handleRequest({ type: "projectWorkspaces.prepare", input })).toBe(fixture.response);
+    expect(fixture.prepareWorkspace).toHaveBeenCalledWith(input);
+    fixture.prepareWorkspace.mockRejectedValueOnce(new Error("Trust the project"));
+    await expect(fixture.router.handleRequest({ type: "projectWorkspaces.prepare", input })).rejects.toThrow("Trust the project");
+    expect(fixture.handleRequestError).not.toHaveBeenCalled();
+  });
   it.each(cases)("should forward $request.type to $effect with its contracted arguments", async ({ request, effect, args }) => {
     const fixture = createProjectRoutingFixture();
 

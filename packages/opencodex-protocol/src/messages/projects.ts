@@ -155,6 +155,8 @@ export type OpenCodexProjectCommandRuleApplyResult = {
  * User-editable project preferences stored in SQLite.
  */
 export type OpenCodexProjectPreferences = {
+  /** Explicit command offered for manual workspace preparation; never run automatically. */
+  workspacePreparation?: { commandId: string | null };
   git?: {
     referenceTagName?: string | null;
     /** Relative paths temporarily excluded from OpenCodexUI staging actions. */

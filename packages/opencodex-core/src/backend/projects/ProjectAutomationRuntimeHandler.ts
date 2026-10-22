@@ -10,7 +10,8 @@ import type {
   OpenCodexProjectCommandRuleApplyResult,
   OpenCodexProjectCommandRulesSnapshot,
   OpenCodexProjectCommandRuleTestResult,
-  OpenCodexProjectCommandRun
+  OpenCodexProjectCommandRun,
+  OpenCodexWorkspacePreparationInput
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ProjectCommandService } from "./ProjectCommandService.js";
@@ -186,6 +187,13 @@ export class ProjectAutomationRuntimeHandler {
     workspaceId?: string
   ): Promise<OpenCodexProjectCommandRun> {
     return await this.projectCommandService.runCommand(commandId, projectPath, sourceId, workspaceId);
+  }
+
+  /** Starts a manually reviewed preparation hook using the existing command process lifecycle. */
+  async prepareWorkspace(
+    input: OpenCodexWorkspacePreparationInput
+  ): Promise<OpenCodexProjectCommandRun> {
+    return await this.projectCommandService.prepareWorkspace(input);
   }
 
   /**

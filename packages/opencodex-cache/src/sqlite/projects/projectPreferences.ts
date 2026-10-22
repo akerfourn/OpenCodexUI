@@ -42,7 +42,7 @@ export function parseProjectPreferences(value: string | null): CachedProjectPref
 export function serializeProjectPreferences(preferences: CachedProjectPreferences): string | null {
   const normalized = normalizeProjectPreferences(preferences);
 
-  if (normalized.git === undefined && normalized.context === undefined) {
+  if (normalized.git === undefined && normalized.context === undefined && normalized.workspacePreparation === undefined) {
     return null;
   }
 
@@ -62,12 +62,21 @@ export function normalizeProjectPreferences(value: unknown): CachedProjectPrefer
 
   const git = normalizeGitPreferences(value.git);
   const context = normalizeContextPreferences(value.context);
+  const workspacePreparation = normalizeWorkspacePreparation(value.workspacePreparation);
 
-  if (git === undefined && context === undefined) {
+  if (git === undefined && context === undefined && workspacePreparation === undefined) {
     return {};
   }
 
-  return { git, context };
+  return { git, context, ...(workspacePreparation === undefined ? {} : { workspacePreparation }) };
+}
+
+/** Preserves an explicit disabled hook and discards malformed command references. */
+function normalizeWorkspacePreparation(value: unknown): CachedProjectPreferences["workspacePreparation"] {
+  if (!isRecord(value)) return undefined;
+  const commandId = normalizeNullableText(value.commandId);
+  if (commandId === undefined) return undefined;
+  return { commandId };
 }
 
 /**

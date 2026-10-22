@@ -72,6 +72,8 @@ export type CachedProjectGroupUpdateInput = {
  * User-editable and generated preferences attached to one cached project.
  */
 export type CachedProjectPreferences = {
+  /** Optional command selected for manual workspace preparation. */
+  workspacePreparation?: { commandId: string | null };
   git?: {
     referenceTagName?: string | null;
     deferredPaths?: string[];

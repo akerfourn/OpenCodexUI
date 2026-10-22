@@ -1,4 +1,19 @@
 export const frWorkspaces = {
+  "workspacePreparation": {
+    "title": "Préparer le workspace",
+    "help": "Ce script s’exécutera dans le dossier indiqué, avec les droits de votre source. Vérifiez son contenu avant de lancer. Rien n’est exécuté ou copié automatiquement à la création. Une interruption ne restaure pas les fichiers déjà modifiés et ne relance pas le script.",
+    "source": "Source d’exécution",
+    "command": "Commande de préparation du projet",
+    "commandHelp": "Choisissez ou créez une commande du projet pour installer les dépendances, préparer explicitement les fichiers locaux ou initialiser les sous-modules. Pour plusieurs étapes, faites arrêter votre script dès la première erreur.",
+    "none": "Aucune commande de préparation",
+    "script": "Script à exécuter",
+    "edit": "Modifier la commande",
+    "save": "Enregistrer pour ce projet",
+    "run": "Lancer la préparation",
+    "unsaved": "Enregistrez ou fermez les documents non enregistrés de ce workspace avant de lancer la préparation.",
+    "unavailable": "Le workspace ou sa source n’est plus disponible à cet emplacement. Fermez ce dialogue et vérifiez le projet.",
+    "missing": "La commande configurée a été supprimée. Choisissez une autre commande ou désactivez la préparation."
+  },
   "workspaceStorage": {
     "title": "Stockage des workspaces",
     "description": "Définissez les dossiers de stockage de chaque source. Modifier ou retirer un espace ne déplace ni ne supprime les workspaces existants.",

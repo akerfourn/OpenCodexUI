@@ -10,6 +10,7 @@ export * from "./performance";
 export * from "./requests";
 export * from "./transport";
 export * from "./workspaces";
+export * from "./workspacePreparation";
 export * from "./workspaceCreations";
 export * from "./workspaceRemovals";
 export * from "./workspaceDiscovery";
