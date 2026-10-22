@@ -9,9 +9,12 @@ import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protoc
 import type { OpenCodexWorkspaceWorkStatus } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
 import type { ProjectStore } from "./ProjectStore";
+import { WorkspaceDiskUsageStore } from "./WorkspaceDiskUsageStore";
 
 /** Source-owned catalogue and explicit workspace operations for one logical project. */
 export class ProjectWorkspacesStore {
+  /** On-demand size observations remain separate from cached activity and cleanup eligibility. */
+  readonly diskUsage: WorkspaceDiskUsageStore;
   /** Retained catalogue, including unavailable historical entries. */
   workspaces: OpenCodexProjectWorkspace[] = [];
   /** Durable creations that need an explicit recovery attempt. */
@@ -45,6 +48,7 @@ export class ProjectWorkspacesStore {
 
   /** Keeps transport and project references outside observable state. */
   constructor(private readonly project: ProjectStore, private readonly root: RootStore) {
+    this.diskUsage = new WorkspaceDiskUsageStore(project, root);
     makeAutoObservable<ProjectWorkspacesStore, "project" | "root">(
       this, { project: false, root: false }, { autoBind: true });
   }
@@ -222,6 +226,7 @@ export class ProjectWorkspacesStore {
 
   /** Refreshes current associations while retaining turn snapshots and unsaved documents. */
   private applyRelocation(previous: OpenCodexProjectWorkspace, workspace: OpenCodexProjectWorkspace): void {
+    this.diskUsage.forget(workspace.id);
     this.lockGenerations.set(workspace.id, (this.lockGenerations.get(workspace.id) ?? 0) + 1);
     this.lockStates.delete(workspace.id);
     this.loadingLockIds.delete(workspace.id);
@@ -363,6 +368,7 @@ export class ProjectWorkspacesStore {
 
   /** Invalidates responses when the project tab closes. */
   dispose(): void {
+    this.diskUsage.dispose();
     this.generation += 1;
     this.activityGeneration += 1;
     this.activityById.clear();

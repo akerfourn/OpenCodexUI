@@ -434,8 +434,8 @@ unknown-activity managed secondaries whose native lock has been verified.
 Actual deletion retains all existing checks for dirty/untracked/ignored files,
 Git locks, processes, conversations and durable
 reservations. No bulk deletion or automatic cleanup is introduced. The overview
-does not measure disk usage, track external tools/file edits or establish that a
-checkout is safe to delete. Git locks remain the
+does not track external tools/file edits or establish that a checkout is safe
+to delete. Disk usage is an independent on-demand observation described below. Git locks remain the
 existing way to protect retained worktrees from removal.
 
 ## Manual work progress
@@ -496,6 +496,45 @@ No schema migration, timer, automatic mutation or deletion is needed. Manual
 removal remains available subject to the existing confirmation and safety checks,
 including when suggestions are disabled or work is still in progress.
 
+## On-demand disk usage
+
+Each workspace in **Manage workspaces** has a **Measure disk usage** action.
+Opening or refreshing the inventory never scans its filesystem automatically.
+The action displays the measurement date and an estimate excluding `.git`.
+Primary, imported and locked workspaces can also be measured; removed or
+pending-maintenance workspaces cannot. Size does not affect cleanup eligibility.
+
+The backend validates explicit project, workspace, source and path before and
+after traversal. Local sources use the bundled Node worker without requiring
+Node on PATH. WSL, SSH and custom sources execute the same read-only helper
+through their source process API, requiring Node.js in that environment. Remote
+paths are never traversed on the Electron host. There is no `du`, PowerShell,
+Git command, shell interpolation or file-content read in the measurement.
+
+The helper includes hidden and ignored files, skips every `.git` entry (both
+Git directories and linked-worktree pointer files), and does not follow symbolic
+links, junctions or child directories on another filesystem. Hard-linked files
+are counted once within a traversal. Allocated blocks, including directories,
+are used where available; Windows and filesystems without block metadata fall
+back explicitly to logical file sizes. Shared Git data is excluded for every
+workspace rather than charged repeatedly. No sum across workspaces or promise
+of reclaimable space is made: hard links across checkouts, compression, reflinks
+and concurrent filesystem changes can affect the actual storage released.
+
+A traversal is bounded to 100,000 entries and 20 seconds of helper work, with the
+existing 30-second worker/process deadline. Hitting a limit, inaccessible child
+entries or skipped mount points marks the result as partial. Missing roots,
+transport failures and unsupported helpers are errors, never zero-sized
+workspaces. Up to two measurements can run on a source; repeated local clicks
+for the same workspace are ignored while one is pending.
+
+Results are volatile UI observations, not SQLite records. A previous result
+stays visibly dated when offline or if refreshing fails. Changed source/path,
+removed or pending workspaces hide it; late replies after those changes or
+project disposal are discarded. Closing the inventory does not cancel an
+already bounded read, and reopening the project starts with no measurements.
+No migration, retention-policy change, automatic scan or deletion is involved.
+
 ## Persistence and validation
 
 Migrations 28–31 establish identity, aliases, reservations, immutable history
@@ -554,6 +593,11 @@ filters, sidebar markers, offline updates and lost responses without replay.
 policies, per-project persistence and explicit disabling. Management tests cover
 completion/activity deadlines, in-progress exclusions, unsaved drafts, reopening
 the settings dialog and preserving manual inspection when suggestions are off.
+
+`WorkspaceDiskUsageScript`, `WorkspaceDiskUsageService` and source-process
+tests cover ignored/Git data, links, traversal limits, partial reads, explicit
+ownership and native Windows paths. UI/store tests cover manual launch, dated
+results, offline reading and stale responses without automatic rescanning.
 
 Moving primary/imported workspaces and automatic per-agent worktrees are not
 implemented. Local guards

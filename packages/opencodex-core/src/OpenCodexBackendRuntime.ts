@@ -1,4 +1,5 @@
 import { WorkspaceLockService } from "./backend/workspaces/WorkspaceLockService.js";
+import { WorkspaceDiskUsageService } from "./backend/workspaces/WorkspaceDiskUsageService.js";
 import { WorkspaceMoveService } from "./backend/workspaces/WorkspaceMoveService.js";
 import { WorkspaceRelocationService } from "./backend/workspaces/WorkspaceRelocationService.js";
 import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
@@ -64,6 +65,8 @@ export class OpenCodexBackendRuntime {
   readonly workspaceRemovals: WorkspaceRemovalService | null;
   /** Live Git lock reads and explicit reversible lock changes. */
   readonly workspaceLocks: WorkspaceLockService | null;
+  /** Explicit bounded filesystem measurements through each workspace's source. */
+  readonly workspaceDiskUsage: WorkspaceDiskUsageService | null;
   /** Durable movement of managed secondary checkouts. */
   readonly workspaceMoves: WorkspaceMoveService | null;
   /** Explicit source-aware metadata relocation, separate from physical movement. */
@@ -145,6 +148,8 @@ export class OpenCodexBackendRuntime {
       });
     this.workspaceLocks = this.services.cacheRepository === null ? null : new WorkspaceLockService(
       this.services.cacheRepository, this.services.clientPool, this.workspaceActivity);
+    this.workspaceDiskUsage = this.services.cacheRepository === null ? null : new WorkspaceDiskUsageService(
+      this.services.cacheRepository, this.services.clientPool, this.services.projectRuntimeHandler);
     this.workspaceMoves = this.services.cacheRepository === null ? null : new WorkspaceMoveService(
       this.services.cacheRepository.workspaces, this.services.clientPool, this.workspaceActivity, async move => {
         for (const location of [move.workspacePath, move.destinationPath]) {

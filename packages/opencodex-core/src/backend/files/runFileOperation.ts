@@ -5,9 +5,12 @@ import type {
   OpenCodexFileGrant, OpenCodexFileRequest, OpenCodexFileResult, OpenCodexImageReadRequest
 } from "@open-codex-ui/opencodex-protocol";
 import { fileWorkerScript } from "./fileWorkerScript.js";
+import type { OpenCodexFileTarget } from "@open-codex-ui/opencodex-protocol";
 
 /** Backend-enriched payload; the renderer cannot supply effective grants. */
-export type FileWorkerRequest = (OpenCodexFileRequest | OpenCodexImageReadRequest) & {
+export type FileWorkerRequest = (OpenCodexFileRequest | OpenCodexImageReadRequest | {
+  type: "workspaceDiskUsage"; target: OpenCodexFileTarget;
+}) & {
   permissions?: OpenCodexFileGrant[];
 };
 

@@ -1,4 +1,5 @@
 import type { OpenCodexWorkspaceLockInput } from "./workspaceLocks.js";
+import type { OpenCodexFileContext } from "./files.js";
 import type { OpenCodexWorkspaceWorkStatusInput } from "./workspaceWorkStatus.js";
 import type { OpenCodexWorkspacePreparationInput } from "./workspacePreparation.js";
 import type { OpenCodexWorkspaceMoveInput } from "./workspaceMoves.js";
@@ -83,6 +84,7 @@ export type OpenCodexRequest =
   | { type: "projectWorkspaces.moves.reconcile"; moveId: string }
   | { type: "projectWorkspaces.list"; projectId: string }
   | { type: "projectWorkspaces.activity"; projectId: string }
+  | { type: "projectWorkspaces.diskUsage.read"; input: OpenCodexFileContext }
   | { type: "projectWorkspaces.relocate"; projectId: string; workspaceId: string; sourceId: string;
       destinationPath: string; confirmIdentity: boolean }
   | { type: "projectWorkspaces.remove"; projectId: string; workspaceId: string; sourceId: string }

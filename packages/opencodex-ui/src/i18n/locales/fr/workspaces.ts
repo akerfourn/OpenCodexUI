@@ -41,6 +41,18 @@ export const frWorkspaces = {
       "candidate": "À examiner pour nettoyage"
     }
   },
+  "workspaceDiskUsage": {
+    "help": "La taille est mesurée uniquement sur demande, dans la source du workspace. Les fichiers ignorés sont inclus ; les entrées .git, les cibles des liens symboliques et les autres systèmes de fichiers sont exclus. Les liens physiques sont comptés une fois par mesure. Cette estimation ne garantit pas l’espace libéré par une suppression.",
+    "unknown": "Espace disque : non mesuré",
+    "measure": "Mesurer l’espace disque",
+    "refresh": "Remesurer l’espace disque",
+    "measuring": "Mesure en cours…",
+    "size": "Taille estimée hors .git : {{size}} ({{mode}})",
+    "allocated": "blocs alloués",
+    "logical": "taille logique des fichiers",
+    "measuredAt": "Mesuré le {{date}} — observation ponctuelle",
+    "partial": "Mesure partielle : certains éléments sont inaccessibles, ont changé ou la limite de parcours a été atteinte. La taille affichée est un minimum pour ce parcours."
+  },
   "workspaceRetention": {
     "title": "Conservation des workspaces de ce projet",
     "help": "Un workspace terminé est proposé au nettoyage après ce délai, à compter de la plus récente des dates de fin et d’activité Codex connue. Les travaux en cours et les activités inconnues restent exclus. Le réglage est mémorisé pour ce projet, avec 30 jours par défaut. La suppression reste manuelle.",

@@ -15,6 +15,7 @@ export interface ProjectRequestRuntime {
   projects: OpenCodexBackendRuntime["projects"];
   workspaces: OpenCodexBackendRuntime["workspaces"];
   workspaceLocks: OpenCodexBackendRuntime["workspaceLocks"];
+  workspaceDiskUsage: OpenCodexBackendRuntime["workspaceDiskUsage"];
   workspaceMoves: OpenCodexBackendRuntime["workspaceMoves"];
   workspaceRelocations: OpenCodexBackendRuntime["workspaceRelocations"];
   workspaceRemovals: OpenCodexBackendRuntime["workspaceRemovals"];
@@ -35,6 +36,9 @@ export function isProjectRequest(request: OpenCodexRequest): request is ProjectR
 /** Dispatches a resolved project request; responses and errors retain the facade's behavior. */
 export async function routeProjectRequest(runtime: ProjectRequestRuntime, request: ProjectRequest): Promise<unknown> {
   switch (request.type) {
+    case "projectWorkspaces.diskUsage.read":
+      if (runtime.workspaceDiskUsage === null) throw new Error("Workspace size requires persistent project storage.");
+      return runtime.workspaceDiskUsage.read(request.input);
     case "projectWorkspaces.prepare":
       return runtime.automation.commands.prepareWorkspace(request.input);
     case "projectWorkspaces.lock.read":

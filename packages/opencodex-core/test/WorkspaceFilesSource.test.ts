@@ -60,6 +60,21 @@ function sourceProcessClient() {
 }
 
 describe("workspace source routing", () => {
+  it("should measure through the owning source process with a data-only workspace path", async () => {
+    const root = await mkdtemp(join(tmpdir(), "disk-source-"));
+    try {
+      const workspacePath = join(root, "checkout ' $literal");
+      await mkdir(workspacePath);
+      await writeFile(join(workspacePath, ".git"), "gitdir: /shared/metadata");
+      await writeFile(join(workspacePath, "file"), "abc");
+      const { client, request } = sourceProcessClient();
+      expect(await runSourceFileOperation(client, { type: "workspaceDiskUsage", target: {
+        projectId: "project", workspaceId: "ws", sourceId: "remote", workspacePath, path: ""
+      } })).toMatchObject({ ok: true, value: { logicalBytes: 3, fileCount: 1, complete: true } });
+      expect(request.mock.calls.find(([method]) => method === "process/spawn")?.[1].cwd).toBe(workspacePath);
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   it("should read generated images through the source process outside the project directory", async () => {
     const root = await mkdtemp(join(tmpdir(), "files-generated-source-"));
     try {

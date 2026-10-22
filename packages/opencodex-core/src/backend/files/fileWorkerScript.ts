@@ -6,6 +6,7 @@
  * filesystems do not expose a portable compare-and-rename against other tools.
  */
 import { fileMutationScript } from "./fileMutationScript.js";
+import { workspaceDiskUsageScript } from "./workspaceDiskUsageScript.js";
 
 export const fileWorkerScript = String.raw`
 const fs = require('node:fs/promises');
@@ -75,6 +76,7 @@ async function inspectAccess(target, permissions) {
 }
 
 ${fileMutationScript}
+${workspaceDiskUsageScript}
 
 /** Recognizes supported image headers; filenames alone never turn arbitrary bytes into images. */
 function imageMimeType(header, full) {
@@ -175,6 +177,9 @@ async function describeEntry(item, request, full) {
 
 /** Performs one bounded list/read/check/save operation. */
 async function execute(request) {
+  if (request.type === 'workspaceDiskUsage') {
+    return await measureWorkspaceDiskUsage(request.target.workspacePath);
+  }
   if (request.type === 'images.read') {
     if (typeof request.path !== 'string' || request.path.length === 0 || request.path.includes('\0')) {
       fail('invalidPath', 'An image path is required.');

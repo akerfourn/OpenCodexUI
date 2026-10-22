@@ -42,6 +42,18 @@ export const enWorkspaces = {
       "candidate": "Inspect for cleanup"
     }
   },
+  "workspaceDiskUsage": {
+    "help": "Size is measured only on request, inside the workspace’s source. Ignored files are included; .git entries, symbolic-link targets and other filesystems are excluded. Hard links are counted once per measurement. This estimate does not guarantee how much space deletion would free.",
+    "unknown": "Disk usage: not measured",
+    "measure": "Measure disk usage",
+    "refresh": "Measure disk usage again",
+    "measuring": "Measuring…",
+    "size": "Estimated size excluding .git: {{size}} ({{mode}})",
+    "allocated": "allocated blocks",
+    "logical": "logical file size",
+    "measuredAt": "Measured on {{date}} — point-in-time observation",
+    "partial": "Partial measurement: some entries are inaccessible, changed or the traversal limit was reached. The displayed size is a lower bound for this traversal."
+  },
   "workspaceRetention": {
     "title": "Workspace retention for this project",
     "help": "Completed workspaces are suggested for cleanup after this delay, measured from the later of completion and last known Codex activity. Work in progress and unknown activity remain excluded. The setting is saved for this project and defaults to 30 days. Removal stays manual.",

@@ -5,13 +5,16 @@ import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceActivity, OpenCodexWo
 import type { WorkspaceManagementStatus } from "../../stores/project/workspaceManagement";
 import { workspaceLabel } from "../../stores/project/threads/workspaceThreadGroups";
 import { WorkspaceWorkStatusControlX } from "./WorkspaceWorkStatusControl";
+import { WorkspaceDiskUsageX } from "./WorkspaceDiskUsage";
+import type { WorkspaceDiskUsageStore } from "../../stores/project/WorkspaceDiskUsageStore";
 
 /** Shows one source-owned checkout and keeps inspection separate from confirmed deletion. */
-export function WorkspaceManagementRow({ workspace, activity, status, disabled, workStatusDisabled, onWorkStatus, onProperties, onRemove }: {
+export function WorkspaceManagementRow({ workspace, activity, status, disabled, workStatusDisabled, onWorkStatus, onProperties, onRemove, diskUsage }: {
   workspace: OpenCodexProjectWorkspace; activity?: OpenCodexWorkspaceActivity; status: WorkspaceManagementStatus;
   disabled: boolean; onProperties(workspace: OpenCodexProjectWorkspace): void;
   onRemove(workspace: OpenCodexProjectWorkspace): void;
   workStatusDisabled: boolean;
+  diskUsage: WorkspaceDiskUsageStore;
   onWorkStatus(workspace: OpenCodexProjectWorkspace, status: OpenCodexWorkspaceWorkStatus): void;
 }) {
   const { t, i18n } = useTranslation();
@@ -43,6 +46,7 @@ export function WorkspaceManagementRow({ workspace, activity, status, disabled, 
       <Typography variant="body2" color="text.secondary">
         {t("workspaceManagement.lastActivity", { date: lastActivity })}</Typography>
       {count}
+      <WorkspaceDiskUsageX workspace={workspace} store={diskUsage} disabled={disabled} />
       <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
         <Button disabled={disabled} onClick={handleProperties}>{t("workspaces.properties")}</Button>{inspect}
       </Box>

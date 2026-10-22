@@ -55,7 +55,7 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
   const visible = filtered.filter(entry => !onlyCandidates || entry.status === "candidate");
   const candidateCount = filtered.filter(entry => entry.status === "candidate").length;
   const rows = visible.map(entry => <WorkspaceManagementRowX key={entry.workspace.id} {...entry}
-    disabled={busy} workStatusDisabled={busy}
+    disabled={busy} workStatusDisabled={busy} diskUsage={store.diskUsage}
     onWorkStatus={handleWorkStatus} onProperties={setProperties} onRemove={setRemoving} />);
   const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
   const loading = store.isRefreshingManagement ? <CircularProgress size={20} aria-label={t("workspaceManagement.refresh")} /> : null;
@@ -71,6 +71,7 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
     <DialogContent>
       <Stack spacing={2} sx={{ pt: 1 }}>
         <Alert severity="info">{t("workspaceManagement.help")}</Alert>
+        <Typography variant="body2" color="text.secondary">{t("workspaceDiskUsage.help")}</Typography>
         <Typography variant="body2" color="text.secondary">{t("workspaceWorkStatus.help")}</Typography>
         <TextField select label={t("workspaceWorkStatus.filter")} value={workStatusFilter}
           onChange={event => setWorkStatusFilter(event.target.value as "all" | OpenCodexWorkspaceWorkStatus)} disabled={busy}>

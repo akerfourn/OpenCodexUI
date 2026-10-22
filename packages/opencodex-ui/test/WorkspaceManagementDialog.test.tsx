@@ -6,9 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenCodexProjectPreferences, OpenCodexProjectWorkspace, OpenCodexWorkspaceWorkStatus } from
   "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../src/stores/project/ProjectStore";
+import { WorkspaceDiskUsageStore } from "../src/stores/project/WorkspaceDiskUsageStore";
 import { WorkspaceManagementDialogX } from "../src/components/projects/WorkspaceManagementDialog";
 
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: "fr" } }) }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({
+  t: (key: string, values?: { size?: string; mode?: string }) => {
+    if (key === "workspaceDiskUsage.size") return `${key} ${values?.size} ${values?.mode}`;
+    return key;
+  }, i18n: { resolvedLanguage: "fr" }
+}) }));
 let root: Root;
 let container: HTMLDivElement;
 
@@ -44,9 +50,13 @@ async function renderDialog(completed = true) {
         sourceId: "source", workspacePath: "/B", lastActivityAt: "2026-01-01T00:00:00Z", conversationCount: 2,
         activeConversationCount: 0, pendingOperationCount: 0 }]])
     } });
+  const request = vi.fn(async () => ({ projectId: "project", workspaceId: "B", sourceId: "source", workspacePath: "/B",
+    logicalBytes: 2048, allocatedBytes: null, fileCount: 1, skippedLinks: 0, unreadableEntries: 0,
+    complete: true, limitReached: false, measuredAt: "2026-10-22T12:00:00Z" }));
+  Object.assign(project.workspaces, { diskUsage: new WorkspaceDiskUsageStore(project as unknown as ProjectStore, { request } as unknown as import("../src/stores/RootStore").RootStore) });
   const onClose = vi.fn();
   await act(async () => { root.render(<WorkspaceManagementDialogX project={project as unknown as ProjectStore} onClose={onClose} />); });
-  return { project, refreshManagement, remove, onClose, setWorkStatus, setRetentionDays };
+  return { project, refreshManagement, remove, onClose, setWorkStatus, setRetentionDays, request };
 }
 
 beforeEach(() => {
@@ -64,6 +74,41 @@ afterEach(async () => {
 });
 
 describe("workspace management and manual cleanup", () => {
+  it("should scan only the requested workspace and keep its dated result readable offline", async () => {
+    const { project, request, remove } = await renderDialog();
+    expect(request).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain("workspaceDiskUsage.unknown");
+    await act(async () => button("workspaceDiskUsage.measure").click());
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.diskUsage.read", input: {
+      projectId: "project", workspaceId: "B", sourceId: "source", workspacePath: "/B"
+    } });
+    expect(document.body.textContent).toContain("workspaceDiskUsage.size");
+    expect(document.body.textContent).toContain("2 KiB workspaceDiskUsage.logical");
+    expect(document.body.textContent).toContain("workspaceDiskUsage.measuredAt");
+    await act(async () => { runInAction(() => { project.isCodexSourceReady = false; }); });
+    expect(button("workspaceDiskUsage.refresh").disabled).toBe(true);
+    expect(document.body.textContent).toContain("workspaceDiskUsage.measuredAt");
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("should visibly distinguish a partial estimate from a complete measurement", async () => {
+    const { request } = await renderDialog();
+    request.mockResolvedValueOnce({ projectId: "project", workspaceId: "B", sourceId: "source", workspacePath: "/B",
+      logicalBytes: 2048, allocatedBytes: null, fileCount: 1, skippedLinks: 0, unreadableEntries: 1,
+      complete: false, limitReached: false, measuredAt: "2026-10-22T12:00:00Z" });
+    await act(async () => button("workspaceDiskUsage.measure").click());
+    expect(document.body.textContent).toContain("workspaceDiskUsage.partial");
+  });
+
+  it("should display allocated blocks when available instead of substituting logical size", async () => {
+    const { request } = await renderDialog();
+    request.mockResolvedValueOnce({ projectId: "project", workspaceId: "B", sourceId: "source", workspacePath: "/B",
+      logicalBytes: 2048, allocatedBytes: 4096, fileCount: 1, skippedLinks: 0, unreadableEntries: 0,
+      complete: true, limitReached: false, measuredAt: "2026-10-22T12:00:00Z" });
+    await act(async () => button("workspaceDiskUsage.measure").click());
+    expect(document.body.textContent).toContain("4 KiB workspaceDiskUsage.allocated");
+  });
+
   it("should apply the project delay only after saving and restore it when reopening the dialog", async () => {
     const { project, setRetentionDays, remove, onClose } = await renderDialog();
     const input = document.querySelector<HTMLInputElement>('input[type="number"]')!;
