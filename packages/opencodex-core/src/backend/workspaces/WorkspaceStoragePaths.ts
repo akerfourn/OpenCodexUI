@@ -3,7 +3,7 @@ import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type { OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRoot } from
   "@open-codex-ui/opencodex-protocol";
 import { normalizeWorkspaceRoots } from "./workspaceRootsSettings.js";
-import { normalizeWorkspaceSourcePath } from "./workspaceSourcePath.js";
+import { normalizeWorkspaceSourcePath, isMissingWorkspacePathError } from "./workspaceSourcePath.js";
 
 /** Frozen physical creation target; workspace IDs never derive from paths. */
 export interface WorkspaceStorageDestination {
@@ -12,7 +12,7 @@ export interface WorkspaceStorageDestination {
 }
 
 /** Resolves an explicit custom path or a configured root in the requested source only. */
-export function resolveWorkspaceStorage(input: OpenCodexWorkspaceCreateInput, workspaceId: string,
+export function resolveWorkspaceStorage(input: Pick<OpenCodexWorkspaceCreateInput, "projectId" | "sourceId" | "rootId" | "destinationPath">, workspaceId: string,
   roots: OpenCodexWorkspaceRoot[]): WorkspaceStorageDestination {
   if (input.destinationPath !== undefined) {
     if (input.rootId !== undefined) throw new Error("Choose either a workspace storage root or a custom destination.");
@@ -30,7 +30,7 @@ export function resolveWorkspaceStorage(input: OpenCodexWorkspaceCreateInput, wo
 
 /** Creates only the automatic hierarchy, leaving the worktree leaf exclusively to Git. */
 export async function prepareWorkspaceStorage(client: Pick<CodexAppServerClient, "getMetadata" | "createDirectory">,
-  creation: OpenCodexWorkspaceCreation): Promise<void> {
+  creation: Pick<OpenCodexWorkspaceCreation, "rootPath" | "projectId" | "workspaceId" | "destinationPath">): Promise<void> {
   if (creation.rootPath === null || creation.rootPath === undefined) return;
   const syntax = creation.rootPath.startsWith("/") ? path.posix : path.win32;
   const expected = syntax.join(creation.rootPath, creation.projectId, creation.workspaceId);
@@ -55,7 +55,7 @@ async function ensureStorageDirectory(client: Pick<CodexAppServerClient, "getMet
     if (!metadata.isDirectory || metadata.isSymlink) throw new Error("Workspace storage hierarchy contains a file or symbolic link.");
     return;
   } catch (error) {
-    if (!(error instanceof Error) || !/no such file|\b(file|path)\b.*\bnot found\b/iu.test(error.message)) throw error;
+    if (!isMissingWorkspacePathError(error, directory)) throw error;
   }
   await client.createDirectory(directory);
   const metadata = await client.getMetadata(directory);

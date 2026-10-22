@@ -1,3 +1,4 @@
+import { WorkspaceMoveService } from "./backend/workspaces/WorkspaceMoveService.js";
 import { WorkspaceRelocationService } from "./backend/workspaces/WorkspaceRelocationService.js";
 import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
 import { isDebugActive } from "@open-codex-ui/opencodex-protocol";
@@ -60,6 +61,8 @@ export class OpenCodexBackendRuntime {
   private readonly workspaceActivity = new WorkspaceActivityGate();
   /** Clean-only worktree removal with durable recovery, when persistent storage is available. */
   readonly workspaceRemovals: WorkspaceRemovalService | null;
+  /** Durable movement of managed secondary checkouts. */
+  readonly workspaceMoves: WorkspaceMoveService | null;
   /** Explicit source-aware metadata relocation, separate from physical movement. */
   readonly workspaceRelocations: WorkspaceRelocationService | null;
   /** Whether this runtime belongs to an application pre-release build. */
@@ -137,6 +140,18 @@ export class OpenCodexBackendRuntime {
         await this.services.dockerComposeService.requireWorkspaceIdle({ workspaceId: workspace.id,
           projectId: workspace.projectId, sourceId: workspace.sourceId!, workspacePath: destination }, workspace.path);
       });
+    this.workspaceMoves = this.services.cacheRepository === null ? null : new WorkspaceMoveService(
+      this.services.cacheRepository.workspaces, this.services.clientPool, this.workspaceActivity, async move => {
+        for (const location of [move.workspacePath, move.destinationPath]) {
+          this.services.projectAutomationRuntimeHandler.requireWorkspaceIdle(move.workspaceId, move.sourceId, location);
+          const session = this.debug.snapshot().session;
+          if (isDebugActive(session) && session !== null && session.configuration.context.sourceId === move.sourceId
+            && isInsideWorkspace(session.configuration.context.workspacePath, location)) {
+            throw new Error("Stop the debug session before moving this workspace.");
+          }
+        }
+        await this.services.dockerComposeService.requireWorkspaceIdle(move);
+      }, () => this.settings.get().workspaceRoots ?? []);
     this.dictation = new CodexDictationService(async (sourceId) => {
       const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
       return new CodexAppServerClient({
@@ -150,7 +165,8 @@ export class OpenCodexBackendRuntime {
   /** Keeps lifecycle exclusion around tool dispatch, including file saves and process startup. */
   async runWorkspaceRequest(request: OpenCodexRequest, action: () => Promise<unknown>): Promise<unknown> {
     if (request.type === "projectWorkspaces.remove" || request.type === "projectWorkspaces.removals.reconcile"
-      || request.type === "projectWorkspaces.relocate") {
+      || request.type === "projectWorkspaces.relocate" || request.type === "projectWorkspaces.move"
+      || request.type === "projectWorkspaces.moves.reconcile") {
       return await action();
     }
     let debugSource: string | null = null;

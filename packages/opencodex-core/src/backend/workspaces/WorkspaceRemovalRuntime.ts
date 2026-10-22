@@ -1,3 +1,4 @@
+import { isMissingWorkspacePathError } from "./workspaceSourcePath.js";
 import path from "node:path";
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import type { OpenCodexWorkspaceRemoval } from "@open-codex-ui/opencodex-protocol";
@@ -77,11 +78,7 @@ export class WorkspaceRemovalRuntime {
       await client.getMetadata(removal.workspacePath);
       return false;
     } catch (error) {
-      if (error instanceof Error) {
-        if (/no such file|\b(file|path)\b.*\bnot found\b|cannot find the (?:file|path) specified|\bENOENT\b|\(os error 2\)/iu
-          .test(error.message)) return true;
-        if (!removal.workspacePath.startsWith("/") && /\(os error 3\)/u.test(error.message)) return true;
-      }
+      if (isMissingWorkspacePathError(error, removal.workspacePath)) return true;
       throw error;
     }
   }

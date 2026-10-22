@@ -18,6 +18,15 @@ export const frWorkspaces = {
     "configureHint": "Vous pouvez définir un espace par défaut dans la rubrique Workspaces. Un chemin personnalisé reste possible ici."
   },
   "workspaces": {
+    "move": "Déplacer le workspace",
+    "moveHelp": "Choisissez un emplacement de stockage dans cette source. Git déplacera le dossier avec ses fichiers locaux et conservera sa branche. Arrêtez les activités en cours. Aucun écrasement, déverrouillage ou forçage n’est effectué.",
+    "moveCustom": "Utiliser un chemin personnalisé (avancé)",
+    "moveConfirm": "Je confirme le déplacement vers cette destination.",
+    "moveUnsaved": "Enregistrez ou fermez les documents non enregistrés avant de déplacer ce workspace.",
+    "moveConfigureStorage": "Ajoutez un autre emplacement de stockage pour cette source dans Home → Workspaces, ou utilisez l’option avancée.",
+    "movePending": "Déplacement à vérifier : {{from}} → {{to}}. La récupération vérifie le résultat sans relancer le déplacement.",
+    "moveHistoryOnly": "Un déplacement de ce workspace attend une vérification. L’historique reste consultable ; récupérez l’opération avant d’envoyer un message.",
+
     "relocate": "Relocaliser le workspace",
     "relocateHelp": "Indiquez le dossier déjà déplacé dans la même source. L’ancien chemin doit être absent. Aucun fichier ne sera déplacé et aucun lien Git ne sera réparé automatiquement. Les conversations et leur historique seront conservés.",
     "relocatePrimaryHelp": "L’identité de l’ancien dépôt principal ne peut pas être prouvée après sa disparition. Vérifiez que le dossier choisi contient bien votre projet.",

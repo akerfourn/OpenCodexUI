@@ -21,6 +21,15 @@ export const enWorkspaces = {
     "configureHint": "You can configure a default location in the Workspaces section. You can also enter a custom path here."
   },
   "workspaces": {
+    "move": "Move workspace",
+    "moveHelp": "Choose a storage location in this source. Git will move the directory with its local files and preserve its branch. Stop running activities first. No overwrite, unlock or force operation is performed.",
+    "moveCustom": "Use a custom path (advanced)",
+    "moveConfirm": "I confirm moving this workspace to this destination.",
+    "moveUnsaved": "Save or close unsaved documents before moving this workspace.",
+    "moveConfigureStorage": "Add another storage location for this source in Home → Workspaces, or use the advanced option.",
+    "movePending": "Move needs verification: {{from}} → {{to}}. Recovery checks the outcome without repeating the move.",
+    "moveHistoryOnly": "A move of this workspace needs verification. History remains readable; recover the operation before sending another message.",
+
     "relocate": "Relocate workspace",
     "relocateHelp": "Enter the directory already moved within the same source. The previous path must be absent. No files will be moved and no Git links will be repaired automatically. Conversations and history are preserved.",
     "relocatePrimaryHelp": "The previous primary repository’s identity cannot be proven after it disappears. Verify that the selected directory contains your project.",

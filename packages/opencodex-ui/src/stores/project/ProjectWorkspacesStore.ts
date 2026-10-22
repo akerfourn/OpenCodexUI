@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type {
-  OpenCodexProjectWorkspace, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRemoval, OpenCodexWorkspaceDiscoveryResult,
+  OpenCodexProjectWorkspace, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRemoval, OpenCodexWorkspaceMove, OpenCodexWorkspaceDiscoveryResult,
   OpenCodexWorkspaceStart, OpenCodexWorkspaceRoot
 } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
@@ -14,6 +14,8 @@ export class ProjectWorkspacesStore {
   pending: OpenCodexWorkspaceCreation[] = [];
   /** Unfinished removals remain visible until source-side reconciliation succeeds. */
   pendingRemovals: OpenCodexWorkspaceRemoval[] = [];
+  /** Interrupted moves reserve both paths until explicit source verification. */
+  pendingMoves: OpenCodexWorkspaceMove[] = [];
   /** Workspace used when composing a new conversation. */
   selectedId: string | null = null;
   /** Serializes user mutations without hiding uncertain backend outcomes. */
@@ -48,18 +50,18 @@ export class ProjectWorkspacesStore {
   }
 
   /** Exposes the final directory layout without generating a second, temporary workspace identity. */
-  storagePreview(rootId: string): string {
+  storagePreview(rootId: string, workspaceId = "<workspace-id>"): string {
     const root = this.storageRoots.find((item) => item.id === rootId);
     if (root === undefined) return "";
     const separator = root.path.startsWith("/") ? "/" : "\\";
-    return [root.path.replace(/[\\/]+$/u, ""), this.project.project.id, "<workspace-id>"].join(separator);
+    return [root.path.replace(/[\\/]+$/u, ""), this.project.project.id, workspaceId].join(separator);
   }
 
   /** Reloads persisted state even when the source is offline. */
   async load(): Promise<void> {
     const generation = ++this.generation;
     try {
-      const [workspaces, pending, removals] = await Promise.all([
+      const [workspaces, pending, removals, moves] = await Promise.all([
         this.root.request<OpenCodexProjectWorkspace[]>({
           type: "projectWorkspaces.list", projectId: this.project.project.id
         }),
@@ -68,6 +70,9 @@ export class ProjectWorkspacesStore {
         }),
         this.root.request<OpenCodexWorkspaceRemoval[]>({
           type: "projectWorkspaces.removals.list", projectId: this.project.project.id
+        }),
+        this.root.request<OpenCodexWorkspaceMove[]>({
+          type: "projectWorkspaces.moves.list", projectId: this.project.project.id
         })
       ]);
       runInAction(() => {
@@ -79,6 +84,7 @@ export class ProjectWorkspacesStore {
         this.workspaces = workspaces;
         this.pending = pending;
         this.pendingRemovals = removals;
+        this.pendingMoves = moves;
         if (this.workspaces.some(item => item.id === this.selectedId && item.removedAt !== null)) {
           this.selectedId = this.workspaces.find(item => item.isPrimary)?.id ?? null;
         }
@@ -88,6 +94,23 @@ export class ProjectWorkspacesStore {
         if (generation === this.generation) this.error = errorMessage(error);
       });
     }
+  }
+
+  /** Moves to configured storage by default; a custom path is an explicit advanced alternative. */
+  async move(workspaceId: string, rootId?: string, destinationPath?: string): Promise<void> {
+    await this.perform(async () => {
+      if (this.project.files.hasUnsavedWorkspaceDocuments(workspaceId)) {
+        throw new Error("Save or close unsaved workspace documents before moving it.");
+      }
+      await this.root.request({ type: "projectWorkspaces.move", input: {
+        projectId: this.project.project.id, workspaceId, sourceId: this.requireSource(), rootId, destinationPath
+      } });
+    });
+  }
+
+  /** Verifies frozen source facts after interruption without replaying the Git command. */
+  async recoverMove(moveId: string): Promise<void> {
+    await this.perform(async () => { await this.root.request({ type: "projectWorkspaces.moves.reconcile", moveId }); });
   }
 
   /** Reconnects a manually moved directory using plain, explicit transport identities. */

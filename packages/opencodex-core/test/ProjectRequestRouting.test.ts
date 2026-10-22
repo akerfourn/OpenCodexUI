@@ -20,6 +20,10 @@ const creationInput = {
 const preferences = {};
 const groupPatch = { name: "Renamed", isCollapsed: true };
 const cases: RouteCase[] = [
+  { request: { type: "projectWorkspaces.move", input: { projectId: "project", workspaceId: "workspace", sourceId: "source", rootId: "root" } },
+    effect: "workspaceMoves.move", args: [{ projectId: "project", workspaceId: "workspace", sourceId: "source", rootId: "root" }] },
+  { request: { type: "projectWorkspaces.moves.list", projectId: "project" }, effect: "workspaceMoves.pending", args: ["project"] },
+  { request: { type: "projectWorkspaces.moves.reconcile", moveId: "move" }, effect: "workspaceMoves.reconcile", args: ["move"] },
   { request: { type: "projectWorkspaces.relocate", projectId: "project", workspaceId: "workspace", sourceId: "source",
     destinationPath: "/moved", confirmIdentity: true }, effect: "workspaceRelocations.relocate",
     args: ["project", "workspace", "source", "/moved", true] },
@@ -73,6 +77,7 @@ const cases: RouteCase[] = [
 function createProjectRoutingFixture() {
   const response = { fixture: "response" };
   const ports = {
+    workspaceMoves: { move: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },
     workspaceRelocations: { relocate: vi.fn() },
     workspaceRemovals: { remove: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },
     projects: {

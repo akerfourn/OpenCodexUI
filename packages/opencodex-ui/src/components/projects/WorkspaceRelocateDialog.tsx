@@ -16,7 +16,7 @@ export function WorkspaceRelocateDialog({ project, workspace, onClose }: {
   const current = store.workspaces.find(item => item.id === workspace.id) ?? workspace;
   const unsaved = project.files.hasUnsavedWorkspaceDocuments(workspace.id);
   const blocked = store.isBusy || project.isReadOnlyFromCache || unsaved || current.sourceId === null
-    || current.removedAt !== null || current.removalPending === true;
+    || current.removedAt !== null || current.removalPending === true || current.movePending === true;
   const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
   const notice = unsaved ? <Alert severity="warning">{t("workspaces.relocateUnsaved")}</Alert> : null;
   const identityHelp = current.isPrimary

@@ -9,6 +9,7 @@ const workspace: OpenCodexProjectWorkspace = { id: "workspace", projectId: "proj
 /** Replaces only persistence reads, preserving real source and path resolution. */
 function repository(): OpenCodexCacheRepository {
   return { listProjects: async () => [{ id: "project", sourceId: "source" }], workspaces: {
+    moves: { list: async () => [] },
     get: async () => workspace, getForThread: async () => workspace, list: async () => [workspace]
   } } as unknown as OpenCodexCacheRepository;
 }

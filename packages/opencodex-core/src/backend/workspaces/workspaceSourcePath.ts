@@ -21,3 +21,11 @@ export function workspaceSourcePathsEqual(left: string, right: string): boolean 
   if (a.startsWith("/")) return a === b;
   return a.toLowerCase() === b.toLowerCase();
 }
+
+/** Distinguishes source-side absence from access failures, including localized Windows errors. */
+export function isMissingWorkspacePathError(error: unknown, sourcePath: string): boolean {
+  if (!(error instanceof Error)) return false;
+  if (/no such file|\b(file|path)\b.*\bnot found\b|cannot find the (?:file|path) specified|\bENOENT\b|\(os error 2\)/iu
+    .test(error.message)) return true;
+  return !sourcePath.startsWith("/") && /\(os error 3\)/u.test(error.message);
+}

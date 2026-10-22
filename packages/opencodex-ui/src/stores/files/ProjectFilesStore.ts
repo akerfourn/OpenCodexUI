@@ -44,7 +44,7 @@ export class ProjectFilesStore {
   get tree(): WorkspaceTreeStore | null {
     const workspace = this.project.workspaces.current;
     if (workspace === null || workspace.sourceId === null || workspace.removedAt !== null
-      || workspace.removalPending === true) return null;
+      || workspace.removalPending === true || workspace.movePending === true) return null;
     const context = {
       projectId: this.project.project.id,
       workspaceId: workspace.id,

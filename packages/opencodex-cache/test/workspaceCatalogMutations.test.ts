@@ -24,6 +24,8 @@ describe("durable catalog reservations", () => {
   afterEach(() => database.close());
 
   it("should preserve version 33 reservations and their transition trigger during migration", async () => {
+    // Movement guards did not exist in the historical schema being rebuilt here.
+    database.exec("DROP TRIGGER protect_move_identity");
     database.exec(`ALTER TABLE workspace_execution_reservations DROP COLUMN operation;
       DELETE FROM schema_migrations WHERE version IN (33, 34);`);
     applySchemaMigrationV33(database);

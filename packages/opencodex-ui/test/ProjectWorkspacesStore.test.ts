@@ -9,7 +9,7 @@ import { FileDocument } from "../src/stores/files/FileDocument";
 function fixture() {
   const request = vi.fn(async (input: OpenCodexRequest): Promise<unknown> => {
     if (input.type === "projectWorkspaces.list") return workspaces;
-    if (input.type === "projectWorkspaces.creations.list" || input.type === "projectWorkspaces.removals.list") return [];
+    if (input.type === "projectWorkspaces.creations.list" || input.type === "projectWorkspaces.removals.list" || input.type === "projectWorkspaces.moves.list") return [];
     return undefined;
   });
   const root = new RootStore({ request, onEvent: () => () => undefined });
@@ -26,6 +26,32 @@ const workspaces: OpenCodexProjectWorkspace[] = [
 ];
 
 describe("workspace UI orchestration", () => {
+  it("should send a plain storage-root move intent and follow the persisted destination without changing thread IDs", async () => {
+    const { project, request } = fixture();
+    let moved = false;
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.move") moved = true;
+      if (input.type === "projectWorkspaces.list") return workspaces.map(item => item.id === "B" && moved ? { ...item, path: "/storage/project/B" } : item);
+      return [];
+    });
+    await project.workspaces.load();
+    project.upsertThread(createThread({ id: "thread", projectPath: "/B", sourceId: "source" }));
+    await project.workspaces.select("B", null);
+    await project.workspaces.move("B", "storage");
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.move", input: {
+      projectId: "project", workspaceId: "B", sourceId: "source", rootId: "storage", destinationPath: undefined
+    } });
+    expect(project.findThread("thread")?.projectPath).toBe("/storage/project/B");
+    expect(project.workspaces.current?.id).toBe("B");
+  });
+
+  it("should recover movement by operation ID without dispatching another physical move", async () => {
+    const { project, request } = fixture();
+    await project.workspaces.recoverMove("operation");
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.moves.reconcile", moveId: "operation" });
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.move")).toBe(false);
+  });
+
   it("should retain conversation metadata and the Git draft after a successful relocation", async () => {
     const { project, request } = fixture();
     let moved = false;

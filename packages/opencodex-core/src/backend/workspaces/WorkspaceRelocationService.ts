@@ -30,7 +30,7 @@ export class WorkspaceRelocationService {
     return await this.activity.exclusive(sourceId, async () => {
       const workspace = await this.repository.get(workspaceId);
       if (workspace === null || workspace.projectId !== projectId || workspace.sourceId !== sourceId
-        || workspace.removedAt !== null || workspace.removalPending === true) {
+        || workspace.removedAt !== null || workspace.removalPending === true || workspace.movePending === true) {
         throw new Error("Relocation requires an available workspace of the explicit project and source.");
       }
       const destination = normalizeWorkspaceSourcePath(destinationPath);

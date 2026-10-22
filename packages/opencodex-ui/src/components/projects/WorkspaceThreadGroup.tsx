@@ -12,6 +12,7 @@ import { workspaceLabel, type WorkspaceThreadGroup as ThreadGroup } from "../../
 import { ThreadButtonX } from "../threads/ThreadButton";
 import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 import { WorkspacePropertiesDialogX } from "./WorkspacePropertiesDialog";
+import { WorkspaceMoveDialogX } from "./WorkspaceMoveDialog";
 import { WorkspaceRelocateDialogX } from "./WorkspaceRelocateDialog";
 import { WorkspaceRemoveDialogX } from "./WorkspaceRemoveDialog";
 
@@ -24,13 +25,14 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
   const [relocating, setRelocating] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const workspace = group.workspace;
   let name = workspace === null ? t("workspaces.unavailable") : workspaceLabel(workspace, t("workspaces.primary"));
   if (workspace?.removedAt != null) name = t("workspaces.removedName", { name });
   const newConversationLabel = t("workspaces.newConversationIn", { name });
   const disabled = workspace === null || workspace.removedAt !== null || project.isReadOnlyFromCache
-    || workspace.removalPending === true || project.workspaces.isBusy || project.threadListStore.isCreatingThread;
+    || workspace.removalPending === true || workspace.movePending === true || project.workspaces.isBusy || project.threadListStore.isCreatingThread;
   const expandIcon = collapsed ? <ChevronRightOutlinedIcon /> : <ExpandMoreOutlinedIcon />;
   const threads = collapsed ? null : group.threads.map((thread) => (
     <ThreadButtonX key={thread.id} projectStore={project} root={root} thread={thread}
@@ -57,6 +59,15 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const canRemove = workspace !== null && !workspace.isPrimary && workspace.managed && workspace.removedAt === null;
   const removeAction = canRemove ? <MenuItem disabled={disabled} onClick={handleRemove} sx={{ color: "error.main" }}>
     {t("workspaces.remove")}</MenuItem> : null;
+  const movement = moving && workspace !== null
+    ? <WorkspaceMoveDialogX project={project} workspace={workspace} onClose={() => setMoving(false)} /> : null;
+  const moveAction = canRemove ? <MenuItem disabled={disabled} onClick={handleMove}>
+    {t("workspaces.move")}</MenuItem> : null;
+  /** Opens configured storage choices for this fixed managed workspace identity. */
+  function handleMove(): void {
+    setAnchor(null);
+    setMoving(true);
+  }
   /** Shows the irreversible operation independently of properties or the selected chat. */
   function handleRemove(): void {
     setAnchor(null);
@@ -94,10 +105,10 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
         <IconButton size="small" aria-label={t("workspaces.actions", { name })}
           disabled={workspace === null} onClick={handleMenu}><MoreVertOutlinedIcon fontSize="small" /></IconButton>
       </Box>
-      {threads}{empty}{properties}{removal}{relocation}
+      {threads}{empty}{properties}{removal}{relocation}{movement}
       <Menu open={anchor !== null} anchorEl={anchor} onClose={() => setAnchor(null)}>
         <MenuItem onClick={handleProperties}>{t("workspaces.properties")}</MenuItem>
-        {relocateAction}{removeAction}
+        {moveAction}{relocateAction}{removeAction}
       </Menu>
     </Box>
   );

@@ -1,3 +1,5 @@
+import { relocateWorkspace } from "./relocateWorkspace.js";
+import { SqliteWorkspaceMoveRepository } from "./SqliteWorkspaceMoveRepository.js";
 import { validateWorkspaceName } from "./workspaceName.js";
 import { registerDiscoveredWorkspaces } from "./registerDiscoveredWorkspaces.js";
 import { SqliteWorkspaceCreationRepository } from "./SqliteWorkspaceCreationRepository.js";
@@ -7,24 +9,26 @@ import { randomUUID } from "node:crypto";
 import type { Database } from "better-sqlite3";
 import type { OpenCodexProjectWorkspace, OpenCodexTurnWorkspaceContext, OpenCodexWorkspaceDiscoverySkipped } from "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceCacheRepository, WorkspaceExecutionReservation } from "../../types/workspaces.js";
-import { normalizeProjectPath } from "../../projectIdentity.js";
 import { resolveProject } from "./projectResolver.js";
 import { SqliteWorkspaceTransitionRepository } from "./SqliteWorkspaceTransitionRepository.js";
 
 /** SQL projection shared by catalogue and execution-context reads. */
 const workspaceColumns = `id, project_id AS projectId, source_id AS sourceId,
   path, name, is_primary AS isPrimary, managed, removed_at AS removedAt, compose_used AS composeUsed,
-  EXISTS(SELECT 1 FROM workspace_removals WHERE workspace_id = project_workspaces.id) AS removalPending`;
+  EXISTS(SELECT 1 FROM workspace_removals WHERE workspace_id = project_workspaces.id) AS removalPending,
+  EXISTS(SELECT 1 FROM workspace_moves WHERE workspace_id = project_workspaces.id) AS movePending`;
 /** SQL projection for durable execution reservations. */
 const reservationColumns = `id, workspace_id AS workspaceId, project_id AS projectId,
   source_id AS sourceId, cwd, thread_id AS threadId, turn_id AS turnId, state, operation`;
 
 /** Raw projection with SQLite integer flags. */
-interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "managed" | "removalPending" | "composeUsed"> {
+interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "managed" | "removalPending" | "composeUsed" | "movePending"> {
   /** SQLite flag retaining the need for Compose inactivity checks. */
   composeUsed: number;
   /** SQLite flag for a retained removal reservation. */
   removalPending: number;
+  /** SQLite flag retaining an unresolved physical move. */
+  movePending: number;
   /** Stored principal role flag. */
   isPrimary: number;
   /** Stored ownership flag. */
@@ -33,6 +37,8 @@ interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "ma
 
 /** Owns workspace identity and atomic lifecycle guards in the shared cache. */
 export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository {
+  /** Physical moves hold their identities and destination paths across restarts. */
+  readonly moves: SqliteWorkspaceMoveRepository;
   /** Removal intent remains durable without deleting conversation history. */
   readonly removals: SqliteWorkspaceRemovalRepository;
   /** Tracks pending creation without making its destination executable. */
@@ -41,6 +47,7 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
   readonly transitions: SqliteWorkspaceTransitionRepository;
   /** Uses the facade's transaction-capable connection. */
   constructor(private readonly database: Database) {
+    this.moves = new SqliteWorkspaceMoveRepository(database);
     this.removals = new SqliteWorkspaceRemovalRepository(database);
     this.creations = new SqliteWorkspaceCreationRepository(database);
     this.transitions = new SqliteWorkspaceTransitionRepository(database);
@@ -150,54 +157,7 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
 
   /** Relocates identity after backend validation; aliases never drive automatic adoption. */
   async relocate(workspaceId: string, path: string, expectedPath?: string): Promise<void> {
-    const normalizedPath = normalizeProjectPath(path);
-    if (normalizedPath === null) {
-      throw new Error("Workspace path is required.");
-    }
-    this.database.transaction(() => {
-      const workspace = this.requireWorkspace(workspaceId);
-      this.requireAvailable(workspace);
-      this.requireUnreserved(workspaceId);
-      if (expectedPath !== undefined && workspace.path !== expectedPath) {
-        throw new Error("Workspace path changed during relocation. Reload before retrying.");
-      }
-      if (this.database.prepare(`SELECT id FROM workspace_transitions
-        WHERE from_workspace_id = ? OR to_workspace_id = ?`).get(workspaceId, workspaceId) !== undefined) {
-        throw new Error("Workspace has an unresolved transition.");
-      }
-      if (this.database.prepare(`SELECT id FROM workspace_creations WHERE project_id = ?`)
-        .get(workspace.projectId) !== undefined) {
-        throw new Error("Project has a pending creation. Reconcile it before relocation.");
-      }
-      const owners = this.database.prepare(`SELECT id, path FROM project_workspaces
-        WHERE source_id IS ? AND removed_at IS NULL AND id != ?`)
-        .all(workspace.sourceId, workspaceId) as { id: string; path: string }[];
-      const key = (value: string): string => value.startsWith("/") ? value : value.toLowerCase();
-      if (owners.some(owner => key(owner.path) === key(normalizedPath))) {
-        throw new Error("Another workspace already owns this source path.");
-      }
-      if (workspace.path === normalizedPath) {
-        return;
-      }
-      const now = new Date().toISOString();
-      this.database.prepare(`INSERT INTO workspace_path_aliases
-        (workspace_id, path, valid_from, valid_until)
-        VALUES (?, ?, COALESCE((SELECT MAX(valid_until) FROM workspace_path_aliases
-          WHERE workspace_id = ?), (SELECT created_at FROM projects WHERE id = ?)), ?)`)
-        .run(workspaceId, workspace.path, workspaceId, workspace.projectId, now);
-      this.database.prepare("UPDATE project_workspaces SET path = ? WHERE id = ?")
-        .run(normalizedPath, workspaceId);
-      if (workspace.isPrimary) {
-        this.database.prepare("UPDATE projects SET path = ?, updated_at = ? WHERE id = ?")
-          .run(normalizedPath, now, workspace.projectId);
-      }
-      this.database.prepare(`INSERT INTO workspace_thread_relocations (thread_id, workspace_id, previous_path)
-        SELECT id, current_workspace_id, ? FROM threads WHERE current_workspace_id = ?
-        ON CONFLICT(thread_id) DO UPDATE SET workspace_id = excluded.workspace_id,
-          previous_path = excluded.previous_path`).run(workspace.path, workspaceId);
-      this.database.prepare("UPDATE threads SET cwd = ? WHERE current_workspace_id = ?")
-        .run(normalizedPath, workspaceId);
-    })();
+    relocateWorkspace(this.database, workspaceId, path, expectedPath);
   }
 
   /** Captures immutable context and guards against concurrent selection or relocation. */
@@ -408,6 +368,7 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
 
   /** Rejects orphan and logically removed workspaces before any execution. */
   private requireAvailable(workspace: OpenCodexProjectWorkspace): void {
+    if (workspace.movePending === true) throw new Error("Workspace has a pending move.");
     if (workspace.removalPending === true) throw new Error("Workspace has a pending removal.");
     if (workspace.sourceId === null || workspace.removedAt !== null) {
       throw new Error("Workspace has no execution source or has been removed.");
@@ -422,21 +383,14 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
       throw new Error("Thread and workspace must belong to the same project and source.");
     }
   }
-
-  /** Protects a physical location while any operation has captured it. */
-  private requireUnreserved(workspaceId: string): void {
-    if (this.database.prepare("SELECT id FROM workspace_execution_reservations WHERE workspace_id = ?")
-      .get(workspaceId) !== undefined) {
-      throw new Error("Workspace has a reserved or active execution.");
-    }
-  }
 }
 
 /** Converts integer storage flags to structured-clone-compatible DTO values. */
 function mapWorkspace(row: WorkspaceRow): OpenCodexProjectWorkspace {
-  const { removalPending, composeUsed, ...fields } = row;
+  const { removalPending, composeUsed, movePending, ...fields } = row;
   const workspace: OpenCodexProjectWorkspace = { ...fields, isPrimary: row.isPrimary === 1, managed: row.managed === 1 };
   if (composeUsed === 1) workspace.composeUsed = true;
+  if (movePending === 1) workspace.movePending = true;
   if (removalPending === 1) workspace.removalPending = true;
   return workspace;
 }

@@ -262,12 +262,64 @@ rollout limitation; create a new conversation in the relocated workspace.
 No historical turn cwd is rewritten. Project rules, custom scripts and explicit
 shared-folder paths containing the old location are not rewritten automatically.
 
+## Moving a managed workspace
+
+Use **Move workspace** in the menu of a managed secondary workspace. The dialog
+starts with configured storage locations from the owning source and selects
+its default location when it differs from the current destination, otherwise
+another available location. The backend resolves the final path as
+`<storage-root>/<project-id>/<workspace-id>`; the UI shows that exact preview.
+A custom absolute path is available only through an explicit advanced option.
+When no alternative root is configured, the dialog explains how to add one
+instead of opening a free path field by default.
+
+Movement uses `git worktree move -- <old-path> <new-path>` through the owning
+source. It preserves workspace IDs, names, branches and all checkout files,
+including modified, untracked and ignored files. Primary and imported workspaces
+are outside this initial movement scope; their existing relocation action
+remains available. Git's lock, submodule and filesystem restrictions are
+preserved. No force, unlock, stash, copy/delete or cross-source fallback occurs.
+Cross-filesystem moves that Git refuses remain refused.
+
+The destination must be absent and separate from registered checkouts and the
+common Git directory. Its ancestors must be literal directories. A configured
+root must exist; its project subdirectory may be created during preparation.
+An empty project directory can remain after a cancelled preparation. Custom
+paths require an existing parent. Managed commands, debug, Compose services,
+Codex conversations and terminals must be inactive. Unsaved editor documents
+block the action. These checks do not enumerate every external OS process.
+
+Migration 45 adds `workspace_moves`. Before dispatch, the backend freezes source,
+primary, original and destination paths, selected root, common Git directory,
+worktree administrative directory, commit and branch. SQL guards reserve the
+workspace and both paths, reject execution and conversation transitions, and
+exclude conflicting creation, removal, discovery and path changes. Source
+request exclusion also covers process startup and file tools. The optional
+`movePending` flag disables new messages and old-path file tools while retaining
+readable history. Legacy requests to either reserved directory are rejected.
+
+Successful publication requires old-path absence, literal destination ancestors,
+complete Git registration at the new path with no old entry, and the exact
+frozen common directory, administrative identity, commit and branch. The same
+cache transaction releases the journal, records the old alias, updates current
+conversation paths and marks their permissions for verified reload before the
+next message. Historical turn paths are never rewritten. UI refresh uses the
+same document, conversation and Git-draft handling as manual relocation.
+
+A dispatched failure retains a journal. **Recover** checks frozen source facts
+without repeating Git movement or trying to move files back. A completed move
+can be published after a lost response and restart. Positive failure can be
+cancelled only when the original registered checkout is intact and the
+destination is absent. Unknown or conflicting outcomes keep both paths reserved.
+Changes to configured storage after dispatch cannot redirect recovery.
+
 ## Persistence and validation
 
 Migrations 28–31 establish identity, aliases, reservations, immutable history
 and rule-file scoping. Migrations 32–34 add transition and maintenance/catalogue
 guards; 35–37 add creation journaling, names and frozen storage roots.
-Migration 43 journals removal; migration 44 retains relocation policy reloads. Preserve
+Migration 43 journals removal; migration 44 retains relocation policy reloads.
+Migration 45 reserves physical moves and destination ownership. Preserve
 existing data through idempotent migrations instead of rewriting associations.
 
 Run from the repository root:
@@ -290,10 +342,15 @@ and SQLite, dirty/ignored files, locks, detached commits and restart recovery;
 `WorkspaceRemovalRuntime` and cache removal suites cover runtime and durable
 guards. Relocation suites cover real Git movement/repair, source and repository
 validation, durable policy reloads, alias preservation and UI confirmation.
+`WorkspaceMoveService` covers real Git moves, local file preservation, native
+Git refusals, configured/custom targets, lost replies and restart recovery.
+Cache movement tests cover transactional publication and durable SQL guards;
+UI tests cover configured-root priority and explicit advanced custom paths.
+Native Windows source paths are simulated; this does not replace native OS QA.
 Static component rendering does not replace
 interactive validation of creation, switching, errors and restart recovery.
 
-Physical move, worktree locking, preparation hooks and automatic per-agent
-worktrees are not implemented. Local guards
+Moving primary/imported workspaces, worktree locking, preparation hooks and
+automatic per-agent worktrees are not implemented. Local guards
 do not lock out external Git/Codex clients or establish universal filesystem
 identity across mounts and aliases.

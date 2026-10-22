@@ -17,7 +17,7 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
   const name = workspaceLabel(workspace, t("workspaces.primary"));
   const unsaved = project.files.hasUnsavedWorkspaceDocuments(workspace.id);
   const blocked = store.isBusy || unsaved || project.isReadOnlyFromCache || workspace.isPrimary
-    || !current.managed || current.removedAt !== null || current.removalPending === true;
+    || !current.managed || current.removedAt !== null || current.removalPending === true || current.movePending === true;
   const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
   const unsavedNotice = unsaved ? <Alert severity="warning">{t("workspaces.removeUnsaved")}</Alert> : null;
 

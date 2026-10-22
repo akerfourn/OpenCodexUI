@@ -25,6 +25,10 @@ describe("workspace persistence", () => {
   afterEach(() => database.close());
 
   it("should preserve legacy IDs and associations when migrating twice", async () => {
+    const moveTriggers = database.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'protect_move_%'")
+      .all() as { name: string }[];
+    for (const trigger of moveTriggers) database.exec(`DROP TRIGGER "${trigger.name}"`);
+    database.exec("DROP TABLE workspace_moves");
     database.exec(`
       DROP TRIGGER protect_removal_execution;
       DROP TRIGGER protect_removal_transition;

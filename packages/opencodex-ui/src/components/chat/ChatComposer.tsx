@@ -71,8 +71,9 @@ export function ChatComposer({
   const isSteering = isWorking && canSteer;
   const permissionsBusy = chatStore.permissions.isSaving || chatStore.permissions.isLoading;
   const workspace = projectStore.workspaces.current;
-  const workspaceUnavailable = workspace?.removedAt != null || workspace?.removalPending === true;
-  const workspaceNotice = workspaceUnavailable ? <Alert severity="info">{t("workspaces.historyOnly")}</Alert> : null;
+  const workspaceUnavailable = workspace?.removedAt != null || workspace?.removalPending === true || workspace?.movePending === true;
+  const workspaceNoticeKey = workspace?.movePending === true ? "workspaces.moveHistoryOnly" : "workspaces.historyOnly";
+  const workspaceNotice = workspaceUnavailable ? <Alert severity="info">{t(workspaceNoticeKey)}</Alert> : null;
   const canSubmit = !workspaceUnavailable && !store.dictationStore.busy && !isSubmitting && !permissionsBusy && (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
   const canShowSubmit = isSubmitting || !isWorking || canSteer;
   const canAttachFiles = !isSubmitting && (!isWorking || canSteer);

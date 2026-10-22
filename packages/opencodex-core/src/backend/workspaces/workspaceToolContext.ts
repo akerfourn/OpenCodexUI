@@ -15,6 +15,7 @@ export async function requireToolWorkspace(
   if (workspace === null || workspace.sourceId === null || workspace.removedAt !== null) {
     throw new Error("Workspace is unavailable or has no execution source.");
   }
+  if (workspace.movePending === true) throw new Error("Workspace has a pending move.");
   if (workspace.removalPending === true) throw new Error("Workspace has a pending removal.");
   if (projectId !== undefined && workspace.projectId !== projectId) {
     throw new Error("Workspace does not belong to the requested project.");

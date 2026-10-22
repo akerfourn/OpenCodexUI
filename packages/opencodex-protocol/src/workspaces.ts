@@ -18,6 +18,8 @@ export interface OpenCodexProjectWorkspace {
   removedAt: string | null;
   /** A durable removal currently prevents using this checkout. */
   removalPending?: boolean;
+  /** A durable physical move prevents tools from using either checkout path. */
+  movePending?: boolean;
   /** Compose was accessed here; deletion must verify its namespace even if its files were removed. */
   composeUsed?: boolean;
 }
