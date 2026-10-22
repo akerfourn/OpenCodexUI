@@ -10,14 +10,11 @@ export const enWorkspaces = {
     "completedAt": "Completed on {{date}}",
     "filter": "Work status",
     "all": "All statuses",
-    "help": "This status describes your work. It does not stop activities, lock the workspace or delete anything. Reopening is manual. The completed-work filter can be combined with the cleanup filter; the delay still uses the last known activity."
+    "help": "This status describes your work. It does not stop activities, lock the workspace or delete anything. Reopening is manual. Cleanup suggestions only cover completed work, using the delay saved for this project."
   },
   "workspaceManagement": {
     "title": "Workspace activity and cleanup",
     "help": "Last activity comes from cached Codex conversations and turns, including archived conversations. File changes and external tools are not tracked. Candidates are only suggestions for inspection: removal will recheck files, locks and source activity. Nothing is deleted automatically.",
-    "threshold": "Inactivity threshold",
-    "days_one": "{{count}} day",
-    "days_other": "{{count}} days",
     "onlyCandidates": "Show only cleanup candidates",
     "candidates_zero": "No workspaces to inspect for cleanup",
     "candidates_one": "{{count}} workspace to inspect for cleanup",
@@ -39,9 +36,21 @@ export const enWorkspaces = {
       "lockUnknown": "Lock needs verification",
       "locked": "Locked — retained",
       "activityUnknown": "Unknown activity",
-      "recent": "Recent activity",
+      "inProgress": "Work in progress — retained",
+      "retained": "Suggestions disabled — retained",
+      "recent": "Retention period in progress",
       "candidate": "Inspect for cleanup"
     }
+  },
+  "workspaceRetention": {
+    "title": "Workspace retention for this project",
+    "help": "Completed workspaces are suggested for cleanup after this delay, measured from the later of completion and last known Codex activity. Work in progress and unknown activity remain excluded. The setting is saved for this project and defaults to 30 days. Removal stays manual.",
+    "mode": "Cleanup suggestions",
+    "enabled": "Suggest completed work after a delay",
+    "disabled": "Do not suggest cleanup",
+    "days": "Delay in days",
+    "range": "Whole number from 1 to {{max}} days.",
+    "save": "Save retention for this project"
   },
   "workspacePreparation": {
     "title": "Prepare workspace",

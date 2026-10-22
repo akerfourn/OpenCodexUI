@@ -411,9 +411,10 @@ by immutable execution evidence. When a conversation switches workspace, its
 later turns do not refresh the old workspace's activity. Snapshot synchronization
 timestamps are not used as activity dates. Empty or invalid dates remain unknown.
 
-Choose an inactivity threshold of 7, 30 or 90 days; the default is 30. The
-candidate filter suggests only available, managed secondary workspaces with an
-old valid activity date and a matching, explicitly refreshed unlocked Git state.
+The candidate filter uses the project retention policy described below. It
+suggests only completed, available, managed secondary workspaces with a valid
+completion date, old known activity and a matching, explicitly refreshed
+unlocked Git state.
 Primary, imported, removed and pending-maintenance workspaces are excluded.
 Cached active conversations, execution/transition reservations, unsaved documents
 and known local project activity also exclude candidates. Local chat, command,
@@ -428,9 +429,10 @@ readable offline. Lock snapshots and activity are observations, not exclusive
 source locks; refresh again when reviewing a long-open inventory.
 
 **Inspect removal** opens the existing name-confirmation dialog, without starting
-deletion. It is also available for recent or unknown-activity managed secondaries
-whose native lock has been verified. Actual deletion retains all existing checks
-for dirty/untracked/ignored files, Git locks, processes, conversations and durable
+deletion. It is also available for recent, in-progress, retained or
+unknown-activity managed secondaries whose native lock has been verified.
+Actual deletion retains all existing checks for dirty/untracked/ignored files,
+Git locks, processes, conversations and durable
 reservations. No bulk deletion or automatic cleanup is introduced. The overview
 does not measure disk usage, track external tools/file edits or establish that a
 checkout is safe to delete. Git locks remain the
@@ -448,8 +450,9 @@ Use the workspace menu, properties or activity inventory to change progress.
 Completed workspaces retain their conversations and display a completion marker
 in the sidebar. The inventory also shows the completion date and offers an
 independent status filter, combinable with the existing cleanup-candidate filter.
-The inactivity threshold continues to use last known Codex activity, not the
-completion date. No new retention deadline or automatic deletion is introduced.
+Cleanup recommendations use the later of completion and last known Codex
+activity, according to the project retention policy. No automatic deletion
+is introduced.
 
 This is an organizational annotation. It does not stop processes, archive
 conversations, move files, change permissions or acquire a Git lock. Conversations
@@ -469,6 +472,29 @@ reopening another completed period requires a fresh read. No Codex request is
 needed. The UI re-reads the catalogue after a failed response without replaying
 the update and retains the error. Source synchronization, relocation and import
 do not reset work progress.
+
+## Project retention policy
+
+In **Manage workspaces**, configure retention for the current project and save
+it explicitly. The default is 30 whole days; values from 1 to 3650 are supported.
+Suggestions can also be disabled. Draft edits do not affect recommendations
+until saved. The setting is local metadata and can be changed offline.
+
+Only completed workspaces can become cleanup candidates. The delay starts at
+`max(completedAt, lastActivityAt)`, so completing an old checkout or continuing a
+conversation after completion postpones its suggestion. The exact deadline is
+included. Missing, invalid or future completion/activity dates remain excluded;
+an empty checkout with no known activity is not assigned an invented date.
+Existing lock, source, activity and maintenance guards still apply. Reopening
+work immediately excludes it, without erasing its conversations.
+
+Preferences persist as `workspaceRetention: { days: number | null }` in the
+existing project-preferences JSON. An absent policy uses the default; `null`
+days disables suggestions. Invalid writes are rejected by the backend, and a
+malformed stored policy disables suggestions instead of enabling a default.
+No schema migration, timer, automatic mutation or deletion is needed. Manual
+removal remains available subject to the existing confirmation and safety checks,
+including when suggestions are disabled or work is still in progress.
 
 ## Persistence and validation
 
@@ -524,6 +550,10 @@ late responses, offline reads and the existing deletion confirmation.
 idempotent dates, explicit reopening, stale contexts, pending maintenance and
 unchanged execution reservations. UI tests cover manual changes, combined
 filters, sidebar markers, offline updates and lost responses without replay.
+`workspaceRetention` and project preference tests cover legacy defaults, invalid
+policies, per-project persistence and explicit disabling. Management tests cover
+completion/activity deadlines, in-progress exclusions, unsaved drafts, reopening
+the settings dialog and preserving manual inspection when suggestions are off.
 
 Moving primary/imported workspaces and automatic per-agent worktrees are not
 implemented. Local guards

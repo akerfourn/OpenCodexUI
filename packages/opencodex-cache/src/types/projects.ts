@@ -1,4 +1,5 @@
 import type { CachedSourceColor } from "./foundations.js";
+import type { OpenCodexWorkspaceRetention } from "@open-codex-ui/opencodex-protocol";
 
 /**
  * Cached project row derived from a source-reported working directory.
@@ -72,6 +73,8 @@ export type CachedProjectGroupUpdateInput = {
  * User-editable and generated preferences attached to one cached project.
  */
 export type CachedProjectPreferences = {
+  /** Project-local cleanup suggestions; absent uses the default and null days disables suggestions. */
+  workspaceRetention?: OpenCodexWorkspaceRetention;
   /** Optional command selected for manual workspace preparation. */
   workspacePreparation?: { commandId: string | null };
   git?: {

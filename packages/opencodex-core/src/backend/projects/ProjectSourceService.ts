@@ -6,6 +6,7 @@ import type {
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
 import { createProjectIdentity, normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
+import { isWorkspaceRetention, maxWorkspaceRetentionDays } from "@open-codex-ui/opencodex-protocol";
 import type {
   OpenCodexProject,
   OpenCodexProjectPreferences,
@@ -219,6 +220,9 @@ export class ProjectSourceService {
     projectId: string,
     patch: Partial<OpenCodexProjectPreferences>
   ): Promise<OpenCodexProject> {
+    if (patch.workspaceRetention !== undefined && !isWorkspaceRetention(patch.workspaceRetention)) {
+      throw new Error(`Workspace retention days must be null or an integer from 1 to ${maxWorkspaceRetentionDays}.`);
+    }
     const repository = this.requireCacheRepository("Project preferences storage is unavailable.");
     const projects = await repository.listProjects();
     const previousProject = projects.find((project) => project.id === projectId);

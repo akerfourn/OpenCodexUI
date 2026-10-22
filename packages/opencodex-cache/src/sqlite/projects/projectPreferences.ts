@@ -1,6 +1,7 @@
 /**
  * Normalizes persisted project preferences.
  */
+import { isWorkspaceRetention } from "@open-codex-ui/opencodex-protocol";
 import type {
   CachedProjectContextAccessScope,
   CachedProjectContextEnvFilePermission,
@@ -42,7 +43,8 @@ export function parseProjectPreferences(value: string | null): CachedProjectPref
 export function serializeProjectPreferences(preferences: CachedProjectPreferences): string | null {
   const normalized = normalizeProjectPreferences(preferences);
 
-  if (normalized.git === undefined && normalized.context === undefined && normalized.workspacePreparation === undefined) {
+  if (normalized.git === undefined && normalized.context === undefined
+    && normalized.workspacePreparation === undefined && normalized.workspaceRetention === undefined) {
     return null;
   }
 
@@ -63,12 +65,21 @@ export function normalizeProjectPreferences(value: unknown): CachedProjectPrefer
   const git = normalizeGitPreferences(value.git);
   const context = normalizeContextPreferences(value.context);
   const workspacePreparation = normalizeWorkspacePreparation(value.workspacePreparation);
+  const workspaceRetention = normalizeWorkspaceRetention(value.workspaceRetention);
 
-  if (git === undefined && context === undefined && workspacePreparation === undefined) {
+  if (git === undefined && context === undefined && workspacePreparation === undefined && workspaceRetention === undefined) {
     return {};
   }
 
-  return { git, context, ...(workspacePreparation === undefined ? {} : { workspacePreparation }) };
+  return { git, context, ...(workspacePreparation === undefined ? {} : { workspacePreparation }),
+    ...(workspaceRetention === undefined ? {} : { workspaceRetention }) };
+}
+
+/** Disables suggestions for malformed stored policies instead of silently enabling the default. */
+function normalizeWorkspaceRetention(value: unknown): CachedProjectPreferences["workspaceRetention"] {
+  if (value === undefined) return undefined;
+  if (!isWorkspaceRetention(value)) return { days: null };
+  return { days: value.days };
 }
 
 /** Preserves an explicit disabled hook and discards malformed command references. */

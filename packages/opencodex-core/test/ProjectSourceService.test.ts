@@ -25,6 +25,24 @@ import type { OpenCodexBackendOptions as CoreBackendOptions } from "../src/types
 import { ProjectSourceService } from "../src/backend/projects/ProjectSourceService";
 
 describe("ProjectSourceService", () => {
+  it.each([0, -1, 1.5, 3651, NaN, Infinity])("should refuse invalid retention before writing project preferences: %s", async days => {
+    const fixture = createSyncFixture([createSyncSource("source")], { defaultSourceId: "source" });
+    const write = vi.fn();
+    fixture.repository.updateProjectPreferences = write;
+    await expect(fixture.service.updateProjectPreferences(fixture.project.id, { workspaceRetention: { days } }))
+      .rejects.toThrow("Workspace retention days must be null or an integer from 1 to 3650.");
+    expect(write).not.toHaveBeenCalled();
+  });
+
+  it.each([7, null])("should merge retention with unrelated project preferences: %s", async days => {
+    const fixture = createSyncFixture([createSyncSource("source")], { defaultSourceId: "source" });
+    fixture.project.preferences = { git: { commitProtectedBranches: ["main"] }, workspacePreparation: { commandId: "prepare" } };
+    fixture.repository.updateProjectPreferences = vi.fn(async (_id, preferences) => ({ ...fixture.project, preferences }));
+    const updated = await fixture.service.updateProjectPreferences(fixture.project.id, { workspaceRetention: { days } });
+    expect(updated.preferences).toMatchObject({ workspaceRetention: { days },
+      git: { commitProtectedBranches: ["main"] }, workspacePreparation: { commandId: "prepare" } });
+  });
+
   it.each(["wsl", "ssh"] as const)(
     "should preserve a %s project path without validating it on the Windows host",
     async (sourceKind) => {

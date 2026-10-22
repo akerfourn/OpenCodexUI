@@ -1,4 +1,6 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import { isWorkspaceRetention } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
 import type {
   OpenCodexProjectWorkspace, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRemoval, OpenCodexWorkspaceMove, OpenCodexWorkspaceDiscoveryResult,
   OpenCodexWorkspaceStart, OpenCodexWorkspaceRoot, OpenCodexWorkspaceLockState
@@ -301,6 +303,18 @@ export class ProjectWorkspacesStore {
     };
     await this.perform(async () => {
       await this.root.request({ type: "projectWorkspaces.workStatus.update", input });
+    }, true);
+  }
+
+  /** Saves only this project's advisory retention preference, including while its source is offline. */
+  async setRetentionDays(days: number | null): Promise<void> {
+    await this.perform(async () => {
+      if (!isWorkspaceRetention({ days })) throw new Error("Invalid workspace retention days.");
+      const project = await this.root.request<OpenCodexProject>({
+        type: "projects.preferences.update", projectId: this.project.project.id,
+        patch: { workspaceRetention: { days } }
+      });
+      runInAction(() => this.project.setProject(project));
     }, true);
   }
 

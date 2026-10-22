@@ -4,17 +4,20 @@ import { Alert, Button, Checkbox, CircularProgress, Dialog, DialogActions, Dialo
   FormControlLabel, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceWorkStatus } from "@open-codex-ui/opencodex-protocol";
+import { defaultWorkspaceRetentionDays } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { matchingWorkspaceActivity, workspaceManagementStatus } from "../../stores/project/workspaceManagement";
 import { WorkspaceManagementRowX } from "./WorkspaceManagementRow";
 import { WorkspacePropertiesDialogX } from "./WorkspacePropertiesDialog";
 import { WorkspaceRemoveDialogX } from "./WorkspaceRemoveDialog";
+import { WorkspaceRetentionSettingsX } from "./WorkspaceRetentionSettings";
 
 /** Reviews cached activity and advisory cleanup candidates without automatic deletion or recovery. */
 export function WorkspaceManagementDialog({ project, onClose }: { project: ProjectStore; onClose(): void }) {
   const { t } = useTranslation();
   const store = project.workspaces;
-  const [inactivityDays, setInactivityDays] = useState(30);
+  const savedDays = project.project.preferences.workspaceRetention?.days;
+  const retentionDays = savedDays === undefined ? defaultWorkspaceRetentionDays : savedDays;
   const [onlyCandidates, setOnlyCandidates] = useState(false);
   const [workStatusFilter, setWorkStatusFilter] = useState<"all" | OpenCodexWorkspaceWorkStatus>("all");
   const [now, setNow] = useState(Date.now);
@@ -37,15 +40,16 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
   /** Rechecks the retained catalogue instead of hiding an uncertain deletion. */
   function handleCloseRemoval(): void { setRemoving(null); void handleRefresh(); }
   /** Persists a user declaration while retaining the current inventory and cleanup guards. */
-  function handleWorkStatus(workspace: OpenCodexProjectWorkspace, status: OpenCodexWorkspaceWorkStatus): void {
-    void store.setWorkStatus(workspace, status);
+  async function handleWorkStatus(workspace: OpenCodexProjectWorkspace, status: OpenCodexWorkspaceWorkStatus): Promise<void> {
+    await store.setWorkStatus(workspace, status);
+    setNow(Date.now());
   }
   const entries = store.workspaces.map(workspace => ({ workspace,
     activity: matchingWorkspaceActivity(workspace, store.activityById.get(workspace.id)), status: workspaceManagementStatus({
       workspace, activity: store.activityById.get(workspace.id), lock: store.lockStates.get(workspace.id),
       hasLocalActivity, hasUnsavedDocuments: project.files.hasUnsavedWorkspaceDocuments(workspace.id),
       sourceAvailable: project.isCodexSourceReady && !project.isReadOnlyFromCache && workspace.sourceId === project.project.sourceId,
-      checking: store.isRefreshingManagement || store.loadingLockIds.has(workspace.id), inactivityDays, now
+      checking: store.isRefreshingManagement || store.loadingLockIds.has(workspace.id), retentionDays, now
     }) }));
   const filtered = entries.filter(entry => workStatusFilter === "all" || (entry.workspace.workStatus ?? "active") === workStatusFilter);
   const visible = filtered.filter(entry => !onlyCandidates || entry.status === "candidate");
@@ -74,11 +78,7 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
           <MenuItem value="active">{t("workspaceWorkStatus.active")}</MenuItem>
           <MenuItem value="completed">{t("workspaceWorkStatus.completed")}</MenuItem>
         </TextField>
-        <TextField select label={t("workspaceManagement.threshold")} value={inactivityDays}
-          onChange={event => setInactivityDays(Number(event.target.value))} disabled={busy}>
-          {[7, 30, 90].map(days => <MenuItem key={days} value={days}>
-            {t("workspaceManagement.days", { count: days })}</MenuItem>)}
-        </TextField>
+        <WorkspaceRetentionSettingsX project={project} disabled={busy} />
         <FormControlLabel control={<Checkbox checked={onlyCandidates} onChange={event => setOnlyCandidates(event.target.checked)} />}
           label={t("workspaceManagement.onlyCandidates")} />
         <Typography variant="body2">{t("workspaceManagement.candidates", { count: candidateCount })}</Typography>

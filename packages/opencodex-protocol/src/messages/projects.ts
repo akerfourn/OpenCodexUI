@@ -1,5 +1,6 @@
 import type { OpenCodexLogCategory, OpenCodexLogType } from "./foundations.js";
 import type { OpenCodexSourceColor } from "./sources.js";
+import type { OpenCodexWorkspaceRetention } from "../workspaceRetention.js";
 
 /**
  * Cached project known by OpenCodexUI.
@@ -155,6 +156,8 @@ export type OpenCodexProjectCommandRuleApplyResult = {
  * User-editable project preferences stored in SQLite.
  */
 export type OpenCodexProjectPreferences = {
+  /** Advisory retention for completed workspaces; absent uses the default, null days disables suggestions. */
+  workspaceRetention?: OpenCodexWorkspaceRetention;
   /** Explicit command offered for manual workspace preparation; never run automatically. */
   workspacePreparation?: { commandId: string | null };
   git?: {

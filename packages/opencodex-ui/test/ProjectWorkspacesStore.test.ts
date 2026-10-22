@@ -26,6 +26,48 @@ const workspaces: OpenCodexProjectWorkspace[] = [
 ];
 
 describe("workspace UI orchestration", () => {
+  it.each([90, null])("should save project retention offline through a plain isolated preference patch: %s", async days => {
+    const { root, project, request } = fixture();
+    vi.mocked(root.sourcesStore.isSourceReady).mockReturnValue(false);
+    project.setProject({ ...project.project, preferences: { workspacePreparation: { commandId: "prepare" },
+      git: { commitProtectedBranches: ["main"] } } });
+    request.mockImplementation(async input => {
+      if (input.type === "projects.preferences.update") {
+        expect(isObservable(input.patch.workspaceRetention)).toBe(false);
+        expect(structuredClone(input)).toEqual({ type: "projects.preferences.update", projectId: "project",
+          patch: { workspaceRetention: { days } } });
+        return { ...project.project, preferences: { ...project.project.preferences, workspaceRetention: { days } } };
+      }
+      if (input.type === "projectWorkspaces.list") return workspaces;
+      return [];
+    });
+    await project.workspaces.setRetentionDays(days);
+    expect(project.project.preferences).toEqual({ workspaceRetention: { days },
+      workspacePreparation: { commandId: "prepare" }, git: { commitProtectedBranches: ["main"] } });
+    expect(project.workspaces.error).toBeNull();
+    expect(request.mock.calls.filter(([input]) => input.type === "projects.preferences.update")).toHaveLength(1);
+  });
+
+  it("should retain a failed policy draft without applying or automatically replaying it", async () => {
+    const { project, request } = fixture();
+    request.mockImplementation(async input => {
+      if (input.type === "projects.preferences.update") throw new Error("storage unavailable");
+      if (input.type === "projectWorkspaces.list") return workspaces;
+      return [];
+    });
+    await project.workspaces.setRetentionDays(7);
+    expect(project.project.preferences.workspaceRetention).toBeUndefined();
+    expect(project.workspaces.error).toBe("storage unavailable");
+    expect(request.mock.calls.filter(([input]) => input.type === "projects.preferences.update")).toHaveLength(1);
+  });
+
+  it("should refuse invalid policy values before transport", async () => {
+    const { project, request } = fixture();
+    await project.workspaces.setRetentionDays(0.5);
+    expect(project.workspaces.error).toBe("Invalid workspace retention days.");
+    expect(request.mock.calls.some(([input]) => input.type === "projects.preferences.update")).toBe(false);
+  });
+
   it("should persist a plain reviewed work-status snapshot offline and refresh the resulting metadata", async () => {
     const { root, project, request } = fixture();
     vi.mocked(root.sourcesStore.isSourceReady).mockReturnValue(false);

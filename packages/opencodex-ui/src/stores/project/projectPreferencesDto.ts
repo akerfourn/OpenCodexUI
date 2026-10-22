@@ -17,6 +17,10 @@ export function cloneProjectPreferences(
 ): OpenCodexProjectPreferences {
   const clonedPreferences: OpenCodexProjectPreferences = {};
 
+  if (preferences.workspaceRetention !== undefined) {
+    clonedPreferences.workspaceRetention = { days: preferences.workspaceRetention.days };
+  }
+
   if (preferences.workspacePreparation !== undefined) {
     clonedPreferences.workspacePreparation = { commandId: preferences.workspacePreparation.commandId };
   }

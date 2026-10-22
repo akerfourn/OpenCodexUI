@@ -24,6 +24,21 @@ describe("project persistence", () => {
     fs.rmSync(directory, { recursive: true, force: true });
   });
 
+  it("should persist per-project retention and explicit disabling across reopening the cache", async () => {
+    const first = await repository.upsertProject("/workspace/first");
+    const second = await repository.upsertProject("/workspace/second");
+    await repository.updateProjectPreferences(first.id, { workspaceRetention: { days: 90 },
+      workspacePreparation: { commandId: "prepare" } });
+    await repository.updateProjectPreferences(second.id, { workspaceRetention: { days: null } });
+    await repository.close();
+    repository = createOpenCodexSqliteCacheRepository({ directory });
+    const projects = await repository.listProjects();
+    expect(projects.find(project => project.id === first.id)?.preferences).toEqual({
+      workspaceRetention: { days: 90 }, workspacePreparation: { commandId: "prepare" }
+    });
+    expect(projects.find(project => project.id === second.id)?.preferences).toEqual({ workspaceRetention: { days: null } });
+  });
+
   it("should persist projects independently from threads", async () => {
     const project = await repository.upsertProject("/home/adrien/Projets/Perso/OpenCodexUI");
 

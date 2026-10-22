@@ -23,7 +23,8 @@ export function WorkspaceManagementRow({ workspace, activity, status, disabled, 
   }).format(timestamp);
   const count = activity === undefined ? null : <Typography variant="caption" color="text.secondary">
     {t("workspaceManagement.conversations", { count: activity.conversationCount })}</Typography>;
-  const canInspect = status === "candidate" || status === "recent" || status === "activityUnknown";
+  const canInspect = status === "candidate" || status === "recent" || status === "activityUnknown"
+    || status === "inProgress" || status === "retained";
   const inspect = canInspect ? <Button color="error" disabled={disabled} onClick={handleRemove}>
     {t("workspaceManagement.inspectRemoval")}</Button> : null;
   /** Opens metadata without changing the currently selected workspace. */

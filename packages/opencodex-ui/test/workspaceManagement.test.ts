@@ -5,14 +5,54 @@ import { matchingWorkspaceActivity, workspaceManagementStatus, type WorkspaceMan
 /** Uses a fixed clock and complete matching evidence for a managed, old secondary checkout. */
 function fixture(): WorkspaceManagementInput {
   return { workspace: { id: "B", projectId: "project", sourceId: "source", path: "/B", isPrimary: false,
-    managed: true, removedAt: null }, activity: { workspaceId: "B", sourceId: "source", workspacePath: "/B",
+    managed: true, removedAt: null, workStatus: "completed", completedAt: "2026-01-02T00:00:00Z" }, activity: { workspaceId: "B", sourceId: "source", workspacePath: "/B",
     lastActivityAt: "2026-01-01T00:00:00Z", conversationCount: 1, activeConversationCount: 0, pendingOperationCount: 0 },
     lock: { workspaceId: "B", sourceId: "source", workspacePath: "/B", supported: true, lockedReason: null },
     hasLocalActivity: false, hasUnsavedDocuments: false, sourceAvailable: true, checking: false,
-    inactivityDays: 30, now: Date.parse("2026-10-22T12:00:00Z") };
+    retentionDays: 30, now: Date.parse("2026-10-22T12:00:00Z") };
 }
 
 describe("advisory workspace cleanup classification", () => {
+  it("should retain active and legacy workspaces regardless of their age", () => {
+    const input = fixture();
+    input.workspace.workStatus = "active";
+    input.workspace.completedAt = null;
+    expect(workspaceManagementStatus(input)).toBe("inProgress");
+    delete input.workspace.workStatus;
+    expect(workspaceManagementStatus(input)).toBe("inProgress");
+  });
+
+  it("should restart the retention delay at completion or later known activity", () => {
+    const input = fixture();
+    input.workspace.completedAt = "2026-10-21T00:00:00Z";
+    expect(workspaceManagementStatus(input)).toBe("recent");
+    input.workspace.completedAt = "2026-01-02T00:00:00Z";
+    input.activity!.lastActivityAt = "2026-10-21T00:00:00Z";
+    expect(workspaceManagementStatus(input)).toBe("recent");
+    input.activity!.lastActivityAt = "2026-01-01T00:00:00Z";
+    expect(workspaceManagementStatus(input)).toBe("candidate");
+  });
+
+  it("should disable suggestions without ignoring activity or lock guards", () => {
+    const input = fixture();
+    input.retentionDays = null;
+    expect(workspaceManagementStatus(input)).toBe("retained");
+    input.lock!.lockedReason = "Keep";
+    expect(workspaceManagementStatus(input)).toBe("locked");
+  });
+
+  it.each([null, "invalid", "2099-01-01T00:00:00Z"])("should retain uncertain completion dates: %s", date => {
+    const input = fixture();
+    input.workspace.completedAt = date;
+    expect(workspaceManagementStatus(input)).toBe("activityUnknown");
+  });
+
+  it.each([0, -1, 1.5, 3651, NaN, Infinity])("should refuse an invalid retention delay: %s", days => {
+    const input = fixture();
+    input.retentionDays = days;
+    expect(workspaceManagementStatus(input)).toBe("activityUnknown");
+  });
+
   it("should suggest only inspection of an old managed checkout with matching unlocked source evidence", () => {
     expect(workspaceManagementStatus(fixture())).toBe("candidate");
   });
@@ -38,7 +78,15 @@ describe("advisory workspace cleanup classification", () => {
     const input = fixture();
     input.activity!.lastActivityAt = "2026-09-22T12:00:00Z";
     expect(workspaceManagementStatus(input)).toBe("candidate");
-    input.inactivityDays = 90;
+    input.retentionDays = 90;
+    expect(workspaceManagementStatus(input)).toBe("recent");
+  });
+
+  it("should include the exact completion deadline even when the activity is older", () => {
+    const input = fixture();
+    input.workspace.completedAt = "2026-09-22T12:00:00Z";
+    expect(workspaceManagementStatus(input)).toBe("candidate");
+    input.workspace.completedAt = "2026-09-22T12:00:00.001Z";
     expect(workspaceManagementStatus(input)).toBe("recent");
   });
 

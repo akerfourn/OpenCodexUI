@@ -7,15 +7,11 @@ export const frWorkspaces = {
     "completedAt": "Terminé le {{date}}",
     "filter": "Statut du travail",
     "all": "Tous les statuts",
-    "help": "Ce statut décrit votre travail. Il n’arrête aucune activité, ne verrouille pas le workspace et ne supprime rien. Le retour en cours est manuel. Le filtre des travaux terminés peut être combiné au filtre de nettoyage ; le délai reste fondé sur la dernière activité connue."
+    "help": "Ce statut décrit votre travail. Il n’arrête aucune activité, ne verrouille pas le workspace et ne supprime rien. Le retour en cours est manuel. Les suggestions de nettoyage concernent uniquement les travaux terminés, selon le délai enregistré pour ce projet."
   },
   "workspaceManagement": {
     "title": "Activité et nettoyage des workspaces",
     "help": "La dernière activité correspond aux conversations et aux tours Codex conservés dans le cache, y compris les conversations archivées. Les modifications de fichiers et les outils externes ne sont pas suivis. Les candidats sont uniquement à examiner : la suppression vérifiera à nouveau les fichiers, les verrous et les activités dans la source. Aucune suppression n’est automatique.",
-    "threshold": "Seuil d’inactivité",
-    "days_one": "{{count}} jour",
-    "days_many": "{{count}} jours",
-    "days_other": "{{count}} jours",
     "onlyCandidates": "Afficher uniquement les candidats au nettoyage",
     "candidates_zero": "Aucun workspace à examiner pour nettoyage",
     "candidates_one": "{{count}} workspace à examiner pour nettoyage",
@@ -39,9 +35,21 @@ export const frWorkspaces = {
       "lockUnknown": "Verrou à vérifier",
       "locked": "Verrouillé — conservé",
       "activityUnknown": "Activité inconnue",
-      "recent": "Activité récente",
+      "inProgress": "Travail en cours — conservé",
+      "retained": "Suggestions désactivées — conservé",
+      "recent": "Délai de conservation en cours",
       "candidate": "À examiner pour nettoyage"
     }
+  },
+  "workspaceRetention": {
+    "title": "Conservation des workspaces de ce projet",
+    "help": "Un workspace terminé est proposé au nettoyage après ce délai, à compter de la plus récente des dates de fin et d’activité Codex connue. Les travaux en cours et les activités inconnues restent exclus. Le réglage est mémorisé pour ce projet, avec 30 jours par défaut. La suppression reste manuelle.",
+    "mode": "Suggestions de nettoyage",
+    "enabled": "Proposer les travaux terminés après un délai",
+    "disabled": "Ne pas proposer de nettoyage",
+    "days": "Délai en jours",
+    "range": "Nombre entier de 1 à {{max}} jours.",
+    "save": "Enregistrer la conservation pour ce projet"
   },
   "workspacePreparation": {
     "title": "Préparer le workspace",
