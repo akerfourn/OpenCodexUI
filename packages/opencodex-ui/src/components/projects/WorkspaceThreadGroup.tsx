@@ -1,11 +1,14 @@
 import AddCommentOutlinedIcon from "@mui/icons-material/AddCommentOutlined";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import ChevronRightOutlinedIcon from "@mui/icons-material/ChevronRightOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import { Box, IconButton, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
+import type { OpenCodexWorkspaceLockState } from "@open-codex-ui/opencodex-protocol";
+import { WorkspaceLockDialogX } from "./WorkspaceLockDialog";
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { workspaceLabel, type WorkspaceThreadGroup as ThreadGroup } from "../../stores/project/threads/workspaceThreadGroups";
@@ -26,6 +29,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const [propertiesOpen, setPropertiesOpen] = useState(false);
   const [relocating, setRelocating] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [lockSnapshot, setLockSnapshot] = useState<OpenCodexWorkspaceLockState | null>(null);
   const [removing, setRemoving] = useState(false);
   const workspace = group.workspace;
   let name = workspace === null ? t("workspaces.unavailable") : workspaceLabel(workspace, t("workspaces.primary"));
@@ -33,6 +37,24 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const newConversationLabel = t("workspaces.newConversationIn", { name });
   const disabled = workspace === null || workspace.removedAt !== null || project.isReadOnlyFromCache
     || workspace.removalPending === true || workspace.movePending === true || project.workspaces.isBusy || project.threadListStore.isCreatingThread;
+  const lockState = workspace === null ? undefined : project.workspaces.lockStates.get(workspace.id);
+  const checkingLock = workspace !== null && project.workspaces.loadingLockIds.has(workspace.id);
+  const lockUnknown = checkingLock || lockState === undefined;
+  const locked = lockState !== undefined && lockState.lockedReason !== null;
+  const lockBadge = locked ? <Tooltip title={lockState.lockedReason || t("workspaces.lockWithoutReason")}>
+    <LockOutlinedIcon fontSize="small" color="action" aria-label={t("workspaces.locked")} />
+  </Tooltip> : null;
+  const lockDialog = lockSnapshot === null ? null
+    : <WorkspaceLockDialogX project={project} state={lockSnapshot} onClose={() => setLockSnapshot(null)} />;
+  const lockLabel = locked ? t("workspaces.unlock") : t("workspaces.lock");
+  let lockAction = null;
+  if (workspace !== null && !workspace.isPrimary && workspace.removedAt === null) {
+    let label = t("workspaces.lockUnavailable");
+    if (checkingLock) label = t("workspaces.lockLoading");
+    else if (lockState?.supported === true) label = lockLabel;
+    lockAction = <MenuItem disabled={disabled || checkingLock || lockState?.supported !== true} onClick={handleLock}>
+      {label}</MenuItem>;
+  }
   const expandIcon = collapsed ? <ChevronRightOutlinedIcon /> : <ExpandMoreOutlinedIcon />;
   const threads = collapsed ? null : group.threads.map((thread) => (
     <ThreadButtonX key={thread.id} projectStore={project} root={root} thread={thread}
@@ -57,11 +79,11 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
     setRelocating(true);
   }
   const canRemove = workspace !== null && !workspace.isPrimary && workspace.managed && workspace.removedAt === null;
-  const removeAction = canRemove ? <MenuItem disabled={disabled} onClick={handleRemove} sx={{ color: "error.main" }}>
+  const removeAction = canRemove ? <MenuItem disabled={disabled || lockUnknown || locked} onClick={handleRemove} sx={{ color: "error.main" }}>
     {t("workspaces.remove")}</MenuItem> : null;
   const movement = moving && workspace !== null
     ? <WorkspaceMoveDialogX project={project} workspace={workspace} onClose={() => setMoving(false)} /> : null;
-  const moveAction = canRemove ? <MenuItem disabled={disabled} onClick={handleMove}>
+  const moveAction = canRemove ? <MenuItem disabled={disabled || lockUnknown || locked} onClick={handleMove}>
     {t("workspaces.move")}</MenuItem> : null;
   /** Opens configured storage choices for this fixed managed workspace identity. */
   function handleMove(): void {
@@ -73,9 +95,16 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
     setAnchor(null);
     setRemoving(true);
   }
+  /** Freezes the state being reviewed, so a later external change cannot silently alter confirmation. */
+  function handleLock(): void {
+    if (lockState === undefined || checkingLock || !lockState.supported) return;
+    setAnchor(null);
+    setLockSnapshot({ ...lockState });
+  }
   /** Opens workspace actions independently of the selected conversation. */
   function handleMenu(event: MouseEvent<HTMLButtonElement>): void {
     setAnchor(event.currentTarget);
+    if (workspace !== null && !workspace.isPrimary && !disabled) void project.workspaces.loadLockState(workspace.id);
   }
   /** Creates directly inside this workspace without migrating any conversation. */
   function handleCreate(): void {
@@ -94,6 +123,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
           {expandIcon}
         </IconButton>
         <Typography variant="subtitle2" noWrap sx={{ flex: 1 }} title={name}>{name}</Typography>
+        {lockBadge}
         <Typography variant="caption" color="text.secondary">{group.threads.length}</Typography>
         <Tooltip title={newConversationLabel}>
           <span style={{ display: "inline-flex" }}>
@@ -105,10 +135,10 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
         <IconButton size="small" aria-label={t("workspaces.actions", { name })}
           disabled={workspace === null} onClick={handleMenu}><MoreVertOutlinedIcon fontSize="small" /></IconButton>
       </Box>
-      {threads}{empty}{properties}{removal}{relocation}{movement}
+      {threads}{empty}{properties}{removal}{relocation}{movement}{lockDialog}
       <Menu open={anchor !== null} anchorEl={anchor} onClose={() => setAnchor(null)}>
         <MenuItem onClick={handleProperties}>{t("workspaces.properties")}</MenuItem>
-        {moveAction}{relocateAction}{removeAction}
+        {lockAction}{moveAction}{relocateAction}{removeAction}
       </Menu>
     </Box>
   );

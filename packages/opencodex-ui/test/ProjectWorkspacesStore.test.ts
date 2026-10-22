@@ -1,4 +1,4 @@
-import { autorun } from "mobx";
+import { autorun, runInAction, isObservable } from "mobx";
 import { describe, expect, it, vi } from "vitest";
 import type { OpenCodexProject, OpenCodexProjectWorkspace, OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 import { createThread } from "./chatStore/chatStoreFixtures";
@@ -26,6 +26,63 @@ const workspaces: OpenCodexProjectWorkspace[] = [
 ];
 
 describe("workspace UI orchestration", () => {
+  it("should fetch external lock metadata explicitly and re-read it after a confirmed change", async () => {
+    const { project, request } = fixture();
+    let reason: string | null = "External lock";
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.list") return workspaces;
+      if (input.type === "projectWorkspaces.lock.read") return { workspaceId: "B", sourceId: "source",
+        workspacePath: "/B", supported: true, lockedReason: reason };
+      if (input.type === "projectWorkspaces.lock.update") {
+        expect(isObservable(input.input)).toBe(false);
+        reason = null;
+      }
+      return [];
+    });
+    await project.workspaces.load();
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.lock.read")).toBe(false);
+    await project.workspaces.loadLockState("B");
+    const state = project.workspaces.lockStates.get("B")!;
+    await project.workspaces.setLock(state, false, "");
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.lock.update", input: {
+      projectId: "project", workspaceId: "B", sourceId: "source", workspacePath: "/B",
+      locked: false, expectedReason: "External lock", reason: ""
+    } });
+    expect(project.workspaces.lockStates.get("B")?.lockedReason).toBeNull();
+  });
+
+  it("should show the actual Git result after a lost lock response without repeating the mutation", async () => {
+    const { project, request } = fixture();
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.list") return workspaces;
+      if (input.type === "projectWorkspaces.lock.update") throw new Error("reply lost");
+      if (input.type === "projectWorkspaces.lock.read") return { workspaceId: "B", sourceId: "source",
+        workspacePath: "/B", supported: true, lockedReason: "Kept" };
+      return [];
+    });
+    await project.workspaces.load();
+    await project.workspaces.setLock({ workspaceId: "B", sourceId: "source", workspacePath: "/B", supported: true, lockedReason: null }, true, "Kept");
+    expect(project.workspaces.error).toBe("reply lost");
+    expect(project.workspaces.lockStates.get("B")?.lockedReason).toBe("Kept");
+    expect(request.mock.calls.filter(([input]) => input.type === "projectWorkspaces.lock.update")).toHaveLength(1);
+  });
+
+  it("should discard a late lock snapshot after the owning source changes", async () => {
+    const { project, request } = fixture();
+    await project.workspaces.load();
+    let complete!: (value: unknown) => void;
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.lock.read") return await new Promise(resolve => { complete = resolve; });
+      return [];
+    });
+    const pending = project.workspaces.loadLockState("B");
+    runInAction(() => { project.workspaces.workspaces = project.workspaces.workspaces.map(item =>
+      item.id === "B" ? { ...item, sourceId: "other" } : item); });
+    complete({ workspaceId: "B", sourceId: "source", workspacePath: "/B", supported: true, lockedReason: "Old source lock" });
+    await pending;
+    expect(project.workspaces.lockStates.has("B")).toBe(false);
+  });
+
   it("should send a plain storage-root move intent and follow the persisted destination without changing thread IDs", async () => {
     const { project, request } = fixture();
     let moved = false;

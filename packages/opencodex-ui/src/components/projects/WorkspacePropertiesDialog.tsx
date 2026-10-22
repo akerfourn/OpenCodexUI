@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,16 @@ export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
   const { t } = useTranslation();
   const store = project.workspaces;
   const [name, setName] = useState(workspaceLabel(workspace, t("workspaces.primary")));
+  useEffect(() => {
+    if (!workspace.isPrimary && workspace.removedAt === null) void store.loadLockState(workspace.id);
+  }, [store, workspace.id, workspace.isPrimary, workspace.removedAt]);
+  const lock = store.lockStates.get(workspace.id);
+  let lockInfo = null;
+  if (lock?.supported === true) {
+    const text = lock.lockedReason === null ? t("workspaces.unlocked")
+      : t("workspaces.lockedReason", { reason: lock.lockedReason || t("workspaces.lockWithoutReason") });
+    lockInfo = <Alert severity="info">{text}</Alert>;
+  }
   const readOnly = workspace.isPrimary || workspace.removedAt !== null || project.isReadOnlyFromCache;
   const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
   const help = workspace.isPrimary ? <Alert severity="info">{t("workspaces.primaryHelp")}</Alert> : null;
@@ -29,7 +39,7 @@ export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
     <Dialog open onClose={store.isBusy ? undefined : onClose} fullWidth maxWidth="sm">
       <DialogTitle>{t("workspaces.properties")}</DialogTitle>
       <DialogContent>
-        {help}
+        {help}{lockInfo}
         <TextField label={t("workspaces.name")} value={name} fullWidth margin="normal"
           disabled={readOnly || store.isBusy} onChange={(event) => setName(event.target.value)} />
         <TextField label={t("workspaces.destination")} value={workspace.path} fullWidth margin="normal"

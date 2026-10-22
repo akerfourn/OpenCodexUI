@@ -42,6 +42,16 @@ export class GitWorktreeService {
     return parseGitWorktrees(result.stdout);
   }
 
+  /** Changes only native linked-worktree lock metadata, without force or implicit retries. */
+  async setLocked(projectPath: string, sourceId: string, workspacePath: string, locked: boolean, reason: string): Promise<void> {
+    requireSourcePath(projectPath, sourceId);
+    requireSourcePath(workspacePath, sourceId);
+    const args = ["worktree", locked ? "lock" : "unlock"];
+    if (locked && reason.length > 0) args.push("--reason", reason);
+    args.push("--", workspacePath);
+    await this.runGit(projectPath, sourceId, args);
+  }
+
   /**
    * Creates one checkout without force or implicit remote tracking.
    * Git checkout hooks/filters follow source configuration; the caller must validate trust.

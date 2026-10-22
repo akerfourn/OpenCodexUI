@@ -1,3 +1,4 @@
+import type { OpenCodexWorkspaceLockInput } from "./workspaceLocks.js";
 import type { OpenCodexWorkspaceMoveInput } from "./workspaceMoves.js";
 import type { MessageRenderingRequest } from "./messageRendering";
 import type { BrowserPermissionsRequest } from "./browserPermissions";
@@ -72,6 +73,8 @@ export type OpenCodexRequest =
   | { type: "projects.list" }
   | { type: "projectWorkspaces.discover"; projectId: string; sourceId: string }
   | { type: "projectWorkspaces.rename"; projectId: string; workspaceId: string; name: string }
+  | { type: "projectWorkspaces.lock.read"; projectId: string; workspaceId: string; sourceId: string }
+  | { type: "projectWorkspaces.lock.update"; input: OpenCodexWorkspaceLockInput }
   | { type: "projectWorkspaces.move"; input: OpenCodexWorkspaceMoveInput }
   | { type: "projectWorkspaces.moves.list"; projectId: string }
   | { type: "projectWorkspaces.moves.reconcile"; moveId: string }

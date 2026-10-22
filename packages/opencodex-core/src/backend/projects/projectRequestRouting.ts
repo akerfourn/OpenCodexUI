@@ -13,6 +13,7 @@ export type ProjectRequest = Extract<OpenCodexRequest, {
 export interface ProjectRequestRuntime {
   projects: OpenCodexBackendRuntime["projects"];
   workspaces: OpenCodexBackendRuntime["workspaces"];
+  workspaceLocks: OpenCodexBackendRuntime["workspaceLocks"];
   workspaceMoves: OpenCodexBackendRuntime["workspaceMoves"];
   workspaceRelocations: OpenCodexBackendRuntime["workspaceRelocations"];
   workspaceRemovals: OpenCodexBackendRuntime["workspaceRemovals"];
@@ -33,6 +34,12 @@ export function isProjectRequest(request: OpenCodexRequest): request is ProjectR
 /** Dispatches a resolved project request; responses and errors retain the facade's behavior. */
 export async function routeProjectRequest(runtime: ProjectRequestRuntime, request: ProjectRequest): Promise<unknown> {
   switch (request.type) {
+    case "projectWorkspaces.lock.read":
+      if (runtime.workspaceLocks === null) throw new Error("Workspace locks require persistent project storage.");
+      return runtime.workspaceLocks.read(request.projectId, request.workspaceId, request.sourceId);
+    case "projectWorkspaces.lock.update":
+      if (runtime.workspaceLocks === null) throw new Error("Workspace locks require persistent project storage.");
+      return runtime.workspaceLocks.update(request.input);
     case "projectWorkspaces.move":
       if (runtime.workspaceMoves === null) throw new Error("Workspace movement requires persistent storage.");
       return runtime.workspaceMoves.move(request.input);

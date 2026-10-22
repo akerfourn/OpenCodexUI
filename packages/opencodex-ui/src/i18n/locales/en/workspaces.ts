@@ -21,6 +21,20 @@ export const enWorkspaces = {
     "configureHint": "You can configure a default location in the Workspaces section. You can also enter a custom path here."
   },
   "workspaces": {
+    "lock": "Lock workspace",
+    "unlock": "Unlock workspace",
+    "locked": "Workspace locked",
+    "unlocked": "Workspace unlocked",
+    "lockedReason": "Workspace locked: {{reason}}",
+    "lockReason": "Git lock reason",
+    "lockReasonOptional": "Lock reason (optional)",
+    "lockWithoutReason": "No reason",
+    "lockHelp": "The Git lock protects the worktree against movement, removal and pruning. Files remain editable and conversations remain usable.",
+    "unlockHelp": "You are about to remove this worktree’s Git lock. Another tool may have created it. Review its reason before confirming. Files and conversations will be retained.",
+    "lockChanged": "The lock changed. Close this dialog and reopen the action to review its new state.",
+    "lockUnavailable": "Lock state unavailable",
+    "lockLoading": "Checking lock…",
+
     "move": "Move workspace",
     "moveHelp": "Choose a storage location in this source. Git will move the directory with its local files and preserve its branch. Stop running activities first. No overwrite, unlock or force operation is performed.",
     "moveCustom": "Use a custom path (advanced)",

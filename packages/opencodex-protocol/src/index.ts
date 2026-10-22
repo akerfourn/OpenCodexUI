@@ -30,3 +30,5 @@ export * from "./sourcePermissions";
 export * from "./sourceInstances";
 
 export type { OpenCodexWorkspaceMove, OpenCodexWorkspaceMoveInput } from "./workspaceMoves.js";
+
+export type { OpenCodexWorkspaceLockState, OpenCodexWorkspaceLockInput } from "./workspaceLocks.js";

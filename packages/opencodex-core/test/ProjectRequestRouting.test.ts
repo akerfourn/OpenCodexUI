@@ -20,6 +20,12 @@ const creationInput = {
 const preferences = {};
 const groupPatch = { name: "Renamed", isCollapsed: true };
 const cases: RouteCase[] = [
+  { request: { type: "projectWorkspaces.lock.read", projectId: "project", workspaceId: "workspace", sourceId: "source" },
+    effect: "workspaceLocks.read", args: ["project", "workspace", "source"] },
+  { request: { type: "projectWorkspaces.lock.update", input: { projectId: "project", workspaceId: "workspace", sourceId: "source",
+    workspacePath: "/workspace", locked: true, expectedReason: null, reason: "Keep" } }, effect: "workspaceLocks.update",
+    args: [{ projectId: "project", workspaceId: "workspace", sourceId: "source", workspacePath: "/workspace", locked: true,
+      expectedReason: null, reason: "Keep" }] },
   { request: { type: "projectWorkspaces.move", input: { projectId: "project", workspaceId: "workspace", sourceId: "source", rootId: "root" } },
     effect: "workspaceMoves.move", args: [{ projectId: "project", workspaceId: "workspace", sourceId: "source", rootId: "root" }] },
   { request: { type: "projectWorkspaces.moves.list", projectId: "project" }, effect: "workspaceMoves.pending", args: ["project"] },
@@ -77,6 +83,7 @@ const cases: RouteCase[] = [
 function createProjectRoutingFixture() {
   const response = { fixture: "response" };
   const ports = {
+    workspaceLocks: { read: vi.fn(), update: vi.fn() },
     workspaceMoves: { move: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },
     workspaceRelocations: { relocate: vi.fn() },
     workspaceRemovals: { remove: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },

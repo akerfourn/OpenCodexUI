@@ -18,6 +18,20 @@ export const frWorkspaces = {
     "configureHint": "Vous pouvez définir un espace par défaut dans la rubrique Workspaces. Un chemin personnalisé reste possible ici."
   },
   "workspaces": {
+    "lock": "Verrouiller le workspace",
+    "unlock": "Déverrouiller le workspace",
+    "locked": "Workspace verrouillé",
+    "unlocked": "Workspace non verrouillé",
+    "lockedReason": "Workspace verrouillé : {{reason}}",
+    "lockReason": "Motif du verrou Git",
+    "lockReasonOptional": "Motif du verrou (facultatif)",
+    "lockWithoutReason": "Sans motif",
+    "lockHelp": "Le verrou Git protège le worktree contre le déplacement, la suppression et le nettoyage. Les fichiers restent modifiables et les conversations utilisables.",
+    "unlockHelp": "Vous allez retirer le verrou Git de ce worktree. Il peut avoir été posé depuis un autre outil. Vérifiez son motif avant de confirmer. Les fichiers et conversations seront conservés.",
+    "lockChanged": "Le verrou a changé. Fermez ce dialogue et rouvrez l’action pour vérifier le nouvel état.",
+    "lockUnavailable": "État du verrou indisponible",
+    "lockLoading": "Vérification du verrou…",
+
     "move": "Déplacer le workspace",
     "moveHelp": "Choisissez un emplacement de stockage dans cette source. Git déplacera le dossier avec ses fichiers locaux et conservera sa branche. Arrêtez les activités en cours. Aucun écrasement, déverrouillage ou forçage n’est effectué.",
     "moveCustom": "Utiliser un chemin personnalisé (avancé)",

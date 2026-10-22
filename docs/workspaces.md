@@ -313,6 +313,44 @@ cancelled only when the original registered checkout is intact and the
 destination is absent. Unknown or conflicting outcomes keep both paths reserved.
 Changes to configured storage after dispatch cannot redirect recovery.
 
+## Locking and unlocking worktrees
+
+The workspace menu exposes **Lock workspace** and **Unlock workspace** for
+registered secondary worktrees, whether managed or explicitly imported. The
+principal and Git's main checkout are excluded. This is Git's native worktree
+lock: it protects against movement, removal and pruning while leaving files
+editable and conversations usable. It is not a separate application read-only
+mode. Existing move/removal validation continues to consult Git before acting.
+
+Git remains the only lock authority; no duplicate SQLite lock state is stored.
+The menu and properties explicitly fetch the current state through the owning
+source. An unknown/offline state is never treated as an unlocked checkout.
+The menu shows a lock badge and the action matching that snapshot; properties
+show its reason. External changes become visible on the next explicit read.
+Catalogue loading itself does not require a live Git source.
+
+Locking accepts an optional single-line reason up to 500 characters. Unlocking
+always opens a confirmation showing the existing reason, including a lock
+without a reason. The request includes the reviewed source, workspace path and
+exact previous reason. The backend checks current ownership and re-reads Git
+before changing anything; a different reason or relocated path requires another
+review. A request for an already reviewed, unchanged state leaves any existing
+reason intact. The source request gate excludes concurrent local lifecycle
+operations, and pending creation/move/removal journals block metadata changes
+in the same repository, including through another cached project.
+
+The operation uses `git worktree lock`/`unlock` without force, prune, file moves
+or branch changes. A registered but missing worktree can still be locked or
+unlocked through its available primary, which supports protecting offline
+volumes. Only the primary's source directories need to be present and literal.
+No conversations are unloaded and no managed service is stopped.
+
+After a lost response, the UI performs a fresh read without repeating the
+mutation. The existing error remains visible so a newly observed external lock
+cannot be cleared through an old confirmation. Checks are conservative within
+the application; another external Git process can still race between inspection
+and mutation, and lock reasons are not unique owner tokens.
+
 ## Persistence and validation
 
 Migrations 28–31 establish identity, aliases, reservations, immutable history
@@ -347,10 +385,13 @@ Git refusals, configured/custom targets, lost replies and restart recovery.
 Cache movement tests cover transactional publication and durable SQL guards;
 UI tests cover configured-root priority and explicit advanced custom paths.
 Native Windows source paths are simulated; this does not replace native OS QA.
+`WorkspaceLockService` covers real Git locks, external changes, empty reasons,
+missing checkouts, move/removal protection, lost replies and Windows source
+routing. UI lock tests cover confirmation, stale snapshots and plain transport.
 Static component rendering does not replace
 interactive validation of creation, switching, errors and restart recovery.
 
-Moving primary/imported workspaces, worktree locking, preparation hooks and
-automatic per-agent worktrees are not implemented. Local guards
+Moving primary/imported workspaces, preparation hooks and automatic per-agent
+worktrees are not implemented. Local guards
 do not lock out external Git/Codex clients or establish universal filesystem
 identity across mounts and aliases.

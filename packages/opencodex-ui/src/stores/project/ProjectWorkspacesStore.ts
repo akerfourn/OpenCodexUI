@@ -1,7 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type {
   OpenCodexProjectWorkspace, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRemoval, OpenCodexWorkspaceMove, OpenCodexWorkspaceDiscoveryResult,
-  OpenCodexWorkspaceStart, OpenCodexWorkspaceRoot
+  OpenCodexWorkspaceStart, OpenCodexWorkspaceRoot, OpenCodexWorkspaceLockState
 } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
 import type { ProjectStore } from "./ProjectStore";
@@ -16,6 +16,12 @@ export class ProjectWorkspacesStore {
   pendingRemovals: OpenCodexWorkspaceRemoval[] = [];
   /** Interrupted moves reserve both paths until explicit source verification. */
   pendingMoves: OpenCodexWorkspaceMove[] = [];
+  /** Live source-owned lock snapshots, fetched explicitly rather than assumed from cached metadata. */
+  lockStates = new Map<string, OpenCodexWorkspaceLockState>();
+  /** Menus remain disabled while their Git state is being checked. */
+  loadingLockIds = new Set<string>();
+  /** Discards out-of-order state responses, including after relocation or disposal. */
+  private readonly lockGenerations = new Map<string, number>();
   /** Workspace used when composing a new conversation. */
   selectedId: string | null = null;
   /** Serializes user mutations without hiding uncertain backend outcomes. */
@@ -96,6 +102,47 @@ export class ProjectWorkspacesStore {
     }
   }
 
+  /** Reads a fresh native Git lock without coupling catalogue loading to source availability. */
+  async loadLockState(workspaceId: string): Promise<void> {
+    const generation = (this.lockGenerations.get(workspaceId) ?? 0) + 1;
+    this.lockGenerations.set(workspaceId, generation);
+    this.lockStates.delete(workspaceId);
+    this.loadingLockIds.delete(workspaceId);
+    if (this.project.isReadOnlyFromCache) return;
+    this.loadingLockIds.add(workspaceId);
+    try {
+      const sourceId = this.requireSource();
+      const state = await this.root.request<OpenCodexWorkspaceLockState>({ type: "projectWorkspaces.lock.read",
+        projectId: this.project.project.id, workspaceId, sourceId });
+      runInAction(() => {
+        const current = this.workspaces.find(item => item.id === workspaceId);
+        if (this.lockGenerations.get(workspaceId) === generation && state.workspaceId === workspaceId
+          && state.sourceId === sourceId && current?.sourceId === sourceId
+          && current.path === state.workspacePath && current.removedAt === null
+          && current.movePending !== true && current.removalPending !== true) this.lockStates.set(workspaceId, state);
+      });
+    } catch (error) {
+      runInAction(() => {
+        if (this.lockGenerations.get(workspaceId) === generation) this.error = errorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        if (this.lockGenerations.get(workspaceId) === generation) this.loadingLockIds.delete(workspaceId);
+      });
+    }
+  }
+
+  /** Sends only reviewed plain lock fields; re-reads Git even after a lost response. */
+  async setLock(state: OpenCodexWorkspaceLockState, locked: boolean, reason: string): Promise<void> {
+    await this.perform(async () => {
+      await this.root.request({ type: "projectWorkspaces.lock.update", input: {
+        projectId: this.project.project.id, workspaceId: state.workspaceId, sourceId: state.sourceId,
+        workspacePath: state.workspacePath, expectedReason: state.lockedReason, locked, reason
+      } });
+    });
+    await this.loadLockState(state.workspaceId);
+  }
+
   /** Moves to configured storage by default; a custom path is an explicit advanced alternative. */
   async move(workspaceId: string, rootId?: string, destinationPath?: string): Promise<void> {
     await this.perform(async () => {
@@ -127,6 +174,9 @@ export class ProjectWorkspacesStore {
 
   /** Refreshes current associations while retaining turn snapshots and unsaved documents. */
   private applyRelocation(previous: OpenCodexProjectWorkspace, workspace: OpenCodexProjectWorkspace): void {
+    this.lockGenerations.set(workspace.id, (this.lockGenerations.get(workspace.id) ?? 0) + 1);
+    this.lockStates.delete(workspace.id);
+    this.loadingLockIds.delete(workspace.id);
     this.project.files.closeRemovedWorkspace(workspace.id);
     const threads = new Map(this.project.threadListStore.threads.map(thread => [thread.id, thread]));
     for (const chat of this.project.chatsById.values()) threads.set(chat.thread.id, chat.thread);
@@ -240,7 +290,11 @@ export class ProjectWorkspacesStore {
   }
 
   /** Invalidates responses when the project tab closes. */
-  dispose(): void { this.generation += 1; }
+  dispose(): void {
+    this.generation += 1;
+    for (const [id, generation] of this.lockGenerations) this.lockGenerations.set(id, generation + 1);
+    this.loadingLockIds.clear();
+  }
 
   /** Runs one user operation and always refreshes its durable outcome. */
   private async perform(action: () => Promise<void>): Promise<void> {

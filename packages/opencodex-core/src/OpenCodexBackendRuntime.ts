@@ -1,3 +1,4 @@
+import { WorkspaceLockService } from "./backend/workspaces/WorkspaceLockService.js";
 import { WorkspaceMoveService } from "./backend/workspaces/WorkspaceMoveService.js";
 import { WorkspaceRelocationService } from "./backend/workspaces/WorkspaceRelocationService.js";
 import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
@@ -61,6 +62,8 @@ export class OpenCodexBackendRuntime {
   private readonly workspaceActivity = new WorkspaceActivityGate();
   /** Clean-only worktree removal with durable recovery, when persistent storage is available. */
   readonly workspaceRemovals: WorkspaceRemovalService | null;
+  /** Live Git lock reads and explicit reversible lock changes. */
+  readonly workspaceLocks: WorkspaceLockService | null;
   /** Durable movement of managed secondary checkouts. */
   readonly workspaceMoves: WorkspaceMoveService | null;
   /** Explicit source-aware metadata relocation, separate from physical movement. */
@@ -140,6 +143,8 @@ export class OpenCodexBackendRuntime {
         await this.services.dockerComposeService.requireWorkspaceIdle({ workspaceId: workspace.id,
           projectId: workspace.projectId, sourceId: workspace.sourceId!, workspacePath: destination }, workspace.path);
       });
+    this.workspaceLocks = this.services.cacheRepository === null ? null : new WorkspaceLockService(
+      this.services.cacheRepository, this.services.clientPool, this.workspaceActivity);
     this.workspaceMoves = this.services.cacheRepository === null ? null : new WorkspaceMoveService(
       this.services.cacheRepository.workspaces, this.services.clientPool, this.workspaceActivity, async move => {
         for (const location of [move.workspacePath, move.destinationPath]) {
@@ -166,7 +171,7 @@ export class OpenCodexBackendRuntime {
   async runWorkspaceRequest(request: OpenCodexRequest, action: () => Promise<unknown>): Promise<unknown> {
     if (request.type === "projectWorkspaces.remove" || request.type === "projectWorkspaces.removals.reconcile"
       || request.type === "projectWorkspaces.relocate" || request.type === "projectWorkspaces.move"
-      || request.type === "projectWorkspaces.moves.reconcile") {
+      || request.type === "projectWorkspaces.moves.reconcile" || request.type === "projectWorkspaces.lock.update") {
       return await action();
     }
     let debugSource: string | null = null;
