@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type {
-  OpenCodexProjectWorkspace, OpenCodexWorkspaceCreation, OpenCodexWorkspaceDiscoveryResult,
+  OpenCodexProjectWorkspace, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRemoval, OpenCodexWorkspaceDiscoveryResult,
   OpenCodexWorkspaceStart, OpenCodexWorkspaceRoot
 } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
@@ -12,6 +12,8 @@ export class ProjectWorkspacesStore {
   workspaces: OpenCodexProjectWorkspace[] = [];
   /** Durable creations that need an explicit recovery attempt. */
   pending: OpenCodexWorkspaceCreation[] = [];
+  /** Unfinished removals remain visible until source-side reconciliation succeeds. */
+  pendingRemovals: OpenCodexWorkspaceRemoval[] = [];
   /** Workspace used when composing a new conversation. */
   selectedId: string | null = null;
   /** Serializes user mutations without hiding uncertain backend outcomes. */
@@ -57,23 +59,52 @@ export class ProjectWorkspacesStore {
   async load(): Promise<void> {
     const generation = ++this.generation;
     try {
-      const [workspaces, pending] = await Promise.all([
+      const [workspaces, pending, removals] = await Promise.all([
         this.root.request<OpenCodexProjectWorkspace[]>({
           type: "projectWorkspaces.list", projectId: this.project.project.id
         }),
         this.root.request<OpenCodexWorkspaceCreation[]>({
           type: "projectWorkspaces.creations.list", projectId: this.project.project.id
+        }),
+        this.root.request<OpenCodexWorkspaceRemoval[]>({
+          type: "projectWorkspaces.removals.list", projectId: this.project.project.id
         })
       ]);
       runInAction(() => {
         if (generation !== this.generation) return;
         this.workspaces = workspaces;
         this.pending = pending;
+        this.pendingRemovals = removals;
+        if (this.workspaces.some(item => item.id === this.selectedId && item.removedAt !== null)) {
+          this.selectedId = this.workspaces.find(item => item.isPrimary)?.id ?? null;
+        }
       });
     } catch (error) {
       runInAction(() => {
         if (generation === this.generation) this.error = errorMessage(error);
       });
+    }
+  }
+
+  /** Deletes only the explicit managed checkout; unsaved buffers are never discarded implicitly. */
+  async remove(workspaceId: string): Promise<void> {
+    await this.perform(async () => {
+      if (this.project.files.hasUnsavedWorkspaceDocuments(workspaceId)) {
+        throw new Error("Save or close unsaved workspace documents before removing it.");
+      }
+      await this.root.request({ type: "projectWorkspaces.remove", projectId: this.project.project.id,
+        workspaceId, sourceId: this.requireSource() });
+      this.project.files.closeRemovedWorkspace(workspaceId);
+    });
+  }
+
+  /** Verifies completion after restart without replaying the physical deletion. */
+  async recoverRemoval(removalId: string): Promise<void> {
+    await this.perform(async () => {
+      await this.root.request({ type: "projectWorkspaces.removals.reconcile", removalId });
+    });
+    for (const workspace of this.workspaces) {
+      if (workspace.removedAt !== null) this.project.files.closeRemovedWorkspace(workspace.id);
     }
   }
 

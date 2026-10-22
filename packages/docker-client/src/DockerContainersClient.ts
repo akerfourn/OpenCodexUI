@@ -5,6 +5,7 @@ import type {
   DockerCommandRequest
 } from "./command.js";
 import { runChecked, streamChecked } from "./execution.js";
+import { DockerResponseError } from "./errors.js";
 import type {
   DockerContainerListOptions,
   DockerContainerSummary,
@@ -35,6 +36,9 @@ export class DockerContainersClient {
       timeoutMs: 15_000
     });
 
+    if (result.stdoutTruncated) {
+      throw new DockerResponseError("container listing", "Container inventory was truncated.");
+    }
     return parseDockerContainers(result.stdout);
   }
 

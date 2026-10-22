@@ -20,6 +20,10 @@ export function groupWorkspaceThreads(workspaces: OpenCodexProjectWorkspace[], t
       && item.path === thread.projectPath && item.workspace.sourceId === threadSource
       && item.workspace.removedAt === null);
     if (group === undefined) {
+      group = groups.find(item => item.workspace !== null && item.path === thread.projectPath
+        && item.workspace.sourceId === threadSource && item.workspace.removedAt !== null);
+    }
+    if (group === undefined) {
       const id = JSON.stringify(["unavailable", threadSource, thread.projectPath]);
       group = groups.find((item) => item.id === id);
       if (group === undefined) {

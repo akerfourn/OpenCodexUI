@@ -1,4 +1,9 @@
 import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
+import { isDebugActive } from "@open-codex-ui/opencodex-protocol";
+import { WorkspaceActivityGate } from "./backend/workspaces/WorkspaceActivityGate.js";
+import { WorkspaceRemovalService } from "./backend/workspaces/WorkspaceRemovalService.js";
+import { isInsideWorkspace } from "./backend/workspaces/WorkspaceRemovalRuntime.js";
+import { requireLegacyWorkspaceAvailable, workspaceRequestSource } from "./backend/workspaces/workspaceRequestSource.js";
 import { BrowserPermissionsService } from "./backend/browser/BrowserPermissionsService.js";
 import { SourcePermissionsService } from "./backend/sources/SourcePermissionsService.js";
 import { SourceInstancesService } from "./backend/sources/SourceInstancesService.js";
@@ -50,6 +55,10 @@ import type {
  * Coordinates backend services exposed to the UI transport.
  */
 export class OpenCodexBackendRuntime {
+  /** Shares short-lived source activity with destructive lifecycle operations. */
+  private readonly workspaceActivity = new WorkspaceActivityGate();
+  /** Clean-only worktree removal with durable recovery, when persistent storage is available. */
+  readonly workspaceRemovals: WorkspaceRemovalService | null;
   /** Whether this runtime belongs to an application pre-release build. */
   readonly isPrerelease: boolean;
   /** Source-aware filesystem service for workspace documents. */
@@ -100,6 +109,18 @@ export class OpenCodexBackendRuntime {
       const source = await this.services.projectRuntimeHandler.resolveRequestedSource(context.sourceId);
       if (source.kind !== "local") throw new Error("Debug currently supports host-local sources only (no WSL, Docker or remote).");
     }, snapshot => options.emit({ type: "debug.state", snapshot }), options.debugAdapter, this.settings, this.files);
+    this.workspaceRemovals = this.services.cacheRepository === null ? null : new WorkspaceRemovalService(
+      this.services.cacheRepository.workspaces, this.services.clientPool, this.workspaceActivity, async removal => {
+        this.services.projectAutomationRuntimeHandler.requireWorkspaceIdle(
+          removal.workspaceId, removal.sourceId, removal.workspacePath);
+        const session = this.debug.snapshot().session;
+        if (isDebugActive(session) && session !== null
+          && session.configuration.context.sourceId === removal.sourceId
+          && isInsideWorkspace(session.configuration.context.workspacePath, removal.workspacePath)) {
+          throw new Error("Stop the debug session in this workspace before removing it.");
+        }
+        await this.services.dockerComposeService.requireWorkspaceIdle(removal);
+      });
     this.dictation = new CodexDictationService(async (sourceId) => {
       const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
       return new CodexAppServerClient({
@@ -107,6 +128,30 @@ export class OpenCodexBackendRuntime {
         clientInfo: { name: "OpenCodexUI_dictation", version: options.appVersion ?? "unknown" },
         experimentalApi: true, requestTimeoutMs: 20_000
       });
+    });
+  }
+
+  /** Keeps lifecycle exclusion around tool dispatch, including file saves and process startup. */
+  async runWorkspaceRequest(request: OpenCodexRequest, action: () => Promise<unknown>): Promise<unknown> {
+    if (request.type === "projectWorkspaces.remove" || request.type === "projectWorkspaces.removals.reconcile") {
+      return await action();
+    }
+    let debugSource: string | null = null;
+    if (request.type === "debug") {
+      await this.debug.initialize();
+      const snapshot = this.debug.snapshot();
+      const action = request.action;
+      if (action.kind === "start") {
+        debugSource = snapshot.preferences.configurations.find(item => item.id === action.configurationId)?.context.sourceId ?? null;
+      } else if ("context" in action && typeof action.context === "object") {
+        debugSource = action.context.sourceId;
+      } else debugSource = snapshot.session?.configuration.context.sourceId ?? null;
+    }
+    const sourceId = await workspaceRequestSource(this.services.cacheRepository, request, debugSource,
+      this.settings.get().defaultSourceId ?? null);
+    return await this.workspaceActivity.run(sourceId, async () => {
+      await requireLegacyWorkspaceAvailable(this.services.cacheRepository, request, sourceId);
+      return await action();
     });
   }
 

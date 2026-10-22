@@ -72,6 +72,9 @@ export type OpenCodexRequest =
   | { type: "projectWorkspaces.discover"; projectId: string; sourceId: string }
   | { type: "projectWorkspaces.rename"; projectId: string; workspaceId: string; name: string }
   | { type: "projectWorkspaces.list"; projectId: string }
+  | { type: "projectWorkspaces.remove"; projectId: string; workspaceId: string; sourceId: string }
+  | { type: "projectWorkspaces.removals.list"; projectId: string }
+  | { type: "projectWorkspaces.removals.reconcile"; removalId: string }
   | { type: "projectWorkspaces.create"; input: OpenCodexWorkspaceCreateInput }
   | { type: "projectWorkspaces.creations.list"; projectId: string }
   | { type: "projectWorkspaces.creations.reconcile"; creationId: string }

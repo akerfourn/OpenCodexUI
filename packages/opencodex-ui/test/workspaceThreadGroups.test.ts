@@ -11,6 +11,12 @@ function thread(id: string, projectPath: string, sourceId = "source"): OpenCodex
 }
 
 describe("workspace chat groups", () => {
+  it("should retain conversations under their removed workspace while hiding empty removed groups", () => {
+    const removed = { ...secondary, removedAt: "2026-10-22" };
+    const groups = groupWorkspaceThreads([primary, removed], [thread("history", "/B")], "source");
+    expect(groups[1]).toMatchObject({ id: "B", workspace: removed, threads: [{ id: "history" }] });
+    expect(groupWorkspaceThreads([primary, removed], [], "source")).toHaveLength(1);
+  });
   it("should keep empty workspaces and preserve the conversation order within each group", () => {
     const groups = groupWorkspaceThreads([primary, secondary], [thread("recent", "/B"), thread("older", "/B")], "source");
     expect(groups.map((group) => [group.id, group.threads.map((item) => item.id)]))

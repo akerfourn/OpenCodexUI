@@ -27,15 +27,17 @@ export class OpenCodexRequestRouter {
    */
   async handleRequest(request: OpenCodexRequest): Promise<unknown> {
     try {
-      const resolved = "workspaceId" in request && request.workspaceId !== undefined
-        && request.type !== "turn.start" && request.type !== "threads.workspace.select"
-        && request.type !== "projectWorkspaces.execution.reconcile"
-        && request.type !== "projectWorkspaces.rename"
-        ? await this.runtime.resolveToolRequest(request) : request;
-      return await this.handleValidRequest(resolved);
+      return await this.runtime.runWorkspaceRequest(request, async () => {
+        const resolved = "workspaceId" in request && request.workspaceId !== undefined
+          && request.type !== "turn.start" && request.type !== "threads.workspace.select"
+          && !request.type.startsWith("projectWorkspaces.")
+          ? await this.runtime.resolveToolRequest(request) : request;
+        return await this.handleValidRequest(resolved);
+      });
     } catch (error) {
       // Tool and settings dialogs own their error feedback without recovering a chat.
-      if (request.type === "debug" || request.type.startsWith("messageRendering.") ||
+      if (request.type === "debug" || request.type.startsWith("projectWorkspaces.") ||
+        request.type.startsWith("messageRendering.") ||
         request.type.startsWith("browserPermissions.") || request.type.startsWith("threadPermissions.") ||
         request.type.startsWith("sourcePermissions.") || request.type.startsWith("sourceInstances.")) throw error;
       this.runtime.handleRequestError(request, error);

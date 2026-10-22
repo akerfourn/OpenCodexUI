@@ -1,3 +1,4 @@
+import { requestRoutingRuntime } from "./requestRoutingFixture";
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
@@ -8,7 +9,7 @@ describe("OpenCodexRequestRouter workspace routes", () => {
   it("should route creation and recovery without deriving source paths", async () => {
     const workspaces = { discover: vi.fn(), create: vi.fn(), pendingCreations: vi.fn(), reconcileCreation: vi.fn() };
     const runtime = { workspaces } as unknown as OpenCodexBackendRuntime;
-    const router = new OpenCodexRequestRouter(runtime);
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
     const input = { projectId: "project", sourceId: "source", destinationPath: "/new",
       start: { mode: "detached" as const, startPoint: "HEAD" } };
     await router.handleRequest({ type: "projectWorkspaces.discover", projectId: "project", sourceId: "source" });
@@ -25,7 +26,7 @@ describe("OpenCodexRequestRouter workspace routes", () => {
     const workspaces = { rename: vi.fn(), list: vi.fn(), select: vi.fn(), reconcile: vi.fn() };
     const startTurn = vi.fn();
     const runtime = { workspaces, threads: { startTurn } } as unknown as OpenCodexBackendRuntime;
-    const router = new OpenCodexRequestRouter(runtime);
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
 
     await router.handleRequest({ type: "projectWorkspaces.rename", projectId: "project-a", workspaceId: "workspace-a", name: "Feature" });
     await router.handleRequest({ type: "projectWorkspaces.list", projectId: "project-a" });
@@ -60,7 +61,7 @@ describe("OpenCodexRequestRouter Docker Compose routes", () => {
       dockerCompose,
       handleRequestError: vi.fn()
     } as unknown as OpenCodexBackendRuntime;
-    const router = new OpenCodexRequestRouter(runtime);
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
 
     const requests: OpenCodexRequest[] = [
       {
@@ -130,7 +131,7 @@ describe("OpenCodexRequestRouter plugin routes", () => {
       plugins,
       handleRequestError: vi.fn()
     } as unknown as OpenCodexBackendRuntime;
-    const router = new OpenCodexRequestRouter(runtime);
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
 
     await router.handleRequest({ type: "plugins.installed", sourceId: "source-a" });
     await router.handleRequest({
@@ -157,7 +158,7 @@ describe("OpenCodexRequestRouter Git routes", () => {
       resolveToolRequest,
       handleRequestError: vi.fn()
     } as unknown as OpenCodexBackendRuntime;
-    const router = new OpenCodexRequestRouter(runtime);
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
 
     await router.handleRequest({
       type: "git.commit",
@@ -183,7 +184,7 @@ describe("OpenCodexRequestRouter Git routes", () => {
       git: { mergeBranchTo },
       handleRequestError: vi.fn()
     } as unknown as OpenCodexBackendRuntime;
-    const router = new OpenCodexRequestRouter(runtime);
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
 
     await router.handleRequest({
       type: "git.merge.to",
@@ -201,7 +202,7 @@ describe("OpenCodexRequestRouter Git routes", () => {
       git: { mergeBranchTo },
       handleRequestError: vi.fn()
     } as unknown as OpenCodexBackendRuntime;
-    const router = new OpenCodexRequestRouter(runtime);
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
 
     await router.handleRequest({
       type: "git.merge.to",
@@ -232,7 +233,7 @@ describe("OpenCodexRequestRouter project goal routes", () => {
       delete: vi.fn(async () => ({ ok: true as const }))
     };
     const runtime = { goals } as unknown as OpenCodexBackendRuntime;
-    const router = new OpenCodexRequestRouter(runtime);
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
 
     await router.handleRequest({
       type: "projectGoals.list",

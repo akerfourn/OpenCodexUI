@@ -16,6 +16,10 @@ export interface OpenCodexProjectWorkspace {
   managed: boolean;
   /** Logical removal timestamp; physical availability is checked in the source. */
   removedAt: string | null;
+  /** A durable removal currently prevents using this checkout. */
+  removalPending?: boolean;
+  /** Compose was accessed here; deletion must verify its namespace even if its files were removed. */
+  composeUsed?: boolean;
 }
 
 /** Historical context proven by a correlated local turn submission. */

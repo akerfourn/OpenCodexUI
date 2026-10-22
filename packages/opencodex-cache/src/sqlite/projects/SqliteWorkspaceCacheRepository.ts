@@ -1,6 +1,7 @@
 import { validateWorkspaceName } from "./workspaceName.js";
 import { registerDiscoveredWorkspaces } from "./registerDiscoveredWorkspaces.js";
 import { SqliteWorkspaceCreationRepository } from "./SqliteWorkspaceCreationRepository.js";
+import { SqliteWorkspaceRemovalRepository } from "./SqliteWorkspaceRemovalRepository.js";
 import { captureTurnWorkspaceContexts, readTurnWorkspaceContexts } from "./turnWorkspaceContexts.js";
 import { randomUUID } from "node:crypto";
 import type { Database } from "better-sqlite3";
@@ -12,13 +13,18 @@ import { SqliteWorkspaceTransitionRepository } from "./SqliteWorkspaceTransition
 
 /** SQL projection shared by catalogue and execution-context reads. */
 const workspaceColumns = `id, project_id AS projectId, source_id AS sourceId,
-  path, name, is_primary AS isPrimary, managed, removed_at AS removedAt`;
+  path, name, is_primary AS isPrimary, managed, removed_at AS removedAt, compose_used AS composeUsed,
+  EXISTS(SELECT 1 FROM workspace_removals WHERE workspace_id = project_workspaces.id) AS removalPending`;
 /** SQL projection for durable execution reservations. */
 const reservationColumns = `id, workspace_id AS workspaceId, project_id AS projectId,
   source_id AS sourceId, cwd, thread_id AS threadId, turn_id AS turnId, state, operation`;
 
 /** Raw projection with SQLite integer flags. */
-interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "managed"> {
+interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "managed" | "removalPending" | "composeUsed"> {
+  /** SQLite flag retaining the need for Compose inactivity checks. */
+  composeUsed: number;
+  /** SQLite flag for a retained removal reservation. */
+  removalPending: number;
   /** Stored principal role flag. */
   isPrimary: number;
   /** Stored ownership flag. */
@@ -27,14 +33,26 @@ interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "ma
 
 /** Owns workspace identity and atomic lifecycle guards in the shared cache. */
 export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository {
+  /** Removal intent remains durable without deleting conversation history. */
+  readonly removals: SqliteWorkspaceRemovalRepository;
   /** Tracks pending creation without making its destination executable. */
   readonly creations: SqliteWorkspaceCreationRepository;
   /** Transition records cannot be completed by turn lifecycle events. */
   readonly transitions: SqliteWorkspaceTransitionRepository;
   /** Uses the facade's transaction-capable connection. */
   constructor(private readonly database: Database) {
+    this.removals = new SqliteWorkspaceRemovalRepository(database);
     this.creations = new SqliteWorkspaceCreationRepository(database);
     this.transitions = new SqliteWorkspaceTransitionRepository(database);
+  }
+
+  /** Records stack use before dispatch so later removal cannot skip Docker checks after restart. */
+  async markComposeUsed(workspaceId: string): Promise<void> {
+    const result = this.database.prepare(`UPDATE project_workspaces SET compose_used = 1
+      WHERE id = ? AND removed_at IS NULL AND NOT EXISTS
+        (SELECT 1 FROM workspace_removals WHERE workspace_id = ?)`)
+      .run(workspaceId, workspaceId);
+    if (result.changes !== 1) throw new Error("Workspace is unavailable or has a pending removal.");
   }
 
   /** Registers an explicitly verified batch while preserving all existing identities and roles. */
@@ -346,6 +364,7 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
 
   /** Rejects orphan and logically removed workspaces before any execution. */
   private requireAvailable(workspace: OpenCodexProjectWorkspace): void {
+    if (workspace.removalPending === true) throw new Error("Workspace has a pending removal.");
     if (workspace.sourceId === null || workspace.removedAt !== null) {
       throw new Error("Workspace has no execution source or has been removed.");
     }
@@ -371,5 +390,9 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
 
 /** Converts integer storage flags to structured-clone-compatible DTO values. */
 function mapWorkspace(row: WorkspaceRow): OpenCodexProjectWorkspace {
-  return { ...row, isPrimary: row.isPrimary === 1, managed: row.managed === 1 };
+  const { removalPending, composeUsed, ...fields } = row;
+  const workspace: OpenCodexProjectWorkspace = { ...fields, isPrimary: row.isPrimary === 1, managed: row.managed === 1 };
+  if (composeUsed === 1) workspace.composeUsed = true;
+  if (removalPending === 1) workspace.removalPending = true;
+  return workspace;
 }

@@ -1,3 +1,4 @@
+import { requestRoutingRuntime } from "./requestRoutingFixture";
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
@@ -19,6 +20,12 @@ const creationInput = {
 const preferences = {};
 const groupPatch = { name: "Renamed", isCollapsed: true };
 const cases: RouteCase[] = [
+  { request: { type: "projectWorkspaces.remove", projectId: "project", workspaceId: "workspace", sourceId: "source" },
+    effect: "workspaceRemovals.remove", args: ["project", "workspace", "source"] },
+  { request: { type: "projectWorkspaces.removals.list", projectId: "project" },
+    effect: "workspaceRemovals.pending", args: ["project"] },
+  { request: { type: "projectWorkspaces.removals.reconcile", removalId: "removal" },
+    effect: "workspaceRemovals.reconcile", args: ["removal"] },
   { request: { type: "projects.list" }, effect: "projects.list", args: [] },
   { request: { type: "projectWorkspaces.discover", projectId: "project", sourceId: "source" },
     effect: "workspaces.discover", args: ["project", "source"] },
@@ -63,6 +70,7 @@ const cases: RouteCase[] = [
 function createProjectRoutingFixture() {
   const response = { fixture: "response" };
   const ports = {
+    workspaceRemovals: { remove: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },
     projects: {
       list: vi.fn(), open: vi.fn(), readStatistics: vi.fn(), pickDirectory: vi.fn(),
       setHidden: vi.fn(), setDisplayName: vi.fn(), updatePreferences: vi.fn(), delete: vi.fn()
@@ -85,7 +93,7 @@ function createProjectRoutingFixture() {
   const resolveToolRequest = vi.fn(async (request: OpenCodexRequest) => request);
   const handleRequestError = vi.fn();
   const runtime = { ...ports, settings, resolveToolRequest, handleRequestError } as unknown as OpenCodexBackendRuntime;
-  return { router: new OpenCodexRequestRouter(runtime), ports, effects, settings, resolveToolRequest, handleRequestError, response };
+  return { router: new OpenCodexRequestRouter(requestRoutingRuntime(runtime)), ports, effects, settings, resolveToolRequest, handleRequestError, response };
 }
 
 describe("project request routing through the shared router", () => {

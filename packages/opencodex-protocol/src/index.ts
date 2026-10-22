@@ -11,6 +11,7 @@ export * from "./requests";
 export * from "./transport";
 export * from "./workspaces";
 export * from "./workspaceCreations";
+export * from "./workspaceRemovals";
 export * from "./workspaceDiscovery";
 export * from "./dictation";
 export * from "./commandExecution";

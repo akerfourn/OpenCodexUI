@@ -12,6 +12,17 @@ import { describe, expect, it, vi } from "vitest";
 import { ProjectCommandService } from "../src/backend/projects/ProjectCommandService";
 
 describe("ProjectCommandService", () => {
+  it("should block removal for a running legacy command in a nested workspace directory", async () => {
+    const { service } = createService();
+    const run = await service.runCommand("command-1", "/workspace/nested", "source-1");
+    expect(() => service.requireWorkspaceIdle("workspace-id", "source-1", "/workspace")).toThrow("Stop project commands");
+    expect(() => service.requireWorkspaceIdle("workspace-id", "other-source", "/workspace")).not.toThrow();
+    expect(() => service.requireWorkspaceIdle("workspace-id", "source-1", "/workspace-other")).not.toThrow();
+    service.handleNotification(createNotification("process/exited", {
+      processHandle: run.processHandle, exitCode: 0, stdout: "", stderr: "", stdoutCapReached: false, stderrCapReached: false
+    }));
+    expect(() => service.requireWorkspaceIdle("workspace-id", "source-1", "/workspace")).not.toThrow();
+  });
   it("should reject simultaneous non-parallel starts before process registration", async () => {
     const { service, request } = createService();
     const results = await Promise.allSettled([

@@ -11,7 +11,7 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => k
 const workspace: OpenCodexProjectWorkspace = { id: "B", projectId: "project", sourceId: "source",
   name: "Interface", path: "/repo/technical-checkout", isPrimary: false, managed: true, removedAt: null };
 const project = { isReadOnlyFromCache: false, threadListStore: { isCreatingThread: false },
-  workspaces: { workspaces: [workspace], pending: [], skipped: [], error: null,
+  workspaces: { workspaces: [workspace], pending: [], pendingRemovals: [], skipped: [], error: null,
     isBusy: false, load: vi.fn() } } as unknown as ProjectStore;
 
 describe("workspace sidebar controls", () => {

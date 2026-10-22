@@ -185,6 +185,40 @@ stale asynchronous results must not update the newly selected workspace.
 Rule-file synchronization metadata is keyed by physical file path, and writing
 a secondary configuration must not update the primary synchronization state.
 
+## Removing managed workspaces
+
+The workspace menu offers deletion only for secondary checkouts created by
+OpenCodexUI. The confirmation names the checkout and requires typing its name.
+Unsaved editor buffers block deletion. Clean buffers close after verified
+success; branches, conversation associations and immutable turn history remain.
+Removed conversations remain readable, with new messages disabled. Move a
+conversation to another workspace before deletion if it needs to continue.
+
+`WorkspaceRemovalService` freezes source, checkout, primary and common Git paths
+in `workspace_removals` before inspecting or removing files. Migration 43 guards
+executions, transitions, creation and identity changes against that journal.
+The source request gate also excludes in-flight tool operations and process
+startup. Managed commands, debugging, Compose containers and Codex terminal
+inventories must be inactive. Idle target conversations are unsubscribed and
+must disappear from the complete loaded-thread inventory; another client can
+therefore block deletion. These checks do not identify every external OS process.
+
+Source-side validation refuses symlink ancestors, changed repository identity,
+locked/prunable checkouts, modified, untracked or ignored files, and detached
+commits not retained by a local branch or tag. Git removes the checkout without
+`--force`; its submodule protections remain enabled. No stash, branch deletion,
+global prune, Compose shutdown or filesystem recursive-delete fallback occurs.
+Compose usage is recorded in SQLite before stack access, so checks still apply
+after a restart or after configuration files disappear. Compose checks cover
+the workspace's stable application namespace; a Compose
+workspace whose Docker state cannot be queried is not assumed inactive.
+
+Failures before dispatch cancel preparation. Later failures retain the journal
+and block execution. Explicit recovery never repeats removal: it verifies both
+Git deregistration and directory absence in the frozen source before marking
+the workspace removed. A positively failed Git command can be cancelled when
+the registered checkout still exists. Ambiguous outcomes remain blocked.
+
 ## Persistence and validation
 
 Migrations 28–31 establish identity, aliases, reservations, immutable history
@@ -207,10 +241,13 @@ Focused regression suites include `WorkspaceExecutionService`,
 and `DefaultWorkspaceRoot` under `packages/opencodex-core/test`.
 `GitWorktrees.test.ts` exercises disposable real repositories and recovery
 across SQLite reopening. Cache migration and UI store tests cover preservation,
-source isolation and stale results. Static component rendering does not replace
+source isolation and stale results. `WorkspaceRemoval.test.ts` covers real Git
+and SQLite, dirty/ignored files, locks, detached commits and restart recovery;
+`WorkspaceRemovalRuntime` and cache removal suites cover runtime and durable
+guards. Static component rendering does not replace
 interactive validation of creation, switching, errors and restart recovery.
 
-Physical move, public relocation, worktree removal/locking, preparation hooks
+Physical move, public relocation, worktree locking, preparation hooks
 and automatic per-agent worktrees are not implemented. The cache's `relocate`
 method is only a transactional persistence primitive: exposing it requires
 source-side identity validation and checks for affected processes. Local guards

@@ -1,4 +1,5 @@
 import type { WorkspaceCreationRepository } from "./workspaceCreations.js";
+import type { WorkspaceRemovalRepository } from "./workspaceRemovals.js";
 import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceExecutionContext, OpenCodexTurnWorkspaceContext, OpenCodexWorkspaceDiscoverySkipped } from
   "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceTransitionRepository } from "./workspaceTransitions.js";
@@ -19,6 +20,10 @@ export interface WorkspaceExecutionReservation extends OpenCodexWorkspaceExecuti
 
 /** Workspace identity and execution persistence; no filesystem operations. */
 export interface WorkspaceCacheRepository {
+  /** Durable removal journal and source-independent recovery metadata. */
+  readonly removals: WorkspaceRemovalRepository;
+  /** Retains Compose usage across restarts before invoking a workspace's stack. */
+  markComposeUsed(workspaceId: string): Promise<void>;
   /** Durable creation journal and publication of secondary workspaces. */
   readonly creations: WorkspaceCreationRepository;
   /** Registers verified external paths atomically, without taking ownership or merging projects. */

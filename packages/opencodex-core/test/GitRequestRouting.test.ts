@@ -1,3 +1,4 @@
+import { requestRoutingRuntime } from "./requestRoutingFixture";
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 import { describe, expect, it, vi } from "vitest";
 
@@ -90,7 +91,7 @@ function createGitRoutingFixture() {
   const resolveToolRequest = vi.fn(async (request: OpenCodexRequest) => request);
   const handleRequestError = vi.fn();
   const runtime = { git, resolveToolRequest, handleRequestError } as unknown as OpenCodexBackendRuntime;
-  return { router: new OpenCodexRequestRouter(runtime), git, effects, resolveToolRequest, handleRequestError, response };
+  return { router: new OpenCodexRequestRouter(requestRoutingRuntime(runtime)), git, effects, resolveToolRequest, handleRequestError, response };
 }
 
 describe("Git routing through the shared request router", () => {

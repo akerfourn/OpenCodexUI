@@ -4,6 +4,7 @@
 import { commandExecutionConflicts, type OpenCodexCommandExecutionContext } from "@open-codex-ui/opencodex-protocol";
 import crypto from "node:crypto";
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
+import { isInsideWorkspace } from "../workspaces/WorkspaceRemovalRuntime.js";
 
 import type {
   CodexNotification,
@@ -53,6 +54,14 @@ type ActiveProjectCommandRun = OpenCodexProjectCommandRun & {
  * Coordinates persisted project command definitions and live process runs.
  */
 export class ProjectCommandService {
+  /** Refuses removal while a process is running or still acquiring its source handle. */
+  requireWorkspaceIdle(workspaceId: string, sourceId: string, workspacePath: string): void {
+    const active = [...this.startingRuns, ...[...this.runsById.values()].filter(run => run.status === "running")];
+    if (active.some(run => run.sourceId === sourceId
+      && (run.workspaceId === workspaceId || (typeof run.cwd === "string" && isInsideWorkspace(run.cwd, workspacePath))))) {
+      throw new Error("Stop project commands in this workspace before removing it.");
+    }
+  }
   /** Serializes non-parallel starts before their process handles are registered. */
   private readonly startingRuns = new Set<OpenCodexCommandExecutionContext>();
   private readonly runsById = new Map<string, ActiveProjectCommandRun>();

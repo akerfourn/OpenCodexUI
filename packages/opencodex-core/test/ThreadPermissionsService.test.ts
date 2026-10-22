@@ -1,3 +1,4 @@
+import { requestRoutingRuntime } from "./requestRoutingFixture";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -220,7 +221,7 @@ describe("effective conversation permissions", () => {
 
   it("should propagate permission errors through the router without triggering chat recovery", async () => {
     const handleRequestError = vi.fn();
-    const router = new OpenCodexRequestRouter({ threadPermissions: service, handleRequestError } as unknown as OpenCodexBackendRuntime);
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime({ threadPermissions: service, handleRequestError } as unknown as OpenCodexBackendRuntime));
     liveStatus = "active";
 
     await expect(router.handleRequest({ type: "threadPermissions.read", context })).rejects.toThrow("active");

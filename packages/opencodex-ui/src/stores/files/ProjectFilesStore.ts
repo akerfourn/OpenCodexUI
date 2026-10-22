@@ -43,7 +43,8 @@ export class ProjectFilesStore {
   /** Resolves the current explorer without repurposing previously loaded state. */
   get tree(): WorkspaceTreeStore | null {
     const workspace = this.project.workspaces.current;
-    if (workspace === null || workspace.sourceId === null) return null;
+    if (workspace === null || workspace.sourceId === null || workspace.removedAt !== null
+      || workspace.removalPending === true) return null;
     const context = {
       projectId: this.project.project.id,
       workspaceId: workspace.id,
@@ -57,6 +58,25 @@ export class ProjectFilesStore {
       this.trees.set(key, tree);
     }
     return tree;
+  }
+
+  /** Refuses lifecycle deletion while edits exist only in application memory. */
+  hasUnsavedWorkspaceDocuments(workspaceId: string): boolean {
+    return [...this.documents.values()].some(document => document.target?.workspaceId === workspaceId
+      && (document.isDirty || document.isSaving));
+  }
+
+  /** Closes only clean buffers after verified removal; late source replies are discarded. */
+  closeRemovedWorkspace(workspaceId: string): void {
+    for (const document of [...this.documents.values()]) {
+      if (document.target?.workspaceId === workspaceId && !document.isDirty && !document.isSaving) this.remove(document);
+    }
+    for (const [key, tree] of this.trees) {
+      if (tree.context.workspaceId === workspaceId) {
+        tree.dispose();
+        this.trees.delete(key);
+      }
+    }
   }
 
   /** Rechecks permissions on open documents without discarding unsaved edits. */

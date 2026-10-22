@@ -26,6 +26,14 @@ describe("workspace persistence", () => {
 
   it("should preserve legacy IDs and associations when migrating twice", async () => {
     database.exec(`
+      DROP TRIGGER protect_removal_execution;
+      DROP TRIGGER protect_removal_transition;
+      DROP TRIGGER protect_removal_creation;
+      DROP TRIGGER protect_creation_removal;
+      DROP TRIGGER protect_removal_workspace;
+      DROP TRIGGER protect_removal_path;
+      DROP TRIGGER protect_removal_thread;
+      DROP TABLE workspace_removals;
       DROP TRIGGER protect_transition_execution;
       DROP TRIGGER protect_transition_workspace;
       DROP TRIGGER protect_transition_thread;

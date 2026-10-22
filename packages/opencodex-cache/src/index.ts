@@ -76,3 +76,4 @@ export type { WorkspaceCacheRepository, WorkspaceExecutionReservation } from "./
 export type { DebugRepository } from "./types/debug.js";
 export type { WorkspaceTransitionRecord, WorkspaceTransitionRepository } from "./types/workspaceTransitions.js";
 export type { WorkspaceCreationInput, WorkspaceCreationRepository } from "./types/workspaceCreations.js";
+export type { WorkspaceRemovalRepository } from "./types/workspaceRemovals.js";

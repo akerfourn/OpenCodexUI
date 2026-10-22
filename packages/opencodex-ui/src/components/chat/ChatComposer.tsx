@@ -8,7 +8,7 @@ import AssistantDirectionRoundedIcon from "@mui/icons-material/AssistantDirectio
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StopCircleRoundedIcon from "@mui/icons-material/StopCircleRounded";
 import { useCallback, useEffect, useRef } from "react";
-import { CircularProgress, IconButton, Stack, Tooltip } from "@mui/material";
+import { Alert, CircularProgress, IconButton, Stack, Tooltip } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
@@ -70,7 +70,10 @@ export function ChatComposer({
   const canSteer = chatStore.actions.canSteerActiveTurn;
   const isSteering = isWorking && canSteer;
   const permissionsBusy = chatStore.permissions.isSaving || chatStore.permissions.isLoading;
-  const canSubmit = !store.dictationStore.busy && !isSubmitting && !permissionsBusy && (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
+  const workspace = projectStore.workspaces.current;
+  const workspaceUnavailable = workspace?.removedAt != null || workspace?.removalPending === true;
+  const workspaceNotice = workspaceUnavailable ? <Alert severity="info">{t("workspaces.historyOnly")}</Alert> : null;
+  const canSubmit = !workspaceUnavailable && !store.dictationStore.busy && !isSubmitting && !permissionsBusy && (draft.trim().length > 0 || attachments.length > 0) && (!isWorking || canSteer);
   const canShowSubmit = isSubmitting || !isWorking || canSteer;
   const canAttachFiles = !isSubmitting && (!isWorking || canSteer);
   const sourceId = chatStore.sourceId;
@@ -245,10 +248,11 @@ export function ChatComposer({
 
   return (
     <form aria-busy={isSubmitting} className="composer" onSubmit={handleSubmit} onPasteCapture={handlePaste}>
+      {workspaceNotice}
       <ComposerPlainTextInput
         ref={composerInputRef}
         value={draft}
-        disabled={isSubmitting}
+        disabled={isSubmitting || workspaceUnavailable}
         placeholder={t("composer.messagePlaceholder")}
         canOpenFileLinks={canOpenFileLinks}
         resizeLabel={t("composer.resize")}

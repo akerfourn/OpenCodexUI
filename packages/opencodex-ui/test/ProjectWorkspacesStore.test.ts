@@ -3,12 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import type { OpenCodexProject, OpenCodexProjectWorkspace, OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 import { createThread } from "./chatStore/chatStoreFixtures";
 import { RootStore } from "../src/stores/RootStore";
+import { FileDocument } from "../src/stores/files/FileDocument";
 
 /** Real stores with an isolated transport and stable source-owned checkout identities. */
 function fixture() {
   const request = vi.fn(async (input: OpenCodexRequest): Promise<unknown> => {
     if (input.type === "projectWorkspaces.list") return workspaces;
-    if (input.type === "projectWorkspaces.creations.list") return [];
+    if (input.type === "projectWorkspaces.creations.list" || input.type === "projectWorkspaces.removals.list") return [];
     return undefined;
   });
   const root = new RootStore({ request, onEvent: () => () => undefined });
@@ -25,6 +26,45 @@ const workspaces: OpenCodexProjectWorkspace[] = [
 ];
 
 describe("workspace UI orchestration", () => {
+  it("should send only stable deletion identities and retain removed workspace metadata", async () => {
+    const { project, request } = fixture();
+    let removed = false;
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.remove") removed = true;
+      if (input.type === "projectWorkspaces.list") {
+        return workspaces.map(item => item.id === "B" && removed ? { ...item, removedAt: "2026-10-22" } : item);
+      }
+      return [];
+    });
+    await project.workspaces.load();
+    await project.workspaces.select("B", null);
+    await project.workspaces.remove("B");
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.remove", projectId: "project",
+      workspaceId: "B", sourceId: "source" });
+    expect(project.workspaces.workspaces.find(item => item.id === "B")?.removedAt).toBe("2026-10-22");
+    expect(project.workspaces.selectedId).toBe("A");
+  });
+
+  it("should preserve unsaved buffers and refuse physical deletion before sending a request", async () => {
+    const { root, project, request } = fixture();
+    const target = { sourceId: "source", projectId: "project", workspaceId: "B", workspacePath: "/B", path: "file.txt" };
+    const document = new FileDocument("document", "file.txt", target, "Feature", root);
+    document.content = "unsaved text";
+    project.files.documents.set(document.id, document);
+    await project.workspaces.remove("B");
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.remove")).toBe(false);
+    expect(document.content).toBe("unsaved text");
+    expect(project.files.documents.has(document.id)).toBe(true);
+    expect(project.workspaces.error).toContain("unsaved");
+  });
+
+  it("should reconcile removal by operation identity without repeating the destructive request", async () => {
+    const { project, request } = fixture();
+    await project.workspaces.recoverRemoval("removal-operation");
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.removals.reconcile", removalId: "removal-operation" });
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.remove")).toBe(false);
+  });
+
   it("should offer only this source's storage locations and send an automatic creation intent", async () => {
     const { root, project, request } = fixture();
     root.appStore.settingsStore.settings.workspaceRoots = [

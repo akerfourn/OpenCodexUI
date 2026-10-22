@@ -1,5 +1,6 @@
 import { ComposeFileSelectionError, discoverComposeFiles, requireComposeFile } from "./composeFiles.js";
 import { createHash } from "node:crypto";
+import type { OpenCodexWorkspaceRemoval } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
 import {
@@ -38,6 +39,23 @@ export type DockerComposeServiceOptions = {
 
 /** Lists and controls Docker Compose services in a source-owned project. */
 export class DockerComposeService {
+  /** Remembers namespaces observed this session even if their Compose file is later removed. */
+  private readonly usedProjects = new Set<string>();
+
+  /** Checks all Compose variants through container labels, never starting or stopping services. */
+  async requireWorkspaceIdle(removal: OpenCodexWorkspaceRemoval): Promise<void> {
+    const name = workspaceComposeProjectName(removal.projectId, removal.workspaceId);
+    const client = await this.options.clients.ensureClient(removal.sourceId);
+    const files = await discoverComposeFiles(client, removal.workspacePath);
+    const workspace = await this.options.cacheRepository?.workspaces.get(removal.workspaceId);
+    if (files.length === 0 && workspace?.composeUsed !== true && !this.usedProjects.has(name)) return;
+    const docker = new DockerClient({ executor: new SourceDockerCommandExecutor(client) });
+    const containers = await docker.containers.list();
+    if (containers.some(container => container.labels.split(",").includes(`com.docker.compose.project=${name}`)
+      && !["created", "exited", "dead"].includes(container.state.toLowerCase()))) {
+      throw new Error("Stop Docker Compose services in this workspace before removing it.");
+    }
+  }
   /** Creates a Compose service over source-scoped app-server clients. */
   constructor(private readonly options: DockerComposeServiceOptions) {}
 
@@ -175,8 +193,12 @@ export class DockerComposeService {
     if (workspace.isPrimary) {
       return undefined;
     }
-    const identity = JSON.stringify([workspace.projectId, workspace.id]);
-    return `opencodex-${createHash("sha256").update(identity).digest("hex").slice(0, 24)}`;
+    const name = workspaceComposeProjectName(workspace.projectId, workspace.id);
+    if (workspace.composeUsed !== true) {
+      await this.options.cacheRepository!.workspaces.markComposeUsed(workspace.id);
+    }
+    this.usedProjects.add(name);
+    return name;
   }
 
   /** Resolves a source client and rejects when the project has no Compose file. */
@@ -191,6 +213,12 @@ export class DockerComposeService {
     return createComposeClient(sourceClient, projectPath, composeFile,
       await this.projectName(projectPath, sourceId, workspaceId));
   }
+}
+
+/** Stable namespace shared by Compose execution and workspace removal checks. */
+function workspaceComposeProjectName(projectId: string, workspaceId: string): string {
+  const identity = JSON.stringify([projectId, workspaceId]);
+  return `opencodex-${createHash("sha256").update(identity).digest("hex").slice(0, 24)}`;
 }
 
 /** Maps low-level Compose data to the stable renderer protocol. */

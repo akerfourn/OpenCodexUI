@@ -22,6 +22,11 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
       <Button disabled={disabled} onClick={() => void store.recoverCreation(item.id)}>{t("workspaces.recover")}</Button>
     }>{t("workspaces.pending", { path: item.destinationPath })}</Alert>
   ));
+  const removals = store.pendingRemovals.map(item => (
+    <Alert severity="warning" key={item.id} action={
+      <Button disabled={disabled} onClick={() => void store.recoverRemoval(item.id)}>{t("workspaces.recover")}</Button>
+    }>{t("workspaces.removalPending", { path: item.workspacePath })}</Alert>
+  ));
   const skipped = store.skipped.map((item) => (
     <Typography variant="caption" component="div" key={item.path}>
       {t("workspaces.skipped", { path: item.path, reason: item.reason })}
@@ -49,7 +54,7 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
           <MoreVertOutlinedIcon fontSize="small" />
         </IconButton>
       </Box>
-      {error}{pending}{skipped}{creationDialog}
+      {error}{pending}{removals}{skipped}{creationDialog}
       <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
         <MenuItem disabled={disabled} onClick={handleOpenImport}>{t("workspaces.discover")}</MenuItem>
       </Menu>

@@ -13,6 +13,7 @@ export type ProjectRequest = Extract<OpenCodexRequest, {
 export interface ProjectRequestRuntime {
   projects: OpenCodexBackendRuntime["projects"];
   workspaces: OpenCodexBackendRuntime["workspaces"];
+  workspaceRemovals: OpenCodexBackendRuntime["workspaceRemovals"];
   groups: OpenCodexBackendRuntime["groups"];
   context: OpenCodexBackendRuntime["context"];
   settings: Pick<OpenCodexBackendRuntime["settings"], "get">;
@@ -30,6 +31,15 @@ export function isProjectRequest(request: OpenCodexRequest): request is ProjectR
 /** Dispatches a resolved project request; responses and errors retain the facade's behavior. */
 export async function routeProjectRequest(runtime: ProjectRequestRuntime, request: ProjectRequest): Promise<unknown> {
   switch (request.type) {
+    case "projectWorkspaces.remove":
+      if (runtime.workspaceRemovals === null) throw new Error("Workspace removal requires persistent storage.");
+      return runtime.workspaceRemovals.remove(request.projectId, request.workspaceId, request.sourceId);
+    case "projectWorkspaces.removals.list":
+      if (runtime.workspaceRemovals === null) return [];
+      return runtime.workspaceRemovals.pending(request.projectId);
+    case "projectWorkspaces.removals.reconcile":
+      if (runtime.workspaceRemovals === null) throw new Error("Workspace removal requires persistent storage.");
+      return runtime.workspaceRemovals.reconcile(request.removalId);
     case "projects.list":
       return runtime.projects.list();
     case "projectWorkspaces.discover":

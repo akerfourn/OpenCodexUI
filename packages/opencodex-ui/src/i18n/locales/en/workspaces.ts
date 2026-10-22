@@ -21,6 +21,14 @@ export const enWorkspaces = {
     "configureHint": "You can configure a default location in the Workspaces section. You can also enter a custom path here."
   },
   "workspaces": {
+    "remove": "Delete workspace",
+    "removeTitle": "Delete workspace {{name}}?",
+    "removeHelp": "The directory will be permanently deleted. Git branches and conversation history will be retained. Switch conversations you want to continue to another workspace before deleting this one. Modified, untracked or ignored files and active processes block deletion; removal is never forced.",
+    "removeConfirm": "Enter {{name}} to confirm",
+    "removeUnsaved": "Save or close unsaved documents in this workspace before deleting it.",
+    "removalPending": "Deletion needs verification: {{path}}. Recovery checks the outcome without repeating deletion.",
+    "removedName": "{{name}} (deleted)",
+    "historyOnly": "This workspace has been deleted or its deletion needs verification. History remains readable; new messages are disabled.",
     "name": "Name",
     "properties": "Workspace properties",
     "save": "Save",

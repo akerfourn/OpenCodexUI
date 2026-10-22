@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import type { CodexNotification, Disposable } from "@open-codex-ui/codex-rpc";
 import type { OpenCodexDockerComposeSnapshot } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceRemoval } from "@open-codex-ui/opencodex-protocol";
+import { createHash } from "node:crypto";
 
 import {
   aggregateComposeServiceState,
@@ -11,6 +13,35 @@ import {
 import type { SourceDockerProcessClient } from "../src/backend/docker/SourceDockerCommandExecutor";
 
 describe("DockerComposeService", () => {
+  it("should block removal for active containers in the workspace namespace across all Compose variants", async () => {
+    const name = `opencodex-${createHash("sha256").update(JSON.stringify(["project", "workspace"])).digest("hex").slice(0, 24)}`;
+    const client = new FakeSourceClient({ "compose.yaml": true, "docker-compose.local.yaml": true,
+      containerOutput: JSON.stringify({ ID: "fixture", Names: "web", State: "paused", Image: "fixture",
+        Labels: `com.docker.compose.project=${name}` }) });
+    const service = new DockerComposeService({ clients: { ensureClient: async () => client } });
+    const removal = { projectId: "project", workspaceId: "workspace", sourceId: "source-1",
+      workspacePath: "/workspace/app" } as OpenCodexWorkspaceRemoval;
+    await expect(service.requireWorkspaceIdle(removal)).rejects.toThrow("Stop Docker Compose services");
+    await expect(service.requireWorkspaceIdle({ ...removal, workspaceId: "another-workspace" })).resolves.toBeUndefined();
+    expect(client.spawnedCommands.every(command => command.includes("ls"))).toBe(true);
+  });
+
+  it("should refuse removal when Docker state is unavailable for a Compose workspace", async () => {
+    const client = new FakeSourceClient({ "compose.yaml": true, exitCode: 1, stderr: "fixture daemon unavailable" });
+    const service = new DockerComposeService({ clients: { ensureClient: async () => client } });
+    await expect(service.requireWorkspaceIdle({ projectId: "project", workspaceId: "workspace", sourceId: "source-1",
+      workspacePath: "/workspace/app" } as OpenCodexWorkspaceRemoval)).rejects.toThrow();
+  });
+  it("should check persisted Compose usage after restart even when configuration files have disappeared", async () => {
+    const name = `opencodex-${createHash("sha256").update(JSON.stringify(["project", "workspace"])).digest("hex").slice(0, 24)}`;
+    const client = new FakeSourceClient({ containerOutput: JSON.stringify({ ID: "fixture", Names: "web",
+      State: "running", Image: "fixture", Labels: `com.docker.compose.project=${name}` }) });
+    const repository = { workspaces: { get: async () => ({ composeUsed: true }) } } as unknown as OpenCodexCacheRepository;
+    const service = new DockerComposeService({ cacheRepository: repository, clients: { ensureClient: async () => client } });
+    await expect(service.requireWorkspaceIdle({ projectId: "project", workspaceId: "workspace", sourceId: "source-1",
+      workspacePath: "/workspace/app" } as OpenCodexWorkspaceRemoval)).rejects.toThrow("Stop Docker Compose services");
+  });
+
   it("should discover named variants and require a choice without invoking Docker", async () => {
     const client = new FakeSourceClient({ "docker-compose.yaml": true, "docker-compose.local.yaml": true,
       "docker-compose.prod.yml": true, "compose.debug.yaml": true, "other.yaml": true });
@@ -55,7 +86,7 @@ describe("DockerComposeService", () => {
 
   it("should isolate secondary stacks while retaining the primary Compose project name", async () => {
     const client = new FakeSourceClient({ "compose.yaml": true });
-    const repository = { workspaces: { get: async (id: string) => ({
+    const repository = { workspaces: { markComposeUsed: async () => undefined, get: async (id: string) => ({
       id, projectId: "project", sourceId: "source-1", path: "/workspace/app",
       isPrimary: id === "primary", removedAt: null, managed: false
     }) } } as unknown as OpenCodexCacheRepository;
@@ -314,7 +345,7 @@ class FakeSourceClient implements SourceDockerProcessClient {
     this.spawnedCommands.push(spawnParams.command);
     this.spawnedCwds.push(String((params as { cwd?: string }).cwd));
     const operation = spawnParams.command.find(arg => ["config", "ps", "up", "stop", "restart", "logs"].includes(arg));
-    const stdout = operation === "logs"
+    const stdout = spawnParams.command.includes("ls") ? this.options.containerOutput ?? "" : operation === "logs"
       ? "service logs"
       : operation === "config"
         ? `${(this.options.configuredServices ?? []).join("\n")}\n`
@@ -343,6 +374,7 @@ class FakeSourceClient implements SourceDockerProcessClient {
 }
 
 type FakeSourceClientOptions = {
+  containerOutput?: string;
   "docker-compose.local.yaml"?: boolean;
   "docker-compose.prod.yml"?: boolean;
   "compose.debug.yaml"?: boolean;

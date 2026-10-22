@@ -54,6 +54,10 @@ export type ProjectAutomationRuntimeNotificationAdapter = {
  * runtime class as the compatibility facade used by the transport.
  */
 export class ProjectAutomationRuntimeHandler {
+  /** Shares command startup and running-process guards with workspace lifecycle operations. */
+  requireWorkspaceIdle(workspaceId: string, sourceId: string, workspacePath: string): void {
+    this.projectCommandService.requireWorkspaceIdle(workspaceId, sourceId, workspacePath);
+  }
   /** Project command definitions and live process runs. */
   private readonly projectCommandService: ProjectCommandService;
   /** Project command authorization rules and generated-file state. */

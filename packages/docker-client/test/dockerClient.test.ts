@@ -11,6 +11,12 @@ import { DockerClient } from "../src/DockerClient.js";
 import { DockerCommandError } from "../src/errors.js";
 
 describe("DockerClient", () => {
+  it("should reject a capped inventory even when its captured prefix contains complete container rows", async () => {
+    const result = successfulResult(JSON.stringify({ ID: "prefix", Names: "first", State: "exited" }));
+    result.stdoutTruncated = true;
+    const client = new DockerClient({ executor: new FakeDockerCommandExecutor([result]) });
+    await expect(client.containers.list()).rejects.toThrow("inventory was truncated");
+  });
   it("should list and control global containers through structured arguments", async () => {
     const executor = new FakeDockerCommandExecutor([
       successfulResult(`${JSON.stringify({

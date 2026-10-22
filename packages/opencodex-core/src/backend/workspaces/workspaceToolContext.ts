@@ -15,6 +15,7 @@ export async function requireToolWorkspace(
   if (workspace === null || workspace.sourceId === null || workspace.removedAt !== null) {
     throw new Error("Workspace is unavailable or has no execution source.");
   }
+  if (workspace.removalPending === true) throw new Error("Workspace has a pending removal.");
   if (projectId !== undefined && workspace.projectId !== projectId) {
     throw new Error("Workspace does not belong to the requested project.");
   }
@@ -28,7 +29,7 @@ export async function resolveWorkspaceToolRequest(
 ): Promise<OpenCodexRequest> {
   if (!("workspaceId" in request) || request.workspaceId === undefined
     || request.type === "turn.start" || request.type === "threads.workspace.select"
-    || request.type === "projectWorkspaces.execution.reconcile") {
+    || request.type.startsWith("projectWorkspaces.")) {
     return request;
   }
   const projectId = "projectId" in request ? request.projectId : undefined;
