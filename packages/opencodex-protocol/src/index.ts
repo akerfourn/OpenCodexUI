@@ -13,6 +13,7 @@ export * from "./workspaces";
 export * from "./workspacePreparation";
 export * from "./workspaceActivity";
 export * from "./workspaceDiskUsage";
+export * from "./primaryWorkspaceMove";
 export * from "./workspaceWorkStatus";
 export * from "./workspaceRetention";
 export * from "./workspaceCreations";

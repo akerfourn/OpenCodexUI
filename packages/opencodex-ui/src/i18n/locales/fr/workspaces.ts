@@ -97,6 +97,15 @@ export const frWorkspaces = {
     "layoutHelp": "<workspace-id> sera remplacé par un identifiant unique à la création. Les fichiers du dépôt seront directement dans ce dossier.",
     "configureHint": "Vous pouvez définir un espace par défaut dans la rubrique Workspaces. Un chemin personnalisé reste possible ici."
   },
+  "primaryWorkspaceMove": {
+    "title": "Déplacer le dossier du projet…",
+    "help": "Le dossier principal sera déplacé dans la même source, avec ses fichiers locaux. Les liens Git des autres workspaces seront vérifiés et réparés avant de publier le nouveau chemin. Arrêtez les conversations, commandes, débogueurs et services Compose du dépôt. La destination doit être absente et sur le même système de fichiers. Les sous-modules et certaines configurations Git nécessitent un déplacement manuel suivi d’une relocalisation. Après une interruption, utilisez Récupérer : le dossier ne sera pas déplacé une seconde fois.",
+    "destinationHelp": "Chemin complet du nouveau dossier dans cette source. Le dossier parent doit déjà exister. Les chemins explicites présents dans vos scripts et réglages ne sont pas réécrits.",
+    "browseParent": "Choisir le dossier parent…",
+    "storage": "Utiliser un stockage de workspaces configuré (facultatif)",
+    "confirm": "Je confirme le déplacement du dossier du projet vers cette destination.",
+    "unsaved": "Enregistrez ou fermez tous les documents non enregistrés du projet avant de déplacer son dossier."
+  },
   "workspaces": {
     "lock": "Verrouiller le workspace",
     "unlock": "Déverrouiller le workspace",

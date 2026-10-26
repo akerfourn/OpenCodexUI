@@ -196,20 +196,37 @@ export class ProjectWorkspacesStore {
   }
 
   /** Moves to configured storage by default; a custom path is an explicit advanced alternative. */
-  async move(workspaceId: string, rootId?: string, destinationPath?: string): Promise<void> {
+  async move(workspaceId: string, rootId?: string, destinationPath?: string, expectedPath?: string): Promise<void> {
+    const workspace = this.workspaces.find(item => item.id === workspaceId);
     await this.perform(async () => {
-      if (this.project.files.hasUnsavedWorkspaceDocuments(workspaceId)) {
+      const affected = workspace?.isPrimary === true ? this.workspaces : this.workspaces.filter(item => item.id === workspaceId);
+      if (affected.some(item => this.project.files.hasUnsavedWorkspaceDocuments(item.id))) {
         throw new Error("Save or close unsaved workspace documents before moving it.");
       }
       await this.root.request({ type: "projectWorkspaces.move", input: {
-        projectId: this.project.project.id, workspaceId, sourceId: this.requireSource(), rootId, destinationPath
+        projectId: this.project.project.id, workspaceId, sourceId: this.requireSource(), rootId, destinationPath,
+        ...(workspace?.isPrimary === true ? { expectedPath: expectedPath ?? workspace.path } : {})
       } });
     });
+    if (workspace?.isPrimary === true) this.root.projectsStore.refreshProjects();
+  }
+
+  /** Exposes a host picker only for an explicitly local source. */
+  get canPickMoveParent(): boolean {
+    return this.root.sourcesStore.findSource(this.project.project.sourceId)?.kind === "local";
+  }
+
+  /** Picks an existing parent; the user reviews the final new directory before dispatch. */
+  async pickMoveParent(): Promise<string | null> {
+    if (!this.canPickMoveParent) return null;
+    return await this.root.request<string | null>({ type: "projects.context.pickFolder" });
   }
 
   /** Verifies frozen source facts after interruption without replaying the Git command. */
   async recoverMove(moveId: string): Promise<void> {
+    const primary = this.pendingMoves.find(move => move.id === moveId)?.primarySnapshot !== undefined;
     await this.perform(async () => { await this.root.request({ type: "projectWorkspaces.moves.reconcile", moveId }); });
+    if (primary) this.root.projectsStore.refreshProjects();
   }
 
   /** Reconnects a manually moved directory using plain, explicit transport identities. */

@@ -1,19 +1,23 @@
-/** Explicit source-owned destination choice; configured storage is the default. */
+/** Source-owned destination; principals require an explicit choice and their reviewed original path. */
 export interface OpenCodexWorkspaceMoveInput {
   projectId: string;
   workspaceId: string;
   sourceId: string;
-  /** Omission chooses this source's default configured storage root. */
+  /** Secondary moves may omit both choices to use the source's default storage root. */
   rootId?: string;
-  /** Advanced alternative to a configured root, never combined with rootId. */
+  /** Normal principal destination or advanced secondary destination; never combined with rootId. */
   destinationPath?: string;
+  /** Reviewed principal path; required for moving a project's reference directory. */
+  expectedPath?: string;
 }
 
 /** Frozen move intent retained until source facts establish its outcome. */
 export interface OpenCodexWorkspaceMove {
+  /** Present only for principal-directory moves; secondary journals remain compatible. */
+  primarySnapshot?: import("./primaryWorkspaceMove.js").OpenCodexPrimaryMoveSnapshot;
   /** Opaque journal identity used for explicit recovery. */
   id: string;
-  /** Managed secondary checkout whose identity is retained. */
+  /** Principal or managed secondary whose stable identity is retained. */
   workspaceId: string;
   /** Logical project and filesystem owner. */
   projectId: string;
@@ -29,11 +33,11 @@ export interface OpenCodexWorkspaceMove {
   /** Frozen common repository and stable worktree administrative directory. */
   repositoryPath: string;
   gitDirectory: string;
-  /** Expected checked-out commit and full branch reference, or null when detached. */
+  /** Secondary commit/reference; principals keep per-checkout evidence in primarySnapshot. */
   expectedHead: string;
   expectedBranch: string | null;
   /** Preparation is cancellable; dispatched effects require explicit reconciliation. */
   state: "preparing" | "submitting" | "uncertain";
-  /** Observed Git exit, null if its response was lost. */
+  /** Physical move command result, null if its response was lost. Primary helper failure uses 1. */
   gitExitCode: number | null;
 }

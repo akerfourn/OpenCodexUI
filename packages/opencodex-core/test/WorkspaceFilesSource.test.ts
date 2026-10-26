@@ -60,6 +60,25 @@ function sourceProcessClient() {
 }
 
 describe("workspace source routing", () => {
+  it("should rename a project from its parent cwd so the helper does not hold the directory open on Windows", async () => {
+    const root = await mkdtemp(join(tmpdir(), "primary-source-move-"));
+    try {
+      const workspacePath = join(root, "before");
+      const destinationPath = join(root, "after");
+      await mkdir(workspacePath);
+      const { client, request } = sourceProcessClient();
+      const target = { sourceId: "remote", projectId: "project", workspaceId: "ws", workspacePath, path: "" };
+      const before = await runSourceFileOperation(client, { type: "primaryDirectory", operation: "inspect", target });
+      expect(before.ok).toBe(true);
+      if (!before.ok) throw new Error(before.details);
+      const identity = (before.value as { identity: string }).identity;
+      request.mockClear();
+      expect(await runSourceFileOperation(client, { type: "primaryDirectory", operation: "rename", target,
+        destinationPath, identity })).toMatchObject({ ok: true, value: { identity } });
+      expect(request.mock.calls.find(([method]) => method === "process/spawn")?.[1].cwd).toBe(root);
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   it("should measure through the owning source process with a data-only workspace path", async () => {
     const root = await mkdtemp(join(tmpdir(), "disk-source-"));
     try {

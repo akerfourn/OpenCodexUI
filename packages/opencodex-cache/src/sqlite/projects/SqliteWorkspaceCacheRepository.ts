@@ -21,7 +21,8 @@ const workspaceColumns = `id, project_id AS projectId, source_id AS sourceId,
   path, name, is_primary AS isPrimary, managed, removed_at AS removedAt, compose_used AS composeUsed,
   work_status AS workStatus, completed_at AS completedAt,
   EXISTS(SELECT 1 FROM workspace_removals WHERE workspace_id = project_workspaces.id) AS removalPending,
-  EXISTS(SELECT 1 FROM workspace_moves WHERE workspace_id = project_workspaces.id) AS movePending`;
+  EXISTS(SELECT 1 FROM workspace_moves WHERE workspace_id = project_workspaces.id
+    OR (primary_snapshot IS NOT NULL AND project_id = project_workspaces.project_id)) AS movePending`;
 /** SQL projection for durable execution reservations. */
 const reservationColumns = `id, workspace_id AS workspaceId, project_id AS projectId,
   source_id AS sourceId, cwd, thread_id AS threadId, turn_id AS turnId, state, operation`;

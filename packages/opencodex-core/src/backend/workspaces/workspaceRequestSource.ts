@@ -37,7 +37,11 @@ export async function requireLegacyWorkspaceAvailable(repository: OpenCodexCache
     const workspaces = await repository.workspaces.list(project.id);
     const moves = await repository.workspaces.moves.list(project.id);
     if (moves.some(move => isInsideWorkspace(projectPath, move.workspacePath)
-      || isInsideWorkspace(projectPath, move.destinationPath))) throw new Error("Workspace has a pending move.");
+      || isInsideWorkspace(projectPath, move.destinationPath)
+      || move.primarySnapshot?.members.some(member => isInsideWorkspace(projectPath, member.path)
+        || isInsideWorkspace(projectPath, member.destinationPath))
+      || move.primarySnapshot?.git?.checkouts.some(entry => isInsideWorkspace(projectPath, entry.path)
+        || isInsideWorkspace(projectPath, entry.destinationPath)))) throw new Error("Workspace has a pending move.");
     const workspace = workspaces.find(item => sameSourcePath(item.path, projectPath) && item.removedAt === null)
       ?? workspaces.find(item => sameSourcePath(item.path, projectPath));
     if (workspace !== undefined && (workspace.removalPending === true || workspace.removedAt !== null)) {

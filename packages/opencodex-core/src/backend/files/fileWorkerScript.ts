@@ -7,6 +7,7 @@
  */
 import { fileMutationScript } from "./fileMutationScript.js";
 import { workspaceDiskUsageScript } from "./workspaceDiskUsageScript.js";
+import { primaryWorkspaceMoveScript } from "./primaryWorkspaceMoveScript.js";
 
 export const fileWorkerScript = String.raw`
 const fs = require('node:fs/promises');
@@ -77,6 +78,7 @@ async function inspectAccess(target, permissions) {
 
 ${fileMutationScript}
 ${workspaceDiskUsageScript}
+${primaryWorkspaceMoveScript}
 
 /** Recognizes supported image headers; filenames alone never turn arbitrary bytes into images. */
 function imageMimeType(header, full) {
@@ -177,6 +179,7 @@ async function describeEntry(item, request, full) {
 
 /** Performs one bounded list/read/check/save operation. */
 async function execute(request) {
+  if (request.type === 'primaryDirectory') return await primaryDirectoryOperation(request);
   if (request.type === 'workspaceDiskUsage') {
     return await measureWorkspaceDiskUsage(request.target.workspacePath);
   }

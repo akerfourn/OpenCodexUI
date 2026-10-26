@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runMigrations } from "../src/sqlite/migrations";
 import { applySchemaMigrationV45 } from "../src/sqlite/migrations/v45";
+import { applySchemaMigrationV48 } from "../src/sqlite/migrations/v48";
 import { SqliteWorkspaceCacheRepository } from "../src/sqlite/projects/SqliteWorkspaceCacheRepository";
 import type { WorkspaceMoveInput } from "../src/types/workspaceMoves";
 
@@ -32,9 +33,13 @@ describe("durable workspace movement", () => {
     const triggers = database.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'protect_move_%'")
       .all() as { name: string }[];
     for (const trigger of triggers) database.exec(`DROP TRIGGER "${trigger.name}"`);
-    database.exec("DROP TABLE workspace_moves; DELETE FROM schema_migrations WHERE version = 45;");
+    const extensionTriggers = database.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'protect_primary_move_%'").all() as Array<{ name: string }>;
+    for (const trigger of extensionTriggers) database.exec(`DROP TRIGGER ${trigger.name}`);
+    database.exec("DROP TABLE workspace_moves; DELETE FROM schema_migrations WHERE version IN (45, 48);");
     applySchemaMigrationV45(database);
     applySchemaMigrationV45(database);
+    applySchemaMigrationV48(database);
+    applySchemaMigrationV48(database);
     expect(await repository.list(input.projectId)).toEqual(previous);
     expect(await repository.moves.list(input.projectId)).toEqual([]);
     expect(database.pragma("foreign_key_check")).toEqual([]);

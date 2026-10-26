@@ -26,6 +26,18 @@ const workspaces: OpenCodexProjectWorkspace[] = [
 ];
 
 describe("workspace UI orchestration", () => {
+  it("should send the reviewed principal path and refresh the project after publishing movement", async () => {
+    const { root, project, request } = fixture();
+    await project.workspaces.load();
+    const refresh = vi.spyOn(root.projectsStore, "refreshProjects");
+    await project.workspaces.move("A", undefined, "/new-primary", "/A");
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.move", input: {
+      projectId: "project", workspaceId: "A", sourceId: "source", rootId: undefined,
+      destinationPath: "/new-primary", expectedPath: "/A"
+    } });
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
   it("should refuse a primary work-status change before sending it through transport", async () => {
     const { project, request } = fixture();
     await project.workspaces.setWorkStatus(workspaces[0]!, "completed");

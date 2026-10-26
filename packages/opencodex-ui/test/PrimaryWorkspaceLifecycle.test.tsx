@@ -44,6 +44,7 @@ describe("permanent primary workspace UI", () => {
     expect(document.body.textContent).not.toContain("workspaceWorkStatus.complete");
     expect(document.body.textContent).not.toContain("workspaceWorkStatus.reopen");
     expect(document.body.textContent).toContain("workspaces.relocate");
+    expect(document.body.textContent).toContain("primaryWorkspaceMove.title");
     const properties = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
       .find(item => item.textContent === "workspaces.properties")!;
     await act(async () => properties.click());

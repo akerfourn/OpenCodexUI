@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
+import path from "node:path";
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexFileGrant, OpenCodexFileRequest, OpenCodexFileResult, OpenCodexImageReadRequest
@@ -10,6 +11,9 @@ import type { OpenCodexFileTarget } from "@open-codex-ui/opencodex-protocol";
 /** Backend-enriched payload; the renderer cannot supply effective grants. */
 export type FileWorkerRequest = (OpenCodexFileRequest | OpenCodexImageReadRequest | {
   type: "workspaceDiskUsage"; target: OpenCodexFileTarget;
+} | {
+  type: "primaryDirectory"; target: OpenCodexFileTarget;
+  operation: "inspect" | "rename"; destinationPath?: string; identity?: string;
 }) & {
   permissions?: OpenCodexFileGrant[];
 };
@@ -72,10 +76,15 @@ export async function runSourceFileOperation(
   }, 30_000);
   /** Streams input only while the source operation remains alive. */
   async function sendRequest(): Promise<OpenCodexFileResult<unknown>> {
+    let cwd = request.type === "images.read" ? request.projectPath : request.target.workspacePath;
+    if (request.type === "primaryDirectory" && request.operation === "rename") {
+      const syntax = request.target.workspacePath.startsWith("/") ? path.posix : path.win32;
+      cwd = syntax.dirname(request.target.workspacePath);
+    }
     await client.request("process/spawn", {
       command: ["node", "-e", fileWorkerScript],
       processHandle,
-      cwd: request.type === "images.read" ? request.projectPath : request.target.workspacePath,
+      cwd,
       streamStdin: true,
       outputBytesCap: 16 * 1024 * 1024,
       timeoutMs: 30_000

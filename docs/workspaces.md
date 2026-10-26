@@ -275,9 +275,9 @@ instead of opening a free path field by default.
 
 Movement uses `git worktree move -- <old-path> <new-path>` through the owning
 source. It preserves workspace IDs, names, branches and all checkout files,
-including modified, untracked and ignored files. Primary and imported workspaces
-are outside this initial movement scope; their existing relocation action
-remains available. Git's lock, submodule and filesystem restrictions are
+including modified, untracked and ignored files. Principal-directory movement
+uses the separate workflow below. Imported secondary workspaces retain their
+manual relocation action and are not moved automatically. Git's lock, submodule and filesystem restrictions are
 preserved. No force, unlock, stash, copy/delete or cross-source fallback occurs.
 Cross-filesystem moves that Git refuses remain refused.
 
@@ -350,6 +350,56 @@ mutation. The existing error remains visible so a newly observed external lock
 cannot be cleared through an old confirmation. Checks are conservative within
 the application; another external Git process can still race between inspection
 and mutation, and lock reasons are not unique owner tokens.
+
+## Moving the project directory
+
+The primary workspace menu exposes **Move project directory…** independently of
+**Relocate workspace**. Movement actually renames the folder; relocation only
+reconnects a directory already moved by the user. The primary remains permanent.
+
+The principal dialog defaults to a free destination in the same source. A local
+source can choose an existing parent with the native picker, then edit and
+confirm the final directory name. WSL, SSH and custom paths are entered in their
+own filesystem syntax. Configured workspace storage is an optional shortcut,
+never selected implicitly for a principal. The destination must not exist, its
+parent must exist, and the source/destination may not contain each other.
+
+The operation preserves project/workspace identities, local files, secondary
+work statuses and conversation history. Nested workspaces of the same project
+move with the parent and get new paths/aliases atomically; external workspaces
+keep their locations. All project workspaces remain reserved until verification
+finishes, including after an interruption. Conversations receive durable policy
+reload markers before they can continue under their retained approval contract.
+The source may require trusting the new project path before a later execution.
+Explicit paths in scripts, context-folder settings, grants and independent
+nested repositories are not rewritten automatically.
+
+The backend freezes directory device/inode/creation-time identities and the
+complete Git registry, including worktrees not imported into OpenCodexUI.
+[Git documents `worktree repair`](https://git-scm.com/docs/git-worktree) for
+reconnecting linked worktrees after the main checkout or both endpoints move.
+The implementation verifies checkout/admin-directory identities and Git links
+before repair, then checks paths, HEADs, branches, locks and the full registry
+again before publishing. A principal that is itself a linked worktree is also
+supported. There is no prune, implicit unlock or forced checkout.
+
+Movement is one same-filesystem rename, without copy/delete fallback. Local
+sources use the bundled Node worker; other sources need Node.js available.
+The remote rename helper starts in the parent directory so it does not hold the
+moved directory as its own working directory on Windows. Symlink ancestors,
+occupied destinations, unavailable/locked worktrees, submodules, separate Git
+directories, bare principals and checkouts owned by another cached project are
+refused. Cross-filesystem movement uses the manual move + relocation workflow.
+These checks cannot lock out unrelated OS processes or external Git clients.
+
+Migration 48 extends the existing move journal with a frozen principal snapshot,
+preserving pending secondary moves. It reserves the entire project's workspace
+catalogue/executions/transitions and endpoint subtrees. Publication updates the
+primary, nested paths, aliases and conversation reload requirements in a single
+transaction. A lost rename response or failed Git repair leaves a visible
+recovery operation. **Recover** verifies the frozen facts and may repeat Git-link
+repair; it never repeats the physical move. A replaced destination, recreated
+old path or unproven move remains reserved for manual review.
 
 ## Explicit workspace preparation
 
@@ -557,7 +607,8 @@ Migration 43 journals removal; migration 44 retains relocation policy reloads.
 Migration 45 reserves physical moves and destination ownership. Migration 46
 adds secondary work progress and its consistent nullable completion date.
 Migration 47 keeps primaries permanent and clears obsolete primary completion
-annotations, preserving existing identities, paths and history. Preserve
+annotations. Migration 48 extends movement reservations for principal folders,
+preserving existing identities, paths and history. Preserve
 existing data through idempotent migrations instead of rewriting associations.
 
 Run from the repository root:
@@ -615,7 +666,7 @@ tests cover ignored/Git data, links, traversal limits, partial reads, explicit
 ownership and native Windows paths. UI/store tests cover manual launch, dated
 results, offline reading and stale responses without automatic rescanning.
 
-Moving primary/imported workspaces and automatic per-agent worktrees are not
+Imported-secondary movement and automatic per-agent worktrees are not
 implemented. Local guards
 do not lock out external Git/Codex clients or establish universal filesystem
 identity across mounts and aliases.

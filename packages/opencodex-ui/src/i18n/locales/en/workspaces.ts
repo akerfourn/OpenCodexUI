@@ -98,6 +98,15 @@ export const enWorkspaces = {
     "layoutHelp": "<workspace-id> will be replaced with a unique ID on creation. The repository files will be directly inside that folder.",
     "configureHint": "You can configure a default location in the Workspaces section. You can also enter a custom path here."
   },
+  "primaryWorkspaceMove": {
+    "title": "Move project directory…",
+    "help": "The primary directory and its local files will move within this source. Git links for the other workspaces will be verified and repaired before publishing the new path. Stop repository conversations, commands, debuggers and Compose services. The destination must be absent and on the same filesystem. Submodules and some Git configurations require manual movement followed by relocation. After interruption, use Recover: the directory will not be moved a second time.",
+    "destinationHelp": "Full path of the new directory in this source. Its parent must already exist. Explicit paths in your scripts and settings are not rewritten.",
+    "browseParent": "Choose parent directory…",
+    "storage": "Use configured workspace storage (optional)",
+    "confirm": "I confirm moving the project directory to this destination.",
+    "unsaved": "Save or close all unsaved project documents before moving its directory."
+  },
   "workspaces": {
     "lock": "Lock workspace",
     "unlock": "Unlock workspace",

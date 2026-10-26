@@ -11,7 +11,8 @@ export function updateWorkspaceWorkStatus(database: Database, input: OpenCodexWo
     FROM project_workspaces w WHERE id = ? AND project_id = ? AND source_id IS ? AND path = ?
       AND removed_at IS NULL
       AND NOT EXISTS (SELECT 1 FROM workspace_removals WHERE workspace_id = w.id)
-      AND NOT EXISTS (SELECT 1 FROM workspace_moves WHERE workspace_id = w.id)`)
+      AND NOT EXISTS (SELECT 1 FROM workspace_moves WHERE workspace_id = w.id
+        OR (primary_snapshot IS NOT NULL AND project_id = w.project_id))`)
     .get(input.workspaceId, input.projectId, input.sourceId, input.workspacePath) as
       { isPrimary: number; workStatus: string; completedAt: string | null } | undefined;
   if (row === undefined) throw new Error("Workspace context changed, was removed or has pending maintenance. Refresh the workspace.");

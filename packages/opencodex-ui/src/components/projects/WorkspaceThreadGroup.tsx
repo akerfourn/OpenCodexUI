@@ -17,6 +17,7 @@ import { ThreadButtonX } from "../threads/ThreadButton";
 import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 import { WorkspacePropertiesDialogX } from "./WorkspacePropertiesDialog";
 import { WorkspaceMoveDialogX } from "./WorkspaceMoveDialog";
+import { PrimaryWorkspaceMoveDialogX } from "./PrimaryWorkspaceMoveDialog";
 import { WorkspaceRelocateDialogX } from "./WorkspaceRelocateDialog";
 import { WorkspaceRemoveDialogX } from "./WorkspaceRemoveDialog";
 import { WorkspacePreparationDialogX } from "./WorkspacePreparationDialog";
@@ -103,10 +104,15 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const canRemove = workspace !== null && !workspace.isPrimary && workspace.managed && workspace.removedAt === null;
   const removeAction = canRemove ? <MenuItem disabled={disabled || lockUnknown || locked} onClick={handleRemove} sx={{ color: "error.main" }}>
     {t("workspaces.remove")}</MenuItem> : null;
-  const movement = moving && workspace !== null
-    ? <WorkspaceMoveDialogX project={project} workspace={workspace} onClose={() => setMoving(false)} /> : null;
-  const moveAction = canRemove ? <MenuItem disabled={disabled || lockUnknown || locked} onClick={handleMove}>
-    {t("workspaces.move")}</MenuItem> : null;
+  let movement = null;
+  let moveAction = null;
+  if (workspace !== null && workspace.isPrimary) {
+    if (moving) movement = <PrimaryWorkspaceMoveDialogX project={project} workspace={workspace} onClose={() => setMoving(false)} />;
+    moveAction = <MenuItem disabled={disabled} onClick={handleMove}>{t("primaryWorkspaceMove.title")}</MenuItem>;
+  } else if (workspace !== null && canRemove) {
+    if (moving) movement = <WorkspaceMoveDialogX project={project} workspace={workspace} onClose={() => setMoving(false)} />;
+    moveAction = <MenuItem disabled={disabled || lockUnknown || locked} onClick={handleMove}>{t("workspaces.move")}</MenuItem>;
+  }
   /** Opens configured storage choices for this fixed managed workspace identity. */
   function handleMove(): void {
     setAnchor(null);

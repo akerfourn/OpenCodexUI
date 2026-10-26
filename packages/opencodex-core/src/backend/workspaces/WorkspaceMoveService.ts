@@ -11,6 +11,7 @@ import { WorkspaceActivityGate } from "./WorkspaceActivityGate.js";
 import { WorkspaceRemovalRuntime } from "./WorkspaceRemovalRuntime.js";
 import { resolveWorkspaceStorage, prepareWorkspaceStorage } from "./WorkspaceStoragePaths.js";
 import { workspaceSourcePathsEqual } from "./workspaceSourcePath.js";
+import type { PrimaryWorkspaceMoveService } from "./PrimaryWorkspaceMoveService.js";
 
 /** Moves managed secondary worktrees and publishes only source-verified destinations. */
 export class WorkspaceMoveService {
@@ -22,7 +23,8 @@ export class WorkspaceMoveService {
     private readonly activity: WorkspaceActivityGate,
     private readonly requireInactive: (move: OpenCodexWorkspaceMove) => Promise<void>,
     private readonly roots: () => OpenCodexWorkspaceRoot[],
-    private readonly git = new WorkspaceMoveGit(createRunGit(clients))) {
+    private readonly git = new WorkspaceMoveGit(createRunGit(clients)),
+    private readonly primary?: PrimaryWorkspaceMoveService) {
     this.runtime = new WorkspaceRemovalRuntime(clients);
   }
 
@@ -32,6 +34,10 @@ export class WorkspaceMoveService {
   /** Resolves configured storage first, dispatches once and atomically reconnects existing history. */
   async move(request: OpenCodexWorkspaceMoveInput): Promise<void> {
     const input = structuredClone(request);
+    if (this.primary !== undefined && (await this.repository.get(input.workspaceId))?.isPrimary === true) {
+      await this.primary.move(input);
+      return;
+    }
     await this.activity.exclusive(input.sourceId, async () => {
       const workspace = await this.requireWorkspace(input);
       const primary = (await this.repository.list(input.projectId)).find(item => item.isPrimary && item.removedAt === null);
@@ -69,6 +75,11 @@ export class WorkspaceMoveService {
   /** Recovery inspects frozen source facts; it never repeats movement or rolls back files. */
   async reconcile(id: string): Promise<void> {
     const intent = await this.requireMove(id);
+    if (intent.primarySnapshot !== undefined) {
+      if (this.primary === undefined) throw new Error("Primary move recovery is unavailable.");
+      await this.primary.reconcile(id);
+      return;
+    }
     await this.activity.exclusive(intent.sourceId, async () => {
       const current = await this.requireMove(id);
       if (current.state === "preparing") { await this.repository.moves.cancel(id); return; }

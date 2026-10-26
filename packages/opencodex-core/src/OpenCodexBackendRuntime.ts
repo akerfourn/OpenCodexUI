@@ -1,6 +1,11 @@
 import { WorkspaceLockService } from "./backend/workspaces/WorkspaceLockService.js";
 import { WorkspaceDiskUsageService } from "./backend/workspaces/WorkspaceDiskUsageService.js";
 import { WorkspaceMoveService } from "./backend/workspaces/WorkspaceMoveService.js";
+import { PrimaryWorkspaceMoveService } from "./backend/workspaces/PrimaryWorkspaceMoveService.js";
+import { PrimaryMoveFiles } from "./backend/workspaces/PrimaryMoveFiles.js";
+import { PrimaryMoveGit } from "./backend/workspaces/PrimaryMoveGit.js";
+import { createRunGit } from "./backend/git/gitCommandRunner.js";
+import type { OpenCodexWorkspaceMove } from "@open-codex-ui/opencodex-protocol";
 import { WorkspaceRelocationService } from "./backend/workspaces/WorkspaceRelocationService.js";
 import { MessageRenderingService } from "./backend/support/MessageRenderingService.js";
 import { isDebugActive } from "@open-codex-ui/opencodex-protocol";
@@ -150,8 +155,8 @@ export class OpenCodexBackendRuntime {
       this.services.cacheRepository, this.services.clientPool, this.workspaceActivity);
     this.workspaceDiskUsage = this.services.cacheRepository === null ? null : new WorkspaceDiskUsageService(
       this.services.cacheRepository, this.services.clientPool, this.services.projectRuntimeHandler);
-    this.workspaceMoves = this.services.cacheRepository === null ? null : new WorkspaceMoveService(
-      this.services.cacheRepository.workspaces, this.services.clientPool, this.workspaceActivity, async move => {
+    /** Shares managed-process checks between secondary moves and every affected principal checkout. */
+    const requireMoveInactive = async (move: OpenCodexWorkspaceMove): Promise<void> => {
         for (const location of [move.workspacePath, move.destinationPath]) {
           this.services.projectAutomationRuntimeHandler.requireWorkspaceIdle(move.workspaceId, move.sourceId, location);
           const session = this.debug.snapshot().session;
@@ -161,7 +166,16 @@ export class OpenCodexBackendRuntime {
           }
         }
         await this.services.dockerComposeService.requireWorkspaceIdle(move);
-      }, () => this.settings.get().workspaceRoots ?? []);
+      };
+    /** Reads configured destinations only during new intent preparation, never during recovery. */
+    const moveRoots = () => this.settings.get().workspaceRoots ?? [];
+    const moveFiles = new PrimaryMoveFiles(this.services.clientPool, this.services.projectRuntimeHandler);
+    const primaryMoves = this.services.cacheRepository === null ? undefined : new PrimaryWorkspaceMoveService(
+      this.services.cacheRepository.workspaces, this.services.clientPool, this.workspaceActivity, requireMoveInactive,
+      moveRoots, moveFiles, new PrimaryMoveGit(moveFiles, createRunGit(this.services.clientPool)));
+    this.workspaceMoves = this.services.cacheRepository === null ? null : new WorkspaceMoveService(
+      this.services.cacheRepository.workspaces, this.services.clientPool, this.workspaceActivity,
+      requireMoveInactive, moveRoots, undefined, primaryMoves);
     this.dictation = new CodexDictationService(async (sourceId) => {
       const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
       return new CodexAppServerClient({
