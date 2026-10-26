@@ -74,6 +74,29 @@ afterEach(async () => {
 });
 
 describe("workspace management and manual cleanup", () => {
+  it("should keep the permanent primary outside secondary work-status filters and actions", async () => {
+    const { project, setWorkStatus } = await renderDialog();
+    await act(async () => { runInAction(() => {
+      project.workspaces.workspaces[0]!.isPrimary = true;
+      project.workspaces.workspaces[0]!.workStatus = "active";
+      project.workspaces.workspaces[0]!.completedAt = null;
+    }); });
+    expect(document.body.textContent).toContain("workspaceWorkStatus.primaryHelp");
+    expect(button("workspaceWorkStatus.complete")).toBeUndefined();
+    expect(button("workspaceWorkStatus.reopen")).toBeUndefined();
+    for (const filter of ["active", "completed"]) {
+      await act(async () => {
+        document.querySelector('[role="combobox"]')!.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+      });
+      await act(async () => {
+        [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(item => item.textContent === `workspaceWorkStatus.${filter}`)!.click();
+      });
+      expect(document.body.textContent).not.toContain("workspaceWorkStatus.primaryHelp");
+      expect(document.body.textContent).toContain("workspaceManagement.empty");
+    }
+    expect(setWorkStatus).not.toHaveBeenCalled();
+  });
+
   it("should scan only the requested workspace and keep its dated result readable offline", async () => {
     const { project, request, remove } = await renderDialog();
     expect(request).not.toHaveBeenCalled();

@@ -6,8 +6,9 @@ export const frWorkspaces = {
     "reopen": "Remettre en cours",
     "completedAt": "Terminé le {{date}}",
     "filter": "Statut du travail",
-    "all": "Tous les statuts",
-    "help": "Ce statut décrit votre travail. Il n’arrête aucune activité, ne verrouille pas le workspace et ne supprime rien. Le retour en cours est manuel. Les suggestions de nettoyage concernent uniquement les travaux terminés, selon le délai enregistré pour ce projet."
+    "all": "Tous les workspaces",
+    "primaryHelp": "Le workspace principal est le dossier de référence permanent du projet. Les statuts « en cours / terminé » concernent uniquement les workspaces secondaires.",
+    "help": "Ce statut décrit le travail d’un workspace secondaire. Il n’arrête aucune activité, ne verrouille pas le workspace et ne supprime rien. Le retour en cours est manuel. Les suggestions de nettoyage concernent uniquement les travaux terminés, selon le délai enregistré pour ce projet."
   },
   "workspaceManagement": {
     "title": "Activité et nettoyage des workspaces",

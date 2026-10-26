@@ -58,13 +58,24 @@ describe("workspace execution", () => {
     expect(clients.ensureClient).not.toHaveBeenCalled();
   });
 
-  it("should change manual progress without touching Codex and retain the existing thread workspace", async () => {
-    const workspace = (await cache.workspaces.get(workspaceId))!;
-    const completed = await service.setWorkStatus({ projectId: workspace.projectId, workspaceId, sourceId: "source-a",
+  it("should change secondary progress without touching Codex or moving the existing thread", async () => {
+    const primary = (await cache.workspaces.get(workspaceId))!;
+    await cache.workspaces.registerDiscovered(primary.id, "source-a", primary.path, ["/source/secondary"]);
+    const workspace = (await cache.workspaces.list(primary.projectId)).find(item => !item.isPrimary)!;
+    const completed = await service.setWorkStatus({ projectId: workspace.projectId, workspaceId: workspace.id, sourceId: "source-a",
       workspacePath: workspace.path, workStatus: "completed", expectedWorkStatus: "active", expectedCompletedAt: null });
     expect(completed.workStatus).toBe("completed");
     expect(completed.completedAt).toEqual(expect.any(String));
     expect((await cache.workspaces.getForThread("thread-a"))?.id).toBe(workspaceId);
+    expect(clients.ensureClient).not.toHaveBeenCalled();
+  });
+
+  it("should reject completion of the primary without contacting Codex", async () => {
+    const workspace = (await cache.workspaces.get(workspaceId))!;
+    await expect(service.setWorkStatus({ projectId: workspace.projectId, workspaceId, sourceId: "source-a",
+      workspacePath: workspace.path, workStatus: "completed", expectedWorkStatus: "active", expectedCompletedAt: null }))
+      .rejects.toThrow("The primary workspace has no editable work status.");
+    expect(await cache.workspaces.get(workspaceId)).toEqual(workspace);
     expect(clients.ensureClient).not.toHaveBeenCalled();
   });
 

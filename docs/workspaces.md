@@ -440,8 +440,8 @@ existing way to protect retained worktrees from removal.
 
 ## Manual work progress
 
-Every workspace has a separate user-declared work status: **In progress** or
-**Completed**. Existing and newly created workspaces start in progress. Marking
+Secondary workspaces have a user-declared work status: **In progress** or
+**Completed**. Existing and newly created secondaries start in progress. Marking
 one completed records the end of its current work period in UTC. Repeating that
 confirmation preserves the date, including after a lost response. Marking it in
 progress clears the date; completing it again starts a new completed period.
@@ -461,7 +461,7 @@ user action. Cleanup still excludes busy, locked, pending, unavailable and
 insufficiently verified workspaces regardless of this annotation.
 
 The status is stored in the local cache, so it can be read and changed while the
-source is offline or removed. Primary and imported workspaces support the same
+source is offline or removed. Imported secondary workspaces support the same
 annotation, while their existing restrictions on physical removal remain intact.
 Removed workspaces retain their status/date for reading. Pending physical moves
 or removals prevent updates until their outcomes are recovered.
@@ -472,6 +472,19 @@ reopening another completed period requires a fresh read. No Codex request is
 needed. The UI re-reads the catalogue after a failed response without replaying
 the update and retains the error. Source synchronization, relocation and import
 do not reset work progress.
+
+The primary workspace is the project's permanent reference directory. It has no
+editable work progress, completion marker or completion date. The inventory's
+in-progress/completed filters apply only to secondaries; **All workspaces** also
+shows the primary. API requests to change primary progress are rejected even
+when the requested value is already active. Its stored status stays `active`
+with a null completion date for protocol compatibility.
+
+Migration 47 resets any previously completed primary and enforces that invariant
+on inserts, status updates and role changes. It preserves secondary statuses,
+workspace/project identities and conversation history. Relocation remains
+available for the primary: it updates the registered path after the user has
+moved the directory, without moving files itself.
 
 ## Project retention policy
 
@@ -542,8 +555,9 @@ and rule-file scoping. Migrations 32–34 add transition and maintenance/catalog
 guards; 35–37 add creation journaling, names and frozen storage roots.
 Migration 43 journals removal; migration 44 retains relocation policy reloads.
 Migration 45 reserves physical moves and destination ownership. Migration 46
-adds work progress and its consistent nullable completion date, preserving
-existing identities, paths and history. Preserve
+adds secondary work progress and its consistent nullable completion date.
+Migration 47 keeps primaries permanent and clears obsolete primary completion
+annotations, preserving existing identities, paths and history. Preserve
 existing data through idempotent migrations instead of rewriting associations.
 
 Run from the repository root:
@@ -589,6 +603,8 @@ late responses, offline reads and the existing deletion confirmation.
 idempotent dates, explicit reopening, stale contexts, pending maintenance and
 unchanged execution reservations. UI tests cover manual changes, combined
 filters, sidebar markers, offline updates and lost responses without replay.
+Migration 47 tests cover old completed primaries, idempotent recovery and SQL
+role/status guards; UI tests cover primary menus, properties and status filters.
 `workspaceRetention` and project preference tests cover legacy defaults, invalid
 policies, per-project persistence and explicit disabling. Management tests cover
 completion/activity deadlines, in-progress exclusions, unsaved drafts, reopening

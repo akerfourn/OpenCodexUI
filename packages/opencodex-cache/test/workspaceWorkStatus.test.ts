@@ -49,9 +49,11 @@ describe("persistent workspace work progress", () => {
 
   it("should migrate version 45 workspaces as active without changing their identities or names", async () => {
     await repository.rename(primary.projectId, secondary.id, "Existing work");
-    database.exec(`ALTER TABLE project_workspaces DROP COLUMN completed_at;
+    database.exec(`DROP TRIGGER primary_workspace_status_insert;
+      DROP TRIGGER primary_workspace_status_update;
+      ALTER TABLE project_workspaces DROP COLUMN completed_at;
       ALTER TABLE project_workspaces DROP COLUMN work_status;
-      DELETE FROM schema_migrations WHERE version = 46;`);
+      DELETE FROM schema_migrations WHERE version >= 46;`);
     runMigrations(database);
     runMigrations(database);
     expect(await repository.get(secondary.id)).toEqual({ ...secondary, name: "Existing work", workStatus: "active", completedAt: null });
@@ -69,6 +71,48 @@ describe("persistent workspace work progress", () => {
     open();
     expect(await repository.get(secondary.id)).toEqual(completed);
     expect(await repository.setWorkStatus(input)).toEqual(completed);
+  });
+
+  it("should migrate completed version 46 primaries without changing secondary progress or history", async () => {
+    const completed = await repository.setWorkStatus(request(secondary));
+    database.exec(`DROP TRIGGER primary_workspace_status_insert;
+      DROP TRIGGER primary_workspace_status_update;
+      DELETE FROM schema_migrations WHERE version = 47;`);
+    database.prepare("UPDATE project_workspaces SET work_status = 'completed', completed_at = '2026-10-20' WHERE id = ?")
+      .run(primary.id);
+    database.prepare(`INSERT INTO threads (id, project_id, source_id, current_workspace_id, cwd, title, status)
+      VALUES ('primary-thread', ?, 'source', ?, '/repo', 'Existing conversation', 'idle')`).run(primary.projectId, primary.id);
+    const before = database.prepare("SELECT * FROM threads WHERE id = 'primary-thread'").get();
+    runMigrations(database);
+    runMigrations(database);
+    expect(await repository.get(primary.id)).toEqual(primary);
+    expect(await repository.get(secondary.id)).toEqual(completed);
+    expect(database.prepare("SELECT * FROM threads WHERE id = 'primary-thread'").get()).toEqual(before);
+    expect(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations WHERE version = 47").get()).toEqual({ count: 1 });
+    database.close();
+    open();
+    expect(await repository.get(primary.id)).toEqual(primary);
+    expect(await repository.get(secondary.id)).toEqual(completed);
+    expect(database.pragma("foreign_key_check")).toEqual([]);
+  });
+
+  it.each(["active", "completed"] as const)("should reject any primary status update, including %s", async status => {
+    await expect(repository.setWorkStatus(request(primary, status)))
+      .rejects.toThrow("The primary workspace has no editable work status.");
+    expect(await repository.get(primary.id)).toEqual(primary);
+  });
+
+  it("should enforce permanent primaries for direct inserts, updates and role changes", async () => {
+    const message = "Primary workspaces must remain active without a completion date.";
+    expect(() => database.prepare("UPDATE project_workspaces SET work_status = 'completed', completed_at = '2026-10-22' WHERE id = ?")
+      .run(primary.id)).toThrow(message);
+    expect(() => database.prepare(`INSERT INTO project_workspaces
+      (id, project_id, source_id, source_key, path, is_primary, work_status, completed_at)
+      VALUES ('invalid-primary', ?, 'other', 'other', '/other', 1, 'completed', '2026-10-22')`)
+      .run(primary.projectId)).toThrow(message);
+    await repository.setWorkStatus(request(secondary));
+    expect(() => database.prepare("UPDATE project_workspaces SET is_primary = 1 WHERE id = ?").run(secondary.id)).toThrow(message);
+    expect(await repository.get(primary.id)).toEqual(primary);
   });
 
   it("should clear the completion date when reopened and start a new completed period later", async () => {
@@ -128,7 +172,7 @@ describe("persistent workspace work progress", () => {
     expect(active.completedAt).toBeNull();
     database.prepare("UPDATE project_workspaces SET managed = 0 WHERE id = ?").run(secondary.id);
     expect(await repository.setWorkStatus(request(active))).toMatchObject({ managed: false, workStatus: "completed" });
-    expect(await repository.setWorkStatus(request(primary))).toMatchObject({ isPrimary: true, workStatus: "completed" });
+    expect(await repository.get(primary.id)).toEqual(primary);
   });
 
   it("should reject unsupported statuses and inconsistent dates without mutating progress", async () => {

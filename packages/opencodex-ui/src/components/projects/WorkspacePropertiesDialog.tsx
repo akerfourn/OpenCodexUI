@@ -31,6 +31,8 @@ export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
   const readOnly = workspace.isPrimary || workspace.removedAt !== null || project.isReadOnlyFromCache;
   const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
   const help = workspace.isPrimary ? <Alert severity="info">{t("workspaces.primaryHelp")}</Alert> : null;
+  const statusHelp = statusWorkspace.isPrimary ? null
+    : <Typography variant="caption" color="text.secondary">{t("workspaceWorkStatus.help")}</Typography>;
   const save = readOnly ? null : <Button onClick={handleSave}
     disabled={store.isBusy || name.trim().length === 0 || name.trim().length > 100}>
     {t("workspaces.save")}
@@ -40,7 +42,7 @@ export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
     await store.rename(workspace.id, name);
     if (store.error === null) onClose();
   }
-  /** Changes progress independently of renaming, including for principal and imported workspaces. */
+  /** Changes secondary work progress independently of names and imported ownership. */
   function handleWorkStatus(target: OpenCodexProjectWorkspace, status: OpenCodexWorkspaceWorkStatus): void {
     void store.setWorkStatus(target, status);
   }
@@ -50,7 +52,7 @@ export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
       <DialogContent>
         {help}{lockInfo}
         <WorkspaceWorkStatusControlX workspace={statusWorkspace} disabled={statusDisabled} onChange={handleWorkStatus} />
-        <Typography variant="caption" color="text.secondary">{t("workspaceWorkStatus.help")}</Typography>
+        {statusHelp}
         <TextField label={t("workspaces.name")} value={name} fullWidth margin="normal"
           disabled={readOnly || store.isBusy} onChange={(event) => setName(event.target.value)} />
         <TextField label={t("workspaces.destination")} value={workspace.path} fullWidth margin="normal"

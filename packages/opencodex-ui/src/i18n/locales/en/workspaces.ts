@@ -9,8 +9,9 @@ export const enWorkspaces = {
     "reopen": "Mark as in progress",
     "completedAt": "Completed on {{date}}",
     "filter": "Work status",
-    "all": "All statuses",
-    "help": "This status describes your work. It does not stop activities, lock the workspace or delete anything. Reopening is manual. Cleanup suggestions only cover completed work, using the delay saved for this project."
+    "all": "All workspaces",
+    "primaryHelp": "The primary workspace is the project’s permanent reference directory. In-progress and completed statuses apply only to secondary workspaces.",
+    "help": "This status describes work in a secondary workspace. It does not stop activities, lock the workspace or delete anything. Reopening is manual. Cleanup suggestions only cover completed work, using the delay saved for this project."
   },
   "workspaceManagement": {
     "title": "Workspace activity and cleanup",

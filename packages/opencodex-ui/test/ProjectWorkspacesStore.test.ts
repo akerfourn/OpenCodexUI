@@ -26,6 +26,13 @@ const workspaces: OpenCodexProjectWorkspace[] = [
 ];
 
 describe("workspace UI orchestration", () => {
+  it("should refuse a primary work-status change before sending it through transport", async () => {
+    const { project, request } = fixture();
+    await project.workspaces.setWorkStatus(workspaces[0]!, "completed");
+    expect(project.workspaces.error).toBe("The primary workspace has no editable work status.");
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.workStatus.update")).toBe(false);
+  });
+
   it.each([90, null])("should save project retention offline through a plain isolated preference patch: %s", async days => {
     const { root, project, request } = fixture();
     vi.mocked(root.sourcesStore.isSourceReady).mockReturnValue(false);

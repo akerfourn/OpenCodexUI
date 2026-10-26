@@ -307,6 +307,7 @@ export class ProjectWorkspacesStore {
       expectedCompletedAt: workspace.completedAt ?? null
     };
     await this.perform(async () => {
+      if (workspace.isPrimary) throw new Error("The primary workspace has no editable work status.");
       await this.root.request({ type: "projectWorkspaces.workStatus.update", input });
     }, true);
   }

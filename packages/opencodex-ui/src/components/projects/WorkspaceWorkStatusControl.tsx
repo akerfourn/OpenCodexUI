@@ -9,6 +9,9 @@ export function WorkspaceWorkStatusControl({ workspace, disabled, onChange }: {
   onChange(workspace: OpenCodexProjectWorkspace, status: OpenCodexWorkspaceWorkStatus): void;
 }) {
   const { t, i18n } = useTranslation();
+  if (workspace.isPrimary) {
+    return <Typography variant="body2" color="text.secondary">{t("workspaceWorkStatus.primaryHelp")}</Typography>;
+  }
   const status = workspace.workStatus ?? "active";
   const completed = status === "completed";
   const action = completed ? "workspaceWorkStatus.reopen" : "workspaceWorkStatus.complete";

@@ -18,9 +18,9 @@ export interface OpenCodexProjectWorkspace {
   managed: boolean;
   /** Logical removal timestamp; physical availability is checked in the source. */
   removedAt: string | null;
-  /** Manual organizational status; absent legacy payloads are active. */
+  /** Secondary work progress; primary workspaces always remain active. Legacy payloads default to active. */
   workStatus?: OpenCodexWorkspaceWorkStatus;
-  /** End of the current completed period; cleared when work is explicitly reopened. */
+  /** End of a secondary's completed period; primary workspaces always use null. */
   completedAt?: string | null;
   /** A durable removal currently prevents using this checkout. */
   removalPending?: boolean;

@@ -1,7 +1,7 @@
-/** User-declared work progress, independent of Git locks and physical availability. */
+/** User-declared secondary work progress, independent of Git locks and physical availability. */
 export type OpenCodexWorkspaceWorkStatus = "active" | "completed";
 
-/** Fixed metadata snapshot used to reject updates from an obsolete workspace view. */
+/** Reviewed secondary metadata; primary workspaces reject status updates. */
 export interface OpenCodexWorkspaceWorkStatusInput {
   projectId: string;
   workspaceId: string;

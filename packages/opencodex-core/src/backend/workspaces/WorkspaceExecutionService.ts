@@ -102,7 +102,7 @@ export class WorkspaceExecutionService {
     await this.repository.rename(projectId, workspaceId, name);
   }
 
-  /** Changes organizational metadata without resuming, stopping or moving any conversation. */
+  /** Changes secondary work progress; the repository rejects primary updates transactionally. */
   async setWorkStatus(input: OpenCodexWorkspaceWorkStatusInput): Promise<OpenCodexProjectWorkspace> {
     return await this.repository.setWorkStatus(input);
   }

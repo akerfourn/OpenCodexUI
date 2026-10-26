@@ -7,14 +7,15 @@ export function updateWorkspaceWorkStatus(database: Database, input: OpenCodexWo
     || (input.expectedWorkStatus !== "active" && input.expectedWorkStatus !== "completed")) {
     throw new Error("Unsupported workspace work status.");
   }
-  const row = database.prepare(`SELECT work_status AS workStatus, completed_at AS completedAt
+  const row = database.prepare(`SELECT is_primary AS isPrimary, work_status AS workStatus, completed_at AS completedAt
     FROM project_workspaces w WHERE id = ? AND project_id = ? AND source_id IS ? AND path = ?
       AND removed_at IS NULL
       AND NOT EXISTS (SELECT 1 FROM workspace_removals WHERE workspace_id = w.id)
       AND NOT EXISTS (SELECT 1 FROM workspace_moves WHERE workspace_id = w.id)`)
     .get(input.workspaceId, input.projectId, input.sourceId, input.workspacePath) as
-      { workStatus: string; completedAt: string | null } | undefined;
+      { isPrimary: number; workStatus: string; completedAt: string | null } | undefined;
   if (row === undefined) throw new Error("Workspace context changed, was removed or has pending maintenance. Refresh the workspace.");
+  if (row.isPrimary === 1) throw new Error("The primary workspace has no editable work status.");
   // A lost response may be retried without moving the completion date forward.
   if (row.workStatus === input.workStatus) return;
   if (row.workStatus !== input.expectedWorkStatus || row.completedAt !== input.expectedCompletedAt) {

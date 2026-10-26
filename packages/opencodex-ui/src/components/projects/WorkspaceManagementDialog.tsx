@@ -51,7 +51,8 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
       sourceAvailable: project.isCodexSourceReady && !project.isReadOnlyFromCache && workspace.sourceId === project.project.sourceId,
       checking: store.isRefreshingManagement || store.loadingLockIds.has(workspace.id), retentionDays, now
     }) }));
-  const filtered = entries.filter(entry => workStatusFilter === "all" || (entry.workspace.workStatus ?? "active") === workStatusFilter);
+  const filtered = entries.filter(entry => workStatusFilter === "all"
+    || (!entry.workspace.isPrimary && (entry.workspace.workStatus ?? "active") === workStatusFilter));
   const visible = filtered.filter(entry => !onlyCandidates || entry.status === "candidate");
   const candidateCount = filtered.filter(entry => entry.status === "candidate").length;
   const rows = visible.map(entry => <WorkspaceManagementRowX key={entry.workspace.id} {...entry}

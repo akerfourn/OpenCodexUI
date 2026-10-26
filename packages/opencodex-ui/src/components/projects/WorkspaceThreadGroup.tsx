@@ -50,7 +50,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const lockDialog = lockSnapshot === null ? null
     : <WorkspaceLockDialogX project={project} state={lockSnapshot} onClose={() => setLockSnapshot(null)} />;
   const lockLabel = locked ? t("workspaces.unlock") : t("workspaces.lock");
-  const completed = workspace?.workStatus === "completed";
+  const completed = workspace !== null && !workspace.isPrimary && workspace.workStatus === "completed";
   const workStatusBadge = completed ? <Tooltip title={t("workspaceWorkStatus.completed")}>
     <TaskAltOutlinedIcon fontSize="small" color="success" aria-label={t("workspaceWorkStatus.completed")} />
   </Tooltip> : null;
@@ -60,8 +60,10 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   /** Changes the fixed workspace's manual progress without acting on its conversations or files. */
   function handleWorkStatus(): void {
     setAnchor(null);
-    if (workspace !== null) void project.workspaces.setWorkStatus(workspace, completed ? "active" : "completed");
+    if (workspace !== null && !workspace.isPrimary) void project.workspaces.setWorkStatus(workspace, completed ? "active" : "completed");
   }
+  const workStatusItem = workspace !== null && !workspace.isPrimary
+    ? <MenuItem disabled={statusDisabled} onClick={handleWorkStatus}>{t(workStatusAction)}</MenuItem> : null;
   let lockAction = null;
   if (workspace !== null && !workspace.isPrimary && workspace.removedAt === null) {
     let label = t("workspaces.lockUnavailable");
@@ -158,7 +160,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
       {threads}{empty}{properties}{removal}{relocation}{movement}{lockDialog}{preparation}
       <Menu open={anchor !== null} anchorEl={anchor} onClose={() => setAnchor(null)}>
         <MenuItem onClick={handleProperties}>{t("workspaces.properties")}</MenuItem>
-        <MenuItem disabled={statusDisabled} onClick={handleWorkStatus}>{t(workStatusAction)}</MenuItem>
+        {workStatusItem}
         <MenuItem disabled={disabled} onClick={handlePrepare}>{t("workspacePreparation.title")}</MenuItem>
         {lockAction}{moveAction}{relocateAction}{removeAction}
       </Menu>
