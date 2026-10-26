@@ -26,6 +26,7 @@ export const frGit = {
     deferred: "Mis de côté ({{count}})",
     deferredDescription: "Ces fichiers restent dans le dossier mais sont exclus de la préparation globale.",
     fetchTags: "Synchroniser les tags distants",
+    fetchUpdates: "Vérifier les mises à jour distantes",
     forcePushTag: "Forcer l'envoi du tag",
     forcePushTagConfirmation: "Je comprends que ce tag distant sera remplacé.",
     forcePushTagDescription: "Le tag « {{name}} » sera forcé vers {{remote}}.",

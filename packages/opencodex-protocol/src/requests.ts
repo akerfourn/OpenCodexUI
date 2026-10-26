@@ -384,6 +384,7 @@ export type OpenCodexRequest =
       message: string;
     }
   | { type: "git.pull"; workspaceId?: string; projectPath: string; sourceId: string | null }
+  | { type: "git.fetch"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "git.push"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "git.branch.publish"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "projectCommands.list"; projectId: string }

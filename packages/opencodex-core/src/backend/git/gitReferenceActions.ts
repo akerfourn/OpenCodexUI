@@ -29,6 +29,7 @@ export {
   branches,
   checkoutBranch,
   createBranch,
+  fetchUpdates,
   mergeBranch,
   mergeBranchTo,
   publishCurrentBranch,

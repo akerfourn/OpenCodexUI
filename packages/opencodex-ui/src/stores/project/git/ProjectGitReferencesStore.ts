@@ -37,6 +37,8 @@ export class ProjectGitReferencesStore {
   isSavingRemote = false;
   /** Whether a pull operation is in flight. */
   isPulling = false;
+  /** Whether remote branch references are being fetched. */
+  isFetchingUpdates = false;
   /** Whether a push or branch publication is in flight. */
   isPushing = false;
 
@@ -70,6 +72,7 @@ export class ProjectGitReferencesStore {
       this.parent.statusStore.status.upstreamName !== null &&
       this.parent.statusStore.status.aheadCount > 0 &&
       !this.parent.statusStore.isLoading &&
+      !this.isFetchingUpdates &&
       !this.isPushing
     );
   }
@@ -82,6 +85,7 @@ export class ProjectGitReferencesStore {
       this.parent.statusStore.status.upstreamName === null &&
       this.parent.statusStore.status.remotes.length > 0 &&
       !this.parent.statusStore.isLoading &&
+      !this.isFetchingUpdates &&
       !this.isPushing
     );
   }
@@ -100,7 +104,21 @@ export class ProjectGitReferencesStore {
       this.parent.statusStore.status.upstreamName !== null &&
       this.parent.statusStore.status.behindCount > 0 &&
       !this.parent.statusStore.isLoading &&
+      !this.isFetchingUpdates &&
       !this.isPulling
+    );
+  }
+
+  /** Whether remote references can be checked without overlapping another sync. */
+  get canFetchUpdates(): boolean {
+    return (
+      this.isAvailable &&
+      this.parent.statusStore.isRepository &&
+      this.parent.statusStore.status.remotes.length > 0 &&
+      !this.parent.statusStore.isLoading &&
+      !this.isFetchingUpdates &&
+      !this.isPulling &&
+      !this.isPushing
     );
   }
 
@@ -385,6 +403,43 @@ export class ProjectGitReferencesStore {
     } finally {
       runInAction(() => {
         this.isPulling = false;
+      });
+    }
+  }
+
+  /** Fetches remote references and refreshes the visible branch and status state. */
+  async fetchUpdates(): Promise<void> {
+    if (!this.canFetchUpdates) {
+      return;
+    }
+
+    this.isFetchingUpdates = true;
+    this.parent.errorMessage = null;
+
+    try {
+      const status = await this.parent.request<OpenCodexGitStatus>({
+        type: "git.fetch",
+        projectPath: this.parent.projectPath,
+        sourceId: this.parent.sourceId
+      });
+
+      runInAction(() => {
+        this.applyStatus(status);
+      });
+
+      if (status.isRepository) {
+        await Promise.all([
+          this.loadBranches(),
+          this.parent.tagStore.loadTags()
+        ]);
+      }
+    } catch (error) {
+      runInAction(() => {
+        this.parent.errorMessage = readErrorMessage(error);
+      });
+    } finally {
+      runInAction(() => {
+        this.isFetchingUpdates = false;
       });
     }
   }

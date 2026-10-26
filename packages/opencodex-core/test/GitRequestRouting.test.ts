@@ -57,6 +57,7 @@ const cases: RouteCase[] = [
   { request: { type: "git.unstage", ...scope, paths }, effect: "unstage", args: [...scopeArgs, paths] },
   { request: commitRequest, effect: "commit", args: [...scopeArgs, "fix: été", "project", "workspace"] },
   { request: { type: "git.pull", ...scope }, effect: "pull", args: scopeArgs },
+  { request: { type: "git.fetch", ...scope }, effect: "fetchUpdates", args: scopeArgs },
   { request: { type: "git.push", ...scope }, effect: "push", args: scopeArgs },
   { request: { type: "git.branch.publish", ...scope }, effect: "publishCurrentBranch", args: scopeArgs },
   { request: { type: "commitPrompt.get" }, effect: "commitMessage.readPrompt", args: [] },
@@ -77,7 +78,7 @@ function createGitRoutingFixture() {
     fetchTags: vi.fn(), pushTags: vi.fn(), createTag: vi.fn(), pushTag: vi.fn(),
     countCommitsSinceTag: vi.fn(), readLog: vi.fn(), readCommitDetails: vi.fn(), checkoutBranch: vi.fn(),
     createBranch: vi.fn(), mergeBranch: vi.fn(), mergeBranchTo: vi.fn(), stage: vi.fn(), unstage: vi.fn(),
-    commit: vi.fn(), pull: vi.fn(), push: vi.fn(), publishCurrentBranch: vi.fn(),
+    commit: vi.fn(), pull: vi.fn(), fetchUpdates: vi.fn(), push: vi.fn(), publishCurrentBranch: vi.fn(),
     commitMessage: { readPrompt: vi.fn(), updatePrompt: vi.fn(), resetPrompt: vi.fn(), generate: vi.fn() }
   };
   const { commitMessage, ...operations } = git;

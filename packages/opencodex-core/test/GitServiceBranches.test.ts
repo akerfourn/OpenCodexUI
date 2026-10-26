@@ -7,6 +7,58 @@ import {
 } from "./gitServiceTestUtils";
 
 describe("GitService branches", () => {
+  it("should fetch the current upstream and refresh ahead/behind status without pulling", async () => {
+    const statusOutput = "# branch.head main\0# branch.upstream origin/main\0";
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: statusOutput, stderr: "" },
+      { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" },
+      { exitCode: 0, stdout: "From git@example.com:owner/repo\n", stderr: "" },
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      {
+        exitCode: 0,
+        stdout: `${statusOutput}# branch.ab +1 -2\0`,
+        stderr: ""
+      },
+      { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" }
+    ]);
+    const service = createGitService(client);
+
+    const status = await service.fetchUpdates("/workspace/project", "source-1");
+
+    expect(status.aheadCount).toBe(1);
+    expect(status.behindCount).toBe(2);
+    expect(client.commands).toEqual([
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"],
+      ["git", "fetch"],
+      ["git", "rev-parse", "--is-inside-work-tree"],
+      ["git", "status", "--porcelain=v2", "-z", "--branch"],
+      ["git", "remote", "-v"]
+    ]);
+  });
+
+  it("should fetch the default remote when the current branch has no upstream", async () => {
+    const statusOutput = "# branch.head feature/new\0";
+    const client = new FakeCodexClient([
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: statusOutput, stderr: "" },
+      { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" },
+      { exitCode: 0, stdout: "backup\norigin\n", stderr: "" },
+      { exitCode: 0, stdout: "From git@example.com:owner/repo\n", stderr: "" },
+      { exitCode: 0, stdout: "true\n", stderr: "" },
+      { exitCode: 0, stdout: statusOutput, stderr: "" },
+      { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" }
+    ]);
+    const service = createGitService(client);
+
+    await service.fetchUpdates("/workspace/project", "source-1");
+
+    expect(client.commands).toContainEqual(["git", "fetch", "origin"]);
+    expect(client.commands).not.toContainEqual(["git", "pull", "--ff-only"]);
+  });
+
   it("should list local branches before remote branches", async () => {
     const client = new FakeCodexClient([
       { exitCode: 0, stdout: "feature/ui\n", stderr: "" },

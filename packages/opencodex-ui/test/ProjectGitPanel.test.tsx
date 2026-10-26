@@ -134,6 +134,23 @@ describe("ProjectGitCommitSection", () => {
 });
 
 describe("ProjectGitPanel", () => {
+  it("should show the remote update check when a remote is configured", () => {
+    const gitStore = createGitStore({
+      statusStore: createStatusStore({
+        status: createStatus({
+          remotes: [{ name: "origin", fetchUrl: "https://example.test/repo.git", pushUrl: null }]
+        })
+      }),
+      referencesStore: createReferencesStore({ canFetchUpdates: true })
+    });
+
+    const markup = renderToStaticMarkup(
+      <ProjectGitPanelX store={createRootStore()} projectStore={createProjectStore(gitStore)} />
+    );
+
+    expect(markup).toContain("git.fetchUpdates");
+  });
+
   it("should show source unavailability without the repository interface", () => {
     const markup = renderToStaticMarkup(
       <ProjectGitPanelX
@@ -215,12 +232,15 @@ function createReferencesStore(
     branches: [],
     canPull: false,
     canPush: false,
+    canFetchUpdates: false,
     canPublishBranch: false,
     isPulling: false,
+    isFetchingUpdates: false,
     isPushing: false,
     publishBranch: vi.fn(),
     push: vi.fn(),
     pull: vi.fn(),
+    fetchUpdates: vi.fn(),
     ...overrides
   } as unknown as ProjectGitReferencesStore;
 }

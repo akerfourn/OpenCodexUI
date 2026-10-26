@@ -29,6 +29,7 @@ import {
   checkoutBranch as checkoutGitBranch,
   createBranch as createGitBranch,
   createTag as createGitTag,
+  fetchUpdates as fetchGitUpdates,
   fetchTags as fetchGitTags,
   mergeBranch as mergeGitBranch,
   mergeBranchTo as mergeGitBranchTo,
@@ -459,6 +460,17 @@ export class GitService {
    */
   async pull(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
     return await pullGit(this.referenceContext, projectPath, sourceId);
+  }
+
+  /**
+   * Fetches remote updates without applying them to the working tree.
+   *
+   * @param projectPath Project working directory.
+   * @param sourceId Source identifier.
+   * @returns Refreshed status with updated ahead and behind counts.
+   */
+  async fetchUpdates(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    return await fetchGitUpdates(this.referenceContext, projectPath, sourceId);
   }
 
   /**

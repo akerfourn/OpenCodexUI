@@ -463,6 +463,7 @@ export interface GitApi {
   ): Promise<OpenCodexGitCommitResult>;
   push(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
   publishCurrentBranch(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
+  fetchUpdates(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
   pull(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;
 }
 

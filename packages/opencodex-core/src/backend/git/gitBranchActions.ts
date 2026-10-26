@@ -266,6 +266,40 @@ export async function pull(
 }
 
 /**
+ * Fetches the current upstream's references without changing the working tree.
+ *
+ * @param context Git command and status dependencies.
+ * @param projectPath Project working directory.
+ * @param sourceId Source identifier.
+ * @returns Refreshed Git status.
+ * @throws When the project is not a repository or Git fetch fails.
+ */
+export async function fetchUpdates(
+  context: GitReferenceActionContext,
+  projectPath: string,
+  sourceId: string | null
+): Promise<OpenCodexGitStatus> {
+  const status = await context.readStatus(projectPath, sourceId);
+
+  if (!status.isRepository) {
+    throw new Error("This project is not a Git repository.");
+  }
+
+  const remoteName = status.upstreamName === null
+    ? await resolveDefaultRemoteName(context, projectPath, sourceId)
+    : null;
+  const args = ["fetch"];
+
+  if (remoteName !== null) {
+    args.push(remoteName);
+  }
+
+  await context.runGit(projectPath, sourceId, args, { timeoutMs: 120_000 });
+
+  return await context.readStatus(projectPath, sourceId);
+}
+
+/**
  * Validates a branch name through Git without allowing a failed check to throw
  * from the command runner before its historical error mapping is applied.
  *

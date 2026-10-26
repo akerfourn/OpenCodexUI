@@ -28,6 +28,7 @@ export const enGit = {
     deferred: "Deferred ({{count}})",
     deferredDescription: "These files stay in the working folder but are excluded from staging all.",
     fetchTags: "Fetch remote tags",
+    fetchUpdates: "Check for remote updates",
     forcePushTag: "Force push tag",
     forcePushTagConfirmation: "I understand that this remote tag will be replaced.",
     forcePushTagDescription: "Tag “{{name}}” will be force-pushed to {{remote}}.",

@@ -388,6 +388,11 @@ export class GitRuntimeHandler {
   async pullGitChanges(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
     return await this.gitService.pull(projectPath, sourceId);
   }
+
+  /** Fetches remote updates without applying them to the working tree. */
+  async fetchGitUpdates(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    return await this.gitService.fetchUpdates(projectPath, sourceId);
+  }
 }
 
 /** Compares paths after applying the cache's cross-platform normalization. */

@@ -112,6 +112,8 @@ export async function routeGitRequest(runtime: GitRequestRuntime, request: GitRe
       );
     case "git.pull":
       return runtime.git.pull(request.projectPath, request.sourceId);
+    case "git.fetch":
+      return runtime.git.fetchUpdates(request.projectPath, request.sourceId);
     case "git.push":
       return runtime.git.push(request.projectPath, request.sourceId);
     case "git.branch.publish":

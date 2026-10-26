@@ -49,6 +49,7 @@ type GitApiHandler = Pick<
   | "commitGitChanges"
   | "pushGitChanges"
   | "publishCurrentGitBranch"
+  | "fetchGitUpdates"
   | "pullGitChanges"
   | "readCommitPrompt"
   | "updateCommitPrompt"
@@ -313,5 +314,10 @@ export class GitApi implements GitApiContract {
   /** Pulls remote commits from the configured upstream. */
   async pull(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
     return await this.handler.pullGitChanges(projectPath, sourceId);
+  }
+
+  /** Fetches remote updates without applying them to the working tree. */
+  async fetchUpdates(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus> {
+    return await this.handler.fetchGitUpdates(projectPath, sourceId);
   }
 }

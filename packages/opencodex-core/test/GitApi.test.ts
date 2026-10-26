@@ -38,6 +38,7 @@ describe("GitApi", () => {
       commitGitChanges: vi.fn(),
       pushGitChanges: vi.fn(),
       publishCurrentGitBranch: vi.fn(),
+      fetchGitUpdates: vi.fn().mockResolvedValue(status),
       pullGitChanges: vi.fn(),
       readCommitPrompt: vi.fn<() => Promise<OpenCodexCommitPrompt>>(),
       updateCommitPrompt: vi.fn(),
@@ -50,6 +51,9 @@ describe("GitApi", () => {
 
     await expect(api.readStatus("/project", "source-1")).resolves.toBe(status);
     expect(handler.readGitStatus).toHaveBeenCalledWith("/project", "source-1");
+
+    await expect(api.fetchUpdates("/project", "source-1")).resolves.toBe(status);
+    expect(handler.fetchGitUpdates).toHaveBeenCalledWith("/project", "source-1");
 
     await api.commit("/project", "source-1", "release changes", "project-1", "workspace-1");
     expect(handler.commitGitChanges).toHaveBeenCalledWith(
@@ -94,6 +98,7 @@ describe("GitApi", () => {
       commitGitChanges: vi.fn(),
       pushGitChanges: vi.fn(),
       publishCurrentGitBranch: vi.fn(),
+      fetchGitUpdates: vi.fn(),
       pullGitChanges: vi.fn(),
       readCommitPrompt: vi.fn<() => Promise<OpenCodexCommitPrompt>>().mockResolvedValue(prompt),
       updateCommitPrompt: vi.fn(),
