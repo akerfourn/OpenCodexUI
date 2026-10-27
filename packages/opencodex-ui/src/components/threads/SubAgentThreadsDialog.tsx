@@ -1,3 +1,4 @@
+import { FileLinkScope } from "../files/FileLinkScope";
 /**
  * Renders a readonly dialog for sub-agent threads spawned by a parent chat.
  */
@@ -271,7 +272,9 @@ export function SubAgentThreadsDialog({
     <Dialog open={open} fullWidth maxWidth="lg" onClose={onClose}>
       <DialogTitle>{t("sidebar.subAgentThreadsTitle")}</DialogTitle>
       <DialogContent sx={{ p: 0, height: "min(70vh, 640px)", overflow: "hidden" }}>
-        {content}
+        <FileLinkScope sourceId={selectedThreadSourceId} projectPath={currentThread?.projectPath ?? null}>
+          {content}
+        </FileLinkScope>
       </DialogContent>
     </Dialog>
   );

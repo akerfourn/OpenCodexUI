@@ -1,3 +1,4 @@
+import { FileLinkMenuItemsX } from "./FileLinkMenuItems";
 import { Menu, MenuItem } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
@@ -59,6 +60,9 @@ export function FileTreeContextMenu({ entry, path, tree, files, anchor, onClose,
     {renameItem}
     {deleteItem}
     {accessItem}
+    <FileLinkMenuItemsX target={{ href: path.length === 0 ? tree.context.workspacePath : path,
+      folderHref: path.length === 0 ? tree.context.workspacePath : path,
+      sourceId: tree.context.sourceId, projectPath: tree.context.workspacePath }} onClose={onClose} />
   </Menu>;
 }
 

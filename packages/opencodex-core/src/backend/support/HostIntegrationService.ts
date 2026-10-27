@@ -123,6 +123,20 @@ export class HostIntegrationService {
     return { ok: true };
   }
 
+  /** Opens a link's directory on the host only when the explicit source exposes local paths. */
+  async openLinkFolder(href: string, projectPath: string | null, sourceId: string | null): Promise<{ ok: true }> {
+    if (sourceId === null) throw new Error("Opening a link's folder requires an explicit local source.");
+    const source = await this.options.projects.resolveSource(sourceId);
+    if (!sourceHasLocalAccess(source)) throw new Error("This source's folders are not accessible on the host.");
+    if (this.options.openExternalLink === undefined) {
+      throw new Error(getBackendLabels(this.options.settings.getSettings().language).missingLinkHandler);
+    }
+    await this.options.openExternalLink(href, projectPath, null, {
+      mode: "system", command: null, containing: true
+    });
+    return { ok: true };
+  }
+
   /**
    * Opens a local project folder with the host file manager.
    *

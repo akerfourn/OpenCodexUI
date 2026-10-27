@@ -12,6 +12,8 @@ import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 export interface FolderLinkOptions {
   mode: "external" | "system";
   command: string | null;
+  /** Explicit context-menu action: open the directory or the file's parent with the system file manager. */
+  containing?: boolean;
 }
 
 export type OpenCodexBackendOptions = {

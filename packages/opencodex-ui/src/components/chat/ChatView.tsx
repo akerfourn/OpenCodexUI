@@ -1,3 +1,4 @@
+import { FileLinkScope } from "../files/FileLinkScope";
 /**
  * Renders the chat view component for the OpenCodex UI.
  */
@@ -69,6 +70,7 @@ export function ChatView({ store, projectStore, onOpenSubAgentDialog }: ChatView
   );
 
   return (
+    <FileLinkScope sourceId={chatStore.sourceId} projectPath={currentThread.projectPath}>
     <Stack className="chat-view">
       <ChatHeaderX projectStore={projectStore} chatStore={chatStore} />
       {isReadOnlyProject ? (
@@ -99,6 +101,7 @@ export function ChatView({ store, projectStore, onOpenSubAgentDialog }: ChatView
         />
       )}
     </Stack>
+    </FileLinkScope>
   );
 }
 

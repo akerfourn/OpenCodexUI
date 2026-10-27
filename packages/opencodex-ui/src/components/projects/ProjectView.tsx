@@ -1,3 +1,4 @@
+import { FileLinkScope } from "../files/FileLinkScope";
 /**
  * Renders one opened project workspace.
  */
@@ -59,7 +60,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
   );
 
   return (
-    <>
+    <FileLinkScope sourceId={projectStore.project.sourceId} projectPath={projectStore.workspacePath}>
       <ResizableSidebarLayout
         className="workspace-shell"
         defaultSidebarWidth={320}
@@ -115,7 +116,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
           onClose={handleCloseSubAgentDialog}
         />
       ) : null}
-    </>
+    </FileLinkScope>
   );
 }
 

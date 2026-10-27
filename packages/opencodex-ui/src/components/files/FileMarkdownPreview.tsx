@@ -1,3 +1,4 @@
+import { FileLinkScope } from "./FileLinkScope";
 import { Alert, Box } from "@mui/material";
 import { runInAction } from "mobx";
 import { observer } from "mobx-react-lite";
@@ -69,9 +70,12 @@ export function FileMarkdownPreview({ document, files, port }: {
       onClick={handleClick} onAuxClick={handleClick} onKeyDown={handleKeyDown}
       sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 3, bgcolor: "background.paper" }}>
       {feedback}
+      <FileLinkScope sourceId={document.target?.sourceId ?? null} projectPath={document.target?.workspacePath ?? null}
+        documentPath={document.target?.path}>
       <FileMarkdownImageProvider target={document.target} port={port} onOpenLink={handleOpenImageLink}>
         <FileMarkdownContentM content={document.content} />
       </FileMarkdownImageProvider>
+      </FileLinkScope>
     </Box>
   );
 }

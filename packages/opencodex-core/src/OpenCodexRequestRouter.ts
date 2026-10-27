@@ -218,6 +218,8 @@ export class OpenCodexRequestRouter {
         );
       case "system.openProject":
         return this.runtime.host.openInIde(request.projectPath, request.sourceId);
+      case "system.openLinkFolder":
+        return this.runtime.host.openLinkFolder(request.href, request.projectPath, request.sourceId);
       case "system.openProjectFolder":
         return this.runtime.host.openFolder(request.projectPath, request.sourceId);
       case "system.openProjectTerminal":

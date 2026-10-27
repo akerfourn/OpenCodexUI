@@ -11,6 +11,24 @@ import {
 } from "../src/backend/support/HostIntegrationService";
 
 describe("HostIntegrationService", () => {
+  it("should open a link folder only through its explicit host-accessible source", async () => {
+    const openExternalLink = vi.fn();
+    const service = createService({ openExternalLink, projectPath: "/unrelated/active" });
+    await service.openLinkFolder("src/app.ts", "/original/workspace", "local-source");
+    expect(openExternalLink).toHaveBeenCalledWith("src/app.ts", "/original/workspace", null,
+      { mode: "system", command: null, containing: true });
+  });
+
+  it("should refuse remote and missing source folder requests before invoking the host", async () => {
+    const openExternalLink = vi.fn();
+    const service = createService({ openExternalLink, source: createSource("custom", { hasLocalAccess: false }) });
+    await expect(service.openLinkFolder("src/app.ts", "/remote", "custom-source"))
+      .rejects.toThrow("not accessible on the host");
+    await expect(service.openLinkFolder("src/app.ts", "/remote", null))
+      .rejects.toThrow("explicit local source");
+    expect(openExternalLink).not.toHaveBeenCalled();
+  });
+
   it("should forward the persisted system folder destination only for host-accessible sources", async () => {
     const openExternalLink = vi.fn();
     const service = createService({ openExternalLink, folderOpeningMode: "system" });

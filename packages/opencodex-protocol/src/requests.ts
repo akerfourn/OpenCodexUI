@@ -208,6 +208,7 @@ export type OpenCodexRequest =
   | { type: "thread.review"; threadId: string; projectPath?: string | null }
   | { type: "thread.compact"; threadId: string; projectPath?: string | null }
   | { type: "system.openLink"; workspaceId?: string; href: string; projectPath?: string | null; sourceId?: string | null }
+  | { type: "system.openLinkFolder"; href: string; projectPath: string | null; sourceId: string | null }
   | { type: "system.openProject"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "system.openProjectFolder"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "system.openProjectTerminal"; workspaceId?: string; projectPath: string; sourceId: string | null }

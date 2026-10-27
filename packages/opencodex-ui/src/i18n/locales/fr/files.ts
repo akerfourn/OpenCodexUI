@@ -1,5 +1,6 @@
 export const frFiles = {
   files: {
+    links: { openFolder: "Ouvrir le dossier", copyLink: "Copier le lien" },
     frontmatter: "Métadonnées YAML",
     folderOpeningMode: "Ouvrir les liens de dossiers avec",
     folderOpeningSystem: "L’explorateur du système",

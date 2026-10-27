@@ -22,6 +22,15 @@ never inspected on the host without an explicit local-access capability. Source
 folder commands receive the clicked directory as `%D`, not the workspace root.
 Explicit IDE/file-manager actions in the project menu bypass these preferences.
 
+File references offer **Open folder** and **Copy link** on right-click in chats,
+Git, Markdown previews and dialogs. Open folder uses the system file manager:
+directories open directly, files open their containing directory. It requires
+an explicitly host-accessible source; remote references remain copyable. The
+menu captures the clicked source and base directory, including document-relative
+Markdown paths, without following a later project or workspace selection.
+Copy link preserves the original reference and its line/column suffix. The
+explorer includes these actions alongside its existing file operations.
+
 ## Chat image previews
 
 Chat Markdown preserves native Windows paths and `file:` links for the existing

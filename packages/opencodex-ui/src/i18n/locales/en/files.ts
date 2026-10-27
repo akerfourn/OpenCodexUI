@@ -3,6 +3,7 @@ import type { frFiles } from "../fr/files.js";
 
 export const enFiles = {
   files: {
+    links: { openFolder: "Open folder", copyLink: "Copy link" },
     frontmatter: "YAML metadata",
     folderOpeningMode: "Open folder links with",
     folderOpeningSystem: "The system file manager",

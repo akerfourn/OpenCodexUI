@@ -26,6 +26,50 @@ beforeEach(() => {
 });
 
 describe("folder link destination", () => {
+  it("should open the parent of a file reference without launching the configured editor", async () => {
+    mocks.stat.mockResolvedValue({ isDirectory: () => false });
+    await openExternalLink("src/file.ts:12:4", "/work", "editor %F", {
+      mode: "system", command: null, containing: true
+    });
+    expect(mocks.openPath).toHaveBeenCalledWith(path.resolve("/work/src"));
+    expect(mocks.spawn).not.toHaveBeenCalled();
+    expect(mocks.openExternal).not.toHaveBeenCalled();
+  });
+
+  it("should open the directory itself for an encoded file URL", async () => {
+    const directory = path.resolve("/work/folder with spaces");
+    await openExternalLink(String(pathToFileURL(directory)), null, null, {
+      mode: "system", command: null, containing: true
+    });
+    expect(mocks.openPath).toHaveBeenCalledWith(directory);
+  });
+
+  it("should open the original parent of a deleted file", async () => {
+    mocks.stat.mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" }));
+    await openExternalLink("src/deleted.ts", "/work", null, {
+      mode: "system", command: null, containing: true
+    });
+    expect(mocks.openPath).toHaveBeenCalledWith(path.resolve("/work/src"));
+  });
+
+  it("should reject web links and relative references without a directory context", async () => {
+    const folders = { mode: "system", command: null, containing: true } as const;
+    await expect(openExternalLink("https://example.test/file", "/work", null, folders))
+      .rejects.toThrow("Only host filesystem paths");
+    await expect(openExternalLink("src/file.ts", null, null, folders))
+      .rejects.toThrow("explicit project directory");
+    expect(mocks.openPath).not.toHaveBeenCalled();
+    expect(mocks.openExternal).not.toHaveBeenCalled();
+  });
+
+  it("should propagate permission errors without guessing a parent", async () => {
+    mocks.stat.mockRejectedValue(Object.assign(new Error("permission denied"), { code: "EACCES" }));
+    await expect(openExternalLink("src/file.ts", "/work", null, {
+      mode: "system", command: null, containing: true
+    })).rejects.toThrow("permission denied");
+    expect(mocks.openPath).not.toHaveBeenCalled();
+  });
+
   it("should open a real directory in the system file manager", async () => {
     await openExternalLink("sub.dir", "/work", "code --goto %F", { mode: "system", command: "code %D" });
     expect(mocks.openPath).toHaveBeenCalledWith(path.resolve("/work/sub.dir"));

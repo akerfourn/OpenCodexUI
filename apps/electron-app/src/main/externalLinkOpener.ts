@@ -34,6 +34,19 @@ export async function openExternalLink(
 
   const resolved = resolveOpenTarget(target, projectPath);
 
+  if (folders?.containing === true) {
+    if (resolved.type !== "path" || !path.isAbsolute(resolved.value)) {
+      throw new Error("Only host filesystem paths can open a containing folder.");
+    }
+    if (!path.isAbsolute(target) && !/^file:/i.test(target) && projectPath === null) {
+      throw new Error("Relative file links require an explicit project directory.");
+    }
+    const directory = await isDirectory(resolved.value) ? resolved.value : path.dirname(resolved.value);
+    const error = await shell.openPath(directory);
+    if (error.length > 0) throw new Error(error);
+    return;
+  }
+
   if (resolved.type === "url") {
     await shell.openExternal(resolved.value);
     return;

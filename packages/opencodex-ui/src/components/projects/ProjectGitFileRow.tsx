@@ -117,6 +117,7 @@ export function ProjectGitFileRow({
       className="git-file-name git-file-name-link"
       type="button"
       title={file.path}
+      data-file-link={file.path}
       onClick={handleOpenFile}
     >
       {fileDisplay.name}

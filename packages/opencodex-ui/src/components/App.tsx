@@ -1,3 +1,5 @@
+import { FileLinkMenuProviderX } from "./files/FileLinkMenuProvider";
+import { FileLinkScope } from "./files/FileLinkScope";
 /**
  * Renders the app component for the OpenCodex UI.
  */
@@ -94,6 +96,8 @@ export function App({ store }: AppProps) {
 
   if (store.appStore.shouldShowOnboarding) {
     return (
+      <FileLinkMenuProviderX store={store}>
+      <FileLinkScope sourceId={null} projectPath={null}>
       <Box component="main" className="app-shell">
         <OnboardingViewX store={store} />
         {fileDropOverlay}
@@ -103,10 +107,14 @@ export function App({ store }: AppProps) {
         {closeConfirmation}
         {shutdownOverlay}
       </Box>
+      </FileLinkScope>
+      </FileLinkMenuProviderX>
     );
   }
 
   return (
+    <FileLinkMenuProviderX store={store}>
+    <FileLinkScope sourceId={null} projectPath={null}>
     <Box component="main" className="app-shell">
       <AppTabsX store={store} />
       <AppUpdateBannerX store={store.appUpdateStore} />
@@ -123,6 +131,8 @@ export function App({ store }: AppProps) {
       {closeConfirmation}
       {shutdownOverlay}
     </Box>
+    </FileLinkScope>
+    </FileLinkMenuProviderX>
   );
 }
 

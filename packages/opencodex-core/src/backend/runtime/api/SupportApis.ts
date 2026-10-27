@@ -227,6 +227,7 @@ type HostApiService = Pick<
   | "pickSourceExecutable"
   | "pickAttachmentFiles"
   | "openLink"
+  | "openLinkFolder"
   | "openProjectInIde"
   | "openProjectFolder"
   | "openProjectTerminal"
@@ -254,6 +255,11 @@ export class HostApi implements HostApiContract {
     sourceId: string | null
   ): Promise<{ ok: true }> {
     return await this.service.openLink(href, projectPath, sourceId);
+  }
+
+  /** Opens a file link’s directory through its explicit host-accessible source. */
+  async openLinkFolder(href: string, projectPath: string | null, sourceId: string | null): Promise<{ ok: true }> {
+    return await this.service.openLinkFolder(href, projectPath, sourceId);
   }
 
   /** Opens a project folder through its configured source opener. */

@@ -580,6 +580,8 @@ export interface HostApi {
   pickExecutable(): Promise<string | null>;
   pickFiles(): Promise<OpenCodexAttachment[]>;
   openLink(href: string, projectPath: string | null, sourceId: string | null): Promise<{ ok: true }>;
+  /** Opens a file link's directory in the host file manager, using its explicit source. */
+  openLinkFolder(href: string, projectPath: string | null, sourceId: string | null): Promise<{ ok: true }>;
   openInIde(projectPath: string, sourceId: string | null): Promise<{ ok: true }>;
   openFolder(projectPath: string, sourceId: string | null): Promise<{ ok: true }>;
   openTerminal(projectPath: string, sourceId: string | null): Promise<{ ok: true }>;
