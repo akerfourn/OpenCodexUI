@@ -8,6 +8,7 @@
 import { fileMutationScript } from "./fileMutationScript.js";
 import { workspaceDiskUsageScript } from "./workspaceDiskUsageScript.js";
 import { primaryWorkspaceMoveScript } from "./primaryWorkspaceMoveScript.js";
+import { filePreviewScript } from "./filePreviewScript.js";
 
 export const fileWorkerScript = String.raw`
 const fs = require('node:fs/promises');
@@ -79,6 +80,7 @@ async function inspectAccess(target, permissions) {
 ${fileMutationScript}
 ${workspaceDiskUsageScript}
 ${primaryWorkspaceMoveScript}
+${filePreviewScript}
 
 /** Recognizes supported image headers; filenames alone never turn arbitrary bytes into images. */
 function imageMimeType(header, full) {
@@ -99,7 +101,7 @@ function imageMimeType(header, full) {
 }
 
 /** Reads bounded text, image or PDF bytes, including when a file grows while reading. */
-async function readSnapshot(full, root, policyReadOnly = false, previewImages = false, previewPdf = false) {
+async function readSnapshot(full, root, policyReadOnly = false, previewImages = false, previewPdf = false, previewAudio = false) {
   const handle = await fs.open(full, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
   try {
     const before = await handle.stat({ bigint: true });
@@ -107,14 +109,16 @@ async function readSnapshot(full, root, policyReadOnly = false, previewImages = 
     const header = Buffer.alloc(4096);
     const first = await handle.read(header, 0, header.length, null);
     const mimeType = previewImages ? imageMimeType(header.subarray(0, first.bytesRead), full) : null;
+    const audioType = audioMimeType(header.subarray(0, first.bytesRead), full);
+    if (audioType !== null && !previewAudio) fail('binary', 'Audio files are read-only previews.');
     const isPdf = path.extname(full).toLowerCase() === '.pdf' ||
       header.subarray(0, Math.min(first.bytesRead, 5)).equals(Buffer.from('%PDF-'));
     if (isPdf && !previewPdf) fail('binary', 'PDF documents are read-only previews.');
     let limit = MAX_BYTES;
     let limitMessage = 'Maximum supported text size: 2 MiB.';
-    if (isPdf || mimeType !== null) {
+    if (isPdf || mimeType !== null || audioType !== null) {
       limit = MAX_IMAGE_BYTES;
-      limitMessage = isPdf ? 'Maximum supported PDF size: 10 MiB.' : 'Maximum supported image size: 10 MiB.';
+      limitMessage = 'Maximum supported media size: 10 MiB.';
     }
     if (before.size > BigInt(limit)) fail('tooLarge', limitMessage);
     const bytes = Buffer.alloc(limit + 1);
@@ -136,6 +140,8 @@ async function readSnapshot(full, root, policyReadOnly = false, previewImages = 
       .update(data).digest('hex');
     if (isPdf) return { kind: 'pdf', dataBase64: data.toString('base64'),
       byteLength: length, revision, readOnly: true };
+    if (audioType !== null) return { kind: 'audio', dataUrl: 'data:' + audioType + ';base64,' + data.toString('base64'),
+      mimeType: audioType, byteLength: length, revision, readOnly: true };
     if (mimeType !== null) {
       return { kind: 'image', dataUrl: 'data:' + mimeType + ';base64,' + data.toString('base64'),
         mimeType, byteLength: length, revision, readOnly: true };
@@ -202,6 +208,7 @@ async function execute(request) {
     return (await inspectAccess(request.target, request.permissions)).linkAccess;
   }
   const { full, root, readOnly } = await resolveTarget(request.target, request.permissions);
+  if (request.type === 'workspaceFiles.previewAsset') return await readPreviewAsset(full);
   if (request.type === 'workspaceFiles.save' && readOnly) fail('readOnly', 'External access is read-only.');
   if (request.type === 'workspaceFiles.stat') {
     const metadata = await fs.stat(full);
@@ -223,7 +230,8 @@ async function execute(request) {
   }
   const previewImages = request.type !== 'workspaceFiles.save' && request.previewImages === true;
   const previewPdf = request.type !== 'workspaceFiles.save' && request.previewPdf === true;
-  const current = await readSnapshot(full, root, readOnly, previewImages, previewPdf);
+  const previewAudio = request.type !== 'workspaceFiles.save' && request.previewAudio === true;
+  const current = await readSnapshot(full, root, readOnly, previewImages, previewPdf, previewAudio);
   if (request.type === 'workspaceFiles.check') return current.revision === request.revision;
   if (request.type === 'workspaceFiles.read') return current;
   if (request.type !== 'workspaceFiles.save') fail('invalidPath', 'Unknown file operation.');

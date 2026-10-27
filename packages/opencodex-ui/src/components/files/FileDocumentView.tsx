@@ -9,6 +9,7 @@ import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
 import type { RootStore } from "../../stores/RootStore";
 import { FileDocumentToolbarX } from "./FileDocumentToolbar";
 import { FileErrorX } from "./FileError";
+import { FileAudioViewerX } from "./FileAudioViewer";
 import { FileImageViewerX } from "./FileImageViewer";
 
 const PdfViewer = lazy(async () => {
@@ -23,6 +24,11 @@ const Editor = lazy(async () => {
 const MarkdownPreview = lazy(async () => {
   const module = await import("./FileMarkdownPreview");
   return { default: module.FileMarkdownPreviewX };
+});
+
+const HtmlPreview = lazy(async () => {
+  const module = await import("./FileHtmlPreview");
+  return { default: module.FileHtmlPreviewX };
 });
 
 /** Holds document feedback independently of the editor and its lazy bundle. */
@@ -120,6 +126,12 @@ export function FileDocumentView({
   }
   if (document.viewMode === "file" && document.pdfSnapshot !== null) {
     editor = visible ? <PdfViewer key={`${document.id}:${document.version}`} document={document} /> : null;
+  }
+  if (document.isHtmlPreview) {
+    editor = visible && shouldShowEditor ? <HtmlPreview key={document.id} document={document} port={root} /> : null;
+  }
+  if (document.viewMode === "file" && document.audioSnapshot !== null) {
+    editor = visible ? <FileAudioViewerX key={`${document.id}:${document.version}`} document={document} /> : null;
   }
   return (
     <div className="files-document">

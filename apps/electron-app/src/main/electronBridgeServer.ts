@@ -38,6 +38,7 @@ import { createCacheRepository } from "./electronCacheRepository.js";
 import { resolveCommitPromptPath } from "./commitPromptPaths.js";
 import { ensureProjectDirectory } from "./projectDirectory.js";
 import { ElectronNativeRequestHandler } from "./ElectronNativeRequestHandler.js";
+import { configureFilePreviewNavigation } from "./filePreviewNavigation.js";
 
 type ElectronBridgeServerOptions = {
   settings: OpenCodexSettings;
@@ -197,16 +198,20 @@ export class ElectronBridgeServer {
    */
   attachWindow(window: BrowserWindow): void {
     this.window = window;
+    configureFilePreviewNavigation(window.webContents, url => this.runtime.filePreviews.isActiveUrl(url));
     window.webContents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
       if (!isMainFrame || isInPlace) return;
+      this.runtime.filePreviews.clear();
       void this.dictation.local.dispose();
       void this.runtime.dictation.dispose();
     });
     window.webContents.on("render-process-gone", () => {
+      this.runtime.filePreviews.clear();
       void this.dictation.local.dispose();
       void this.runtime.dictation.dispose();
     });
     window.on("closed", () => {
+      this.runtime.filePreviews.clear();
       void this.dictation.local.dispose();
       void this.runtime.dictation.dispose();
     });
@@ -272,6 +277,7 @@ export class ElectronBridgeServer {
     ipcMain.on("opencodex:application-activity", this.handleApplicationActivity);
     ipcMain.on("opencodex:application-close-response", this.handleApplicationCloseResponse);
     ipcMain.handle("opencodex:request", async (_event, request: OpenCodexRequest) => {
+      if (_event.senderFrame !== _event.sender.mainFrame) throw new Error("Subframes cannot access application requests.");
       return this.nativeRequestHandler.handle(request, _event.sender.id);
     });
   }

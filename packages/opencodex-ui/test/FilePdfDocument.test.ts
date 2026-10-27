@@ -30,7 +30,7 @@ describe("PDF documents", () => {
     expect(second.document.pdfPageOffset).toBe(0);
     expect(second.document.pdfPage).toBe(1);
     expect(second.document.pdfZoom).toBeNull();
-    expect(first.request).toHaveBeenCalledWith({ type: "workspaceFiles.read", target, previewImages: true, previewPdf: true });
+    expect(first.request).toHaveBeenCalledWith({ type: "workspaceFiles.read", target, previewImages: true, previewPdf: true, previewAudio: true });
   });
 
   it("should retain bytes after failed reads and preserve navigation when the disk changes", async () => {

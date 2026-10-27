@@ -20,6 +20,7 @@ import type { ThreadPermissionsService } from "./backend/threads/ThreadPermissio
 import { DebugService } from "./backend/debug/DebugService.js";
 import { requireToolWorkspace } from "./backend/workspaces/workspaceToolContext.js";
 import { WorkspaceFilesService } from "./backend/files/WorkspaceFilesService.js";
+import { WorkspaceHtmlPreviewService } from "./backend/files/WorkspaceHtmlPreviewService.js";
 import { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import { CodexDictationService } from "./backend/dictation/CodexDictationService.js";
 import { resolveSourceCommand } from "./backend/sources/sourceMapping.js";
@@ -80,6 +81,8 @@ export class OpenCodexBackendRuntime {
   readonly isPrerelease: boolean;
   /** Source-aware filesystem service for workspace documents. */
   readonly files: WorkspaceFilesService;
+  /** Ephemeral HTML capabilities share file permissions and outlive no application shutdown. */
+  readonly filePreviews: WorkspaceHtmlPreviewService;
   /** Local debugger owns its lifecycle independently of Codex conversations. */
   readonly debug: DebugService;
   /** Durable presentation preferences never alter model inputs. */
@@ -118,6 +121,7 @@ export class OpenCodexBackendRuntime {
       () => this.services.notificationCoordinator.hasActiveTurns());
     this.files = new WorkspaceFilesService(this.services.cacheRepository,
       this.services.projectRuntimeHandler, this.services.clientPool, this.settings);
+    this.filePreviews = new WorkspaceHtmlPreviewService(request => this.files.execute(request));
     this.debug = new DebugService(this.services.cacheRepository?.debug ?? null, async context => {
       const workspace = await requireToolWorkspace(this.services.cacheRepository, context.workspaceId, context.projectId);
       if (workspace.sourceId !== context.sourceId || workspace.path !== context.workspacePath) {
@@ -362,6 +366,7 @@ export class OpenCodexBackendRuntime {
    * @returns Promise resolved when resources are disposed.
    */
   async dispose(): Promise<void> {
+    await this.filePreviews.dispose();
     await this.debug.dispose();
     await this.dictation.dispose();
     this.services.notificationCoordinator.flushAll();

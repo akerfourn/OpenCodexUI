@@ -89,9 +89,9 @@ export function FileDocumentToolbar({
       {gitDiffReadOnly ? t("files.gitDiffReadOnly") : t("files.readOnly")}
     </Typography>
   ) : null;
-  const language = document.imageSnapshot === null && document.pdfSnapshot === null
+  const language = document.imageSnapshot === null && document.pdfSnapshot === null && document.audioSnapshot === null
     ? <FileLanguageSelectX document={document} store={root.fileLanguagesStore} /> : null;
-  const saveButton = document.imageSnapshot === null && document.pdfSnapshot === null ? (
+  const saveButton = document.imageSnapshot === null && document.pdfSnapshot === null && document.audioSnapshot === null ? (
     <Button
       size="small"
       startIcon={icon}

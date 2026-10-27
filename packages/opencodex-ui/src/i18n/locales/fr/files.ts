@@ -1,5 +1,8 @@
 export const frFiles = {
   files: {
+    audioDecodeError: "Lecture impossible : ce format ou ce codec audio n’est pas pris en charge par cette version d’Electron, ou le fichier est endommagé.",
+    htmlPreviewError: "Impossible de préparer l’aperçu HTML.",
+    htmlPreviewTitle: "Aperçu HTML — {{name}}",
     links: { openFolder: "Ouvrir le dossier", copyLink: "Copier le lien" },
     frontmatter: "Métadonnées YAML",
     folderOpeningMode: "Ouvrir les liens de dossiers avec",

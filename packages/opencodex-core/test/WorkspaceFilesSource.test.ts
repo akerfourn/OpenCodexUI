@@ -123,6 +123,22 @@ describe("workspace source routing", () => {
     } finally { await rm(root, { recursive: true, force: true }); }
   });
 
+  it("should transport audio and HTML sound assets from their source without host path conversion", async () => {
+    const root = await mkdtemp(join(tmpdir(), "files-audio-source-"));
+    try {
+      const target = { sourceId: "remote", projectId: "project", workspaceId: "ws",
+        workspacePath: root, path: "son été.wav" };
+      const bytes = Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WAVEfmt "), Buffer.alloc(32)]);
+      await writeFile(join(root, target.path), bytes);
+      const { client } = sourceProcessClient();
+      expect(await runSourceFileOperation(client, { type: "workspaceFiles.read", target, previewAudio: true }))
+        .toMatchObject({ ok: true, value: { kind: "audio", readOnly: true,
+          dataUrl: `data:audio/wav;base64,${bytes.toString("base64")}` } });
+      expect(await runSourceFileOperation(client, { type: "workspaceFiles.previewAsset", target }))
+        .toMatchObject({ ok: true, value: { mimeType: "audio/wav", dataBase64: bytes.toString("base64") } });
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   it("should copy, rename and delete through the source process using data-only filenames", async () => {
     const root = await mkdtemp(join(tmpdir(), "files-mutation-source-"));
     try {

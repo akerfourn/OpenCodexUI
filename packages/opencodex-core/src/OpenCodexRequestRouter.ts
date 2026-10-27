@@ -36,7 +36,7 @@ export class OpenCodexRequestRouter {
       });
     } catch (error) {
       // Tool and settings dialogs own their error feedback without recovering a chat.
-      if (request.type === "debug" || request.type.startsWith("projectWorkspaces.") ||
+      if (request.type === "debug" || request.type.startsWith("filePreview.") || request.type.startsWith("projectWorkspaces.") ||
         request.type.startsWith("messageRendering.") ||
         request.type.startsWith("browserPermissions.") || request.type.startsWith("threadPermissions.") ||
         request.type.startsWith("sourcePermissions.") || request.type.startsWith("sourceInstances.")) throw error;
@@ -61,6 +61,11 @@ export class OpenCodexRequestRouter {
     }
 
     switch (request.type) {
+      case "filePreview.open":
+        return this.runtime.filePreviews.open(request.target, request.content);
+      case "filePreview.close":
+        this.runtime.filePreviews.close(request.id);
+        return { ok: true };
       case "sourceInstances.list":
       case "sourceInstances.start":
       case "sourceInstances.stop":
@@ -84,6 +89,7 @@ export class OpenCodexRequestRouter {
       case "debug":
         return this.runtime.debug.execute(request.action);
       case "workspaceFiles.linkAccess":
+      case "workspaceFiles.previewAsset":
       case "workspaceFiles.setLinkAccess":
       case "workspaceFiles.stat":
       case "workspaceFiles.list":

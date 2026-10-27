@@ -67,8 +67,37 @@ export interface OpenCodexPdfSnapshot {
   readOnly: true;
 }
 
+/** Bounded audio bytes decoded only by the native browser media element. */
+export interface OpenCodexAudioSnapshot {
+  kind: "audio";
+  dataUrl: string;
+  mimeType: string;
+  byteLength: number;
+  revision: string;
+  readOnly: true;
+}
+
+/** Typed resources served only inside a source-bound HTML preview session. */
+export interface OpenCodexPreviewAsset {
+  dataBase64: string;
+  mimeType: string;
+  byteLength: number;
+}
+
+/** Ephemeral loopback capability, revoked when its viewer is unmounted. */
+export interface OpenCodexHtmlPreviewSession {
+  id: string;
+  url: string;
+}
+
+/** Preview lifecycle is separate from file reads and never saves the live HTML buffer. */
+export type OpenCodexFilePreviewRequest =
+  | { type: "filePreview.open"; target: OpenCodexFileTarget; content: string }
+  | { type: "filePreview.close"; id: string };
+
 /** Binary previews retain the existing UTF-8 snapshot shape for text files. */
-export type OpenCodexFileReadSnapshot = OpenCodexFileSnapshot | OpenCodexImageSnapshot | OpenCodexPdfSnapshot;
+export type OpenCodexFileReadSnapshot = OpenCodexFileSnapshot | OpenCodexImageSnapshot
+  | OpenCodexPdfSnapshot | OpenCodexAudioSnapshot;
 
 /** Bounded image-only preview in the conversation's explicit source filesystem. */
 export interface OpenCodexImageReadRequest {
@@ -99,6 +128,7 @@ export type OpenCodexFileResult<T> =
 
 /** Dedicated requests keep filesystem operations separate from composer search. */
 export type OpenCodexFileRequest =
+  | { type: "workspaceFiles.previewAsset"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.copy"; target: OpenCodexFileTarget; destinationPath: string; name: string }
   | { type: "workspaceFiles.rename"; target: OpenCodexFileTarget; name: string }
   | { type: "workspaceFiles.delete"; target: OpenCodexFileTarget }
@@ -107,8 +137,9 @@ export type OpenCodexFileRequest =
       destination: string; access: OpenCodexFileAccess }
   | { type: "workspaceFiles.stat"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.list"; target: OpenCodexFileTarget }
-  | { type: "workspaceFiles.read"; target: OpenCodexFileTarget; previewImages?: boolean; previewPdf?: boolean }
-  | { type: "workspaceFiles.check"; target: OpenCodexFileTarget; revision: string; previewImages?: boolean; previewPdf?: boolean }
+  | { type: "workspaceFiles.read"; target: OpenCodexFileTarget; previewImages?: boolean; previewPdf?: boolean; previewAudio?: boolean }
+  | { type: "workspaceFiles.check"; target: OpenCodexFileTarget; revision: string;
+      previewImages?: boolean; previewPdf?: boolean; previewAudio?: boolean }
   | {
       type: "workspaceFiles.save";
       target: OpenCodexFileTarget;

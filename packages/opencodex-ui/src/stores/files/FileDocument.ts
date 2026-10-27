@@ -6,6 +6,7 @@ import type {
   OpenCodexFileReadSnapshot,
   OpenCodexImageSnapshot,
   OpenCodexPdfSnapshot,
+  OpenCodexAudioSnapshot,
   OpenCodexFileResult,
   OpenCodexFileErrorCode,
   OpenCodexRequest,
@@ -65,6 +66,11 @@ export class FileDocument {
   imageSnapshot: OpenCodexImageSnapshot | null = null;
   /** Immutable source-owned PDF bytes and retained reading position. */
   pdfSnapshot: OpenCodexPdfSnapshot | null = null;
+  /** Read-only audio decoded by Chromium, with a retained playback position. */
+  audioSnapshot: OpenCodexAudioSnapshot | null = null;
+  audioTime = 0;
+  /** Retains the HTML presentation independently of Markdown and Git comparisons. */
+  htmlPreview = true;
   /** Page retained when switching between conversations and files. */
   pdfPage = 1;
   /** Continuous reading is the default; the choice lasts for this document. */
@@ -147,9 +153,27 @@ export class FileDocument {
 
   /** Recognizes Markdown without loading Monaco or a syntax grammar. */
   get canPreviewMarkdown(): boolean {
-    if (this.imageSnapshot !== null || this.pdfSnapshot !== null) return false;
+    if (this.imageSnapshot !== null || this.pdfSnapshot !== null || this.audioSnapshot !== null) return false;
     const language = this.languageOverride ?? this.virtualLanguage ?? detectFileLanguage(this.name);
     return canonicalLanguage(language) === "markdown";
+  }
+
+  /** HTML files use the same buffer and editor as other text documents. */
+  get canPreviewHtml(): boolean {
+    if (this.target === null || this.imageSnapshot !== null || this.pdfSnapshot !== null || this.audioSnapshot !== null) return false;
+    return canonicalLanguage(this.languageOverride ?? this.virtualLanguage ?? detectFileLanguage(this.name)) === "html";
+  }
+
+  /** Git comparisons and explicit source positions take priority over HTML rendering. */
+  get isHtmlPreview(): boolean {
+    return this.viewMode === "file" && this.canPreviewHtml && this.htmlPreview;
+  }
+
+  /** Shares toolbar selection while retaining each format's presentation preference. */
+  setContentPreview(enabled: boolean): void {
+    this.setViewMode("file");
+    if (this.canPreviewHtml) this.htmlPreview = enabled;
+    else this.markdownPreview = enabled;
   }
 
   /** Git comparisons retain priority over the document's preview preference. */
@@ -165,7 +189,7 @@ export class FileDocument {
 
   /** Explicit source locations always reveal Monaco rather than a rendered preview. */
   navigateTo(position: DocumentPosition): void {
-    this.setMarkdownPreview(false);
+    this.setContentPreview(false);
     this.position = { ...position };
   }
 
@@ -230,7 +254,7 @@ export class FileDocument {
       this.gitDiffSnapshot = { originalContent: "", modifiedContent: null, issue: "conflicted" };
       return;
     }
-    if (this.imageSnapshot !== null || this.pdfSnapshot !== null || this.error?.code === "binary" || this.error?.code === "tooLarge") {
+    if (this.imageSnapshot !== null || this.pdfSnapshot !== null || this.audioSnapshot !== null || this.error?.code === "binary" || this.error?.code === "tooLarge") {
       this.gitDiffSnapshot = {
         originalContent: "",
         modifiedContent: null,
@@ -315,7 +339,8 @@ export class FileDocument {
         type: "workspaceFiles.read",
         target: { ...this.target },
         previewImages: true,
-        previewPdf: true
+        previewPdf: true,
+        previewAudio: true
       });
       if (this.disposed) return;
       runInAction(() => {
@@ -393,7 +418,7 @@ export class FileDocument {
 
   /** Checks disk changes on focus/interval; local edits are never silently replaced. */
   async checkExternal(): Promise<void> {
-    const snapshot = this.pdfSnapshot ?? this.imageSnapshot ?? this.snapshot;
+    const snapshot = this.audioSnapshot ?? this.pdfSnapshot ?? this.imageSnapshot ?? this.snapshot;
     if (
       this.target === null ||
       snapshot === null ||
@@ -411,9 +436,10 @@ export class FileDocument {
         target: { ...this.target },
         revision,
         previewImages: true,
-        previewPdf: true
+        previewPdf: true,
+        previewAudio: true
       });
-      if (this.disposed || this.isSaving || (this.pdfSnapshot ?? this.imageSnapshot ?? this.snapshot)?.revision !== revision) return;
+      if (this.disposed || this.isSaving || (this.audioSnapshot ?? this.pdfSnapshot ?? this.imageSnapshot ?? this.snapshot)?.revision !== revision) return;
       if (!result.ok) {
         runInAction(() => {
           this.error = result;
@@ -456,8 +482,10 @@ export class FileDocument {
   private acceptSnapshot(snapshot: OpenCodexFileReadSnapshot): void {
     this.pdfSnapshot = null;
     this.imageSnapshot = null;
+    this.audioSnapshot = null;
     if ("kind" in snapshot) {
       if (snapshot.kind === "pdf") this.pdfSnapshot = snapshot;
+      else if (snapshot.kind === "audio") this.audioSnapshot = snapshot;
       else this.imageSnapshot = snapshot;
       this.snapshot = null;
       this.content = "";

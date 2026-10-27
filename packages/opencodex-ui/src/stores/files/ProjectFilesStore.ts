@@ -121,7 +121,7 @@ export class ProjectFilesStore {
       document.navigateToHeading(intent.markdownAnchor);
     }
     if (position !== undefined) document.navigateTo(position);
-    if (document.snapshot === null && document.imageSnapshot === null) await document.reload();
+    if (document.snapshot === null && document.imageSnapshot === null && document.pdfSnapshot === null && document.audioSnapshot === null) await document.reload();
   }
 
   /** Adds an immutable generated/debugger source without a filesystem target. */
@@ -191,10 +191,12 @@ export class ProjectFilesStore {
         await this.open(renamedTarget, document.workspaceName);
         const replacement = this.documentsAt(renamedTarget).find(item => item.target?.path === path);
         if (replacement !== undefined) {
-          if (replacement.snapshot === null && replacement.imageSnapshot === null) {
+          if (replacement.snapshot === null && replacement.imageSnapshot === null && replacement.pdfSnapshot === null && replacement.audioSnapshot === null) {
             runInAction(() => {
               replacement.snapshot = document.snapshot;
               replacement.imageSnapshot = document.imageSnapshot;
+              replacement.pdfSnapshot = document.pdfSnapshot;
+              replacement.audioSnapshot = document.audioSnapshot;
               replacement.content = document.savedContent;
               replacement.savedContent = document.savedContent;
             });
@@ -202,6 +204,8 @@ export class ProjectFilesStore {
           replacement.setImageZoom(document.imageZoom);
           replacement.setLanguageOverride(document.languageOverride);
           replacement.setMarkdownPreview(document.markdownPreview);
+          replacement.htmlPreview = document.htmlPreview;
+          replacement.audioTime = document.audioTime;
           runInAction(() => {
             replacement.previewScrollTop = document.previewScrollTop;
             replacement.viewState = document.viewState;

@@ -12,20 +12,21 @@ export function FileDocumentViewControls({ document }: { document: FileDocument 
   function changeView(_event: MouseEvent<HTMLElement>, value: FileViewMode | "preview" | null): void {
     if (value === null) return;
     if (value === "diff") document.setViewMode("diff");
-    else document.setMarkdownPreview(value === "preview");
+    else document.setContentPreview(value === "preview");
   }
   /** Applies a Monaco diff layout choice to this document only. */
   function changeLayout(_event: MouseEvent<HTMLElement>, value: FileDiffLayout | null): void {
     if (value !== null) document.setDiffLayout(value);
   }
-  const preview = document.canPreviewMarkdown
+  const canPreview = document.canPreviewMarkdown || document.canPreviewHtml;
+  const preview = canPreview
     ? <ToggleButton value="preview">{t("files.viewPreview")}</ToggleButton> : null;
   const diff = document.gitDiffContext !== null
     ? <ToggleButton value="diff">{t("files.viewDiff")}</ToggleButton> : null;
-  const controls = document.canPreviewMarkdown || document.gitDiffContext !== null ? (
+  const controls = canPreview || document.gitDiffContext !== null ? (
     <ToggleButtonGroup exclusive size="small" aria-label={t("files.viewMode")}
-      value={document.isMarkdownPreview ? "preview" : document.viewMode} onChange={changeView}>
-      <ToggleButton value="file">{t(document.canPreviewMarkdown ? "files.viewSource" : "files.viewFile")}</ToggleButton>
+      value={document.isMarkdownPreview || document.isHtmlPreview ? "preview" : document.viewMode} onChange={changeView}>
+      <ToggleButton value="file">{t(canPreview ? "files.viewSource" : "files.viewFile")}</ToggleButton>
       {preview}
       {diff}
     </ToggleButtonGroup>

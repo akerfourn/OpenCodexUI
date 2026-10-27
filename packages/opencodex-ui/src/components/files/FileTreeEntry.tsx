@@ -6,6 +6,7 @@ import FolderOutlined from "@mui/icons-material/FolderOutlined";
 import FolderOpenOutlined from "@mui/icons-material/FolderOpenOutlined";
 import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
 import CodeOutlined from "@mui/icons-material/CodeOutlined";
+import AudioFileOutlined from "@mui/icons-material/AudioFileOutlined";
 import ImageOutlined from "@mui/icons-material/ImageOutlined";
 import LockOutlined from "@mui/icons-material/LockOutlined";
 import { FileLinkAccessDialogX } from "./FileLinkAccessDialog";
@@ -57,6 +58,7 @@ export function FileTreeEntry({
   if (/\.(tsx?|jsx?|json|ya?ml|toml|py|rs|css|html|sh)$/i.test(entry.name))
     icon = <CodeOutlined fontSize="small" />;
   if (/\.(png|jpe?g|gif|webp|svg|ico)$/i.test(entry.name)) icon = <ImageOutlined fontSize="small" />;
+  if (/\.(mp3|wav|ogg|oga|opus|flac|m4a|aac|weba|webm|aiff?)$/i.test(entry.name)) icon = <AudioFileOutlined fontSize="small" />;
   if (directory)
     icon = expanded ? (
       <FolderOpenOutlined fontSize="small" />

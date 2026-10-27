@@ -3,6 +3,9 @@ import type { frFiles } from "../fr/files.js";
 
 export const enFiles = {
   files: {
+    audioDecodeError: "Cannot play this audio: its format or codec is unsupported by this Electron build, or the file is damaged.",
+    htmlPreviewError: "Unable to prepare the HTML preview.",
+    htmlPreviewTitle: "HTML preview — {{name}}",
     links: { openFolder: "Open folder", copyLink: "Copy link" },
     frontmatter: "YAML metadata",
     folderOpeningMode: "Open folder links with",

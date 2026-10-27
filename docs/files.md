@@ -31,6 +31,42 @@ Markdown paths, without following a later project or workspace selection.
 Copy link preserves the original reference and its line/column suffix. The
 explorer includes these actions alongside its existing file operations.
 
+## Audio and HTML previews
+
+Audio files open in a native Chromium media player, with play/pause, seeking and
+volume controls. No codec package or transcoder is installed. WAV, MP3, Ogg/Opus,
+FLAC, M4A, AAC, WebM audio and AIFF containers are recognized; actual decoding
+depends on the Electron build. Unsupported or damaged audio shows a visible
+error while external opening remains available. Files are read-only, bounded to
+10 MiB and retain playback position. Hiding or closing the viewer stops playback.
+
+HTML files default to **Preview**, with **Source** available in the toolbar.
+Both views share the same buffer, including unsaved edits. Explicit line links
+open Source; Git entries keep their diff behavior. A reload also refreshes the
+page's cached dependencies.
+
+HTML pages run in an iframe sandbox with scripts enabled and an opaque origin.
+They can use native audio controls, JavaScript playback and Web Audio. Relative
+images, CSS, scripts, fonts, JSON and audio resolve from the HTML document's
+directory in its captured workspace. Inline data URLs are also supported for
+images and media. Root-relative URLs must include the preview capability path;
+ordinary project pages should use relative resource paths.
+
+A lazy, ephemeral IPv4 loopback listener serves only random per-viewer
+capabilities. Each resource uses the normal source/workspace ownership checks
+and symlink grants, including reads from remote sources with Node.js. Resources
+are limited to 10 MiB each, 64 cached entries and 32 MiB per session, with four
+concurrent reads and a queue for parallel page loads. HTTP byte ranges support
+native audio seeking. Hiding the page
+revokes its capability; renderer loss and application shutdown clear all sessions.
+
+The preview cannot access the parent UI, Electron APIs, arbitrary host paths,
+remote network assets, frames, popups or forms. Electron also
+[checks frame navigation and redirects](https://www.electronjs.org/docs/latest/api/web-contents#event-will-frame-navigate)
+against live preview capabilities. Subframes cannot invoke application IPC.
+This is a local document preview, not a replacement for running a web server or
+a web application that requires remote services.
+
 ## Chat image previews
 
 Chat Markdown preserves native Windows paths and `file:` links for the existing
