@@ -3,6 +3,7 @@
  */
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
 import CallMergeOutlinedIcon from "@mui/icons-material/CallMergeOutlined";
+import CloudDownloadOutlinedIcon from "@mui/icons-material/CloudDownloadOutlined";
 import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
@@ -84,6 +85,25 @@ export function ProjectGitActionsMenu({
     onOpenRemote();
   }
 
+  /** Closes the menu before checking the remote without applying changes locally. */
+  function handleSelectFetchUpdatesAction(): void {
+    onClose();
+    void referencesStore.fetchUpdates();
+  }
+
+  const fetchUpdatesIcon = referencesStore.isFetchingUpdates
+    ? <CircularProgress color="inherit" size={18} />
+    : <CloudDownloadOutlinedIcon fontSize="small" />;
+  let fetchUpdatesAction = null;
+  if (statusStore.status.remotes.length > 0) {
+    fetchUpdatesAction = (
+      <MenuItem disabled={!referencesStore.canFetchUpdates} onClick={handleSelectFetchUpdatesAction}>
+        <ListItemIcon>{fetchUpdatesIcon}</ListItemIcon>
+        <ListItemText>{t("git.fetchUpdates")}</ListItemText>
+      </MenuItem>
+    );
+  }
+
   return (
     <Menu
       anchorEl={anchorEl}
@@ -137,6 +157,7 @@ export function ProjectGitActionsMenu({
         </ListItemIcon>
         <ListItemText>{t("git.remoteConfigure")}</ListItemText>
       </MenuItem>
+      {fetchUpdatesAction}
       {statusStore.status.branchName !== null && statusStore.status.upstreamName === null ? (
         <MenuItem disabled={!referencesStore.canPublishBranch} onClick={handleSelectPublishAction}>
           <ListItemIcon>

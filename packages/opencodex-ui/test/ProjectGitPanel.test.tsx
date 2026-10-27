@@ -134,7 +134,7 @@ describe("ProjectGitCommitSection", () => {
 });
 
 describe("ProjectGitPanel", () => {
-  it("should show the remote update check when a remote is configured", () => {
+  it("should keep the remote update check inside the closed actions menu", () => {
     const gitStore = createGitStore({
       statusStore: createStatusStore({
         status: createStatus({
@@ -148,7 +148,7 @@ describe("ProjectGitPanel", () => {
       <ProjectGitPanelX store={createRootStore()} projectStore={createProjectStore(gitStore)} />
     );
 
-    expect(markup).toContain("git.fetchUpdates");
+    expect(markup).not.toContain("git.fetchUpdates");
   });
 
   it("should show source unavailability without the repository interface", () => {

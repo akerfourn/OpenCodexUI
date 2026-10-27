@@ -3,7 +3,6 @@ import { canOpenProjectFileLinks } from "../chat/projectFileLinkAccess";
  * Renders Git controls for one opened project.
  */
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
-import CloudDownloadOutlinedIcon from "@mui/icons-material/CloudDownloadOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import {
@@ -156,10 +155,6 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     void referencesStore.pull();
   }
 
-  function handleFetchUpdates(): void {
-    void referencesStore.fetchUpdates();
-  }
-
   function handleOpenFile(
     path: string,
     comparison: OpenCodexGitDiffComparison,
@@ -192,23 +187,6 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   const commitTooltip = isCurrentBranchProtected && currentBranchName !== null
     ? t("git.commitProtectedBranchTooltip", { branch: currentBranchName })
     : undefined;
-  const fetchUpdatesStartIcon = referencesStore.isFetchingUpdates
-    ? <CircularProgress color="inherit" size={14} />
-    : <CloudDownloadOutlinedIcon fontSize="small" />;
-  const fetchUpdatesButton = gitStore.statusStore.status.remotes.length > 0 ? (
-    <Button
-      variant="outlined"
-      size="small"
-      fullWidth
-      disabled={!referencesStore.canFetchUpdates}
-      startIcon={fetchUpdatesStartIcon}
-      onClick={handleFetchUpdates}
-      sx={{ justifyContent: "flex-start", textAlign: "left", whiteSpace: "normal" }}
-    >
-      {t("git.fetchUpdates")}
-    </Button>
-  ) : null;
-
   return (
     <section className="git-panel">
       <Stack
@@ -312,7 +290,6 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
                 {t("git.commitProtectedBranch", { branch: currentBranchName })}
               </Alert>
             ) : null}
-            {fetchUpdatesButton}
             {gitStore.statusStore.status.upstreamName !== null ? (
               <Stack direction="row" spacing={1}>
                 {gitStore.statusStore.status.behindCount > 0 ? (
