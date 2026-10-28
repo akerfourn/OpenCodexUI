@@ -49,7 +49,7 @@ export function UsageLimitsWidget({ store }: UsageLimitsWidgetProps) {
       label,
       usedPercent: Math.round(window.usedPercent),
       remainingPercent: Math.round(window.remainingPercent),
-      reset: formatUsageReset(window.resetsAt, i18n.language)
+      reset: formatUsageReset(window.resetsAt, i18n.language, t)
     });
   }).join("\n");
 

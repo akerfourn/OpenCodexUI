@@ -6,6 +6,7 @@ import type { frUsage } from "../fr/usage.js";
 
 export const enUsage = {
   usage: {
+    remainingDuration: "in {{duration}}",
     labels: {
       "5h": "5h",
       weekly: "Week",

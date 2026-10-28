@@ -81,7 +81,7 @@ export function UsageResetCreditsDetails({
     <Stack spacing={1.25}>
       {credits.map((credit) => {
         const expirationDate = formatUsageResetDate(credit.expiresAt, language);
-        const expirationRelative = formatUsageResetRelative(credit.expiresAt, language);
+        const expirationRelative = formatUsageResetRelative(credit.expiresAt, language, t);
         const expiration = expirationDate === null
           ? t("sources.resetCredits.noExpiration")
           : t("sources.resetCredits.expiresAt", {

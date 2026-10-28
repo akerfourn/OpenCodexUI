@@ -3,6 +3,7 @@
  */
 export const frUsage = {
   usage: {
+    remainingDuration: "dans {{duration}}",
     labels: {
       "5h": "5h",
       weekly: "Sem.",

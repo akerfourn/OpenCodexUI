@@ -230,7 +230,7 @@ function UsageWindowRow({ window, tone }: UsageWindowRowProps) {
   const label = t(`usage.labels.${window.label}`);
   const remainingPercent = Math.round(window.remainingPercent);
   const usedPercent = Math.round(window.usedPercent);
-  const relativeReset = formatUsageResetRelative(window.resetsAt, i18n.language);
+  const relativeReset = formatUsageResetRelative(window.resetsAt, i18n.language, t);
   const resetDate = formatUsageResetDate(window.resetsAt, i18n.language);
 
   return (
