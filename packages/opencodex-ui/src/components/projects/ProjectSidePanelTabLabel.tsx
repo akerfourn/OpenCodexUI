@@ -31,7 +31,7 @@ export function ProjectSidePanelTabLabel({
   activity
 }: ProjectSidePanelTabLabelProps) {
   return (
-    <Tooltip title={label}>
+    <Tooltip title={label} placement="left" disableInteractive>
       <span className="project-side-panel-tab-label" aria-hidden="true">
         <ProjectSidePanelTabActivityX
           projectStore={projectStore}

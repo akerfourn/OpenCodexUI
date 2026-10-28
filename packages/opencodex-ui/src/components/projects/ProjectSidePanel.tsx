@@ -210,7 +210,7 @@ export function ProjectSidePanel({
     return (
       <aside className="project-side-panel is-collapsed">
         <Box className="project-side-panel-rail">
-          <Tooltip title={t("projectTools.openPanel")} placement="left">
+          <Tooltip title={t("projectTools.openPanel")} placement="left" disableInteractive>
             <IconButton
               size="small"
               aria-label={t("projectTools.openPanel")}
@@ -220,7 +220,7 @@ export function ProjectSidePanel({
             </IconButton>
           </Tooltip>
           {tabs.map((tab) => (
-            <Tooltip key={tab.value} title={tab.label} placement="left">
+            <Tooltip key={tab.value} title={tab.label} placement="left" disableInteractive>
               <IconButton
                 size="small"
                 className={
@@ -248,7 +248,7 @@ export function ProjectSidePanel({
   return (
     <aside className="project-side-panel">
       <Box className="project-side-panel-tabs">
-        <Tooltip title={t("projectTools.closePanel")} placement="left">
+        <Tooltip title={t("projectTools.closePanel")} placement="left" disableInteractive>
           <IconButton
             className="project-side-panel-collapse-button"
             size="small"
