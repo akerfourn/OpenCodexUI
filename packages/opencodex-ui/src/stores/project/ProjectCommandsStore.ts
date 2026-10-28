@@ -21,6 +21,7 @@ import { workspaceLabel as formatWorkspaceLabel } from "./threads/workspaceThrea
 import type { RootStore } from "../RootStore";
 import {
   haveSameCommandOrder,
+  sameCommandSection,
   normalizeCommandFormInput,
   orderCommandsByIds,
   type ProjectCommandFormInput
@@ -190,6 +191,18 @@ export class ProjectCommandsStore {
     }
   }
 
+  /** Saves only favorite metadata, leaving executable text and group membership intact. */
+  async toggleFavorite(command: OpenCodexProjectCommand): Promise<void> {
+    if (this.isSaving) return;
+    this.isSaving = true;
+    try {
+      const updated = await this.root.request<OpenCodexProjectCommand>({ type: "projectCommands.update",
+        commandId: command.id, patch: { isFavorite: command.isFavorite !== true } });
+      runInAction(() => { this.upsertCommand(updated); });
+    } catch (error) { this.reportError(error); }
+    finally { runInAction(() => { this.isSaving = false; }); }
+  }
+
   /**
    * Deletes a command and clears its local runs.
    *
@@ -270,11 +283,13 @@ export class ProjectCommandsStore {
       return;
     }
 
-    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-
-    if (nextIndex < 0 || nextIndex >= commandIds.length) {
-      return;
-    }
+    const current = this.commands[currentIndex]!;
+    const section = this.commands.filter(command => sameCommandSection(current, command));
+    const sectionIndex = section.findIndex(command => command.id === commandId);
+    const neighborIndex = direction === "up" ? sectionIndex - 1 : sectionIndex + 1;
+    const neighbor = section[neighborIndex];
+    if (neighbor === undefined) return;
+    const nextIndex = commandIds.indexOf(neighbor.id);
 
     const nextCommandIds = [...commandIds];
     nextCommandIds[currentIndex] = commandIds[nextIndex] ?? commandId;

@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import type { OpenCodexProjectCommand } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectCommandRunView } from "../../stores/project/ProjectCommandsStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
-import { ProjectCommandCardX } from "./ProjectCommandCard";
+import { ProjectCommandSectionsX } from "./ProjectCommandSections";
 import { ProjectCommandDialogX } from "./ProjectCommandDialog";
 import { ProjectCommandLogsDialogX } from "./ProjectCommandLogsDialog";
 
@@ -93,18 +93,7 @@ export function ProjectCommandsPanel({ projectStore }: ProjectCommandsPanelProps
           </Typography>
         ) : null}
 
-        {commandsStore.commands.map((command, index) => (
-          <ProjectCommandCardX
-            key={command.id}
-            command={command}
-            commandsStore={commandsStore}
-            runs={commandsStore.getRuns(command.id)}
-            canMoveUp={index > 0}
-            canMoveDown={index < commandsStore.commands.length - 1}
-            onEdit={handleEdit}
-            onOpenLogs={handleOpenLogs}
-          />
-        ))}
+        <ProjectCommandSectionsX commandsStore={commandsStore} onEdit={handleEdit} onOpenLogs={handleOpenLogs} />
       </Stack>
 
       <ProjectCommandDialogX

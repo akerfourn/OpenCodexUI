@@ -63,6 +63,10 @@ describe("automation runtime APIs", () => {
     expect(deleteProjectCommand).toHaveBeenCalledWith("command-1");
     expect(runProjectCommand).toHaveBeenCalledWith("command-1", "/workspace/project", "source-1");
     expect(stopProjectCommandRun).toHaveBeenCalledWith("run-1");
+    await api.create("project-1", "Build", "npm run build", "project", false,
+      { groupName: "Build", isFavorite: true });
+    expect(createProjectCommand).toHaveBeenLastCalledWith("project-1", "Build", "npm run build", "project", false,
+      { groupName: "Build", isFavorite: true });
   });
 
   it("exposes rules under rules and preserves the default apply behavior", async () => {

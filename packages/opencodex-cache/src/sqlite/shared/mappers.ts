@@ -234,6 +234,8 @@ export function mapProjectCommandRow(row: ProjectCommandRow): CachedProjectComma
     command: row.command,
     executionMode: row.execution_mode,
     persistLogs: row.persist_logs === 1,
+    groupName: row.group_name,
+    isFavorite: row.is_favorite === 1,
     sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at

@@ -124,6 +124,25 @@ describe("project tooling persistence", () => {
     ]);
   });
 
+  it("should persist favorites and groups independently of execution settings and other projects", async () => {
+    const project = await repository.upsertProject("/commands");
+    const other = await repository.upsertProject("/other-commands");
+    const command = await repository.createProjectCommand({ projectId: project.id, name: "Build",
+      command: "npm run build", executionMode: "workspace", persistLogs: true, groupName: "  Build  ", isFavorite: true });
+    await repository.createProjectCommand({ projectId: other.id, name: "Other",
+      command: "echo other", executionMode: "project", persistLogs: false });
+    await repository.updateProjectCommand(command.id, { name: "Compile" });
+    await repository.close();
+    repository = createOpenCodexSqliteCacheRepository({ directory });
+    expect(await repository.getProjectCommand(command.id)).toMatchObject({ name: "Compile", groupName: "Build",
+      isFavorite: true, command: "npm run build", executionMode: "workspace", persistLogs: true });
+    expect(await repository.listProjectCommands(other.id)).toMatchObject([{ groupName: null, isFavorite: false }]);
+    await repository.updateProjectCommand(command.id, { isFavorite: false });
+    expect(await repository.getProjectCommand(command.id)).toMatchObject({ groupName: "Build", isFavorite: false });
+    await repository.updateProjectCommand(command.id, { groupName: null });
+    expect(await repository.getProjectCommand(command.id)).toMatchObject({ groupName: null });
+  });
+
   it("should persist project command rules and generated file state", async () => {
     const project = await repository.upsertProject("/tmp/rules-project");
 

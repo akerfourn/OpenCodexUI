@@ -34,6 +34,8 @@ export async function listProjectCommands(
         command,
         execution_mode,
         persist_logs,
+        group_name,
+        is_favorite,
         sort_order,
         created_at,
         updated_at
@@ -68,6 +70,8 @@ export async function createProjectCommand(
     executionMode: command.executionMode,
     allowParallel: command.executionMode === "parallel" ? 1 : 0,
     persistLogs: command.persistLogs ? 1 : 0,
+    groupName: command.groupName,
+    isFavorite: command.isFavorite ? 1 : 0,
     sortOrder,
     createdAt: now,
     updatedAt: now
@@ -83,6 +87,8 @@ export async function createProjectCommand(
         execution_mode,
         allow_parallel,
         persist_logs,
+        group_name,
+        is_favorite,
         sort_order,
         created_at,
         updated_at
@@ -95,6 +101,8 @@ export async function createProjectCommand(
         @executionMode,
         @allowParallel,
         @persistLogs,
+        @groupName,
+        @isFavorite,
         @sortOrder,
         @createdAt,
         @updatedAt
@@ -124,6 +132,8 @@ export async function updateProjectCommand(
     name: patch.name ?? current.name,
     command: patch.command ?? current.command,
     executionMode: patch.executionMode ?? current.executionMode,
+    groupName: patch.groupName === undefined ? current.groupName : patch.groupName,
+    isFavorite: patch.isFavorite ?? current.isFavorite,
     persistLogs: patch.persistLogs ?? current.persistLogs
   });
 
@@ -135,6 +145,8 @@ export async function updateProjectCommand(
         execution_mode = @executionMode,
         allow_parallel = @allowParallel,
         persist_logs = @persistLogs,
+        group_name = @groupName,
+        is_favorite = @isFavorite,
         updated_at = @updatedAt
       WHERE id = @commandId
     `)
@@ -145,6 +157,8 @@ export async function updateProjectCommand(
       executionMode: next.executionMode,
       allowParallel: next.executionMode === "parallel" ? 1 : 0,
       persistLogs: next.persistLogs ? 1 : 0,
+      groupName: next.groupName,
+      isFavorite: next.isFavorite ? 1 : 0,
       updatedAt: new Date().toISOString()
     });
 
@@ -236,6 +250,8 @@ export async function readProjectCommand(
         command,
         execution_mode,
         persist_logs,
+        group_name,
+        is_favorite,
         sort_order,
         created_at,
         updated_at
@@ -299,7 +315,13 @@ function normalizeCommandInput(
     throw new Error("Invalid command execution mode.");
   }
 
+  if (input.groupName != null && (typeof input.groupName !== "string" || input.groupName.length > 100)) {
+    throw new Error("Command group must be at most 100 characters.");
+  }
+  if (input.isFavorite !== undefined && typeof input.isFavorite !== "boolean") throw new Error("Invalid command favorite flag.");
   return {
+    groupName: input.groupName?.trim() || null,
+    isFavorite: input.isFavorite ?? false,
     projectId,
     name,
     command,

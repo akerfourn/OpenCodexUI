@@ -9,6 +9,8 @@ export type OpenCodexProjectCommand = {
   command: string;
   executionMode: OpenCodexCommandExecutionMode;
   persistLogs: boolean;
+  groupName?: string | null;
+  isFavorite?: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;

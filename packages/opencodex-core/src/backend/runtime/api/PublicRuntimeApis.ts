@@ -323,11 +323,12 @@ export interface CommandsApi {
     name: string,
     command: string,
     executionMode: OpenCodexCommandExecutionMode,
-    persistLogs: boolean
+    persistLogs: boolean,
+    organization?: { groupName?: string | null; isFavorite?: boolean }
   ): Promise<OpenCodexProjectCommand>;
   update(
     commandId: string,
-    patch: { name?: string; command?: string; executionMode?: OpenCodexCommandExecutionMode; persistLogs?: boolean }
+    patch: { name?: string; command?: string; executionMode?: OpenCodexCommandExecutionMode; persistLogs?: boolean; groupName?: string | null; isFavorite?: boolean }
   ): Promise<OpenCodexProjectCommand>;
   reorder(projectId: string, commandIds: string[]): Promise<OpenCodexProjectCommand[]>;
   delete(commandId: string): Promise<{ ok: true }>;

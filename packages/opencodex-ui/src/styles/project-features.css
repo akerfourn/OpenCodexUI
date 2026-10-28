@@ -416,6 +416,8 @@
 }
 
 .project-command-card {
+  min-width: 0;
+  max-width: 100%;
   position: relative;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 8px;

@@ -1,3 +1,5 @@
+import StarOutlinedIcon from "@mui/icons-material/StarOutlined";
+import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 /**
  * Renders a project command and its visible runs.
  */
@@ -60,6 +62,11 @@ export function ProjectCommandCard({
     void commandsStore.moveCommand(command.id, "down");
   }
 
+  /** Favorites are promoted without changing the command's saved group. */
+  function handleFavorite(): void { void commandsStore.toggleFavorite(command); }
+  const favoriteLabel = t(command.isFavorite === true ? "commands.removeFavorite" : "commands.addFavorite");
+  const favoriteIcon = command.isFavorite === true ? <StarOutlinedIcon fontSize="small" /> : <StarBorderOutlinedIcon fontSize="small" />;
+
   return (
     <Box className="project-command-card">
       <Stack className="project-command-card-main" direction="row" spacing={1.5}>
@@ -76,22 +83,29 @@ export function ProjectCommandCard({
           </span>
         </Tooltip>
         <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-          <Typography variant="body1" noWrap>
+          <Typography variant="body1" noWrap title={command.name}>
             {command.name}
           </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap>
+          <Typography component="div" variant="caption" color="text.secondary" noWrap title={command.command}>
             {command.command}
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflowWrap: "anywhere" }}>
             {t(`commands.executionModes.${command.executionMode}`)}
           </Typography>
         </Box>
+      </Stack>
+      <Stack direction="row" spacing={0.25} sx={{ justifyContent: "flex-end", alignItems: "center", px: 0.5, pb: 0.5 }}>
+        <Tooltip title={favoriteLabel} placement="left" disableInteractive>
+          <span><IconButton size="small" onClick={handleFavorite} aria-label={favoriteLabel}
+            aria-pressed={command.isFavorite === true} disabled={commandsStore.isSaving}
+            color={command.isFavorite === true ? "warning" : "default"}>{favoriteIcon}</IconButton></span>
+        </Tooltip>
         <Tooltip title={t("commands.edit")}>
           <IconButton className="project-command-edit" size="small" onClick={handleEdit}>
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Stack className="project-command-order-actions" spacing={0.25}>
+        <Stack className="project-command-order-actions" direction="row" spacing={0.25}>
           <Tooltip title={t("commands.moveUp")}>
             <span>
               <IconButton

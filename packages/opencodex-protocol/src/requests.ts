@@ -398,6 +398,8 @@ export type OpenCodexRequest =
       command: string;
       executionMode: OpenCodexCommandExecutionMode;
       persistLogs: boolean;
+      groupName?: string | null;
+      isFavorite?: boolean;
     }
   | {
       type: "projectCommands.update";
@@ -407,6 +409,8 @@ export type OpenCodexRequest =
         command?: string;
         executionMode?: OpenCodexCommandExecutionMode;
         persistLogs?: boolean;
+        groupName?: string | null;
+        isFavorite?: boolean;
       };
     }
   | { type: "projectCommands.delete"; commandId: string }

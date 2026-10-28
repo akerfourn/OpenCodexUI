@@ -3,6 +3,15 @@
  */
 export const frAutomation = {
   commands: {
+    favorites: "Favoris",
+    ungrouped: "Sans groupe",
+    group: "Groupe",
+    groupHelp: "Choisissez un groupe ou saisissez un nouveau nom. Laissez vide pour ne pas grouper.",
+    favorite: "Favori",
+    addFavorite: "Ajouter aux favoris",
+    removeFavorite: "Retirer des favoris",
+    groupRunning: "Une commande du groupe est en cours",
+
     add: "Ajouter",
     executionMode: "Exécutions simultanées",
     executionModes: {

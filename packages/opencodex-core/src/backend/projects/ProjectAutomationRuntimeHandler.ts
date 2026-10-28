@@ -117,14 +117,16 @@ export class ProjectAutomationRuntimeHandler {
     name: string,
     command: string,
     executionMode: OpenCodexCommandExecutionMode,
-    persistLogs: boolean
+    persistLogs: boolean,
+    organization: { groupName?: string | null; isFavorite?: boolean } = {}
   ): Promise<OpenCodexProjectCommand> {
     return await this.projectCommandService.createCommand({
       projectId,
       name,
       command,
       executionMode,
-      persistLogs
+      persistLogs,
+      ...organization
     });
   }
 
@@ -142,6 +144,8 @@ export class ProjectAutomationRuntimeHandler {
       command?: string;
       executionMode?: OpenCodexCommandExecutionMode;
       persistLogs?: boolean;
+      groupName?: string | null;
+      isFavorite?: boolean;
     }
   ): Promise<OpenCodexProjectCommand> {
     return await this.projectCommandService.updateCommand(commandId, patch);

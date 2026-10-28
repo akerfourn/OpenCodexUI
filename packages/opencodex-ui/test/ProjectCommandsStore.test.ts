@@ -14,6 +14,30 @@ import { ProjectCommandsStore } from "../src/stores/project/ProjectCommandsStore
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("ProjectCommandsStore run lifecycle", () => {
+  it("should save favorite metadata without rewriting executable fields or group membership", async () => {
+    const command = createCommand({ groupName: "Build" });
+    const request = vi.fn(async () => ({ ...command, isFavorite: true })) as unknown as RootStore["request"];
+    const { store } = createStoreFixture(request);
+    store.commands = [command];
+    await store.toggleFavorite(command);
+    expect(request).toHaveBeenCalledWith({ type: "projectCommands.update", commandId: command.id,
+      patch: { isFavorite: true } });
+    expect(store.commands[0]).toMatchObject({ isFavorite: true, groupName: "Build" });
+    expect(store.isSaving).toBe(false);
+  });
+
+  it("should reorder within a group while retaining interleaved commands from other sections", async () => {
+    const first = createCommand({ id: "first", groupName: "Build" });
+    const other = createCommand({ id: "other" });
+    const last = createCommand({ id: "last", groupName: "Build" });
+    const request = vi.fn(async () => [last, other, first]) as unknown as RootStore["request"];
+    const { store } = createStoreFixture(request);
+    store.commands = [first, other, last];
+    await store.moveCommand("last", "up");
+    expect(request).toHaveBeenCalledWith({ type: "projectCommands.reorder", projectId: "project-1",
+      commandIds: ["last", "other", "first"] });
+  });
+
   it("should clone preparation snapshots and retain their explicit workspace instead of the active selection", async () => {
     const accepted = createRun({ workspaceId: "B", sourceId: "source-1", cwd: "/secondary" });
     const request = vi.fn(async () => accepted) as unknown as RootStore["request"];

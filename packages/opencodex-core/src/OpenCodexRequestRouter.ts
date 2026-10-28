@@ -367,7 +367,8 @@ export class OpenCodexRequestRouter {
           request.name,
           request.command,
           request.executionMode,
-          request.persistLogs
+          request.persistLogs,
+          { groupName: request.groupName, isFavorite: request.isFavorite }
         );
       case "projectCommands.update":
         return this.runtime.automation.commands.update(request.commandId, request.patch);

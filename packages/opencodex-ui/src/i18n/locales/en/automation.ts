@@ -6,6 +6,15 @@ import type { frAutomation } from "../fr/automation.js";
 
 export const enAutomation = {
   commands: {
+    favorites: "Favorites",
+    ungrouped: "Ungrouped",
+    group: "Group",
+    groupHelp: "Choose a group or enter a new name. Leave empty for no group.",
+    favorite: "Favorite",
+    addFavorite: "Add to favorites",
+    removeFavorite: "Remove from favorites",
+    groupRunning: "A command in this group is running",
+
     add: "Add",
     executionMode: "Concurrent executions",
     executionModes: {

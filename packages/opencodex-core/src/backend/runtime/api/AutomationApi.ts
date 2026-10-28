@@ -58,14 +58,19 @@ export class CommandsApi implements CommandsApiContract {
     name: Parameters<CommandsHandler["createProjectCommand"]>[1],
     command: Parameters<CommandsHandler["createProjectCommand"]>[2],
     executionMode: Parameters<CommandsHandler["createProjectCommand"]>[3],
-    persistLogs: Parameters<CommandsHandler["createProjectCommand"]>[4]
+    persistLogs: Parameters<CommandsHandler["createProjectCommand"]>[4],
+    organization?: Parameters<CommandsHandler["createProjectCommand"]>[5]
   ): ReturnType<CommandsHandler["createProjectCommand"]> {
+    if (organization === undefined) {
+      return await this.handler.createProjectCommand(projectId, name, command, executionMode, persistLogs);
+    }
     return await this.handler.createProjectCommand(
       projectId,
       name,
       command,
       executionMode,
-      persistLogs
+      persistLogs,
+      organization
     );
   }
 

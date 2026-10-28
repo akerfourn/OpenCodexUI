@@ -2,6 +2,7 @@
  * Renders the create/edit dialog for a project command.
  */
 import {
+  Autocomplete,
   Button,
   Checkbox,
   Dialog,
@@ -37,7 +38,9 @@ const emptyInput: ProjectCommandFormInput = {
   name: "",
   command: "",
   executionMode: "project",
-  persistLogs: false
+  persistLogs: false,
+  groupName: null,
+  isFavorite: false
 };
 
 /**
@@ -68,7 +71,9 @@ export function ProjectCommandDialog({
       name: command.name,
       command: command.command,
       executionMode: command.executionMode,
-      persistLogs: command.persistLogs
+      persistLogs: command.persistLogs,
+      groupName: command.groupName ?? null,
+      isFavorite: command.isFavorite === true
     });
   }, [command, open]);
 
@@ -145,6 +150,16 @@ export function ProjectCommandDialog({
               minRows={2}
               onChange={handleCommandChange}
             />
+            <Autocomplete freeSolo options={[...new Set(commandsStore.commands.map(item => item.groupName)
+              .filter((name): name is string => name != null))]}
+              inputValue={input.groupName ?? ""}
+              onInputChange={(_event, value) => setInput({ ...input, groupName: value || null })}
+              renderInput={params => <TextField {...params} label={t("commands.group")}
+                helperText={t("commands.groupHelp")} slotProps={{ ...params.slotProps,
+                  htmlInput: { ...params.slotProps.htmlInput, maxLength: 100 } }} />} />
+            <FormControlLabel label={t("commands.favorite")}
+              control={<Checkbox checked={input.isFavorite === true}
+                onChange={event => setInput({ ...input, isFavorite: event.target.checked })} />} />
             <TextField select fullWidth label={t("commands.executionMode")}
               value={input.executionMode} onChange={handleExecutionModeChange}
               helperText={t(`commands.executionModeHelp.${input.executionMode}`)}>

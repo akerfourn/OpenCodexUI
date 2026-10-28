@@ -167,6 +167,8 @@ export type ProjectCommandRow = {
   command: string;
   execution_mode: OpenCodexCommandExecutionMode;
   persist_logs: number;
+  group_name: string | null;
+  is_favorite: number;
   sort_order: number;
   created_at: string;
   updated_at: string;

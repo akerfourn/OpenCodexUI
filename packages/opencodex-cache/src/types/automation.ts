@@ -9,6 +9,8 @@ export type CachedProjectCommand = {
   command: string;
   executionMode: OpenCodexCommandExecutionMode;
   persistLogs: boolean;
+  groupName?: string | null;
+  isFavorite?: boolean;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -23,6 +25,8 @@ export type CachedProjectCommandCreateInput = {
   command: string;
   executionMode: OpenCodexCommandExecutionMode;
   persistLogs: boolean;
+  groupName?: string | null;
+  isFavorite?: boolean;
 };
 
 /**
@@ -33,6 +37,8 @@ export type CachedProjectCommandUpdateInput = {
   command?: string;
   executionMode?: OpenCodexCommandExecutionMode;
   persistLogs?: boolean;
+  groupName?: string | null;
+  isFavorite?: boolean;
 };
 
 export type CachedCommandRuleDecision = "allow" | "prompt" | "forbidden";
