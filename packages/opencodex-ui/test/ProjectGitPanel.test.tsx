@@ -149,6 +149,8 @@ describe("ProjectGitPanel", () => {
     );
 
     expect(markup).not.toContain("git.fetchUpdates");
+    expect(markup.match(/data-testid="LocalOfferOutlinedIcon"/g)).toHaveLength(1);
+    expect(markup.indexOf('aria-label="git.tagSelector"')).toBeLessThan(markup.indexOf("git.noReferenceTag"));
   });
 
   it("should show source unavailability without the repository interface", () => {

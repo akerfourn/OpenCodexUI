@@ -32,69 +32,55 @@ export function ProjectGitReferenceTagRow({
     ? t("git.commitsSinceTag", { count: tagStore.commitsSinceReferenceTag })
     : null;
 
+  const summary = tagDetails === null ? tagLabel : `${tagLabel} · ${tagDetails}`;
+  const iconSize = dense ? 14 : 16;
+  const buttonSize = dense ? 22 : 26;
+  const selector = (
+    <Tooltip title={t("git.tagSelector")} placement="left" disableInteractive>
+      <span style={{ flexShrink: 0 }}>
+        <IconButton aria-label={t("git.tagSelector")} size="small"
+          disabled={!tagStore.isAvailable || !tagStore.isRepository}
+          onClick={onOpenSelector} sx={{ height: buttonSize, width: buttonSize }}>
+          <LocalOfferOutlinedIcon sx={{ fontSize: iconSize }} />
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
+  const loading = tagStore.isLoadingTagReference
+    ? <CircularProgress size={dense ? 12 : 14} sx={{ flexShrink: 0 }} /> : null;
+
   if (dense) {
     return (
-      <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", minWidth: 0 }}>
-        <LocalOfferOutlinedIcon color="action" sx={{ fontSize: 14 }} />
-        <Typography variant="caption" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
-          {tagDetails === null ? tagLabel : `${tagLabel} · ${tagDetails}`}
-        </Typography>
-        {tagStore.isLoadingTagReference ? <CircularProgress size={12} /> : null}
-        <Tooltip title={t("git.tagSelector")}>
-          <span className="git-panel-header-action">
-            <IconButton
-              aria-label={t("git.tagSelector")}
-              size="small"
-              disabled={!tagStore.isAvailable || !tagStore.isRepository}
-              onClick={onOpenSelector}
-              sx={{ height: 22, width: 22 }}
-            >
-              <LocalOfferOutlinedIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </span>
-        </Tooltip>
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", minWidth: 0, width: "100%" }}>
+        {selector}
+        <Typography variant="caption" color="text.secondary" noWrap title={summary}
+          sx={{ minWidth: 0, flex: "1 1 auto" }}>{summary}</Typography>
+        {loading}
       </Stack>
     );
   }
 
+  let detailsContent = null;
+  if (tagDetails !== null) {
+    detailsContent = <Typography variant="caption" color="text.secondary" noWrap title={tagDetails}
+      sx={{ display: "block" }}>{tagDetails}</Typography>;
+  }
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: "center", minWidth: 0 }}>
-      <LocalOfferOutlinedIcon color="action" sx={{ fontSize: 16 }} />
+      {selector}
       <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-        <Typography variant="caption" color="text.secondary" noWrap>
-          {tagLabel}
-        </Typography>
-        {tagDetails !== null ? (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            noWrap
-            sx={{ display: "block" }}
-          >
-            {tagDetails}
-          </Typography>
-        ) : null}
+        <Typography variant="caption" color="text.secondary" noWrap title={tagLabel}
+          sx={{ display: "block" }}>{tagLabel}</Typography>
+        {detailsContent}
       </Box>
-      {tagStore.isLoadingTagReference ? <CircularProgress size={14} /> : null}
-      <Tooltip title={t("git.tagSelector")}>
-        <span>
-          <IconButton
-            aria-label={t("git.tagSelector")}
-            size="small"
-            disabled={!tagStore.isAvailable || !tagStore.isRepository}
-            onClick={onOpenSelector}
-            sx={{ height: 26, width: 26 }}
-          >
-            <LocalOfferOutlinedIcon sx={{ fontSize: 16 }} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      {loading}
     </Stack>
   );
 }
 
 export const ProjectGitReferenceTagRowX = observer(ProjectGitReferenceTagRow);
 
+/** Uses the selected reference or the localized empty state. */
 function readTagLabel(tagStore: ProjectGitTagStore, fallback: string): string {
   return tagStore.selectedReferenceTagName ?? fallback;
 }

@@ -189,52 +189,43 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
     : undefined;
   return (
     <section className="git-panel">
-      <Stack
-        className="git-panel-header"
-        direction="row"
-        spacing={0.25}
-        sx={{ alignItems: "flex-start" }}
-      >
-        <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-          {branchContent}
-          {gitStore.statusStore.isRepository ? (
-            <ProjectGitReferenceTagRowX
-              dense
-              tagStore={tagStore}
-              onOpenSelector={handleOpenTagDialog}
-            />
-          ) : null}
-        </Box>
-        <Tooltip title={t("git.actions")}>
-          <span className="git-panel-header-action">
-            <IconButton
-              aria-label={t("git.actions")}
-              size="small"
-              disabled={!gitStore.isAvailable || !gitStore.statusStore.isRepository}
-              onClick={handleOpenGitActions}
-              sx={{ height: 26, width: 26 }}
-            >
-              <MoreVertOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title={t("git.refresh")}>
-          <span className="git-panel-header-action">
-            <IconButton
-              aria-label={t("git.refresh")}
-              size="small"
-              disabled={
-                !gitStore.isAvailable ||
-                gitStore.statusStore.isLoading ||
-                referencesStore.isFetchingUpdates
-              }
-              onClick={handleRefresh}
-              sx={{ height: 26, width: 26 }}
-            >
-              <RefreshOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </span>
-        </Tooltip>
+      <Stack className="git-panel-header" spacing={0.25}>
+        <Stack direction="row" spacing={0.25} sx={{ alignItems: "flex-start" }}>
+          <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>{branchContent}</Box>
+          <Tooltip title={t("git.actions")}>
+            <span className="git-panel-header-action">
+              <IconButton
+                aria-label={t("git.actions")}
+                size="small"
+                disabled={!gitStore.isAvailable || !gitStore.statusStore.isRepository}
+                onClick={handleOpenGitActions}
+                sx={{ height: 26, width: 26 }}
+              >
+                <MoreVertOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title={t("git.refresh")}>
+            <span className="git-panel-header-action">
+              <IconButton
+                aria-label={t("git.refresh")}
+                size="small"
+                disabled={
+                  !gitStore.isAvailable ||
+                  gitStore.statusStore.isLoading ||
+                  referencesStore.isFetchingUpdates
+                }
+                onClick={handleRefresh}
+                sx={{ height: 26, width: 26 }}
+              >
+                <RefreshOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Stack>
+        {gitStore.statusStore.isRepository ? (
+          <ProjectGitReferenceTagRowX dense tagStore={tagStore} onOpenSelector={handleOpenTagDialog} />
+        ) : null}
       </Stack>
       <ProjectGitActionsMenuX
         anchorEl={gitActionsAnchor}
