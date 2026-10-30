@@ -10,11 +10,14 @@ import type { OpenCodexWorkspaceWorkStatus } from "@open-codex-ui/opencodex-prot
 import type { RootStore } from "../RootStore";
 import type { ProjectStore } from "./ProjectStore";
 import { WorkspaceDiskUsageStore } from "./WorkspaceDiskUsageStore";
+import { WorkspaceChangesStore } from "./WorkspaceChangesStore";
 
 /** Source-owned catalogue and explicit workspace operations for one logical project. */
 export class ProjectWorkspacesStore {
   /** On-demand size observations remain separate from cached activity and cleanup eligibility. */
   readonly diskUsage: WorkspaceDiskUsageStore;
+  /** Punctual source checks used by the management inventory and retention advice. */
+  readonly changes: WorkspaceChangesStore;
   /** Retained catalogue, including unavailable historical entries. */
   workspaces: OpenCodexProjectWorkspace[] = [];
   /** Durable creations that need an explicit recovery attempt. */
@@ -49,6 +52,7 @@ export class ProjectWorkspacesStore {
   /** Keeps transport and project references outside observable state. */
   constructor(private readonly project: ProjectStore, private readonly root: RootStore) {
     this.diskUsage = new WorkspaceDiskUsageStore(project, root);
+    this.changes = new WorkspaceChangesStore(project, root);
     makeAutoObservable<ProjectWorkspacesStore, "project" | "root">(
       this, { project: false, root: false }, { autoBind: true });
   }
@@ -123,6 +127,7 @@ export class ProjectWorkspacesStore {
     const sourceId = this.project.project.sourceId;
     this.isRefreshingManagement = true;
     this.activityById.clear();
+    this.changes.reset();
     this.error = null;
     try {
       await this.load();
@@ -139,11 +144,14 @@ export class ProjectWorkspacesStore {
         }
       });
       if (!this.project.isCodexSourceReady || this.project.isReadOnlyFromCache) return;
-      const secondary = this.workspaces.filter(item => !item.isPrimary && item.removedAt === null
+      const available = this.workspaces.filter(item => item.sourceId === sourceId && item.removedAt === null
         && item.removalPending !== true && item.movePending !== true);
-      for (let offset = 0; offset < secondary.length; offset += 3) {
+      for (let offset = 0; offset < available.length; offset += 3) {
         if (generation !== this.activityGeneration || sourceId !== this.project.project.sourceId) return;
-        await Promise.all(secondary.slice(offset, offset + 3).map(item => this.loadLockState(item.id)));
+        await Promise.all(available.slice(offset, offset + 3).map(async item => {
+          if (!item.isPrimary) await this.loadLockState(item.id);
+          if (generation === this.activityGeneration && sourceId === this.project.project.sourceId) await this.changes.check(item);
+        }));
       }
     } catch (error) {
       runInAction(() => {
@@ -387,6 +395,7 @@ export class ProjectWorkspacesStore {
   /** Invalidates responses when the project tab closes. */
   dispose(): void {
     this.diskUsage.dispose();
+    this.changes.reset();
     this.generation += 1;
     this.activityGeneration += 1;
     this.activityById.clear();

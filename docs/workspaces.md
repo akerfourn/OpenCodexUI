@@ -453,7 +453,8 @@ out by a preparation run.
 Open **Manage workspaces → Workspace activity and cleanup** from the project's
 workspace controls. The inventory includes the primary, imported and managed
 secondary workspaces, plus removed entries whose metadata is retained. It shows
-their paths, current conversation counts and last known Codex activity. Opening
+their paths, current conversation counts, last known Codex activity and dated
+change observations. Opening
 the inventory does not select a workspace, recover an interrupted operation or
 delete files.
 
@@ -467,7 +468,8 @@ timestamps are not used as activity dates. Empty or invalid dates remain unknown
 
 The candidate filter uses the project retention policy described below. It
 suggests only completed, available, managed secondary workspaces with a valid
-completion date, old known activity and a matching, explicitly refreshed
+completion date, old known activity, a complete current change observation
+without non-ignored local modifications, and a matching, explicitly refreshed
 unlocked Git state.
 Primary, imported, removed and pending-maintenance workspaces are excluded.
 Cached active conversations, execution/transition reservations, unsaved documents
@@ -476,8 +478,9 @@ debug and Compose activity is conservatively applied across the whole project.
 An offline source, unknown lock, unknown activity or future timestamp is never
 treated as an inactivity candidate.
 
-Refreshing reads catalogue and activity data first, then checks secondary locks
-through their owning source, in batches of at most three. Late replies from a
+Refreshing reads catalogue and cached activity data first, then checks secondary
+locks and Git/file observations through their owning source, in batches of at
+most three. Late replies from a
 different source/path or a disposed project are ignored. The cache remains
 readable offline. Lock snapshots and activity are observations, not exclusive
 source locks; refresh again when reviewing a long-open inventory.
@@ -488,9 +491,47 @@ unknown-activity managed secondaries whose native lock has been verified.
 Actual deletion retains all existing checks for dirty/untracked/ignored files,
 Git locks, processes, conversations and durable
 reservations. No bulk deletion or automatic cleanup is introduced. The overview
-does not track external tools/file edits or establish that a checkout is safe
-to delete. Disk usage is an independent on-demand observation described below. Git locks remain the
+does not establish that a checkout is safe to delete or identify every external
+process. Disk usage is an independent on-demand observation described below. Git locks remain the
 existing way to protect retained worktrees from removal.
+
+## Punctual Git and file change checks
+
+Opening or explicitly refreshing the management inventory performs one bounded
+check for each available workspace. No watcher, polling timer, background scan
+schedule or automatic status change is introduced. Checks require a Git checkout
+at the exact registered root; non-Git roots remain unverified. Local sources use
+the bundled Node worker; WSL, SSH and custom sources run the same worker through
+their source process API and require Node there. Source paths are data, never
+interpreted as host paths.
+
+Git porcelain-v2 status supplies the current HEAD, branch, index and local state.
+Remote-tracking counters are excluded, so a fetch alone does not refresh activity.
+Optional index writes and fsmonitor hooks are disabled. `git ls-files` supplies
+tracked files and non-ignored untracked files; ignored dependencies, artifacts
+and local files do not contribute. A deterministic fingerprint includes file
+names, sizes, modification/change timestamps, modes and literal symlink targets.
+File contents are not read or stored. No link target or other filesystem is
+traversed. Submodule directory entries, inaccessible metadata and inconsistent
+Git state produce a partial observation. Git output is capped at 2 MiB per
+command with a 10-second command deadline; metadata work is capped at 100,000
+entries and 20 seconds inside the existing 30-second worker boundary.
+
+The first complete check establishes a baseline with no invented last-edit date.
+When two complete fingerprints differ, the backend records the **detection**
+time. It cannot establish the exact edit time or author: Codex and external
+tools both contribute. An unchanged check updates only the check date. A failed
+or partial check never replaces the last complete baseline, and cached results
+remain explicitly dated and insufficient for fresh cleanup advice. Changes
+reverted between checks or changes preserving all inspected metadata may escape
+detection. Refresh again before reviewing a long-open inventory.
+
+Migration 51 adds `workspace_change_observations`, storing only the fingerprint,
+identity, check/detection dates and local-change flag. Manual progress and Codex
+history remain untouched. Context and pending-maintenance guards are validated
+before and after source reads and transactionally before publication. Relocation
+requires a new path-bound baseline; an already known detection date for the same
+workspace/source is retained. Restarts do not reset the comparison baseline.
 
 ## Manual work progress
 
@@ -504,8 +545,8 @@ Use the workspace menu, properties or activity inventory to change progress.
 Completed workspaces retain their conversations and display a completion marker
 in the sidebar. The inventory also shows the completion date and offers an
 independent status filter, combinable with the existing cleanup-candidate filter.
-Cleanup recommendations use the later of completion and last known Codex
-activity, according to the project retention policy. No automatic deletion
+Cleanup recommendations use the latest completion, known Codex activity or
+detected change, according to the project retention policy. No automatic deletion
 is introduced.
 
 This is an organizational annotation. It does not stop processes, archive
@@ -548,8 +589,9 @@ Suggestions can also be disabled. Draft edits do not affect recommendations
 until saved. The setting is local metadata and can be changed offline.
 
 Only completed workspaces can become cleanup candidates. The delay starts at
-`max(completedAt, lastActivityAt)`, so completing an old checkout or continuing a
-conversation after completion postpones its suggestion. The exact deadline is
+`max(completedAt, lastActivityAt, lastChangedAt)`, so completing an old checkout,
+continuing a conversation or detecting a later change postpones its suggestion.
+The exact deadline is
 included. Missing, invalid or future completion/activity dates remain excluded;
 an empty checkout with no known activity is not assigned an invented date.
 Existing lock, source, activity and maintenance guards still apply. Reopening
@@ -562,6 +604,7 @@ malformed stored policy disables suggestions instead of enabling a default.
 No schema migration, timer, automatic mutation or deletion is needed. Manual
 removal remains available subject to the existing confirmation and safety checks,
 including when suggestions are disabled or work is still in progress.
+The separate change-observation migration does not alter this retention policy.
 
 ## On-demand disk usage
 
@@ -647,6 +690,11 @@ including dirty/local files, detached HEADs, locks, interruption recovery and
 source-native Windows paths. Cache tests cover the existing-schema upgrade,
 retained imported ownership, immutable history and continued deletion refusal.
 UI tests cover contextual move/deletion actions and imported-move confirmation.
+`WorkspaceChangesService`, `WorkspaceChangesScript` and cache observation suites
+cover real Git/file edits, dirty-file re-edits, ignored output, branch/commit
+changes, bounded partial reads, legacy schema upgrades, persistent baselines,
+source-native paths and stale-context refusal. UI tests cover freshness, offline
+display, delayed replies, unchanged manual progress and postponed cleanup.
 Native Windows source paths are simulated; this does not replace native OS QA.
 `WorkspaceLockService` covers real Git locks, external changes, empty reasons,
 missing checkouts, move/removal protection, lost replies and Windows source

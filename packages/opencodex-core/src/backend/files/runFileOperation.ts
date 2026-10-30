@@ -12,6 +12,8 @@ import type { OpenCodexFileTarget } from "@open-codex-ui/opencodex-protocol";
 export type FileWorkerRequest = (OpenCodexFileRequest | OpenCodexImageReadRequest | {
   type: "workspaceDiskUsage"; target: OpenCodexFileTarget;
 } | {
+  type: "workspaceChanges"; target: OpenCodexFileTarget; paths: string[];
+} | {
   type: "primaryDirectory"; target: OpenCodexFileTarget;
   operation: "inspect" | "rename"; destinationPath?: string; identity?: string;
 }) & {

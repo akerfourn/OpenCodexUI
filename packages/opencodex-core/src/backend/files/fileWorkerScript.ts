@@ -7,6 +7,7 @@
  */
 import { fileMutationScript } from "./fileMutationScript.js";
 import { workspaceDiskUsageScript } from "./workspaceDiskUsageScript.js";
+import { workspaceChangesScript } from "./workspaceChangesScript.js";
 import { primaryWorkspaceMoveScript } from "./primaryWorkspaceMoveScript.js";
 import { filePreviewScript } from "./filePreviewScript.js";
 
@@ -79,6 +80,7 @@ async function inspectAccess(target, permissions) {
 
 ${fileMutationScript}
 ${workspaceDiskUsageScript}
+${workspaceChangesScript}
 ${primaryWorkspaceMoveScript}
 ${filePreviewScript}
 
@@ -185,6 +187,9 @@ async function describeEntry(item, request, full) {
 
 /** Performs one bounded list/read/check/save operation. */
 async function execute(request) {
+  if (request.type === 'workspaceChanges') {
+    return await measureWorkspaceChanges(request.target.workspacePath, request.paths);
+  }
   if (request.type === 'primaryDirectory') return await primaryDirectoryOperation(request);
   if (request.type === 'workspaceDiskUsage') {
     return await measureWorkspaceDiskUsage(request.target.workspacePath);

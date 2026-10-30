@@ -29,11 +29,15 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
     || project.composeStore.pendingServiceNames.size > 0;
   const busy = store.isBusy || store.isRefreshingManagement;
   useEffect(() => { void store.refreshManagement(); }, [store]);
+  // Also handles reopening the view while an earlier bounded refresh is still running.
+  useEffect(() => {
+    if (!store.isRefreshingManagement) setNow(Date.now());
+  }, [store, store.isRefreshingManagement]);
 
   /** Refreshes the cached evidence and native lock snapshots explicitly. */
   async function handleRefresh(): Promise<void> {
-    setNow(Date.now());
     await store.refreshManagement();
+    setNow(Date.now());
   }
   /** Rechecks activity after a metadata edit or successful removal. */
   function handleCloseProperties(): void { setProperties(null); void handleRefresh(); }
@@ -45,8 +49,10 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
     setNow(Date.now());
   }
   const entries = store.workspaces.map(workspace => ({ workspace,
+    changes: store.changes.resultFor(workspace), changesError: store.changes.errorFor(workspace),
     activity: matchingWorkspaceActivity(workspace, store.activityById.get(workspace.id)), status: workspaceManagementStatus({
       workspace, activity: store.activityById.get(workspace.id), lock: store.lockStates.get(workspace.id),
+      changes: store.changes.resultFor(workspace),
       hasLocalActivity, hasUnsavedDocuments: project.files.hasUnsavedWorkspaceDocuments(workspace.id),
       sourceAvailable: project.isCodexSourceReady && !project.isReadOnlyFromCache && workspace.sourceId === project.project.sourceId,
       checking: store.isRefreshingManagement || store.loadingLockIds.has(workspace.id), retentionDays, now

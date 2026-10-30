@@ -9,10 +9,36 @@ function fixture(): WorkspaceManagementInput {
     lastActivityAt: "2026-01-01T00:00:00Z", conversationCount: 1, activeConversationCount: 0, pendingOperationCount: 0 },
     lock: { workspaceId: "B", sourceId: "source", workspacePath: "/B", supported: true, lockedReason: null },
     hasLocalActivity: false, hasUnsavedDocuments: false, sourceAvailable: true, checking: false,
+    changes: { projectId: "project", workspaceId: "B", sourceId: "source", workspacePath: "/B",
+      state: "checked", hasChanges: false, checkedAt: "2026-10-22T12:00:00Z", lastChangedAt: null },
     retentionDays: 30, now: Date.parse("2026-10-22T12:00:00Z") };
 }
 
 describe("advisory workspace cleanup classification", () => {
+  it("should postpone cleanup after a detected change even when the checkout is now clean", () => {
+    const input = fixture();
+    input.changes!.lastChangedAt = "2026-10-21T12:00:00Z";
+    expect(workspaceManagementStatus(input)).toBe("recent");
+    input.changes!.lastChangedAt = "2026-09-22T12:00:00Z";
+    expect(workspaceManagementStatus(input)).toBe("candidate");
+    expect(input.workspace.workStatus).toBe("completed");
+  });
+
+  it.each(["missing", "cached", "partial", "foreign", "future"])("should not suggest cleanup with %s change evidence", kind => {
+    const input = fixture();
+    if (kind === "missing") input.changes = undefined;
+    if (kind === "cached" || kind === "partial") input.changes!.state = kind;
+    if (kind === "foreign") input.changes!.sourceId = "other";
+    if (kind === "future") input.changes!.checkedAt = "2099-01-01T00:00:00Z";
+    expect(workspaceManagementStatus(input)).toBe("changesUnknown");
+  });
+
+  it("should retain workspaces with known local modifications without changing their manual status", () => {
+    const input = fixture();
+    input.changes!.hasChanges = true;
+    expect(workspaceManagementStatus(input)).toBe("modified");
+    expect(input.workspace.workStatus).toBe("completed");
+  });
   it("should retain active and legacy workspaces regardless of their age", () => {
     const input = fixture();
     input.workspace.workStatus = "active";

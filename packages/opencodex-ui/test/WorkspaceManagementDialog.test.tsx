@@ -7,6 +7,7 @@ import type { OpenCodexProjectPreferences, OpenCodexProjectWorkspace, OpenCodexW
   "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import { WorkspaceDiskUsageStore } from "../src/stores/project/WorkspaceDiskUsageStore";
+import { WorkspaceChangesStore } from "../src/stores/project/WorkspaceChangesStore";
 import { WorkspaceManagementDialogX } from "../src/components/projects/WorkspaceManagementDialog";
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({
@@ -54,6 +55,10 @@ async function renderDialog(completed = true) {
     logicalBytes: 2048, allocatedBytes: null, fileCount: 1, skippedLinks: 0, unreadableEntries: 0,
     complete: true, limitReached: false, measuredAt: "2026-10-22T12:00:00Z" }));
   Object.assign(project.workspaces, { diskUsage: new WorkspaceDiskUsageStore(project as unknown as ProjectStore, { request } as unknown as import("../src/stores/RootStore").RootStore) });
+  const changes = new WorkspaceChangesStore(project as unknown as ProjectStore, { request } as unknown as import("../src/stores/RootStore").RootStore);
+  changes.results.set("B", { projectId: "project", workspaceId: "B", sourceId: "source", workspacePath: "/B",
+    state: "checked", hasChanges: false, lastChangedAt: null, checkedAt: "2026-10-22T12:00:00Z" });
+  Object.assign(project.workspaces, { changes });
   const onClose = vi.fn();
   await act(async () => { root.render(<WorkspaceManagementDialogX project={project as unknown as ProjectStore} onClose={onClose} />); });
   return { project, refreshManagement, remove, onClose, setWorkStatus, setRetentionDays, request };
@@ -74,6 +79,31 @@ afterEach(async () => {
 });
 
 describe("workspace management and manual cleanup", () => {
+  it("should evaluate freshly completed checks using the completion clock", async () => {
+    const { project } = await renderDialog();
+    await act(async () => { runInAction(() => { project.workspaces.isRefreshingManagement = true; }); });
+    vi.mocked(Date.now).mockReturnValue(Date.parse("2026-10-23T12:00:00Z"));
+    await act(async () => { runInAction(() => {
+      const changes = (project.workspaces as unknown as { changes: WorkspaceChangesStore }).changes;
+      changes.results.get("B")!.checkedAt = "2026-10-23T12:00:00Z";
+      project.workspaces.isRefreshingManagement = false;
+    }); });
+    expect(document.body.textContent).toContain("workspaceManagement.status.candidate");
+    expect(document.body.textContent).not.toContain("workspaceManagement.status.changesUnknown");
+  });
+  it("should display detected changes and postpone suggestions while preserving completed progress", async () => {
+    const { project } = await renderDialog();
+    const changes = (project.workspaces as unknown as { changes: WorkspaceChangesStore }).changes;
+    expect(document.body.textContent).toContain("workspaceManagement.status.candidate");
+    await act(async () => { runInAction(() => {
+      changes.results.get("B")!.lastChangedAt = "2026-10-21T12:00:00Z";
+    }); });
+    expect(document.body.textContent).toContain("workspaceChanges.changedAt");
+    expect(document.body.textContent).toContain("workspaceManagement.status.recent");
+    await act(async () => { runInAction(() => { changes.results.get("B")!.hasChanges = true; }); });
+    expect(document.body.textContent).toContain("workspaceManagement.status.modified");
+    expect(project.workspaces.workspaces[0]!.workStatus).toBe("completed");
+  });
   it("should keep the permanent primary outside secondary work-status filters and actions", async () => {
     const { project, setWorkStatus } = await renderDialog();
     await act(async () => { runInAction(() => {

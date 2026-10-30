@@ -1,5 +1,6 @@
 import { applySchemaMigrationV49 } from "./v49.js";
 import { applySchemaMigrationV50 } from "./v50.js";
+import { applySchemaMigrationV51 } from "./v51.js";
 import { applySchemaMigrationV45 } from "./v45.js";
 import { applySchemaMigrationV46 } from "./v46.js";
 import { applySchemaMigrationV47 } from "./v47.js";
@@ -115,4 +116,5 @@ export function runMigrations(database: BetterSqliteDatabase): void {
   applySchemaMigrationV48(database);
   applySchemaMigrationV49(database);
   applySchemaMigrationV50(database);
+  applySchemaMigrationV51(database);
 }

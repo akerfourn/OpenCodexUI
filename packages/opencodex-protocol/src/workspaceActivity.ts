@@ -10,4 +10,6 @@ export interface OpenCodexWorkspaceActivity {
   activeConversationCount: number;
   /** Durable executions and transitions remain blockers even when their thread was deleted. */
   pendingOperationCount: number;
+  /** Last persisted filesystem observation, readable offline and never implicitly refreshed. */
+  changes?: import("./workspaceChanges.js").OpenCodexWorkspaceChanges;
 }

@@ -12,6 +12,7 @@ export * from "./transport";
 export * from "./workspaces";
 export * from "./workspacePreparation";
 export * from "./workspaceActivity";
+export * from "./workspaceChanges";
 export * from "./workspaceDiskUsage";
 export * from "./primaryWorkspaceMove";
 export * from "./workspaceWorkStatus";

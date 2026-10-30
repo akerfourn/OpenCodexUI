@@ -1,9 +1,10 @@
 import type { Database } from "better-sqlite3";
+import { readWorkspaceChanges } from "./SqliteWorkspaceChangesRepository.js";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 
 /** Includes historical turn locations without attributing a moved thread's later turns to its old checkout. */
 export function readWorkspaceActivity(database: Database, projectId: string): OpenCodexWorkspaceActivity[] {
-  return database.prepare(`
+  const activity = database.prepare(`
     WITH owned AS (
       SELECT id, project_id, source_id, path FROM project_workspaces WHERE project_id = ?
     ), conversations AS (
@@ -37,4 +38,9 @@ export function readWorkspaceActivity(database: Database, projectId: string): Op
     FROM owned w LEFT JOIN activity a ON a.workspace_id = w.id
       LEFT JOIN counts c ON c.workspace_id = w.id ORDER BY w.id
   `).all(projectId) as OpenCodexWorkspaceActivity[];
+  return activity.map(item => {
+    const changes = readWorkspaceChanges(database, item.workspaceId);
+    if (changes === null) return item;
+    return { ...item, changes };
+  });
 }

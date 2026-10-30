@@ -1,4 +1,5 @@
 import type { WorkspaceMoveRepository } from "./workspaceMoves.js";
+import type { WorkspaceChangesRepository } from "./workspaceChanges.js";
 import type { WorkspaceCreationRepository } from "./workspaceCreations.js";
 import type { WorkspaceRemovalRepository } from "./workspaceRemovals.js";
 import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceExecutionContext, OpenCodexTurnWorkspaceContext, OpenCodexWorkspaceDiscoverySkipped } from
@@ -23,6 +24,8 @@ export interface WorkspaceExecutionReservation extends OpenCodexWorkspaceExecuti
 
 /** Workspace identity and execution persistence; no filesystem operations. */
 export interface WorkspaceCacheRepository {
+  /** Complete source-owned observations and their persistent comparison baseline. */
+  readonly changes: WorkspaceChangesRepository;
   /** Durable movement intent, path reservations and atomic relocation publication. */
   readonly moves: WorkspaceMoveRepository;
   /** Durable removal journal and source-independent recovery metadata. */

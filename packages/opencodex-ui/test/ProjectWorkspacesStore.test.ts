@@ -134,16 +134,19 @@ describe("workspace UI orchestration", () => {
         lastActivityAt: "2026-01-01T00:00:00Z", conversationCount: 3, activeConversationCount: 0, pendingOperationCount: 0 }];
       if (input.type === "projectWorkspaces.lock.read") return { workspaceId: "B", sourceId: "source", workspacePath: "/B",
         supported: true, lockedReason: null };
+      if (input.type === "projectWorkspaces.changes.read") return { ...input.input, state: "checked",
+        checkedAt: "2026-10-30T12:00:00Z", lastChangedAt: null, hasChanges: false };
       return [];
     });
     await project.workspaces.refreshManagement();
     expect(project.workspaces.activityById.get("B")?.conversationCount).toBe(3);
     expect(project.workspaces.lockStates.get("B")?.lockedReason).toBeNull();
+    expect(project.workspaces.changes.resultFor(workspaces[1]!)?.state).toBe("checked");
     expect(project.workspaces.selectedId).toBeNull();
     expect(project.workspaces.isRefreshingManagement).toBe(false);
     expect(request.mock.calls.map(([input]) => input.type)).toEqual([
       "projectWorkspaces.list", "projectWorkspaces.creations.list", "projectWorkspaces.removals.list", "projectWorkspaces.moves.list",
-      "projectWorkspaces.activity", "projectWorkspaces.lock.read"
+      "projectWorkspaces.activity", "projectWorkspaces.changes.read", "projectWorkspaces.lock.read", "projectWorkspaces.changes.read"
     ]);
   });
 
@@ -159,6 +162,7 @@ describe("workspace UI orchestration", () => {
     await project.workspaces.refreshManagement();
     expect(project.workspaces.activityById.get("B")?.lastActivityAt).toBeNull();
     expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.lock.read")).toBe(false);
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.changes.read")).toBe(false);
   });
 
   it.each(["source-change", "dispose"])("should discard an activity response after %s", async scenario => {

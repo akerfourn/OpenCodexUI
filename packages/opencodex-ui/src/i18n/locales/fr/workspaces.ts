@@ -12,7 +12,7 @@ export const frWorkspaces = {
   },
   "workspaceManagement": {
     "title": "Activité et nettoyage des workspaces",
-    "help": "La dernière activité correspond aux conversations et aux tours Codex conservés dans le cache, y compris les conversations archivées. Les modifications de fichiers et les outils externes ne sont pas suivis. Les candidats sont uniquement à examiner : la suppression vérifiera à nouveau les fichiers, les verrous et les activités dans la source. Aucune suppression n’est automatique.",
+    "help": "L’activité Codex vient des conversations et tours conservés. À l’ouverture et à l’actualisation, une vérification ponctuelle compare l’état Git et les métadonnées des fichiers non ignorés. Les fichiers ignorés (souvent les dépendances et artefacts) sont exclus de cette comparaison. La première vérification établit une référence ; les dates suivantes indiquent une détection, pas l’heure exacte ni l’auteur des modifications. Aucun suivi continu ni aucune suppression automatique.",
     "onlyCandidates": "Afficher uniquement les candidats au nettoyage",
     "candidates_zero": "Aucun workspace à examiner pour nettoyage",
     "candidates_one": "{{count}} workspace à examiner pour nettoyage",
@@ -36,11 +36,24 @@ export const frWorkspaces = {
       "lockUnknown": "Verrou à vérifier",
       "locked": "Verrouillé — conservé",
       "activityUnknown": "Activité inconnue",
+      "changesUnknown": "Modifications à vérifier",
+      "modified": "Modifications locales — conservé",
       "inProgress": "Travail en cours — conservé",
       "retained": "Suggestions désactivées — conservé",
       "recent": "Délai de conservation en cours",
       "candidate": "À examiner pour nettoyage"
     }
+  },
+  "workspaceChanges": {
+    "unknown": "Modifications : non vérifiées",
+    "baseline": "Aucun changement détecté entre deux vérifications pour le moment.",
+    "changedAt": "Dernière modification détectée : {{date}}",
+    "checkedAt": "Vérifié le {{date}}",
+    "clean": "Aucune modification locale non ignorée",
+    "modified": "Des modifications locales non ignorées sont présentes",
+    "cached": "Résultat en cache, à revérifier",
+    "partial": "Vérification partielle ou état changeant ; exclu des suggestions de nettoyage",
+    "unavailable": "Vérification indisponible. Vérifiez la source et le dépôt Git, puis actualisez."
   },
   "workspaceDiskUsage": {
     "help": "La taille est mesurée uniquement sur demande, dans la source du workspace. Les fichiers ignorés sont inclus ; les entrées .git, les cibles des liens symboliques et les autres systèmes de fichiers sont exclus. Les liens physiques sont comptés une fois par mesure. Cette estimation ne garantit pas l’espace libéré par une suppression.",
@@ -56,7 +69,7 @@ export const frWorkspaces = {
   },
   "workspaceRetention": {
     "title": "Conservation des workspaces de ce projet",
-    "help": "Un workspace terminé est proposé au nettoyage après ce délai, à compter de la plus récente des dates de fin et d’activité Codex connue. Les travaux en cours et les activités inconnues restent exclus. Le réglage est mémorisé pour ce projet, avec 30 jours par défaut. La suppression reste manuelle.",
+    "help": "Un workspace terminé est proposé après ce délai, à compter de la plus récente des dates de fin, d’activité Codex ou de modification détectée. Une vérification complète et sans modification locale non ignorée est nécessaire. Les travaux en cours et les états inconnus restent exclus. Le délai est mémorisé par projet, avec 30 jours par défaut. La suppression reste manuelle.",
     "mode": "Suggestions de nettoyage",
     "enabled": "Proposer les travaux terminés après un délai",
     "disabled": "Ne pas proposer de nettoyage",

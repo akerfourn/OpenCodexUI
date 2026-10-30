@@ -23,6 +23,7 @@ const groupPatch = { name: "Renamed", isCollapsed: true };
 const workStatusInput = { projectId: "project", workspaceId: "workspace", sourceId: "source", workspacePath: "/workspace",
   workStatus: "completed" as const, expectedWorkStatus: "active" as const, expectedCompletedAt: null };
 const cases: RouteCase[] = [
+  { request: { type: "projectWorkspaces.changes.read", input: diskUsageInput }, effect: "workspaceChanges.read", args: [diskUsageInput] },
   { request: { type: "projectWorkspaces.diskUsage.read", input: diskUsageInput }, effect: "workspaceDiskUsage.read", args: [diskUsageInput] },
   { request: { type: "projectWorkspaces.workStatus.update", input: workStatusInput },
     effect: "workspaces.setWorkStatus", args: [workStatusInput] },
@@ -90,6 +91,7 @@ const cases: RouteCase[] = [
 function createProjectRoutingFixture() {
   const response = { fixture: "response" };
   const ports = {
+    workspaceChanges: { read: vi.fn() },
     workspaceDiskUsage: { read: vi.fn() },
     workspaceLocks: { read: vi.fn(), update: vi.fn() },
     workspaceMoves: { move: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },

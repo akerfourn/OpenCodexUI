@@ -1,5 +1,6 @@
 import { WorkspaceLockService } from "./backend/workspaces/WorkspaceLockService.js";
 import { WorkspaceDiskUsageService } from "./backend/workspaces/WorkspaceDiskUsageService.js";
+import { WorkspaceChangesService } from "./backend/workspaces/WorkspaceChangesService.js";
 import { WorkspaceMoveService } from "./backend/workspaces/WorkspaceMoveService.js";
 import { PrimaryWorkspaceMoveService } from "./backend/workspaces/PrimaryWorkspaceMoveService.js";
 import { PrimaryMoveFiles } from "./backend/workspaces/PrimaryMoveFiles.js";
@@ -73,6 +74,8 @@ export class OpenCodexBackendRuntime {
   readonly workspaceLocks: WorkspaceLockService | null;
   /** Explicit bounded filesystem measurements through each workspace's source. */
   readonly workspaceDiskUsage: WorkspaceDiskUsageService | null;
+  /** Explicit change checks with durable source/path-bound baselines. */
+  readonly workspaceChanges: WorkspaceChangesService | null;
   /** Durable movement of managed secondary checkouts. */
   readonly workspaceMoves: WorkspaceMoveService | null;
   /** Explicit source-aware metadata relocation, separate from physical movement. */
@@ -158,6 +161,8 @@ export class OpenCodexBackendRuntime {
     this.workspaceLocks = this.services.cacheRepository === null ? null : new WorkspaceLockService(
       this.services.cacheRepository, this.services.clientPool, this.workspaceActivity);
     this.workspaceDiskUsage = this.services.cacheRepository === null ? null : new WorkspaceDiskUsageService(
+      this.services.cacheRepository, this.services.clientPool, this.services.projectRuntimeHandler);
+    this.workspaceChanges = this.services.cacheRepository === null ? null : new WorkspaceChangesService(
       this.services.cacheRepository, this.services.clientPool, this.services.projectRuntimeHandler);
     /** Shares managed-process checks between secondary moves and every affected principal checkout. */
     const requireMoveInactive = async (move: OpenCodexWorkspaceMove): Promise<void> => {

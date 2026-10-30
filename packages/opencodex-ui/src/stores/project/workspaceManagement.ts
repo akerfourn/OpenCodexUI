@@ -1,15 +1,18 @@
 import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceActivity, OpenCodexWorkspaceLockState } from
   "@open-codex-ui/opencodex-protocol";
 import { isWorkspaceRetention } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceChanges } from "@open-codex-ui/opencodex-protocol";
 
 /** Advisory classification; only the existing removal backend can establish safe deletion. */
 export type WorkspaceManagementStatus = "primary" | "imported" | "removed" | "pending" | "busy"
-  | "offline" | "lockUnknown" | "locked" | "activityUnknown" | "inProgress" | "retained" | "recent" | "candidate";
+  | "offline" | "lockUnknown" | "locked" | "activityUnknown" | "changesUnknown" | "modified"
+  | "inProgress" | "retained" | "recent" | "candidate";
 
 /** Captured inputs keep age decisions deterministic and independent of the selected conversation. */
 export interface WorkspaceManagementInput {
   workspace: OpenCodexProjectWorkspace;
   activity?: OpenCodexWorkspaceActivity;
+  changes?: OpenCodexWorkspaceChanges;
   lock?: OpenCodexWorkspaceLockState;
   hasLocalActivity: boolean;
   hasUnsavedDocuments: boolean;
@@ -43,9 +46,17 @@ export function workspaceManagementStatus(input: WorkspaceManagementInput): Work
   if (lock.lockedReason !== null) return "locked";
   if (workspace.workStatus !== "completed") return "inProgress";
   if (input.retentionDays === null) return "retained";
-  if (matchingActivity === undefined || matchingActivity.lastActivityAt === null) return "activityUnknown";
+  if (matchingActivity === undefined) return "activityUnknown";
+  const changes = input.changes;
+  if (changes === undefined || changes.state !== "checked" || changes.workspaceId !== workspace.id
+    || changes.projectId !== workspace.projectId || changes.sourceId !== workspace.sourceId
+    || changes.workspacePath !== workspace.path || !Number.isFinite(Date.parse(changes.checkedAt))
+    || Date.parse(changes.checkedAt) > input.now) return "changesUnknown";
+  if (changes.hasChanges) return "modified";
   const completedAt = Date.parse(workspace.completedAt ?? "");
-  const lastActivity = Date.parse(matchingActivity.lastActivityAt);
+  const activityDates = [matchingActivity.lastActivityAt, changes.lastChangedAt].filter(date => date !== null).map(Date.parse);
+  if (activityDates.length === 0 || activityDates.some(date => !Number.isFinite(date) || date > input.now)) return "activityUnknown";
+  const lastActivity = Math.max(...activityDates);
   if (!Number.isFinite(lastActivity) || !Number.isFinite(input.now) || lastActivity > input.now
     || !Number.isFinite(completedAt) || completedAt > input.now
     || !isWorkspaceRetention({ days: input.retentionDays })) return "activityUnknown";

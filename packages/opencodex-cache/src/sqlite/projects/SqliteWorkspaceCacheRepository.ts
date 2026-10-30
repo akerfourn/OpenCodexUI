@@ -1,4 +1,5 @@
 import { relocateWorkspace } from "./relocateWorkspace.js";
+import { SqliteWorkspaceChangesRepository } from "./SqliteWorkspaceChangesRepository.js";
 import { readWorkspaceActivity } from "./workspaceActivity.js";
 import { updateWorkspaceWorkStatus } from "./workspaceWorkStatus.js";
 import type { OpenCodexWorkspaceWorkStatusInput } from "@open-codex-ui/opencodex-protocol";
@@ -43,6 +44,8 @@ interface WorkspaceRow extends Omit<OpenCodexProjectWorkspace, "isPrimary" | "ma
 
 /** Owns workspace identity and atomic lifecycle guards in the shared cache. */
 export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository {
+  /** Persistent comparison baselines, independent of execution and manual progress. */
+  readonly changes: SqliteWorkspaceChangesRepository;
   /** Physical moves hold their identities and destination paths across restarts. */
   readonly moves: SqliteWorkspaceMoveRepository;
   /** Removal intent remains durable without deleting conversation history. */
@@ -53,6 +56,7 @@ export class SqliteWorkspaceCacheRepository implements WorkspaceCacheRepository 
   readonly transitions: SqliteWorkspaceTransitionRepository;
   /** Uses the facade's transaction-capable connection. */
   constructor(private readonly database: Database) {
+    this.changes = new SqliteWorkspaceChangesRepository(database);
     this.moves = new SqliteWorkspaceMoveRepository(database);
     this.removals = new SqliteWorkspaceRemovalRepository(database);
     this.creations = new SqliteWorkspaceCreationRepository(database);

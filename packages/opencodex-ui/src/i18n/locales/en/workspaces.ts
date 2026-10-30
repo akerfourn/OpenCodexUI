@@ -15,7 +15,7 @@ export const enWorkspaces = {
   },
   "workspaceManagement": {
     "title": "Workspace activity and cleanup",
-    "help": "Last activity comes from cached Codex conversations and turns, including archived conversations. File changes and external tools are not tracked. Candidates are only suggestions for inspection: removal will recheck files, locks and source activity. Nothing is deleted automatically.",
+    "help": "Codex activity comes from saved conversations and turns. Opening or refreshing this view performs a one-time comparison of Git state and non-ignored file metadata. Ignored files (often dependencies and build artifacts) are excluded. The first check establishes a baseline; later dates indicate detection, not the exact edit time or author. There is no continuous monitoring or automatic deletion.",
     "onlyCandidates": "Show only cleanup candidates",
     "candidates_zero": "No workspaces to inspect for cleanup",
     "candidates_one": "{{count}} workspace to inspect for cleanup",
@@ -37,11 +37,24 @@ export const enWorkspaces = {
       "lockUnknown": "Lock needs verification",
       "locked": "Locked — retained",
       "activityUnknown": "Unknown activity",
+      "changesUnknown": "Changes need verification",
+      "modified": "Local changes — retained",
       "inProgress": "Work in progress — retained",
       "retained": "Suggestions disabled — retained",
       "recent": "Retention period in progress",
       "candidate": "Inspect for cleanup"
     }
+  },
+  "workspaceChanges": {
+    "unknown": "Changes: not checked",
+    "baseline": "No change has been detected between two checks yet.",
+    "changedAt": "Last change detected: {{date}}",
+    "checkedAt": "Checked on {{date}}",
+    "clean": "No non-ignored local changes",
+    "modified": "Non-ignored local changes are present",
+    "cached": "Cached result; needs rechecking",
+    "partial": "Partial check or changing state; excluded from cleanup suggestions",
+    "unavailable": "Check unavailable. Verify the source and Git repository, then refresh."
   },
   "workspaceDiskUsage": {
     "help": "Size is measured only on request, inside the workspace’s source. Ignored files are included; .git entries, symbolic-link targets and other filesystems are excluded. Hard links are counted once per measurement. This estimate does not guarantee how much space deletion would free.",
@@ -57,7 +70,7 @@ export const enWorkspaces = {
   },
   "workspaceRetention": {
     "title": "Workspace retention for this project",
-    "help": "Completed workspaces are suggested for cleanup after this delay, measured from the later of completion and last known Codex activity. Work in progress and unknown activity remain excluded. The setting is saved for this project and defaults to 30 days. Removal stays manual.",
+    "help": "Completed workspaces are suggested after this delay, measured from the latest completion, Codex activity or detected change. A complete check with no non-ignored local changes is required. Work in progress and unknown states remain excluded. The delay is saved per project and defaults to 30 days. Removal stays manual.",
     "mode": "Cleanup suggestions",
     "enabled": "Suggest completed work after a delay",
     "disabled": "Do not suggest cleanup",
