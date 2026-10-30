@@ -19,7 +19,8 @@ import { transformMarkdownUrl } from "../messages/markdownUrls";
 
 const remarkPlugins = [remarkGfm];
 const sanitizePlugin: [typeof rehypeSanitize, Options] = [rehypeSanitize, markdownHtmlSchema];
-const rehypePlugins = [rehypeRaw, sanitizePlugin, rehypeFileHeadings, rehypeHighlight];
+const highlightPlugin: [typeof rehypeHighlight, { plainText: string[] }] = [rehypeHighlight, { plainText: ["mermaid"] }];
+const rehypePlugins = [rehypeRaw, sanitizePlugin, rehypeFileHeadings, highlightPlugin];
 const components = { pre: PreBlock, code: InlineCode, img: MarkdownPreviewImage };
 export const MAX_MARKDOWN_PREVIEW_LENGTH = 100_000;
 

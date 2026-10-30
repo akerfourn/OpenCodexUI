@@ -286,6 +286,15 @@ export const frConversation = {
     imageUnavailable: "Image manquante ou non disponible",
     limitContent: "Limiter l'affichage",
     linkTooltip: "{{href}} (Ctrl+clic)",
+    mermaid: {
+      diagram: "Diagramme Mermaid",
+      loading: "Rendu du diagramme…",
+      showSource: "Voir le code",
+      showDiagram: "Voir le diagramme",
+      invalid: "Ce diagramme Mermaid ne peut pas être affiché. Son code reste disponible ci-dessous.",
+      tooLarge: "Ce diagramme dépasse la limite de 50 000 caractères. Son code reste disponible.",
+      details: "Détails de l'erreur"
+    },
     openImage: "Ouvrir l'image",
     showAllContent: "Tout afficher",
     showMarkdown: "Afficher en Markdown",

@@ -28,7 +28,7 @@ You must already have Codex CLI installed and configured on your machine.
 - Streaming assistant responses.
 - Collapsible reasoning and activity blocks.
 - Optional steering while Codex is reasoning.
-- Markdown rendering with copy buttons on code blocks.
+- Markdown rendering with copy buttons on code blocks and Mermaid diagrams.
 - File references with `@`.
 - Skill references with `$`.
 - Image display support in messages.

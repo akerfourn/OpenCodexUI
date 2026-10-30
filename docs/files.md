@@ -145,6 +145,39 @@ are generated. Links and image URLs also pass through the existing source-aware
 URL filter; local references never become browser filesystem requests. Chat
 messages retain their existing HTML behavior.
 
+### Mermaid diagrams
+
+Conversations and Markdown file previews render fenced `mermaid` blocks:
+
+````markdown
+```mermaid
+flowchart LR
+  A[Start] --> B[Review] --> C[Done]
+```
+````
+
+The block offers **View source / View diagram** and copies the original Mermaid
+source. Completed chat responses render diagrams; streaming responses retain
+literal code until completion. Invalid diagrams keep their source with a
+localized explanation and expandable error details. Oversized source above
+50,000 characters remains literal.
+
+The official `mermaid` library provides the parser and diagram layout rather
+than a custom partial implementation. Version 11 is pinned to preserve this
+repository's Node 20 compatibility; Mermaid 12 requires Node 22.12 or later.
+See [Mermaid usage and API](https://mermaid.js.org/config/usage.html).
+The dependency and its diagram modules are bundled locally and loaded on demand,
+when a diagram approaches the viewport. There is no CDN dependency. Layouts are
+serialized because Mermaid has global configuration; a bounded cache retains
+up to 32 images and 2 MiB of encoded image data across remounts.
+
+Diagrams follow the UI's light/dark theme. Rendering uses strict security with
+HTML labels and callbacks disabled, and document configuration cannot override
+site settings. The final SVG is displayed as an inert image without binding
+events or inserting diagram links into the Markdown DOM. Temporary measurement
+nodes are removed after success, failure or cancellation. Unmounted or replaced
+blocks cannot publish stale results. Rendering limits also cap edges at 500.
+
 External editor launchers use `cross-spawn` for Windows `.cmd`/`.bat` support
 and argument escaping. `which` resolves the configured executable before launch
 so a missing command is reported through the UI rather than becoming an

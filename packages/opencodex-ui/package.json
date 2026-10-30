@@ -26,6 +26,7 @@
     "i18next": "^26.0.8",
     "katex": "0.16.47",
     "lexical": "^0.44.0",
+    "mermaid": "11.17.2",
     "mobx": "^6.13.1",
     "mobx-react-lite": "^4.0.7",
     "monaco-editor": "^0.56.0",

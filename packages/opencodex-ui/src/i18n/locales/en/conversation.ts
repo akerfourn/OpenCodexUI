@@ -284,6 +284,15 @@ export const enConversation = {
     imageUnavailable: "Image missing or unavailable",
     limitContent: "Limit display",
     linkTooltip: "{{href}} (Ctrl+click)",
+    mermaid: {
+      diagram: "Mermaid diagram",
+      loading: "Rendering diagram…",
+      showSource: "View source",
+      showDiagram: "View diagram",
+      invalid: "This Mermaid diagram could not be displayed. Its source remains available below.",
+      tooLarge: "This diagram exceeds the 50,000-character limit. Its source remains available.",
+      details: "Error details"
+    },
     openImage: "Open image",
     showAllContent: "Show all",
     showMarkdown: "Show as Markdown",

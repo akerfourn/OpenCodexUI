@@ -17,13 +17,15 @@ import { CodexDirectiveSpanX } from "./CodexDirectiveSpan";
 import { MarkdownLinkContext } from "./MarkdownLinkContext";
 import { transformMarkdownUrl } from "./markdownUrls";
 import { ChatImage } from "./ChatImage";
+import { MarkdownDiagramContext } from "./MarkdownDiagramContext";
 
 export type MarkdownRenderVariant = "streaming" | "standard" | "highlighted";
 
 export { MarkdownLinkContext, type MarkdownLinkContextValue } from "./MarkdownLinkContext";
 
 const textRemarkPlugins = [remarkGfm, remarkCodexDirectives];
-const syntaxRehypePlugins = [rehypeHighlight];
+const highlightPlugin: [typeof rehypeHighlight, { plainText: string[] }] = [rehypeHighlight, { plainText: ["mermaid"] }];
+const syntaxRehypePlugins = [highlightPlugin];
 const remarkPlugins = [remarkGfm, remarkMath, remarkCodexDirectives];
 const rehypeKatexOptions: RehypeKatexOptions = {
   strict: "ignore",
@@ -34,7 +36,7 @@ const katexPlugin: [typeof rehypeKatex, RehypeKatexOptions] = [
   rehypeKatexOptions
 ];
 const mathRehypePlugins = [katexPlugin];
-const highlightedRehypePlugins = [katexPlugin, rehypeHighlight];
+const highlightedRehypePlugins = [katexPlugin, highlightPlugin];
 const plainRehypePlugins: [] = [];
 
 const markdownComponents: Components & { "codex-directive": typeof CodexDirectiveSpanX } = {
@@ -61,13 +63,15 @@ export function createMarkdownRenderTree(
   variant: MarkdownRenderVariant,
   renderMath = true
 ): ReactElement {
-  const createTree = (): ReactElement => ReactMarkdown({
+  const createTree = (): ReactElement => <MarkdownDiagramContext.Provider value={variant !== "streaming"}>
+    {ReactMarkdown({
     remarkPlugins: renderMath ? remarkPlugins : textRemarkPlugins,
     rehypePlugins: getRehypePlugins(variant, renderMath),
     components: markdownComponents,
     urlTransform: transformMarkdownUrl,
     children: markdown
-  });
+    })}
+  </MarkdownDiagramContext.Provider>;
 
   if (variant === "streaming") {
     return createTree();
