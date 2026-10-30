@@ -122,6 +122,26 @@ describe("UsageStore reset credits", () => {
       idempotencyKey: consumeRequests[1]?.[0].idempotencyKey
     });
   });
+
+  it.each(["nothingToReset", "noCredit"] as const)(
+    "should expose a localized explanation key for %s without changing the credit balance",
+    async (outcome) => {
+      vi.useFakeTimers();
+      const request = vi.fn(async (request: OpenCodexRequest): Promise<unknown> => {
+        if (request.type === "usage.read") {
+          return createUsageSnapshot("source-a", { availableCount: 1, credits: [createResetCredit()] });
+        }
+        return { outcome };
+      });
+      const store = new UsageStore(createRootStore(request));
+      await store.load("source-a");
+
+      await expect(store.consumeReset("source-a", "reset-1")).resolves.toEqual({ outcome });
+
+      expect(store.getSourceUsage("source-a")?.error).toBe(`sources.resetCredits.${outcome}`);
+      expect(store.getSourceUsage("source-a")?.rateLimitResetCredits?.availableCount).toBe(1);
+    }
+  );
 });
 
 function createRootStore(request: RootStore["request"]): RootStore {

@@ -221,7 +221,7 @@ export class UsageStore implements RootChildStore {
 
       runInAction(() => {
         if (result.outcome === "nothingToReset" || result.outcome === "noCredit") {
-          state.error = readConsumeOutcomeError(result.outcome);
+          state.error = readConsumeOutcomeErrorKey(result.outcome);
         }
       });
 
@@ -451,17 +451,17 @@ function readUsageError(error: unknown): string {
 }
 
 /**
- * Converts a backend consume outcome into an explanatory UI message.
+ * Converts a backend consume outcome into a translation key for the UI.
  *
  * @param outcome Backend consume outcome.
- * @returns User-facing message.
+ * @returns Localizable explanation key.
  */
-function readConsumeOutcomeError(
+function readConsumeOutcomeErrorKey(
   outcome: "nothingToReset" | "noCredit"
 ): string {
   if (outcome === "nothingToReset") {
-    return "No rate-limit reset is currently available.";
+    return "sources.resetCredits.nothingToReset";
   }
 
-  return "The selected reset credit is no longer available.";
+  return "sources.resetCredits.noCredit";
 }

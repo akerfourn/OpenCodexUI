@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
+  OpenCodexUsageLimits,
   OpenCodexUsageResetConsumeResult,
   OpenCodexUsageResetCredit,
   OpenCodexUsageResetCredits
@@ -22,16 +23,19 @@ import type {
 
 import { UsageResetCreditsDetailsX } from "./UsageResetCreditsDetails";
 import { UsageResetCreditConfirmation } from "./UsageResetCreditConfirmation";
+import { UsageResetEligibilityNoticeX } from "./UsageResetEligibilityNotice";
 
 type UsageResetCreditsDialogProps = {
   open: boolean;
   sourceName: string;
   summary: OpenCodexUsageResetCredits;
+  usage: OpenCodexUsageLimits | null;
   isRefreshing: boolean;
   isConsuming: boolean;
   error: string | null;
   onClose(): void;
   onRefresh(): void;
+  onOpenHelp(href: string): void;
   onConsume(creditId: string): Promise<OpenCodexUsageResetConsumeResult>;
 };
 
@@ -45,11 +49,13 @@ export function UsageResetCreditsDialog({
   open,
   sourceName,
   summary,
+  usage,
   isRefreshing,
   isConsuming,
   error,
   onClose,
   onRefresh,
+  onOpenHelp,
   onConsume
 }: UsageResetCreditsDialogProps) {
   const { i18n, t } = useTranslation();
@@ -154,6 +160,16 @@ export function UsageResetCreditsDialog({
     </>
   );
 
+  let errorContent = null;
+  const nothingToReset = error === "sources.resetCredits.nothingToReset";
+  if (error !== null && !nothingToReset) {
+    let message = error;
+    if (error === "sources.resetCredits.noCredit") {
+      message = t("sources.resetCredits.noCredit");
+    }
+    errorContent = <Alert severity="error">{message}</Alert>;
+  }
+
   return (
     <Dialog open={open} fullWidth maxWidth="sm" onClose={handleClose}>
       <DialogTitle>
@@ -163,7 +179,12 @@ export function UsageResetCreditsDialog({
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          {error !== null ? <Alert severity="error">{error}</Alert> : null}
+          {errorContent}
+          <UsageResetEligibilityNoticeX
+            usage={usage}
+            nothingToReset={nothingToReset}
+            onOpenHelp={onOpenHelp}
+          />
           {dialogContent}
         </Stack>
       </DialogContent>

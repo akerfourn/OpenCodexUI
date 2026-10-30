@@ -131,6 +131,11 @@ export function HomeSourceBox({
     void store.usageStore.load(source.id);
   }
 
+  /** Opens official guidance without inheriting another project's source context. */
+  function handleOpenResetHelp(href: string): void {
+    store.openLink(href, null, null, source.id);
+  }
+
   function handleNameChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void {
     setNameDraft(event.target.value);
   }
@@ -420,11 +425,13 @@ export function HomeSourceBox({
           open={isResetCreditsDialogOpen}
           sourceName={source.name}
           summary={resetCredits}
+          usage={usageState?.usagesByLimitId.get("codex") ?? null}
           isRefreshing={usageState?.isLoading ?? false}
           isConsuming={usageState?.isConsumingReset ?? false}
           error={usageState?.error ?? null}
           onClose={handleCloseResetCredits}
           onRefresh={handleRefreshResetCredits}
+          onOpenHelp={handleOpenResetHelp}
           onConsume={(creditId) => store.usageStore.consumeReset(source.id, creditId)}
         />
       ) : null}
