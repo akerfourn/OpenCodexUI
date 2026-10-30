@@ -17,7 +17,7 @@ export interface OpenCodexWorkspaceMove {
   primarySnapshot?: import("./primaryWorkspaceMove.js").OpenCodexPrimaryMoveSnapshot;
   /** Opaque journal identity used for explicit recovery. */
   id: string;
-  /** Principal or managed secondary whose stable identity is retained. */
+  /** Principal or registered secondary whose stable identity and ownership are retained. */
   workspaceId: string;
   /** Logical project and filesystem owner. */
   projectId: string;

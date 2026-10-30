@@ -11,7 +11,7 @@ export class WorkspaceMoveGit {
   /** Keeps process execution injectable for real Git and deterministic transport tests. */
   constructor(private readonly runGit: RunGit) { this.worktrees = new GitWorktreeService(runGit); }
 
-  /** Freezes a stable administrative identity before reserving or moving a managed checkout. */
+  /** Freezes a stable administrative identity before reserving or moving a registered checkout. */
   async capture(projectPath: string, workspacePath: string, destinationPath: string, sourceId: string): Promise<{
     repositoryPath: string; gitDirectory: string; expectedHead: string; expectedBranch: string | null;
   }> {

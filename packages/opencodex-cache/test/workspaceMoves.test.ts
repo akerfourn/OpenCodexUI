@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runMigrations } from "../src/sqlite/migrations";
 import { applySchemaMigrationV45 } from "../src/sqlite/migrations/v45";
 import { applySchemaMigrationV48 } from "../src/sqlite/migrations/v48";
+import { applySchemaMigrationV50 } from "../src/sqlite/migrations/v50";
 import { SqliteWorkspaceCacheRepository } from "../src/sqlite/projects/SqliteWorkspaceCacheRepository";
 import type { WorkspaceMoveInput } from "../src/types/workspaceMoves";
 
@@ -35,11 +36,13 @@ describe("durable workspace movement", () => {
     for (const trigger of triggers) database.exec(`DROP TRIGGER "${trigger.name}"`);
     const extensionTriggers = database.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'protect_primary_move_%'").all() as Array<{ name: string }>;
     for (const trigger of extensionTriggers) database.exec(`DROP TRIGGER ${trigger.name}`);
-    database.exec("DROP TABLE workspace_moves; DELETE FROM schema_migrations WHERE version IN (45, 48);");
+    database.exec("DROP TABLE workspace_moves; DELETE FROM schema_migrations WHERE version IN (45, 48, 50);");
     applySchemaMigrationV45(database);
     applySchemaMigrationV45(database);
     applySchemaMigrationV48(database);
     applySchemaMigrationV48(database);
+    applySchemaMigrationV50(database);
+    applySchemaMigrationV50(database);
     expect(await repository.list(input.projectId)).toEqual(previous);
     expect(await repository.moves.list(input.projectId)).toEqual([]);
     expect(database.pragma("foreign_key_check")).toEqual([]);
@@ -96,14 +99,31 @@ describe("durable workspace movement", () => {
     expect(await repository.listPathAliases(input.workspaceId)).toEqual([]);
   });
 
-  it("should reject primary, imported, wrong-source and reserved identities before dispatch", async () => {
+  it("should reject primary, wrong-source and reserved identities before dispatch", async () => {
     await expect(repository.moves.begin({ ...input, workspaceId: input.primaryWorkspaceId, workspacePath: input.projectPath })).rejects.toThrow("Move identity");
     await expect(repository.moves.begin({ ...input, sourceId: "other" })).rejects.toThrow("Move identity");
-    database.prepare("UPDATE project_workspaces SET managed = 0 WHERE id = ?").run(input.workspaceId);
-    await expect(repository.moves.begin(input)).rejects.toThrow("Move identity");
-    database.prepare("UPDATE project_workspaces SET managed = 1 WHERE id = ?").run(input.workspaceId);
     await repository.reserve(input.workspaceId, "thread");
     await expect(repository.moves.begin(input)).rejects.toThrow("reserved");
+  });
+
+  it("should retain imported ownership and immutable history while moving its current conversations", async () => {
+    database.prepare("UPDATE project_workspaces SET managed = 0 WHERE id = ?").run(input.workspaceId);
+    const reserved = await repository.reserve(input.workspaceId, "thread");
+    await repository.submitting(reserved.id);
+    await repository.acknowledge(reserved.id, "turn");
+    await repository.observeTurn("source", "thread", "turn", true);
+    const move = await repository.moves.begin(input);
+    await expect(repository.reserve(input.workspaceId, "thread")).rejects.toThrow("pending move");
+    await expect(repository.resolvePath(input.destinationPath, "source")).rejects.toThrow("pending move");
+    await repository.moves.submitting(move.id);
+    await repository.moves.commit(move.id);
+
+    expect(await repository.getForThread("thread")).toMatchObject({ id: input.workspaceId, path: input.destinationPath, managed: false });
+    expect(await repository.listTurnContexts("thread")).toMatchObject([{ workspaceId: input.workspaceId, cwd: input.workspacePath }]);
+    expect(await repository.getThreadRelocationPath("thread")).toBe(input.workspacePath);
+    expect(await repository.listPathAliases(input.workspaceId)).toEqual([input.workspacePath]);
+    await expect(repository.removals.begin(input.projectId, input.workspaceId, "source", input.primaryWorkspaceId, input.repositoryPath))
+      .rejects.toThrow("Only a managed secondary");
   });
 
   it("should reserve Windows destination ownership regardless of case and separators", async () => {

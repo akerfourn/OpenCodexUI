@@ -20,12 +20,14 @@ export function WorkspaceMoveDialog({ project, workspace, onClose }: {
   const current = store.workspaces.find(item => item.id === workspace.id) ?? workspace;
   const unsaved = project.files.hasUnsavedWorkspaceDocuments(workspace.id);
   const blocked = store.isBusy || project.isReadOnlyFromCache || unsaved || current.sourceId === null
-    || current.isPrimary || !current.managed || current.removedAt !== null
+    || current.isPrimary || current.removedAt !== null
     || current.removalPending === true || current.movePending === true;
   const selectedRoot = available.find(root => root.id === rootId);
   const invalid = custom ? destination.length === 0 || samePath(destination, current.path) : selectedRoot === undefined;
   const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
   const unsavedNotice = unsaved ? <Alert severity="warning">{t("workspaces.moveUnsaved")}</Alert> : null;
+  const importedNotice = !current.managed
+    ? <Alert severity="info">{t("workspaces.moveImportedHelp")}</Alert> : null;
   const noStorage = available.length === 0 && !custom
     ? <Alert severity="info">{t("workspaces.moveConfigureStorage")}</Alert> : null;
   const options = available.map(root => <MenuItem key={root.id} value={root.id}>{root.label}</MenuItem>);
@@ -56,6 +58,7 @@ export function WorkspaceMoveDialog({ project, workspace, onClose }: {
       <DialogTitle>{t("workspaces.move")}</DialogTitle>
       <DialogContent>
         <Alert severity="info">{t("workspaces.moveHelp")}</Alert>
+        {importedNotice}
         <TextField label={t("workspaces.previousPath")} value={current.path} fullWidth margin="normal"
           slotProps={{ input: { readOnly: true } }} />
         {noStorage}{storageInput}

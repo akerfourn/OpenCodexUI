@@ -242,12 +242,16 @@ describe("workspace UI orchestration", () => {
     expect(project.workspaces.lockStates.has("B")).toBe(false);
   });
 
-  it("should send a plain storage-root move intent and follow the persisted destination without changing thread IDs", async () => {
+  it.each([true, false])("should send a plain move and preserve thread IDs and ownership (managed: %s)", async (managed) => {
     const { project, request } = fixture();
     let moved = false;
     request.mockImplementation(async input => {
       if (input.type === "projectWorkspaces.move") moved = true;
-      if (input.type === "projectWorkspaces.list") return workspaces.map(item => item.id === "B" && moved ? { ...item, path: "/storage/project/B" } : item);
+      if (input.type === "projectWorkspaces.list") return workspaces.map(item => {
+        if (item.id !== "B") return item;
+        if (moved) return { ...item, managed, path: "/storage/project/B" };
+        return { ...item, managed };
+      });
       return [];
     });
     await project.workspaces.load();
@@ -259,6 +263,7 @@ describe("workspace UI orchestration", () => {
     } });
     expect(project.findThread("thread")?.projectPath).toBe("/storage/project/B");
     expect(project.workspaces.current?.id).toBe("B");
+    expect(project.workspaces.current?.managed).toBe(managed);
   });
 
   it("should recover movement by operation ID without dispatching another physical move", async () => {

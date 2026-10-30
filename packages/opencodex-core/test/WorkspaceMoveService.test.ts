@@ -11,7 +11,7 @@ import { WorkspaceMoveGit } from "../src/backend/workspaces/WorkspaceMoveGit";
 import { WorkspaceMoveService } from "../src/backend/workspaces/WorkspaceMoveService";
 import { WorkspaceActivityGate } from "../src/backend/workspaces/WorkspaceActivityGate";
 
-describe("physical movement with real Git and SQLite", () => {
+describe.each([true, false])("physical movement with real Git and SQLite (managed: %s)", (managed) => {
   let directory: string;
   let repository: string;
   let checkout: string;
@@ -52,14 +52,20 @@ describe("physical movement with real Git and SQLite", () => {
     git(repository, ["-c", "commit.gpgsign=false", "commit", "-m", "fixture"]);
     cache = createOpenCodexSqliteCacheRepository({ directory: path.join(directory, "cache") });
     primary = await cache.workspaces.resolvePath(repository, "source");
-    const creation = await cache.workspaces.creations.begin({ primaryWorkspaceId: primary.id, sourceId: "source",
-      projectPath: repository, repositoryPath: path.join(repository, ".git"), destinationPath: checkout,
-      start: { mode: "newBranch", branchName: "topic", startPoint: "HEAD" } });
     const head = git(repository, ["rev-parse", "HEAD"]).trim();
-    await cache.workspaces.creations.submitting(creation.id, head, "refs/heads/topic");
-    git(repository, ["worktree", "add", "-b", "topic", checkout, head]);
-    await cache.workspaces.creations.confirmGit(creation.id);
-    workspace = (await cache.workspaces.get(await cache.workspaces.creations.commit(creation.id)))!;
+    if (managed) {
+      const creation = await cache.workspaces.creations.begin({ primaryWorkspaceId: primary.id, sourceId: "source",
+        projectPath: repository, repositoryPath: path.join(repository, ".git"), destinationPath: checkout,
+        start: { mode: "newBranch", branchName: "topic", startPoint: "HEAD" } });
+      await cache.workspaces.creations.submitting(creation.id, head, "refs/heads/topic");
+      git(repository, ["worktree", "add", "-b", "topic", checkout, head]);
+      await cache.workspaces.creations.confirmGit(creation.id);
+      workspace = (await cache.workspaces.get(await cache.workspaces.creations.commit(creation.id)))!;
+    } else {
+      git(repository, ["worktree", "add", "-b", "topic", checkout, head]);
+      await cache.workspaces.registerDiscovered(primary.id, "source", repository, [checkout]);
+      workspace = (await cache.workspaces.list(primary.projectId)).find(item => item.path === checkout)!;
+    }
     destination = path.join(storage, primary.projectId, workspace.id);
     roots = [{ id: "storage", label: "Storage", sourceId: "source", path: storage, isDefault: true }];
     request.mockImplementation(async method => {
@@ -103,7 +109,7 @@ describe("physical movement with real Git and SQLite", () => {
     expect(fs.readFileSync(path.join(destination, "local.txt"), "utf8")).toBe("untracked\n");
     expect(fs.readFileSync(path.join(destination, "ignored.txt"), "utf8")).toBe("ignored\n");
     expect(git(destination, ["branch", "--show-current"]).trim()).toBe("topic");
-    expect(await cache.workspaces.get(workspace.id)).toMatchObject({ id: workspace.id, path: destination, managed: true, name: workspace.name });
+    expect(await cache.workspaces.get(workspace.id)).toMatchObject({ id: workspace.id, path: destination, managed, name: workspace.name });
     expect(await service.pending(primary.projectId)).toEqual([]);
   });
 
@@ -118,6 +124,15 @@ describe("physical movement with real Git and SQLite", () => {
     expect((await cache.workspaces.get(workspace.id))?.path).toBe(custom);
   });
 
+  it("should retain a detached HEAD without creating a branch or changing ownership", async () => {
+    git(checkout, ["checkout", "--detach"]);
+    const head = git(checkout, ["rev-parse", "HEAD"]).trim();
+    await move();
+    expect(git(destination, ["rev-parse", "HEAD"]).trim()).toBe(head);
+    expect(git(destination, ["branch", "--show-current"]).trim()).toBe("");
+    expect(await cache.workspaces.get(workspace.id)).toMatchObject({ path: destination, managed });
+  });
+
   it("should recover completion after a lost reply and SQLite reopening without replay or changed-root redirection", async () => {
     const original = gitMove.move.bind(gitMove);
     const dispatch = vi.spyOn(gitMove, "move").mockImplementation(async intent => { await original(intent); throw new Error("reply lost"); });
@@ -130,7 +145,7 @@ describe("physical movement with real Git and SQLite", () => {
     service = new WorkspaceMoveService(cache.workspaces, clients, gate, inactive, () => roots, gitMove);
     await service.reconcile(pending.id);
     expect(dispatch).toHaveBeenCalledTimes(1);
-    expect((await cache.workspaces.get(workspace.id))?.path).toBe(destination);
+    expect(await cache.workspaces.get(workspace.id)).toMatchObject({ path: destination, managed });
   });
 
   it("should retain unknown results and refuse both path reuse and blind recovery when no move is proven", async () => {
@@ -205,14 +220,10 @@ describe("physical movement with real Git and SQLite", () => {
     expect(fs.existsSync(checkout)).toBe(true);
   });
 
-  it("should refuse primary, imported and wrong-source requests before source operations", async () => {
-    await expect(service.move({ projectId: primary.projectId, workspaceId: primary.id, sourceId: "source" })).rejects.toThrow("managed secondary");
-    await expect(service.move({ projectId: primary.projectId, workspaceId: workspace.id, sourceId: "another" })).rejects.toThrow("managed secondary");
-    const external = path.join(directory, "external");
-    git(repository, ["worktree", "add", "--detach", external]);
-    await cache.workspaces.registerDiscovered(primary.id, "source", repository, [external]);
-    const imported = (await cache.workspaces.list(primary.projectId)).find(item => item.path === external)!;
-    await expect(service.move({ projectId: primary.projectId, workspaceId: imported.id, sourceId: "source" })).rejects.toThrow("managed secondary");
+  it("should refuse primary, wrong-project and wrong-source requests before source operations", async () => {
+    await expect(service.move({ projectId: primary.projectId, workspaceId: primary.id, sourceId: "source" })).rejects.toThrow("available secondary");
+    await expect(service.move({ projectId: primary.projectId, workspaceId: workspace.id, sourceId: "another" })).rejects.toThrow("available secondary");
+    await expect(service.move({ projectId: "another", workspaceId: workspace.id, sourceId: "source" })).rejects.toThrow("available secondary");
     expect(clients.ensureClient).not.toHaveBeenCalled();
   });
 
@@ -229,12 +240,18 @@ describe("physical movement with real Git and SQLite", () => {
 
   it("should keep native Windows storage paths in the owning source rather than resolving them on Linux", async () => {
     const windowsPrimary = await cache.workspaces.resolvePath("C:\\repo", "windows");
-    const intent = await cache.workspaces.creations.begin({ primaryWorkspaceId: windowsPrimary.id, sourceId: "windows",
-      projectPath: "C:\\repo", repositoryPath: "C:\\repo\\.git", destinationPath: "C:\\workspace",
-      start: { mode: "newBranch", branchName: "topic", startPoint: "HEAD" } });
-    await cache.workspaces.creations.submitting(intent.id, "a".repeat(40), "refs/heads/topic");
-    await cache.workspaces.creations.confirmGit(intent.id);
-    const id = await cache.workspaces.creations.commit(intent.id);
+    let id: string;
+    if (managed) {
+      const intent = await cache.workspaces.creations.begin({ primaryWorkspaceId: windowsPrimary.id, sourceId: "windows",
+        projectPath: "C:\\repo", repositoryPath: "C:\\repo\\.git", destinationPath: "C:\\workspace",
+        start: { mode: "newBranch", branchName: "topic", startPoint: "HEAD" } });
+      await cache.workspaces.creations.submitting(intent.id, "a".repeat(40), "refs/heads/topic");
+      await cache.workspaces.creations.confirmGit(intent.id);
+      id = await cache.workspaces.creations.commit(intent.id);
+    } else {
+      await cache.workspaces.registerDiscovered(windowsPrimary.id, "windows", windowsPrimary.path, ["C:\\workspace"]);
+      id = (await cache.workspaces.list(windowsPrimary.projectId)).find(item => !item.isPrimary)!.id;
+    }
     const target = `C:\\storage\\${windowsPrimary.projectId}\\${id}`;
     const directories = new Set(["C:\\", "C:\\repo", "C:\\workspace", "C:\\storage"]);
     let moved = false;
@@ -272,7 +289,7 @@ describe("physical movement with real Git and SQLite", () => {
       () => [{ id: "windows-root", label: "Windows", sourceId: "windows", path: "C:\\storage", isDefault: true }],
       new WorkspaceMoveGit(runGit));
     await windowsService.move({ projectId: windowsPrimary.projectId, workspaceId: id, sourceId: "windows" });
-    expect((await cache.workspaces.get(id))?.path).toBe(target);
+    expect(await cache.workspaces.get(id)).toMatchObject({ path: target, managed });
   });
 
   it("should reject roots from another source and reject mixing a root with a custom path", async () => {

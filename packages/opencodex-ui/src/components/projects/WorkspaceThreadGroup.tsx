@@ -109,11 +109,11 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   if (workspace !== null && workspace.isPrimary) {
     if (moving) movement = <PrimaryWorkspaceMoveDialogX project={project} workspace={workspace} onClose={() => setMoving(false)} />;
     moveAction = <MenuItem disabled={disabled} onClick={handleMove}>{t("primaryWorkspaceMove.title")}</MenuItem>;
-  } else if (workspace !== null && canRemove) {
+  } else if (workspace !== null && workspace.removedAt === null) {
     if (moving) movement = <WorkspaceMoveDialogX project={project} workspace={workspace} onClose={() => setMoving(false)} />;
     moveAction = <MenuItem disabled={disabled || lockUnknown || locked} onClick={handleMove}>{t("workspaces.move")}</MenuItem>;
   }
-  /** Opens configured storage choices for this fixed managed workspace identity. */
+  /** Opens configured storage choices for this fixed workspace identity. */
   function handleMove(): void {
     setAnchor(null);
     setMoving(true);

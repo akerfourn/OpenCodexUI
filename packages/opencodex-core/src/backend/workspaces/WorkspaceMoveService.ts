@@ -13,7 +13,7 @@ import { resolveWorkspaceStorage, prepareWorkspaceStorage } from "./WorkspaceSto
 import { workspaceSourcePathsEqual } from "./workspaceSourcePath.js";
 import type { PrimaryWorkspaceMoveService } from "./PrimaryWorkspaceMoveService.js";
 
-/** Moves managed secondary worktrees and publishes only source-verified destinations. */
+/** Moves registered secondary worktrees and publishes only source-verified destinations. */
 export class WorkspaceMoveService {
   /** Read-only source inventory and literal-directory validation. */
   private readonly runtime: WorkspaceRemovalRuntime;
@@ -87,13 +87,13 @@ export class WorkspaceMoveService {
     });
   }
 
-  /** Rejects external/primary/unavailable identities before accepting a destination. */
+  /** Requires an available secondary belonging to the explicit project and source. */
   private async requireWorkspace(input: OpenCodexWorkspaceMoveInput): Promise<OpenCodexProjectWorkspace> {
     const workspace = await this.repository.get(input.workspaceId);
     if (workspace === null || workspace.projectId !== input.projectId || workspace.sourceId !== input.sourceId
-      || workspace.isPrimary || !workspace.managed || workspace.removedAt !== null
+      || workspace.isPrimary || workspace.removedAt !== null
       || workspace.removalPending === true || workspace.movePending === true) {
-      throw new Error("Only an available managed secondary workspace of this project can be moved.");
+      throw new Error("Only an available secondary workspace of this project can be moved.");
     }
     return workspace;
   }

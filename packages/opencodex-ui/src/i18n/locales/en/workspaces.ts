@@ -123,6 +123,7 @@ export const enWorkspaces = {
     "lockLoading": "Checking lock…",
 
     "move": "Move workspace",
+    "moveImportedHelp": "This workspace will remain imported after the move. OpenCodexUI will not be able to delete it. Other tools that use its previous path will need to be reconfigured.",
     "moveHelp": "Choose a storage location in this source. Git will move the directory with its local files and preserve its branch. Stop running activities first. No overwrite, unlock or force operation is performed.",
     "moveCustom": "Use a custom path (advanced)",
     "moveConfirm": "I confirm moving this workspace to this destination.",

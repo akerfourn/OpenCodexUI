@@ -88,7 +88,18 @@ describe("workspace move destination choices", () => {
     expect(moveButton().disabled).toBe(true);
   });
 
-  it("should disable movement for unsaved documents and imported workspaces", async () => {
+  it("should move an imported workspace only after destination confirmation and explain its retained ownership", async () => {
+    const { move, onClose } = await renderDialog(false, { ...workspace, managed: false });
+    expect(document.body.textContent).toContain("workspaces.moveImportedHelp");
+    expect(moveButton().disabled).toBe(true);
+    await act(async () => { document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1]!.click(); });
+    expect(moveButton().disabled).toBe(false);
+    await act(async () => { moveButton().click(); });
+    expect(move).toHaveBeenCalledWith("workspace", "other");
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("should still disable movement for imported workspaces with unsaved documents", async () => {
     const { move } = await renderDialog(true, { ...workspace, managed: false });
     expect(moveButton().disabled).toBe(true);
     expect(document.body.textContent).toContain("workspaces.moveUnsaved");

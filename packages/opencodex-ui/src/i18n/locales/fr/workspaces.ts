@@ -123,6 +123,7 @@ export const frWorkspaces = {
 
     "move": "Déplacer le workspace",
     "moveHelp": "Choisissez un emplacement de stockage dans cette source. Git déplacera le dossier avec ses fichiers locaux et conservera sa branche. Arrêtez les activités en cours. Aucun écrasement, déverrouillage ou forçage n’est effectué.",
+    "moveImportedHelp": "Ce workspace restera importé après le déplacement. OpenCodexUI ne pourra pas le supprimer. Les autres outils qui utilisent son ancien chemin devront être reconfigurés.",
     "moveCustom": "Utiliser un chemin personnalisé (avancé)",
     "moveConfirm": "Je confirme le déplacement vers cette destination.",
     "moveUnsaved": "Enregistrez ou fermez les documents non enregistrés avant de déplacer ce workspace.",

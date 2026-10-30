@@ -262,9 +262,10 @@ rollout limitation; create a new conversation in the relocated workspace.
 No historical turn cwd is rewritten. Project rules, custom scripts and explicit
 shared-folder paths containing the old location are not rewritten automatically.
 
-## Moving a managed workspace
+## Moving a secondary workspace
 
-Use **Move workspace** in the menu of a managed secondary workspace. The dialog
+Use **Move workspace** in the menu of a registered secondary workspace, whether
+created by OpenCodexUI or explicitly imported. The dialog
 starts with configured storage locations from the owning source and selects
 its default location when it differs from the current destination, otherwise
 another available location. The backend resolves the final path as
@@ -276,9 +277,12 @@ instead of opening a free path field by default.
 Movement uses `git worktree move -- <old-path> <new-path>` through the owning
 source. It preserves workspace IDs, names, branches and all checkout files,
 including modified, untracked and ignored files. Principal-directory movement
-uses the separate workflow below. Imported secondary workspaces retain their
-manual relocation action and are not moved automatically. Git's lock, submodule and filesystem restrictions are
-preserved. No force, unlock, stash, copy/delete or cross-source fallback occurs.
+uses the separate workflow below. Imported secondaries keep `managed: false`
+after movement and remain ineligible for deletion and cleanup suggestions.
+Their move dialog explains this distinction and that external tools using the
+old path must be reconfigured. Manual relocation remains available after an
+external move. Git's lock, submodule and filesystem restrictions are preserved.
+No force, unlock, stash, copy/delete or cross-source fallback occurs.
 Cross-filesystem moves that Git refuses remain refused.
 
 The destination must be absent and separate from registered checkouts and the
@@ -610,6 +614,9 @@ Migration 47 keeps primaries permanent and clears obsolete primary completion
 annotations. Migration 48 extends movement reservations for principal folders,
 preserving existing identities, paths and history. Preserve
 existing data through idempotent migrations instead of rewriting associations.
+Migration 50 permits imported-secondary movement by replacing only the move
+identity guard. It preserves workspace ownership, existing move journals and
+all removal, execution, source and destination guards.
 
 Run from the repository root:
 
@@ -635,6 +642,11 @@ validation, durable policy reloads, alias preservation and UI confirmation.
 Git refusals, configured/custom targets, lost replies and restart recovery.
 Cache movement tests cover transactional publication and durable SQL guards;
 UI tests cover configured-root priority and explicit advanced custom paths.
+Movement regression scenarios run for both managed and imported checkouts,
+including dirty/local files, detached HEADs, locks, interruption recovery and
+source-native Windows paths. Cache tests cover the existing-schema upgrade,
+retained imported ownership, immutable history and continued deletion refusal.
+UI tests cover contextual move/deletion actions and imported-move confirmation.
 Native Windows source paths are simulated; this does not replace native OS QA.
 `WorkspaceLockService` covers real Git locks, external changes, empty reasons,
 missing checkouts, move/removal protection, lost replies and Windows source
@@ -666,7 +678,6 @@ tests cover ignored/Git data, links, traversal limits, partial reads, explicit
 ownership and native Windows paths. UI/store tests cover manual launch, dated
 results, offline reading and stale responses without automatic rescanning.
 
-Imported-secondary movement and automatic per-agent worktrees are not
-implemented. Local guards
+Automatic per-agent worktrees are not implemented. Local guards
 do not lock out external Git/Codex clients or establish universal filesystem
 identity across mounts and aliases.
