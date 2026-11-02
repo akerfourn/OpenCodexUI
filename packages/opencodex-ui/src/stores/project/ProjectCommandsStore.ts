@@ -2,6 +2,7 @@
  * Holds project command definitions and live run state.
  */
 import { commandExecutionConflicts, type OpenCodexCommandExecutionContext } from "@open-codex-ui/opencodex-protocol";
+import { ProjectCommandGroupsStore } from "./ProjectCommandGroupsStore";
 import { makeAutoObservable, observable, runInAction } from "mobx";
 
 import type {
@@ -34,6 +35,8 @@ export type { ProjectCommandFormInput } from "./projectCommandDefinitions";
  * Stores project command configuration and live output for one project.
  */
 export class ProjectCommandsStore {
+  /** Project-local organization and direct side-panel group controls. */
+  readonly groups: ProjectCommandGroupsStore;
   /** Commands configured for the owning project. */
   commands: OpenCodexProjectCommand[] = [];
   /** Store responsible for live command-run state and output reduction. */
@@ -82,6 +85,7 @@ export class ProjectCommandsStore {
     private readonly projectStore: ProjectStore,
     private readonly root: RootStore
   ) {
+    this.groups = new ProjectCommandGroupsStore(this, projectStore, root);
     this.commandRunsStore = new ProjectCommandRunsStore();
     makeAutoObservable<ProjectCommandsStore, "projectStore" | "root" | "commandRunsStore" | "startingRuns">(
       this,
@@ -398,6 +402,7 @@ export class ProjectCommandsStore {
 
   /** Clears transient output retained by this project store. */
   dispose(): void {
+    this.groups.dispose();
     this.commandRunsStore.dispose();
   }
 

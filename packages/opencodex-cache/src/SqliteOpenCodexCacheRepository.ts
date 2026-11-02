@@ -84,6 +84,8 @@ import type { MessageRenderingRepository } from "./types/messageRendering.js";
 import type { DebugRepository } from "./types/debug.js";
 import { SqliteMessageRenderingRepository } from "./sqlite/SqliteMessageRenderingRepository.js";
 import { SqliteDebugRepository } from "./sqlite/debug/SqliteDebugRepository.js";
+import { SqliteCommandGroupsRepository } from "./sqlite/automation/SqliteCommandGroupsRepository.js";
+import type { CommandGroupsRepository } from "./types/commandGroups.js";
 
 export type SqliteOpenCodexCacheRepositoryOptions = {
   directory: string;
@@ -106,6 +108,8 @@ export function createOpenCodexSqliteCacheRepository(
  * Exposes the cache contract while delegating persistence to domain repositories.
  */
 export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository {
+  /** Command group metadata independent of Codex connectivity or executable definitions. */
+  readonly commandGroups: CommandGroupsRepository;
   /** Debugger data on the shared database connection. */
   readonly debug: DebugRepository;
   /** Local presentation overrides, kept separately from Codex content. */
@@ -149,6 +153,7 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     this.database.pragma("journal_mode = WAL");
     this.database.pragma("foreign_keys = ON");
     runMigrations(this.database);
+    this.commandGroups = new SqliteCommandGroupsRepository(this.database);
 
     this.sources = new SqliteSourceCacheRepository(this.database);
     this.workspaces = new SqliteWorkspaceCacheRepository(this.database);

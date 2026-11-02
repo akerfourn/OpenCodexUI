@@ -35,10 +35,12 @@ You must already have Codex CLI installed and configured on your machine.
 - Git panel with changed files, staging, commit, pull, and push.
 - Assisted commit message generation.
 - Project tasks and commands panel, with persistent favorites and collapsible
-  command groups. Use the star to pin a command; choose or type its group in the
-  command editor. Favorites appear first, followed by ungrouped commands and
-  initially collapsed groups. Long commands are truncated with their full text
-  available on hover.
+  command groups. Compact cards reveal side actions on hover or keyboard focus.
+  Create, rename, and delete groups directly in the panel, including empty groups.
+  Choose a group in the command editor or move a command from its action menu;
+  deleting a group keeps its commands. Favorites appear first, followed by
+  ungrouped commands and initially collapsed groups. Long commands are truncated
+  with their full text available on hover.
 - Logs page with details and cleanup actions.
 - Experimental plugins page.
 - Compact quota usage indicators.

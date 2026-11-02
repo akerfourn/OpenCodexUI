@@ -391,6 +391,11 @@ export type OpenCodexRequest =
   | { type: "git.push"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "git.branch.publish"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "projectCommands.list"; projectId: string }
+  | { type: "projectCommands.groups.list"; projectId: string }
+  | { type: "projectCommands.groups.create"; projectId: string; name: string }
+  | { type: "projectCommands.groups.rename"; projectId: string; name: string; newName: string }
+  | { type: "projectCommands.groups.delete"; projectId: string; name: string }
+  | { type: "projectCommands.groups.assign"; projectId: string; commandId: string; name: string | null }
   | { type: "projectWorkspaces.prepare"; input: OpenCodexWorkspacePreparationInput }
   | {
       type: "projectCommands.create";

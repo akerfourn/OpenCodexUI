@@ -14,6 +14,37 @@ import { ProjectCommandsStore } from "../src/stores/project/ProjectCommandsStore
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("ProjectCommandsStore run lifecycle", () => {
+  it("should assign a group using only metadata and retain existing live runs", async () => {
+    const command = createCommand({ isFavorite: true });
+    const request = vi.fn(async () => ({ ...command, groupName: "Build" })) as unknown as RootStore["request"];
+    const { store } = createStoreFixture(request);
+    store.commands = [command];
+    store.runsByCommandId = new Map([[command.id, [{ ...createRun(), lines: [] }]]]);
+    await store.groups.assign(command, "Build");
+    expect(request).toHaveBeenCalledWith({ type: "projectCommands.groups.assign", projectId: "project-1", commandId: command.id, name: "Build" });
+    expect(store.commands[0]).toMatchObject({ groupName: "Build", isFavorite: true, command: command.command });
+    expect(store.getRuns(command.id)).toHaveLength(1);
+    expect(() => structuredClone(vi.mocked(request).mock.calls[0]![0])).not.toThrow();
+  });
+
+  it("should refresh a group rename after a lost response without replaying the mutation", async () => {
+    const command = createCommand({ groupName: "Build", isFavorite: true });
+    const request = vi.fn(async (input: import("@open-codex-ui/opencodex-protocol").OpenCodexRequest): Promise<unknown> => {
+      if (input.type === "projectCommands.groups.rename") throw new Error("response lost");
+      if (input.type === "projectCommands.groups.list") return ["Release"];
+      if (input.type === "projectCommands.list") return [{ ...command, groupName: "Release" }];
+      throw new Error(`Unexpected request ${input.type}`);
+    }) as unknown as RootStore["request"];
+    const { store } = createStoreFixture(request);
+    store.commands = [command];
+    await expect(store.groups.rename("Build", "Release")).resolves.toBe(false);
+    expect(store.groups.names).toEqual(["Release"]);
+    expect(store.commands[0]).toMatchObject({ groupName: "Release", isFavorite: true });
+    expect(store.groups.error).toContain("response lost");
+    expect(vi.mocked(request).mock.calls.filter(([input]) => input.type === "projectCommands.groups.rename")).toHaveLength(1);
+    expect(store.groups.isSaving).toBe(false);
+  });
+
   it("should save favorite metadata without rewriting executable fields or group membership", async () => {
     const command = createCommand({ groupName: "Build" });
     const request = vi.fn(async () => ({ ...command, isFavorite: true })) as unknown as RootStore["request"];

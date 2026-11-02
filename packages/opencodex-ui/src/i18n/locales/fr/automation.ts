@@ -3,10 +3,22 @@
  */
 export const frAutomation = {
   commands: {
+    title: "Commandes",
+    actions: "Actions de la commande",
+    createGroup: "Créer un groupe",
+    groupName: "Nom du groupe",
+    groupExists: "Un groupe porte déjà ce nom.",
+    groupActions: "Actions du groupe",
+    renameGroup: "Renommer le groupe",
+    deleteGroup: "Supprimer le groupe",
+    deleteGroupHelp: "Conserver ses commandes sans groupe",
+    addInGroup: "Ajouter une commande dans ce groupe",
+    moveToGroup: "Déplacer vers un groupe",
+    emptyGroup: "Ce groupe ne contient aucune commande hors favoris.",
     favorites: "Favoris",
     ungrouped: "Sans groupe",
     group: "Groupe",
-    groupHelp: "Choisissez un groupe ou saisissez un nouveau nom. Laissez vide pour ne pas grouper.",
+    groupHelp: "Choisissez un groupe créé dans le panneau Commandes, ou Sans groupe.",
     favorite: "Favori",
     addFavorite: "Ajouter aux favoris",
     removeFavorite: "Retirer des favoris",

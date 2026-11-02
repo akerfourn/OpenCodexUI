@@ -28,19 +28,20 @@ async function fixture() {
   ];
   const toggleFavorite = vi.fn();
   const store = { commands, isSaving: false, canRunCommand: () => true, getRuns: () => [],
-    hasRunningRuns: () => false, toggleFavorite } as unknown as ProjectCommandsStore;
-  await act(async () => root.render(<ProjectCommandSectionsX commandsStore={store} onEdit={vi.fn()} onOpenLogs={vi.fn()} />));
+    hasRunningRuns: () => false, toggleFavorite, groups: { names: ["Build"], isSaving: false } } as unknown as ProjectCommandsStore;
+  await act(async () => root.render(<ProjectCommandSectionsX commandsStore={store} onCreate={vi.fn()} onEdit={vi.fn()} onOpenLogs={vi.fn()} />));
   return { commands, toggleFavorite };
 }
 
 it("should show favorites before ungrouped commands and initially collapsed groups", async () => {
   await fixture();
   const names = [...container.querySelectorAll('.project-command-card [title$="command"]')].map(element => element.textContent);
-  expect(names).toEqual(["Favorite command", "Plain command", "Build command"]);
-  const summary = container.querySelector<HTMLElement>('[aria-expanded="false"]')!;
+  expect(names).toEqual(["Favorite command", "Plain command"]);
+  const summary = container.querySelector<HTMLElement>('button[aria-controls][aria-expanded="false"]')!;
   expect(summary.textContent).toContain("Build");
   await act(async () => summary.click());
   expect(summary.getAttribute("aria-expanded")).toBe("true");
+  expect(container.textContent).toContain("Build command");
 });
 
 it("should expose favorite toggling without hiding the full long command", async () => {

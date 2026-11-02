@@ -2,7 +2,6 @@
  * Renders the create/edit dialog for a project command.
  */
 import {
-  Autocomplete,
   Button,
   Checkbox,
   Dialog,
@@ -32,6 +31,7 @@ type ProjectCommandDialogProps = {
   commandsStore: ProjectCommandsStore;
   open: boolean;
   onClose(): void;
+  initialGroupName?: string | null;
 };
 
 const emptyInput: ProjectCommandFormInput = {
@@ -53,7 +53,8 @@ export function ProjectCommandDialog({
   command,
   commandsStore,
   open,
-  onClose
+  onClose,
+  initialGroupName = null
 }: ProjectCommandDialogProps) {
   const { t } = useTranslation();
   const [input, setInput] = useState<ProjectCommandFormInput>(emptyInput);
@@ -67,7 +68,7 @@ export function ProjectCommandDialog({
       return;
     }
 
-    setInput(command === null ? emptyInput : {
+    setInput(command === null ? { ...emptyInput, groupName: initialGroupName } : {
       name: command.name,
       command: command.command,
       executionMode: command.executionMode,
@@ -75,7 +76,7 @@ export function ProjectCommandDialog({
       groupName: command.groupName ?? null,
       isFavorite: command.isFavorite === true
     });
-  }, [command, open]);
+  }, [command, initialGroupName, open]);
 
   function handleNameChange(event: ChangeEvent<HTMLInputElement>): void {
     setInput({ ...input, name: event.target.value });
@@ -150,13 +151,12 @@ export function ProjectCommandDialog({
               minRows={2}
               onChange={handleCommandChange}
             />
-            <Autocomplete freeSolo options={[...new Set(commandsStore.commands.map(item => item.groupName)
-              .filter((name): name is string => name != null))]}
-              inputValue={input.groupName ?? ""}
-              onInputChange={(_event, value) => setInput({ ...input, groupName: value || null })}
-              renderInput={params => <TextField {...params} label={t("commands.group")}
-                helperText={t("commands.groupHelp")} slotProps={{ ...params.slotProps,
-                  htmlInput: { ...params.slotProps.htmlInput, maxLength: 100 } }} />} />
+            <TextField select fullWidth label={t("commands.group")} value={input.groupName ?? ""}
+              helperText={t("commands.groupHelp")}
+              onChange={event => setInput({ ...input, groupName: event.target.value || null })}>
+              <MenuItem value="">{t("commands.ungrouped")}</MenuItem>
+              {commandsStore.groups.names.map(name => <MenuItem key={name} value={name}>{name}</MenuItem>)}
+            </TextField>
             <FormControlLabel label={t("commands.favorite")}
               control={<Checkbox checked={input.isFavorite === true}
                 onChange={event => setInput({ ...input, isFavorite: event.target.checked })} />} />

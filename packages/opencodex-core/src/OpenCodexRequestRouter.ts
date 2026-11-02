@@ -37,6 +37,7 @@ export class OpenCodexRequestRouter {
     } catch (error) {
       // Tool and settings dialogs own their error feedback without recovering a chat.
       if (request.type === "debug" || request.type.startsWith("filePreview.") || request.type.startsWith("projectWorkspaces.") ||
+        request.type.startsWith("projectCommands.groups.") ||
         request.type.startsWith("messageRendering.") ||
         request.type.startsWith("browserPermissions.") || request.type.startsWith("threadPermissions.") ||
         request.type.startsWith("sourcePermissions.") || request.type.startsWith("sourceInstances.")) throw error;
@@ -361,6 +362,21 @@ export class OpenCodexRequestRouter {
         );
       case "projectCommands.list":
         return this.runtime.automation.commands.list(request.projectId);
+      case "projectCommands.groups.list":
+        if (this.runtime.commandGroups === null) throw new Error("Command groups require persistent storage.");
+        return this.runtime.commandGroups.list(request.projectId);
+      case "projectCommands.groups.create":
+        if (this.runtime.commandGroups === null) throw new Error("Command groups require persistent storage.");
+        return this.runtime.commandGroups.create(request.projectId, request.name);
+      case "projectCommands.groups.rename":
+        if (this.runtime.commandGroups === null) throw new Error("Command groups require persistent storage.");
+        return this.runtime.commandGroups.rename(request.projectId, request.name, request.newName);
+      case "projectCommands.groups.delete":
+        if (this.runtime.commandGroups === null) throw new Error("Command groups require persistent storage.");
+        return this.runtime.commandGroups.delete(request.projectId, request.name);
+      case "projectCommands.groups.assign":
+        if (this.runtime.commandGroups === null) throw new Error("Command groups require persistent storage.");
+        return this.runtime.commandGroups.assign(request.projectId, request.commandId, request.name);
       case "projectCommands.create":
         return this.runtime.automation.commands.create(
           request.projectId,

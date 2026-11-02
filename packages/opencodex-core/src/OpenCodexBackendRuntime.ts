@@ -66,6 +66,8 @@ import type {
  * Coordinates backend services exposed to the UI transport.
  */
 export class OpenCodexBackendRuntime {
+  /** Project-local command organization remains available without a connected Codex source. */
+  readonly commandGroups: NonNullable<BackendServiceGraph["cacheRepository"]>["commandGroups"] | null;
   /** Shares short-lived source activity with destructive lifecycle operations. */
   private readonly workspaceActivity = new WorkspaceActivityGate();
   /** Clean-only worktree removal with durable recovery, when persistent storage is available. */
@@ -113,6 +115,7 @@ export class OpenCodexBackendRuntime {
   constructor(private readonly options: OpenCodexBackendOptions) {
     this.isPrerelease = isPrereleaseVersion(options.appVersion);
     this.services = createBackendServiceGraph(options, this.isPrerelease);
+    this.commandGroups = this.services.cacheRepository?.commandGroups ?? null;
     this.apis = new BackendRuntimeApis(this.services, options);
     this.sourceInstances = new SourceInstancesService(this.services.projectRuntimeHandler,
       this.services.clientPool, this.services.cacheRepository);

@@ -1,11 +1,6 @@
-import StarOutlinedIcon from "@mui/icons-material/StarOutlined";
-import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 /**
  * Renders a project command and its visible runs.
  */
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
-import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
@@ -17,6 +12,7 @@ import type {
   ProjectCommandsStore
 } from "../../stores/project/ProjectCommandsStore";
 import { ProjectCommandRunRowX } from "./ProjectCommandRunRow";
+import { ProjectCommandActionsX } from "./ProjectCommandActions";
 
 type ProjectCommandCardProps = {
   command: OpenCodexProjectCommand;
@@ -50,87 +46,35 @@ export function ProjectCommandCard({
     void commandsStore.runCommand(command);
   }
 
-  function handleEdit(): void {
-    onEdit(command);
-  }
-
-  function handleMoveUp(): void {
-    void commandsStore.moveCommand(command.id, "up");
-  }
-
-  function handleMoveDown(): void {
-    void commandsStore.moveCommand(command.id, "down");
-  }
-
-  /** Favorites are promoted without changing the command's saved group. */
-  function handleFavorite(): void { void commandsStore.toggleFavorite(command); }
-  const favoriteLabel = t(command.isFavorite === true ? "commands.removeFavorite" : "commands.addFavorite");
-  const favoriteIcon = command.isFavorite === true ? <StarOutlinedIcon fontSize="small" /> : <StarBorderOutlinedIcon fontSize="small" />;
-
   return (
     <Box className="project-command-card">
-      <Stack className="project-command-card-main" direction="row" spacing={1.5}>
-        <Tooltip title={t(canRun ? "commands.run" : "commands.runUnavailable")}>
+      <Stack className="project-command-card-main" direction="row" spacing={0.75}>
+        <Tooltip title={t(canRun ? "commands.run" : "commands.runUnavailable")} placement="left" disableInteractive>
           <span>
             <IconButton
               className="project-command-play"
               color="primary"
               disabled={!canRun}
               onClick={handleRun}
+              aria-label={t("commands.run")}
             >
               <PlayArrowOutlinedIcon />
             </IconButton>
           </span>
         </Tooltip>
         <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
-          <Typography variant="body1" noWrap title={command.name}>
+          <Typography variant="body2" noWrap title={command.name} sx={{ lineHeight: 1.3 }}>
             {command.name}
           </Typography>
-          <Typography component="div" variant="caption" color="text.secondary" noWrap title={command.command}>
+          <Typography component="div" variant="caption" color="text.secondary" noWrap title={command.command} sx={{ fontSize: 11 }}>
             {command.command}
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", overflowWrap: "anywhere" }}>
+          <Typography component="div" variant="caption" color="text.secondary" noWrap
+            title={t(`commands.executionModes.${command.executionMode}`)} sx={{ fontSize: 10, lineHeight: 1.4 }}>
             {t(`commands.executionModes.${command.executionMode}`)}
           </Typography>
         </Box>
-      </Stack>
-      <Stack direction="row" spacing={0.25} sx={{ justifyContent: "flex-end", alignItems: "center", px: 0.5, pb: 0.5 }}>
-        <Tooltip title={favoriteLabel} placement="left" disableInteractive>
-          <span><IconButton size="small" onClick={handleFavorite} aria-label={favoriteLabel}
-            aria-pressed={command.isFavorite === true} disabled={commandsStore.isSaving}
-            color={command.isFavorite === true ? "warning" : "default"}>{favoriteIcon}</IconButton></span>
-        </Tooltip>
-        <Tooltip title={t("commands.edit")}>
-          <IconButton className="project-command-edit" size="small" onClick={handleEdit}>
-            <EditOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Stack className="project-command-order-actions" direction="row" spacing={0.25}>
-          <Tooltip title={t("commands.moveUp")}>
-            <span>
-              <IconButton
-                size="small"
-                disabled={!canMoveUp || commandsStore.isSaving}
-                aria-label={t("commands.moveUp")}
-                onClick={handleMoveUp}
-              >
-                <KeyboardArrowUpOutlinedIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title={t("commands.moveDown")}>
-            <span>
-              <IconButton
-                size="small"
-                disabled={!canMoveDown || commandsStore.isSaving}
-                aria-label={t("commands.moveDown")}
-                onClick={handleMoveDown}
-              >
-                <KeyboardArrowDownOutlinedIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Stack>
+        <ProjectCommandActionsX command={command} store={commandsStore} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onEdit={onEdit} />
       </Stack>
       {runs.length > 0 ? (
         <Stack className="project-command-runs" spacing={0.5}>

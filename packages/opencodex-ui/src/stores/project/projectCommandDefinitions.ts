@@ -64,7 +64,7 @@ export function sameCommandSection(first: OpenCodexProjectCommand, second: OpenC
 }
 
 /** Partitions commands once, preserving saved ordering inside each displayed section. */
-export function commandSections(commands: OpenCodexProjectCommand[]): {
+export function commandSections(commands: OpenCodexProjectCommand[], groupNames: string[] = []): {
   favorites: OpenCodexProjectCommand[];
   ungrouped: OpenCodexProjectCommand[];
   groups: Array<{ name: string; commands: OpenCodexProjectCommand[] }>;
@@ -72,6 +72,7 @@ export function commandSections(commands: OpenCodexProjectCommand[]): {
   const favorites: OpenCodexProjectCommand[] = [];
   const ungrouped: OpenCodexProjectCommand[] = [];
   const groups = new Map<string, OpenCodexProjectCommand[]>();
+  for (const name of groupNames) groups.set(name, []);
   for (const command of commands) {
     if (command.isFavorite === true) favorites.push(command);
     else if (command.groupName == null) ungrouped.push(command);

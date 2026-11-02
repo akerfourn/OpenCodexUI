@@ -12,6 +12,7 @@ import type {
 import type { ProjectGoalCacheRepository } from "./repositoryGoals.js";
 import type { MessageRenderingRepository } from "./messageRendering.js";
 import type { DebugRepository } from "./debug.js";
+import type { CommandGroupsRepository } from "./commandGroups.js";
 
 /**
  * Describes the storage contract implemented by cache backends.
@@ -24,6 +25,8 @@ export interface OpenCodexCacheRepository
     AutomationCacheRepository,
     ProjectGoalCacheRepository,
     ThreadCacheRepository {
+  /** Empty and populated command groups belonging to explicit projects. */
+  readonly commandGroups: CommandGroupsRepository;
   /** Workspace catalogue and atomic execution reservations. */
   readonly workspaces: WorkspaceCacheRepository;
   /** Persisted debugger profiles, breakpoints and watches. */

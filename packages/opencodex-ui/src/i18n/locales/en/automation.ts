@@ -6,10 +6,22 @@ import type { frAutomation } from "../fr/automation.js";
 
 export const enAutomation = {
   commands: {
+    title: "Commands",
+    actions: "Command actions",
+    createGroup: "Create group",
+    groupName: "Group name",
+    groupExists: "A group with this name already exists.",
+    groupActions: "Group actions",
+    renameGroup: "Rename group",
+    deleteGroup: "Delete group",
+    deleteGroupHelp: "Keep its commands ungrouped",
+    addInGroup: "Add a command to this group",
+    moveToGroup: "Move to group",
+    emptyGroup: "This group has no commands outside favorites.",
     favorites: "Favorites",
     ungrouped: "Ungrouped",
     group: "Group",
-    groupHelp: "Choose a group or enter a new name. Leave empty for no group.",
+    groupHelp: "Choose a group created in the Commands panel, or Ungrouped.",
     favorite: "Favorite",
     addFavorite: "Add to favorites",
     removeFavorite: "Remove from favorites",
