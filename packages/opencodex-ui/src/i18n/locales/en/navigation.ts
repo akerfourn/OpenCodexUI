@@ -5,6 +5,19 @@ import type { TranslationShape } from "../../translationShape.js";
 import type { frNavigation } from "../fr/navigation.js";
 
 export const enNavigation = {
+  threadRepair: {
+    title: "Repair conversation",
+    description: "Check this conversation’s state with Codex and resolve blockers left by an interrupted operation.",
+    safety: "Repair will be refused if an execution is still running. No message is resent and interrupted operations are not restarted automatically.",
+    submit: "Check and repair",
+    checking: "Checking and refreshing the conversation…",
+    success: "Verification complete. Recoverable blockers have been resolved and the conversation has been refreshed. You can try sending your message again.",
+    failed: "Repair could not be completed. If Codex is still working, wait for the execution to finish. Otherwise, check that its source is available before trying again.",
+    refreshFailed: "Verification succeeded, but the conversation could not be refreshed. Retry the refresh or reopen the conversation.",
+    refresh: "Refresh conversation",
+    details: "Diagnostic details",
+    close: "Close"
+  },
   closeProject: {
     cancel: "Cancel",
     confirmCheckbox: "I confirm I want to close this project",

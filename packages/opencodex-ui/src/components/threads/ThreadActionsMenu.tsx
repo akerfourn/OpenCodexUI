@@ -9,6 +9,7 @@ import EventNoteOutlinedIcon from "@mui/icons-material/EventNoteOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
+import BuildOutlinedIcon from "@mui/icons-material/BuildOutlined";
 import UnarchiveOutlinedIcon from "@mui/icons-material/UnarchiveOutlined";
 import { useTranslation } from "react-i18next";
 import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
@@ -21,6 +22,7 @@ import type { OpenSubAgentDialog } from "./subAgentDialog";
 import { BrowserPermissionsDialogX } from "../browser/BrowserPermissionsDialog";
 import { ChatPermissionsDialogX } from "../chat/ChatPermissionsDialog";
 import type { ChatPermissionsStore } from "../../stores/chat/ChatPermissionsStore";
+import { ThreadRepairDialogX } from "./ThreadRepairDialog";
 
 /** Conversation properties and lifecycle actions operate on the row's explicit thread. */
 export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgentDialog }: {
@@ -33,6 +35,7 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [browserOpen, setBrowserOpen] = useState(false);
+  const [repairOpen, setRepairOpen] = useState(false);
   const [permissionsStore, setPermissionsStore] = useState<ChatPermissionsStore | null>(null);
   const list = project.threadListStore;
   const chat = project.chatsById.get(thread.id);
@@ -49,6 +52,12 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   const workspaceDialog = workspaceOpen
     ? <WorkspaceSwitchDialogX project={project} thread={thread} onClose={() => setWorkspaceOpen(false)} /> : null;
   const sourceId = project.resolveThreadSourceId(thread);
+  const repairDisabled = isLocalDraft || isSubmitting || project.isReadOnlyFromCache
+    || sourceId === null || project.workspaces.isBusy;
+  const repairDialog = repairOpen ? (
+    <ThreadRepairDialogX key={thread.id} threadId={thread.id} sourceId={sourceId}
+      title={title} project={project} root={root} onClose={() => setRepairOpen(false)} />
+  ) : null;
   const permissionsDisabled = project.isReadOnlyFromCache || sourceId === null
     || (chat !== undefined && !chat.permissions.isAvailable);
   const permissionsDialog = permissionsStore === null ? null : (
@@ -91,6 +100,11 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   function handleLog(): void {
     setAnchor(null);
     setLogOpen(true);
+  }
+  /** Repairs this row even when a stale local indicator still reports it as working. */
+  function handleRepair(): void {
+    setAnchor(null);
+    setRepairOpen(true);
   }
   /** Opens permissions for this row's source and conversation, never the selected chat. */
   function handleBrowser(): void {
@@ -135,6 +149,9 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
         <MenuItem disabled={isLocalDraft} onClick={handleLog}>
           <ListItemIcon><EventNoteOutlinedIcon fontSize="small" /></ListItemIcon>{t("sidebar.threadEventLog")}
         </MenuItem>
+        <MenuItem disabled={repairDisabled} onClick={handleRepair}>
+          <ListItemIcon><BuildOutlinedIcon fontSize="small" /></ListItemIcon>{t("threadRepair.title")}
+        </MenuItem>
         <MenuItem disabled={isSubmitting} onClick={handleDeleteDialog}>
           <ListItemIcon><DeleteOutlineOutlinedIcon color="error" fontSize="small" /></ListItemIcon>{t("sidebar.deleteThread")}
         </MenuItem>
@@ -142,6 +159,7 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
       {workspaceDialog}
       {browserDialog}
       {permissionsDialog}
+      {repairDialog}
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
         <DialogTitle>{t("sidebar.deleteThreadTitle")}</DialogTitle>
         <DialogContent><DialogContentText>{t("sidebar.deleteThreadDescription", { thread: title })}</DialogContentText></DialogContent>

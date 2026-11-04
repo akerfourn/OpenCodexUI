@@ -171,6 +171,14 @@ repeat local cleanup only after a successful delete acknowledgement was saved;
 an empty remote list does not prove deletion. Unknown remote results remain
 blocked, without automatic mutation replay.
 
+The conversation menu exposes **Repair conversation** without requiring a prior
+workspace-switch error. It asks the source to reconcile the selected conversation
+before refreshing its history and runtime state. A stale local working indicator
+does not hide the action: live source activity still blocks reconciliation.
+Success and failure stay visible in the repair dialog. If only refresh fails,
+retrying repeats the refresh rather than the confirmed reconciliation. Repair
+does not resend messages or interrupt active work.
+
 Workspace-aware tools include Git, Compose, commands, search, openings, rules
 and context materialization. Project preferences and definitions remain shared;
 physical execution and generated files follow the selected checkout. Secondary

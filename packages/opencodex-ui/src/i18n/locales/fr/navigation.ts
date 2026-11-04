@@ -2,6 +2,19 @@
  * French translations for the navigation UI domain.
  */
 export const frNavigation = {
+  threadRepair: {
+    title: "Réparer la conversation",
+    description: "Vérifiez l’état de cette conversation auprès de Codex et levez les blocages laissés par une opération interrompue.",
+    safety: "Si une exécution est encore en cours, la réparation sera refusée. Aucun message n’est renvoyé et aucune opération interrompue n’est relancée automatiquement.",
+    submit: "Vérifier et réparer",
+    checking: "Vérification et actualisation de la conversation…",
+    success: "Vérification terminée. Les blocages pouvant être résolus ont été levés et la conversation a été actualisée. Vous pouvez réessayer votre message.",
+    failed: "La réparation n’a pas pu aboutir. Si Codex travaille encore, attendez la fin de l’exécution. Sinon, vérifiez que sa source est disponible avant de réessayer.",
+    refreshFailed: "La vérification a réussi, mais la conversation n’a pas pu être actualisée. Réessayez l’actualisation ou rouvrez la conversation.",
+    refresh: "Actualiser la conversation",
+    details: "Détails du diagnostic",
+    close: "Fermer"
+  },
   closeProject: {
     cancel: "Annuler",
     confirmCheckbox: "Je confirme que je veux fermer ce projet",
