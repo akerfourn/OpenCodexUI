@@ -46,7 +46,7 @@ export function WorkspaceDiskUsage({ workspace, store, disabled }: {
 }
 
 /** Formats source byte counts with binary units and the user's numeric locale. */
-function formatWorkspaceBytes(bytes: number, formatter: Intl.NumberFormat): string {
+export function formatWorkspaceBytes(bytes: number, formatter: Intl.NumberFormat): string {
   const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
   let index = 0;
   while (bytes >= 1024 && index < units.length - 1) { bytes /= 1024; index += 1; }

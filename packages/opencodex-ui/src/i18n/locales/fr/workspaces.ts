@@ -1,4 +1,39 @@
 export const frWorkspaces = {
+  workspaceHistory: {
+    changed: "Workspace changé : {{from}} → {{to}}",
+    unavailable: "L’historique des changements de workspace n’a pas pu être chargé.",
+    retry: "Réessayer"
+  },
+  workspaceHome: {
+    description: "Inventaire local des workspaces par projet. Actualiser vérifie ponctuellement les dossiers dans leurs sources ; les tailles disque sont mesurées uniquement sur demande.",
+    search: "Rechercher un projet ou un workspace",
+    source: "Source",
+    filter: "Afficher",
+    filters: {
+      all: "Tous les workspaces", active: "Travaux en cours", completed: "Travaux terminés",
+      candidate: "Candidats au nettoyage", pending: "Opérations en cours ou à vérifier"
+    },
+    showHidden: "Inclure les projets masqués",
+    projects_one: "{{count}} projet",
+    projects_many: "{{count}} projets",
+    projects_other: "{{count}} projets",
+    count_one: "{{count}} workspace",
+    count_many: "{{count}} workspaces",
+    count_other: "{{count}} workspaces",
+    journals_one: "{{count}} opération de création, déplacement ou suppression en attente. Ouvrez la gestion pour la vérifier.",
+    journals_many: "{{count}} opérations de création, déplacement ou suppression en attente. Ouvrez la gestion pour les vérifier.",
+    journals_other: "{{count}} opérations de création, déplacement ou suppression en attente. Ouvrez la gestion pour les vérifier.",
+    pending: "Opération en cours ou à vérifier",
+    loading: "Chargement de l’inventaire",
+    manage: "Gérer les workspaces",
+    openProject: "Ouvrir le projet",
+    offline: "Source indisponible",
+    unavailableSource: "Source absente ou indisponible",
+    sizeUnknown: "Taille non mesurée",
+    partialSize: "{{date}} · mesure partielle",
+    measureFailed: "Mesure indisponible",
+    storageSettings: "Configurer les emplacements de stockage"
+  },
   "workspaceWorkStatus": {
     "active": "En cours",
     "completed": "Terminé",

@@ -2,6 +2,38 @@ import type { TranslationShape } from "../../translationShape.js";
 import type { frWorkspaces } from "../fr/workspaces.js";
 
 export const enWorkspaces = {
+  workspaceHistory: {
+    changed: "Workspace changed: {{from}} → {{to}}",
+    unavailable: "Workspace transition history could not be loaded.",
+    retry: "Retry"
+  },
+  workspaceHome: {
+    description: "Local workspace inventory grouped by project. Refresh checks folders in their sources once; disk sizes are measured only on request.",
+    search: "Search projects or workspaces",
+    source: "Source",
+    filter: "Show",
+    filters: {
+      all: "All workspaces", active: "Work in progress", completed: "Completed work",
+      candidate: "Cleanup candidates", pending: "Ongoing or unresolved operations"
+    },
+    showHidden: "Include hidden projects",
+    projects_one: "{{count}} project",
+    projects_other: "{{count}} projects",
+    count_one: "{{count}} workspace",
+    count_other: "{{count}} workspaces",
+    journals_one: "{{count}} creation, move or removal is pending. Open workspace management to inspect it.",
+    journals_other: "{{count}} creations, moves or removals are pending. Open workspace management to inspect them.",
+    pending: "Ongoing or unresolved operation",
+    loading: "Loading inventory",
+    manage: "Manage workspaces",
+    openProject: "Open project",
+    offline: "Source unavailable",
+    unavailableSource: "Source missing or unavailable",
+    sizeUnknown: "Size not measured",
+    partialSize: "{{date}} · partial estimate",
+    measureFailed: "Measurement unavailable",
+    storageSettings: "Configure storage locations"
+  },
   "workspaceWorkStatus": {
     "active": "In progress",
     "completed": "Completed",

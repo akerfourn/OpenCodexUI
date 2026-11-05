@@ -98,6 +98,7 @@ export type OpenCodexRequest =
   | { type: "projectWorkspaces.execution.reconcile"; workspaceId: string }
   | { type: "threads.workspace.select"; threadId: string; workspaceId: string }
   | { type: "threads.workspace.reconcile"; threadId: string }
+  | { type: "threads.workspace.history"; threadId: string }
   | { type: "projects.open"; projectPath: string; sourceId?: string | null; createIfMissing?: boolean }
   | { type: "projects.statistics.read"; projectPath: string; sourceId: string | null }
   | { type: "projects.pickDirectory"; mode: "open" | "create"; sourceId?: string | null }

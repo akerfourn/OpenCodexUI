@@ -1,6 +1,7 @@
 import type { OpenCodexCommandExecutionMode, OpenCodexWorkspacePreparationInput } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceWorkStatusInput } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceTransitionEvent } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceDiscoveryResult } from "@open-codex-ui/opencodex-protocol";
 import type {
   OpenCodexApprovalDecision,
@@ -98,6 +99,8 @@ export interface WorkspacesApi {
   list(projectId: string): Promise<OpenCodexProjectWorkspace[]>;
   /** Selects within the same project/source after checking live thread inactivity. */
   select(threadId: string, workspaceId: string): Promise<void>;
+  /** Reads immutable confirmed workspace changes without source access. */
+  history(threadId: string): Promise<OpenCodexWorkspaceTransitionEvent[]>;
   /** Clears a durable reservation only after source status confirms inactivity. */
   reconcile(threadId: string): Promise<void>;
   /** Recovers interrupted preparation when no thread identifier was returned. */

@@ -45,7 +45,8 @@ async function renderDialog(completed = true) {
     isReadOnlyFromCache: false, isCodexSourceReady: true, hasRunningChatIndicator: false, hasActiveDebugSession: false,
     commandsStore: { hasActiveRun: false }, composeStore: { hasNonStoppedContainer: false, pendingServiceNames: new Set() },
     files: { hasUnsavedWorkspaceDocuments: () => false }, workspaces: {
-      workspaces: [workspace], isBusy: false, error: null, isRefreshingManagement: false, refreshManagement, remove, setWorkStatus, setRetentionDays,
+      workspaces: [workspace], pending: [], pendingRemovals: [], pendingMoves: [],
+      isBusy: false, error: null, isRefreshingManagement: false, refreshManagement, remove, setWorkStatus, setRetentionDays,
       loadingLockIds: new Set(), lockStates: new Map([["B", { workspaceId: "B", sourceId: "source", workspacePath: "/B",
         supported: true, lockedReason: null as string | null }]]), activityById: new Map([["B", { workspaceId: "B",
         sourceId: "source", workspacePath: "/B", lastActivityAt: "2026-01-01T00:00:00Z", conversationCount: 2,

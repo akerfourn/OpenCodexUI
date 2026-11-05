@@ -26,6 +26,7 @@ import { ChatRuntimeStore } from "./ChatRuntimeStore";
 import { ChatTimelineStore } from "./ChatTimelineStore";
 import { hasActiveRunningTurn } from "./chatTurnUtils";
 import { readChatErrorMessage } from "./chatErrorMessage";
+import { ChatWorkspaceHistoryStore } from "./ChatWorkspaceHistoryStore";
 
 export type { ChatTimelineViewState } from "./ChatTimelineStore";
 
@@ -33,6 +34,8 @@ export type { ChatTimelineViewState } from "./ChatTimelineStore";
  * Stores the loaded turns and cross-domain event state for a single chat.
  */
 export class ChatStore {
+  /** Confirmed workspace changes survive turns, reloads and physical relocation. */
+  readonly workspaceHistory: ChatWorkspaceHistoryStore;
   /** Thread metadata for this chat. */
   thread: OpenCodexThread;
   /** True until the first send binds this in-memory conversation to Codex. */
@@ -73,6 +76,7 @@ export class ChatStore {
   ) {
     this.viewId = thread.id;
     this.thread = projectStore.ensureThreadSource(thread);
+    this.workspaceHistory = new ChatWorkspaceHistoryStore(this, root);
     this.composer = new ChatComposerStore(this);
     this.timeline = new ChatTimelineStore(this, projectStore, root);
     this.runtime = new ChatRuntimeStore(this);
@@ -154,6 +158,7 @@ export class ChatStore {
    */
   setThread(thread: OpenCodexThread): void {
     this.applyThread(thread, true);
+    this.workspaceHistory.refreshIfLoaded();
   }
 
   /**
@@ -237,6 +242,7 @@ export class ChatStore {
    */
   dispose(): void {
     this.runtime.dispose();
+    this.workspaceHistory.dispose();
   }
 
   applyOpenedSnapshot(

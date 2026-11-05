@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { WorkspaceCreateDialogX } from "./WorkspaceCreateDialog";
 import { WorkspaceManagementDialogX } from "./WorkspaceManagementDialog";
+import { WorkspacePendingOperationsX } from "./WorkspacePendingOperations";
 
 /** Sidebar catalogue actions keep import and recovery separate from conversation properties. */
 export function WorkspaceListActions({ project }: { project: ProjectStore }) {
@@ -19,21 +20,6 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
   useEffect(() => { void store.load(); }, [store]);
   const disabled = store.isBusy || project.isReadOnlyFromCache;
   const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
-  const pending = store.pending.map((item) => (
-    <Alert severity="warning" key={item.id} action={
-      <Button disabled={disabled} onClick={() => void store.recoverCreation(item.id)}>{t("workspaces.recover")}</Button>
-    }>{t("workspaces.pending", { path: item.destinationPath })}</Alert>
-  ));
-  const removals = store.pendingRemovals.map(item => (
-    <Alert severity="warning" key={item.id} action={
-      <Button disabled={disabled} onClick={() => void store.recoverRemoval(item.id)}>{t("workspaces.recover")}</Button>
-    }>{t("workspaces.removalPending", { path: item.workspacePath })}</Alert>
-  ));
-  const moves = store.pendingMoves.map(item => (
-    <Alert severity="warning" key={item.id} action={
-      <Button disabled={disabled} onClick={() => void store.recoverMove(item.id)}>{t("workspaces.recover")}</Button>
-    }>{t("workspaces.movePending", { from: item.workspacePath, to: item.destinationPath })}</Alert>
-  ));
   const skipped = store.skipped.map((item) => (
     <Typography variant="caption" component="div" key={item.path}>
       {t("workspaces.skipped", { path: item.path, reason: item.reason })}
@@ -64,7 +50,7 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
           <MoreVertOutlinedIcon fontSize="small" />
         </IconButton>
       </Box>
-      {error}{pending}{removals}{moves}{skipped}{creationDialog}{managementDialog}
+      {error}<WorkspacePendingOperationsX store={store} disabled={disabled} />{skipped}{creationDialog}{managementDialog}
       <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
         <MenuItem onClick={handleManagement}>{t("workspaceManagement.title")}</MenuItem>
         <MenuItem disabled={disabled} onClick={handleOpenImport}>{t("workspaces.discover")}</MenuItem>

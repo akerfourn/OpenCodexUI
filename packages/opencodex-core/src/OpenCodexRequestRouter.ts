@@ -36,7 +36,8 @@ export class OpenCodexRequestRouter {
       });
     } catch (error) {
       // Tool and settings dialogs own their error feedback without recovering a chat.
-      if (request.type === "debug" || request.type.startsWith("filePreview.") || request.type.startsWith("projectWorkspaces.") ||
+      if (request.type === "debug" || request.type === "threads.workspace.history"
+        || request.type.startsWith("filePreview.") || request.type.startsWith("projectWorkspaces.") ||
         request.type.startsWith("projectCommands.groups.") ||
         request.type.startsWith("messageRendering.") ||
         request.type.startsWith("browserPermissions.") || request.type.startsWith("threadPermissions.") ||

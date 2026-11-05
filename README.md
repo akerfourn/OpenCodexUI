@@ -34,6 +34,8 @@ You must already have Codex CLI installed and configured on your machine.
 - Image display support in messages.
 - Git panel with changed files, staging, commit, pull, and push.
 - Assisted commit message generation.
+- Cross-project workspace inventory on Home, with on-demand checks and dated
+  disk measurements. Confirmed workspace switches appear in the chat timeline.
 - Project tasks and commands panel, with persistent favorites and collapsible
   command groups. Compact cards reveal side actions on hover or keyboard focus.
   Create, rename, and delete groups directly in the panel, including empty groups.

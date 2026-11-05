@@ -11,6 +11,7 @@ import { WorkspaceManagementRowX } from "./WorkspaceManagementRow";
 import { WorkspacePropertiesDialogX } from "./WorkspacePropertiesDialog";
 import { WorkspaceRemoveDialogX } from "./WorkspaceRemoveDialog";
 import { WorkspaceRetentionSettingsX } from "./WorkspaceRetentionSettings";
+import { WorkspacePendingOperationsX } from "./WorkspacePendingOperations";
 
 /** Reviews cached activity and advisory cleanup candidates without automatic deletion or recovery. */
 export function WorkspaceManagementDialog({ project, onClose }: { project: ProjectStore; onClose(): void }) {
@@ -90,6 +91,7 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
         <FormControlLabel control={<Checkbox checked={onlyCandidates} onChange={event => setOnlyCandidates(event.target.checked)} />}
           label={t("workspaceManagement.onlyCandidates")} />
         <Typography variant="body2">{t("workspaceManagement.candidates", { count: candidateCount })}</Typography>
+        <WorkspacePendingOperationsX store={store} disabled={busy || project.isReadOnlyFromCache} />
         {loading}{error}{rows}{empty}
       </Stack>
       {propertiesDialog}{removeDialog}

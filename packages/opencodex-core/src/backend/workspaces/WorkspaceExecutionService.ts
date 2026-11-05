@@ -1,4 +1,5 @@
 import type { OpenCodexWorkspaceRoot } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceTransitionEvent } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceWorkStatusInput } from "@open-codex-ui/opencodex-protocol";
 import type { v2 } from "@open-codex-ui/codex-rpc";
@@ -310,6 +311,11 @@ export class WorkspaceExecutionService {
   private async publishSelection(threadId: string): Promise<void> {
     const workspace = await this.repository.getForThread(threadId);
     if (workspace !== null) this.onSelected?.(threadId, workspace.path);
+  }
+
+  /** Reads confirmed selection history without starting a Codex client. */
+  async history(threadId: string): Promise<OpenCodexWorkspaceTransitionEvent[]> {
+    return await this.repository.transitions.history(threadId);
   }
 
   /** Validates and serializes an internal selection; UI exposure remains deferred. */

@@ -8,6 +8,7 @@ import { observer } from "mobx-react-lite";
 import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
 import {
   Box,
+  Alert,
   Button,
   CircularProgress,
   Dialog,
@@ -24,6 +25,7 @@ import {
   useEffect,
   useRef,
   useState,
+  Fragment,
   type ChangeEvent,
   type FormEvent,
   type KeyboardEvent
@@ -45,6 +47,8 @@ import { CollaborationThreadContextX } from "./CollaborationThreadContext";
 import { getVisibleTurns } from "./chatTimelineWindow";
 import type { OpenSubAgentDialog } from "../threads/subAgentDialog";
 import { useChatTimelineScroll } from "./useChatTimelineScroll";
+import { placeWorkspaceHistory } from "./workspaceHistoryPlacement";
+import { WorkspaceTransitionNoticeX } from "./WorkspaceTransitionNotice";
 
 type ChatMessageListProps = {
   store: RootStore;
@@ -94,6 +98,10 @@ export function ChatMessageList({
   }, [currentThread.id, sourceId, store]);
 
   useEffect(() => {
+    void chatStore.workspaceHistory.load();
+  }, [chatStore, currentThread.id, sourceId]);
+
+  useEffect(() => {
     if (sourceId === null) {
       return;
     }
@@ -126,6 +134,17 @@ export function ChatMessageList({
     handleScrollToBottom
   } = useChatTimelineScroll(chatStore);
   const visibleTurnStores = getVisibleTurns(chatStore.timeline.turnStores, visibleTurnCount);
+  const workspaceHistory = placeWorkspaceHistory(chatStore.workspaceHistory.events, chatStore.timeline.turns,
+    visibleTurnStores.map(turn => turn.id), chatStore.timeline.hasMoreOlderMessages);
+  const firstWorkspaceNotices = (workspaceHistory.get(null) ?? []).map(event => (
+    <WorkspaceTransitionNoticeX key={event.id} event={event} />
+  ));
+  const workspaceHistoryError = chatStore.workspaceHistory.error === null ? null : (
+    <Alert severity="warning" action={<Button onClick={() => void chatStore.workspaceHistory.load()}>
+      {t("workspaceHistory.retry")}</Button>}>
+      {t("workspaceHistory.unavailable")}
+    </Alert>
+  );
 
   const handleStartEdit = useCallback((content: string): void => {
     setEditedMessage(content);
@@ -268,7 +287,9 @@ export function ChatMessageList({
             currentThread={currentThread}
             onNavigateThread={handleNavigateThread}
           />
+          {workspaceHistoryError}{firstWorkspaceNotices}
           {visibleTurnStores.map((turnStore, index) => (
+            <Fragment key={turnStore.id}>
             <ChatTurnViewX
               key={turnStore.id}
               turnStore={turnStore}
@@ -285,6 +306,8 @@ export function ChatMessageList({
               onOpenTurnDiagnostic={handleOpenTurnDiagnostic}
               showTurnDiagnostic={isTurnDiagnosticsVisible}
             />
+            {(workspaceHistory.get(turnStore.id) ?? []).map(event => <WorkspaceTransitionNoticeX key={event.id} event={event} />)}
+            </Fragment>
           ))}
           <Box
             aria-hidden="true"

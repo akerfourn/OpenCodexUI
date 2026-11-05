@@ -6,7 +6,7 @@ import { optionalWorkspaceArgument } from "../workspaces/workspaceToolContext.js
 /** Protocol requests owned by the project catalogue, group tree and workspace selection. */
 export type ProjectRequest = Extract<OpenCodexRequest, {
   type: `projects.${string}` | `projectGroups.${string}` | `projectWorkspaces.${string}` |
-    "threads.workspace.select" | "threads.workspace.reconcile";
+    "threads.workspace.select" | "threads.workspace.reconcile" | "threads.workspace.history";
 }>;
 
 /** Runtime facades used by project routing after shared workspace-context resolution. */
@@ -31,7 +31,7 @@ export function isProjectRequest(request: OpenCodexRequest): request is ProjectR
     request.type.startsWith("projectGroups.") ||
     request.type.startsWith("projectWorkspaces.") ||
     request.type === "threads.workspace.select" ||
-    request.type === "threads.workspace.reconcile";
+    request.type === "threads.workspace.reconcile" || request.type === "threads.workspace.history";
 }
 
 /** Dispatches a resolved project request; responses and errors retain the facade's behavior. */
@@ -97,6 +97,8 @@ export async function routeProjectRequest(runtime: ProjectRequestRuntime, reques
       return runtime.workspaces.select(request.threadId, request.workspaceId);
     case "threads.workspace.reconcile":
       return runtime.workspaces.reconcile(request.threadId);
+    case "threads.workspace.history":
+      return runtime.workspaces.history(request.threadId);
     case "projects.open":
       return runtime.projects.open(
         request.projectPath,

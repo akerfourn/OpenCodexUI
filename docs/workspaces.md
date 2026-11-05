@@ -171,6 +171,16 @@ repeat local cleanup only after a successful delete acknowledgement was saved;
 an empty remote list does not prove deletion. Unknown remote results remain
 blocked, without automatic mutation replay.
 
+Confirmed conversation selections are retained as independent timeline events.
+The cache records a transition ID, source/project/thread identities, both names
+and paths, confirmation time and the last cached turn boundary in the same
+transaction as publishing the new association. Failed or uncertain transitions
+produce no event until verified recovery succeeds. Migration 53 starts this
+history without reconstructing older transitions. Names and paths remain frozen
+after renaming, moving or removing a workspace. Multiple switches before the
+next turn remain visible in commit order; hidden older boundaries stay outside
+the bounded timeline until that part of history is displayed.
+
 The conversation menu exposes **Repair conversation** without requiring a prior
 workspace-switch error. It asks the source to reconcile the selected conversation
 before refreshing its history and runtime state. A stale local working indicator
@@ -192,6 +202,20 @@ through the chat menu. Git drafts and responses are scoped to their checkout;
 stale asynchronous results must not update the newly selected workspace.
 Rule-file synchronization metadata is keyed by physical file path, and writing
 a secondary configuration must not update the primary synchronization state.
+
+The Home **Workspaces** page provides a cross-project inventory, with search,
+source/work-status/cleanup filters, pending operations and dated disk estimates.
+Entering the page reads only cached catalogues and activity, without opening
+project tabs or connecting to sources. **Refresh** performs bounded Git/file
+checks for available sources within the source/hidden-project filters, with at
+most three folders checked concurrently.
+Disk traversal requires a separate measurement action. Offline and orphan
+projects remain readable and never become cleanup candidates from cached checks.
+Management opens the existing project-scoped dialog in place, including pending
+creation/move/removal recovery and existing deletion confirmations. A project tab
+is created only when the user opens that project or requests management. Leaving
+Home invalidates queued checks and late measurement replies; it does not cancel
+source operations already dispatched. No filesystem watcher is introduced.
 
 ## Removing managed workspaces
 
@@ -668,6 +692,8 @@ existing data through idempotent migrations instead of rewriting associations.
 Migration 50 permits imported-secondary movement by replacing only the move
 identity guard. It preserves workspace ownership, existing move journals and
 all removal, execution, source and destination guards.
+Migration 53 retains verified workspace transition history atomically with
+selection, independently of mutable workspace metadata and turn snapshots.
 
 Run from the repository root:
 

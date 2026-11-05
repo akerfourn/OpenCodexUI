@@ -31,6 +31,7 @@ import { CommitPromptStore } from "./app/CommitPromptStore";
 import { DockerHostStore } from "./app/DockerHostStore";
 import { EmojiCatalogStore } from "./app/EmojiCatalogStore";
 import { HomeStore } from "./app/HomeStore";
+import { HomeWorkspacesStore } from "./app/HomeWorkspacesStore";
 import { LogsStore } from "./app/LogsStore";
 import { NavigationStore } from "./app/NavigationStore";
 import { PluginsStore } from "./app/PluginsStore";
@@ -67,6 +68,8 @@ export class RootStore {
   readonly dockerHostStore = new DockerHostStore(this);
   readonly emojiCatalogStore = new EmojiCatalogStore(this);
   readonly homeStore = new HomeStore();
+  /** Cross-project workspace inventory is loaded only while its Home page is displayed. */
+  readonly homeWorkspacesStore = new HomeWorkspacesStore(this);
   readonly logsStore = new LogsStore(this);
   readonly navigationStore = new NavigationStore(this);
   readonly pluginsStore = new PluginsStore(this);

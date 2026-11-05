@@ -1,3 +1,5 @@
+import type { OpenCodexWorkspaceTransitionEvent } from "@open-codex-ui/opencodex-protocol";
+
 /** Durable transition snapshots; expectationJson belongs to the backend RPC adapter. */
 export interface WorkspaceTransitionRecord {
   /** Opaque operation identity. */
@@ -36,4 +38,6 @@ export interface WorkspaceTransitionRepository {
   fail(id: string): Promise<void>;
   /** Atomically selects the verified destination and removes the blocker. */
   commit(id: string): Promise<void>;
+  /** Reads confirmed transitions in commit order, including removed workspace snapshots. */
+  history(threadId: string): Promise<OpenCodexWorkspaceTransitionEvent[]>;
 }

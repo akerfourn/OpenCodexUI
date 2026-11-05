@@ -2,9 +2,16 @@ import { makeAutoObservable, runInAction } from "mobx";
 import { isWorkspaceDiskUsageValues } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceDiskUsage } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
-import type { ProjectStore } from "./ProjectStore";
 
-/** Ephemeral measurements never change retention decisions or survive closing the project tab. */
+/** Explicit catalogue context shared by project management and the Home inventory. */
+export interface WorkspaceDiskUsageOwner {
+  readonly project: { id: string; sourceId: string | null };
+  readonly workspaces: { workspaces: OpenCodexProjectWorkspace[] };
+  readonly isCodexSourceReady: boolean;
+  readonly isReadOnlyFromCache: boolean;
+}
+
+/** Ephemeral measurements never change retention decisions or outlive their owning inventory. */
 export class WorkspaceDiskUsageStore {
   /** Results remain explicitly dated observations until another user measurement. */
   readonly results = new Map<string, OpenCodexWorkspaceDiskUsage>();
@@ -18,7 +25,7 @@ export class WorkspaceDiskUsageStore {
   private generation = 0;
 
   /** Keeps source and transport references outside observable payloads. */
-  constructor(private readonly project: ProjectStore, private readonly root: RootStore) {
+  constructor(private readonly project: WorkspaceDiskUsageOwner, private readonly root: RootStore) {
     makeAutoObservable<WorkspaceDiskUsageStore, "project" | "root">(this,
       { project: false, root: false }, { autoBind: true });
   }

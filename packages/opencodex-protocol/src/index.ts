@@ -24,6 +24,7 @@ export * from "./dictation";
 export * from "./commandExecution";
 
 export * from "./files";
+export * from "./workspaceHistory.js";
 
 export * from "./fileLinkGrants";
 

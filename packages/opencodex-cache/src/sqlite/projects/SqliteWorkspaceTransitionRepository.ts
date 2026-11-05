@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Database } from "better-sqlite3";
+import type { OpenCodexWorkspaceHistoryEndpoint, OpenCodexWorkspaceTransitionEvent } from "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceTransitionRecord, WorkspaceTransitionRepository } from "../../types/workspaceTransitions.js";
 
 /** SQL projection keeps persisted paths and identities independent of later remote responses. */
@@ -93,7 +94,32 @@ export class SqliteWorkspaceTransitionRepository implements WorkspaceTransitionR
       if (result.changes !== 1) {
         throw new Error("Thread association changed during workspace transition.");
       }
+      if (transition.fromWorkspaceId === transition.toWorkspaceId) return;
+      const thread = this.database.prepare("SELECT newest_turn_id AS turnId FROM threads WHERE id = ?")
+        .get(transition.threadId) as { turnId: string | null };
+      const event: OpenCodexWorkspaceTransitionEvent = {
+        id: transition.id, threadId: transition.threadId, projectId: transition.projectId,
+        sourceId: transition.sourceId, afterTurnId: thread.turnId, occurredAt: new Date().toISOString(),
+        from: this.endpoint(transition.fromWorkspaceId, transition.fromPath),
+        to: this.endpoint(transition.toWorkspaceId, transition.toPath)
+      };
+      this.database.prepare(`INSERT INTO workspace_transition_history (id, thread_id, event_json)
+        VALUES (?, ?, ?)`).run(event.id, event.threadId, JSON.stringify(event));
     })();
+  }
+
+  /** Reads append-only confirmed events without contacting the source. */
+  async history(threadId: string): Promise<OpenCodexWorkspaceTransitionEvent[]> {
+    const rows = this.database.prepare(`SELECT event_json FROM workspace_transition_history
+      WHERE thread_id = ? ORDER BY sequence`).all(threadId) as { event_json: string }[];
+    return rows.map(row => JSON.parse(row.event_json) as OpenCodexWorkspaceTransitionEvent);
+  }
+
+  /** Freezes user-facing labels while retaining the paths captured before dispatch. */
+  private endpoint(workspaceId: string, path: string): OpenCodexWorkspaceHistoryEndpoint {
+    const row = this.database.prepare("SELECT name, is_primary FROM project_workspaces WHERE id = ?")
+      .get(workspaceId) as { name: string | null; is_primary: number };
+    return { workspaceId, path, name: row.name, isPrimary: row.is_primary === 1 };
   }
 
   /** Fails explicitly for stale operation identifiers. */
