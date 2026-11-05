@@ -36,10 +36,10 @@ export class ChatComposerStore {
   draftReferences: OpenCodexComposerReference[] = [];
   /** Attachments currently staged in the draft. */
   attachments: OpenCodexAttachment[] = [];
-  /** Whether the user explicitly changed the model for this chat. */
-  private hasExplicitModelSelection = false;
-  /** Whether the user explicitly changed reasoning effort for this chat. */
-  private hasExplicitReasoningEffortSelection = false;
+  /** Whether the displayed model has been initialized or retained by user input. */
+  private hasInitializedModelSelection = false;
+  /** Whether the displayed effort has been initialized or retained by user input. */
+  private hasInitializedReasoningEffortSelection = false;
 
   /**
    * Creates the composer attached to its owning chat.
@@ -49,15 +49,17 @@ export class ChatComposerStore {
   constructor(private readonly parent: ChatStore) {
     this.selectedModel = resolveInitialSelectedModel(parent.thread, parent);
     this.reasoningEffort = resolveInitialReasoningEffort(parent.thread, parent);
+    this.hasInitializedModelSelection = parent.thread.model !== null;
+    this.hasInitializedReasoningEffortSelection = parent.thread.reasoningEffort !== null;
     makeAutoObservable<
       ChatComposerStore,
-      "parent" | "hasExplicitModelSelection" | "hasExplicitReasoningEffortSelection"
+      "parent" | "hasInitializedModelSelection" | "hasInitializedReasoningEffortSelection"
     >(
       this,
       {
         parent: false,
-        hasExplicitModelSelection: false,
-        hasExplicitReasoningEffortSelection: false
+        hasInitializedModelSelection: false,
+        hasInitializedReasoningEffortSelection: false
       },
       { autoBind: true }
     );
@@ -94,7 +96,7 @@ export class ChatComposerStore {
       value,
       this.reasoningEffort
     );
-    this.hasExplicitModelSelection = true;
+    this.retainModelSettings();
     this.parent.applyComposerThreadMetadata(value, this.reasoningEffort);
   }
 
@@ -106,7 +108,7 @@ export class ChatComposerStore {
   setReasoningEffort(value: OpenCodexReasoningEffort): void {
     if (this.isSubmitting) return;
     this.reasoningEffort = value;
-    this.hasExplicitReasoningEffortSelection = true;
+    this.retainModelSettings();
     this.parent.applyComposerThreadMetadata(this.selectedModel, value);
   }
 
@@ -134,6 +136,7 @@ export class ChatComposerStore {
    */
   setServiceTier(value: OpenCodexServiceTier | null): void {
     if (this.isSubmitting) return;
+    this.retainModelSettings();
     this.selectedServiceTier = resolveAvailableServiceTier(
       this.selectedModel,
       value,
@@ -142,19 +145,31 @@ export class ChatComposerStore {
   }
 
   /**
-   * Applies thread-provided model settings until the user explicitly overrides them.
+   * Initializes missing settings once, without replacing an already displayed choice.
    */
   applyThreadMetadata(): void {
-    if (!this.hasExplicitModelSelection && this.parent.thread.model !== null) {
+    if (this.parent.isLocalDraft || this.isSubmitting) return;
+    if (!this.hasInitializedModelSelection && this.parent.thread.model !== null) {
       this.selectedModel = this.parent.thread.model;
+      this.hasInitializedModelSelection = true;
     }
 
     if (
-      !this.hasExplicitReasoningEffortSelection &&
+      !this.hasInitializedReasoningEffortSelection &&
       this.parent.thread.reasoningEffort !== null
     ) {
-      this.reasoningEffort = this.parent.thread.reasoningEffort;
+      this.reasoningEffort = this.parent.appStore.resolveReasoningEffort(
+        this.selectedModel,
+        this.parent.thread.reasoningEffort
+      );
+      this.hasInitializedReasoningEffortSelection = true;
     }
+  }
+
+  /** Retains the visible settings once the user composes or submits a message. */
+  retainModelSettings(): void {
+    this.hasInitializedModelSelection = true;
+    this.hasInitializedReasoningEffortSelection = true;
   }
 
   /**
@@ -170,6 +185,7 @@ export class ChatComposerStore {
     references: OpenCodexComposerReference[]
   ): void {
     if (this.isSubmitting) return;
+    if (value.trim().length > 0) this.retainModelSettings();
     this.draft = value;
     this.draftMarkdown = markdown;
     this.draftReferences = cloneComposerReferences(references);
@@ -182,6 +198,7 @@ export class ChatComposerStore {
    */
   addAttachments(attachments: OpenCodexAttachment[]): void {
     if (this.isSubmitting) return;
+    if (attachments.length > 0) this.retainModelSettings();
     this.attachments = [
       ...this.attachments,
       ...cloneAttachments(attachments)
@@ -268,9 +285,10 @@ function resolveInitialSelectedModel(thread: OpenCodexThread, parent: ChatStore)
     return thread.model;
   }
 
-  return parent.appStore.models[0]?.model
+  return parent.appStore.settingsStore.settings.defaultModel
     ?? parent.appStore.selectedModel
-    ?? parent.appStore.settingsStore.settings.defaultModel;
+    ?? parent.appStore.models[0]?.model
+    ?? null;
 }
 
 /**

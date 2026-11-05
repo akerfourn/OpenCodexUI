@@ -32,6 +32,7 @@ import {
   type ComposerPlainTextInputHandle
 } from "./ComposerPlainTextInput";
 import { ModelSettingsFields } from "./ModelSettingsFields";
+import { ChatRunningModelX } from "./ChatRunningModel";
 import { canOpenProjectFileLinks } from "./projectFileLinkAccess";
 
 type ChatComposerProps = {
@@ -271,6 +272,7 @@ export function ChatComposer({
         onRemoveAttachment={handleRemoveAttachment}
       />
       <DictationError message={store.dictationStore.error} onClose={handleDictationErrorClose} />
+      <ChatRunningModelX chatStore={chatStore} />
       <Stack className="composer-controls" direction="row" spacing={1}>
         <ModelSettingsFields
           disabled={isSubmitting}

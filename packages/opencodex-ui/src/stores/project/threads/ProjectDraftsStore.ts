@@ -47,16 +47,27 @@ export class ProjectDraftsStore {
 
   /** Creates the remote identity once, retaining it even if the subsequent turn fails. */
   async ensureCreated(chat: ChatStore): Promise<void> {
-    if (!chat.isLocalDraft) return;
-    const clientDraftId = chat.thread.id;
-    const workspaceId = this.workspaceIds.get(clientDraftId);
-    const result = await this.root.request<{ thread: OpenCodexThread }>({
-      type: "threads.create", clientDraftId, projectPath: chat.thread.projectPath,
-      sourceId: chat.sourceId, ...(workspaceId === undefined ? {} : { workspaceId })
+    if (!this.isPending(chat.thread.id)) return;
+    if (chat.isLocalDraft) {
+      const clientDraftId = chat.thread.id;
+      const workspaceId = this.workspaceIds.get(clientDraftId);
+      const result = await this.root.request<{ thread: OpenCodexThread }>({
+        type: "threads.create", clientDraftId, projectPath: chat.thread.projectPath,
+        sourceId: chat.sourceId, ...(workspaceId === undefined ? {} : { workspaceId })
+      });
+      runInAction(() => { this.adopt(clientDraftId, result.thread); });
+      if (chat.isLocalDraft) throw new Error("The local conversation is no longer available.");
+    }
+
+    // Creation persists its default settings before replying; save the draft's choices afterwards.
+    await this.root.request({
+      type: "threads.updateComposerSettings", threadId: chat.thread.id,
+      model: chat.composer.selectedModel, reasoningEffort: chat.composer.reasoningEffort
     });
-    runInAction(() => { this.adopt(clientDraftId, result.thread); });
-    if (chat.isLocalDraft) throw new Error("The local conversation is no longer available.");
   }
+
+  /** Whether a conversation still owns an unsent first turn and draft settings. */
+  isPending(threadId: string): boolean { return this.workspaceIds.has(threadId); }
 
   /** Handles both early creation events and request replies without changing another selection. */
   adopt(clientDraftId: string, thread: OpenCodexThread): boolean {
@@ -71,7 +82,12 @@ export class ProjectDraftsStore {
     this.workspaceIds.set(thread.id, workspaceId);
     chat.isLocalDraft = false;
     this.project.chatsById.set(thread.id, chat);
-    this.project.upsertThread(thread);
+    chat.composer.retainModelSettings();
+    this.project.upsertThread({
+      ...thread,
+      model: chat.composer.selectedModel,
+      reasoningEffort: chat.composer.reasoningEffort
+    });
     if (wasSelected) this.project.selectChat(thread.id);
     return true;
   }

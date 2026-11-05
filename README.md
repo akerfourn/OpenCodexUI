@@ -25,6 +25,9 @@ You must already have Codex CLI installed and configured on your machine.
 - [Codex permissions](docs/thread-permissions.md) for an existing conversation.
 - Codex conversation list with local SQLite caching.
 - Conversation creation, opening, renaming, and last-message editing.
+- Stable per-chat model selection, including the first send and later refreshes.
+  The composer separately shows the running turn's requested model; changing the
+  selector prepares the next turn without changing a running turn's settings.
 - Streaming assistant responses.
 - Collapsible reasoning and activity blocks.
 - Optional steering while Codex is reasoning.

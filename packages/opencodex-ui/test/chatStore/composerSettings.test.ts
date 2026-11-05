@@ -104,7 +104,7 @@ describe("ChatStore composer model settings", () => {
     });
   });
 
-  it("should apply metadata refreshes before the user changes settings", () => {
+  it("should keep initialized settings when a stale metadata refresh arrives", () => {
     const chatStore = createChatStore({
       model: "gpt-5.5",
       reasoningEffort: "medium"
@@ -115,15 +115,45 @@ describe("ChatStore composer model settings", () => {
       reasoningEffort: "xhigh"
     }));
 
-    expect(chatStore.composer.selectedModel).toBe("gpt-5.4-mini");
-    expect(chatStore.composer.reasoningEffort).toBe("xhigh");
+    expect(chatStore.composer.selectedModel).toBe("gpt-5.5");
+    expect(chatStore.composer.reasoningEffort).toBe("medium");
   });
 
-  it("should use the first listed model when the thread has no model", () => {
-    const chatStore = createChatStore({
-      model: null,
-      reasoningEffort: null
-    });
+  it("should initialize missing settings from the first metadata refresh", () => {
+    const chatStore = createChatStore({ model: null, reasoningEffort: null });
+    chatStore.setThread(createThread({ model: "gpt-5.4-mini", reasoningEffort: "high" }));
+
+    expect(chatStore.composer.selectedModel).toBe("gpt-5.4-mini");
+    expect(chatStore.composer.reasoningEffort).toBe("high");
+  });
+
+  it("should retain the visible model when metadata arrives after typing starts", () => {
+    const chatStore = createChatStore({ model: null });
+    const visibleModel = chatStore.composer.selectedModel;
+    chatStore.composer.setDraft("hello", "hello", []);
+    chatStore.setThread(createThread({ model: "gpt-5.4-mini" }));
+
+    expect(chatStore.composer.selectedModel).toBe(visibleModel);
+  });
+
+  it("should prefer the configured default over catalog order for a new chat", () => {
+    const rootStore = createRootStore();
+    rootStore.appStore.settingsStore.settings.defaultModel = "configured-model";
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
+
+    expect(chatStore.composer.selectedModel).toBe("configured-model");
+  });
+
+  it("should use the app selection before catalog order when no default is configured", () => {
+    const chatStore = createChatStore({ model: null, reasoningEffort: null });
+
+    expect(chatStore.composer.selectedModel).toBe("gpt-5.4");
+  });
+
+  it("should use the first catalog model when no selection or default exists", () => {
+    const rootStore = createRootStore();
+    rootStore.appStore.selectedModel = null;
+    const chatStore = new ChatStore(createThread({}), createProjectStore(), rootStore);
 
     expect(chatStore.composer.selectedModel).toBe("gpt-5.5");
     expect(chatStore.composer.reasoningEffort).toBe("medium");

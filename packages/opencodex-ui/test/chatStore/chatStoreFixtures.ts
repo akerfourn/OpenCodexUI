@@ -96,7 +96,7 @@ export function createProjectStore(): ProjectStore {
     },
     projectPath: "/tmp/project",
     isOrphan: false,
-    drafts: { forget: vi.fn() },
+    drafts: { forget: vi.fn(), isPending: vi.fn(() => false) },
     resolveThreadSourceId: vi.fn((thread: OpenCodexThread) => (
       thread.sourceId ?? "source-1"
     )),

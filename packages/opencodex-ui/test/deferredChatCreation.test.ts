@@ -19,7 +19,7 @@ function deferred<T>() {
 }
 
 /** Exercises the real project, composer, event router and source-aware chat index. */
-function fixture() {
+function fixture(defaultModel: string | null = null) {
   const request = vi.fn(async (input: OpenCodexRequest): Promise<unknown> => {
     if (input.type === "threads.create") {
       return { thread: createThread({ id: "codex-thread", sourceId: "source", projectPath: "/B" }), turns: [] };
@@ -28,6 +28,7 @@ function fixture() {
     return [];
   });
   const root = new RootStore({ request, onEvent: () => () => undefined });
+  runInAction(() => { root.appStore.settingsStore.settings.defaultModel = defaultModel; });
   const project = root.projectsStore.openProjectTab({
     id: "project", path: "/A", sourceId: "source", defaultName: "Project", displayName: null,
     preferences: {}, isHidden: false, createdAt: "", updatedAt: "", editedAt: "", lastSeenAt: ""
@@ -54,6 +55,77 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe("deferred conversation creation", () => {
+  it("should preserve the displayed model through creation and persist it before sending", async () => {
+    const { root, project, chat, request } = fixture("chosen-model");
+    const creation = deferred<{ thread: ReturnType<typeof createThread> }>();
+    request.mockReturnValueOnce(creation.promise);
+    const localId = chat.thread.id;
+    const submission = chat.composer.submit();
+    const remoteThread = createThread({
+      id: "real", sourceId: "source", projectPath: "/B", model: "server-default"
+    });
+
+    root.handleEvent({ type: "thread.created", clientDraftId: localId, thread: remoteThread, turns: [] });
+    expect(chat.composer.selectedModel).toBe("chosen-model");
+    expect(chat.thread.model).toBe("chosen-model");
+    creation.resolve({ thread: remoteThread });
+    await expect(submission).resolves.toBe(true);
+
+    const requestTypes = request.mock.calls.map(([input]) => input.type);
+    expect(requestTypes.indexOf("threads.updateComposerSettings")).toBeLessThan(requestTypes.indexOf("turn.start"));
+    expect(request).toHaveBeenCalledWith({
+      type: "threads.updateComposerSettings", threadId: "real",
+      model: "chosen-model", reasoningEffort: "medium"
+    });
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ type: "turn.start", model: "chosen-model" }));
+    expect(project.selectedChat?.composer.selectedModel).toBe("chosen-model");
+    chat.applyTurnCompleted("turn-1", 1, "completed");
+    await expect(chat.actions.send("next message")).resolves.toBe(true);
+    expect(request.mock.calls.filter(([input]) => input.type === "turn.start")
+      .every(([input]) => input.model === "chosen-model")).toBe(true);
+    chat.dispose();
+  });
+
+  it("should save an explicit draft model even if its first turn is rejected", async () => {
+    const { chat, request } = fixture("default-model");
+    chat.composer.setModel("user-model");
+    chat.composer.setReasoningEffort("high");
+    request.mockImplementation(async (input) => {
+      if (input.type === "threads.create") {
+        return { thread: createThread({ id: "real", sourceId: "source", model: "default-model" }) };
+      }
+      if (input.type === "turn.start") throw new Error("Turn rejected");
+      return { ok: true };
+    });
+
+    await expect(chat.composer.submit()).resolves.toBe(false);
+
+    expect(request).toHaveBeenCalledWith({
+      type: "threads.updateComposerSettings", threadId: "real", model: "user-model", reasoningEffort: "high"
+    });
+    expect(chat.composer.selectedModel).toBe("user-model");
+    expect(chat.thread.model).toBe("user-model");
+    expect(chat.composer.draft).toBe("A long message");
+    chat.dispose();
+  });
+
+  it("should retain the remote draft and retry settings if their first save fails", async () => {
+    const { chat, request } = fixture("chosen-model");
+    request.mockImplementationOnce(async () => ({
+      thread: createThread({ id: "real", sourceId: "source", model: "server-default" })
+    })).mockRejectedValueOnce(new Error("Settings unavailable"));
+
+    await expect(chat.composer.submit()).resolves.toBe(false);
+    expect(request.mock.calls.some(([input]) => input.type === "turn.start")).toBe(false);
+    expect(chat.codexThreadId).toBe("real");
+    expect(chat.composer.selectedModel).toBe("chosen-model");
+
+    await expect(chat.composer.submit()).resolves.toBe(true);
+    expect(request.mock.calls.filter(([input]) => input.type === "threads.create")).toHaveLength(1);
+    expect(request.mock.calls.filter(([input]) => input.type === "threads.updateComposerSettings")).toHaveLength(2);
+    chat.dispose();
+  });
+
   it("should show readonly input and a loading send button while rejecting pasted or dropped attachments", async () => {
     const { root, project, chat, request } = fixture();
     const creation = deferred<unknown>();
@@ -76,7 +148,7 @@ describe("deferred conversation creation", () => {
     const { project, chat, request } = fixture();
     project.drafts.adopt(chat.thread.id, createThread({ id: "existing", sourceId: "source", projectPath: "/B" }));
     const turn = deferred<unknown>();
-    request.mockReturnValueOnce(turn.promise);
+    request.mockResolvedValueOnce({ ok: true }).mockReturnValueOnce(turn.promise);
     const submission = chat.composer.submit();
     chat.applyTurnStarted("early-turn");
     chat.applyTurnCompleted("early-turn", 1, "completed");
@@ -89,7 +161,7 @@ describe("deferred conversation creation", () => {
     expect(chat.composer.draftMarkdown).toBe("A **long** message");
     expect(chat.composer.draftReferences).toHaveLength(1);
     expect(chat.composer.attachments).toHaveLength(1);
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls.filter(([input]) => input.type === "turn.start")).toHaveLength(1);
   });
 
   it("should keep opening, editing and refreshing an unsent chat entirely local", async () => {
@@ -113,7 +185,8 @@ describe("deferred conversation creation", () => {
     const { project, chat, request } = fixture();
     const creation = deferred<{ thread: ReturnType<typeof createThread> }>();
     const turn = deferred<{ turnId: string }>();
-    request.mockReturnValueOnce(creation.promise).mockReturnValueOnce(turn.promise);
+    request.mockReturnValueOnce(creation.promise)
+      .mockResolvedValueOnce({ ok: true }).mockReturnValueOnce(turn.promise);
     const localId = chat.thread.id;
     const submission = chat.composer.submit();
     expect(chat.composer.isSubmitting).toBe(true);
@@ -165,7 +238,7 @@ describe("deferred conversation creation", () => {
       const thread = createThread({ id: "real", sourceId: "source", projectPath: "/B" });
       root.handleEvent({ type: "thread.created", clientDraftId: localId, thread, turns: [] });
       return { thread };
-    }).mockRejectedValueOnce(new Error("Turn rejected"));
+    }).mockResolvedValueOnce({ ok: true }).mockRejectedValueOnce(new Error("Turn rejected"));
     await expect(chat.composer.submit()).resolves.toBe(false);
     expect(chat.codexThreadId).toBe("real");
     expect(root.projectsStore.findChatStoreByThreadId("real", "source")).toBe(chat);

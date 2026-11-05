@@ -199,10 +199,13 @@ export class ChatActionsStore {
       if (this.parent.runtime.isWorking) {
         return await this.steerActiveTurn(trimmedText, plainAttachments, plainReferences);
       }
-      if (this.parent.isLocalDraft) await this.projectStore.drafts.ensureCreated(this.parent);
+      this.parent.composer.retainModelSettings();
+      if (this.projectStore.drafts.isPending(this.parent.thread.id)) {
+        await this.projectStore.drafts.ensureCreated(this.parent);
+      }
       runInAction(() => {
         startAttemptId = this.parent.runtime.beginTurnStart(true, trimmedText);
-        this.createOptimisticUserTurn(trimmedText, plainAttachments);
+        this.createOptimisticUserTurn(trimmedText, plainAttachments, model, reasoningEffort, serviceTier);
       });
       const result = await this.root.request<{ turnId?: string }>({
         type: "turn.start",
@@ -279,7 +282,8 @@ export class ChatActionsStore {
     const startAttemptId = this.parent.runtime.beginLastTurnEdit(trimmedText);
     this.parent.timeline.setTurns(this.parent.timeline.turns.slice(0, -1));
     this.parent.runtime.clearPendingTurn();
-    this.createOptimisticUserTurn(trimmedText, plainAttachments);
+    this.parent.composer.retainModelSettings();
+    this.createOptimisticUserTurn(trimmedText, plainAttachments, model, reasoningEffort, serviceTier);
 
     void this.root.request<{ threadId?: string }>({
       type: "turn.editLast",
@@ -449,16 +453,30 @@ export class ChatActionsStore {
    *
    * @param content User message content.
    * @param attachments Attachments.
+   * @param model Model captured before asynchronous submission.
+   * @param reasoningEffort Effort captured for this turn.
+   * @param serviceTier Tier captured for this turn.
    */
   private createOptimisticUserTurn(
     content: string,
-    attachments: OpenCodexAttachment[]
+    attachments: OpenCodexAttachment[],
+    model: string | null,
+    reasoningEffort: OpenCodexReasoningEffort,
+    serviceTier: OpenCodexServiceTier | null
   ): void {
     this.parent.runtime.pendingTurnId = this.parent.timeline.createOptimisticUserTurn(
       this.parent.thread.id,
       content,
       attachments
     );
+    const turn = this.parent.timeline.findOrCreateTurn(this.parent.runtime.pendingTurnId);
+    turn.execution = {
+      requestedModel: model,
+      effectiveModel: null,
+      requestedReasoningEffort: reasoningEffort,
+      effectiveReasoningEffort: null,
+      serviceTier
+    };
   }
 
   /**

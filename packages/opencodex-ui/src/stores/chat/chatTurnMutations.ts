@@ -118,6 +118,7 @@ export function movePendingTurnToStartedTurn(
   }
 
   if (existingTurn !== undefined) {
+    existingTurn.execution = existingTurn.execution ?? pendingTurn.execution;
     existingTurn.items = [...pendingTurn.items, ...existingTurn.items];
     existingTurn.startedAt = existingTurn.startedAt ?? pendingTurn.startedAt ?? new Date().toISOString();
     existingTurn.status = "running";
@@ -326,13 +327,15 @@ function preserveLiveTurnItems(
       shouldPreserveLiveItem(item) &&
       !nextItemIds.has(item.id)
     ));
+    const execution = nextTurn.execution ?? currentTurn.execution;
 
-    if (missingLiveItems.length === 0 && !didPreserveExistingItem) {
+    if (missingLiveItems.length === 0 && !didPreserveExistingItem && execution === nextTurn.execution) {
       return nextTurn;
     }
 
     return {
       ...nextTurn,
+      execution,
       items: [
         ...preservedItems,
         ...missingLiveItems

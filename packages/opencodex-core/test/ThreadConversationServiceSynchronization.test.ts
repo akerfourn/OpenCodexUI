@@ -146,6 +146,46 @@ describe("ThreadConversationService synchronization", () => {
     expect(fixture.deltaTurns).toEqual([]);
   });
 
+  it("should preserve composer settings changed while a turn page is loading", async () => {
+    vi.useFakeTimers();
+    let resolveTurns!: (turns: unknown[]) => void;
+    const latestTurnsPromise = new Promise<unknown[]>((resolve) => { resolveTurns = resolve; });
+    const fixture = createFixture({
+      seedTurns: [createTurn("turn-1", "before")], latestTurnsPromise
+    });
+
+    const synchronization = fixture.service.syncCompletedTurn("thread-1", "source-1");
+    await vi.advanceTimersByTimeAsync(500);
+    expect(fixture.calls).toContain("rpc:listThreadTurns");
+    await fixture.service.updateThreadComposerSettings("thread-1", "user-model", "high");
+    resolveTurns([createTurn("turn-1", "after")]);
+    await synchronization;
+
+    expect(fixture.threadTurnCache.get("thread-1")?.thread).toMatchObject({
+      model: "user-model", reasoningEffort: "high"
+    });
+    expect(fixture.indexedThreads.at(-1)).toMatchObject({
+      model: "user-model", reasoningEffort: "high"
+    });
+  });
+
+  it("should preserve composer settings changed while opening metadata is loading", async () => {
+    vi.useFakeTimers();
+    let resumeRead!: () => void;
+    const metadataReadBarrier = new Promise<void>((resolve) => { resumeRead = resolve; });
+    const fixture = createFixture({ seedThread: true, metadataReadBarrier });
+
+    const opening = fixture.service.openThread("thread-1", "source-1");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fixture.calls).toContain("rpc:readThread");
+    await fixture.service.updateThreadComposerSettings("thread-1", "user-model", "high");
+    resumeRead();
+    const opened = await opening;
+
+    expect(opened.thread).toMatchObject({ model: "user-model", reasoningEffort: "high" });
+    expect(fixture.indexedThreads.at(-1)).toMatchObject({ model: "user-model", reasoningEffort: "high" });
+  });
+
   it("emits started and completed without a client for a non-materialized refresh", async () => {
     const populatedSnapshot = createSnapshot(
       createThread({ sourceId: "source-1" }),
@@ -175,6 +215,8 @@ describe("ThreadConversationService synchronization", () => {
 });
 
 type SynchronizationFixtureOptions = {
+  /** Deferred metadata response used to reproduce an opening race. */
+  metadataReadBarrier?: Promise<void>;
   /** Snapshot sequence returned by cache reads. */
   snapshots?: CachedThreadSnapshot[];
   /** One snapshot returned by every cache read. */
@@ -422,6 +464,7 @@ class SynchronizationCodexClient {
   /** Records metadata reads and returns stable thread data. */
   async readThread(threadId: string): Promise<unknown> {
     this.calls.push("rpc:readThread");
+    if (this.options.metadataReadBarrier !== undefined) await this.options.metadataReadBarrier;
     return {
       thread: {
         id: threadId,

@@ -264,6 +264,8 @@ export class ThreadTurnSyncService {
   ): Promise<LatestThreadLoad> {
     const response = await client.readThread(cacheEntry.thread.id, false);
     const responseObject = readObject(response);
+    const latestTurns = await this.options.pageLoader.readLatest(client, cacheEntry.thread.id);
+    // Composer choices may change while either source read is pending.
     const thread = {
       ...mapThread(
         responseObject.thread,
@@ -272,7 +274,6 @@ export class ThreadTurnSyncService {
       ),
       sourceId: cacheEntry.thread.sourceId
     };
-    const latestTurns = await this.options.pageLoader.readLatest(client, cacheEntry.thread.id);
 
     return {
       thread,
@@ -405,6 +406,11 @@ export class ThreadTurnSyncService {
   ): Promise<OpenCodexThread> {
     const response = await client.readThread(threadId, false);
     const responseObject = readObject(response);
+    const currentThread = this.options.threadTurnCache.get(threadId)?.thread;
+    if (currentThread !== undefined && currentThread.sourceId === sourceId) {
+      model = currentThread.model;
+      reasoningEffort = currentThread.reasoningEffort;
+    }
 
     return {
       ...mapThread(responseObject.thread, model, reasoningEffort),
