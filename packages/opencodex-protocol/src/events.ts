@@ -8,6 +8,7 @@ import type {
   OpenCodexActivity,
   OpenCodexApproval,
   OpenCodexAppUpdateState,
+  OpenCodexCodexReleaseCheck,
   OpenCodexLogEntry,
   OpenCodexMessage,
   OpenCodexModel,
@@ -53,7 +54,12 @@ export type OpenCodexEvent =
   | { type: "projects.updated"; projects: OpenCodexProject[] }
   | { type: "projectGroups.updated"; snapshot: OpenCodexProjectGroupsSnapshot }
   | { type: "project.opened"; project: OpenCodexProject }
-  | { type: "sources.updated"; sources: OpenCodexSource[]; defaultSourceId: string | null }
+  | {
+      type: "sources.updated";
+      sources: OpenCodexSource[];
+      defaultSourceId: string | null;
+      codexReleaseCheck?: OpenCodexCodexReleaseCheck;
+    }
   | {
       type: "threads.updated";
       threads: OpenCodexThread[];

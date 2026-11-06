@@ -5,12 +5,14 @@ import type {
   CachedSource,
   OpenCodexCacheRepository
 } from "@open-codex-ui/opencodex-cache";
-import { createDefaultCachedSource, toOpenCodexSource } from "./sourceMapping.js";
+import { createDefaultCachedSource, resolveSourceCommand, toOpenCodexSource } from "./sourceMapping.js";
+import { isCodexCliVersionSupported } from "./toolVersionDetection.js";
 import type {
   OpenCodexCodexUpdateStatus,
   OpenCodexSource,
   OpenCodexSourceKind,
-  OpenCodexSourceSettingsPatch
+  OpenCodexSourceSettingsPatch,
+  OpenCodexToolVersionStatus
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { OpenCodexBackendOptions } from "../../types.js";
@@ -97,6 +99,23 @@ export class SourceCatalogService implements SourceCatalogPort {
     return this.options.cacheRepository === null
       ? []
       : await this.options.cacheRepository.listSources();
+  }
+
+  /** Reads persisted source diagnostics without spawning commands or probing installation paths. */
+  async listCachedOpenCodexSources(): Promise<OpenCodexSource[]> {
+    const repository = this.options.cacheRepository;
+    const sources = await repository?.listSources() ?? [createDefaultCachedSource()];
+    const settings = this.options.settings.getSettings();
+
+    return Promise.all(sources.map(async (source) => toOpenCodexSource(
+      source,
+      settings.codexCommand,
+      await repository?.getSourceProjectCount(source.id) ?? 0,
+      readCachedCodexStatus(source),
+      this.createCodexUpdateStatusPlaceholder(),
+      [],
+      resolveSourceCommand(source, settings.codexCommand)
+    )));
   }
 
   /**
@@ -313,6 +332,27 @@ export class SourceCatalogService implements SourceCatalogPort {
 
     return this.options.cacheRepository;
   }
+}
+
+/** Restores availability from the last detection while enforcing the current CLI version requirement. */
+function readCachedCodexStatus(source: CachedSource): OpenCodexToolVersionStatus {
+  const version = source.lastDetectedCodexVersion;
+  let status: OpenCodexToolVersionStatus["status"] = "unavailable";
+  const error = source.lastDetectionError;
+  const isVersionError = error?.startsWith("Codex CLI ") === true
+    && error.includes("is older than required");
+  if (version !== null && !isCodexCliVersionSupported(version) && (error === null || isVersionError)) {
+    status = "outdated";
+  } else if (version !== null && source.lastDetectionError === null) {
+    status = "ready";
+  }
+
+  return {
+    status,
+    version,
+    message: source.lastDetectionError,
+    checkedAt: source.lastDetectedCodexAt ?? ""
+  };
 }
 
 /**

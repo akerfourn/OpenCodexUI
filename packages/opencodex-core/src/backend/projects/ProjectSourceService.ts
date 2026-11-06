@@ -105,7 +105,8 @@ export class ProjectSourceService {
     this.options.events.emit({
       type: "sources.updated",
       sources,
-      defaultSourceId: this.options.settings.getSettings().defaultSourceId
+      defaultSourceId: this.options.settings.getSettings().defaultSourceId,
+      codexReleaseCheck: this.options.settings.getSettings().codexReleaseCheck
     });
     return sources;
   }
@@ -467,6 +468,11 @@ export class ProjectSourceService {
    */
   async listOpenCodexSources(): Promise<OpenCodexSource[]> {
     return await this.sourceCatalog.listOpenCodexSources();
+  }
+
+  /** Reads source metadata for startup without waiting for live diagnostics. */
+  async listCachedOpenCodexSources(): Promise<OpenCodexSource[]> {
+    return await this.sourceCatalog.listCachedOpenCodexSources();
   }
 
   /**

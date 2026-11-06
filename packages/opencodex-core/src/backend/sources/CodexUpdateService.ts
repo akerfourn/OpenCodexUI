@@ -63,7 +63,7 @@ export class CodexUpdateService {
 
     const nextCheck = await this.fetchLatestRelease();
     const nextSettings = {
-      ...settings,
+      ...this.options.settings.getSettings(),
       codexReleaseCheck: nextCheck
     };
 

@@ -7,6 +7,25 @@ import { SourcesStore } from "../src/stores/app/SourcesStore";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("SourcesStore settings synchronization", () => {
+  it("should apply a deferred release check without replacing settings edited since bootstrap", () => {
+    const request = vi.fn();
+    const settingsStore = new AppSettingsStore({ request });
+    settingsStore.replaceSettings({ ...settingsStore.settings, language: "fr", defaultModel: "gpt-5.5" });
+    const root = {
+      appStore: { settingsStore },
+      homeStore: { selectedSourceId: null, setSelectedSourceId: vi.fn() }, request
+    } as unknown as RootStore;
+    const store = new SourcesStore(root);
+    const releaseCheck = { latestVersion: "0.200.0", checkedAt: "2026-11-06T00:00:00.000Z", error: null };
+
+    store.handleEvent({ type: "sources.updated", sources: [], defaultSourceId: "local", codexReleaseCheck: releaseCheck });
+
+    expect(settingsStore.settings).toMatchObject({
+      language: "fr", defaultModel: "gpt-5.5", defaultSourceId: "local", codexReleaseCheck: releaseCheck
+    });
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("should preserve settings and avoid persistence when the default source changes", () => {
     const request = vi.fn(async (_request: OpenCodexRequest): Promise<unknown> => undefined);
     const settingsStore = new AppSettingsStore({ request });

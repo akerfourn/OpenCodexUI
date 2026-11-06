@@ -34,9 +34,13 @@ export function updateFixture(source: OpenCodexSource = updateSource()) {
   });
   const refreshSources = vi.fn(async () => [{ ...source, codex: { ...source.codex, version: "0.163.0" } }]);
   const logger = vi.fn();
+  const settingsPort = {
+    getSettings: () => settings,
+    setSettings: (value: OpenCodexSettings) => { settings = value; }
+  };
   const service = new CodexUpdateService({
-    settings: { getSettings: () => settings, setSettings: value => { settings = value; } },
+    settings: settingsPort,
     saveSettings: vi.fn(), refreshSources, runProcess: run, logger
   });
-  return { source, service, run, refreshSources, logger };
+  return { source, service, run, refreshSources, logger, settings: settingsPort };
 }

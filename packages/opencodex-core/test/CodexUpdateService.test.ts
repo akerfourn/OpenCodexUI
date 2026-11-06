@@ -18,6 +18,21 @@ afterEach(() => {
 });
 
 describe("standalone source updates", () => {
+  it("should preserve settings edited while a startup release check is pending", async () => {
+    let finishFetch!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(resolve => { finishFetch = resolve; })));
+    const { service, settings } = updateFixture();
+
+    const check = service.checkLatestRelease(true);
+    settings.setSettings({ ...settings.getSettings(), language: "fr", defaultSourceId: "another-source" });
+    finishFetch(new Response(JSON.stringify({ tag_name: "rust-v0.200.0" })));
+    await check;
+
+    expect(settings.getSettings()).toMatchObject({
+      language: "fr", defaultSourceId: "another-source", codexReleaseCheck: { latestVersion: "0.200.0" }
+    });
+  });
+
   it("should detect WSL symlinks in Linux without starting an app-server or executing an update", async () => {
     const { service, source, run } = updateFixture();
     await expect(service.getSourceUpdateStatus(source, "windows-codex.exe")).resolves.toMatchObject({

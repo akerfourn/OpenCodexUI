@@ -384,7 +384,7 @@ export class OpenCodexBackendRuntime {
   }
 
   /**
-   * Sends initial settings, sources, projects, and models to the UI.
+   * Publishes cached startup state before waiting for source diagnostics and live models.
    *
    * @returns Success result.
    */
@@ -393,11 +393,10 @@ export class OpenCodexBackendRuntime {
     await this.services.applicationLogService.start();
     await this.services.projectRuntimeHandler.ensureSourcesInitialized();
     await this.ensureDefaultWorkspaceRoot();
-    await this.services.codexUpdateService.checkLatestRelease(false);
     this.services.events.emit({
       type: "app.bootstrap",
       settings: this.settings.get(),
-      sources: await this.services.projectRuntimeHandler.listOpenCodexSources(),
+      sources: await this.services.projectRuntimeHandler.listCachedOpenCodexSources(),
       sourceInstances: await this.sourceInstances.list(),
       projectPath: this.options.projectPath,
       appVersion: this.options.appVersion ?? null,
@@ -406,6 +405,8 @@ export class OpenCodexBackendRuntime {
     this.options.emit({ type: "debug.state", snapshot: this.debug.snapshot() });
     await this.projects.list();
     await this.groups.list();
+    await this.services.codexUpdateService.checkLatestRelease(false);
+    await this.sources.list();
     await this.models.list();
     await this.usage.readLimits(this.settings.get().defaultSourceId, "bootstrap");
     return { ok: true };

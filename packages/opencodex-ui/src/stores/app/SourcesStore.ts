@@ -92,6 +92,9 @@ export class SourcesStore implements RootChildStore {
         return;
       case "sources.updated":
         this.applySourcesUpdated(event.defaultSourceId, event.sources);
+        if (event.codexReleaseCheck !== undefined) {
+          this.root.appStore.settingsStore.setCodexReleaseCheck(event.codexReleaseCheck);
+        }
         this.finishVisibleSourceSync();
         return;
       default:

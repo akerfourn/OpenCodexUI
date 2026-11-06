@@ -61,6 +61,8 @@ export interface SourceCatalogPort {
   ensureSourcesInitialized(): Promise<void>;
   /** Reads cached sources without emitting events. */
   listCachedSources(): Promise<CachedSource[]>;
+  /** Reads protocol source snapshots from persistence without running diagnostics. */
+  listCachedOpenCodexSources(): Promise<OpenCodexSource[]>;
   /** Resolves a source, falling back to the first cached source when needed. */
   resolveSource(sourceId: string | null): Promise<CachedSource>;
   /** Reads protocol source snapshots without emitting events. */

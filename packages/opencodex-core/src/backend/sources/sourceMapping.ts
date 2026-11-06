@@ -20,6 +20,7 @@ import { LEGACY_DEFAULT_SOURCE_ID } from "../shared/constants.js";
  * @param associatedProjectCount Number of projects linked to the source.
  * @param codex Latest Codex CLI detection status.
  * @param commandCandidates Candidate Codex commands shown in settings.
+ * @param resolvedCommand Optional command already known without host filesystem discovery.
  * @returns Protocol source.
  */
 export function toOpenCodexSource(
@@ -28,7 +29,8 @@ export function toOpenCodexSource(
   associatedProjectCount: number,
   codex: OpenCodexToolVersionStatus,
   codexUpdate: OpenCodexCodexUpdateStatus,
-  commandCandidates: OpenCodexCommandCandidate[]
+  commandCandidates: OpenCodexCommandCandidate[],
+  resolvedCommand?: string
 ): OpenCodexSource {
   const command = resolveSourceCommand(source, fallbackCommand);
   const base = {
@@ -37,7 +39,7 @@ export function toOpenCodexSource(
     associatedProjectCount,
     codex,
     codexUpdate,
-    resolvedCommand: resolveCodexCommandPath(command),
+    resolvedCommand: resolvedCommand ?? resolveCodexCommandPath(command),
     commandCandidates,
     createdAt: source.createdAt,
     updatedAt: source.updatedAt

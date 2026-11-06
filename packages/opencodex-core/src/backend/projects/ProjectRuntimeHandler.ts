@@ -109,6 +109,11 @@ export class ProjectRuntimeHandler implements ProjectSourcePort {
     return await this.projectSourceService.listOpenCodexSources();
   };
 
+  /** Source metadata available before live startup diagnostics complete. */
+  readonly listCachedOpenCodexSources = async (): Promise<OpenCodexSource[]> => {
+    return await this.projectSourceService.listCachedOpenCodexSources();
+  };
+
   /** Stable Codex stderr adapter used by the client pool. */
   readonly handleCodexStderr = (message: string, sourceId: string): void => {
     this.projectTrustService.handleCodexStderr(message, sourceId);
