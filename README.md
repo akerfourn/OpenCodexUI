@@ -36,6 +36,9 @@ You must already have Codex CLI installed and configured on your machine.
 - Skill references with `$`.
 - Image display support in messages.
 - Git panel with changed files, staging, commit, pull, and push.
+- Guided synchronization with a destination review, fresh commit counts, and a
+  per-project rebase or merge preference. Conflicts expose file editing,
+  explicit resolution staging, continuation, and abort controls.
 - Git remote inventory with explicit addition, fetch URL editing, and confirmed
   removal. Separate push URLs remain visible and are preserved when editing.
 - Assisted commit message generation.
@@ -87,6 +90,27 @@ Stable updates are checked automatically after startup, but downloading and
 installing always require an explicit action. Alpha, beta, and rc releases are
 excluded by default and can be enabled separately. The portable Windows build
 does not support automatic installation.
+
+## Git Synchronization
+
+Use **Synchronize and push** in the Git panel to fetch and review the selected
+remote and branch before sending commits. The review shows fresh local/remote
+commit counts and offers rebase or merge when histories have diverged. Its
+strategy can be saved as the project's default. Tracking is configured only
+when the corresponding option is selected.
+
+If integration pauses, open the listed files, resolve their contents and mark
+each resolution before continuing. Git's own worktree metadata preserves this
+state across application restarts; reopen the synchronization dialog to recover
+it. Continuing finishes the Git operation and requires a fresh destination
+review before pushing. Abort returns to the pre-integration state after an
+explicit confirmation. Detailed Git diagnostics remain available separately.
+
+The workflow keeps untracked/ignored files, refuses colliding paths and tracked
+uncommitted edits, and never force-pushes or automatically stashes changes.
+Rebase is refused when commits are already known on another remote. Mirroring
+and multiple push endpoints require the ordinary Git workflow; custom tracking
+rules are preserved unless standard tracking setup is explicitly supported.
 
 ## Development Setup
 

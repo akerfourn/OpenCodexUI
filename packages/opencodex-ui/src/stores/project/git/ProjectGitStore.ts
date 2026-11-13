@@ -18,6 +18,7 @@ import { ProjectGitChangesStore } from "./ProjectGitChangesStore";
 import { ProjectGitLogStore } from "./ProjectGitLogStore";
 import type { ProjectGitLogContext } from "./ProjectGitLogStore";
 import { ProjectGitReferencesStore } from "./ProjectGitReferencesStore";
+import { ProjectGitSyncStore } from "./ProjectGitSyncStore";
 import { ProjectGitStatusStore } from "./ProjectGitStatusStore";
 import { ProjectGitTagStore } from "./ProjectGitTagStore";
 import type { ProjectGitTagContext } from "./ProjectGitTagStore";
@@ -40,6 +41,8 @@ export class ProjectGitStore {
   readonly commitStore: ProjectGitCommitStore;
   /** Git branches, remotes, and remote synchronization actions for the project. */
   readonly referencesStore: ProjectGitReferencesStore;
+  /** Explicit synchronization reviews and durable Git operation recovery. */
+  readonly sync: ProjectGitSyncStore;
   /** Paginated Git history and commit details for this project. */
   readonly logStore: ProjectGitLogStore;
   /** Local and remote Git tag state for this project. */
@@ -66,6 +69,7 @@ export class ProjectGitStore {
     this.changesStore = new ProjectGitChangesStore(this);
     this.commitStore = new ProjectGitCommitStore(this);
     this.referencesStore = new ProjectGitReferencesStore(this);
+    this.sync = new ProjectGitSyncStore(this);
     const projectGitStore = this;
     const logContext: ProjectGitLogContext = {
       get isAvailable() {
@@ -117,7 +121,7 @@ export class ProjectGitStore {
     };
     this.tagStore = new ProjectGitTagStore(tagContext);
 
-    makeAutoObservable<ProjectGitStore, "projectStore" | "root" | "statusStore" | "changesStore" | "commitStore" | "referencesStore" | "logStore" | "tagStore">(
+    makeAutoObservable<ProjectGitStore, "projectStore" | "root" | "statusStore" | "changesStore" | "commitStore" | "referencesStore" | "logStore" | "tagStore" | "sync">(
       this,
       {
         projectStore: false,
@@ -126,6 +130,7 @@ export class ProjectGitStore {
         changesStore: false,
         commitStore: false,
         referencesStore: false,
+        sync: false,
         logStore: false,
         tagStore: false
       },

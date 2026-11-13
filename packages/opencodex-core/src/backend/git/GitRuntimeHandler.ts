@@ -1,4 +1,8 @@
 import { normalizeProjectPath } from "@open-codex-ui/opencodex-cache";
+import type { v2 } from "@open-codex-ui/codex-rpc";
+import type { OpenCodexGitSyncRequest, OpenCodexGitSyncResult } from "@open-codex-ui/opencodex-protocol";
+import { GitSyncService } from "./GitSyncService.js";
+import { createRunGit } from "./gitCommandRunner.js";
 import type { OpenCodexCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type {
   OpenCodexCommitMessageGenerationResult,
@@ -49,6 +53,8 @@ export type GitRuntimeHandlerOptions = {
 export class GitRuntimeHandler {
   /** Performs source-scoped Git operations through Codex clients. */
   private readonly gitService: GitService;
+  /** Guided integration and conflict recovery, scoped to each physical worktree. */
+  private readonly syncService: GitSyncService;
   /** Reads persisted project preferences for protected-branch checks. */
   private readonly cacheRepository: Pick<OpenCodexCacheRepository, "listProjects" | "workspaces"> | null;
   /** Manages the editable commit prompt and one-shot message generation. */
@@ -63,6 +69,25 @@ export class GitRuntimeHandler {
     this.cacheRepository = options.cacheRepository ?? null;
     this.gitService = new GitService({
       clients: options.clients
+    });
+    this.syncService = new GitSyncService({
+      runGit: createRunGit(options.clients),
+      readStatus: async (path, sourceId) => await this.gitService.status(path, sourceId),
+      readDirectory: async (path, sourceId) => {
+        const client = await options.clients.ensureClient(sourceId);
+        const response = await client.request<v2.FsReadDirectoryResponse>("fs/readDirectory", { path });
+        return response.entries.map((entry) => entry.fileName);
+      },
+      readFile: async (path, sourceId) => {
+        const client = await options.clients.ensureClient(sourceId);
+        const response = await client.request<v2.FsReadFileResponse>("fs/readFile", { path });
+        const data = Buffer.from(response.dataBase64, "base64");
+        if (data.length > 65_536) throw new Error("Git operation metadata is too large.");
+        return data.toString("utf8");
+      },
+      protectedBranches: async (scope) => await this.readCommitProtectedBranches(
+        scope.projectId, scope.projectPath, scope.sourceId, scope.workspaceId
+      )
     });
     this.commitMessageService = new CommitMessageService({
       userDataPath: options.userDataPath,
@@ -80,6 +105,11 @@ export class GitRuntimeHandler {
   /** Reads the host-local Git version and availability status. */
   async readGitVersion(): Promise<OpenCodexToolVersionStatus> {
     return await readGitVersionStatus();
+  }
+
+  /** Runs a reviewed synchronization phase without converting normal Git failures to IPC errors. */
+  async runGitSync(request: OpenCodexGitSyncRequest): Promise<OpenCodexGitSyncResult> {
+    return await this.syncService.run(request);
   }
 
   /** Reads Git status for a project through its source. */

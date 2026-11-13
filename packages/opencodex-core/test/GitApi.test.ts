@@ -18,6 +18,7 @@ describe("GitApi", () => {
         sourceId: string | null
       ) => Promise<OpenCodexGitStatus>>().mockResolvedValue(status),
       initializeGitRepository: vi.fn(),
+      runGitSync: vi.fn(),
       listGitRemotes: vi.fn(),
       upsertGitRemote: vi.fn(),
       removeGitRemote: vi.fn(),
@@ -52,6 +53,9 @@ describe("GitApi", () => {
 
     await expect(api.readStatus("/project", "source-1")).resolves.toBe(status);
     expect(handler.readGitStatus).toHaveBeenCalledWith("/project", "source-1");
+    const syncRequest = { type: "git.sync.inspect", projectId: "project", projectPath: "/project", sourceId: "source-1" } as const;
+    await api.sync(syncRequest);
+    expect(handler.runGitSync).toHaveBeenCalledWith(syncRequest);
 
     await expect(api.fetchUpdates("/project", "source-1")).resolves.toBe(status);
     expect(handler.fetchGitUpdates).toHaveBeenCalledWith("/project", "source-1");
@@ -84,6 +88,7 @@ describe("GitApi", () => {
       readGitVersion: vi.fn(),
       readGitStatus: vi.fn(),
       initializeGitRepository: vi.fn(),
+      runGitSync: vi.fn(),
       listGitRemotes: vi.fn(),
       upsertGitRemote: vi.fn(),
       removeGitRemote: vi.fn(),

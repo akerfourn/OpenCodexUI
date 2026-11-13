@@ -23,7 +23,24 @@ const diffRequest: Extract<GitRequest, { type: "git.fileDiff.read" }> = {
 const commitRequest: Extract<GitRequest, { type: "git.commit" }> = {
   type: "git.commit", ...scope, projectId: "project", workspaceId: "workspace", message: "fix: été"
 };
+const syncScope = { ...scope, projectId: "project" };
+const syncOperation = { kind: "rebase", branchName: "dev", fingerprint: "reviewed-operation", conflicts: ["src/file.ts"] } as const;
+const syncPlan = {
+  target: { remoteName: "origin", branchName: "dev", setUpstream: false }, pushUrl: "ssh://git.example/project",
+  branchName: "dev", localHead: "a".repeat(40), remoteHead: "b".repeat(40), aheadCount: 1, behindCount: 2,
+  strategy: "rebase", action: "rebase"
+} as const;
+const syncRequests: GitRequest[] = [
+  { ...syncScope, type: "git.sync.plan", target: syncPlan.target, strategy: "rebase" },
+  { ...syncScope, type: "git.sync.execute", plan: syncPlan },
+  { ...syncScope, type: "git.sync.resolve", operation: { ...syncOperation, conflicts: [...syncOperation.conflicts] }, path: "src/file.ts" },
+  { ...syncScope, type: "git.sync.continue", operation: { ...syncOperation, conflicts: [] } },
+  { ...syncScope, type: "git.sync.abort", operation: { ...syncOperation, conflicts: [...syncOperation.conflicts] } }
+];
 const cases: RouteCase[] = [
+  ...syncRequests.map((request) => ({ request, effect: "sync", args: [request] })),
+  { request: { type: "git.sync.inspect", ...scope, projectId: "project" }, effect: "sync",
+    args: [{ type: "git.sync.inspect", ...scope, projectId: "project" }] },
   { request: { type: "git.version" }, effect: "readVersion", args: [] },
   { request: { type: "git.status", ...scope }, effect: "readStatus", args: scopeArgs },
   { request: diffRequest, effect: "readFileDiff", args: [...scopeArgs, "src/été.ts", "workingTree"] },
@@ -79,6 +96,7 @@ const cases: RouteCase[] = [
 function createGitRoutingFixture() {
   const response = { fixture: "response" };
   const git = {
+    sync: vi.fn(),
     readVersion: vi.fn(), readStatus: vi.fn(), readFileDiff: vi.fn(), initializeRepository: vi.fn(),
     listRemotes: vi.fn(), upsertRemote: vi.fn(), removeRemote: vi.fn(), listBranches: vi.fn(), listTags: vi.fn(),
     fetchTags: vi.fn(), pushTags: vi.fn(), createTag: vi.fn(), pushTag: vi.fn(),

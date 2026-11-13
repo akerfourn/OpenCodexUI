@@ -76,7 +76,7 @@ export class ProjectGitChangesStore {
 
   /** Whether a Git action should wait for a status or preference operation. */
   get isBusy(): boolean {
-    return this.parent.statusStore.isLoading || this.isUpdatingDeferredPaths;
+    return this.parent.statusStore.isLoading || this.isUpdatingDeferredPaths || this.parent.sync?.isBusy === true;
   }
 
   /** Number of staged files. */

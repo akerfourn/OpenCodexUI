@@ -17,6 +17,7 @@ import { enCommon } from "./common.js";
 import { enConversation } from "./conversation.js";
 import { enDocker } from "./docker.js";
 import { enGit } from "./git.js";
+import { enGitSync } from "./gitSync.js";
 import { enNavigation } from "./navigation.js";
 import { enProjects } from "./projects.js";
 import { enSources } from "./sources.js";
@@ -40,6 +41,7 @@ export const enTranslation = {
   ...enConversation,
   ...enDocker,
   ...enGit,
+  ...enGitSync,
   ...enNavigation,
   ...enProjects,
   ...enSources,

@@ -161,6 +161,8 @@ export type OpenCodexProjectPreferences = {
   /** Explicit command offered for manual workspace preparation; never run automatically. */
   workspacePreparation?: { commandId: string | null };
   git?: {
+    /** Integration strategy offered by the guided synchronization dialog. */
+    syncStrategy?: import("../gitSync.js").OpenCodexGitSyncStrategy;
     referenceTagName?: string | null;
     /** Relative paths temporarily excluded from OpenCodexUI staging actions. */
     deferredPaths?: string[];

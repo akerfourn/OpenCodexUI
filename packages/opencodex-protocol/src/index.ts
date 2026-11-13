@@ -8,6 +8,7 @@ export * from "./events";
 export * from "./messages";
 export * from "./performance";
 export * from "./requests";
+export * from "./gitSync.js";
 export * from "./transport";
 export * from "./workspaces";
 export * from "./workspacePreparation";

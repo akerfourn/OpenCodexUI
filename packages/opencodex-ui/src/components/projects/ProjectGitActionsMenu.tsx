@@ -32,6 +32,7 @@ type ProjectGitActionsMenuProps = {
   onOpenMerge(direction: "from" | "to"): void;
   onOpenRemote(): void;
   onOpenLog(): void;
+  onSynchronize(): void;
 };
 
 /**
@@ -51,7 +52,8 @@ export function ProjectGitActionsMenu({
   onOpenProtection,
   onOpenMerge,
   onOpenRemote,
-  onOpenLog
+  onOpenLog,
+  onSynchronize
 }: ProjectGitActionsMenuProps) {
   const { t } = useTranslation();
 
@@ -72,7 +74,7 @@ export function ProjectGitActionsMenu({
 
   function handleSelectPublishAction(): void {
     onClose();
-    void referencesStore.publishBranch();
+    onSynchronize();
   }
 
   function handleSelectLogAction(): void {

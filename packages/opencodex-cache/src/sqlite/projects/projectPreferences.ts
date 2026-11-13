@@ -104,16 +104,20 @@ function normalizeGitPreferences(value: unknown): CachedProjectPreferences["git"
   const referenceTagName = normalizeNullableText(value.referenceTagName);
   const deferredPaths = normalizeDeferredPaths(value.deferredPaths);
   const commitProtectedBranches = normalizeCommitProtectedBranches(value.commitProtectedBranches);
+  let syncStrategy: "rebase" | "merge" | undefined;
+  if (value.syncStrategy === "rebase" || value.syncStrategy === "merge") syncStrategy = value.syncStrategy;
 
   if (
     referenceTagName === undefined &&
     deferredPaths.length === 0 &&
-    commitProtectedBranches.length === 0
+    commitProtectedBranches.length === 0 &&
+    syncStrategy === undefined
   ) {
     return undefined;
   }
 
   return {
+    ...(syncStrategy === undefined ? {} : { syncStrategy }),
     referenceTagName,
     ...(deferredPaths.length > 0 ? { deferredPaths } : {}),
     ...(commitProtectedBranches.length > 0 ? { commitProtectedBranches } : {})

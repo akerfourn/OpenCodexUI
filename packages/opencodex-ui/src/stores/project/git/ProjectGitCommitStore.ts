@@ -48,6 +48,7 @@ export class ProjectGitCommitStore {
       this.hasDraftMessage &&
       !this.isCommitting &&
       !this.isGeneratingCommitMessage &&
+      this.parent.sync?.operation == null &&
       !this.parent.isUpdatingCommitProtectedBranches &&
       !this.parent.isCurrentBranchCommitProtected &&
       !this.parent.changesStore.isBusy

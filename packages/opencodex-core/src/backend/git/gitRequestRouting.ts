@@ -20,6 +20,13 @@ export function isGitRequest(request: OpenCodexRequest): request is GitRequest {
 /** Dispatches a resolved Git request, preserving facade responses and errors. */
 export async function routeGitRequest(runtime: GitRequestRuntime, request: GitRequest): Promise<unknown> {
   switch (request.type) {
+    case "git.sync.inspect":
+    case "git.sync.plan":
+    case "git.sync.execute":
+    case "git.sync.resolve":
+    case "git.sync.continue":
+    case "git.sync.abort":
+      return runtime.git.sync(request);
     case "git.version":
       return runtime.git.readVersion();
     case "git.status":

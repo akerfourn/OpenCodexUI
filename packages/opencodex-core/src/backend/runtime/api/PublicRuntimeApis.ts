@@ -1,4 +1,5 @@
 import type { OpenCodexCommandExecutionMode, OpenCodexWorkspacePreparationInput } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexGitSyncRequest, OpenCodexGitSyncResult } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceWorkStatusInput } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceTransitionEvent } from "@open-codex-ui/opencodex-protocol";
@@ -403,6 +404,8 @@ export interface CommitMessageApi {
 
 /** Public source-scoped Git operations. */
 export interface GitApi {
+  /** Runs one explicit synchronization/recovery phase in its source and worktree. */
+  sync(request: OpenCodexGitSyncRequest): Promise<OpenCodexGitSyncResult>;
   readonly commitMessage: CommitMessageApi;
   readVersion(): Promise<OpenCodexToolVersionStatus>;
   readStatus(projectPath: string, sourceId: string | null): Promise<OpenCodexGitStatus>;

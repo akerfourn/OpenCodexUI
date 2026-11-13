@@ -18,6 +18,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { GitRuntimeHandler } from "../../git/GitRuntimeHandler.js";
+import type { OpenCodexGitSyncRequest, OpenCodexGitSyncResult } from "@open-codex-ui/opencodex-protocol";
 import type {
   CommitMessageApi as CommitMessageApiContract,
   GitApi as GitApiContract
@@ -26,6 +27,7 @@ import type {
 type GitApiHandler = Pick<
   GitRuntimeHandler,
   | "readGitVersion"
+  | "runGitSync"
   | "readGitStatus"
   | "readGitFileDiff"
   | "initializeGitRepository"
@@ -100,6 +102,10 @@ export class CommitMessageApi implements CommitMessageApiContract {
 
 /** Public source-scoped Git operations. */
 export class GitApi implements GitApiContract {
+  /** Delegates explicit synchronization and recovery phases to the source-aware service. */
+  async sync(request: OpenCodexGitSyncRequest): Promise<OpenCodexGitSyncResult> {
+    return await this.handler.runGitSync(request);
+  }
   /** Public commit-message operations associated with Git. */
   readonly commitMessage: CommitMessageApi;
 

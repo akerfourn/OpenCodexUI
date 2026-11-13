@@ -187,6 +187,17 @@ describe("project persistence", () => {
     });
   });
 
+  it("should persist the Git synchronization strategy while preserving other preferences", async () => {
+    const project = await repository.upsertProject("/tmp/project-sync-strategy");
+    await repository.updateProjectPreferences(project.id, {
+      git: { referenceTagName: "v1.0", deferredPaths: ["notes.txt"], syncStrategy: "merge" }
+    });
+    const stored = (await repository.listProjects()).find((entry) => entry.id === project.id);
+    expect(stored?.preferences.git).toEqual({ referenceTagName: "v1.0", deferredPaths: ["notes.txt"], syncStrategy: "merge" });
+    await repository.updateProjectPreferences(project.id, { git: { syncStrategy: "rebase" } });
+    expect((await repository.listProjects()).find((entry) => entry.id === project.id)?.preferences.git?.syncStrategy).toBe("rebase");
+  });
+
   it("should retain the preparation command across reopening and support explicitly disabling it", async () => {
     const project = await repository.upsertProject("/tmp/preparation");
     await repository.updateProjectPreferences(project.id, { workspacePreparation: { commandId: "command-1" },

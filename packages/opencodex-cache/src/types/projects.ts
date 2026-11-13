@@ -78,6 +78,7 @@ export type CachedProjectPreferences = {
   /** Optional command selected for manual workspace preparation. */
   workspacePreparation?: { commandId: string | null };
   git?: {
+    syncStrategy?: "rebase" | "merge";
     referenceTagName?: string | null;
     deferredPaths?: string[];
     commitProtectedBranches?: string[];

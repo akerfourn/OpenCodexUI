@@ -37,6 +37,9 @@ vi.mock("../src/components/projects/ProjectTagSelectorDialog", () => ({
 vi.mock("../src/components/projects/ProjectGitRemoteDialog", () => ({
   ProjectGitRemoteDialogX: () => null
 }));
+vi.mock("../src/components/projects/ProjectGitSyncAction", () => ({
+  ProjectGitSyncActionX: () => null
+}));
 vi.mock("../src/components/projects/ProjectGitLogDialog", () => ({
   ProjectGitLogDialogX: () => null
 }));

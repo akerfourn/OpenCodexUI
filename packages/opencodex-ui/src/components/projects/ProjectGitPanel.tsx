@@ -36,6 +36,7 @@ import { ProjectTagSelectorDialogX } from "./ProjectTagSelectorDialog";
 import { ProjectGitActionsMenuX } from "./ProjectGitActionsMenu";
 import { ProjectGitCommitSectionX } from "./ProjectGitCommitSection";
 import { ProjectGitFileSectionsX } from "./ProjectGitFileSections";
+import { ProjectGitSyncActionX } from "./ProjectGitSyncAction";
 
 type ProjectGitPanelProps = {
   store: RootStore;
@@ -148,12 +149,15 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   }
 
   function handlePush(): void {
-    void referencesStore.push();
+    void gitStore.sync.open();
   }
 
   function handlePull(): void {
-    void referencesStore.pull();
+    void gitStore.sync.open();
   }
+
+  /** Opens conflict contents in the normal editor, keeping the Git operation paused. */
+  function handleOpenConflictFile(path: string): void { projectStore.openLink(path); }
 
   function handleOpenFile(
     path: string,
@@ -231,13 +235,14 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         anchorEl={gitActionsAnchor}
         referencesStore={referencesStore}
         statusStore={gitStore.statusStore}
-        isAvailable={gitStore.isAvailable}
+        isAvailable={gitStore.isAvailable && gitStore.sync?.isBusy !== true}
         onClose={handleCloseGitActions}
         onOpenBranch={handleOpenBranchDialog}
         onOpenProtection={handleOpenProtectionDialog}
         onOpenMerge={handleOpenMergeDialog}
         onOpenRemote={handleOpenRemoteDialog}
         onOpenLog={handleOpenLogDialog}
+        onSynchronize={handlePush}
       />
 
       {gitStore.statusStore.isLoading ? <LinearProgress /> : null}
@@ -276,6 +281,8 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
 
         {gitStore.statusStore.isRepository ? (
           <>
+            <ProjectGitSyncActionX key={`${gitStore.sourceId}:${gitStore.projectPath}`}
+              gitStore={gitStore} onOpenFile={handleOpenConflictFile} />
             {isCurrentBranchProtected && currentBranchName !== null ? (
               <Alert severity="warning" icon={<LockOutlinedIcon fontSize="inherit" />}>
                 {t("git.commitProtectedBranch", { branch: currentBranchName })}

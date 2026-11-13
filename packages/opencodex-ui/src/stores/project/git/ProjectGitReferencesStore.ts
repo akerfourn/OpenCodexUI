@@ -60,7 +60,7 @@ export class ProjectGitReferencesStore {
 
   /** Whether Git actions can run for the project source. */
   get isAvailable(): boolean {
-    return this.parent.isAvailable;
+    return this.parent.isAvailable && this.parent.sync?.isBusy !== true;
   }
 
   /** Whether the current project is a Git repository. */
@@ -76,7 +76,8 @@ export class ProjectGitReferencesStore {
       this.parent.statusStore.status.aheadCount > 0 &&
       !this.parent.statusStore.isLoading &&
       !this.isFetchingUpdates &&
-      !this.isPushing
+      !this.isPushing &&
+      this.parent.sync?.isBusy !== true
     );
   }
 
@@ -89,7 +90,8 @@ export class ProjectGitReferencesStore {
       this.parent.statusStore.status.remotes.length > 0 &&
       !this.parent.statusStore.isLoading &&
       !this.isFetchingUpdates &&
-      !this.isPushing
+      !this.isPushing &&
+      this.parent.sync?.isBusy !== true
     );
   }
 
@@ -123,7 +125,8 @@ export class ProjectGitReferencesStore {
       this.parent.statusStore.status.behindCount > 0 &&
       !this.parent.statusStore.isLoading &&
       !this.isFetchingUpdates &&
-      !this.isPulling
+      !this.isPulling &&
+      this.parent.sync?.isBusy !== true
     );
   }
 

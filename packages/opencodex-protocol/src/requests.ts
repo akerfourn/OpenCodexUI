@@ -1,4 +1,5 @@
 import type { OpenCodexWorkspaceLockInput } from "./workspaceLocks.js";
+import type { OpenCodexGitSyncRequest } from "./gitSync.js";
 import type { OpenCodexFileContext } from "./files.js";
 import type { OpenCodexWorkspaceWorkStatusInput } from "./workspaceWorkStatus.js";
 import type { OpenCodexWorkspacePreparationInput } from "./workspacePreparation.js";
@@ -52,6 +53,7 @@ import type { OpenCodexCollaborationQuery } from "./collaboration";
  * transported over Electron IPC today and other transports later.
  */
 export type OpenCodexRequest =
+  | OpenCodexGitSyncRequest
   | BrowserPermissionsRequest
   | ThreadPermissionsRequest
   | SourcePermissionsRequest
