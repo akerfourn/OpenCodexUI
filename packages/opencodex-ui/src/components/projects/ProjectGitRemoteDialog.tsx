@@ -1,133 +1,157 @@
-/**
- * Renders Git remote configuration controls.
- */
+import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
+import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import {
-  Alert,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Stack,
-  TextField,
-  Typography
+  Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent,
+  DialogTitle, IconButton, Stack, Tooltip, Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import { type ChangeEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { OpenCodexGitRemote } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectGitReferencesStore } from "../../stores/project/git/ProjectGitReferencesStore";
+import { ProjectGitRemoteEditorX } from "./ProjectGitRemoteEditor";
+import { ProjectGitRemoteRowX } from "./ProjectGitRemoteRow";
 
-type ProjectGitRemoteDialogProps = {
+interface ProjectGitRemoteDialogProps {
   referencesStore: ProjectGitReferencesStore;
   open: boolean;
   onClose(): void;
-};
+}
 
-/**
- * Renders a modal used to add or update a Git remote.
- *
- * @param props Component props.
- * @returns Rendered remote configuration dialog.
- */
-export function ProjectGitRemoteDialog({
-  referencesStore,
-  open,
-  onClose
-}: ProjectGitRemoteDialogProps) {
+/** Lists all remotes with separate creation, URL editing, and confirmed removal. */
+export function ProjectGitRemoteDialog({ referencesStore, open, onClose }: ProjectGitRemoteDialogProps) {
   const { t } = useTranslation();
-  const [remoteName, setRemoteName] = useState("origin");
-  const [remoteUrl, setRemoteUrl] = useState("");
-  const primaryRemote = referencesStore.primaryRemote;
-  const canSave = remoteName.trim().length > 0 &&
-    remoteUrl.trim().length > 0 &&
-    !referencesStore.isSavingRemote;
+  const [editing, setEditing] = useState<OpenCodexGitRemote | "new" | null>(null);
+  const [removing, setRemoving] = useState<OpenCodexGitRemote | null>(null);
+  const busy = !referencesStore.canManageRemotes;
+  const canManage = !busy && referencesStore.hasLoadedRemotes;
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    void referencesStore.loadRemotes();
-    setRemoteName(primaryRemote?.name ?? "origin");
-    setRemoteUrl(primaryRemote?.pushUrl ?? primaryRemote?.fetchUrl ?? "");
+    setEditing(null);
+    setRemoving(null);
+    if (open) void referencesStore.loadRemotes();
   }, [referencesStore, open]);
 
-  function handleNameChange(event: ChangeEvent<HTMLInputElement>): void {
-    setRemoteName(event.target.value);
+  /** Keeps the dialog open while Git is acknowledging a mutation. */
+  function handleClose(): void {
+    if (!referencesStore.isSavingRemote) onClose();
   }
 
-  function handleUrlChange(event: ChangeEvent<HTMLInputElement>): void {
-    setRemoteUrl(event.target.value);
+  /** Opens an empty form without reusing another remote's address. */
+  function handleAdd(): void {
+    referencesStore.clearRemoteError();
+    setEditing("new");
   }
 
-  async function handleSubmit(): Promise<void> {
-    const didSave = await referencesStore.upsertRemote(remoteName, remoteUrl);
-
-    if (didSave) {
-      onClose();
-    }
+  /** Edits the selected remote rather than the publication default. */
+  function handleEdit(remote: OpenCodexGitRemote): void {
+    referencesStore.clearRemoteError();
+    setEditing({ ...remote });
   }
 
-  const currentRemoteContent = primaryRemote === null ? (
-    <Typography variant="body2" color="text.secondary">
-      {t("git.remoteEmpty")}
-    </Typography>
-  ) : (
-    <Stack spacing={0.25}>
-      <Typography variant="body2">
-        {primaryRemote.name}
-      </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
-        {primaryRemote.pushUrl ?? primaryRemote.fetchUrl}
-      </Typography>
+  /** Captures the remote named in the removal confirmation. */
+  function handleRemove(remote: OpenCodexGitRemote): void {
+    referencesStore.clearRemoteError();
+    setRemoving({ ...remote });
+  }
+
+  /** Returns to the list after cancellation or a confirmed save. */
+  function handleCancel(): void {
+    referencesStore.clearRemoteError();
+    setEditing(null);
+    setRemoving(null);
+  }
+
+  /** Removes only the remote named in the visible confirmation. */
+  async function handleConfirmRemove(): Promise<void> {
+    if (removing === null) return;
+    if (await referencesStore.removeRemote(removing.name)) setRemoving(null);
+  }
+
+  /** Reloads local configuration without fetching remote references. */
+  function handleRefresh(): void { void referencesStore.loadRemotes(); }
+
+  let content = (
+    <Stack spacing={1}>
+      {referencesStore.remotes.map((remote) => (
+        <ProjectGitRemoteRowX key={remote.name} remote={remote}
+          disabled={!canManage || removing !== null} onEdit={handleEdit} onRemove={handleRemove} />
+      ))}
     </Stack>
   );
+  if (referencesStore.remotes.length === 0 && referencesStore.hasLoadedRemotes) {
+    content = <Typography color="text.secondary">{t("git.remoteEmpty")}</Typography>;
+  }
+  if (editing !== null) {
+    let remote: OpenCodexGitRemote | null = null;
+    if (editing !== "new") remote = editing;
+    content = <ProjectGitRemoteEditorX referencesStore={referencesStore} remote={remote} onDone={handleCancel} />;
+  }
+
+  let confirmation = null;
+  if (removing !== null) {
+    confirmation = (
+      <Alert severity="warning">
+        <Stack spacing={1}>
+          <Typography variant="body2">{t("git.remoteRemoveDescription", { name: removing.name })}</Typography>
+          <Stack direction="row" spacing={1}>
+            <Button disabled={referencesStore.isSavingRemote} onClick={handleCancel}>{t("git.cancel")}</Button>
+            <Button color="error" variant="contained" disabled={!canManage} onClick={handleConfirmRemove}>
+              {t("git.remoteRemoveConfirm")}
+            </Button>
+          </Stack>
+        </Stack>
+      </Alert>
+    );
+  }
+
+  let addAction = null;
+  if (editing === null) {
+    addAction = (
+      <Button startIcon={<AddOutlinedIcon />} disabled={!canManage || removing !== null} onClick={handleAdd}>
+        {t("git.remoteAdd")}
+      </Button>
+    );
+  }
+  let progress = null;
+  if (referencesStore.isLoadingRemotes || referencesStore.isSavingRemote) {
+    progress = <CircularProgress size={18} aria-label={t("git.remoteLoading")} />;
+  }
+  let error = null;
+  if (referencesStore.remoteErrorMessage !== null) {
+    error = <Alert severity="error">{referencesStore.remoteErrorMessage}</Alert>;
+  }
+
+  let toolbar = progress;
+  if (editing === null) {
+    toolbar = (
+      <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}>
+        {addAction}
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+          {progress}
+          <Tooltip title={t("git.remoteRefresh")}>
+            <span><IconButton aria-label={t("git.remoteRefresh")} onClick={handleRefresh}
+              disabled={busy || removing !== null}><RefreshOutlinedIcon /></IconButton></span>
+          </Tooltip>
+        </Stack>
+      </Stack>
+    );
+  }
 
   return (
-    <Dialog open={open} fullWidth maxWidth="sm" onClose={onClose}>
+    <Dialog open={open} fullWidth maxWidth="sm" onClose={handleClose}>
       <DialogTitle>{t("git.remoteConfigureTitle")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <Stack spacing={0.75}>
-            <Typography variant="subtitle2">
-              {t("git.remoteCurrent")}
-            </Typography>
-            {currentRemoteContent}
-          </Stack>
-          {referencesStore.remoteErrorMessage !== null ? (
-            <Alert severity="error">{referencesStore.remoteErrorMessage}</Alert>
-          ) : null}
-          <TextField
-            label={t("git.remoteName")}
-            value={remoteName}
-            autoFocus
-            fullWidth
-            disabled={referencesStore.isSavingRemote}
-            onChange={handleNameChange}
-          />
-          <TextField
-            label={t("git.remoteUrl")}
-            value={remoteUrl}
-            fullWidth
-            disabled={referencesStore.isSavingRemote}
-            onChange={handleUrlChange}
-          />
+          {toolbar}
+          {error}
+          {confirmation}
+          {content}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button disabled={referencesStore.isSavingRemote} onClick={onClose}>
-          {t("git.close")}
-        </Button>
-        <Button
-          variant="contained"
-          disabled={!canSave}
-          startIcon={referencesStore.isSavingRemote ? <CircularProgress color="inherit" size={14} /> : undefined}
-          onClick={handleSubmit}
-        >
-          {t("git.remoteSave")}
-        </Button>
+        <Button disabled={referencesStore.isSavingRemote} onClick={handleClose}>{t("git.close")}</Button>
       </DialogActions>
     </Dialog>
   );

@@ -43,8 +43,11 @@ export async function routeGitRequest(runtime: GitRequestRuntime, request: GitRe
         request.projectPath,
         request.sourceId,
         request.name,
-        request.url
+        request.url,
+        ...optionalRemoteMode(request.mode)
       );
+    case "git.remote.remove":
+      return runtime.git.removeRemote(request.projectPath, request.sourceId, request.name);
     case "git.branches":
       return runtime.git.listBranches(request.projectPath, request.sourceId);
     case "git.tags":
@@ -134,4 +137,10 @@ export async function routeGitRequest(runtime: GitRequestRuntime, request: GitRe
         request.language
       );
   }
+}
+
+/** Preserves legacy facade calls when the request does not constrain remote existence. */
+function optionalRemoteMode(mode: "add" | "update" | undefined): [] | ["add" | "update"] {
+  if (mode === undefined) return [];
+  return [mode];
 }

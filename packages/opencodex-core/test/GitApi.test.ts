@@ -20,6 +20,7 @@ describe("GitApi", () => {
       initializeGitRepository: vi.fn(),
       listGitRemotes: vi.fn(),
       upsertGitRemote: vi.fn(),
+      removeGitRemote: vi.fn(),
       listGitBranches: vi.fn(),
       listGitTags: vi.fn(),
       fetchGitTags: vi.fn(),
@@ -55,6 +56,11 @@ describe("GitApi", () => {
     await expect(api.fetchUpdates("/project", "source-1")).resolves.toBe(status);
     expect(handler.fetchGitUpdates).toHaveBeenCalledWith("/project", "source-1");
 
+    await api.upsertRemote("/project", "source-1", "backup", "/backup.git", "add");
+    expect(handler.upsertGitRemote).toHaveBeenCalledWith("/project", "source-1", "backup", "/backup.git", "add");
+    await api.removeRemote("/project", "source-1", "backup");
+    expect(handler.removeGitRemote).toHaveBeenCalledWith("/project", "source-1", "backup");
+
     await api.commit("/project", "source-1", "release changes", "project-1", "workspace-1");
     expect(handler.commitGitChanges).toHaveBeenCalledWith(
       "/project",
@@ -80,6 +86,7 @@ describe("GitApi", () => {
       initializeGitRepository: vi.fn(),
       listGitRemotes: vi.fn(),
       upsertGitRemote: vi.fn(),
+      removeGitRemote: vi.fn(),
       listGitBranches: vi.fn(),
       listGitTags: vi.fn(),
       fetchGitTags: vi.fn(),

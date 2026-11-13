@@ -31,6 +31,7 @@ type GitApiHandler = Pick<
   | "initializeGitRepository"
   | "listGitRemotes"
   | "upsertGitRemote"
+  | "removeGitRemote"
   | "listGitBranches"
   | "listGitTags"
   | "fetchGitTags"
@@ -145,9 +146,15 @@ export class GitApi implements GitApiContract {
     projectPath: string,
     sourceId: string | null,
     name: string,
-    url: string
+    url: string,
+    mode?: "add" | "update"
   ): Promise<OpenCodexGitStatus> {
-    return await this.handler.upsertGitRemote(projectPath, sourceId, name, url);
+    return await this.handler.upsertGitRemote(projectPath, sourceId, name, url, mode);
+  }
+
+  /** Removes one named remote from the source-owned repository. */
+  async removeRemote(projectPath: string, sourceId: string | null, name: string): Promise<OpenCodexGitStatus> {
+    return await this.handler.removeGitRemote(projectPath, sourceId, name);
   }
 
   /** Lists local and remote Git branches for a project. */

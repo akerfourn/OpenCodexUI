@@ -38,6 +38,7 @@ export async function remotes(
  * @param sourceId Source identifier.
  * @param name Remote name.
  * @param url Remote URL.
+ * @param mode Optional existence constraint for explicit add or edit forms.
  * @returns Refreshed Git status.
  * @throws When an input is empty or a Git command fails.
  */
@@ -46,19 +47,39 @@ export async function upsertRemote(
   projectPath: string,
   sourceId: string | null,
   name: string,
-  url: string
+  url: string,
+  mode?: "add" | "update"
 ): Promise<OpenCodexGitStatus> {
   const remoteName = normalizeRemoteInput(name, "Remote name is required.");
   const remoteUrl = normalizeRemoteInput(url, "Remote URL is required.");
   const remoteList = await remotes(context, projectPath, sourceId);
   const existingRemote = remoteList.find((remote) => remote.name === remoteName) ?? null;
 
-  if (existingRemote === null) {
-    await context.runGit(projectPath, sourceId, ["remote", "add", remoteName, remoteUrl]);
-  } else {
-    await context.runGit(projectPath, sourceId, ["remote", "set-url", remoteName, remoteUrl]);
+  if (mode === "add" && existingRemote !== null) {
+    throw new Error(`Git remote "${remoteName}" already exists.`);
+  }
+  if (mode === "update" && existingRemote === null) {
+    throw new Error(`Git remote "${remoteName}" no longer exists. Refresh the remote list.`);
   }
 
+  if (existingRemote === null) {
+    await context.runGit(projectPath, sourceId, ["remote", "add", "--", remoteName, remoteUrl]);
+  } else {
+    await context.runGit(projectPath, sourceId, ["remote", "set-url", "--", remoteName, remoteUrl]);
+  }
+
+  return await context.readStatus(projectPath, sourceId);
+}
+
+/** Removes local remote configuration and tracking refs, preserving local branches and files. */
+export async function removeRemote(
+  context: GitReferenceActionContext,
+  projectPath: string,
+  sourceId: string | null,
+  name: string
+): Promise<OpenCodexGitStatus> {
+  const remoteName = normalizeRemoteInput(name, "Remote name is required.");
+  await context.runGit(projectPath, sourceId, ["remote", "remove", "--", remoteName]);
   return await context.readStatus(projectPath, sourceId);
 }
 

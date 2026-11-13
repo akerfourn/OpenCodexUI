@@ -7,6 +7,7 @@ import type {
   OpenCodexGitBranch,
   OpenCodexGitBranchKind,
   OpenCodexGitRemote,
+  OpenCodexRequest,
   OpenCodexGitStatus
 } from "@open-codex-ui/opencodex-protocol";
 
@@ -29,6 +30,8 @@ export class ProjectGitReferencesStore {
   isLoadingBranches = false;
   /** Whether remotes are loading. */
   isLoadingRemotes = false;
+  /** Whether the last explicit remote listing completed successfully. */
+  hasLoadedRemotes = false;
   /** Whether a checkout or branch creation is in flight. */
   isCheckingOutBranch = false;
   /** Whether a merge operation is in flight. */
@@ -96,6 +99,21 @@ export class ProjectGitReferencesStore {
       ?? this.parent.statusStore.status.remotes[0]
       ?? null;
   }
+
+  /** All configured remotes, including those other than the publication default. */
+  get remotes(): readonly OpenCodexGitRemote[] {
+    return this.parent.statusStore.status.remotes;
+  }
+
+  /** Whether configuration can change without overlapping another Git operation. */
+  get canManageRemotes(): boolean {
+    return this.isAvailable && this.isRepository && !this.parent.statusStore.isLoading
+      && !this.isSavingRemote && !this.isLoadingRemotes && !this.isFetchingUpdates
+      && !this.isPulling && !this.isPushing && !this.isCheckingOutBranch && !this.isMergingBranch;
+  }
+
+  /** Clears a remote error when the user changes or cancels an operation. */
+  clearRemoteError(): void { this.remoteErrorMessage = null; }
 
   /** Whether remote commits can be pulled from the configured upstream. */
   get canPull(): boolean {
@@ -165,6 +183,7 @@ export class ProjectGitReferencesStore {
    * @returns Promise resolved when remotes are loaded.
    */
   async loadRemotes(): Promise<void> {
+    if (this.isLoadingRemotes || this.isSavingRemote) return;
     if (!this.isAvailable || !this.isRepository) {
       this.parent.statusStore.status = {
         ...this.parent.statusStore.status,
@@ -174,6 +193,7 @@ export class ProjectGitReferencesStore {
     }
 
     this.isLoadingRemotes = true;
+    this.hasLoadedRemotes = false;
     this.remoteErrorMessage = null;
 
     try {
@@ -188,6 +208,7 @@ export class ProjectGitReferencesStore {
           ...this.parent.statusStore.status,
           remotes
         };
+        this.hasLoadedRemotes = true;
       });
     } catch (error) {
       runInAction(() => {
@@ -259,10 +280,38 @@ export class ProjectGitReferencesStore {
    *
    * @param name Remote name.
    * @param url Remote URL.
+   * @param mode Optional add/update constraint used by explicit remote forms.
    * @returns Whether saving succeeded.
    */
-  async upsertRemote(name: string, url: string): Promise<boolean> {
-    if (!this.isAvailable || !this.isRepository || this.isSavingRemote) {
+  async upsertRemote(name: string, url: string, mode?: "add" | "update"): Promise<boolean> {
+    return await this.mutateRemote({
+      type: "git.remote.upsert", projectPath: this.parent.projectPath,
+      sourceId: this.parent.sourceId, name, url,
+      ...(mode === undefined ? {} : { mode })
+    });
+  }
+
+  /** Removes a remote and invalidates lists that contain its tracking references. */
+  async removeRemote(name: string): Promise<boolean> {
+    const removed = await this.mutateRemote({
+      type: "git.remote.remove", projectPath: this.parent.projectPath,
+      sourceId: this.parent.sourceId, name
+    });
+    if (removed) {
+      runInAction(() => {
+        this.branches = [];
+        this.hasLoadedBranches = false;
+        this.parent.tagStore.clearTags();
+      });
+    }
+    return removed;
+  }
+
+  /** Serializes remote writes and applies status only after Git confirms success. */
+  private async mutateRemote(
+    request: Extract<OpenCodexRequest, { type: "git.remote.upsert" | "git.remote.remove" }>
+  ): Promise<boolean> {
+    if (!this.canManageRemotes) {
       return false;
     }
 
@@ -271,13 +320,7 @@ export class ProjectGitReferencesStore {
     this.parent.errorMessage = null;
 
     try {
-      const status = await this.parent.request<OpenCodexGitStatus>({
-        type: "git.remote.upsert",
-        projectPath: this.parent.projectPath,
-        sourceId: this.parent.sourceId,
-        name,
-        url
-      });
+      const status = await this.parent.request<OpenCodexGitStatus>(request);
 
       runInAction(() => {
         this.applyStatus(status);

@@ -418,8 +418,11 @@ export interface GitApi {
     projectPath: string,
     sourceId: string | null,
     name: string,
-    url: string
+    url: string,
+    mode?: "add" | "update"
   ): Promise<OpenCodexGitStatus>;
+  /** Removes one remote without deleting the local working tree or branches. */
+  removeRemote(projectPath: string, sourceId: string | null, name: string): Promise<OpenCodexGitStatus>;
   listBranches(projectPath: string, sourceId: string | null): Promise<OpenCodexGitBranch[]>;
   listTags(projectPath: string, sourceId: string | null): Promise<OpenCodexGitTagListResult>;
   fetchTags(projectPath: string, sourceId: string | null): Promise<OpenCodexGitTagFetchResult>;

@@ -17,7 +17,7 @@ export type GitReferenceActionContext = {
   readStatus: ReadGitStatus;
 };
 
-export { remotes, upsertRemote } from "./gitRemoteActions.js";
+export { remotes, upsertRemote, removeRemote } from "./gitRemoteActions.js";
 export {
   createTag,
   fetchTags,

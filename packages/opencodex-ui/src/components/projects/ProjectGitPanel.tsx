@@ -369,6 +369,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         onClose={handleCloseTagDialog}
       />
       <ProjectGitRemoteDialogX
+        key={`${gitStore.sourceId}:${gitStore.projectPath}`}
         referencesStore={referencesStore}
         open={isRemoteDialogOpen}
         onClose={handleCloseRemoteDialog}

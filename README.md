@@ -36,6 +36,8 @@ You must already have Codex CLI installed and configured on your machine.
 - Skill references with `$`.
 - Image display support in messages.
 - Git panel with changed files, staging, commit, pull, and push.
+- Git remote inventory with explicit addition, fetch URL editing, and confirmed
+  removal. Separate push URLs remain visible and are preserved when editing.
 - Assisted commit message generation.
 - Cross-project workspace inventory on Home, with on-demand checks and dated
   disk measurements. Confirmed workspace switches appear in the chat timeline.

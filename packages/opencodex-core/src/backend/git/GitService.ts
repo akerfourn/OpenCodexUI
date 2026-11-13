@@ -39,6 +39,7 @@ import {
   pushTag as pushGitTag,
   pushTags as pushGitTags,
   remotes as listGitRemotes,
+  removeRemote as removeGitRemote,
   tags as listGitTags,
   upsertRemote as upsertGitRemote,
   type GitReferenceActionContext
@@ -145,15 +146,22 @@ export class GitService {
    * @param sourceId Source identifier.
    * @param name Remote name.
    * @param url Remote URL.
+   * @param mode Optional add/update constraint used by explicit remote forms.
    * @returns Refreshed Git status.
    */
   async upsertRemote(
     projectPath: string,
     sourceId: string | null,
     name: string,
-    url: string
+    url: string,
+    mode?: "add" | "update"
   ): Promise<OpenCodexGitStatus> {
-    return await upsertGitRemote(this.referenceContext, projectPath, sourceId, name, url);
+    return await upsertGitRemote(this.referenceContext, projectPath, sourceId, name, url, mode);
+  }
+
+  /** Removes one named remote from the source-owned repository. */
+  async removeRemote(projectPath: string, sourceId: string | null, name: string): Promise<OpenCodexGitStatus> {
+    return await removeGitRemote(this.referenceContext, projectPath, sourceId, name);
   }
 
   /**

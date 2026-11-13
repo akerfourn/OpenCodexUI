@@ -337,7 +337,8 @@ export type OpenCodexRequest =
     }
   | { type: "git.init"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "git.remotes"; workspaceId?: string; projectPath: string; sourceId: string | null }
-  | { type: "git.remote.upsert"; workspaceId?: string; projectPath: string; sourceId: string | null; name: string; url: string }
+  | { type: "git.remote.upsert"; workspaceId?: string; projectPath: string; sourceId: string | null; name: string; url: string; mode?: "add" | "update" }
+  | { type: "git.remote.remove"; workspaceId?: string; projectPath: string; sourceId: string | null; name: string }
   | { type: "git.branches"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "git.tags"; workspaceId?: string; projectPath: string; sourceId: string | null }
   | { type: "git.tags.fetch"; workspaceId?: string; projectPath: string; sourceId: string | null }

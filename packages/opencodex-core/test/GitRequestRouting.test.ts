@@ -31,6 +31,12 @@ const cases: RouteCase[] = [
   { request: { type: "git.remotes", ...scope }, effect: "listRemotes", args: scopeArgs },
   { request: { type: "git.remote.upsert", ...scope, name: "origin", url: "ssh://git.example/project" },
     effect: "upsertRemote", args: [...scopeArgs, "origin", "ssh://git.example/project"] },
+  { request: { type: "git.remote.upsert", ...scope, name: "backup", url: "/backup.git", mode: "add" },
+    effect: "upsertRemote", args: [...scopeArgs, "backup", "/backup.git", "add"] },
+  { request: { type: "git.remote.upsert", ...scope, name: "backup", url: "/backup.git", mode: "update" },
+    effect: "upsertRemote", args: [...scopeArgs, "backup", "/backup.git", "update"] },
+  { request: { type: "git.remote.remove", ...scope, name: "backup" },
+    effect: "removeRemote", args: [...scopeArgs, "backup"] },
   { request: { type: "git.branches", ...scope }, effect: "listBranches", args: scopeArgs },
   { request: { type: "git.tags", ...scope }, effect: "listTags", args: scopeArgs },
   { request: { type: "git.tags.fetch", ...scope }, effect: "fetchTags", args: scopeArgs },
@@ -74,7 +80,7 @@ function createGitRoutingFixture() {
   const response = { fixture: "response" };
   const git = {
     readVersion: vi.fn(), readStatus: vi.fn(), readFileDiff: vi.fn(), initializeRepository: vi.fn(),
-    listRemotes: vi.fn(), upsertRemote: vi.fn(), listBranches: vi.fn(), listTags: vi.fn(),
+    listRemotes: vi.fn(), upsertRemote: vi.fn(), removeRemote: vi.fn(), listBranches: vi.fn(), listTags: vi.fn(),
     fetchTags: vi.fn(), pushTags: vi.fn(), createTag: vi.fn(), pushTag: vi.fn(),
     countCommitsSinceTag: vi.fn(), readLog: vi.fn(), readCommitDetails: vi.fn(), checkoutBranch: vi.fn(),
     createBranch: vi.fn(), mergeBranch: vi.fn(), mergeBranchTo: vi.fn(), stage: vi.fn(), unstage: vi.fn(),
