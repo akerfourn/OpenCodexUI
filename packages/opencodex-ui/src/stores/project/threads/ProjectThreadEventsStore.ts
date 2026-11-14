@@ -336,6 +336,7 @@ export class ProjectThreadEventsStore implements RootChildStore {
     }
 
     chatStore.timeline.applyTurnsSynced(turns, hasMoreOlderMessages);
+    chatStore.restoreRunningTurn();
   }
 
   /**

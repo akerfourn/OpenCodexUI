@@ -6,6 +6,7 @@ import type {
 
 import type { ChatRuntimeStore } from "./ChatRuntimeStore";
 import type { ChatTimelineStore } from "./ChatTimelineStore";
+import { isRunningTurnStatus } from "./chatTurnUtils";
 
 type PendingLiveEvent =
   | {
@@ -51,6 +52,23 @@ export class ChatLiveTurnEventsStore {
     private readonly timeline: ChatTimelineStore,
     private readonly runtime: ChatRuntimeStore
   ) {}
+
+  /** Restores controls for the latest snapshot turn without replacing live or request-bound ownership. */
+  restoreRunningTurn(): void {
+    if (this.runtime.activeTurnId !== null || this.runtime.isAwaitingTurnStartConfirmation
+      || this.runtime.isStartingTurn || this.runtime.isEditingLastTurn) {
+      return;
+    }
+
+    const turn = this.timeline.turns[this.timeline.turns.length - 1];
+    if (turn === undefined || !isRunningTurnStatus(turn.status)
+      || turn.id.startsWith("pending:") || this.completedTurnIds.includes(turn.id)) {
+      return;
+    }
+
+    this.runtime.applyTurnStarted(turn.id);
+    this.runtime.startStatusPolling();
+  }
 
   /** Applies a turn-started event when it is not stale. */
   applyTurnStarted(turnId: string): void {
@@ -206,9 +224,13 @@ export class ChatLiveTurnEventsStore {
       return "buffer";
     }
 
+    if (this.completedTurnIds.includes(turnId)) {
+      return "ignore";
+    }
+
     const existingTurn = this.timeline.turns.find((turn) => turn.id === turnId);
 
-    return existingTurn?.status === "running" ? "accept" : "ignore";
+    return isRunningTurnStatus(existingTurn?.status ?? null) ? "accept" : "ignore";
   }
 
   /** Rejects a late start event for a turn already known to be terminal. */

@@ -260,6 +260,7 @@ export class ChatStore {
     this.timeline.isLoadingOlderMessages = false;
     this.timeline.hasMoreOlderMessages = source === "thread.opened" ? hasMoreOlderMessages : false;
     this.timeline.applySnapshot(turns, shouldMergeTurns ? "merge" : "replace");
+    this.restoreRunningTurn();
 
     if (!shouldMergeTurns) {
       this.timeline.scrollToBottomVersion += 1;
@@ -267,6 +268,13 @@ export class ChatStore {
 
     this.root.appStore.errorMessage = null;
     this.markSeen();
+  }
+
+  /** Restores a source-backed goal or externally started turn after opening or synchronizing history. */
+  restoreRunningTurn(): void {
+    if (!this.isReadOnlyFromCache) {
+      this.liveEvents.restoreRunningTurn();
+    }
   }
 
   /**

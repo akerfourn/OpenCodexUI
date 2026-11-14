@@ -5,6 +5,11 @@ import type {
   OpenCodexTurnItem
 } from "@open-codex-ui/opencodex-protocol";
 
+/** Recognizes native Codex snapshots and optimistic UI turns that are still executing. */
+export function isRunningTurnStatus(status: OpenCodexTurn["status"]): boolean {
+  return status === "inProgress" || status === "running";
+}
+
 /**
  * Finds the first turn index whose identity or content differs.
  *

@@ -131,11 +131,13 @@ export class ChatTimelineStore {
    * Appends one raw turn and creates its turn store.
    *
    * @param turn Raw turn.
+   * @returns Shared observable turn used by both live mutations and rendering.
    */
-  appendTurn(turn: OpenCodexTurn): void {
-    const enrichedTurn = this.attachKnownTokenUsage(movePlanItemsToLatestSubTurn(turn));
-    this.turns.push(enrichedTurn);
-    this.upsertTurnStore(enrichedTurn);
+  appendTurn(turn: OpenCodexTurn): OpenCodexTurn {
+    const storedTurn = observable(this.attachKnownTokenUsage(movePlanItemsToLatestSubTurn(turn)));
+    this.turns.push(storedTurn);
+    this.upsertTurnStore(storedTurn);
+    return storedTurn;
   }
 
   /**

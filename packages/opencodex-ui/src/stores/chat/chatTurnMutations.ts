@@ -209,8 +209,7 @@ export function findOrCreateTurn(
     items: []
   };
 
-  timeline.appendTurn(created);
-  return created;
+  return timeline.appendTurn(created);
 }
 
 /**
