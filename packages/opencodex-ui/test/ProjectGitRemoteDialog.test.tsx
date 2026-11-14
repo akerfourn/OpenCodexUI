@@ -10,7 +10,7 @@ import {
 } from "./ProjectGitReferencesStore.fixture";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string, values?: { name?: string }) => `${key} ${values?.name ?? ""}`.trim() })
+  useTranslation: () => ({ t: (key: string | string[], values?: { name?: string }) => `${Array.isArray(key) ? key[key.length - 1] : key} ${values?.name ?? ""}`.trim() })
 }));
 
 let root: Root;

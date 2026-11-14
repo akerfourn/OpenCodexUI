@@ -84,7 +84,7 @@ export async function removeRemote(
 }
 
 /**
- * Resolves the default remote, preferring `origin` when configured.
+ * Resolves the repository favorite, falling back to `origin` then the first remote.
  *
  * @param context Git command and status dependencies.
  * @param projectPath Project working directory.
@@ -111,6 +111,16 @@ export async function resolveDefaultRemoteName(
 
   if (firstRemoteName === undefined) {
     throw new Error("No Git remote is configured for this repository.");
+  }
+
+  const configured = await context.runGit(projectPath, sourceId, ["config", "--get", "remote.pushDefault"], { allowFailure: true });
+  if (configured.exitCode !== 0 && configured.exitCode !== 1) {
+    throw new Error("Cannot read the preferred Git remote.");
+  }
+  if (configured.exitCode === 0 && configured.stdout.trim().length > 0) {
+    const favorite = configured.stdout.trim();
+    if (!remoteNames.includes(favorite)) throw new Error("The preferred Git remote no longer exists.");
+    return favorite;
   }
 
   return remoteNames.includes("origin") ? "origin" : firstRemoteName;

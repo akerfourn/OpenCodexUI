@@ -1,7 +1,61 @@
 /** French messages for reviewed Git synchronization and conflict recovery. */
 export const frGitSync = {
   gitSync: {
-    open: "Synchroniser puis envoyer",
+    favoriteAction: "Utiliser {{name}} par défaut",
+    favoriteHelp: "L’étoile désigne le dépôt Git favori. Il sert aux envois et aux récupérations, sauf exception définie pour cette branche.",
+    branchOptions: "Options avancées de la branche",
+    branchRemote: "Dépôt pour {{branch}}",
+    branchRemoteHelp: "Cette exception concerne uniquement la branche affichée. Les autres branches conservent le favori.",
+    useFavorite: "Utiliser le dépôt favori",
+    rebaseHelp: "Rejoue les enregistrements locaux après ceux reçus. Leur identifiant change ; à réserver aux enregistrements non partagés.",
+    mergeHelp: "Réunit les deux historiques en conservant les enregistrements existants et en ajoutant un enregistrement de réunion.",
+    remoteHelp: "Un dépôt Git accessible en ligne, sur un serveur ou dans un autre dossier. Le favori est la destination habituelle.",
+    trackingHelp: "Associe cette branche locale à la branche distante choisie pour les prochains échanges.",
+    technical: {
+      rebase: "Rebase",
+      merge: "Merge"
+    },
+    simple: {
+      title: "Synchronisation avancée",
+      remote: "Dépôt Git",
+      branch: "Branche associée",
+      strategy: "Comment réunir les changements",
+      rebase: "Réorganiser",
+      merge: "Réunir",
+      setUpstream: "Mémoriser cette branche associée",
+      localCommits_one: "{{count}} enregistrement local",
+      localCommits_many: "{{count}} enregistrements locaux",
+      localCommits_other: "{{count}} enregistrements locaux",
+      remoteCommits_one: "{{count}} enregistrement distant",
+      remoteCommits_many: "{{count}} enregistrements distants",
+      remoteCommits_other: "{{count}} enregistrements distants",
+      actions: {
+        none: "Les deux branches sont à jour. Aucun enregistrement à envoyer.",
+        push: "Envoyer les enregistrements locaux vers cette destination.",
+        fastForward: "Mettre la branche locale à jour avec les enregistrements distants.",
+        rebase: "Réappliquer les enregistrements locaux non publiés après les enregistrements distants, puis envoyer le résultat.",
+        merge: "Réunir les deux historiques avec un enregistrement de fusion, puis envoyer le résultat."
+      },
+      phases: {
+        plan: "Récupération et comparaison des enregistrements…"
+      },
+      operations: { "rebase": "Réorganisation en cours" },
+      abortDescription: "Git va revenir à l’état précédant cette fusion ou cette réorganisation. Les modifications faites pour résoudre ses conflits seront abandonnées.",
+      continued: "L’opération Git est terminée. Vérifiez à nouveau la destination pour préparer l’envoi des enregistrements.",
+      aborted: "L’opération Git a été annulée. Les enregistrements précédents ont été conservés.",
+      issues: {
+        noCommits: "Créez un premier enregistrement avant de publier cette branche.",
+        dirtyWorktree: "Des modifications suivies ne sont pas enregistrées, y compris les fichiers mis de côté. Enregistrez-les ou mettez-les de côté avec Git avant de synchroniser. Les fichiers non suivis restent conservés.",
+        unsupportedOperation: "Une autre opération Git est en cours. Terminez-la avec Git avant de synchroniser ; cette interface reprend uniquement les fusions et les réorganisations.",
+        publishedCommits: "Certains enregistrements locaux sont déjà connus sur un autre dépôt distant. Choisissez la fusion pour conserver leur historique.",
+        protectedBranch: "Cette branche est protégée contre la création d’enregistrements par OpenCodexUI. Utilisez une branche de travail pour intégrer ces changements.",
+        reviewChanged: "La branche, la destination ou les enregistrements ont changé depuis la vérification. Vérifiez à nouveau avant d’envoyer.",
+        remoteChanged: "La destination distante a avancé pendant la synchronisation. Vos enregistrements locaux sont conservés ; vérifiez à nouveau pour intégrer les nouveaux changements.",
+        busy: "Une opération de synchronisation est déjà en cours dans ce dossier de travail.",
+        trackingSetupFailed: "Les enregistrements sont synchronisés, mais le suivi local de la branche n’a pas pu être mis à jour. Vérifiez sa configuration avant les prochains échanges."
+      }
+    },
+    open: "Synchronisation avancée…",
     title: "Synchroniser la branche Git",
     localBranch: "Branche locale : {{branch}}",
     remote: "Dépôt distant",
@@ -49,12 +103,13 @@ export const frGitSync = {
     aborted: "L’opération Git a été annulée. Les commits précédents ont été conservés.",
     preferenceFailed: "La stratégie par défaut n’a pas pu être enregistrée pour ce projet.",
     issues: {
+      advancedRequired: "Des changements existent des deux côtés, ou le dépôt distant a avancé. Ouvrez la synchronisation avancée pour les intégrer avant l’envoi.",
       notRepository: "Ce dossier n’est pas un dépôt Git accessible.",
       noCommits: "Créez un premier commit avant de publier cette branche.",
       detachedHead: "Sélectionnez une branche locale avant de synchroniser.",
       noRemote: "Configurez un dépôt distant avant de synchroniser.",
       invalidTarget: "Choisissez un dépôt distant existant et un nom de branche valide.",
-      dirtyWorktree: "Des modifications suivies ne sont pas commitées, y compris les fichiers mis de côté. Commitez-les ou mettez-les de côté avec Git avant de synchroniser. Les fichiers non suivis restent conservés.",
+      dirtyWorktree: "Des modifications suivies ne sont pas enregistrées, y compris les fichiers mis de côté. Commitez-les ou mettez-les de côté avec Git avant de synchroniser. Les fichiers non suivis restent conservés.",
       untrackedCollision: "Des fichiers non suivis ou ignorés occupent un emplacement utilisé par les changements distants. Déplacez-les avant de synchroniser ; leurs chemins sont indiqués dans les détails.",
       operationInProgress: "Terminez ou annulez l’opération Git en cours avant de lancer une nouvelle synchronisation.",
       unsupportedOperation: "Une autre opération Git est en cours. Terminez-la avec Git avant de synchroniser ; cette interface reprend uniquement les fusions et les rebases.",

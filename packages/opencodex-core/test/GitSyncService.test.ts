@@ -14,7 +14,8 @@ async function fixture(): Promise<Fixture> {
 }
 afterEach(async () => { for (const fixture of fixtures.splice(0)) await fixture.dispose(); });
 
-describe("guided Git synchronization", () => {
+// Native Git processes need headroom when the Windows suite runs in parallel.
+describe("guided Git synchronization", { timeout: 20_000 }, () => {
   it("should push only local commits to the reviewed destination without forcing", async () => {
     const test = await fixture();
     const local = await test.commit(test.local, "local.txt", "local\n", "local");
@@ -116,7 +117,7 @@ describe("guided Git synchronization", () => {
     expect(continued.inspection?.operation).toBeNull();
     expect(await test.git(test.remote, ["rev-parse", "refs/heads/dev"])).toBe(remote);
     expect((await test.execute(await test.plan())).outcome).toBe("synchronized");
-  });
+  }, 20_000);
 
   it.each(["rebase", "merge"] as const)("should abort a %s conflict back to the local commit", async (strategy) => {
     const test = await fixture();

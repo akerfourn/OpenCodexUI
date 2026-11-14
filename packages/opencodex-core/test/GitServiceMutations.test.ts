@@ -322,12 +322,15 @@ class FakeCodexClient {
   ): Promise<TResponse> {
     expect(method).toBe("process/spawn");
     const processParams = params;
-    this.runs.push({
-      command: [...processParams.command],
-      timeoutMs: processParams.timeoutMs,
-      outputBytesCap: processParams.outputBytesCap
-    });
-    const response = this.responses.shift();
+    const query = processParams.command;
+    const destinationQuery = query[1] === "config" && (query.includes("--get-regexp") || query.at(-1) === "remote.pushDefault");
+    let response: FakeProcessResponse | undefined;
+    if (destinationQuery) {
+      response = { exitCode: 1, stdout: "", stderr: "" };
+    } else {
+      this.runs.push({ command: [...query], timeoutMs: processParams.timeoutMs, outputBytesCap: processParams.outputBytesCap });
+      response = this.responses.shift();
+    }
 
     if (response === undefined) {
       throw new Error("No fake Git response configured.");

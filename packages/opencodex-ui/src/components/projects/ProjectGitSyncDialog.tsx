@@ -5,7 +5,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useGitTranslation } from "../../i18n/useGitTranslation";
 import type { ProjectGitSyncStore } from "../../stores/project/git/ProjectGitSyncStore";
 import { ProjectGitSyncFieldsX } from "./ProjectGitSyncFields";
 import { ProjectGitSyncPlanX } from "./ProjectGitSyncPlan";
@@ -18,7 +18,7 @@ interface ProjectGitSyncDialogProps {
 
 /** Presents an explicit Git review and restart-safe continuation/abort controls. */
 export function ProjectGitSyncDialog({ sync, onOpenFile }: ProjectGitSyncDialogProps) {
-  const { t } = useTranslation();
+  const { t } = useGitTranslation(sync.vocabulary);
   const [abortFingerprint, setAbortFingerprint] = useState<string | null>(null);
   const operation = sync.operation;
   useEffect(() => { setAbortFingerprint(null); }, [sync.isOpen, operation?.fingerprint]);
@@ -82,7 +82,7 @@ export function ProjectGitSyncDialog({ sync, onOpenFile }: ProjectGitSyncDialogP
     notice = <Alert severity="info">{t("gitSync.issues.detachedHead")}</Alert>;
   }
   let review = null;
-  if (sync.plan !== null) review = <ProjectGitSyncPlanX plan={sync.plan} />;
+  if (sync.plan !== null) review = <ProjectGitSyncPlanX plan={sync.plan} vocabulary={sync.vocabulary} />;
   let details = null;
   const technicalDetails = sync.result?.details ?? sync.preferenceError;
   if (technicalDetails != null) {

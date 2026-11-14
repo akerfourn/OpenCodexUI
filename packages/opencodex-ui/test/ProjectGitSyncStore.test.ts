@@ -5,6 +5,35 @@ import { createDeferred, createProject, createProjectGitReferencesFixture, flush
 import { createGitSyncStoreFixture, syncInspection, syncPlan, syncResult } from "./ProjectGitSyncStore.fixture";
 
 describe("ProjectGitSyncStore", () => {
+  it("should keep a simple send outside the advanced review and retain a structured recovery reason", async () => {
+    const test = createGitSyncStoreFixture();
+    const blocked = { ...syncResult("blocked"), issue: "advancedRequired" as const };
+    test.request.mockResolvedValueOnce(blocked);
+
+    await test.sync.simple("push");
+
+    expect(test.sync.isOpen).toBe(false);
+    expect(test.sync.simpleResult?.issue).toBe("advancedRequired");
+    expect(test.request).toHaveBeenCalledOnce();
+    expect(test.request).toHaveBeenCalledWith({
+      type: "git.sync.simple", direction: "push", projectId: "project-1", projectPath: "/workspace/project", sourceId: "source-1"
+    });
+  });
+
+  it("should persist source-scoped favorite and branch choices as plain transport data", async () => {
+    const test = createGitSyncStoreFixture();
+    test.request.mockResolvedValue(syncResult("inspected"));
+
+    await test.sync.configure({ favoriteRemote: "backup" });
+    await test.sync.configure({ branchRemote: null });
+
+    expect(test.request.mock.calls.map(([request]) => request)).toEqual([
+      { type: "git.sync.configure", favoriteRemote: "backup", branchName: "dev", projectId: "project-1", projectPath: "/workspace/project", sourceId: "source-1" },
+      { type: "git.sync.configure", branchRemote: null, branchName: "dev", projectId: "project-1", projectPath: "/workspace/project", sourceId: "source-1" }
+    ]);
+    for (const [request] of test.request.mock.calls) expect(() => structuredClone(request)).not.toThrow();
+  });
+
   it("should fetch an initial review without sending commits until explicit execution", async () => {
     const test = createGitSyncStoreFixture();
     await test.sync.open();
@@ -84,6 +113,16 @@ describe("ProjectGitSyncStore", () => {
     expect(test.sync.result).toMatchObject({ outcome: "error", issue: "gitFailed", plan: null });
     expect(test.sync.result?.details).toContain("authentication failed");
     expect(test.gitStore.errorMessage).toBeNull();
+  });
+
+  it("should keep transport failures visible after a simple exchange", async () => {
+    const test = createGitSyncStoreFixture();
+    test.request.mockRejectedValueOnce(new Error("Git transport disconnected"));
+
+    await test.sync.simple("push");
+
+    expect(test.sync.simpleResult).toMatchObject({ outcome: "error", issue: "gitFailed", details: "Git transport disconnected" });
+    expect(test.sync.isOpen).toBe(false);
   });
 
   it("should persist a project strategy as a plain DTO without losing existing preferences", async () => {

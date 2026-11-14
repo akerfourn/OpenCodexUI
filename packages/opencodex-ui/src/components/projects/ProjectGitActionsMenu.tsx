@@ -8,6 +8,7 @@ import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
+import SyncOutlinedIcon from "@mui/icons-material/SyncOutlined";
 import {
   CircularProgress,
   ListItemIcon,
@@ -16,7 +17,7 @@ import {
   MenuItem
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import { useTranslation } from "react-i18next";
+import { useGitTranslation } from "../../i18n/useGitTranslation";
 
 import type { ProjectGitReferencesStore } from "../../stores/project/git/ProjectGitReferencesStore";
 import type { ProjectGitStatusStore } from "../../stores/project/git/ProjectGitStatusStore";
@@ -33,6 +34,8 @@ type ProjectGitActionsMenuProps = {
   onOpenRemote(): void;
   onOpenLog(): void;
   onSynchronize(): void;
+  onAdvancedSync?(): void;
+  vocabulary?: "simple" | "technical";
 };
 
 /**
@@ -53,9 +56,13 @@ export function ProjectGitActionsMenu({
   onOpenMerge,
   onOpenRemote,
   onOpenLog,
-  onSynchronize
+  onSynchronize,
+  onAdvancedSync,
+  vocabulary
 }: ProjectGitActionsMenuProps) {
-  const { t } = useTranslation();
+  const { t } = useGitTranslation(vocabulary);
+  /** Opens the explicit comparison after dismissing the action menu. */
+  function handleAdvancedSync(): void { onClose(); onAdvancedSync?.(); }
 
   function handleSelectBranchAction(): void {
     onClose();
@@ -160,6 +167,10 @@ export function ProjectGitActionsMenu({
         <ListItemText>{t("git.remoteConfigure")}</ListItemText>
       </MenuItem>
       {fetchUpdatesAction}
+      <MenuItem disabled={!isAvailable || statusStore.isLoading} onClick={handleAdvancedSync}>
+        <ListItemIcon><SyncOutlinedIcon fontSize="small" /></ListItemIcon>
+        <ListItemText>{t("gitSync.open")}</ListItemText>
+      </MenuItem>
       {statusStore.status.branchName !== null && statusStore.status.upstreamName === null ? (
         <MenuItem disabled={!referencesStore.canPublishBranch} onClick={handleSelectPublishAction}>
           <ListItemIcon>

@@ -44,7 +44,7 @@ export type OpenCodexGitSyncIssue =
   | "dirtyWorktree" | "untrackedCollision" | "operationInProgress" | "unsupportedOperation"
   | "unsupportedRemote" | "unsupportedTracking" | "publishedCommits" | "protectedBranch"
   | "unrelatedHistories" | "reviewChanged" | "remoteChanged" | "conflicts"
-  | "busy" | "gitFailed" | "trackingSetupFailed";
+  | "busy" | "gitFailed" | "trackingSetupFailed" | "advancedRequired";
 
 /** All normal Git failures are reviewable results instead of raw IPC errors. */
 export interface OpenCodexGitSyncResult {
@@ -66,6 +66,8 @@ export interface OpenCodexGitSyncScope {
 /** Explicit synchronization phases, including restart-safe Git conflict recovery. */
 export type OpenCodexGitSyncRequest = OpenCodexGitSyncScope & (
   | { type: "git.sync.inspect" }
+  | { type: "git.sync.simple"; direction: "push" | "pull" }
+  | { type: "git.sync.configure"; branchName: string | null; favoriteRemote?: string; branchRemote?: string | null }
   | { type: "git.sync.plan"; target: OpenCodexGitSyncTarget; strategy: OpenCodexGitSyncStrategy }
   | { type: "git.sync.execute"; plan: OpenCodexGitSyncPlan }
   | { type: "git.sync.resolve"; operation: OpenCodexGitSyncOperation; path: string }

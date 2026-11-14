@@ -6,25 +6,29 @@ import {
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useGitTranslation } from "../../i18n/useGitTranslation";
 
 import type { OpenCodexGitRemote } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectGitReferencesStore } from "../../stores/project/git/ProjectGitReferencesStore";
 import { ProjectGitRemoteEditorX } from "./ProjectGitRemoteEditor";
 import { ProjectGitRemoteRowX } from "./ProjectGitRemoteRow";
+import { ProjectGitBranchRemoteX } from "./ProjectGitBranchRemote";
+import type { ProjectGitSyncStore } from "../../stores/project/git/ProjectGitSyncStore";
 
 interface ProjectGitRemoteDialogProps {
   referencesStore: ProjectGitReferencesStore;
   open: boolean;
   onClose(): void;
+  syncStore?: ProjectGitSyncStore;
 }
 
 /** Lists all remotes with separate creation, URL editing, and confirmed removal. */
-export function ProjectGitRemoteDialog({ referencesStore, open, onClose }: ProjectGitRemoteDialogProps) {
-  const { t } = useTranslation();
+export function ProjectGitRemoteDialog({ referencesStore, open, onClose, syncStore }: ProjectGitRemoteDialogProps) {
+  const { t } = useGitTranslation(syncStore?.vocabulary);
   const [editing, setEditing] = useState<OpenCodexGitRemote | "new" | null>(null);
   const [removing, setRemoving] = useState<OpenCodexGitRemote | null>(null);
-  const busy = !referencesStore.canManageRemotes;
+  const isSaving = referencesStore.isSavingRemote || syncStore?.isMutating === true;
+  const busy = !referencesStore.canManageRemotes || syncStore?.isBusy === true;
   const canManage = !busy && referencesStore.hasLoadedRemotes;
 
   useEffect(() => {
@@ -35,7 +39,7 @@ export function ProjectGitRemoteDialog({ referencesStore, open, onClose }: Proje
 
   /** Keeps the dialog open while Git is acknowledging a mutation. */
   function handleClose(): void {
-    if (!referencesStore.isSavingRemote) onClose();
+    if (!isSaving) onClose();
   }
 
   /** Opens an empty form without reusing another remote's address. */
@@ -71,11 +75,24 @@ export function ProjectGitRemoteDialog({ referencesStore, open, onClose }: Proje
 
   /** Reloads local configuration without fetching remote references. */
   function handleRefresh(): void { void referencesStore.loadRemotes(); }
+  /** Persists the chosen favorite in the current source's repository. */
+  function handleFavorite(remote: OpenCodexGitRemote): void { void syncStore?.configure({ favoriteRemote: remote.name }); }
+  let preferences = null;
+  let configurationError = null;
+  if (syncStore !== undefined) {
+    preferences = <>
+      <Typography variant="body2" color="text.secondary">{t("gitSync.favoriteHelp")}</Typography>
+      <ProjectGitBranchRemoteX sync={syncStore} remotes={referencesStore.remotes} disabled={!canManage} />
+    </>;
+    if (syncStore.result?.issue != null) configurationError = <Alert severity="warning">{t(`gitSync.issues.${syncStore.result.issue}`)}</Alert>;
+  }
 
   let content = (
     <Stack spacing={1}>
       {referencesStore.remotes.map((remote) => (
         <ProjectGitRemoteRowX key={remote.name} remote={remote}
+          favorite={syncStore?.configuration?.favoriteRemote === remote.name}
+          onFavorite={syncStore === undefined ? undefined : handleFavorite}
           disabled={!canManage || removing !== null} onEdit={handleEdit} onRemove={handleRemove} />
       ))}
     </Stack>
@@ -115,7 +132,7 @@ export function ProjectGitRemoteDialog({ referencesStore, open, onClose }: Proje
     );
   }
   let progress = null;
-  if (referencesStore.isLoadingRemotes || referencesStore.isSavingRemote) {
+  if (referencesStore.isLoadingRemotes || isSaving) {
     progress = <CircularProgress size={18} aria-label={t("git.remoteLoading")} />;
   }
   let error = null;
@@ -146,12 +163,14 @@ export function ProjectGitRemoteDialog({ referencesStore, open, onClose }: Proje
         <Stack spacing={2}>
           {toolbar}
           {error}
+          {configurationError}
           {confirmation}
           {content}
+          {preferences}
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button disabled={referencesStore.isSavingRemote} onClick={handleClose}>{t("git.close")}</Button>
+        <Button disabled={isSaving} onClick={handleClose}>{t("git.close")}</Button>
       </DialogActions>
     </Dialog>
   );

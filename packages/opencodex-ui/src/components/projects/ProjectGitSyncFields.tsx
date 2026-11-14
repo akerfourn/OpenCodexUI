@@ -1,14 +1,14 @@
-import { Button, Checkbox, FormControlLabel, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { Button, Checkbox, FormControlLabel, MenuItem, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent } from "react";
-import { useTranslation } from "react-i18next";
+import { useGitTranslation } from "../../i18n/useGitTranslation";
 import type { ProjectGitSyncStore } from "../../stores/project/git/ProjectGitSyncStore";
 
 interface ProjectGitSyncFieldsProps { sync: ProjectGitSyncStore }
 
 /** Collects an explicit destination and integration strategy before fetching a review. */
 export function ProjectGitSyncFields({ sync }: ProjectGitSyncFieldsProps) {
-  const { t } = useTranslation();
+  const { t } = useGitTranslation(sync.vocabulary);
   const remotes = sync.inspection?.status.remotes ?? [];
   const disabled = sync.isBusy || sync.isSavingPreference;
   /** Invalidates a review when another remote is chosen. */
@@ -27,19 +27,20 @@ export function ProjectGitSyncFields({ sync }: ProjectGitSyncFieldsProps) {
   return (
     <Stack spacing={1.5}>
       <Typography variant="body2">{t("gitSync.localBranch", { branch: sync.inspection?.status.branchName ?? "—" })}</Typography>
-      <TextField select label={t("gitSync.remote")} value={sync.remoteName} disabled={disabled} fullWidth onChange={handleRemote}>
+      <TextField select label={<Tooltip title={t("gitSync.remoteHelp")}><span>{t("gitSync.remote")}</span></Tooltip>}
+        value={sync.remoteName} disabled={disabled} fullWidth onChange={handleRemote}>
         {remotes.map((remote) => <MenuItem key={remote.name} value={remote.name}>{remote.name}</MenuItem>)}
       </TextField>
       <TextField label={t("gitSync.branch")} value={sync.branchName} disabled={disabled} fullWidth onChange={handleBranch} />
       <TextField select label={t("gitSync.strategy")} value={sync.strategy} disabled={disabled} fullWidth onChange={handleStrategy}>
-        <MenuItem value="rebase">{t("gitSync.rebase")}</MenuItem>
-        <MenuItem value="merge">{t("gitSync.merge")}</MenuItem>
+        <MenuItem value="rebase"><Tooltip title={t("gitSync.rebaseHelp")}><span>{t("gitSync.rebase")}</span></Tooltip></MenuItem>
+        <MenuItem value="merge"><Tooltip title={t("gitSync.mergeHelp")}><span>{t("gitSync.merge")}</span></Tooltip></MenuItem>
       </TextField>
       <Button size="small" onClick={handleSaveDefault} disabled={disabled || sync.strategy === sync.defaultStrategy}>
         {t("gitSync.saveDefault")}
       </Button>
       <FormControlLabel control={<Checkbox checked={sync.setUpstream} disabled={disabled} onChange={handleTracking} />}
-        label={t("gitSync.setUpstream")} />
+        label={<Tooltip title={t("gitSync.trackingHelp")}><span>{t("gitSync.setUpstream")}</span></Tooltip>} />
     </Stack>
   );
 }

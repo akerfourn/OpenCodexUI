@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectGitSyncActionX } from "../src/components/projects/ProjectGitSyncAction";
 import { createGitSyncStoreFixture, syncInspection, syncResult } from "./ProjectGitSyncStore.fixture";
 
-vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, values?: { count?: number }) => {
+vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (input: string | string[], values?: { count?: number }) => {
+  const key = Array.isArray(input) ? input[input.length - 1] : input;
   if (values?.count !== undefined) return `${key}:${values.count}`;
   return key;
 } }) }));
@@ -35,7 +36,7 @@ async function fixture(operation = false) {
     test.request.mockResolvedValueOnce(syncResult("inspected", inspection));
   }
   await act(async () => { root.render(<ProjectGitSyncActionX gitStore={test.gitStore} onOpenFile={onOpenFile} />); });
-  await act(async () => { button("gitSync.open").click(); });
+  await act(async () => { await test.gitStore.sync.open(); });
   return { ...test, onOpenFile };
 }
 beforeEach(() => {
@@ -132,7 +133,7 @@ describe("guided Git synchronization dialog", () => {
     const failure = { ...syncResult("error"), issue: "gitFailed", details: "Error invoking remote method: fatal: authentication failed" };
     test.request.mockResolvedValueOnce(failure);
     await act(async () => { root.render(<ProjectGitSyncActionX gitStore={test.gitStore} onOpenFile={vi.fn()} />); });
-    await act(async () => { button("gitSync.open").click(); });
+    await act(async () => { await test.gitStore.sync.open(); });
     expect(document.querySelector('[role="alert"]')?.textContent).toBe("gitSync.issues.gitFailed");
     expect(document.querySelector('[role="alert"]')?.textContent).not.toContain("Error invoking");
     expect(document.body.textContent).toContain("gitSync.details");

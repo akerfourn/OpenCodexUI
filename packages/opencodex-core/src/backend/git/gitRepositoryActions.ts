@@ -14,6 +14,7 @@ import {
   type RunGit
 } from "./gitCommandRunner.js";
 import { parseGitStatus } from "./gitStatusParser.js";
+import { readSyncDestination } from "./gitSyncDestination.js";
 import type { ClientPort } from "../runtime/runtimePorts.js";
 
 /** Dependencies shared by repository-oriented Git actions. */
@@ -81,11 +82,11 @@ export async function readGitStatus(
     : null;
   const remotes = await listRemotes(projectPath, sourceId);
 
-  return {
+  return await readSyncDestination(context.runGit, projectPath, sourceId, {
     ...status,
     pendingCommitMessage,
     remotes
-  };
+  });
 }
 
 /**

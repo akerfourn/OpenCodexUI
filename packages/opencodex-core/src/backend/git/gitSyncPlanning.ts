@@ -7,17 +7,17 @@ import { requireNoUntrackedCollisions } from "./gitSyncUntracked.js";
 
 /** Fetches the exact reviewed push endpoint into an isolated, temporary reference. */
 export async function planSynchronization(
-  repo: GitSyncRepository, target: OpenCodexGitSyncTarget, strategy: OpenCodexGitSyncStrategy
+  repo: GitSyncRepository, target: OpenCodexGitSyncTarget, strategy: OpenCodexGitSyncStrategy, allowDirty = false
 ): Promise<OpenCodexGitSyncPlan> {
   if (strategy !== "rebase" && strategy !== "merge") throw new GitSyncFailure("invalidTarget");
-  const initial = await repo.requireReady();
+  const initial = await repo.requireReady(undefined, undefined, allowDirty);
   const branchName = initial.status.branchName!;
   const localHead = await repo.head();
   const pushUrl = await repo.pushUrl(target, initial.status);
   if (target.setUpstream && !await hasStandardTracking(repo, target)) throw new GitSyncFailure("unsupportedTracking");
   const remoteHead = await repo.remoteHead(pushUrl, target.branchName);
   if (remoteHead !== null) await fetchDestination(repo, pushUrl, target.branchName, remoteHead);
-  await repo.requireReady(branchName, localHead);
+  await repo.requireReady(branchName, localHead, allowDirty);
   let aheadCount = Number(await repo.text(["rev-list", "--count", localHead]));
   let behindCount = 0;
   if (remoteHead !== null) {

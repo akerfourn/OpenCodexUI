@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { devNull, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import type { OpenCodexGitSyncPlan, OpenCodexGitSyncScope, OpenCodexGitSyncStrategy } from "@open-codex-ui/opencodex-protocol";
 import { GitSyncService } from "../src/backend/git/GitSyncService";
@@ -9,6 +9,7 @@ import type { GitSyncPorts } from "../src/backend/git/gitSyncRepository";
 import { parseGitStatus } from "../src/backend/git/gitStatusParser";
 import { parseGitRemotes } from "../src/backend/git/gitReferenceParsers";
 import { createGitErrorMessage } from "../src/backend/git/gitCommandRunner";
+import { readSyncDestination } from "../src/backend/git/gitSyncDestination";
 
 const executeFile = promisify(execFile);
 
@@ -18,7 +19,9 @@ export async function createGitSyncFixture() {
   const local = path.join(root, "local");
   const peer = path.join(root, "peer");
   const remote = path.join(root, "remote.git");
-  const env = { ...process.env, GIT_CONFIG_GLOBAL: devNull, GIT_CONFIG_SYSTEM: devNull,
+  const emptyConfig = path.join(root, "empty.gitconfig");
+  await writeFile(emptyConfig, "");
+  const env = { ...process.env, GIT_CONFIG_GLOBAL: emptyConfig, GIT_CONFIG_SYSTEM: emptyConfig,
     GIT_CONFIG_NOSYSTEM: "1", GIT_TERMINAL_PROMPT: "0", GIT_AUTHOR_NAME: "Fixture", GIT_AUTHOR_EMAIL: "fixture@example.test",
     GIT_COMMITTER_NAME: "Fixture", GIT_COMMITTER_EMAIL: "fixture@example.test",
     GIT_AUTHOR_DATE: "2020-01-01T00:00:00+00:00", GIT_COMMITTER_DATE: "2020-01-01T00:00:00+00:00" };
@@ -66,7 +69,7 @@ export async function createGitSyncFixture() {
       if (result.exitCode !== 0 && options.allowFailure !== true) throw new Error(createGitErrorMessage(result));
       return result;
     },
-    readStatus: async (cwd) => ({
+    readStatus: async (cwd, sourceId) => await readSyncDestination(ports.runGit, cwd, sourceId, {
       ...parseGitStatus((await executeFile("git", ["status", "--porcelain=v2", "-z", "--branch"], { cwd, env })).stdout),
       remotes: parseGitRemotes(await git(cwd, ["remote", "-v"]))
     }),

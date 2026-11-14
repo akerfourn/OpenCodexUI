@@ -30,6 +30,10 @@ export class GitSyncService {
       switch (request.type) {
         case "git.sync.inspect":
           return result("inspected", await repo.inspect());
+        case "git.sync.simple":
+          return await this.simple(repo, request.direction);
+        case "git.sync.configure":
+          return await this.configure(repo, request);
         case "git.sync.plan":
           return result("planned", await repo.inspect(), await planSynchronization(repo, request.target, request.strategy));
         case "git.sync.execute":
@@ -59,6 +63,49 @@ export class GitSyncService {
     }
   }
 
+  /** Runs only an ordinary push or fast-forward update, escalating history integration to explicit review. */
+  private async simple(repo: GitSyncRepository, direction: "push" | "pull"): Promise<OpenCodexGitSyncResult> {
+    const inspection = await repo.inspect();
+    const target = inspection.suggestedTarget;
+    if (target === null) throw new GitSyncFailure("invalidTarget");
+    const plan = await planSynchronization(repo, target, "merge", direction === "push");
+    if (plan.action === "merge" || plan.action === "rebase"
+      || (direction === "push" && plan.behindCount > 0)) throw new GitSyncFailure("advancedRequired");
+    if (direction === "pull" && plan.behindCount === 0) return result("synchronized", await repo.inspect());
+    return await this.execute(repo, plan, direction);
+  }
+
+  /** Persists one explicit favorite or branch override in the selected source's local Git configuration. */
+  private async configure(
+    repo: GitSyncRepository,
+    request: Extract<OpenCodexGitSyncRequest, { type: "git.sync.configure" }>
+  ): Promise<OpenCodexGitSyncResult> {
+    const inspection = await repo.inspect();
+    if (inspection.operation !== null) throw new GitSyncFailure("operationInProgress");
+    const branch = inspection.status.branchName;
+    if (branch !== request.branchName) throw new GitSyncFailure("reviewChanged");
+    const isFavorite = request.favoriteRemote !== undefined;
+    if (isFavorite === (request.branchRemote !== undefined)) throw new GitSyncFailure("invalidTarget");
+    const remote = request.favoriteRemote ?? request.branchRemote ?? null;
+    if (remote !== null && (remote.startsWith("-") || !inspection.status.remotes.some(item => item.name === remote))) {
+      throw new GitSyncFailure("invalidTarget");
+    }
+    if (!isFavorite && branch === null) throw new GitSyncFailure("detachedHead");
+    let key = `branch.${branch}.pushRemote`;
+    if (isFavorite) key = "remote.pushDefault";
+    if (remote === null) {
+      const favorite = inspection.status.synchronization?.favoriteRemote;
+      if (favorite != null && await repo.config("remote.pushDefault") === null) {
+        await repo.git(["config", "--local", "--replace-all", "remote.pushDefault", favorite]);
+      }
+      const response = await repo.git(["config", "--local", "--unset-all", key], { allowFailure: true });
+      if (response.exitCode !== 0 && response.exitCode !== 5) throw new GitSyncFailure("gitFailed", createGitErrorMessage(response));
+    } else {
+      await repo.git(["config", "--local", "--replace-all", key, remote]);
+    }
+    return result("inspected", await repo.inspect());
+  }
+
   /** Stages only a literal path belonging to the operation the user just reviewed. */
   private async resolve(
     repo: GitSyncRepository,
@@ -76,10 +123,12 @@ export class GitSyncService {
   }
 
   /** Revalidates the review, integrates commits, then pushes one explicit commit/ref pair. */
-  private async execute(repo: GitSyncRepository, reviewed: OpenCodexGitSyncPlan): Promise<OpenCodexGitSyncResult> {
-    const plan = await planSynchronization(repo, reviewed.target, reviewed.strategy);
+  private async execute(repo: GitSyncRepository, reviewed: OpenCodexGitSyncPlan, direction?: "push" | "pull"): Promise<OpenCodexGitSyncResult> {
+    const allowDirty = direction === "push";
+    const plan = await planSynchronization(repo, reviewed.target, reviewed.strategy, allowDirty);
+    if (allowDirty && plan.behindCount > 0) throw new GitSyncFailure("advancedRequired");
     if (!sameSyncPlan(reviewed, plan)) throw new GitSyncFailure("reviewChanged");
-    await repo.requireReady(plan.branchName, plan.localHead);
+    await repo.requireReady(plan.branchName, plan.localHead, allowDirty);
     if (plan.remoteHead !== null && plan.behindCount > 0) {
       let args = ["merge", "--ff-only", plan.remoteHead];
       if (plan.action === "merge") args = ["merge", "--no-edit", "--no-ff", plan.remoteHead];
@@ -91,7 +140,7 @@ export class GitSyncService {
       }
       if (integration.exitCode !== 0) throw new GitSyncFailure("gitFailed", createGitErrorMessage(integration));
     }
-    await repo.requireReady(plan.branchName);
+    await repo.requireReady(plan.branchName, undefined, allowDirty);
     const head = await repo.head();
     if (plan.behindCount === 0 && head !== plan.localHead) throw new GitSyncFailure("reviewChanged");
     if (plan.action === "fastForward" && head !== plan.remoteHead) throw new GitSyncFailure("reviewChanged");
@@ -108,8 +157,8 @@ export class GitSyncService {
     const inspection = await repo.inspect();
     if (await repo.pushUrl(plan.target, inspection.status) !== plan.pushUrl) throw new GitSyncFailure("reviewChanged");
     if (await repo.remoteHead(plan.pushUrl, plan.target.branchName) !== plan.remoteHead) throw new GitSyncFailure("remoteChanged");
-    await repo.requireReady(plan.branchName, head);
-    if (head !== plan.remoteHead || plan.target.setUpstream) {
+    await repo.requireReady(plan.branchName, head, allowDirty);
+    if (direction !== "pull" && (head !== plan.remoteHead || plan.target.setUpstream)) {
       const args = ["push", "--porcelain", "--no-follow-tags", "--recurse-submodules=no"];
       args.push("--", plan.pushUrl, `${head}:refs/heads/${plan.target.branchName}`);
       const push = await repo.git(args, { allowFailure: true });

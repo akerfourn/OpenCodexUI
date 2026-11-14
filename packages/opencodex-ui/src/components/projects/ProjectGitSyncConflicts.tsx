@@ -1,6 +1,6 @@
 import { Alert, Button, List, ListItem, Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import { useTranslation } from "react-i18next";
+import { useGitTranslation } from "../../i18n/useGitTranslation";
 import type { ProjectGitSyncStore } from "../../stores/project/git/ProjectGitSyncStore";
 
 interface ProjectGitSyncConflictsProps {
@@ -10,7 +10,7 @@ interface ProjectGitSyncConflictsProps {
 
 /** Guides explicit editing and staging without pretending to resolve file contents automatically. */
 export function ProjectGitSyncConflicts({ sync, onOpenFile }: ProjectGitSyncConflictsProps) {
-  const { t } = useTranslation();
+  const { t } = useGitTranslation(sync.vocabulary);
   const operation = sync.operation;
   if (operation === null) return null;
   let guidance = t("gitSync.resolveFiles");

@@ -88,14 +88,14 @@ export class GitSyncRepository {
   }
 
   /** Verifies branch identity, commit identity, cleanliness and absence of other operations. */
-  async requireReady(branchName?: string, head?: string): Promise<OpenCodexGitSyncInspection> {
+  async requireReady(branchName?: string, head?: string, allowDirty = false): Promise<OpenCodexGitSyncInspection> {
     const inspection = await this.inspect();
     if (inspection.operation !== null) throw new GitSyncFailure("operationInProgress");
     if (inspection.status.branchName === null) throw new GitSyncFailure("detachedHead");
     if (branchName !== undefined && inspection.status.branchName !== branchName) throw new GitSyncFailure("reviewChanged");
     if (head !== undefined && await this.head() !== head) throw new GitSyncFailure("reviewChanged");
     const trackedChanges = inspection.status.changedFiles.some((file) => file.status !== "untracked");
-    if (trackedChanges || inspection.status.stagedFiles.length > 0) throw new GitSyncFailure("dirtyWorktree");
+    if (!allowDirty && (trackedChanges || inspection.status.stagedFiles.length > 0)) throw new GitSyncFailure("dirtyWorktree");
     return inspection;
   }
 
@@ -127,6 +127,11 @@ export class GitSyncRepository {
 
   /** Suggests a destination, with every final choice still explicit in the review. */
   private async suggestTarget(status: OpenCodexGitStatus, operationBranch: string | null): Promise<OpenCodexGitSyncTarget | null> {
+    if (status.synchronization !== undefined && status.branchName !== null) {
+      const target = status.synchronization.target;
+      if (target === null) return null;
+      return { ...target, setUpstream: status.upstreamName === null };
+    }
     const branch = status.branchName ?? operationBranch;
     if (branch === null || status.remotes.length === 0) return null;
     const upstream = (await this.text(["for-each-ref", "--format=%(upstream:remotename)%00%(upstream:remoteref)", `refs/heads/${branch}`])).split("\0");

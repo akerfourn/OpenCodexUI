@@ -4,7 +4,59 @@ import type { frGitSync } from "../fr/gitSync.js";
 /** English messages for reviewed Git synchronization and conflict recovery. */
 export const enGitSync = {
   gitSync: {
-    open: "Synchronize and push",
+    favoriteAction: "Use {{name}} by default",
+    favoriteHelp: "The star marks the favorite Git repository. Sends and updates use it unless this branch has an override.",
+    branchOptions: "Advanced branch options",
+    branchRemote: "Repository for {{branch}}",
+    branchRemoteHelp: "This override applies only to the displayed branch. Other branches keep the favorite.",
+    useFavorite: "Use the favorite repository",
+    rebaseHelp: "Replays local commits after the received commits. Their identifiers change; use this only for commits that have not been shared.",
+    mergeHelp: "Combines both histories, preserving existing commits and adding a merge commit.",
+    remoteHelp: "A Git repository online, on a server, or in another directory. The favorite is the usual destination.",
+    trackingHelp: "Associates this local branch with the selected remote branch for future exchanges.",
+    technical: {
+      rebase: "Rebase",
+      merge: "Merge"
+    },
+    simple: {
+      title: "Advanced synchronization",
+      remote: "Remote repository",
+      branch: "Remote branch",
+      strategy: "How to combine changes",
+      rebase: "Replay",
+      merge: "Combine",
+      setUpstream: "Remember this associated branch",
+      localCommits_one: "{{count}} local saved change",
+      localCommits_other: "{{count}} local saved changes",
+      remoteCommits_one: "{{count}} remote saved change",
+      remoteCommits_other: "{{count}} remote saved changes",
+      actions: {
+        none: "Both branches are up to date. No saved changes to push.",
+        push: "Push local saved changes to this destination.",
+        fastForward: "Update the local branch with the remote saved changes.",
+        rebase: "Reapply unpublished local saved changes after the remote saved changes, then push the result.",
+        merge: "Combine both histories with a new saved change, then send the result."
+      },
+      phases: {
+        plan: "Fetching and comparing saved changes…"
+      },
+      operations: { "rebase": "Replay in progress" },
+      abortDescription: "Git will return to the state before this merge or replay. Edits made to resolve its conflicts will be discarded.",
+      continued: "The Git operation is complete. Check the destination again to prepare the push.",
+      aborted: "The Git operation was aborted. Previous saved changes were preserved.",
+      issues: {
+        noCommits: "Create a first saved change before publishing this branch.",
+        dirtyWorktree: "Tracked edits have not been saved, including deferred files. Save them or set them aside with Git before synchronizing. Untracked files are preserved.",
+        unsupportedOperation: "Another Git operation is in progress. Finish it with Git before synchronizing; this interface resumes only merges and replays.",
+        publishedCommits: "Some local saved changes are already known on another remote. Choose merge to preserve their history.",
+        protectedBranch: "This branch is protected against saved changes created by OpenCodexUI. Integrate these changes on a working branch.",
+        reviewChanged: "The branch, destination, or saved changes changed since the review. Check again before pushing.",
+        remoteChanged: "The remote destination advanced during synchronization. Your local saved changes are preserved; check again to integrate the new changes.",
+        busy: "A synchronization is already running in this workspace.",
+        trackingSetupFailed: "Commits are synchronized, but local branch tracking could not be updated. Check its configuration before future synchronization."
+      }
+    },
+    open: "Advanced synchronization…",
     title: "Synchronize Git branch",
     localBranch: "Local branch: {{branch}}",
     remote: "Remote repository",
@@ -50,6 +102,7 @@ export const enGitSync = {
     aborted: "The Git operation was aborted. Previous commits were preserved.",
     preferenceFailed: "Could not save the default strategy for this project.",
     issues: {
+      advancedRequired: "Changes exist on both sides, or the remote has advanced. Open advanced synchronization to integrate them before sending.",
       notRepository: "This folder is not an accessible Git repository.",
       noCommits: "Create a first commit before publishing this branch.",
       detachedHead: "Select a local branch before synchronizing.",

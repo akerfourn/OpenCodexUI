@@ -13,7 +13,8 @@ async function fixture(): Promise<Fixture> {
 }
 afterEach(async () => { for (const fixture of fixtures.splice(0)) await fixture.dispose(); });
 
-describe("Git synchronization destination and concurrency safeguards", () => {
+// Native Git processes need headroom when the Windows suite runs in parallel.
+describe("Git synchronization destination and concurrency safeguards", { timeout: 20_000 }, () => {
   it("should synchronize against the push endpoint when its fetch URL points elsewhere", async () => {
     const test = await fixture();
     const originalRemote = await test.git(test.remote, ["rev-parse", "refs/heads/dev"]);

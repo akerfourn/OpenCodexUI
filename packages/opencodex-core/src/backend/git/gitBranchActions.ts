@@ -266,7 +266,7 @@ export async function pull(
 }
 
 /**
- * Fetches the current upstream's references without changing the working tree.
+ * Fetches the selected synchronization remote without changing the working tree.
  *
  * @param context Git command and status dependencies.
  * @param projectPath Project working directory.
@@ -285,13 +285,19 @@ export async function fetchUpdates(
     throw new Error("This project is not a Git repository.");
   }
 
-  const remoteName = status.upstreamName === null
-    ? await resolveDefaultRemoteName(context, projectPath, sourceId)
-    : null;
+  let remoteName: string | null = null;
+  if (status.synchronization !== undefined) {
+    remoteName = status.synchronization.branchRemote ?? status.synchronization.favoriteRemote;
+    if (remoteName === null || !status.remotes.some(remote => remote.name === remoteName)) {
+      throw new Error("Choose an existing Git synchronization remote before checking for updates.");
+    }
+  } else if (status.upstreamName === null) {
+    remoteName = await resolveDefaultRemoteName(context, projectPath, sourceId);
+  }
   const args = ["fetch"];
 
   if (remoteName !== null) {
-    args.push(remoteName);
+    args.push("--", remoteName);
   }
 
   await context.runGit(projectPath, sourceId, args, { timeoutMs: 120_000 });

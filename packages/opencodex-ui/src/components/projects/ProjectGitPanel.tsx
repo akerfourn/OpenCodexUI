@@ -149,10 +149,10 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
   }
 
   function handlePush(): void {
-    void gitStore.sync.open();
+    void gitStore.sync.simple("push");
   }
 
-  function handlePull(): void {
+  function handleAdvancedSync(): void {
     void gitStore.sync.open();
   }
 
@@ -243,6 +243,8 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         onOpenRemote={handleOpenRemoteDialog}
         onOpenLog={handleOpenLogDialog}
         onSynchronize={handlePush}
+        onAdvancedSync={handleAdvancedSync}
+        vocabulary={store.appStore.settingsStore.settings.versioningVocabulary}
       />
 
       {gitStore.statusStore.isLoading ? <LinearProgress /> : null}
@@ -287,40 +289,6 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
               <Alert severity="warning" icon={<LockOutlinedIcon fontSize="inherit" />}>
                 {t("git.commitProtectedBranch", { branch: currentBranchName })}
               </Alert>
-            ) : null}
-            {gitStore.statusStore.status.upstreamName !== null ? (
-              <Stack direction="row" spacing={1}>
-                {gitStore.statusStore.status.behindCount > 0 ? (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    disabled={!referencesStore.canPull}
-                    startIcon={
-                      referencesStore.isPulling
-                        ? <CircularProgress color="inherit" size={14} />
-                        : undefined
-                    }
-                    onClick={handlePull}
-                  >
-                    {t("git.pullChanges", { count: gitStore.statusStore.status.behindCount })}
-                  </Button>
-                ) : null}
-                {gitStore.statusStore.status.aheadCount > 0 ? (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    disabled={!referencesStore.canPush}
-                    startIcon={
-                      referencesStore.isPushing
-                        ? <CircularProgress color="inherit" size={14} />
-                        : undefined
-                    }
-                    onClick={handlePush}
-                  >
-                    {t("git.pushChanges", { count: gitStore.statusStore.status.aheadCount })}
-                  </Button>
-                ) : null}
-              </Stack>
             ) : null}
 
             {tagStore.tagErrorMessage !== null ? (
@@ -376,6 +344,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
         onClose={handleCloseTagDialog}
       />
       <ProjectGitRemoteDialogX
+        syncStore={gitStore.sync}
         key={`${gitStore.sourceId}:${gitStore.projectPath}`}
         referencesStore={referencesStore}
         open={isRemoteDialogOpen}

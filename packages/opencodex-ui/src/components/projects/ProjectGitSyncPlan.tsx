@@ -1,13 +1,13 @@
 import { Alert, Chip, Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
-import { useTranslation } from "react-i18next";
+import { useGitTranslation } from "../../i18n/useGitTranslation";
 import type { OpenCodexGitSyncPlan } from "@open-codex-ui/opencodex-protocol";
 
-interface ProjectGitSyncPlanProps { plan: OpenCodexGitSyncPlan }
+interface ProjectGitSyncPlanProps { plan: OpenCodexGitSyncPlan; vocabulary?: "simple" | "technical" }
 
 /** Displays fresh destination-specific counts and the action the user is about to authorize. */
-export function ProjectGitSyncPlan({ plan }: ProjectGitSyncPlanProps) {
-  const { t } = useTranslation();
+export function ProjectGitSyncPlan({ plan, vocabulary }: ProjectGitSyncPlanProps) {
+  const { t } = useGitTranslation(vocabulary);
   return (
     <Alert severity="info" icon={false}>
       <Stack spacing={1}>

@@ -21,6 +21,8 @@ export function isGitRequest(request: OpenCodexRequest): request is GitRequest {
 export async function routeGitRequest(runtime: GitRequestRuntime, request: GitRequest): Promise<unknown> {
   switch (request.type) {
     case "git.sync.inspect":
+    case "git.sync.simple":
+    case "git.sync.configure":
     case "git.sync.plan":
     case "git.sync.execute":
     case "git.sync.resolve":

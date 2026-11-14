@@ -58,6 +58,12 @@ export type OpenCodexGitStatus = {
   remotes: OpenCodexGitRemote[];
   changedFiles: OpenCodexGitFile[];
   stagedFiles: OpenCodexGitFile[];
+  /** Source-local Git defaults and the destination used by the simple actions. */
+  synchronization?: {
+    favoriteRemote: string | null;
+    branchRemote: string | null;
+    target: { remoteName: string; branchName: string } | null;
+  };
 };
 
 /**

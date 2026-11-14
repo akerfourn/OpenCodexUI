@@ -32,7 +32,7 @@ describe("GitService branches", () => {
       ["git", "rev-parse", "--is-inside-work-tree"],
       ["git", "status", "--porcelain=v2", "-z", "--branch"],
       ["git", "remote", "-v"],
-      ["git", "fetch"],
+      ["git", "fetch", "--", "origin"],
       ["git", "rev-parse", "--is-inside-work-tree"],
       ["git", "status", "--porcelain=v2", "-z", "--branch"],
       ["git", "remote", "-v"]
@@ -45,7 +45,6 @@ describe("GitService branches", () => {
       { exitCode: 0, stdout: "true\n", stderr: "" },
       { exitCode: 0, stdout: statusOutput, stderr: "" },
       { exitCode: 0, stdout: "origin\tgit@example.com:owner/repo.git (fetch)\n", stderr: "" },
-      { exitCode: 0, stdout: "backup\norigin\n", stderr: "" },
       { exitCode: 0, stdout: "From git@example.com:owner/repo\n", stderr: "" },
       { exitCode: 0, stdout: "true\n", stderr: "" },
       { exitCode: 0, stdout: statusOutput, stderr: "" },
@@ -55,7 +54,7 @@ describe("GitService branches", () => {
 
     await service.fetchUpdates("/workspace/project", "source-1");
 
-    expect(client.commands).toContainEqual(["git", "fetch", "origin"]);
+    expect(client.commands).toContainEqual(["git", "fetch", "--", "origin"]);
     expect(client.commands).not.toContainEqual(["git", "pull", "--ff-only"]);
   });
 

@@ -17,6 +17,8 @@ type FakeNotificationListener = (notification: {
 export class FakeCodexClient {
   /** Records the Git commands requested by the service. */
   readonly commands: string[][] = [];
+  /** Routine destination reads have stable empty defaults independent of ordered operation fixtures. */
+  readonly destinationQueries: string[][] = [];
 
   /** Stores fake file contents keyed by their source path. */
   readonly filesByPath = new Map<string, string>();
@@ -60,8 +62,19 @@ export class FakeCodexClient {
 
     expect(method).toBe("process/spawn");
     const processParams = params as v2.ProcessSpawnParams;
-    this.commands.push([...processParams.command]);
-    const response = this.responses.shift();
+    const command = processParams.command;
+    const configQuery = command[1] === "config" && (
+      command.includes("--get-regexp") || command.at(-1) === "remote.pushDefault"
+    );
+    const countQuery = command[1] === "rev-list" && command.at(-1) === "--";
+    let response: FakeProcessResponse | undefined;
+    if (configQuery || countQuery) {
+      this.destinationQueries.push([...command]);
+      response = { exitCode: 1, stdout: "", stderr: "" };
+    } else {
+      this.commands.push([...command]);
+      response = this.responses.shift();
+    }
 
     if (response === undefined) {
       throw new Error("No fake Git response configured.");
