@@ -12,6 +12,7 @@ import { ProjectStore } from "./ProjectStore";
 import { ProjectThreadEventsStore } from "./threads/ProjectThreadEventsStore";
 import { ProjectThreadRouteIndex } from "./threads/ProjectThreadRouteIndex";
 import { ProjectTrustStore } from "./ProjectTrustStore";
+import { ProjectCloneStore } from "./ProjectCloneStore";
 import type { RootStore } from "../RootStore";
 import type { RootChildStore } from "../RootChildStore";
 
@@ -27,6 +28,8 @@ export class ProjectsStore implements RootChildStore {
   readonly threadEventsStore: ProjectThreadEventsStore;
   /** Store responsible for project trust requests. */
   readonly trustStore: ProjectTrustStore;
+  /** Explicit Git import form independent of ordinary project opening. */
+  readonly cloneStore: ProjectCloneStore;
   /** Non-observable index for loaded and pending thread routes. */
   private readonly threadRoutes: ProjectThreadRouteIndex;
   /** Source selected when opening a project before the backend responds. */
@@ -41,6 +44,7 @@ export class ProjectsStore implements RootChildStore {
     this.threadRoutes = new ProjectThreadRouteIndex(() => this.projectStoresById);
     this.threadEventsStore = new ProjectThreadEventsStore(this, root);
     this.trustStore = new ProjectTrustStore(this, root);
+    this.cloneStore = new ProjectCloneStore(root);
     makeAutoObservable<ProjectsStore, "root" | "threadRoutes">(this, {
       root: false,
       threadRoutes: false

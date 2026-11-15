@@ -102,6 +102,7 @@ export type OpenCodexRequest =
   | { type: "threads.workspace.reconcile"; threadId: string }
   | { type: "threads.workspace.history"; threadId: string }
   | { type: "projects.open"; projectPath: string; sourceId?: string | null; createIfMissing?: boolean }
+  | { type: "projects.clone"; repositoryUrl: string; destinationPath: string; sourceId: string }
   | { type: "projects.statistics.read"; projectPath: string; sourceId: string | null }
   | { type: "projects.pickDirectory"; mode: "open" | "create"; sourceId?: string | null }
   | { type: "projects.setHidden"; projectId: string; isHidden: boolean }

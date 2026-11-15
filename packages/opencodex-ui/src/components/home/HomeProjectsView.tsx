@@ -1,9 +1,7 @@
 /**
  * Renders project opening controls on the Home tab.
  */
-import CreateNewFolderOutlinedIcon from "@mui/icons-material/CreateNewFolderOutlined";
 import FolderCopyOutlinedIcon from "@mui/icons-material/FolderCopyOutlined";
-import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
@@ -37,6 +35,8 @@ import { HomeProjectGroupDeleteDialog } from "./HomeProjectGroupDeleteDialog";
 import { HomeProjectGroupDialog } from "./HomeProjectGroupDialog";
 import { HomeProjectTreeList } from "./HomeProjectTreeList";
 import { buildHomeProjectTree, nestHomeProjectTreeNodes } from "./homeProjectTree";
+import { HomeProjectAddMenu } from "./HomeProjectAddMenu";
+import { HomeProjectCloneDialogX } from "./HomeProjectCloneDialog";
 
 type HomeProjectsViewProps = {
   store: RootStore;
@@ -45,6 +45,7 @@ type HomeProjectsViewProps = {
 /** Renders Home project controls. */
 export function HomeProjectsView({ store }: HomeProjectsViewProps) {
   const { t } = useTranslation();
+  const [isCloneOpen, setCloneOpen] = useState(false);
   const [projectPendingDeletion, setProjectPendingDeletion] =
     useState<OpenCodexProject | null>(null);
   const [projectPendingAssignment, setProjectPendingAssignment] =
@@ -70,6 +71,15 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
   function handlePickNew(): void {
     projectsStore.openProjectFromPicker("create");
   }
+
+  /** Resets import inputs only when starting a new, explicit Git import. */
+  function handleClone(): void {
+    projectsStore.cloneStore.reset();
+    setCloneOpen(true);
+  }
+
+  /** Leaves failed imports open until the user fixes them or cancels. */
+  function handleCloseClone(): void { setCloneOpen(false); }
 
   function handleOpenRecent(projectPath: string, sourceId: string | null): void {
     projectsStore.openProject(projectPath, false, sourceId);
@@ -188,16 +198,8 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
             </MenuItem>
           ))}
         </TextField>
-        <Tooltip title={t("home.pickExisting")}>
-          <IconButton aria-label={t("home.pickExisting")} onClick={handlePickExisting} color="primary">
-            <FolderOpenOutlinedIcon />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={t("home.pickNew")}>
-          <IconButton aria-label={t("home.pickNew")} onClick={handlePickNew} color="primary">
-            <CreateNewFolderOutlinedIcon />
-          </IconButton>
-        </Tooltip>
+        <HomeProjectAddMenu disabled={store.homeStore.isOpeningProject || projectsStore.cloneStore.isBusy}
+          onOpenExisting={handlePickExisting} onCreateNew={handlePickNew} onClone={handleClone} />
         <Tooltip title={t("home.createProjectGroup")}>
           <IconButton aria-label={t("home.createProjectGroup")} onClick={handleCreateGroup} color="primary">
             <FolderCopyOutlinedIcon />
@@ -205,7 +207,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
         </Tooltip>
       </Box>
 
-      {store.homeStore.isOpeningProject ? <LinearProgress /> : null}
+      {store.homeStore.isOpeningProject || projectsStore.cloneStore.isCloning ? <LinearProgress /> : null}
 
       <Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -267,6 +269,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
           </Typography>
         )}
       </Box>
+      <HomeProjectCloneDialogX open={isCloneOpen} cloneStore={projectsStore.cloneStore} onClose={handleCloseClone} />
       <HomeProjectDeleteDialog
         project={projectPendingDeletion}
         onCancel={() => setProjectPendingDeletion(null)}

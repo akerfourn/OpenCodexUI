@@ -18,6 +18,7 @@ import type {
 import type { OpenCodexBackendOptions } from "../../types.js";
 import { createUncachedProject, toOpenCodexProject } from "./projectMapping.js";
 import { ProjectPathService } from "./ProjectPathService.js";
+import { ProjectCloneService } from "./ProjectCloneService.js";
 import type {
   ClientPort,
   RuntimeEventPort,
@@ -47,6 +48,8 @@ export type ProjectSourceServiceOptions = {
 export class ProjectSourceService {
   /** Service used to validate and create project paths. */
   private readonly projectPaths: ProjectPathService;
+  /** Clones repositories before they enter the project catalogue. */
+  private readonly projectClones: ProjectCloneService;
   /** Service used to persist, resolve, and present configured sources. */
   private readonly sourceCatalog: SourceCatalogPort;
   /** Service used to synchronize source-owned thread indexes. */
@@ -62,6 +65,7 @@ export class ProjectSourceService {
       host: options.backendOptions,
       clients: options.clients
     });
+    this.projectClones = new ProjectCloneService({ host: options.backendOptions, clients: options.clients });
     const sourceDetection = new SourceDetectionService({
       cacheRepository: options.cacheRepository,
       host: options.backendOptions
@@ -337,12 +341,22 @@ export class ProjectSourceService {
       createIfMissing,
       resolvedSource
     );
-    const project = await this.cacheProject(ensuredProjectPath, resolvedSource.id);
+    return await this.publishProject(ensuredProjectPath, resolvedSource.id);
+  }
 
-    if (project === null) {
-      throw new Error("Project path is required.");
-    }
+  /** Clones in an explicit source and publishes the project only after Git succeeds. */
+  async cloneProject(repositoryUrl: string, destinationPath: string, sourceId: string): Promise<OpenCodexProject> {
+    if (sourceId.trim().length === 0) throw new Error("A Codex source is required to clone a project.");
+    const source = await this.sourceCatalog.resolveSource(sourceId);
+    if (source.id !== sourceId) throw new Error(`Codex source not found: ${sourceId}`);
+    const projectPath = await this.projectClones.clone(repositoryUrl, destinationPath, source);
+    return await this.publishProject(projectPath, source.id);
+  }
 
+  /** Publishes a verified directory without resolving its source again after a long clone. */
+  private async publishProject(projectPath: string, sourceId: string): Promise<OpenCodexProject> {
+    const project = await this.cacheProject(projectPath, sourceId);
+    if (project === null) throw new Error("Project path is required.");
     await this.listProjects();
     this.options.events.emit({ type: "project.opened", project });
     return project;

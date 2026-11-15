@@ -91,6 +91,20 @@ installing always require an explicit action. Alpha, beta, and rc releases are
 excluded by default and can be enabled separately. The portable Windows build
 does not support automatic installation.
 
+## Adding Projects
+
+On **Projects**, use **+** to open an existing folder, create a blank project,
+or clone a Git repository. The separate group button organizes the project list.
+
+For a project already on GitHub or another Git server, choose **Clone a Git
+repository**. Enter its HTTPS or SSH address, select the execution source, and
+provide the full destination path in that source's filesystem. The destination
+must be new or empty, and its parent directory must already exist. Host-visible
+sources also offer a folder picker. Git uses the source's configured credentials.
+
+Cloning opens the project only after Git succeeds. A failed import keeps its
+inputs and diagnostic visible so you can correct the address, access, or path.
+
 ## Git Synchronization
 
 Use **Synchronize and push** in the Git panel to fetch and review the selected

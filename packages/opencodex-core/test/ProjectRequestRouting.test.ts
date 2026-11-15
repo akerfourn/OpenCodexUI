@@ -65,6 +65,8 @@ const cases: RouteCase[] = [
   { request: { type: "threads.workspace.reconcile", threadId: "thread" }, effect: "workspaces.reconcile", args: ["thread"] },
   { request: { type: "projects.open", projectPath: "/remote/project", sourceId: "source", createIfMissing: true },
     effect: "projects.open", args: ["/remote/project", "source", true] },
+  { request: { type: "projects.clone", repositoryUrl: "git@example.test:repo.git", destinationPath: "/remote/new", sourceId: "source" },
+    effect: "projects.clone", args: ["git@example.test:repo.git", "/remote/new", "source"] },
   { request: { type: "projects.statistics.read", projectPath: "/remote/project", sourceId: null },
     effect: "projects.readStatistics", args: ["/remote/project", null] },
   { request: { type: "projects.pickDirectory", mode: "create", sourceId: "source" },
@@ -98,7 +100,7 @@ function createProjectRoutingFixture() {
     workspaceRelocations: { relocate: vi.fn() },
     workspaceRemovals: { remove: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },
     projects: {
-      list: vi.fn(), open: vi.fn(), readStatistics: vi.fn(), pickDirectory: vi.fn(),
+      list: vi.fn(), open: vi.fn(), clone: vi.fn(), readStatistics: vi.fn(), pickDirectory: vi.fn(),
       setHidden: vi.fn(), setDisplayName: vi.fn(), updatePreferences: vi.fn(), delete: vi.fn()
     },
     workspaces: {
@@ -125,6 +127,13 @@ function createProjectRoutingFixture() {
 }
 
 describe("project request routing through the shared router", () => {
+  it("should propagate clone failures to the import dialog instead of swallowing them", async () => {
+    const fixture = createProjectRoutingFixture();
+    fixture.ports.projects.clone.mockRejectedValueOnce(new Error("Destination is not empty"));
+    await expect(fixture.router.handleRequest({ type: "projects.clone", sourceId: "source",
+      repositoryUrl: "git@example.test:repo.git", destinationPath: "/remote/new" })).rejects.toThrow("Destination is not empty");
+    expect(fixture.handleRequestError).not.toHaveBeenCalled();
+  });
   it("should route preparation to command execution and propagate rejection to its dialog", async () => {
     const fixture = createProjectRoutingFixture();
     const input = { projectId: "project", workspaceId: "workspace", sourceId: "source", workspacePath: "/secondary",

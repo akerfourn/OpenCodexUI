@@ -24,6 +24,18 @@ export const frNavigation = {
     title: "Fermer {{project}} ?"
   },
   home: {
+    addProject: "Ajouter un projet",
+    addExistingProject: "Ouvrir un dossier existant",
+    addBlankProject: "Créer un projet vierge",
+    addGitProject: "Cloner un dépôt Git",
+    cloneDescription: "Copiez l’adresse HTTPS ou SSH du dépôt et choisissez où le cloner. Git utilise les accès déjà configurés dans la source sélectionnée.",
+    cloneRepository: "Adresse du dépôt Git",
+    cloneDestination: "Dossier de destination",
+    cloneDestinationHelp: "Chemin complet dans la source sélectionnée. Le dossier doit être nouveau ou vide et son dossier parent doit déjà exister.",
+    clonePickFolder: "Choisir un dossier vide…",
+    cloneSubmit: "Cloner et ouvrir",
+    cloneCancel: "Annuler",
+    cloneFailed: "Le clonage a échoué. Vérifiez l’adresse, vos accès Git et le dossier de destination, puis réessayez.",
     fileLanguages: "Coloration syntaxique",
     workspaces: "Workspaces",
     allSources: "Toutes les sources",

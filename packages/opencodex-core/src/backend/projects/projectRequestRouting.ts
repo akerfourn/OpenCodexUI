@@ -105,6 +105,8 @@ export async function routeProjectRequest(runtime: ProjectRequestRuntime, reques
         request.sourceId === undefined ? runtime.settings.get().defaultSourceId : request.sourceId,
         request.createIfMissing === true
       );
+    case "projects.clone":
+      return runtime.projects.clone(request.repositoryUrl, request.destinationPath, request.sourceId);
     case "projects.statistics.read":
       return runtime.projects.readStatistics(request.projectPath, request.sourceId);
     case "projects.pickDirectory":

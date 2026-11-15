@@ -119,6 +119,8 @@ export interface ProjectsApi {
   ): Promise<OpenCodexProject>;
   delete(projectId: string): Promise<{ ok: true }>;
   open(projectPath: string, sourceId: string | null, createIfMissing: boolean): Promise<OpenCodexProject>;
+  /** Clones into the source filesystem and registers only a successful checkout. */
+  clone(repositoryUrl: string, destinationPath: string, sourceId: string): Promise<OpenCodexProject>;
   pickDirectory(
     mode: "open" | "create",
     sourceId: string | null

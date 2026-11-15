@@ -27,6 +27,18 @@ export const enNavigation = {
     title: "Close {{project}}?"
   },
   home: {
+    addProject: "Add project",
+    addExistingProject: "Open an existing folder",
+    addBlankProject: "Create a blank project",
+    addGitProject: "Clone a Git repository",
+    cloneDescription: "Paste the repository’s HTTPS or SSH address and choose where to clone it. Git uses access already configured in the selected source.",
+    cloneRepository: "Git repository address",
+    cloneDestination: "Destination folder",
+    cloneDestinationHelp: "Full path in the selected source. The folder must be new or empty, and its parent directory must already exist.",
+    clonePickFolder: "Choose an empty folder…",
+    cloneSubmit: "Clone and open",
+    cloneCancel: "Cancel",
+    cloneFailed: "Cloning failed. Check the address, Git access, and destination folder, then try again.",
     fileLanguages: "Syntax highlighting",
     workspaces: "Workspaces",
     allSources: "All sources",

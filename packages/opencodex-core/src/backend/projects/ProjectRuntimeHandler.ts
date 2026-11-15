@@ -295,6 +295,11 @@ export class ProjectRuntimeHandler implements ProjectSourcePort {
     return await this.projectSourceService.pickProjectDirectory(mode, sourceId);
   }
 
+  /** Clones a repository before opening it in the explicit source. */
+  async cloneProject(repositoryUrl: string, destinationPath: string, sourceId: string): Promise<OpenCodexProject> {
+    return await this.projectSourceService.cloneProject(repositoryUrl, destinationPath, sourceId);
+  }
+
   /** Opens the host directory picker for an external context folder. */
   async pickProjectContextFolder(): Promise<string | null> {
     return await this.projectSourceService.pickProjectContextFolder();

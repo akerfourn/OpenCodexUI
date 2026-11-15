@@ -23,8 +23,37 @@ vi.mock("../src/backend/sources/toolVersionDetection", () => toolVersionMocks);
 
 import type { OpenCodexBackendOptions as CoreBackendOptions } from "../src/types";
 import { ProjectSourceService } from "../src/backend/projects/ProjectSourceService";
+import { ProjectCloneService } from "../src/backend/projects/ProjectCloneService";
 
 describe("ProjectSourceService", () => {
+  it("should register a cloned project only after the source-owned Git operation succeeds", async () => {
+    const source = createSyncSource("source");
+    const fixture = createSyncFixture([source], { defaultSourceId: source.id });
+    const cache = vi.spyOn(fixture.service, "cacheProject").mockResolvedValue(fixture.project);
+    const clone = vi.spyOn(ProjectCloneService.prototype, "clone").mockRejectedValueOnce(new Error("Destination is not empty"));
+    try {
+      await expect(fixture.service.cloneProject("repository", "/workspace/new", source.id)).rejects.toThrow("Destination is not empty");
+      expect(cache).not.toHaveBeenCalled();
+      expect(fixture.events).toEqual([]);
+      clone.mockResolvedValueOnce("/workspace/new");
+
+      await expect(fixture.service.cloneProject("repository", "/workspace/new", source.id)).resolves.toBe(fixture.project);
+
+      expect(clone).toHaveBeenLastCalledWith("repository", "/workspace/new", expect.objectContaining({ id: source.id }));
+      expect(cache).toHaveBeenCalledWith("/workspace/new", source.id);
+      expect(fixture.events.at(-1)).toEqual({ type: "project.opened", project: fixture.project });
+    } finally {
+      clone.mockRestore();
+      cache.mockRestore();
+    }
+  });
+
+  it("should refuse a missing clone source instead of using the default installation", async () => {
+    const fixture = createSyncFixture([createSyncSource("default")], { defaultSourceId: "default" });
+    await expect(fixture.service.cloneProject("repository", "/workspace/new", "missing"))
+      .rejects.toThrow("Codex source not found: missing");
+    expect(fixture.clients.ensureClient).not.toHaveBeenCalled();
+  });
   it.each([0, -1, 1.5, 3651, NaN, Infinity])("should refuse invalid retention before writing project preferences: %s", async days => {
     const fixture = createSyncFixture([createSyncSource("source")], { defaultSourceId: "source" });
     const write = vi.fn();

@@ -19,6 +19,7 @@ type ProjectsHandler = Pick<
   | "updateProjectPreferences"
   | "deleteProject"
   | "openProject"
+  | "cloneProject"
   | "pickProjectDirectory"
   | "readProjectStatistics"
 >;
@@ -122,6 +123,13 @@ export class ProjectsApi implements ProjectsApiContract {
     createIfMissing: Parameters<ProjectsHandler["openProject"]>[2]
   ): ReturnType<ProjectsHandler["openProject"]> {
     return await this.handler.openProject(projectPath, sourceId, createIfMissing);
+  }
+
+  /** Clones and opens a repository in its explicit execution source. */
+  async clone(
+    repositoryUrl: string, destinationPath: string, sourceId: string
+  ): ReturnType<ProjectsHandler["cloneProject"]> {
+    return await this.handler.cloneProject(repositoryUrl, destinationPath, sourceId);
   }
 
   /** Opens the host project directory picker and caches its selection. */
