@@ -1,4 +1,6 @@
-import { Alert, Button, CircularProgress, Stack, Typography } from "@mui/material";
+import ArrowDownwardOutlinedIcon from "@mui/icons-material/ArrowDownwardOutlined";
+import ArrowUpwardOutlinedIcon from "@mui/icons-material/ArrowUpwardOutlined";
+import { Alert, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useGitTranslation } from "../../i18n/useGitTranslation";
 import type { ProjectGitStore } from "../../stores/project/git/ProjectGitStore";
@@ -44,27 +46,44 @@ export function ProjectGitSyncAction({ gitStore, onOpenFile }: ProjectGitSyncAct
   let destination = null;
   const target = status.synchronization?.target;
   if (target != null) {
-    destination = <Typography variant="caption" color="text.secondary">
-      {t("gitSync.destination", { remote: target.remoteName, branch: target.branchName })}
+    const label = t("gitSync.destination", { remote: target.remoteName, branch: target.branchName });
+    destination = <Typography variant="caption" color="text.secondary" noWrap title={label}
+      sx={{ flex: 1, minWidth: 0 }}>
+      {label}
     </Typography>;
   }
   let pull = null;
   if (status.behindCount > 0) {
-    pull = <Button variant="outlined" size="small" onClick={handlePull} disabled={!gitStore.sync.canOpen}>
-      {t("git.pullChanges", { count: status.behindCount })}
-    </Button>;
+    const label = t("git.pullChanges", { count: status.behindCount });
+    pull = <Tooltip title={label} disableInteractive>
+      <span><IconButton color="primary" size="small" aria-label={label} onClick={handlePull}
+        disabled={!gitStore.sync.canOpen} sx={{ height: 26, width: 26 }}>
+        <ArrowDownwardOutlinedIcon sx={{ fontSize: 16 }} />
+      </IconButton></span>
+    </Tooltip>;
   }
   let push = null;
   if (status.aheadCount > 0) {
-    push = <Button variant="outlined" size="small" onClick={handlePush} disabled={!gitStore.sync.canOpen}>
-      {t("git.pushChanges", { count: status.aheadCount })}
-    </Button>;
+    const label = t("git.pushChanges", { count: status.aheadCount });
+    push = <Tooltip title={label} disableInteractive>
+      <span><IconButton color="primary" size="small" aria-label={label} onClick={handlePush}
+        disabled={!gitStore.sync.canOpen} sx={{ height: 26, width: 26 }}>
+        <ArrowUpwardOutlinedIcon sx={{ fontSize: 16 }} />
+      </IconButton></span>
+    </Tooltip>;
   }
   let progress = null;
   if (gitStore.sync.isBusy && !gitStore.sync.isOpen) progress = <CircularProgress size={16} />;
+  let summary = null;
+  if (destination !== null || pull !== null || push !== null || progress !== null) {
+    summary = <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", minWidth: 0, justifyContent: "flex-end" }}>
+      {destination}
+      <Stack direction="row" spacing={0.25} sx={{ alignItems: "center", flexShrink: 0 }}>{pull}{push}{progress}</Stack>
+    </Stack>;
+  }
   return (
     <>
-      <Stack spacing={1}>{destination}{notice}{details}<Stack direction="row" spacing={1}>{pull}{push}{progress}</Stack></Stack>
+      <Stack spacing={1}>{summary}{notice}{details}</Stack>
       <ProjectGitSyncDialogX sync={gitStore.sync} onOpenFile={handleOpenFile} />
     </>
   );

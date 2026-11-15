@@ -38,6 +38,48 @@ function action(label: string): HTMLElement {
 }
 
 describe("simple Git interaction", () => {
+  it("should label icon-only actions with their change counts and block them during a receive", async () => {
+    const test = createGitSyncStoreFixture();
+    const receiving = createDeferred<ReturnType<typeof syncResult>>();
+    test.request.mockReturnValueOnce(receiving.promise);
+    await act(async () => root.render(<ProjectGitSyncActionX gitStore={test.gitStore} onOpenFile={vi.fn()} />));
+    const pull = action("git.pullChanges:2") as HTMLButtonElement;
+    const push = action("git.pushChanges:1") as HTMLButtonElement;
+    expect(pull.textContent).toBe("");
+    expect(push.textContent).toBe("");
+    expect(pull.querySelector("svg")).not.toBeNull();
+    expect(push.querySelector("svg")).not.toBeNull();
+
+    await act(async () => pull.click());
+
+    expect(test.request).toHaveBeenCalledOnce();
+    expect(test.request).toHaveBeenCalledWith(expect.objectContaining({ type: "git.sync.simple", direction: "pull" }));
+    expect(pull.disabled).toBe(true);
+    expect(push.disabled).toBe(true);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => push.click());
+    expect(test.request).toHaveBeenCalledOnce();
+
+    await act(async () => receiving.resolve(syncResult("synchronized")));
+    expect(pull.disabled).toBe(false);
+    expect(push.disabled).toBe(false);
+  });
+
+  it("should hide exchange actions when the destination is up to date", async () => {
+    const test = createGitSyncStoreFixture();
+    const status = syncInspection().status;
+    status.aheadCount = 0;
+    status.behindCount = 0;
+    status.synchronization = { favoriteRemote: "origin", branchRemote: null, target: { remoteName: "origin", branchName: "dev" } };
+    test.gitStore.statusStore.applyStatus(status);
+
+    await act(async () => root.render(<ProjectGitSyncActionX gitStore={test.gitStore} onOpenFile={vi.fn()} />));
+
+    expect(container.textContent).toContain("gitSync.destination");
+    expect(container.querySelector("button")).toBeNull();
+    expect(test.request).not.toHaveBeenCalled();
+  });
+
   it("should send directly and offer advanced review only after a structured rejection", async () => {
     const test = createGitSyncStoreFixture();
     test.request.mockResolvedValueOnce({ ...syncResult("blocked"), issue: "advancedRequired" });
