@@ -57,13 +57,13 @@ export function normalizeCommandFormInput(input: ProjectCommandFormInput): Proje
   };
 }
 
-/** Matches visible ordering sections; favoriting preserves membership without duplicating the command. */
+/** Matches the default ordering section when no explicit visible list is supplied. */
 export function sameCommandSection(first: OpenCodexProjectCommand, second: OpenCodexProjectCommand): boolean {
   if (first.isFavorite === true || second.isFavorite === true) return first.isFavorite === true && second.isFavorite === true;
   return (first.groupName ?? null) === (second.groupName ?? null);
 }
 
-/** Partitions commands once, preserving saved ordering inside each displayed section. */
+/** Preserves command order, showing grouped favorites in both their group and favorites. */
 export function commandSections(commands: OpenCodexProjectCommand[], groupNames: string[] = []): {
   favorites: OpenCodexProjectCommand[];
   ungrouped: OpenCodexProjectCommand[];
@@ -75,11 +75,12 @@ export function commandSections(commands: OpenCodexProjectCommand[], groupNames:
   for (const name of groupNames) groups.set(name, []);
   for (const command of commands) {
     if (command.isFavorite === true) favorites.push(command);
-    else if (command.groupName == null) ungrouped.push(command);
-    else {
+    if (command.groupName != null) {
       const entries = groups.get(command.groupName) ?? [];
       entries.push(command);
       groups.set(command.groupName, entries);
+    } else if (command.isFavorite !== true) {
+      ungrouped.push(command);
     }
   }
   return { favorites, ungrouped, groups: [...groups].map(([name, entries]) => ({ name, commands: entries })) };

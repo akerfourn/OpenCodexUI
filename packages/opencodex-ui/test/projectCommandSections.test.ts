@@ -9,14 +9,25 @@ function command(id: string, groupName: string | null = null, isFavorite = false
 }
 
 describe("command organization", () => {
-  it("should promote favorites once and retain order inside ungrouped and named sections", () => {
+  it("should retain grouped favorites in both sections while preserving command order", () => {
     const build = command("build", "Build");
     const favorite = command("favorite", "Build", true);
     const plain = command("plain");
     const test = command("test", "Tests");
     expect(commandSections([build, plain, favorite, test])).toEqual({ favorites: [favorite],
-      ungrouped: [plain], groups: [{ name: "Build", commands: [build] }, { name: "Tests", commands: [test] }] });
+      ungrouped: [plain], groups: [{ name: "Build", commands: [build, favorite] }, { name: "Tests", commands: [test] }] });
     expect(commandSections([{ ...favorite, isFavorite: false }]).groups[0]?.commands[0]?.groupName).toBe("Build");
+  });
+
+  it("should show ungrouped favorites only in favorites and retain empty named groups", () => {
+    const favorite = command("favorite", null, true);
+    const plain = command("plain");
+    expect(commandSections([favorite, plain], ["Build"])).toEqual({
+      favorites: [favorite], ungrouped: [plain], groups: [{ name: "Build", commands: [] }]
+    });
+    expect(commandSections([{ ...favorite, isFavorite: false }, plain]).ungrouped).toEqual([
+      { ...favorite, isFavorite: false }, plain
+    ]);
   });
 
   it("should keep ordering controls inside the visible section", () => {

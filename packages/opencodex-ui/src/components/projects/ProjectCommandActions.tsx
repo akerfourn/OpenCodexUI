@@ -10,8 +10,9 @@ import type { OpenCodexProjectCommand } from "@open-codex-ui/opencodex-protocol"
 import type { ProjectCommandsStore } from "../../stores/project/ProjectCommandsStore";
 
 /** Compact vertical controls reveal on card hover/focus; the menu assigns groups and orders commands. */
-export function ProjectCommandActions({ command, store, canMoveUp, canMoveDown, onEdit }: {
+export function ProjectCommandActions({ command, store, canMoveUp, canMoveDown, sectionCommandIds, onEdit }: {
   command: OpenCodexProjectCommand; store: ProjectCommandsStore; canMoveUp: boolean; canMoveDown: boolean;
+  sectionCommandIds: string[];
   onEdit(command: OpenCodexProjectCommand): void;
 }) {
   const { t } = useTranslation();
@@ -22,7 +23,7 @@ export function ProjectCommandActions({ command, store, canMoveUp, canMoveDown, 
   let className = "project-command-actions";
   if (anchor !== null) className += " is-open";
 
-  /** Favorites retain their existing group so removing the star restores their placement. */
+  /** Toggles the favorite shortcut while keeping the command visible in its existing group. */
   function handleFavorite(): void {
     void store.toggleFavorite(command);
   }
@@ -51,13 +52,13 @@ export function ProjectCommandActions({ command, store, canMoveUp, canMoveDown, 
   /** Reorders inside the existing visible section. */
   function handleMoveUp(): void {
     setAnchor(null);
-    void store.moveCommand(command.id, "up");
+    void store.moveCommand(command.id, "up", sectionCommandIds);
   }
 
   /** Reorders inside the existing visible section. */
   function handleMoveDown(): void {
     setAnchor(null);
-    void store.moveCommand(command.id, "down");
+    void store.moveCommand(command.id, "down", sectionCommandIds);
   }
 
   const choices = store.groups.names.map(name => <MenuItem key={name} selected={command.groupName === name}

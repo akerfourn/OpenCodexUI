@@ -14,7 +14,7 @@ export const frAutomation = {
     deleteGroupHelp: "Conserver ses commandes sans groupe",
     addInGroup: "Ajouter une commande dans ce groupe",
     moveToGroup: "Déplacer vers un groupe",
-    emptyGroup: "Ce groupe ne contient aucune commande hors favoris.",
+    emptyGroup: "Ce groupe ne contient aucune commande.",
     favorites: "Favoris",
     ungrouped: "Sans groupe",
     group: "Groupe",

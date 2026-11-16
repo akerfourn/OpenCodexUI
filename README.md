@@ -49,8 +49,9 @@ You must already have Codex CLI installed and configured on your machine.
   Create, rename, and delete groups directly in the panel, including empty groups.
   Choose a group in the command editor or move a command from its action menu;
   deleting a group keeps its commands. Favorites appear first, followed by
-  ungrouped commands and initially collapsed groups. Long commands are truncated
-  with their full text available on hover.
+  initially collapsed groups, then ungrouped commands. Grouped favorites remain
+  visible in their groups; ungrouped favorites appear only in Favorites. Long
+  commands are truncated with their full text available on hover.
 - Logs page with details and cleanup actions.
 - Experimental plugins page.
 - Compact quota usage indicators.

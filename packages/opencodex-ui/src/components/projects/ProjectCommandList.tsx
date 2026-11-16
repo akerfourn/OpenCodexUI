@@ -10,8 +10,10 @@ export function ProjectCommandList({ commands, commandsStore, onEdit, onOpenLogs
   onEdit(command: OpenCodexProjectCommand): void;
   onOpenLogs(run: ProjectCommandRunView): void;
 }) {
+  const sectionCommandIds = commands.map(command => command.id);
   return <>{commands.map((command, index) => <ProjectCommandCardX key={command.id} command={command}
     commandsStore={commandsStore} runs={commandsStore.getRuns(command.id)}
+    sectionCommandIds={sectionCommandIds}
     canMoveUp={index > 0} canMoveDown={index < commands.length - 1}
     onEdit={onEdit} onOpenLogs={onOpenLogs} />)}</>;
 }

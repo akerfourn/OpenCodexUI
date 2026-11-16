@@ -17,7 +17,7 @@ export const enAutomation = {
     deleteGroupHelp: "Keep its commands ungrouped",
     addInGroup: "Add a command to this group",
     moveToGroup: "Move to group",
-    emptyGroup: "This group has no commands outside favorites.",
+    emptyGroup: "This group has no commands.",
     favorites: "Favorites",
     ungrouped: "Ungrouped",
     group: "Group",

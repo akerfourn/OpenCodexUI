@@ -20,6 +20,7 @@ type ProjectCommandCardProps = {
   runs: ProjectCommandRunView[];
   canMoveDown: boolean;
   canMoveUp: boolean;
+  sectionCommandIds: string[];
   onEdit(command: OpenCodexProjectCommand): void;
   onOpenLogs(run: ProjectCommandRunView): void;
 };
@@ -36,6 +37,7 @@ export function ProjectCommandCard({
   runs,
   canMoveDown,
   canMoveUp,
+  sectionCommandIds,
   onEdit,
   onOpenLogs
 }: ProjectCommandCardProps) {
@@ -74,7 +76,8 @@ export function ProjectCommandCard({
             {t(`commands.executionModes.${command.executionMode}`)}
           </Typography>
         </Box>
-        <ProjectCommandActionsX command={command} store={commandsStore} canMoveUp={canMoveUp} canMoveDown={canMoveDown} onEdit={onEdit} />
+        <ProjectCommandActionsX command={command} store={commandsStore} canMoveUp={canMoveUp} canMoveDown={canMoveDown}
+          sectionCommandIds={sectionCommandIds} onEdit={onEdit} />
       </Stack>
       {runs.length > 0 ? (
         <Stack className="project-command-runs" spacing={0.5}>

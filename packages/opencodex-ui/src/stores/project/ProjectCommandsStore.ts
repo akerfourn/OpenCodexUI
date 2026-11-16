@@ -277,9 +277,10 @@ export class ProjectCommandsStore {
    *
    * @param commandId Command identifier.
    * @param direction Move direction.
+   * @param visibleCommandIds Optional visible list, disambiguating favorites from their group.
    * @returns Promise resolved when the order is persisted.
    */
-  async moveCommand(commandId: string, direction: "up" | "down"): Promise<void> {
+  async moveCommand(commandId: string, direction: "up" | "down", visibleCommandIds?: string[]): Promise<void> {
     const commandIds = this.commands.map((command) => command.id);
     const currentIndex = commandIds.indexOf(commandId);
 
@@ -288,8 +289,13 @@ export class ProjectCommandsStore {
     }
 
     const current = this.commands[currentIndex]!;
-    const section = this.commands.filter(command => sameCommandSection(current, command));
+    let section = this.commands.filter(command => sameCommandSection(current, command));
+    if (visibleCommandIds !== undefined) {
+      const visibleIds = new Set(visibleCommandIds);
+      section = this.commands.filter(command => visibleIds.has(command.id));
+    }
     const sectionIndex = section.findIndex(command => command.id === commandId);
+    if (sectionIndex === -1) return;
     const neighborIndex = direction === "up" ? sectionIndex - 1 : sectionIndex + 1;
     const neighbor = section[neighborIndex];
     if (neighbor === undefined) return;

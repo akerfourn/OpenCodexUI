@@ -69,6 +69,34 @@ describe("ProjectCommandsStore run lifecycle", () => {
       commandIds: ["last", "other", "first"] });
   });
 
+  it("should move a grouped favorite past its visible nonfavorite neighbor", async () => {
+    const first = createCommand({ id: "first", groupName: "Build" });
+    const other = createCommand({ id: "other", groupName: "Audio", isFavorite: true });
+    const favorite = createCommand({ id: "favorite", groupName: "Build", isFavorite: true });
+    const request = vi.fn(async () => [favorite, other, first]) as unknown as RootStore["request"];
+    const { store } = createStoreFixture(request);
+    store.commands = [first, other, favorite];
+
+    await store.moveCommand("favorite", "up", ["first", "favorite"]);
+
+    expect(request).toHaveBeenCalledWith({ type: "projectCommands.reorder", projectId: "project-1",
+      commandIds: ["favorite", "other", "first"] });
+  });
+
+  it("should move a nonfavorite past its grouped favorite without reordering other sections", async () => {
+    const first = createCommand({ id: "first", groupName: "Build", isFavorite: true });
+    const other = createCommand({ id: "other", groupName: "Audio" });
+    const last = createCommand({ id: "last", groupName: "Build" });
+    const request = vi.fn(async () => [last, other, first]) as unknown as RootStore["request"];
+    const { store } = createStoreFixture(request);
+    store.commands = [first, other, last];
+
+    await store.moveCommand("last", "up", ["first", "last"]);
+
+    expect(request).toHaveBeenCalledWith({ type: "projectCommands.reorder", projectId: "project-1",
+      commandIds: ["last", "other", "first"] });
+  });
+
   it("should clone preparation snapshots and retain their explicit workspace instead of the active selection", async () => {
     const accepted = createRun({ workspaceId: "B", sourceId: "source-1", cwd: "/secondary" });
     const request = vi.fn(async () => accepted) as unknown as RootStore["request"];

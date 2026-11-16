@@ -8,7 +8,7 @@ import { commandSections } from "../../stores/project/projectCommandDefinitions"
 import { ProjectCommandListX } from "./ProjectCommandList";
 import { ProjectCommandGroupX } from "./ProjectCommandGroup";
 
-/** Promotes favorites once, followed by ungrouped commands and initially collapsed named groups. */
+/** Shows favorites first, then collapsible groups including favorites, then ungrouped commands. */
 export function ProjectCommandSections({ commandsStore, onCreate, onEdit, onOpenLogs }: {
   commandsStore: ProjectCommandsStore;
   onCreate(groupName: string): void;
@@ -42,7 +42,7 @@ export function ProjectCommandSections({ commandsStore, onCreate, onEdit, onOpen
     return <ProjectCommandGroupX key={group.name} name={group.name} commands={group.commands} store={commandsStore}
       expanded={isExpanded} onToggle={toggle} onCreate={onCreate} onEdit={onEdit} onOpenLogs={onOpenLogs} />;
   });
-  return <>{favoritesContent}{ungroupedLabel}<ProjectCommandListX {...listProps} commands={ungrouped} />{groupedContent}</>;
+  return <>{favoritesContent}{groupedContent}{ungroupedLabel}<ProjectCommandListX {...listProps} commands={ungrouped} /></>;
 }
 
 export const ProjectCommandSectionsX = observer(ProjectCommandSections);
