@@ -45,13 +45,32 @@ export function ProjectGitSyncDialog({ sync, onOpenFile }: ProjectGitSyncDialogP
   /** Leaves the current integration running when the user cancels abort confirmation. */
   function handleCancelAbort(): void { setAbortFingerprint(null); }
 
+  const plan = sync.plan;
+  let executeLabel = "gitSync.apply";
+  let canExecutePlan = plan !== null;
+  if (plan !== null) {
+    if (plan.action === "none") {
+      executeLabel = "gitSync.upToDate";
+      canExecutePlan = plan.target.setUpstream;
+      if (plan.target.setUpstream) executeLabel = "gitSync.configureTracking";
+    } else if (plan.action === "fastForward") {
+      executeLabel = "gitSync.updateLocal";
+    } else if (plan.action === "push") {
+      executeLabel = "gitSync.send";
+    } else {
+      executeLabel = "gitSync.execute";
+    }
+  }
+
   let content = <ProjectGitSyncFieldsX sync={sync} />;
   let actions = (
     <>
       <Button disabled={sync.isBusy || sync.remoteName.length === 0 || sync.branchName.trim().length === 0} onClick={handleAnalyze}>
         {t("gitSync.analyze")}
       </Button>
-      <Button variant="contained" disabled={sync.isBusy || sync.plan === null} onClick={handleExecute}>{t("gitSync.execute")}</Button>
+      <Button variant="contained" disabled={sync.isBusy || !canExecutePlan} onClick={handleExecute}>
+        {t(executeLabel)}
+      </Button>
     </>
   );
   if (operation !== null) {

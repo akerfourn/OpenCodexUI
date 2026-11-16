@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { runInAction } from "mobx";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ProjectGitSyncActionX } from "../src/components/projects/ProjectGitSyncAction";
-import { createGitSyncStoreFixture, syncInspection, syncResult } from "./ProjectGitSyncStore.fixture";
+import { createGitSyncStoreFixture, syncInspection, syncPlan, syncResult } from "./ProjectGitSyncStore.fixture";
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (input: string | string[], values?: { count?: number }) => {
   const key = Array.isArray(input) ? input[input.length - 1] : input;
@@ -71,11 +71,39 @@ describe("guided Git synchronization dialog", () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(field, "another");
       field.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    expect(button("gitSync.execute").disabled).toBe(true);
+    expect(button("gitSync.apply").disabled).toBe(true);
     await act(async () => { button("gitSync.analyze").click(); });
     expect(test.request).toHaveBeenLastCalledWith(expect.objectContaining({ type: "git.sync.plan",
       target: { remoteName: "origin", branchName: "another", setUpstream: false } }));
     expect(button("gitSync.execute").disabled).toBe(false);
+  });
+
+  it.each([
+    { action: "push", ahead: 1, behind: 0, tracking: false, label: "gitSync.send", enabled: true },
+    { action: "fastForward", ahead: 0, behind: 2, tracking: false, label: "gitSync.updateLocal", enabled: true },
+    { action: "rebase", ahead: 1, behind: 2, tracking: false, label: "gitSync.execute", enabled: true },
+    { action: "merge", ahead: 1, behind: 2, tracking: false, label: "gitSync.execute", enabled: true },
+    { action: "none", ahead: 0, behind: 0, tracking: false, label: "gitSync.upToDate", enabled: false },
+    { action: "none", ahead: 0, behind: 0, tracking: true, label: "gitSync.configureTracking", enabled: true }
+  ] as const)("should label $action with tracking=$tracking as $label", async (scenario) => {
+    const test = await fixture();
+    const plan = syncPlan();
+    plan.action = scenario.action;
+    plan.aheadCount = scenario.ahead;
+    plan.behindCount = scenario.behind;
+    plan.target.setUpstream = scenario.tracking;
+    await act(async () => { runInAction(() => {
+      test.sync.setUpstream = scenario.tracking;
+      test.sync.result = syncResult("planned", syncInspection(), plan);
+    }); });
+
+    const action = button(scenario.label);
+    expect(action.disabled).toBe(!scenario.enabled);
+    await act(async () => { action.click(); });
+
+    const requests = test.request.mock.calls.filter(([request]) => request.type === "git.sync.execute");
+    expect(requests.length > 0).toBe(scenario.enabled);
+    if (scenario.enabled) expect(requests[0]![0]).toMatchObject({ type: "git.sync.execute", plan });
   });
 
   it("should open conflict contents in the existing editor without pushing", async () => {
