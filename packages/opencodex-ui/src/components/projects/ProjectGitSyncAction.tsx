@@ -66,8 +66,15 @@ export function ProjectGitSyncAction({ gitStore, onOpenFile }: ProjectGitSyncAct
   if (status.aheadCount > 0) {
     const label = t("git.pushChanges", { count: status.aheadCount });
     push = <Tooltip title={label} disableInteractive>
-      <span><IconButton color="primary" size="small" aria-label={label} onClick={handlePush}
-        disabled={!gitStore.sync.canOpen} sx={{ height: 26, width: 26 }}>
+      <span><IconButton size="small" aria-label={label} onClick={handlePush}
+        disabled={!gitStore.sync.canOpen} sx={{
+          height: 26,
+          width: 26,
+          backgroundColor: "primary.main",
+          color: "common.white",
+          "&:hover": { backgroundColor: "primary.dark" },
+          "&.Mui-disabled": { backgroundColor: "action.disabledBackground", color: "action.disabled" }
+        }}>
         <ArrowUpwardOutlinedIcon sx={{ fontSize: 16 }} />
       </IconButton></span>
     </Tooltip>;
