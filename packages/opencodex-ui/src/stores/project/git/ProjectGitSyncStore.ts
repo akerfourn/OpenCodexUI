@@ -16,6 +16,8 @@ export class ProjectGitSyncStore {
   phase: "inspect" | "plan" | "execute" | "continue" | "abort" | "stage" | "configure" | null = null;
   /** Last simple action outcome, retained outside the advanced dialog. */
   simpleResult: OpenCodexGitSyncResult | null = null;
+  /** Identifies the exchange button whose border should show the active request. */
+  simpleDirection: "push" | "pull" | null = null;
   /** Last source-owned inspection and its translatable outcome. */
   result: OpenCodexGitSyncResult | null = null;
   /** Explicit remote selected for the next review. */
@@ -213,6 +215,8 @@ export class ProjectGitSyncStore {
   /** Runs a single phase, preserving main messages separately from technical error details. */
   private async perform(phase: NonNullable<ProjectGitSyncStore["phase"]>, request: OpenCodexGitSyncRequest) {
     this.phase = phase;
+    this.simpleDirection = null;
+    if (request.type === "git.sync.simple") this.simpleDirection = request.direction;
     if (this.result !== null) this.result = { ...this.result, plan: null };
     try {
       const response = await this.parent.request<OpenCodexGitSyncResult>(request);
@@ -226,7 +230,10 @@ export class ProjectGitSyncStore {
         issue: "gitFailed", details: readErrorMessage(error) }; });
       return null;
     } finally {
-      runInAction(() => { this.phase = null; });
+      runInAction(() => {
+        this.phase = null;
+        this.simpleDirection = null;
+      });
     }
   }
 

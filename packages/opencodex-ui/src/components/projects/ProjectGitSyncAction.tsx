@@ -1,10 +1,9 @@
-import ArrowDownwardOutlinedIcon from "@mui/icons-material/ArrowDownwardOutlined";
-import ArrowUpwardOutlinedIcon from "@mui/icons-material/ArrowUpwardOutlined";
-import { Alert, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Alert, Button, Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useGitTranslation } from "../../i18n/useGitTranslation";
 import type { ProjectGitStore } from "../../stores/project/git/ProjectGitStore";
 import { ProjectGitSyncDialogX } from "./ProjectGitSyncDialog";
+import { ProjectGitSyncButton } from "./ProjectGitSyncButton";
 
 interface ProjectGitSyncActionProps {
   gitStore: ProjectGitStore;
@@ -15,6 +14,8 @@ interface ProjectGitSyncActionProps {
 export function ProjectGitSyncAction({ gitStore, onOpenFile }: ProjectGitSyncActionProps) {
   const { t } = useGitTranslation(gitStore.sync.vocabulary);
   const status = gitStore.statusStore.status;
+  const isPulling = gitStore.sync.simpleDirection === "pull";
+  const isPushing = gitStore.sync.simpleDirection === "push";
   /** Opens a fresh comparison before authorizing an outgoing push. */
   function handleOpen(): void { void gitStore.sync.open(); }
   /** Opens the selected conflict in the existing file editor, leaving Git paused. */
@@ -53,39 +54,22 @@ export function ProjectGitSyncAction({ gitStore, onOpenFile }: ProjectGitSyncAct
     </Typography>;
   }
   let pull = null;
-  if (status.behindCount > 0) {
+  if (status.behindCount > 0 || isPulling) {
     const label = t("git.pullChanges", { count: status.behindCount });
-    pull = <Tooltip title={label} disableInteractive>
-      <span><IconButton color="primary" size="small" aria-label={label} onClick={handlePull}
-        disabled={!gitStore.sync.canOpen} sx={{ height: 26, width: 26 }}>
-        <ArrowDownwardOutlinedIcon sx={{ fontSize: 16 }} />
-      </IconButton></span>
-    </Tooltip>;
+    pull = <ProjectGitSyncButton direction="pull" label={label} isLoading={isPulling}
+      disabled={!gitStore.sync.canOpen} onClick={handlePull} />;
   }
   let push = null;
-  if (status.aheadCount > 0) {
+  if (status.aheadCount > 0 || isPushing) {
     const label = t("git.pushChanges", { count: status.aheadCount });
-    push = <Tooltip title={label} disableInteractive>
-      <span><IconButton size="small" aria-label={label} onClick={handlePush}
-        disabled={!gitStore.sync.canOpen} sx={{
-          height: 26,
-          width: 26,
-          backgroundColor: "primary.main",
-          color: "common.white",
-          "&:hover": { backgroundColor: "primary.dark" },
-          "&.Mui-disabled": { backgroundColor: "action.disabledBackground", color: "action.disabled" }
-        }}>
-        <ArrowUpwardOutlinedIcon sx={{ fontSize: 16 }} />
-      </IconButton></span>
-    </Tooltip>;
+    push = <ProjectGitSyncButton direction="push" label={label} isLoading={isPushing}
+      disabled={!gitStore.sync.canOpen} onClick={handlePush} />;
   }
-  let progress = null;
-  if (gitStore.sync.isBusy && !gitStore.sync.isOpen) progress = <CircularProgress size={16} />;
   let summary = null;
-  if (destination !== null || pull !== null || push !== null || progress !== null) {
+  if (destination !== null || pull !== null || push !== null) {
     summary = <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", minWidth: 0, justifyContent: "flex-end" }}>
       {destination}
-      <Stack direction="row" spacing={0.25} sx={{ alignItems: "center", flexShrink: 0 }}>{pull}{push}{progress}</Stack>
+      <Stack direction="row" spacing={0.25} sx={{ alignItems: "center", flexShrink: 0 }}>{pull}{push}</Stack>
     </Stack>;
   }
   return (

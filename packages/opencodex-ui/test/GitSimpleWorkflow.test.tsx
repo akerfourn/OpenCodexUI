@@ -56,6 +56,11 @@ describe("simple Git interaction", () => {
     expect(test.request).toHaveBeenCalledWith(expect.objectContaining({ type: "git.sync.simple", direction: "pull" }));
     expect(pull.disabled).toBe(true);
     expect(push.disabled).toBe(true);
+    expect(test.sync.simpleDirection).toBe("pull");
+    expect(pull.getAttribute("aria-busy")).toBe("true");
+    expect(push.getAttribute("aria-busy")).toBe("false");
+    expect(container.querySelector('[role="progressbar"]')?.closest("button")).toBe(pull);
+    expect(container.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     await act(async () => push.click());
     expect(test.request).toHaveBeenCalledOnce();
@@ -63,6 +68,32 @@ describe("simple Git interaction", () => {
     await act(async () => receiving.resolve(syncResult("synchronized")));
     expect(pull.disabled).toBe(false);
     expect(push.disabled).toBe(false);
+    expect(test.sync.simpleDirection).toBeNull();
+    expect(container.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
+  it("should retain the sending button's loading border after counter refresh and clear it on failure", async () => {
+    const test = createGitSyncStoreFixture();
+    const sending = createDeferred<ReturnType<typeof syncResult>>();
+    test.request.mockReturnValueOnce(sending.promise);
+    await act(async () => root.render(<ProjectGitSyncActionX gitStore={test.gitStore} onOpenFile={vi.fn()} />));
+    const push = action("git.pushChanges:1") as HTMLButtonElement;
+
+    await act(async () => push.click());
+
+    expect(test.sync.simpleDirection).toBe("push");
+    expect(push.getAttribute("aria-busy")).toBe("true");
+    expect(container.querySelector('[role="progressbar"]')?.closest("button")).toBe(push);
+    await act(async () => test.gitStore.statusStore.applyStatus({ ...syncInspection().status, aheadCount: 0 }));
+    expect(action("git.pushChanges:0")).toBe(push);
+    expect(push.disabled).toBe(true);
+
+    await act(async () => sending.reject(new Error("Remote unavailable")));
+
+    expect(test.sync.simpleDirection).toBeNull();
+    expect(container.querySelector('[role="progressbar"]')).toBeNull();
+    expect(container.contains(push)).toBe(false);
+    expect(test.sync.simpleResult?.issue).toBe("gitFailed");
   });
 
   it("should hide exchange actions when the destination is up to date", async () => {
