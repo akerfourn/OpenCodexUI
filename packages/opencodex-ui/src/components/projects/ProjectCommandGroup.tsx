@@ -99,8 +99,10 @@ export function ProjectCommandGroup({ name, commands, store, expanded, onToggle,
     <IconButton size="small" aria-label={t("commands.cancel")} disabled={saving} onClick={() => setEditing(false)}><CloseOutlinedIcon fontSize="small" /></IconButton>
   </>;
   const empty = commands.length === 0 ? <Typography variant="caption" color="text.secondary">{t("commands.emptyGroup")}</Typography> : null;
+  const headerSpacing = editing ? { pt: 1.5, pb: 0.5 } : {};
   return <Box sx={{ minWidth: 0, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
-    <Stack direction="row" sx={{ alignItems: "center", px: 0.5, minHeight: 32 }}>{header}</Stack>
+    <Stack direction="row"
+      sx={{ alignItems: "center", px: 0.5, minHeight: 32, ...headerSpacing }}>{header}</Stack>
     <Collapse in={expanded} unmountOnExit>
       <Stack id={id} spacing={0.5} sx={{ p: 0.5, pt: 0 }}>{empty}
         <ProjectCommandListX commands={commands} commandsStore={store} onEdit={onEdit} onOpenLogs={onOpenLogs} />

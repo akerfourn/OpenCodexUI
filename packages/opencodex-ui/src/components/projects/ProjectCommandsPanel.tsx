@@ -101,7 +101,8 @@ export function ProjectCommandsPanel({ projectStore }: ProjectCommandsPanelProps
     setLogsRun(null);
   }
 
-  const groupForm = creatingGroup ? <Stack direction="row" spacing={0.5} sx={{ px: 1, pb: 1, alignItems: "center" }}>
+  const groupForm = creatingGroup ? <Stack direction="row" spacing={0.5}
+    sx={{ px: 1, pt: 1.5, pb: 1, flexShrink: 0, alignItems: "center" }}>
     <TextField autoFocus size="small" label={t("commands.groupName")} value={groupName}
       error={groupExists} helperText={groupHelp}
       onChange={event => setGroupName(event.target.value)} onKeyDown={handleGroupKeyDown} disabled={groupBusy}
