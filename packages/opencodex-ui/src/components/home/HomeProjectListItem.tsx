@@ -22,12 +22,15 @@ import { useTranslation } from "react-i18next";
 import type { OpenCodexProject, OpenCodexSourceColor } from "@open-codex-ui/opencodex-protocol";
 
 import { getSourceBadgeSx } from "./sourceColor";
+import type { HomeProjectGitStore } from "../../stores/app/HomeProjectGitStore";
+import { HomeProjectGitIndicatorX } from "./HomeProjectGitIndicator";
 
 type HomeProjectListItemProps = {
   project: OpenCodexProject;
   depth: number;
   sourceName: string | null;
   sourceColor: OpenCodexSourceColor | null;
+  gitIndicators?: HomeProjectGitStore;
   onOpen(projectPath: string, sourceId: string | null): void;
   onSetHidden(projectId: string, isHidden: boolean): void;
   onDelete(project: OpenCodexProject): void;
@@ -46,6 +49,7 @@ export function HomeProjectListItem({
   depth,
   sourceName,
   sourceColor,
+  gitIndicators,
   onOpen,
   onSetHidden,
   onDelete,
@@ -114,7 +118,7 @@ export function HomeProjectListItem({
           >
             {sourceLabel}
           </Typography>
-          <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
+          <Typography variant="body2" noWrap title={projectName} sx={{ fontWeight: 600 }}>
             {projectName}
           </Typography>
         </Box>
@@ -126,7 +130,8 @@ export function HomeProjectListItem({
         sx={{
           alignItems: "center",
           display: "flex",
-          flex: "0 0 150px",
+          flex: { xs: "0 0 100px", sm: "0 0 174px" },
+          minWidth: 0,
           justifyContent: "flex-end",
           ml: 1
         }}
@@ -134,11 +139,13 @@ export function HomeProjectListItem({
         <Typography
           variant="caption"
           color="text.secondary"
+          title={relativeEditedAt}
           noWrap
-          sx={{ flex: "1 1 auto", textAlign: "right" }}
+          sx={{ flex: "1 1 auto", minWidth: 0, textAlign: "right" }}
         >
           {relativeEditedAt}
         </Typography>
+        <HomeProjectGitIndicatorX project={project} store={gitIndicators} />
         <IconButton
           aria-label={t("home.projectActions")}
           size="small"

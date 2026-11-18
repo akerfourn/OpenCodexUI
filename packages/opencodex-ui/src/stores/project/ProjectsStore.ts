@@ -13,6 +13,7 @@ import { ProjectThreadEventsStore } from "./threads/ProjectThreadEventsStore";
 import { ProjectThreadRouteIndex } from "./threads/ProjectThreadRouteIndex";
 import { ProjectTrustStore } from "./ProjectTrustStore";
 import { ProjectCloneStore } from "./ProjectCloneStore";
+import { HomeProjectGitStore } from "../app/HomeProjectGitStore";
 import type { RootStore } from "../RootStore";
 import type { RootChildStore } from "../RootChildStore";
 
@@ -30,6 +31,8 @@ export class ProjectsStore implements RootChildStore {
   readonly trustStore: ProjectTrustStore;
   /** Explicit Git import form independent of ordinary project opening. */
   readonly cloneStore: ProjectCloneStore;
+  /** Lightweight Git observations shared by Home rows and already opened primary folders. */
+  readonly gitIndicators: HomeProjectGitStore;
   /** Non-observable index for loaded and pending thread routes. */
   private readonly threadRoutes: ProjectThreadRouteIndex;
   /** Source selected when opening a project before the backend responds. */
@@ -45,6 +48,7 @@ export class ProjectsStore implements RootChildStore {
     this.threadEventsStore = new ProjectThreadEventsStore(this, root);
     this.trustStore = new ProjectTrustStore(this, root);
     this.cloneStore = new ProjectCloneStore(root);
+    this.gitIndicators = new HomeProjectGitStore(root);
     makeAutoObservable<ProjectsStore, "root" | "threadRoutes">(this, {
       root: false,
       threadRoutes: false
@@ -69,6 +73,7 @@ export class ProjectsStore implements RootChildStore {
         return;
       case "projects.updated":
         this.projects = event.projects;
+        this.gitIndicators.reconcile();
         this.applyProjectMetadata(event.projects);
         return;
       case "project.opened":

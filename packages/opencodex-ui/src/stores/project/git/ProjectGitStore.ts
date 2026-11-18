@@ -273,6 +273,7 @@ export class ProjectGitStore {
   reconcileStatus(status: OpenCodexGitStatus): void {
     this.commitStore.reconcileStatus(status);
     this.changesStore.reconcileStatus(status);
+    this.root.projectsStore?.gitIndicators?.record(this.projectId, this.projectPath, this.sourceId, status);
   }
 
   /** Reports a non-fatal warning to the project UI and log. */

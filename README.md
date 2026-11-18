@@ -36,6 +36,11 @@ You must already have Codex CLI installed and configured on your machine.
 - Skill references with `$`.
 - Image display support in messages.
 - Git panel with changed files, staging, commit, pull, and push.
+- Home project rows show a gray Git icon for uncommitted edits and a blue one
+  for outgoing commits in the main folder's current branch. Visible rows use
+  bounded local checks and a short cache; entering Home or refreshing the list
+  checks them again without fetching remote updates. Tooltips include the
+  observation time, and failed checks appear separately in amber.
 - Guided synchronization with a destination review, fresh commit counts, and a
   per-project rebase or merge preference. Conflicts expose file editing,
   explicit resolution staging, continuation, and abort controls.

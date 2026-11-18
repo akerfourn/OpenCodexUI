@@ -59,10 +59,26 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
   const projectsStore = store.projectsStore;
   const projectGroupsStore = store.projectGroupsStore;
   const sourcesStore = store.sourcesStore;
+  const gitIndicators = projectsStore.gitIndicators;
 
   useEffect(() => {
     void projectGroupsStore.refresh();
   }, [projectGroupsStore]);
+
+  useEffect(() => {
+    if (gitIndicators === undefined) return;
+    gitIndicators.refreshVisible(true);
+    /** Checks stale visible rows on return without continuous polling or a remote fetch. */
+    function handleFocus(): void {
+      if (!document.hidden) gitIndicators.refreshVisible();
+    }
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
+  }, [gitIndicators]);
 
   function handlePickExisting(): void {
     projectsStore.openProjectFromPicker("open");
@@ -87,6 +103,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
 
   function handleRefreshProjects(): void {
     projectsStore.refreshProjects();
+    gitIndicators?.refreshVisible(true);
   }
 
   function handleToggleHiddenProjects(): void {
@@ -253,6 +270,7 @@ export function HomeProjectsView({ store }: HomeProjectsViewProps) {
           <HomeProjectTreeList
             branches={treeBranches}
             sourceById={sourceById}
+            gitIndicators={gitIndicators}
             onOpenProject={handleOpenRecent}
             onSetProjectHidden={handleSetProjectHidden}
             onDeleteProject={handleDeleteProject}

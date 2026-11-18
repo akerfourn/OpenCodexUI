@@ -13,6 +13,7 @@ import type {
 
 import { HomeProjectGroupRow } from "./HomeProjectGroupRow";
 import { HomeProjectListItem } from "./HomeProjectListItem";
+import type { HomeProjectGitStore } from "../../stores/app/HomeProjectGitStore";
 import {
   getSourceColorOption
 } from "./sourceColor";
@@ -21,6 +22,7 @@ import type { HomeProjectTreeBranch } from "./homeProjectTree";
 type HomeProjectTreeListProps = {
   branches: HomeProjectTreeBranch[];
   sourceById: Map<string, OpenCodexSource>;
+  gitIndicators?: HomeProjectGitStore;
   onOpenProject(projectPath: string, sourceId: string | null): void;
   onSetProjectHidden(projectId: string, isHidden: boolean): void;
   onDeleteProject(project: OpenCodexProject): void;
@@ -34,6 +36,7 @@ type HomeProjectTreeListProps = {
 export function HomeProjectTreeList({
   branches,
   sourceById,
+  gitIndicators,
   onOpenProject,
   onSetProjectHidden,
   onDeleteProject,
@@ -49,6 +52,7 @@ export function HomeProjectTreeList({
           key={getBranchKey(branch)}
           branch={branch}
           sourceById={sourceById}
+          gitIndicators={gitIndicators}
           onOpenProject={onOpenProject}
           onSetProjectHidden={onSetProjectHidden}
           onDeleteProject={onDeleteProject}
@@ -70,6 +74,7 @@ type HomeProjectTreeBranchViewProps = Omit<HomeProjectTreeListProps, "branches">
 function HomeProjectTreeBranchView({
   branch,
   sourceById,
+  gitIndicators,
   onOpenProject,
   onSetProjectHidden,
   onDeleteProject,
@@ -86,6 +91,7 @@ function HomeProjectTreeBranchView({
     return (
       <HomeProjectListItem
         project={branch.node.project}
+        gitIndicators={gitIndicators}
         depth={branch.node.depth}
         sourceName={source === null ? null : source.name}
         sourceColor={source === null ? null : source.settings.color}
@@ -114,6 +120,7 @@ function HomeProjectTreeBranchView({
           key={getBranchKey(child)}
           branch={child}
           sourceById={sourceById}
+          gitIndicators={gitIndicators}
           onOpenProject={onOpenProject}
           onSetProjectHidden={onSetProjectHidden}
           onDeleteProject={onDeleteProject}
