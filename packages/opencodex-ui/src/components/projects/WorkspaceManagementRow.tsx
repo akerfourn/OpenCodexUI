@@ -21,6 +21,8 @@ export function WorkspaceManagementRow({ workspace, activity, changes, changesEr
   onWorkStatus(workspace: OpenCodexProjectWorkspace, status: OpenCodexWorkspaceWorkStatus): void;
 }) {
   const { t, i18n } = useTranslation();
+  const statusLabel = workspace.removalPending === true ? t("workspaces.deletionPendingLabel")
+    : t(`workspaceManagement.status.${status}`);
   const name = workspaceLabel(workspace, t("workspaces.primary"));
   const timestamp = Date.parse(activity?.lastActivityAt ?? "");
   let lastActivity: string = t("workspaceManagement.unknown");
@@ -42,7 +44,7 @@ export function WorkspaceManagementRow({ workspace, activity, changes, changesEr
     <Stack spacing={1}>
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
         <Typography variant="subtitle2" sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{name}</Typography>
-        <Chip size="small" label={t(`workspaceManagement.status.${status}`)} />
+        <Chip size="small" label={statusLabel} />
       </Stack>
       <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>{workspace.path}</Typography>
       <WorkspaceWorkStatusControlX workspace={workspace} disabled={workStatusDisabled} onChange={onWorkStatus} />

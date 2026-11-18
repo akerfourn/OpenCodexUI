@@ -2,6 +2,7 @@ import { Alert, Button, Stack } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 import type { ProjectWorkspacesStore } from "../../stores/project/ProjectWorkspacesStore";
+import { WorkspacePendingRemovalX } from "./WorkspacePendingRemoval";
 
 /** Existing journals expose verified recovery in both project and Home management views. */
 export function WorkspacePendingOperations({ store, disabled }: {
@@ -11,9 +12,8 @@ export function WorkspacePendingOperations({ store, disabled }: {
   const creations = store.pending.map(item => <Alert severity="warning" key={item.id} action={
     <Button disabled={disabled} onClick={() => void store.recoverCreation(item.id)}>{t("workspaces.recover")}</Button>
   }>{t("workspaces.pending", { path: item.destinationPath })}</Alert>);
-  const removals = store.pendingRemovals.map(item => <Alert severity="warning" key={item.id} action={
-    <Button disabled={disabled} onClick={() => void store.recoverRemoval(item.id)}>{t("workspaces.recover")}</Button>
-  }>{t("workspaces.removalPending", { path: item.workspacePath })}</Alert>);
+  const removals = store.pendingRemovals.map(item => <WorkspacePendingRemovalX key={item.id}
+    removal={item} store={store} disabled={disabled} />);
   const moves = store.pendingMoves.map(item => <Alert severity="warning" key={item.id} action={
     <Button disabled={disabled} onClick={() => void store.recoverMove(item.id)}>{t("workspaces.recover")}</Button>
   }>{t("workspaces.movePending", { from: item.workspacePath, to: item.destinationPath })}</Alert>);

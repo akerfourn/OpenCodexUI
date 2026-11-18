@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
+import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, TextField } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
@@ -13,6 +13,7 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
 }) {
   const { t } = useTranslation();
   const [confirmation, setConfirmation] = useState("");
+  const [deferred, setDeferred] = useState(false);
   const store = project.workspaces;
   const current = store.workspaces.find(item => item.id === workspace.id) ?? workspace;
   const name = workspaceLabel(workspace, t("workspaces.primary"));
@@ -20,11 +21,14 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
   const blocked = store.isBusy || unsaved || project.isReadOnlyFromCache || workspace.isPrimary
     || !current.managed || current.removedAt !== null || current.removalPending === true || current.movePending === true;
   const unsavedNotice = unsaved ? <Alert severity="warning">{t("workspaces.removeUnsaved")}</Alert> : null;
+  const deferredNotice = deferred ? <Alert severity="info">{t("workspaces.deferredRemovalHelp")}</Alert> : null;
+  const actionLabel = deferred ? t("workspaces.scheduleRemoval") : t("workspaces.remove");
 
   /** Closes only after the backend and durable catalogue confirm successful removal. */
   async function handleRemove(): Promise<void> {
     if (blocked || confirmation !== name) return;
-    await store.remove(workspace.id);
+    if (deferred) await store.remove(workspace.id, true);
+    else await store.remove(workspace.id);
     if (store.error === null) onClose();
   }
 
@@ -35,6 +39,10 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
         <Alert severity="warning">{t("workspaces.removeHelp")}</Alert>
         <TextField label={t("workspaces.destination")} value={workspace.path} fullWidth margin="normal"
           slotProps={{ input: { readOnly: true } }} />
+        <FormControlLabel label={t("workspaces.deferRemoval")} control={
+          <Checkbox checked={deferred} disabled={store.isBusy} onChange={event => setDeferred(event.target.checked)} />
+        } />
+        {deferredNotice}
         <TextField label={t("workspaces.removeConfirm", { name })} value={confirmation} fullWidth margin="normal"
           disabled={store.isBusy} autoComplete="off" onChange={event => setConfirmation(event.target.value)} />
         {unsavedNotice}<WorkspaceOperationError message={store.error} />
@@ -42,7 +50,7 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
       <DialogActions>
         <Button disabled={store.isBusy} onClick={onClose}>{t("workspaces.close")}</Button>
         <Button color="error" disabled={blocked || confirmation !== name} onClick={handleRemove}>
-          {t("workspaces.remove")}
+          {actionLabel}
         </Button>
       </DialogActions>
     </Dialog>

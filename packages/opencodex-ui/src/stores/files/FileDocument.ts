@@ -87,6 +87,8 @@ export class FileDocument {
   isLoading = false;
   /** Save in progress; closing is blocked until it completes. */
   isSaving = false;
+  /** Freezes editor changes while explicitly authorized workspace deletion is pending. */
+  workspaceRemovalPending = false;
   /** Prevents overlapping background checks. */
   private isChecking = false;
   /** Stops old completions from mutating disposed documents. */
@@ -303,9 +305,10 @@ export class FileDocument {
 
   /** Unsupported format, virtual content and initial reads cannot be edited. */
   get isReadOnly(): boolean {
-    return this.target === null || this.snapshot === null || this.snapshot.readOnly || this.isLoading ||
+    return this.workspaceRemovalPending || this.target === null || this.snapshot === null || this.snapshot.readOnly || this.isLoading ||
       this.error?.code === "accessDenied" || this.error?.code === "readOnly";
   }
+
 
   /** Retains image magnification independently of the mounted viewer. */
   setImageZoom(zoom: number | null): void {

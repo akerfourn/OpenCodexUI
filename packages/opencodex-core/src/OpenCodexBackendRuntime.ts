@@ -12,6 +12,8 @@ import { MessageRenderingService } from "./backend/support/MessageRenderingServi
 import { isDebugActive } from "@open-codex-ui/opencodex-protocol";
 import { WorkspaceActivityGate } from "./backend/workspaces/WorkspaceActivityGate.js";
 import { WorkspaceRemovalService } from "./backend/workspaces/WorkspaceRemovalService.js";
+import { canCheckWorkspaceRemovalSource, DeferredWorkspaceRemovalScheduler } from "./backend/workspaces/DeferredWorkspaceRemovalScheduler.js";
+import { WorkspaceSourceBusyError } from "./backend/workspaces/WorkspaceSourceBusyError.js";
 import { isInsideWorkspace } from "./backend/workspaces/WorkspaceRemovalRuntime.js";
 import { requireLegacyWorkspaceAvailable, workspaceRequestSource } from "./backend/workspaces/workspaceRequestSource.js";
 import { BrowserPermissionsService } from "./backend/browser/BrowserPermissionsService.js";
@@ -66,6 +68,8 @@ import type {
  * Coordinates backend services exposed to the UI transport.
  */
 export class OpenCodexBackendRuntime {
+  /** Durable automatic removals run only while this backend and the owning source are available. */
+  private readonly deferredRemovals: DeferredWorkspaceRemovalScheduler | null;
   /** Project-local command organization remains available without a connected Codex source. */
   readonly commandGroups: NonNullable<BackendServiceGraph["cacheRepository"]>["commandGroups"] | null;
   /** Shares short-lived source activity with destructive lifecycle operations. */
@@ -144,9 +148,18 @@ export class OpenCodexBackendRuntime {
         if (isDebugActive(session) && session !== null
           && session.configuration.context.sourceId === removal.sourceId
           && isInsideWorkspace(session.configuration.context.workspacePath, removal.workspacePath)) {
-          throw new Error("Stop the debug session in this workspace before removing it.");
+          throw new WorkspaceSourceBusyError("Stop the debug session in this workspace before removing it.");
         }
         await this.services.dockerComposeService.requireWorkspaceIdle(removal);
+      }, undefined, undefined,
+      (projectId, sourceId) => options.emit({ type: "projectWorkspaces.changed", projectId, sourceId }));
+    this.deferredRemovals = this.workspaceRemovals === null ? null : new DeferredWorkspaceRemovalScheduler(
+      this.workspaceRemovals, sourceId => {
+        const state = this.services.clientPool.readState(sourceId);
+        return canCheckWorkspaceRemovalSource(state) && this.services.clientPool.getClient(sourceId) !== undefined;
+      }, async error => {
+        await this.services.applicationLogService.createLog("error", "Deferred workspace removal failed.",
+          error instanceof Error ? error.message : String(error));
       });
     this.workspaceRelocations = this.services.cacheRepository === null ? null : new WorkspaceRelocationService(
       this.services.cacheRepository.workspaces, this.services.clientPool, this.workspaceActivity, async (workspace, destination) => {
@@ -201,6 +214,7 @@ export class OpenCodexBackendRuntime {
   /** Keeps lifecycle exclusion around tool dispatch, including file saves and process startup. */
   async runWorkspaceRequest(request: OpenCodexRequest, action: () => Promise<unknown>): Promise<unknown> {
     if (request.type === "projectWorkspaces.remove" || request.type === "projectWorkspaces.removals.reconcile"
+      || request.type === "projectWorkspaces.removals.cancel" || request.type === "projectWorkspaces.removals.retry"
       || request.type === "projectWorkspaces.relocate" || request.type === "projectWorkspaces.move"
       || request.type === "projectWorkspaces.moves.reconcile" || request.type === "projectWorkspaces.lock.update") {
       return await action();
@@ -374,6 +388,7 @@ export class OpenCodexBackendRuntime {
    * @returns Promise resolved when resources are disposed.
    */
   async dispose(): Promise<void> {
+    await this.deferredRemovals?.dispose();
     await this.filePreviews.dispose();
     await this.debug.dispose();
     await this.dictation.dispose();
@@ -403,6 +418,7 @@ export class OpenCodexBackendRuntime {
       isPrerelease: this.isPrerelease
     });
     this.options.emit({ type: "debug.state", snapshot: this.debug.snapshot() });
+    this.deferredRemovals?.start();
     await this.projects.list();
     await this.groups.list();
     await this.services.codexUpdateService.checkLatestRelease(false);

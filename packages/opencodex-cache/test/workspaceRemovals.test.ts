@@ -34,6 +34,61 @@ describe("workspace removal persistence", () => {
     return await workspaces.removals.begin(primary.projectId, secondary.id, "source", primary.id, "/repo/.git");
   }
 
+  it("should persist waiting deletion across repository recreation and release it only on explicit cancellation", async () => {
+    const removal = await workspaces.removals.begin(primary.projectId, secondary.id, "source", primary.id, "/repo/.git", true);
+    workspaces = new SqliteWorkspaceCacheRepository(database);
+    expect(await workspaces.removals.queued()).toEqual([expect.objectContaining({
+      id: removal.id, deferredState: "queued", requestedAt: expect.any(String), state: "preparing"
+    })]);
+    await expect(workspaces.removals.submitting(removal.id)).rejects.toThrow("not ready");
+    await expect(workspaces.reserve(secondary.id, "thread")).rejects.toThrow("pending removal");
+    await expect(workspaces.removals.updateDeferred(removal.id, primary.projectId, "other-source", "cancel"))
+      .rejects.toThrow("this project's");
+    await expect(workspaces.removals.updateDeferred(removal.id, "other-project", "source", "cancel"))
+      .rejects.toThrow("this project's");
+    await workspaces.removals.updateDeferred(removal.id, primary.projectId, "source", "cancel");
+    expect(await workspaces.removals.queued()).toEqual([]);
+    expect(await workspaces.get(secondary.id)).toMatchObject({ removedAt: null });
+    expect((await workspaces.get(secondary.id))?.removalPending).toBeUndefined();
+  });
+
+  it("should require explicit retry after a safety failure and never queue a dispatched operation", async () => {
+    const removal = await workspaces.removals.begin(primary.projectId, secondary.id, "source", primary.id, "/repo/.git", true);
+    await workspaces.removals.claim(removal.id);
+    await expect(workspaces.removals.updateDeferred(removal.id, primary.projectId, "source", "cancel"))
+      .rejects.toThrow("waiting or blocked");
+    await workspaces.removals.defer(removal.id, "Modified files must be retained.");
+    expect(await workspaces.removals.queued()).toEqual([]);
+    expect(await workspaces.removals.get(removal.id)).toMatchObject({ deferredState: "blocked",
+      blockedReason: "Modified files must be retained." });
+    await workspaces.removals.updateDeferred(removal.id, primary.projectId, "source", "retry");
+    await workspaces.removals.claim(removal.id);
+    await workspaces.removals.submitting(removal.id);
+    await workspaces.removals.fail(removal.id);
+    await expect(workspaces.removals.defer(removal.id, null)).rejects.toThrow("cannot return to the queue");
+    await expect(workspaces.removals.updateDeferred(removal.id, primary.projectId, "source", "retry"))
+      .rejects.toThrow("waiting or blocked");
+    expect(await workspaces.removals.queued()).toEqual([]);
+    expect(await workspaces.removals.get(removal.id)).toMatchObject({ state: "uncertain" });
+  });
+
+  it("should queue multiple checkouts of one repository while preserving physical operation exclusion", async () => {
+    const creation = await workspaces.creations.begin({ primaryWorkspaceId: primary.id, sourceId: "source",
+      projectPath: primary.path, repositoryPath: "/repo/.git", destinationPath: "/third",
+      start: { mode: "newBranch", branchName: "third", startPoint: "HEAD" } });
+    await workspaces.creations.submitting(creation.id, "a".repeat(40), "refs/heads/third");
+    await workspaces.creations.confirmGit(creation.id);
+    const thirdId = await workspaces.creations.commit(creation.id);
+    const first = await workspaces.removals.begin(primary.projectId, secondary.id, "source", primary.id, "/repo/.git", true);
+    const second = await workspaces.removals.begin(primary.projectId, thirdId, "source", primary.id, "/repo/.git", true);
+    expect(await workspaces.removals.queued()).toHaveLength(2);
+    await workspaces.removals.claim(first.id);
+    expect(await workspaces.removals.queued()).toEqual([]);
+    await expect(workspaces.removals.claim(second.id)).resolves.toBe(false);
+    await workspaces.removals.defer(first.id, null);
+    expect(await workspaces.removals.queued()).toHaveLength(2);
+  });
+
   it("should apply migration idempotently without rewriting existing workspaces or threads", async () => {
     const previous = await workspaces.list(primary.projectId);
     applySchemaMigrationV43(database);

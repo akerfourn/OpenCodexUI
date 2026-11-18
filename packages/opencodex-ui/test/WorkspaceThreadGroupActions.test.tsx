@@ -20,23 +20,26 @@ function menuItem(label: string): HTMLElement | undefined {
 }
 
 /** Opens the real workspace menu while isolating filesystem and transport-backed operations. */
-async function renderMenu(managed: boolean, lockedReason: string | null | undefined, removedAt: string | null = null) {
+async function renderMenu(managed: boolean, lockedReason: string | null | undefined,
+  removedAt: string | null = null, deferred = false) {
   const workspace: OpenCodexProjectWorkspace = {
     id: "secondary", projectId: "project", sourceId: "source", path: "/secondary",
-    isPrimary: false, managed, removedAt
+    isPrimary: false, managed, removedAt, removalPending: deferred
   };
   const move = vi.fn(async () => undefined);
+  const cancelDeferredRemoval = vi.fn(async () => undefined);
   const lockStates = new Map();
   if (lockedReason !== undefined) {
     lockStates.set(workspace.id, { workspaceId: workspace.id, sourceId: workspace.sourceId,
       workspacePath: workspace.path, supported: true, lockedReason });
   }
   const project = {
-    isReadOnlyFromCache: false,
+    isReadOnlyFromCache: deferred,
     files: { hasUnsavedWorkspaceDocuments: () => false },
     threadListStore: { isCreatingThread: false },
     workspaces: {
-      workspaces: [workspace], isBusy: false, error: null, lockStates, loadingLockIds: new Set(),
+      workspaces: [workspace], pendingRemovals: deferred ? [{ id: "waiting", workspaceId: workspace.id, deferredState: "queued" }] : [],
+      cancelDeferredRemoval, isBusy: false, error: null, lockStates, loadingLockIds: new Set(),
       loadLockState: vi.fn(async () => undefined), move,
       storageRoots: [{ id: "storage", label: "Storage", isDefault: true }],
       storagePreview: () => "/storage/project/secondary"
@@ -47,7 +50,7 @@ async function renderMenu(managed: boolean, lockedReason: string | null | undefi
       group={{ id: workspace.id, path: workspace.path, workspace, threads: [] }} onOpenSubAgentDialog={vi.fn()} />);
   });
   await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="workspaces.actions"]')!.click());
-  return { move };
+  return { move, cancelDeferredRemoval };
 }
 
 beforeEach(() => {
@@ -64,6 +67,15 @@ afterEach(async () => {
 });
 
 describe("contextual secondary workspace movement", () => {
+  it("should mark a queued workspace and allow cancellation from its menu while offline", async () => {
+    const { cancelDeferredRemoval } = await renderMenu(true, null, null, true);
+    expect(document.querySelector('[aria-label="workspaces.deletionPendingLabel"]')).not.toBeNull();
+    const cancel = menuItem("workspaces.cancelRemoval")!;
+    expect(cancel.getAttribute("aria-disabled")).not.toBe("true");
+    expect(menuItem("workspaces.remove")?.getAttribute("aria-disabled")).toBe("true");
+    await act(async () => cancel.click());
+    expect(cancelDeferredRemoval).toHaveBeenCalledWith("waiting");
+  });
   it.each([true, false])("should offer movement independently of deletion ownership (managed: %s)", async (managed) => {
     const { move } = await renderMenu(managed, null);
     expect(menuItem("workspaces.move")?.getAttribute("aria-disabled")).not.toBe("true");

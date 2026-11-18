@@ -1,3 +1,5 @@
+import { WorkspaceSourceBusyError } from "../workspaces/WorkspaceSourceBusyError.js";
+
 /**
  * Runs user-configured project commands through Codex app-server process APIs.
  */
@@ -61,7 +63,7 @@ export class ProjectCommandService {
     const active = [...this.startingRuns, ...[...this.runsById.values()].filter(run => run.status === "running")];
     if (active.some(run => run.sourceId === sourceId
       && (run.workspaceId === workspaceId || (typeof run.cwd === "string" && isInsideWorkspace(run.cwd, workspacePath))))) {
-      throw new Error("Stop project commands in this workspace before removing it.");
+      throw new WorkspaceSourceBusyError("Stop project commands in this workspace before removing it.");
     }
   }
   /** Serializes non-parallel starts before their process handles are registered. */

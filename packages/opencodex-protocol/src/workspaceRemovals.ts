@@ -20,4 +20,10 @@ export interface OpenCodexWorkspaceRemoval {
   state: "preparing" | "submitting" | "uncertain";
   /** Positive command-exit evidence, or null when the outcome is unknown. */
   gitExitCode: number | null;
+  /** Explicitly authorized automatic deletion; processing is never replayed after interruption. */
+  deferredState?: "queued" | "blocked" | "processing";
+  /** Time at which future automatic deletion was authorized. */
+  requestedAt?: string;
+  /** Last safety check that requires an explicit retry. */
+  blockedReason?: string | null;
 }

@@ -11,6 +11,10 @@ import type { RunGit } from "../src/backend/git/gitCommandRunner";
 import { WorkspaceActivityGate } from "../src/backend/workspaces/WorkspaceActivityGate";
 import { WorkspaceRemovalGit } from "../src/backend/workspaces/WorkspaceRemovalGit";
 import { WorkspaceRemovalService } from "../src/backend/workspaces/WorkspaceRemovalService";
+import { WorkspaceSourceBusyError } from "../src/backend/workspaces/WorkspaceSourceBusyError";
+import { OpenCodexRequestRouter } from "../src/OpenCodexRequestRouter";
+import type { OpenCodexBackendRuntime } from "../src/OpenCodexBackendRuntime";
+import { requestRoutingRuntime } from "./requestRoutingFixture";
 
 const execute = promisify(execFile);
 
@@ -185,5 +189,110 @@ describe("safe workspace removal with real Git and SQLite", () => {
     });
     await gate.run("other-source", async () => { await remove(); });
     expect((await cache.workspaces.get(secondary.id))?.removedAt).toEqual(expect.any(String));
+  });
+
+  it("should wait for managed source activity then delete with all original checks", async () => {
+    const dispatch = vi.spyOn(gitRemoval, "remove");
+    await service.schedule(primary.projectId, secondary.id, "source");
+    const pending = (await service.queued())[0]!;
+    inactive.mockRejectedValueOnce(new WorkspaceSourceBusyError("Source still active"));
+    await service.processQueued(pending.id);
+    expect((await service.queued())[0]?.id).toBe(pending.id);
+    expect(dispatch).not.toHaveBeenCalled();
+    await gate.run("source", async () => { await service.processQueued(pending.id); });
+    expect(dispatch).not.toHaveBeenCalled();
+    await service.processQueued(pending.id);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    await expect(fs.stat(checkout)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await cache.workspaces.get(secondary.id)).toMatchObject({ removedAt: expect.any(String) });
+    expect(await git(repository, ["branch", "--list", "topic"])).toContain("topic");
+  });
+
+  it("should wait for an active Codex thread in another project before automatic deletion", async () => {
+    const client = await clients.ensureClient();
+    client.readThread = vi.fn(async () => ({ thread: { id: "other-thread", cwd: "/another-project",
+      status: { type: "active" } } }));
+    request.mockResolvedValue({ data: ["other-thread"], nextCursor: null });
+    await service.schedule(primary.projectId, secondary.id, "source");
+    const pending = (await service.queued())[0]!;
+    const dispatch = vi.spyOn(gitRemoval, "remove");
+    await service.processQueued(pending.id);
+    expect((await service.queued())[0]?.id).toBe(pending.id);
+    expect(dispatch).not.toHaveBeenCalled();
+    request.mockResolvedValue({ data: [], nextCursor: null });
+    await service.processQueued(pending.id);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("should retain dirty files and block automatic retries until explicitly requested", async () => {
+    await service.schedule(primary.projectId, secondary.id, "source");
+    const pending = (await service.queued())[0]!;
+    await fs.writeFile(path.join(checkout, "untracked.txt"), "keep this file\n");
+    const dispatch = vi.spyOn(gitRemoval, "remove");
+    await service.processQueued(pending.id);
+    expect(await service.queued()).toEqual([]);
+    expect((await service.pending(primary.projectId))[0]).toMatchObject({ deferredState: "blocked",
+      blockedReason: expect.stringContaining("modified, untracked or ignored") });
+    await service.processQueued(pending.id);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(await fs.readFile(path.join(checkout, "untracked.txt"), "utf8")).toBe("keep this file\n");
+    await fs.unlink(path.join(checkout, "untracked.txt"));
+    await service.updateDeferred(pending.id, primary.projectId, "source", "retry");
+    await service.processQueued(pending.id);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("should resume durable waiting intent after SQLite reopens and honor cancellation before dispatch", async () => {
+    await service.schedule(primary.projectId, secondary.id, "source");
+    const pending = (await service.queued())[0]!;
+    await cache.close();
+    cache = createOpenCodexSqliteCacheRepository({ directory: path.join(directory, "cache") });
+    service = new WorkspaceRemovalService(cache.workspaces, clients, gate, inactive, gitRemoval);
+    expect((await service.queued())[0]?.id).toBe(pending.id);
+    await service.updateDeferred(pending.id, primary.projectId, "source", "cancel");
+    const dispatch = vi.spyOn(gitRemoval, "remove");
+    await service.processQueued(pending.id);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect((await fs.stat(checkout)).isDirectory()).toBe(true);
+    expect((await cache.workspaces.get(secondary.id))?.removalPending).toBeUndefined();
+  });
+
+  it("should never automatically replay an interrupted deferred dispatch", async () => {
+    const original = gitRemoval.remove.bind(gitRemoval);
+    const dispatch = vi.spyOn(gitRemoval, "remove").mockImplementation(async removal => {
+      await original(removal);
+      throw new Error("Lost deferred deletion response");
+    });
+    await service.schedule(primary.projectId, secondary.id, "source");
+    const pending = (await service.queued())[0]!;
+    await service.processQueued(pending.id);
+    expect((await service.pending(primary.projectId))[0]).toMatchObject({ state: "uncertain", deferredState: "processing" });
+    await cache.close();
+    cache = createOpenCodexSqliteCacheRepository({ directory: path.join(directory, "cache") });
+    service = new WorkspaceRemovalService(cache.workspaces, clients, gate, inactive, gitRemoval);
+    expect(await service.queued()).toEqual([]);
+    await service.processQueued(pending.id);
+    await expect(service.updateDeferred(pending.id, primary.projectId, "source", "retry")).rejects.toThrow("waiting or blocked");
+    await service.reconcile(pending.id);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(await cache.workspaces.get(secondary.id)).toMatchObject({ removedAt: expect.any(String) });
+  });
+
+  it("should persist intent instead of deleting through the transport and allow source-free cancellation", async () => {
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime({
+      workspaceRemovals: service
+    } as unknown as OpenCodexBackendRuntime));
+    await router.handleRequest({ type: "projectWorkspaces.remove", projectId: primary.projectId,
+      workspaceId: secondary.id, sourceId: "source", deferred: true });
+    const pending = (await service.queued())[0]!;
+    expect(pending).toMatchObject({ projectId: primary.projectId, workspaceId: secondary.id,
+      sourceId: "source", deferredState: "queued" });
+    expect((await fs.stat(checkout)).isDirectory()).toBe(true);
+    clients.ensureClient.mockClear();
+    await router.handleRequest({ type: "projectWorkspaces.removals.cancel", projectId: primary.projectId,
+      sourceId: "source", removalId: pending.id });
+    expect(clients.ensureClient).not.toHaveBeenCalled();
+    expect(await service.queued()).toEqual([]);
+    expect((await cache.workspaces.get(secondary.id))?.removalPending).toBeUndefined();
   });
 });

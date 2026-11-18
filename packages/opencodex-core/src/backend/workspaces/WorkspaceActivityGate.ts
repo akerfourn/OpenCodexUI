@@ -1,3 +1,5 @@
+import { WorkspaceSourceBusyError } from "./WorkspaceSourceBusyError.js";
+
 /** Prevents lifecycle mutations racing in-flight tool requests in the same source. */
 export class WorkspaceActivityGate {
   /** Short-lived source operations, including commands before their handles are registered. */
@@ -22,7 +24,7 @@ export class WorkspaceActivityGate {
   /** Fails rather than waiting indefinitely for a source operation or another removal. */
   async exclusive<T>(sourceId: string, action: () => Promise<T>): Promise<T> {
     if (this.writers.has(sourceId) || (this.readers.get(sourceId) ?? 0) > 0) {
-      throw new Error("This source is processing another operation. Retry workspace maintenance when it finishes.");
+      throw new WorkspaceSourceBusyError("This source is processing another operation. Retry workspace maintenance when it finishes.");
     }
     this.writers.add(sourceId);
     try {

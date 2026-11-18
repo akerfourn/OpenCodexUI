@@ -36,6 +36,7 @@ import type { OpenCodexCollaborationEvent } from "./collaboration";
  * fields over changing an existing payload in incompatible ways.
  */
 export type OpenCodexEvent =
+  | { type: "projectWorkspaces.changed"; projectId: string; sourceId: string }
   | { type: "sourceInstances.changed"; snapshot: SourceInstanceSnapshot }
   | { type: "debug.state"; snapshot: DebugSnapshot }
   | { type: "dictation.models.state"; state: OpenCodexDictationModelState }

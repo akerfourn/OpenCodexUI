@@ -13,6 +13,10 @@ export function WorkspaceOperationError({ message }: WorkspaceOperationErrorProp
   let details = null;
   if (message.endsWith("Finish active conversations and sub-agents on this source before workspace maintenance.")) {
     explanation = t("workspaces.sourceActive");
+  } else if (message.endsWith("Workspace contains modified, untracked or ignored files. Save or remove them before deleting it.")) {
+    explanation = t("workspaces.removeDirty");
+  }
+  if (explanation !== message) {
     details = <Box component="details" sx={{ mt: 1 }}>
       <Box component="summary" sx={{ cursor: "pointer" }}>{t("workspaces.errorDetails")}</Box>
       <Typography component="pre" variant="caption" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>

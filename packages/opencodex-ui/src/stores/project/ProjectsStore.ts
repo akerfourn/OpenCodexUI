@@ -66,6 +66,13 @@ export class ProjectsStore implements RootChildStore {
     this.trustStore.handleEvent(event);
 
     switch (event.type) {
+      case "projectWorkspaces.changed": {
+        const project = this.projectStoresById.get(event.projectId);
+        if (project?.project.sourceId === event.sourceId) void project.workspaces.load();
+        const owner = this.root.homeWorkspacesStore.projects.get(event.projectId);
+        if (owner?.project.sourceId === event.sourceId) void owner.load(false);
+        return;
+      }
       case "sourceInstances.changed":
         if (event.snapshot.phase === "stopped" || event.snapshot.phase === "updating") {
           this.stopSourceRuntime(event.snapshot.sourceId);

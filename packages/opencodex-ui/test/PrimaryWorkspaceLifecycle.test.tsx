@@ -35,7 +35,7 @@ describe("permanent primary workspace UI", () => {
       isPrimary: true, managed: false, removedAt: null, workStatus: "completed", completedAt: "2026-10-22T12:00:00Z" };
     const setWorkStatus = vi.fn();
     const project = { isReadOnlyFromCache: false, threadListStore: { isCreatingThread: false },
-      files: { hasUnsavedWorkspaceDocuments: () => false }, workspaces: { workspaces: [workspace],
+      files: { hasUnsavedWorkspaceDocuments: () => false }, workspaces: { workspaces: [workspace], pendingRemovals: [],
         isBusy: false, error: null, lockStates: new Map(), loadingLockIds: new Set(), setWorkStatus } } as unknown as ProjectStore;
     await act(async () => root.render(<WorkspaceThreadGroupX project={project} root={{} as RootStore}
       group={{ id: workspace.id, path: workspace.path, workspace, threads: [] }} onOpenSubAgentDialog={vi.fn()} />));

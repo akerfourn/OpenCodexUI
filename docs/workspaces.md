@@ -251,6 +251,36 @@ Git deregistration and directory absence in the frozen source before marking
 the workspace removed. A positively failed Git command can be cancelled when
 the registered checkout still exists. Ambiguous outcomes remain blocked.
 
+### Deferred deletion
+
+The deletion dialog offers an explicit **Delete automatically when the source
+is idle** option. Name confirmation authorizes later permanent directory
+deletion without another confirmation. This is reserved deletion intent, not
+a trash directory: no files move until the ordinary safe Git removal succeeds.
+The existing managed-secondary, unsaved-document, execution and transition
+guards still apply when scheduling a request.
+
+Migration 54 retains deferred intent in the removal journal. Queued workspaces
+remain visible with a warning marker, cannot run new work, and open editors
+become read-only. Waiting or blocked requests can be cancelled even offline,
+from the workspace menu or pending-operation controls. Multiple checkouts in
+one repository can wait together; only one physical removal may be in progress.
+Identity, creation and movement reservations remain in force while waiting.
+
+While OpenCodexUI is open, a single worker checks the local queue every five
+seconds. It uses only already ready, idle source connections and never starts
+a stopped source. Before dispatch it repeats all source-wide agent, terminal,
+managed-process, directory and Git checks used by immediate removal. Observed
+activity returns undispatched intent to the queue. Other safety failures retain
+a visible blocked request requiring explicit retry or cancellation. Cancel the
+request before editing its files through OpenCodexUI.
+
+Queued intent survives application restarts. A claim interrupted during
+preparation, or any dispatched operation with an uncertain result, requires
+the existing explicit recovery flow; the worker never replays it. Source-owned
+change events refresh project and Home catalogues from cache after background
+state changes, without running new Git scans.
+
 ## Relocating an existing workspace
 
 Use **Relocate workspace** in a workspace's menu after moving its directory

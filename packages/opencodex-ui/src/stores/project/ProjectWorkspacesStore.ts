@@ -104,6 +104,8 @@ export class ProjectWorkspacesStore {
         for (const workspace of workspaces) {
           const previous = this.workspaces.find(item => item.id === workspace.id);
           if (previous !== undefined && previous.path !== workspace.path) this.applyRelocation(previous, workspace);
+          this.project.files.setWorkspaceRemovalPending(workspace.id, workspace.removalPending === true || workspace.removedAt !== null);
+          if (workspace.removedAt !== null) this.project.files.closeRemovedWorkspace(workspace.id);
         }
         this.workspaces = workspaces;
         this.pending = pending;
@@ -274,15 +276,32 @@ export class ProjectWorkspacesStore {
   }
 
   /** Deletes only the explicit managed checkout; unsaved buffers are never discarded implicitly. */
-  async remove(workspaceId: string): Promise<void> {
+  async remove(workspaceId: string, deferred = false): Promise<void> {
     await this.perform(async () => {
       if (this.project.files.hasUnsavedWorkspaceDocuments(workspaceId)) {
         throw new Error("Save or close unsaved workspace documents before removing it.");
       }
+      this.project.files.setWorkspaceRemovalPending(workspaceId, true);
       await this.root.request({ type: "projectWorkspaces.remove", projectId: this.project.project.id,
-        workspaceId, sourceId: this.requireSource() });
-      this.project.files.closeRemovedWorkspace(workspaceId);
+        workspaceId, sourceId: this.requireSource(), ...(deferred ? { deferred: true } : {}) });
+      if (!deferred) this.project.files.closeRemovedWorkspace(workspaceId);
     });
+  }
+
+  /** Cancels waiting intent without contacting or starting an unavailable source. */
+  async cancelDeferredRemoval(removalId: string): Promise<void> {
+    await this.perform(async () => {
+      await this.root.request({ type: "projectWorkspaces.removals.cancel", removalId,
+        projectId: this.project.project.id, sourceId: this.requireSource() });
+    }, true);
+  }
+
+  /** Explicitly retries a blocked safety check; uncertain dispatched operations use recovery instead. */
+  async retryDeferredRemoval(removalId: string): Promise<void> {
+    await this.perform(async () => {
+      await this.root.request({ type: "projectWorkspaces.removals.retry", removalId,
+        projectId: this.project.project.id, sourceId: this.requireSource() });
+    }, true);
   }
 
   /** Verifies completion after restart without replaying the physical deletion. */

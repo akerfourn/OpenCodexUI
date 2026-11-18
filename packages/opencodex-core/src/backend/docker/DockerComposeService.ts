@@ -1,3 +1,4 @@
+import { WorkspaceSourceBusyError } from "../workspaces/WorkspaceSourceBusyError.js";
 import { isInsideWorkspace } from "../workspaces/WorkspaceRemovalRuntime.js";
 import { ComposeFileSelectionError, discoverComposeFiles, requireComposeFile } from "./composeFiles.js";
 import { createHash } from "node:crypto";
@@ -63,7 +64,7 @@ export class DockerComposeService {
       return (matchesPrimary || labels.includes(`com.docker.compose.project=${name}`))
         && !["created", "exited", "dead"].includes(container.state.toLowerCase());
     })) {
-      throw new Error("Stop Docker Compose services in this workspace before workspace maintenance.");
+      throw new WorkspaceSourceBusyError("Stop Docker Compose services in this workspace before workspace maintenance.");
     }
   }
   /** Creates a Compose service over source-scoped app-server clients. */

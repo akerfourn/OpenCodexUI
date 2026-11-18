@@ -15,7 +15,7 @@ let container: HTMLDivElement;
 
 /** Changes the actual confirmation input through React's browser event handling. */
 async function confirmName(value: string): Promise<void> {
-  const input = document.querySelector<HTMLInputElement>("input:not([readonly])")!;
+  const input = document.querySelector<HTMLInputElement>('input[type="text"]:not([readonly])')!;
   const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
   await act(async () => {
     setValue.call(input, value);
@@ -57,6 +57,20 @@ afterEach(async () => {
 });
 
 describe("workspace deletion confirmation", () => {
+  it("should require explicit future deletion consent and the exact name before scheduling", async () => {
+    const { remove, onClose } = await renderDialog();
+    const checkbox = document.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    expect(checkbox.checked).toBe(false);
+    await act(async () => checkbox.click());
+    const scheduled = [...document.querySelectorAll<HTMLButtonElement>("button")]
+      .find(button => button.textContent === "workspaces.scheduleRemoval")!;
+    expect(scheduled.disabled).toBe(true);
+    expect(document.body.textContent).toContain("workspaces.deferredRemovalHelp");
+    await confirmName("Feature");
+    await act(async () => scheduled.click());
+    expect(remove).toHaveBeenCalledWith("workspace", true);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
   it("should require the exact workspace name before sending the destructive action", async () => {
     const { remove, onClose } = await renderDialog();
     expect(removeButton().disabled).toBe(true);

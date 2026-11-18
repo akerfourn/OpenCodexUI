@@ -20,8 +20,8 @@ export function HomeWorkspaceRow({ owner, workspace }: {
     { dateStyle: "medium", timeStyle: "short" }).format(timestamp);
   const progress = workspace.isPrimary ? null : <Chip size="small" variant="outlined"
     label={t(`workspaceWorkStatus.${workspace.workStatus ?? "active"}`)} />;
-  const pending = owner.hasPending(workspace) ? <Chip size="small" color="warning"
-    label={t("workspaceHome.pending")} /> : null;
+  const pendingLabel = workspace.removalPending === true ? t("workspaces.deletionPendingLabel") : t("workspaceHome.pending");
+  const pending = owner.hasPending(workspace) ? <Chip size="small" color="warning" label={pendingLabel} /> : null;
   const count = activity === undefined ? null : <Typography variant="caption" color="text.secondary">
     {t("workspaceManagement.conversations", { count: activity.conversationCount })}</Typography>;
   const failure = error === undefined ? null : <Typography variant="caption" color="error" title={error}>

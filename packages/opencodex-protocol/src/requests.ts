@@ -91,8 +91,10 @@ export type OpenCodexRequest =
   | { type: "projectWorkspaces.diskUsage.read"; input: OpenCodexFileContext }
   | { type: "projectWorkspaces.relocate"; projectId: string; workspaceId: string; sourceId: string;
       destinationPath: string; confirmIdentity: boolean }
-  | { type: "projectWorkspaces.remove"; projectId: string; workspaceId: string; sourceId: string }
+  | { type: "projectWorkspaces.remove"; projectId: string; workspaceId: string; sourceId: string; deferred?: boolean }
   | { type: "projectWorkspaces.removals.list"; projectId: string }
+  | { type: "projectWorkspaces.removals.cancel" | "projectWorkspaces.removals.retry";
+      removalId: string; projectId: string; sourceId: string }
   | { type: "projectWorkspaces.removals.reconcile"; removalId: string }
   | { type: "projectWorkspaces.create"; input: OpenCodexWorkspaceCreateInput }
   | { type: "projectWorkspaces.creations.list"; projectId: string }

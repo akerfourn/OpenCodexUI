@@ -350,6 +350,66 @@ describe("workspace UI orchestration", () => {
     expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.remove")).toBe(false);
   });
 
+  it("should reserve editors on scheduling and allow offline cancellation with explicit identities", async () => {
+    const { root, project, request } = fixture();
+    let queued = false;
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.remove") queued = input.deferred === true;
+      if (input.type === "projectWorkspaces.removals.cancel") queued = false;
+      if (input.type === "projectWorkspaces.list") {
+        return workspaces.map(item => item.id === "B" ? { ...item, removalPending: queued } : item);
+      }
+      return [];
+    });
+    await project.workspaces.load();
+    const target = { sourceId: "source", projectId: "project", workspaceId: "B", workspacePath: "/B", path: "file.txt" };
+    const document = new FileDocument("document", "file.txt", target, "Feature", root);
+    document.snapshot = { content: "", revision: "rev", bom: false, eol: "lf", readOnly: false };
+    project.files.documents.set(document.id, document);
+    expect(document.isReadOnly).toBe(false);
+
+    await project.workspaces.remove("B", true);
+    expect(document.isReadOnly).toBe(true);
+    document.edit("Cannot edit while deletion is queued");
+    expect(document.content).toBe("");
+    expect(project.files.documents.has(document.id)).toBe(true);
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.remove", projectId: "project",
+      workspaceId: "B", sourceId: "source", deferred: true });
+    vi.mocked(root.sourcesStore.isSourceReady).mockReturnValue(false);
+    await project.workspaces.cancelDeferredRemoval("queued-removal");
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.removals.cancel", removalId: "queued-removal",
+      projectId: "project", sourceId: "source" });
+    expect(document.isReadOnly).toBe(false);
+    await project.workspaces.retryDeferredRemoval("blocked-removal");
+    expect(request).toHaveBeenCalledWith({ type: "projectWorkspaces.removals.retry", removalId: "blocked-removal",
+      projectId: "project", sourceId: "source" });
+  });
+
+  it("should refresh cached outcomes after a background event for the owning source only", async () => {
+    const { root, project, request } = fixture();
+    await project.workspaces.load();
+    request.mockClear();
+    root.projectsStore.handleEvent({ type: "projectWorkspaces.changed", projectId: "project", sourceId: "other-source" });
+    expect(request).not.toHaveBeenCalled();
+    request.mockImplementation(async input => {
+      if (input.type === "projectWorkspaces.list") {
+        return workspaces.map(item => item.id === "B" ? { ...item, removedAt: "2026-11-18T12:00:00Z" } : item);
+      }
+      return [];
+    });
+    let stop = () => {};
+    const refreshed = new Promise<void>(resolve => {
+      stop = autorun(() => {
+        if (project.workspaces.workspaces.find(item => item.id === "B")?.removedAt !== null) resolve();
+      });
+    });
+    root.projectsStore.handleEvent({ type: "projectWorkspaces.changed", projectId: "project", sourceId: "source" });
+    await refreshed;
+    stop();
+    expect(project.workspaces.workspaces.find(item => item.id === "B")?.removedAt).toBe("2026-11-18T12:00:00Z");
+    expect(request.mock.calls.some(([input]) => input.type === "projectWorkspaces.changes.read")).toBe(false);
+  });
+
   it("should offer only this source's storage locations and send an automatic creation intent", async () => {
     const { root, project, request } = fixture();
     root.appStore.settingsStore.settings.workspaceRoots = [

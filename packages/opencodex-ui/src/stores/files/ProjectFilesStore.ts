@@ -79,6 +79,13 @@ export class ProjectFilesStore {
     }
   }
 
+  /** Reserves open buffers without discarding content or overwriting source filesystem permissions. */
+  setWorkspaceRemovalPending(workspaceId: string, pending: boolean): void {
+    for (const document of this.documents.values()) {
+      if (document.target?.workspaceId === workspaceId) document.workspaceRemovalPending = pending;
+    }
+  }
+
   /** Rechecks permissions on open documents without discarding unsaved edits. */
   async refreshAccess(context: OpenCodexFileContext): Promise<void> {
     const documents = [...this.documents.values()].filter(document =>

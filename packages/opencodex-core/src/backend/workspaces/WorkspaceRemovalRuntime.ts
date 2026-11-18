@@ -1,4 +1,5 @@
 import { isMissingWorkspacePathError } from "./workspaceSourcePath.js";
+import { WorkspaceSourceBusyError } from "./WorkspaceSourceBusyError.js";
 import path from "node:path";
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import type { OpenCodexWorkspaceRemoval } from "@open-codex-ui/opencodex-protocol";
@@ -20,17 +21,20 @@ export class WorkspaceRemovalRuntime {
     for (const id of loaded.data) {
       const { thread } = await client.readThread(id, false);
       // A thread's cwd alone cannot prove that its agents and tools cannot access this checkout.
-      if (thread.id !== id || thread.status.type !== "idle") {
-        throw new Error("Finish active conversations and sub-agents on this source before workspace maintenance.");
+      if (thread.id !== id) throw new Error("Loaded conversation identity changed during workspace maintenance.");
+      if (thread.status.type !== "idle") {
+        throw new WorkspaceSourceBusyError("Finish active conversations and sub-agents on this source before workspace maintenance.");
       }
       if (isInsideWorkspace(thread.cwd, removal.workspacePath)) {
         targets.push(id);
       }
       const terminals = await client.request<v2.ThreadBackgroundTerminalsListResponse>(
         "thread/backgroundTerminals/list", { threadId: id, limit: 100 });
-      if (!Array.isArray(terminals.data) || terminals.nextCursor !== null
-        || terminals.data.some(terminal => isInsideWorkspace(terminal.cwd, removal.workspacePath))) {
+      if (!Array.isArray(terminals.data) || terminals.nextCursor !== null) {
         throw new Error("Stop background terminals before workspace maintenance; their inventory must be complete.");
+      }
+      if (terminals.data.some(terminal => isInsideWorkspace(terminal.cwd, removal.workspacePath))) {
+        throw new WorkspaceSourceBusyError("Stop background terminals before workspace maintenance; their inventory must be complete.");
       }
     }
     for (const id of targets) {
@@ -47,6 +51,9 @@ export class WorkspaceRemovalRuntime {
       }
       for (const id of remaining.data) {
         const { thread } = await client.readThread(id, false);
+        if (thread.id === id && thread.status.type !== "idle") {
+          throw new WorkspaceSourceBusyError("Source activity changed while unloading workspace conversations. Retry after closing them.");
+        }
         if (thread.id !== id || thread.status.type !== "idle" || isInsideWorkspace(thread.cwd, removal.workspacePath)) {
           throw new Error("Source activity changed while unloading workspace conversations. Retry after closing them.");
         }

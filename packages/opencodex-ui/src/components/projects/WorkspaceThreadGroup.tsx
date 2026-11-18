@@ -2,6 +2,7 @@ import AddCommentOutlinedIcon from "@mui/icons-material/AddCommentOutlined";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import ChevronRightOutlinedIcon from "@mui/icons-material/ChevronRightOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import AutoDeleteOutlinedIcon from "@mui/icons-material/AutoDeleteOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import { Box, IconButton, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
@@ -36,8 +37,20 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   const [removing, setRemoving] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const workspace = group.workspace;
+  const pendingRemoval = project.workspaces.pendingRemovals.find(item => item.workspaceId === workspace?.id);
+  const canCancelRemoval = pendingRemoval?.deferredState === "queued" || pendingRemoval?.deferredState === "blocked";
+  const cancelRemovalAction = canCancelRemoval ? <MenuItem disabled={project.workspaces.isBusy} onClick={handleCancelRemoval}>
+    {t("workspaces.cancelRemoval")}</MenuItem> : null;
+  /** Cancels this workspace's waiting intent, including when its source is offline. */
+  function handleCancelRemoval(): void {
+    setAnchor(null);
+    if (pendingRemoval !== undefined) void project.workspaces.cancelDeferredRemoval(pendingRemoval.id);
+  }
   let name = workspace === null ? t("workspaces.unavailable") : workspaceLabel(workspace, t("workspaces.primary"));
   if (workspace?.removedAt != null) name = t("workspaces.removedName", { name });
+  const removalBadge = workspace?.removalPending === true ? <Tooltip title={t("workspaces.deletionPendingLabel")}>
+    <AutoDeleteOutlinedIcon fontSize="small" color="warning" aria-label={t("workspaces.deletionPendingLabel")} />
+  </Tooltip> : null;
   const newConversationLabel = t("workspaces.newConversationIn", { name });
   const disabled = workspace === null || workspace.removedAt !== null || project.isReadOnlyFromCache
     || workspace.removalPending === true || workspace.movePending === true || project.workspaces.isBusy || project.threadListStore.isCreatingThread;
@@ -151,7 +164,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
           {expandIcon}
         </IconButton>
         <Typography variant="subtitle2" noWrap sx={{ flex: 1 }} title={name}>{name}</Typography>
-        {workStatusBadge}{lockBadge}
+        {workStatusBadge}{lockBadge}{removalBadge}
         <Typography variant="caption" color="text.secondary">{group.threads.length}</Typography>
         <Tooltip title={newConversationLabel}>
           <span style={{ display: "inline-flex" }}>
@@ -168,7 +181,7 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
         <MenuItem onClick={handleProperties}>{t("workspaces.properties")}</MenuItem>
         {workStatusItem}
         <MenuItem disabled={disabled} onClick={handlePrepare}>{t("workspacePreparation.title")}</MenuItem>
-        {lockAction}{moveAction}{relocateAction}{removeAction}
+        {lockAction}{moveAction}{relocateAction}{removeAction}{cancelRemovalAction}
       </Menu>
     </Box>
   );
