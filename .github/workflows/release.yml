@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Detect release version
         id: metadata
@@ -140,6 +140,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: prepare_release
     if: ${{ needs.prepare_release.outputs.should_release == 'true' }}
+    env:
+      # Local dictation uses the CPU; the packaged application excludes CUDA libraries.
+      ONNXRUNTIME_NODE_INSTALL_CUDA: skip
 
     steps:
       - name: Checkout
@@ -148,7 +151,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install Linux packaging dependencies
@@ -199,7 +202,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
