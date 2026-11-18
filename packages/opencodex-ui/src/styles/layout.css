@@ -158,26 +158,18 @@
 }
 
 .project-sidebar-hover-actions {
-  position: absolute;
-  right: 34px;
   display: flex;
   flex: 0 0 auto;
-  padding-left: 10px;
-  background: var(--vscode-sideBar-background);
-}
-
-.project-sidebar-hover-action {
   opacity: 0;
+  pointer-events: none;
   transition: opacity 140ms ease;
 }
 
-.project-sidebar-hover-action.is-open {
+.project-sidebar-hover-actions.is-open,
+.project-sidebar-header:hover .project-sidebar-hover-actions,
+.project-sidebar-header:focus-within .project-sidebar-hover-actions {
   opacity: 1;
-}
-
-.project-sidebar-header:hover .project-sidebar-hover-action,
-.project-sidebar-header:focus-within .project-sidebar-hover-action {
-  opacity: 1;
+  pointer-events: auto;
 }
 
 .side-header h1,

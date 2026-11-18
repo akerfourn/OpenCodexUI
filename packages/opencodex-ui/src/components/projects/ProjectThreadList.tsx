@@ -205,12 +205,12 @@ export function ProjectThreadList({
       <header className="side-header project-sidebar-header">
         <Box className="project-sidebar-title" sx={{ minWidth: 0 }}>
           <Box className="project-sidebar-title-row">
-            <Typography variant="h6" component="h1" noWrap>
+            <Typography variant="h6" component="h1" noWrap title={projectStore.displayName}>
               {projectStore.displayName}
             </Typography>
-            <Stack className="project-sidebar-hover-actions" direction="row" spacing={0.5}>
+            <Stack className={`project-sidebar-hover-actions${projectActionsAnchor !== null ? " is-open" : ""}`}
+              direction="row" spacing={0.5}>
               <IconButton
-                className={`project-sidebar-hover-action${projectActionsAnchor !== null ? " is-open" : ""}`}
                 aria-label={t("sidebar.projectActions")}
                 aria-haspopup="menu"
                 aria-expanded={projectActionsAnchor !== null ? "true" : undefined}
