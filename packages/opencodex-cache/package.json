@@ -1,6 +1,6 @@
 {
   "name": "@open-codex-ui/opencodex-cache",
-  "version": "1.16.0-alpha.15",
+  "version": "1.16.0-alpha.16",
   "private": true,
   "type": "module",
   "main": "dist/index.js",
