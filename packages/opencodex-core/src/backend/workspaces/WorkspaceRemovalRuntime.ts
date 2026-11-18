@@ -19,6 +19,7 @@ export class WorkspaceRemovalRuntime {
     const targets: string[] = [];
     for (const id of loaded.data) {
       const { thread } = await client.readThread(id, false);
+      // A thread's cwd alone cannot prove that its agents and tools cannot access this checkout.
       if (thread.id !== id || thread.status.type !== "idle") {
         throw new Error("Finish active conversations and sub-agents on this source before workspace maintenance.");
       }

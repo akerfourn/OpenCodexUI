@@ -30,12 +30,12 @@ function removeButton(): HTMLButtonElement {
 }
 
 /** Keeps component events real while isolating the store's transport-backed operation. */
-async function renderDialog(unsaved = false, current = workspace) {
+async function renderDialog(unsaved = false, current = workspace, error: string | null = null) {
   const remove = vi.fn(async () => undefined);
   const onClose = vi.fn();
   const project = { isReadOnlyFromCache: false,
     files: { hasUnsavedWorkspaceDocuments: () => unsaved },
-    workspaces: { workspaces: [current], isBusy: false, error: null, remove }
+    workspaces: { workspaces: [current], isBusy: false, error, remove }
   } as unknown as ProjectStore;
   await act(async () => {
     root.render(<WorkspaceRemoveDialogX project={project} workspace={current} onClose={onClose} />);
@@ -81,5 +81,18 @@ describe("workspace deletion confirmation", () => {
     await renderDialog(false, { ...workspace, managed: false });
     await confirmName("Feature");
     expect(removeButton().disabled).toBe(true);
+  });
+
+  it("should explain source-wide activity and keep the failed removal dialog open", async () => {
+    const message = "Error invoking remote method 'opencodex:request': Error: "
+      + "Finish active conversations and sub-agents on this source before workspace maintenance.";
+    const { onClose } = await renderDialog(false, workspace, message);
+    const details = document.querySelector("details")!;
+    const alert = details.closest('[role="alert"]')!;
+
+    expect(alert.querySelector("p")?.textContent).toBe("workspaces.sourceActive");
+    expect(details.open).toBe(false);
+    expect(details.textContent).toContain(message);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

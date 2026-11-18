@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { workspaceLabel } from "../../stores/project/threads/workspaceThreadGroups";
+import { WorkspaceOperationError } from "./WorkspaceOperationError";
 
 /** Names the exact checkout and requires explicit confirmation before irreversible file removal. */
 export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
@@ -18,7 +19,6 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
   const unsaved = project.files.hasUnsavedWorkspaceDocuments(workspace.id);
   const blocked = store.isBusy || unsaved || project.isReadOnlyFromCache || workspace.isPrimary
     || !current.managed || current.removedAt !== null || current.removalPending === true || current.movePending === true;
-  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
   const unsavedNotice = unsaved ? <Alert severity="warning">{t("workspaces.removeUnsaved")}</Alert> : null;
 
   /** Closes only after the backend and durable catalogue confirm successful removal. */
@@ -37,7 +37,7 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
           slotProps={{ input: { readOnly: true } }} />
         <TextField label={t("workspaces.removeConfirm", { name })} value={confirmation} fullWidth margin="normal"
           disabled={store.isBusy} autoComplete="off" onChange={event => setConfirmation(event.target.value)} />
-        {unsavedNotice}{error}
+        {unsavedNotice}<WorkspaceOperationError message={store.error} />
       </DialogContent>
       <DialogActions>
         <Button disabled={store.isBusy} onClick={onClose}>{t("workspaces.close")}</Button>

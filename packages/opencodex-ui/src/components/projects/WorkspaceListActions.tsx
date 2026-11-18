@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Menu, MenuItem, Typography } from "@mui/material";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, Menu, MenuItem, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { WorkspaceCreateDialogX } from "./WorkspaceCreateDialog";
 import { WorkspaceManagementDialogX } from "./WorkspaceManagementDialog";
 import { WorkspacePendingOperationsX } from "./WorkspacePendingOperations";
+import { WorkspaceOperationError } from "./WorkspaceOperationError";
 
 /** Sidebar catalogue actions keep import and recovery separate from conversation properties. */
 export function WorkspaceListActions({ project }: { project: ProjectStore }) {
@@ -19,7 +20,7 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   useEffect(() => { void store.load(); }, [store]);
   const disabled = store.isBusy || project.isReadOnlyFromCache;
-  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
+  const error = <WorkspaceOperationError message={store.error} />;
   const skipped = store.skipped.map((item) => (
     <Typography variant="caption" component="div" key={item.path}>
       {t("workspaces.skipped", { path: item.path, reason: item.reason })}

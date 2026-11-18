@@ -54,6 +54,67 @@ describe("workspace removal runtime guards", () => {
     expect(client.unsubscribeThread).not.toHaveBeenCalled();
   });
 
+  it("should retain the source-wide guard for an active conversation in another project", async () => {
+    const { runtime, client } = fixture();
+    client.request.mockResolvedValue({ data: ["thread"], nextCursor: null } as never);
+    client.readThread.mockResolvedValue({ thread: { id: "thread", cwd: "/another-project", status: { type: "active" } } });
+
+    await expect(runtime.requireIdle(removal)).rejects.toThrow(
+      "Finish active conversations and sub-agents on this source before workspace maintenance."
+    );
+
+    expect(client.unsubscribeThread).not.toHaveBeenCalled();
+  });
+
+  it("should allow an idle conversation in another project without unloading it", async () => {
+    const { runtime, client } = fixture();
+    client.request.mockImplementation(async method => ({
+      data: method === "thread/loaded/list" ? ["thread"] : [], nextCursor: null
+    }) as never);
+    client.readThread.mockResolvedValue({ thread: { id: "thread", cwd: "/another-project", status: { type: "idle" } } });
+
+    await expect(runtime.requireIdle(removal)).resolves.toBeUndefined();
+
+    expect(client.unsubscribeThread).not.toHaveBeenCalled();
+    expect(client.request).toHaveBeenCalledWith("thread/backgroundTerminals/list", { threadId: "thread", limit: 100 });
+  });
+
+  it("should recheck source-wide activity after unloading the target's idle conversations", async () => {
+    const { runtime, client } = fixture();
+    client.request.mockImplementation(async method => {
+      let data: string[] = [];
+      if (method === "thread/loaded/list") {
+        data = ["other"];
+        if (client.unsubscribeThread.mock.calls.length === 0) data = ["thread", "other"];
+      }
+      return { data, nextCursor: null } as never;
+    });
+    client.readThread.mockImplementation(async id => {
+      let cwd = "/checkout";
+      let type = "idle";
+      if (id === "other") {
+        cwd = "/another-project";
+        if (client.unsubscribeThread.mock.calls.length > 0) type = "active";
+      }
+      return { thread: { id, cwd, status: { type } } };
+    });
+
+    await expect(runtime.requireIdle(removal)).rejects.toThrow("Source activity changed");
+
+    expect(client.unsubscribeThread).toHaveBeenCalledOnce();
+    expect(client.unsubscribeThread).toHaveBeenCalledWith("thread");
+  });
+
+  it("should refuse incomplete loaded-thread inventories before inferring any workspace isolation", async () => {
+    const { runtime, client } = fixture();
+    client.request.mockResolvedValue({ data: [], nextCursor: "more" } as never);
+
+    await expect(runtime.requireIdle(removal)).rejects.toThrow("loaded conversation inventory is incomplete");
+
+    expect(client.readThread).not.toHaveBeenCalled();
+    expect(client.unsubscribeThread).not.toHaveBeenCalled();
+  });
+
   it("should refuse live terminals even when their owning conversation is idle in another checkout", async () => {
     const { runtime, client } = fixture();
     client.readThread.mockResolvedValue({ thread: { id: "thread", cwd: "/repo", status: { type: "idle" } } });

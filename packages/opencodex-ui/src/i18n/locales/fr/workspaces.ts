@@ -188,6 +188,8 @@ export const frWorkspaces = {
 
     "remove": "Supprimer le workspace",
     "removeTitle": "Supprimer le workspace {{name}} ?",
+    "sourceActive": "Un chat ou un sous-agent est encore actif sur cette source Codex, éventuellement dans un autre projet. La maintenance des workspaces exige que tous les agents de cette source soient au repos. Attendez la fin de leurs exécutions, puis réessayez.",
+    "errorDetails": "Détails techniques",
     "removeHelp": "Le dossier sera supprimé définitivement. Les branches Git et l’historique des conversations seront conservés. Changez le workspace des conversations que vous souhaitez poursuivre avant de supprimer celui-ci. Les fichiers modifiés, non suivis ou ignorés et les processus actifs bloquent la suppression ; aucun forçage n’est effectué.",
     "removeConfirm": "Saisissez {{name}} pour confirmer",
     "removeUnsaved": "Enregistrez ou fermez les documents non enregistrés de ce workspace avant de le supprimer.",

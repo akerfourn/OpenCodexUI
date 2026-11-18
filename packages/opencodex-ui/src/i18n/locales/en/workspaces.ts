@@ -186,6 +186,8 @@ export const enWorkspaces = {
 
     "remove": "Delete workspace",
     "removeTitle": "Delete workspace {{name}}?",
+    "sourceActive": "A chat or sub-agent is still active on this Codex source, possibly in another project. Workspace maintenance requires all agents on this source to be idle. Wait for their runs to finish, then try again.",
+    "errorDetails": "Technical details",
     "removeHelp": "The directory will be permanently deleted. Git branches and conversation history will be retained. Switch conversations you want to continue to another workspace before deleting this one. Modified, untracked or ignored files and active processes block deletion; removal is never forced.",
     "removeConfirm": "Enter {{name}} to confirm",
     "removeUnsaved": "Save or close unsaved documents in this workspace before deleting it.",
