@@ -338,7 +338,7 @@ export class ProjectGoalsStore {
   /** Stores and forwards a catalogue operation error. */
   private reportError(error: unknown): void {
     this.errorMessage = readErrorMessage(error);
-    this.root.appStore.errorMessage = this.errorMessage;
+    this.root.reportError(error);
   }
 }
 

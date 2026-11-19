@@ -19,7 +19,7 @@ export function FileLinkMenuProvider({ store, children }: { store: RootStore; ch
     }
     /** Reports both clipboard and host failures through the application's normal feedback. */
     function reportError(error: unknown): void {
-      store.appStore.applyError({ type: "error", message: String(error) });
+      store.reportError(error);
     }
     /** Dispatches only detached strings from the clicked link, never active selections. */
     async function openFolder(target: FileLinkMenuTarget): Promise<void> {

@@ -75,7 +75,7 @@ describe("pending deletion controls", () => {
   it("should display the safety failure and offer explicit retry for blocked intent", async () => {
     const actions = await renderRemoval({ ...removal, deferredState: "blocked", blockedReason: "Keep modified files" });
     expect(document.body.textContent).toContain("workspaces.deferredRemovalBlocked");
-    expect(document.body.textContent).toContain("Keep modified files");
+    expect(document.body.textContent).not.toContain("Keep modified files");
     await act(async () => button("workspaces.retryRemoval")!.click());
     expect(actions.retryDeferredRemoval).toHaveBeenCalledWith("request");
   });
@@ -88,12 +88,11 @@ describe("pending deletion controls", () => {
     expect(actions.recoverRemoval).toHaveBeenCalledWith("request");
   });
 
-  it("should localize a dirty-workspace refusal while retaining the original diagnostic in collapsed details", async () => {
+  it("should keep technical failures out of the details modal while retaining retry controls", async () => {
     const blockedReason = "Workspace contains modified, untracked or ignored files. Save or remove them before deleting it.";
     await renderRemoval({ ...removal, deferredState: "blocked", blockedReason });
-    const details = document.querySelector("details")!;
-    expect(details.open).toBe(false);
-    expect(details.textContent).toContain(blockedReason);
-    expect(details.closest('[role="alert"]')?.querySelector("p")?.textContent).toBe("workspaces.removeDirty");
+    expect(document.querySelector("details")).toBeNull();
+    expect(document.body.textContent).not.toContain(blockedReason);
+    expect(button("workspaces.retryRemoval")).toBeDefined();
   });
 });

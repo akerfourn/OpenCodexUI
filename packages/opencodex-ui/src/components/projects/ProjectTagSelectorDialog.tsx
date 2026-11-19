@@ -205,13 +205,6 @@ export function ProjectTagSelectorDialog({
               onChange={handleSearchChange}
             />
 
-            {tagStore.tagErrorMessage !== null ? (
-              <Alert severity="error">{tagStore.tagErrorMessage}</Alert>
-            ) : null}
-            {tagStore.tagSyncErrorMessage !== null ? (
-              <Alert severity="warning">{tagStore.tagSyncErrorMessage}</Alert>
-            ) : null}
-
             {tagStore.isLoadingTags || tagStore.isFetchingTags ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
                 <CircularProgress size={24} />

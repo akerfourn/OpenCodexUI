@@ -250,9 +250,6 @@ export function ProjectGoalDialog({
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
-            {goalsStore.errorMessage !== null ? (
-              <Alert severity="error">{goalsStore.errorMessage}</Alert>
-            ) : null}
 
             {goal !== null ? <ProjectGoalExecutionSummary goal={goal} /> : null}
 

@@ -206,6 +206,8 @@ export type OpenCodexEvent =
       message: string;
       details?: unknown;
       recoverable?: boolean;
+      /** Failed operation; tool errors must not reset unrelated chat state. */
+      requestType?: string;
       sourceId?: string | null;
       threadId?: string;
     };

@@ -35,13 +35,6 @@ export class OpenCodexRequestRouter {
         return await this.handleValidRequest(resolved);
       });
     } catch (error) {
-      // Tool and settings dialogs own their error feedback without recovering a chat.
-      if (request.type === "projects.clone" || request.type === "debug" || request.type === "threads.workspace.history"
-        || request.type.startsWith("filePreview.") || request.type.startsWith("projectWorkspaces.") ||
-        request.type.startsWith("projectCommands.groups.") ||
-        request.type.startsWith("messageRendering.") ||
-        request.type.startsWith("browserPermissions.") || request.type.startsWith("threadPermissions.") ||
-        request.type.startsWith("sourcePermissions.") || request.type.startsWith("sourceInstances.")) throw error;
       this.runtime.handleRequestError(request, error);
     }
   }

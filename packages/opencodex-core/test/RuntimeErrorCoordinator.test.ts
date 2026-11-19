@@ -13,6 +13,23 @@ import type {
 } from "../src/backend/runtime/runtimePorts";
 
 describe("RuntimeErrorCoordinator", () => {
+  it.each([
+    { type: "projectCommands.groups.create", projectId: "project", name: "Build" },
+    { type: "threads.workspace.history", threadId: "thread" },
+    { type: "projectWorkspaces.remove", projectId: "project", workspaceId: "workspace", sourceId: "source" }
+  ] satisfies OpenCodexRequest[])("should journal $type failures without recovering a chat", request => {
+    const persistLog = vi.fn();
+    const emit = vi.fn();
+    const recoverThread = vi.fn();
+    const coordinator = createCoordinator({ persistLog, emit, recoverThread });
+
+    expect(() => coordinator.handleRequestError(request, new CodexProcessError("Source stopped")))
+      .toThrow("Source stopped");
+
+    expect(persistLog).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: "error", requestType: request.type, recoverable: false }));
+    expect(recoverThread).not.toHaveBeenCalled();
+  });
   it("should persist, emit, recover, and rethrow in the original synchronous order", () => {
     const operations: string[] = [];
     const persistLog = vi.fn((_type: string, message: string, _details: unknown) => {
@@ -49,6 +66,7 @@ describe("RuntimeErrorCoordinator", () => {
     );
     expect(emit).toHaveBeenCalledWith({
       type: "error",
+      requestType: "threads.open",
       message: "Codex stopped.",
       details: "Check that Codex CLI is installed and that codexCommand points to the right executable.",
       recoverable: true,
@@ -117,6 +135,7 @@ describe("RuntimeErrorCoordinator", () => {
     expect(recoverThread).not.toHaveBeenCalled();
     expect(emit).toHaveBeenCalledWith({
       type: "error",
+      requestType: "turn.start",
       message: "stopped",
       details: "Check that Codex CLI is installed and that codexCommand points to the right executable.",
       recoverable: false,

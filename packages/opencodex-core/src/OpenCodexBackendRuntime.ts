@@ -152,7 +152,11 @@ export class OpenCodexBackendRuntime {
         }
         await this.services.dockerComposeService.requireWorkspaceIdle(removal);
       }, undefined, undefined,
-      (projectId, sourceId) => options.emit({ type: "projectWorkspaces.changed", projectId, sourceId }));
+      (projectId, sourceId) => options.emit({ type: "projectWorkspaces.changed", projectId, sourceId }),
+      (removal, error) => this.services.applicationLogService.persistLog("error",
+        error instanceof Error ? error.message : String(error),
+        { workspaceId: removal.workspaceId, projectId: removal.projectId, sourceId: removal.sourceId,
+          workspacePath: removal.workspacePath }));
     this.deferredRemovals = this.workspaceRemovals === null ? null : new DeferredWorkspaceRemovalScheduler(
       this.workspaceRemovals, sourceId => {
         const state = this.services.clientPool.readState(sourceId);

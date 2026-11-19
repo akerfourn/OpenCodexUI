@@ -89,17 +89,9 @@ export function HomePluginsView({ store }: HomePluginsViewProps) {
 
       {pluginsStore.isLoading ? <LinearProgress /> : null}
 
-      {pluginsStore.errorMessage !== null ? (
-        <Alert severity="error">{pluginsStore.errorMessage}</Alert>
-      ) : null}
-
       {hasSource && !isSelectedSourceReady ? (
         <Alert severity="warning">{t("plugins.sourceUnavailable")}</Alert>
       ) : null}
-
-      {pluginsStore.loadErrors.map((error) => (
-        <Alert key={error} severity="warning">{error}</Alert>
-      ))}
 
       {!hasSource ? (
         <Typography variant="body2" color="text.secondary">

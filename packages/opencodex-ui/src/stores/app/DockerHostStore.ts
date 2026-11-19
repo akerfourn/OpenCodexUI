@@ -9,6 +9,8 @@ import type {
 /** Backend request capability required by host Docker state. */
 export interface DockerHostRequestPort {
   request<T = unknown>(request: OpenCodexRequest): Promise<T>;
+  /** Journals non-throwing Docker availability failures. */
+  reportError(error: unknown, context?: string): void;
 }
 
 /** Lifecycle actions supported for existing host containers. */
@@ -55,6 +57,10 @@ export class DockerHostStore {
       });
 
       runInAction(() => {
+        if (!snapshot.availability.available && (this.snapshot?.availability.available !== false
+          || this.snapshot.availability.message !== snapshot.availability.message)) {
+          this.root.reportError(snapshot.availability.message, "Docker");
+        }
         this.snapshot = snapshot;
         this.hasLoaded = true;
         this.isLoading = false;

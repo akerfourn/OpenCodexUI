@@ -220,6 +220,7 @@ export class ProjectGitSyncStore {
     if (this.result !== null) this.result = { ...this.result, plan: null };
     try {
       const response = await this.parent.request<OpenCodexGitSyncResult>(request);
+      if (response.outcome === "error") this.parent.reportError(response.details ?? "Git synchronization failed.");
       runInAction(() => {
         this.result = response;
         if (response.inspection !== null) this.parent.statusStore.applyStatus(response.inspection.status);

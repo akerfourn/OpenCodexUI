@@ -18,7 +18,7 @@ describe("Home syntax catalogue", () => {
     expect(markup.match(/<li\b/g)).toHaveLength(30);
     expect(markup).toContain("fileLanguages.showMore");
     expect(markup).not.toContain(">TOML<");
-    expect(markup).toContain("fileLanguages.saveError");
-    expect(markup).toContain("Disk full");
+    expect(markup).not.toContain("fileLanguages.saveError");
+    expect(markup).not.toContain("Disk full");
   });
 });

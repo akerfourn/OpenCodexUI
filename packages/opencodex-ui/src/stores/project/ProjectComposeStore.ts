@@ -368,6 +368,9 @@ export class ProjectComposeStore {
           return;
         }
 
+        if (snapshot.errorMessage !== null && snapshot.errorMessage !== this.snapshot?.errorMessage) {
+          this.root.reportError(snapshot.errorMessage, projectPath);
+        }
         this.snapshot = snapshot;
         this.hasLoaded = true;
         this.isLoading = false;

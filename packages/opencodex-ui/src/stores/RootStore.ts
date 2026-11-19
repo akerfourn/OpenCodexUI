@@ -21,6 +21,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { AppStore } from "./app/AppStore";
+import { ApplicationErrorReporter } from "./app/ApplicationErrorReporter";
 import { AppUpdateStore } from "./app/AppUpdateStore";
 import { ApprovalsStore } from "./app/ApprovalsStore";
 import { ChatEventLogStore } from "./chat/ChatEventLogStore";
@@ -55,6 +56,11 @@ export class RootStore {
   /** Local rendering exceptions never mutate thread items. */
   readonly messageRenderingStore = new MessageRenderingStore(this);
   readonly appStore = new AppStore(this);
+  /** Local failures share the persisted journal and snackbar with backend errors. */
+  private readonly errorReporter = new ApplicationErrorReporter(
+    message => this.appStore.applyError({ type: "error", message }),
+    (message, details) => this.transport.request({ type: "logs.create", logType: "error", message, details })
+  );
   /** Catalogue preferences shared by Home and all file editors. */
   readonly fileLanguagesStore = new FileLanguagesStore(this);
   /** Dictation preferences, microphone lifecycle, and local model management. */
@@ -93,8 +99,20 @@ export class RootStore {
     });
   }
 
-  request<T = unknown>(request: OpenCodexRequest): Promise<T> {
-    return this.transport.request<T>(request);
+  /** Retains backend rejection identity and guarantees visible feedback even if its event arrives late. */
+  async request<T = unknown>(request: OpenCodexRequest): Promise<T> {
+    try {
+      return await this.transport.request<T>(request);
+    } catch (error) {
+      this.errorReporter.markReported(error);
+      this.appStore.applyError({ type: "error", message: error instanceof Error ? error.message : String(error) });
+      throw error;
+    }
+  }
+
+  /** Journals renderer failures without duplicating errors already reported by the backend. */
+  reportError(error: unknown, context?: string): void {
+    this.errorReporter.report(error, context);
   }
 
   get settings(): OpenCodexSettings {
@@ -259,7 +277,7 @@ export class RootStore {
    * @returns Selected file attachments.
    */
   async pickFileAttachments(): Promise<OpenCodexAttachment[]> {
-    return this.transport.request<OpenCodexAttachment[]>({ type: "attachments.pickFiles" });
+    return this.request<OpenCodexAttachment[]>({ type: "attachments.pickFiles" });
   }
 
   /**
@@ -284,7 +302,7 @@ export class RootStore {
       return;
     }
 
-    void this.transport.request({
+    void this.request({
       type: "system.openLink",
       href: trimmedHref,
       projectPath: this.activeProjectStore?.projectPath ?? null,
@@ -305,7 +323,7 @@ export class RootStore {
       return;
     }
 
-    void this.transport.request({
+    void this.request({
       type: "system.openProject",
       projectPath,
       sourceId
@@ -325,11 +343,11 @@ export class RootStore {
       return;
     }
 
-    void this.transport.request({
+    void this.request({
       type: "system.openProjectFolder",
       projectPath,
       sourceId
-    });
+    }).catch((error: unknown) => this.reportError(error));
   }
 
   /**
@@ -345,11 +363,11 @@ export class RootStore {
       return;
     }
 
-    void this.transport.request({
+    void this.request({
       type: "system.openProjectTerminal",
       projectPath,
       sourceId
-    });
+    }).catch((error: unknown) => this.reportError(error));
   }
 
   /**
@@ -363,15 +381,15 @@ export class RootStore {
       return;
     }
 
-    void this.transport.request({
+    void this.request({
       type: "app.openUsageHistory",
       sourceId
-    });
+    }).catch((error: unknown) => this.reportError(error));
   }
 
   /** Makes failures from fire-and-forget host actions visible without an unhandled rejection. */
   private reportHostActionError(error: unknown): void {
-    this.appStore.applyError({ type: "error", message: String(error) });
+    this.reportError(error);
   }
 
   /**
@@ -383,6 +401,15 @@ export class RootStore {
    */
   private applyErrorEvent(event: Extract<OpenCodexEvent, { type: "error" }>): void {
     this.appStore.applyError(event);
+
+    const locallyRecoveredRequests = ["projects.clone", "debug", "threads.workspace.history",
+      "app.openDevTools", "app.openUsageHistory"];
+    const locallyRecoveredPrefixes = ["filePreview.", "projectWorkspaces.", "projectCommands.groups.",
+      "messageRendering.", "browserPermissions.", "threadPermissions.", "sourcePermissions.", "sourceInstances.",
+      "dictation.", "emojiCatalog.", "app.update.", "discord.", "workspaceFiles.", "settings."];
+    const requestType = event.requestType;
+    if (requestType !== undefined && (locallyRecoveredRequests.includes(requestType)
+      || locallyRecoveredPrefixes.some(prefix => requestType.startsWith(prefix)))) return;
 
     if (event.recoverable && event.threadId !== undefined) {
       if (this.projectsStore.applyRecoverableThreadError(event.threadId)) {

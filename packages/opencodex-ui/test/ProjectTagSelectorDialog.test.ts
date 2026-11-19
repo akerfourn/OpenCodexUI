@@ -125,7 +125,8 @@ describe("tag creation and publication dialog", () => {
 
     await act(async () => { buttonWithText("git.createTag:v2").click(); });
 
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe("Tag already exists");
+    expect(document.body.textContent).not.toContain("Tag already exists");
+    expect(fixture.tagStore.tagErrorMessage).toBe("Tag already exists");
     expect(buttonWithText("git.createTag:v2").disabled).toBe(false);
     expect(fixture.tagStore.isCreatingTag).toBe(false);
     expect(onClose).not.toHaveBeenCalled();
@@ -138,7 +139,8 @@ describe("tag creation and publication dialog", () => {
 
     await act(async () => { document.querySelector<HTMLButtonElement>('button[aria-label="git.pushTag"]')!.click(); });
 
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe("Remote unavailable");
+    expect(document.body.textContent).not.toContain("Remote unavailable");
+    expect(fixture.tagStore.tagErrorMessage).toBe("Remote unavailable");
     expect(document.querySelector<HTMLButtonElement>('button[aria-label="git.pushTag"]')?.disabled).toBe(false);
     expect(document.querySelectorAll('[data-testid="CloudUploadOutlinedIcon"]')).toHaveLength(1);
     expect(document.querySelector('button[aria-label="git.pushTag"] [role="progressbar"]')).toBeNull();

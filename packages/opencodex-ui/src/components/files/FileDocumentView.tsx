@@ -8,7 +8,6 @@ import type { FileDocument } from "../../stores/files/FileDocument";
 import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
 import type { RootStore } from "../../stores/RootStore";
 import { FileDocumentToolbarX } from "./FileDocumentToolbar";
-import { FileErrorX } from "./FileError";
 import { FileAudioViewerX } from "./FileAudioViewer";
 import { FileImageViewerX } from "./FileImageViewer";
 
@@ -70,11 +69,6 @@ export function FileDocumentView({
     document.gitDiffContext?.fileState === "deleted";
   const hasDiffResult = document.gitDiffSnapshot !== null;
   const diffIssue = document.gitDiffSnapshot?.issue ?? null;
-  const fileErrorIsDiffIssue = document.viewMode === "diff" && (
-    diffIssue !== null ||
-    (document.gitDiffContext?.fileState === "deleted" && document.error?.code === "inaccessible")
-  );
-  const error = document.error === null || fileErrorIsDiffIssue ? null : <FileErrorX error={document.error} />;
   const conflict = document.hasConflict ? (
     <Alert
       severity="warning"
@@ -92,20 +86,11 @@ export function FileDocumentView({
   const loading = document.isLoading ? <LinearProgress /> : null;
   const diffLoading = document.isGitDiffLoading ? <LinearProgress /> : null;
   const diffError = document.gitDiffError === null ? null : (
-    <Alert
-      severity="error"
-      action={(
+    (
         <Button size="small" color="inherit" onClick={() => document.retryGitDiff()}>
           {t("files.retry")}
         </Button>
-      )}
-    >
-      {t("files.diffReadError")}
-      <details>
-        <summary>{t("files.details")}</summary>
-        {document.gitDiffError}
-      </details>
-    </Alert>
+      )
   );
   const unavailable =
     document.target !== null && !root.sourcesStore.isSourceReady(document.target.sourceId) ? (
@@ -140,10 +125,10 @@ export function FileDocumentView({
       {diffLoading}
       {diffError}
       {unavailable}
-      {error}
+
       {conflict}
       {format}
-      <FileViewerBoundary fallback={<FileViewerFallbackX document={document} />}>
+      <FileViewerBoundary fallback={<FileViewerFallbackX document={document} />} onError={document.reportError}>
         <Suspense fallback={<LinearProgress />}>{editor}</Suspense>
       </FileViewerBoundary>
     </div>

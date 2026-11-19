@@ -218,7 +218,7 @@ export class PluginsStore implements RootChildStore {
         }
 
         this.installedPlugins = result.plugins;
-        this.loadErrors = result.loadErrors;
+        this.applyLoadErrors(result.loadErrors);
         this.hasLoadedInstalled = true;
         this.resetUnavailableCategory();
       });
@@ -275,7 +275,7 @@ export class PluginsStore implements RootChildStore {
       }
 
       runInAction(() => {
-        this.loadErrors = result.loadErrors;
+        this.applyLoadErrors(result.loadErrors);
       });
       await Promise.all([this.loadInstalled(true), this.searchCatalog(true)]);
       runInAction(() => {
@@ -362,7 +362,7 @@ export class PluginsStore implements RootChildStore {
           ? result.plugins
           : combinePlugins(result.plugins, this.catalogPlugins).slice(0, MAX_RENDERED_PLUGINS);
         this.nextCursor = result.nextCursor;
-        this.loadErrors = result.loadErrors;
+        this.applyLoadErrors(result.loadErrors);
         this.hasLoadedCatalog = true;
         this.resetUnavailableCategory();
       });
@@ -432,6 +432,14 @@ export class PluginsStore implements RootChildStore {
     this.isRefreshingCatalog = false;
     this.nextCursor = null;
     this.errorMessage = null;
+  }
+
+  /** Journals new marketplace diagnostics rather than rendering them inside the catalogue. */
+  private applyLoadErrors(errors: string[]): void {
+    for (const message of errors) {
+      if (!this.loadErrors.includes(message)) this.root.reportError(message, "plugins");
+    }
+    this.loadErrors = [...errors];
   }
 
   /** Applies a child action error inside the outer MobX store. */

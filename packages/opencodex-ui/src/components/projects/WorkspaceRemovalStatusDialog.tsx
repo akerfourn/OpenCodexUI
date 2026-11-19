@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import type { OpenCodexWorkspaceRemoval } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectWorkspacesStore } from "../../stores/project/ProjectWorkspacesStore";
 import { workspaceLabel } from "../../stores/project/threads/workspaceThreadGroups";
-import { WorkspaceOperationError } from "./WorkspaceOperationError";
 import { WorkspaceRemovalInspection } from "./WorkspaceRemovalInspection";
 import { useWorkspaceRemovalInspection } from "./useWorkspaceRemovalInspection";
 
@@ -61,8 +60,8 @@ export function WorkspaceRemovalStatusDialog({ removal, store, disabled, onClose
     <DialogTitle>{t("workspaces.removalDetails")}</DialogTitle>
     <DialogContent><Stack spacing={2}>
       <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>{message}</Typography>
-      <WorkspaceOperationError message={removal.blockedReason ?? null} />
-      {inspectionContent}{confirm}<WorkspaceOperationError message={store.error} />
+
+      {inspectionContent}{confirm}
     </Stack></DialogContent>
     <DialogActions sx={{ flexWrap: "wrap" }}>{actions}
       <Button disabled={store.isBusy} onClick={onClose}>{t("workspaces.close")}</Button>

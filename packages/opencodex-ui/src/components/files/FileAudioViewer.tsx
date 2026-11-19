@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { useEffect, useRef, type SyntheticEvent } from "react";
 import { runInAction } from "mobx";
 import { observer } from "mobx-react-lite";
-import { Alert, Box, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { FileDocument } from "../../stores/files/FileDocument";
 
@@ -9,7 +9,6 @@ import type { FileDocument } from "../../stores/files/FileDocument";
 export function FileAudioViewer({ document }: { document: FileDocument }) {
   const { t } = useTranslation();
   const player = useRef<HTMLAudioElement>(null);
-  const [failed, setFailed] = useState(false);
   useEffect(() => {
     const element = player.current;
     return () => {
@@ -32,17 +31,15 @@ export function FileAudioViewer({ document }: { document: FileDocument }) {
     runInAction(() => { document.audioTime = time; });
   }
   /** Keeps external opening available when the container or codec cannot be decoded. */
-  function handleError(): void { setFailed(true); }
+  function handleError(): void { document.reportError(t("files.audioDecodeError")); }
 
   const snapshot = document.audioSnapshot;
   if (snapshot === null) return null;
-  const feedback = failed ? <Alert severity="warning">{t("files.audioDecodeError")}</Alert> : null;
   return <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 3 }}>
     <Typography variant="h6" sx={{ mb: 2 }}>{document.name}</Typography>
     <audio ref={player} src={snapshot.dataUrl} controls preload="metadata" aria-label={document.name}
       onLoadedMetadata={handleLoaded} onTimeUpdate={handleTimeUpdate} onError={handleError}
       style={{ width: "100%", maxWidth: 640 }} />
-    {feedback}
   </Box>;
 }
 

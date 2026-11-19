@@ -97,9 +97,7 @@ export function ChatEventLogDialog({
     </Stack>
   ) : (
     <Stack spacing={1}>
-      {eventLogStore.error !== null ? (
-        <Alert severity="error">{t("chatEventLog.loadError", { message: eventLogStore.error })}</Alert>
-      ) : null}
+
       {eventLogStore.truncated ? (
         <Alert severity="info">{t("chatEventLog.truncated")}</Alert>
       ) : null}

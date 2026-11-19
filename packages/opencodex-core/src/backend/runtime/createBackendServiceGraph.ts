@@ -198,6 +198,7 @@ export function createBackendServiceGraph(
 
   const threadNotificationAdapters = threadRuntimeHandler.getNotificationAdapters();
   notificationCoordinator = new RuntimeNotificationCoordinator({
+    logs: applicationLogService,
     settings,
     onRawReceived: options.onCodexNotificationReceived,
     onProcessed: options.onCodexNotificationProcessed,

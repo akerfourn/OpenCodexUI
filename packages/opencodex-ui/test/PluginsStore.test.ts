@@ -218,6 +218,7 @@ describe("PluginsStore bounded loading", () => {
 function createStore(request: RootStore["request"]): PluginsStore {
   return new PluginsStore({
     request,
+    reportError: vi.fn(),
     sourcesStore: {
       isSourceReady: vi.fn(() => true)
     }

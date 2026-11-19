@@ -1,3 +1,4 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, TextField } from "@mui/material";
@@ -16,14 +17,13 @@ export function PrimaryWorkspaceMoveDialog({ project, workspace, onClose }: {
   const [rootId, setRootId] = useState(store.storageRoots.find(root => root.isDefault)?.id ?? store.storageRoots[0]?.id ?? "");
   const [confirmed, setConfirmed] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [pickerError, setPickerError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   const current = store.workspaces.find(item => item.id === workspace.id);
   const unsaved = store.workspaces.some(item => project.files.hasUnsavedWorkspaceDocuments(item.id));
   const stale = current === undefined || current.path !== workspace.path || current.sourceId !== workspace.sourceId;
   const blocked = picking || store.isBusy || project.isReadOnlyFromCache || unsaved || stale
     || current?.isPrimary !== true || current.removedAt !== null || current.movePending === true || current.removalPending === true;
-  const error = store.error ?? pickerError;
-  const errorContent = error === null ? null : <Alert severity="error">{error}</Alert>;
+
   const unsavedContent = unsaved ? <Alert severity="warning">{t("primaryWorkspaceMove.unsaved")}</Alert> : null;
   const selectedRoot = store.storageRoots.find(root => root.id === rootId);
   const invalid = useStorage ? selectedRoot === undefined : destination.trim().length === 0;
@@ -48,7 +48,7 @@ export function PrimaryWorkspaceMoveDialog({ project, workspace, onClose }: {
 
   /** A host selection is valid only for local sources, and remains an editable, unconfirmed draft. */
   async function handlePick(): Promise<void> {
-    setPicking(true); setPickerError(null); setConfirmed(false);
+    setPicking(true); setConfirmed(false);
     try {
       const parent = await store.pickMoveParent();
       if (parent !== null) {
@@ -56,7 +56,7 @@ export function PrimaryWorkspaceMoveDialog({ project, workspace, onClose }: {
         const name = workspace.path.replace(/[\\/]+$/u, "").split(/[\\/]/u).at(-1) ?? "";
         setDestination(parent.replace(/[\\/]+$/u, "") + separator + name);
       }
-    } catch (error) { setPickerError(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { reportError(error); }
     finally { setPicking(false); }
   }
 
@@ -79,7 +79,7 @@ export function PrimaryWorkspaceMoveDialog({ project, workspace, onClose }: {
         onChange={event => { setUseStorage(event.target.checked); setConfirmed(false); }} />} label={t("primaryWorkspaceMove.storage")}/>
       <FormControlLabel control={<Checkbox checked={confirmed} disabled={blocked}
         onChange={event => setConfirmed(event.target.checked)} />} label={t("primaryWorkspaceMove.confirm")} />
-      {unsavedContent}{errorContent}
+      {unsavedContent}
     </DialogContent>
     <DialogActions>
       <Button disabled={store.isBusy || picking} onClick={onClose}>{t("workspaces.close")}</Button>

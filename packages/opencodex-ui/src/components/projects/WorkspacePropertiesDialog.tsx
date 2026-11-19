@@ -29,7 +29,7 @@ export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
     lockInfo = <Alert severity="info">{text}</Alert>;
   }
   const readOnly = workspace.isPrimary || workspace.removedAt !== null || project.isReadOnlyFromCache;
-  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
+
   const help = workspace.isPrimary ? <Alert severity="info">{t("workspaces.primaryHelp")}</Alert> : null;
   const statusHelp = statusWorkspace.isPrimary ? null
     : <Typography variant="caption" color="text.secondary">{t("workspaceWorkStatus.help")}</Typography>;
@@ -57,7 +57,7 @@ export function WorkspacePropertiesDialog({ project, workspace, onClose }: {
           disabled={readOnly || store.isBusy} onChange={(event) => setName(event.target.value)} />
         <TextField label={t("workspaces.destination")} value={workspace.path} fullWidth margin="normal"
           slotProps={{ input: { readOnly: true } }} helperText={t("workspaces.pathHelp")} />
-        {error}
+
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={store.isBusy}>{t("workspaces.close")}</Button>

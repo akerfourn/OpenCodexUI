@@ -65,7 +65,7 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
   const rows = visible.map(entry => <WorkspaceManagementRowX key={entry.workspace.id} {...entry}
     disabled={busy} workStatusDisabled={busy} diskUsage={store.diskUsage}
     onWorkStatus={handleWorkStatus} onProperties={setProperties} onRemove={setRemoving} />);
-  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
+
   const loading = store.isRefreshingManagement ? <CircularProgress size={20} aria-label={t("workspaceManagement.refresh")} /> : null;
   const empty = visible.length === 0 && !store.isRefreshingManagement
     ? <Typography color="text.secondary">{t("workspaceManagement.empty")}</Typography> : null;
@@ -92,7 +92,7 @@ export function WorkspaceManagementDialog({ project, onClose }: { project: Proje
           label={t("workspaceManagement.onlyCandidates")} />
         <Typography variant="body2">{t("workspaceManagement.candidates", { count: candidateCount })}</Typography>
         <WorkspacePendingOperationsX store={store} disabled={busy || project.isReadOnlyFromCache} />
-        {loading}{error}{rows}{empty}
+        {loading}{rows}{empty}
       </Stack>
       {propertiesDialog}{removeDialog}
     </DialogContent>

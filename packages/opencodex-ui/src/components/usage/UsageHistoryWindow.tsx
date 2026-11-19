@@ -1,3 +1,6 @@
+import {
+  Snackbar
+} from "@mui/material";
 /**
  * Provides the dedicated usage history window content and its chart controls.
  */
@@ -321,7 +324,8 @@ function UsageHistoryContent({ transport, initialSourceId }: UsageHistoryWindowP
           </Stack>
         </Paper>
 
-        {errorMessage !== null ? <Alert severity="error">{errorMessage}</Alert> : null}
+        <Snackbar open={errorMessage !== null} autoHideDuration={8000} onClose={() => setErrorMessage(null)}
+          message={errorMessage ?? ""} />
         {history?.hasPartialTokenData === true ? (
           <Alert severity="warning">{t("usagePage.historyPartialData")}</Alert>
         ) : null}

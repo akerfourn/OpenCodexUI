@@ -135,7 +135,7 @@ function buildDialogContent(
   }
 
   if (hasError || statistics === null) {
-    return <Alert severity="error">{translate("projectStatistics.loadError")}</Alert>;
+    return null;
   }
 
   const hasKnownUsage = statistics.chatsWithTokenUsage > 0;

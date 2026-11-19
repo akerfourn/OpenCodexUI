@@ -6,6 +6,7 @@ import type { frSupport } from "../fr/support.js";
 
 export const enSupport = {
   logs: {
+    errorOccurred: "An error occurred.",
     applyCleanup: "Clean",
     cancel: "Cancel",
     cleanup: "Clean logs",

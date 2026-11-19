@@ -187,7 +187,8 @@ export class ElectronBridgeServer {
       getMainWebContentsId: () => this.window?.webContents.id,
       openDeveloperTools: () => this.openDeveloperTools(),
       openUsageHistory: (sourceId) => this.openUsageHistoryWindow(sourceId),
-      handleBackendRequest: (request) => this.handleBackendRequest(request)
+      handleBackendRequest: (request) => this.handleBackendRequest(request),
+      reportError: (request, error) => this.runtime.handleRequestError(request, error)
     });
   }
 

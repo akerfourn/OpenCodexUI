@@ -20,7 +20,7 @@ export function WorkspaceLockDialog({ project, state, onClose }: {
   const blocked = store.isBusy || store.loadingLockIds.has(state.workspaceId) || project.isReadOnlyFromCache
     || !state.supported || workspace === undefined || workspace.isPrimary || workspace.removedAt !== null
     || workspace.sourceId !== state.sourceId || workspace.movePending === true || workspace.removalPending === true || workspace.path !== state.workspacePath || changed;
-  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
+
   const changedNotice = changed ? <Alert severity="warning">{t("workspaces.lockChanged")}</Alert> : null;
   const reasonInput = unlocking ? (
     <TextField label={t("workspaces.lockReason")} value={state.lockedReason || t("workspaces.lockWithoutReason")}
@@ -45,7 +45,7 @@ export function WorkspaceLockDialog({ project, state, onClose }: {
         <Alert severity="info">{help}</Alert>
         <TextField label={t("workspaces.destination")} value={state.workspacePath} fullWidth margin="normal"
           slotProps={{ input: { readOnly: true } }} />
-        {reasonInput}{changedNotice}{error}
+        {reasonInput}{changedNotice}
       </DialogContent>
       <DialogActions>
         <Button disabled={store.isBusy} onClick={onClose}>{t("workspaces.close")}</Button>

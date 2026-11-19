@@ -1,3 +1,4 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField } from "@mui/material";
@@ -22,7 +23,7 @@ export function WorkspacePreparationDialog({ project, workspace, sourceName, onC
   const [editing, setEditing] = useState(false);
   const [editedCommand, setEditedCommand] = useState<OpenCodexProjectCommand | null>(null);
   const [starting, setStarting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   const [logsRun, setLogsRun] = useState<ProjectCommandRunView | null>(null);
   const command = store.commands.find(item => item.id === commandId);
   const savedId = project.project.preferences.workspacePreparation?.commandId ?? "";
@@ -41,21 +42,19 @@ export function WorkspacePreparationDialog({ project, workspace, sourceName, onC
 
   /** Persists the selected command without executing it. */
   async function handleSave(): Promise<void> {
-    setError(null);
     try { await store.setPreparationCommand(commandId || null); }
-    catch (failure) { setError(String(failure)); }
+    catch (failure) { reportError(failure); }
   }
   /** Sends the script currently visible to the backend; changed definitions are rejected there. */
   async function handleRun(): Promise<void> {
     if (command === undefined || target.sourceId === null || unavailable || unsaved || busy || changed || running) return;
     setStarting(true);
-    setError(null);
     try {
       await store.runPreparation({ ...target, sourceId: target.sourceId, command: {
         id: command.id, name: command.name, command: command.command, updatedAt: command.updatedAt,
         executionMode: command.executionMode, persistLogs: command.persistLogs
       } });
-    } catch (failure) { setError(String(failure)); }
+    } catch (failure) { reportError(failure); }
     finally { setStarting(false); }
   }
   /** Opens the existing command editor to create a hook without introducing a second script format. */
@@ -65,7 +64,7 @@ export function WorkspacePreparationDialog({ project, workspace, sourceName, onC
 
   const script = command === undefined ? null : <TextField label={t("workspacePreparation.script")}
     value={command.command} fullWidth multiline minRows={3} slotProps={{ input: { readOnly: true } }} />;
-  const failure = error === null ? null : <Alert severity="error">{error}</Alert>;
+
   const unsavedNotice = unsaved ? <Alert severity="warning">{t("workspacePreparation.unsaved")}</Alert> : null;
   const unavailableNotice = unavailable ? <Alert severity="warning">{t("workspacePreparation.unavailable")}</Alert> : null;
   const missing = commandId !== "" && command === undefined && !store.isLoading
@@ -97,7 +96,7 @@ export function WorkspacePreparationDialog({ project, workspace, sourceName, onC
         <Stack direction="row" spacing={1}>
           <Button disabled={busy || unavailable} onClick={handleCreate}>{t("commands.add")}</Button>{editButton}
         </Stack>
-        {script}{missing}{unavailableNotice}{unsavedNotice}{failure}{runRows}
+        {script}{missing}{unavailableNotice}{unsavedNotice}{runRows}
       </Stack>
       <ProjectCommandDialogX command={editedCommand} commandsStore={store} open={editing} onClose={() => setEditing(false)} />
       <ProjectCommandLogsDialogX run={logsRun} open={logsRun !== null} onClose={() => setLogsRun(null)} />

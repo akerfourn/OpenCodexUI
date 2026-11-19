@@ -112,7 +112,6 @@ export function ProjectCommandsPanel({ projectStore }: ProjectCommandsPanelProps
     <IconButton size="small" aria-label={t("commands.cancel")} disabled={groupBusy}
       onClick={() => setCreatingGroup(false)}><CloseOutlinedIcon fontSize="small" /></IconButton>
   </Stack> : null;
-  const groupError = commandsStore.groups.error === null ? null : <Alert severity="error">{commandsStore.groups.error}</Alert>;
 
   return (
     <section className="project-commands-panel">
@@ -146,7 +145,7 @@ export function ProjectCommandsPanel({ projectStore }: ProjectCommandsPanelProps
       {commandsStore.isLoading ? <CircularProgress size={18} /> : null}
 
       <Stack className="project-commands-content" spacing={0.5}>
-        {groupError}
+
         {!commandsStore.isAvailable ? (
           <Alert severity="warning">{t("commands.sourceUnavailable")}</Alert>
         ) : null}

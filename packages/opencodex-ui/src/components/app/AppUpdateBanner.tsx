@@ -5,8 +5,6 @@ import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/mate
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
-import { AppUpdateErrorBannerX } from "./AppUpdateErrorBanner";
-
 import type { AppUpdateStore } from "../../stores/app/AppUpdateStore";
 
 type AppUpdateBannerProps = {
@@ -82,7 +80,7 @@ function AppUpdateBanner({ store }: AppUpdateBannerProps) {
     );
   }
 
-  return <AppUpdateErrorBannerX store={store} />;
+  return null;
 }
 
 /** Limits the global banner to states that need user attention. */

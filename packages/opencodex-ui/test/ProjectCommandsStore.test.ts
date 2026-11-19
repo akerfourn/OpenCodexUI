@@ -334,7 +334,7 @@ describe("ProjectCommandsStore run lifecycle", () => {
 
     await store.runCommand(createCommand());
 
-    expect(root.appStore.errorMessage).toBe("unable to start command");
+    expect(root.reportError).toHaveBeenCalledWith(expect.objectContaining({ message: "unable to start command" }));
     expect(store.isRunningCommand).toBe(false);
     expect(store.getRuns("command-1")).toEqual([]);
   });
@@ -368,6 +368,7 @@ function createStoreFixture(
   } as ProjectStore;
   const root = {
     request,
+    reportError: vi.fn(),
     appStore: { errorMessage: null }
   } as unknown as RootStore;
 

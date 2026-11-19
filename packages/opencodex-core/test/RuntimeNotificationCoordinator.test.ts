@@ -16,6 +16,17 @@ import type {
 } from "../src/backend/runtime/runtimePorts";
 
 describe("RuntimeNotificationCoordinator", () => {
+  it("should journal completed-turn failures with their original source and conversation", () => {
+    const persistLog = vi.fn();
+    const context = createContext({ logs: { persistLog } });
+
+    context.coordinator.handleNotification({ method: "turn/completed",
+      params: { threadId: "thread-1", turn: { id: "turn-1", status: "failed", error: { message: "Quota exceeded" } } }
+    }, "source-1");
+
+    expect(persistLog).toHaveBeenCalledWith("error", "Quota exceeded",
+      { sourceId: "source-1", threadId: "thread-1", turnId: "turn-1" });
+  });
   afterEach(() => {
     vi.useRealTimers();
   });

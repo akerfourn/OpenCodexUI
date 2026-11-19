@@ -1,3 +1,4 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 /** Renders the application log storage policy editor. */
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import {
@@ -41,7 +42,7 @@ export function HomeLogPolicyDialog({ store, open, onClose }: HomeLogPolicyDialo
   const { t } = useTranslation();
   const [draft, setDraft] = useState<LogPolicyDraft>(() => createLogPolicyDraft(store.settings.logPolicies));
   const [validationErrors, setValidationErrors] = useState<LogPolicyDraftErrors>({});
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   const [isSaving, setIsSaving] = useState(false);
   const policyRows = LOG_POLICY_CATEGORIES.map((category) => (
     <HomeLogPolicyRow
@@ -57,7 +58,6 @@ export function HomeLogPolicyDialog({ store, open, onClose }: HomeLogPolicyDialo
   const saveButtonIcon = isSaving
     ? <CircularProgress color="inherit" size={16} />
     : <SaveOutlinedIcon />;
-  const saveErrorContent = saveError === null ? null : <Alert severity="error">{saveError}</Alert>;
 
   useEffect(() => {
     if (!open) {
@@ -66,7 +66,6 @@ export function HomeLogPolicyDialog({ store, open, onClose }: HomeLogPolicyDialo
 
     setDraft(createLogPolicyDraft(store.settings.logPolicies));
     setValidationErrors({});
-    setSaveError(null);
   }, [open, store]);
 
   /** Discards the draft when the dialog is dismissed outside a save operation. */
@@ -111,7 +110,6 @@ export function HomeLogPolicyDialog({ store, open, onClose }: HomeLogPolicyDialo
   async function handleSave(): Promise<void> {
     const errors = validateLogPolicyDraft(draft);
     setValidationErrors(errors);
-    setSaveError(null);
 
     if (Object.keys(errors).length > 0) {
       return;
@@ -129,7 +127,7 @@ export function HomeLogPolicyDialog({ store, open, onClose }: HomeLogPolicyDialo
       await store.setLogPolicies(policies);
       onClose();
     } catch (error: unknown) {
-      setSaveError(readSaveError(error, t("logs.policySaveError")));
+      reportError(error);
     } finally {
       setIsSaving(false);
     }
@@ -151,7 +149,6 @@ export function HomeLogPolicyDialog({ store, open, onClose }: HomeLogPolicyDialo
       delete next[category];
       return next;
     });
-    setSaveError(null);
   }
 
   return (
@@ -164,7 +161,7 @@ export function HomeLogPolicyDialog({ store, open, onClose }: HomeLogPolicyDialo
           </Typography>
           {policyRows}
           <Alert severity="info" variant="outlined">{t("logs.policyPersistenceNote")}</Alert>
-          {saveErrorContent}
+
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -204,11 +201,4 @@ function readPolicyField(value: string): { category: LogPolicyCategory; field: P
   }
 
   return { category, field: fieldValue };
-}
-
-/** Converts unknown request failures into an inline message with a localized fallback. */
-function readSaveError(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message.length > 0
-    ? error.message
-    : fallback;
 }

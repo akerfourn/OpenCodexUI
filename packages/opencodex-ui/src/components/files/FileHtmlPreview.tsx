@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, LinearProgress } from "@mui/material";
+import { LinearProgress } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { OpenCodexHtmlPreviewSession } from "@open-codex-ui/opencodex-protocol";
 import type { FileDocument, FileRequestPort } from "../../stores/files/FileDocument";
@@ -44,7 +44,7 @@ export function FileHtmlPreview({ document, port }: { document: FileDocument; po
     };
   }, [target, content, version, port]);
 
-  if (error !== null) return <Alert severity="error">{t("files.htmlPreviewError")} {error}</Alert>;
+  if (error !== null) return null;
   if (session === null) return <LinearProgress />;
   return <iframe key={session.id} title={t("files.htmlPreviewTitle", { name: document.name })} src={session.url}
     sandbox="allow-scripts" referrerPolicy="no-referrer"

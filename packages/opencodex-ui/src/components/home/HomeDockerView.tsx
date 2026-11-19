@@ -1,6 +1,5 @@
 import RefreshOutlinedIcon from "@mui/icons-material/RefreshOutlined";
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -62,12 +61,7 @@ export function HomeDockerView({ store }: HomeDockerViewProps) {
   const snapshot = dockerStore.snapshot;
 
   if (snapshot?.availability.available === false) {
-    content = (
-      <Alert severity="warning">
-        <Typography variant="subtitle2">{t("docker.unavailableTitle")}</Typography>
-        <Typography variant="body2">{snapshot.availability.message}</Typography>
-      </Alert>
-    );
+    content = null;
   } else if (snapshot?.availability.available === true) {
     if (snapshot.containers.length > 0) {
       content = (
@@ -125,9 +119,6 @@ export function HomeDockerView({ store }: HomeDockerViewProps) {
       </Stack>
 
       {dockerStore.isLoading ? <LinearProgress /> : null}
-      {dockerStore.errorMessage !== null && dockerStore.selectedContainerId === null ? (
-        <Alert severity="error">{dockerStore.errorMessage}</Alert>
-      ) : null}
 
       {snapshot?.availability.available === true ? (
         <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>

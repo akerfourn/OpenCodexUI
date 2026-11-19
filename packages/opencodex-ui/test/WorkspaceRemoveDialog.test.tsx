@@ -113,16 +113,12 @@ describe("workspace deletion confirmation", () => {
     expect(removeButton().disabled).toBe(true);
   });
 
-  it("should explain source-wide activity and keep the failed removal dialog open", async () => {
+  it("should keep a failed removal dialog open without duplicating its diagnostic", async () => {
     const message = "Error invoking remote method 'opencodex:request': Error: "
       + "Finish active conversations and sub-agents on this source before workspace maintenance.";
     const { onClose } = await renderDialog(false, workspace, message);
-    const details = document.querySelector("details")!;
-    const alert = details.closest('[role="alert"]')!;
-
-    expect(alert.querySelector("p")?.textContent).toBe("workspaces.sourceActive");
-    expect(details.open).toBe(false);
-    expect(details.textContent).toContain(message);
+    expect(document.querySelector("details")).toBeNull();
+    expect(document.body.textContent).not.toContain(message);
     expect(onClose).not.toHaveBeenCalled();
   });
 });

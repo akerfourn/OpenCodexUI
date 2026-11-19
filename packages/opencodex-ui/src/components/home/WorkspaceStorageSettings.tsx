@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { OpenCodexWorkspaceRoot } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../../stores/RootStore";
@@ -33,7 +33,6 @@ export function WorkspaceStorageSettings({ store }: { store: RootStore }) {
   });
   const dialog = editing === undefined ? null : <WorkspaceRootDialogX store={store} initial={editing}
     onSave={handleSave} onClose={() => setEditing(undefined)} busy={busy} error={error} />;
-  const failure = error === null || editing !== undefined ? null : <Alert severity="error">{error}</Alert>;
 
   /** Opens a fresh draft without leaking an earlier save error into the new dialog. */
   function handleEdit(root: OpenCodexWorkspaceRoot | null): void {
@@ -80,7 +79,7 @@ export function WorkspaceStorageSettings({ store }: { store: RootStore }) {
     <Stack spacing={1}>
       <Typography variant="h6">{t("workspaceStorage.title")}</Typography>
       <Typography variant="body2" color="text.secondary">{t("workspaceStorage.description")}</Typography>
-      {entries}{failure}{dialog}
+      {entries}{dialog}
       <Button disabled={busy || store.sourcesStore.sources.length === 0} onClick={() => handleEdit(null)}>
         {t("workspaceStorage.add")}
       </Button>

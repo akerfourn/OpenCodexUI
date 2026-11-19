@@ -1,5 +1,6 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { useState, type ChangeEvent } from "react";
-import { Alert, MenuItem, Stack, TextField } from "@mui/material";
+import { MenuItem, Stack, TextField } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 import type { RootStore } from "../../stores/RootStore";
@@ -8,16 +9,15 @@ import type { RootStore } from "../../stores/RootStore";
 export function HomeFileOpeningSettings({ store }: { store: RootStore }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   const settings = store.appStore.settingsStore;
   /** Retains the old preference when persistence fails. */
   async function change(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const mode = event.target.value;
     if (saving || (mode !== "integrated" && mode !== "external")) return;
     setSaving(true);
-    setError(null);
     try { await settings.setFileOpeningMode(mode); }
-    catch (reason) { setError(String(reason)); }
+    catch (reason) { reportError(reason); }
     finally { setSaving(false); }
   }
   /** Saves folder handling without changing the file preference. */
@@ -25,17 +25,11 @@ export function HomeFileOpeningSettings({ store }: { store: RootStore }) {
     const mode = event.target.value;
     if (saving || (mode !== "system" && mode !== "external")) return;
     setSaving(true);
-    setError(null);
     try { await settings.setFolderOpeningMode(mode); }
-    catch (reason) { setError(String(reason)); }
+    catch (reason) { reportError(reason); }
     finally { setSaving(false); }
   }
-  let feedback = null;
-  if (error !== null) {
-    feedback = <Alert severity="error">{t("files.openingSaveError")}
-      <details><summary>{t("fileLanguages.details")}</summary>{error}</details>
-    </Alert>;
-  }
+
   return (
     <Stack spacing={1}>
       <TextField select fullWidth size="small" disabled={saving}
@@ -50,8 +44,7 @@ export function HomeFileOpeningSettings({ store }: { store: RootStore }) {
         <MenuItem value="external">{t("files.openingExternal")}</MenuItem>
         <MenuItem value="system">{t("files.folderOpeningSystem")}</MenuItem>
       </TextField>
-      {feedback}
-    </Stack>
+      </Stack>
   );
 }
 export const HomeFileOpeningSettingsX = observer(HomeFileOpeningSettings);

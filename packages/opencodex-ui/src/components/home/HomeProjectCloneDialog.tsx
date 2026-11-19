@@ -1,5 +1,15 @@
-import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  MenuItem, Stack, TextField, Typography } from "@mui/material";
+import {
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography
+} from "@mui/material";
 import { observer } from "mobx-react-lite";
 import type { ChangeEvent, FormEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,15 +39,7 @@ export function HomeProjectCloneDialog({ cloneStore, open, onClose }: HomeProjec
   if (cloneStore.canPickFolder) {
     picker = <Button size="small" onClick={handlePick} disabled={cloneStore.isBusy}>{t("home.clonePickFolder")}</Button>;
   }
-  let error = null;
-  if (cloneStore.errorMessage !== null) {
-    error = <Alert severity="error"><Stack spacing={1}>
-      <Typography variant="body2">{t("home.cloneFailed")}</Typography>
-      <Typography component="pre" variant="caption" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-        {cloneStore.errorMessage}
-      </Typography>
-    </Stack></Alert>;
-  }
+
   let progress = null;
   if (cloneStore.isCloning) progress = <CircularProgress size={16} color="inherit" />;
   return <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
@@ -45,7 +47,7 @@ export function HomeProjectCloneDialog({ cloneStore, open, onClose }: HomeProjec
       <DialogTitle>{t("home.addGitProject")}</DialogTitle>
       <DialogContent dividers><Stack spacing={2}>
         <Typography variant="body2" color="text.secondary">{t("home.cloneDescription")}</Typography>
-        {error}
+
         <TextField select label={t("sources.source")} value={cloneStore.sourceId} onChange={handleSource}
           disabled={cloneStore.isBusy} required fullWidth>
           {cloneStore.sources.map(source => <MenuItem key={source.id} value={source.id}>{source.name}</MenuItem>)}

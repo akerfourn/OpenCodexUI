@@ -1,6 +1,14 @@
 import {
-  Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogContentText, DialogTitle, Stack, Typography
+  Alert,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Stack,
+  Typography
 } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
@@ -36,18 +44,8 @@ export function ThreadRepairDialog({ threadId, sourceId, title, project, root, o
   let result = null;
   if (store.isComplete) {
     result = <Alert severity="success" role="status">{t("threadRepair.success")}</Alert>;
-  } else if (store.error !== null) {
-    const message = store.isReconciled ? t("threadRepair.refreshFailed") : t("threadRepair.failed");
-    result = <Alert severity="warning">
-      {message}
-      <Box component="details" sx={{ mt: 1 }}>
-        <Box component="summary" sx={{ cursor: "pointer" }}>{t("threadRepair.details")}</Box>
-        <Typography variant="caption" component="pre" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-          {store.error}
-        </Typography>
-      </Box>
-    </Alert>;
   }
+
   const progress = store.isBusy ? <Stack direction="row" spacing={1} sx={{ alignItems: "center" }} role="status">
     <CircularProgress size={18} />
     <Typography variant="body2">{t("threadRepair.checking")}</Typography>

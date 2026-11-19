@@ -1,6 +1,7 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, Box, useTheme } from "@mui/material";
+import { Box, useTheme } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { jsonDefaults } from "monaco-editor/languages/features/json/register.js";
 import "monaco-editor/editor/contrib/suggest/browser/suggestController";
@@ -17,7 +18,7 @@ export function DebugAdvancedJsonEditor({ value, onChange }: { value: string; on
   const initial = useRef(value);
   const { t } = useTranslation();
   const theme = useTheme();
-  const [error, setError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   const [uri] = useState(() => monaco.Uri.parse(`opencodex-debug-options:/${crypto.randomUUID()}.json`));
   const schema = useMemo(() => debugAdvancedSchema({
     sourceMaps: t("debug.advanced.options.sourceMaps"), smartStep: t("debug.advanced.options.smartStep"),
@@ -77,20 +78,17 @@ export function DebugAdvancedJsonEditor({ value, onChange }: { value: string; on
   useEffect(() => {
     let disposed = false;
     void fileHighlighting.ensureLanguage("json").catch(failure => {
-      if (!disposed) setError(String(failure));
+      if (!disposed) reportError(failure);
     });
     return () => { disposed = true; };
-  }, []);
+  }, [reportError]);
 
   useEffect(() => {
     const model = modelRef.current;
     if (model !== null && model.getValue() !== value) model.setValue(value);
   }, [value]);
 
-  let feedback;
-  if (error !== null) feedback = <Alert severity="warning">{t("fileLanguages.loadError")} {error}</Alert>;
   return <>
-    {feedback}
     <Box ref={container} sx={{ height: 300, border: 1, borderColor: "divider" }} />
   </>;
 }

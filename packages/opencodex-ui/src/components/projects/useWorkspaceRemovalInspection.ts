@@ -1,3 +1,4 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { useEffect, useState } from "react";
 import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceRemovalInspection } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectWorkspacesStore } from "../../stores/project/ProjectWorkspacesStore";
@@ -16,6 +17,7 @@ export interface WorkspaceRemovalInspectionState {
 export function useWorkspaceRemovalInspection(store: ProjectWorkspacesStore,
   target: Pick<OpenCodexProjectWorkspace, "id" | "projectId" | "sourceId" | "path">,
   enabled: boolean): WorkspaceRemovalInspectionState {
+  const reportError = useApplicationErrorReporter();
   const [result, setResult] = useState<OpenCodexWorkspaceRemovalInspection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(enabled);
@@ -38,14 +40,17 @@ export function useWorkspaceRemovalInspection(store: ProjectWorkspacesStore,
           || value.workspacePath !== path) throw new Error("Workspace inspection identity changed. Refresh before deleting it.");
         if (active) setResult(value);
       } catch (failure) {
-        if (active) setError(failure instanceof Error ? failure.message : String(failure));
+        if (active) {
+          setError(failure instanceof Error ? failure.message : String(failure));
+          reportError(failure);
+        }
       } finally {
         if (active) setLoading(false);
       }
     }
     void inspect();
     return () => { active = false; };
-  }, [store, id, projectId, sourceId, path, enabled, revision]);
+  }, [store, id, projectId, sourceId, path, enabled, revision, reportError]);
 
   /** Clears old consent immediately rather than letting a stale inspection authorize removal. */
   function refresh(): void { setForce(false); setResult(null); setLoading(true); setRevision(value => value + 1); }

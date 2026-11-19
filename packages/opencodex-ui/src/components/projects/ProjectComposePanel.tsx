@@ -130,20 +130,11 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
 
       <ProjectComposeFileSelectorX store={composeStore} />
       {composeStore.isLoading ? <LinearProgress /> : null}
-      {composeStore.errorMessage !== null ? (
-        <Alert severity="error" className="project-compose-error">
-          {composeStore.errorMessage}
-        </Alert>
-      ) : null}
+
       {!isAvailable && projectStore.project?.sourceId !== null &&
       projectStore.project?.sourceId !== undefined ? (
         <Alert severity="warning" className="project-compose-error">
           {t("docker.compose.sourceUnavailable")}
-        </Alert>
-      ) : null}
-      {composeStore.snapshot?.errorMessage !== null && composeStore.snapshot?.errorMessage !== undefined ? (
-        <Alert severity="warning" className="project-compose-error">
-          {composeStore.snapshot.errorMessage}
         </Alert>
       ) : null}
 

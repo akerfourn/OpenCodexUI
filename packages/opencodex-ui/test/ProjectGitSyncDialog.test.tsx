@@ -156,15 +156,16 @@ describe("guided Git synchronization dialog", () => {
     expect(test.request).toHaveBeenCalledTimes(1);
   });
 
-  it("should keep raw RPC and Git errors in details rather than the main explanation", async () => {
+  it("should journal Git failures without embedding technical details into the review", async () => {
     const test = createGitSyncStoreFixture();
     const failure = { ...syncResult("error"), issue: "gitFailed", details: "Error invoking remote method: fatal: authentication failed" };
     test.request.mockResolvedValueOnce(failure);
     await act(async () => { root.render(<ProjectGitSyncActionX gitStore={test.gitStore} onOpenFile={vi.fn()} />); });
     await act(async () => { await test.gitStore.sync.open(); });
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe("gitSync.issues.gitFailed");
-    expect(document.querySelector('[role="alert"]')?.textContent).not.toContain("Error invoking");
-    expect(document.body.textContent).toContain("gitSync.details");
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(document.body.textContent).not.toContain("Error invoking");
+    expect(test.root.reportError).toHaveBeenCalledWith(failure.details, "/workspace/project");
+    expect(document.body.textContent).not.toContain("gitSync.details");
     expect(test.request).toHaveBeenCalledTimes(1);
   });
 });

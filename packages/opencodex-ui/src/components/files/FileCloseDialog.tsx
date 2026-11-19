@@ -10,7 +10,6 @@ import {
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { FileCloseStore } from "../../stores/files/FileCloseStore";
-import { FileErrorX } from "./FileError";
 
 /** Shared loss-prevention dialog for every close/reload/restart entry point. */
 export function FileCloseDialog({ store }: { store: FileCloseStore }) {
@@ -29,13 +28,13 @@ export function FileCloseDialog({ store }: { store: FileCloseStore }) {
     void store.save();
   }
   const rows = store.documents.map((document) => {
-    const error = document.error === null ? null : <FileErrorX error={document.error} />;
+
     return (
       <div key={document.id}>
         <Typography variant="body2" sx={{ overflowWrap: "anywhere", mt: 1 }}>
           {document.workspaceName} · {document.target?.path ?? document.name}
         </Typography>
-        {error}
+
       </div>
     );
   });

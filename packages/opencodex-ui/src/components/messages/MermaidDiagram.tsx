@@ -1,3 +1,4 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { Alert, Box, Button, Paper, Stack, Typography, useTheme } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,6 +10,7 @@ import { MAX_MERMAID_SOURCE_LENGTH, renderMermaidImage } from "./mermaidRenderer
 /** Displays inert diagram images, with literal source fallback for incomplete or invalid input. */
 export function MermaidDiagram({ code }: { code: string }) {
   const { t } = useTranslation();
+  const reportError = useApplicationErrorReporter();
   const { palette } = useTheme();
   const container = useRef<HTMLElement>(null);
   const [showSource, setShowSource] = useState(false);
@@ -27,7 +29,10 @@ export function MermaidDiagram({ code }: { code: string }) {
       void renderMermaidImage(code, mode, controller.signal).then(image => {
         if (!controller.signal.aborted) setResult({ code, mode, image });
       }).catch(error => {
-        if (!controller.signal.aborted) setResult({ code, mode, error: String(error) });
+        if (!controller.signal.aborted) {
+          setResult({ code, mode, error: String(error) });
+          reportError(error, "Mermaid");
+        }
       });
     }
     let observer: IntersectionObserver | undefined;
@@ -39,7 +44,7 @@ export function MermaidDiagram({ code }: { code: string }) {
       observer.observe(container.current);
     }
     return () => { observer?.disconnect(); controller.abort(); };
-  }, [code, mode, showSource, tooLarge]);
+  }, [code, mode, showSource, tooLarge, reportError]);
 
   /** Switching to source never changes the saved Markdown or starts another layout. */
   function handleToggleSource(): void { setShowSource(value => !value); }
@@ -57,11 +62,6 @@ export function MermaidDiagram({ code }: { code: string }) {
   }
   let warning = null;
   if (tooLarge) warning = <Alert severity="info">{t("message.mermaid.tooLarge")}</Alert>;
-  else if (current?.error !== undefined) {
-    warning = <Alert severity="warning">{t("message.mermaid.invalid")}
-      <details><summary>{t("message.mermaid.details")}</summary>{current.error}</details>
-    </Alert>;
-  }
   const copyAction = literalVisible ? null
     : <CopyIconButton value={code} label={t("chat.copyCodeBlock")} copiedLabel={t("message.copied")} />;
   const toggleAction = tooLarge || code.trim().length === 0 || current?.error !== undefined ? null

@@ -196,6 +196,11 @@ export class ProjectGitStore {
     return this.root.request<TResponse>(request);
   }
 
+  /** Reports structured Git failures through the shared application journal and notification. */
+  reportError(error: unknown): void {
+    this.root.reportError(error, this.projectPath);
+  }
+
   /**
    * Applies Git preferences to the child stores that consume them.
    *

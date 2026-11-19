@@ -424,8 +424,9 @@ volumes. Only the primary's source directories need to be present and literal.
 No conversations are unloaded and no managed service is stopped.
 
 After a lost response, the UI performs a fresh read without repeating the
-mutation. The existing error remains visible so a newly observed external lock
-cannot be cleared through an old confirmation. Checks are conservative within
+mutation. The failure is retained in the application journal and the confirmation
+stays invalid, so a newly observed external lock cannot be cleared through an
+old confirmation. Checks are conservative within
 the application; another external Git process can still race between inspection
 and mutation, and lock reasons are not unique owner tokens.
 

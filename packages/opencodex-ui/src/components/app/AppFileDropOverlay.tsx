@@ -16,9 +16,7 @@ export function AppFileDropOverlay({ store }: { store: RootStore }) {
   useEffect(() => registerAppFileDrop(window, {
     getTarget: () => getDropTarget(store),
     onHover: setIsHovering,
-    onError: (error) => store.appStore.applyError({
-      type: "error", message: error instanceof Error ? error.message : String(error)
-    }),
+    onError: (error) => store.reportError(error),
     directoryError: t("composer.dropDirectoriesUnsupported")
   }), [store, t]);
 

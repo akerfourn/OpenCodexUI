@@ -2,7 +2,6 @@
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
 import {
-  Alert,
   Box,
   Button,
   ButtonBase,
@@ -134,11 +133,7 @@ export function HomeEmojiView({ store }: HomeEmojiViewProps) {
           {t("emojiCatalog.description")}
         </Typography>
       </Box>
-      {emojiStore.errorMessage !== null ? (
-        <Alert severity="error" onClose={emojiStore.clearError}>
-          {emojiStore.errorMessage}
-        </Alert>
-      ) : null}
+
       {emojiStore.isLoading ? <LinearProgress /> : null}
       <TextField
         value={searchTerm}

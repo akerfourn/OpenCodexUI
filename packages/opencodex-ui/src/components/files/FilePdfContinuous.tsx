@@ -67,7 +67,7 @@ export function FilePdfContinuous({ document, pdf, width, viewport, onScale }: {
   const visible = visiblePdfPages(pages, scrollTop, viewportHeight).map((page) => (
     <div key={page.page} className="files-pdf-slot" style={{ top: page.top, minHeight: page.height }}>
       <FilePdfPageX key={`${page.page}:${document.pdfZoom}:${width}`} pdf={pdf} pageNumber={page.page}
-        zoom={document.pdfZoom} width={width} onScale={ignoreScale} onSize={recordSize} />
+        zoom={document.pdfZoom} width={width} onScale={ignoreScale} onSize={recordSize} onError={document.reportError} />
     </div>
   ));
   return <div className="files-pdf-continuous" style={{ height: totalHeight, minWidth: maxWidth }}>{visible}</div>;

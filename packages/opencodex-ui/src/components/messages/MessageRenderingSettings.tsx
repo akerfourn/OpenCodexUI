@@ -1,5 +1,16 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { useContext, useState, type MouseEvent, type ChangeEvent } from "react";
-import { Alert, Button, CircularProgress, IconButton, MenuItem, Popover, Stack, TextField, Tooltip, Typography } from "@mui/material";
+import {
+  Button,
+  CircularProgress,
+  IconButton,
+  MenuItem,
+  Popover,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography
+} from "@mui/material";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
@@ -13,7 +24,7 @@ export function MessageRenderingSettings({ turnId, itemId, role }: {
   const { t } = useTranslation();
   const value = useContext(MessageRenderingContext);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   if (value === null) return null;
   const { store, context } = value;
   const override = store.override(context, turnId, itemId);
@@ -26,7 +37,6 @@ export function MessageRenderingSettings({ turnId, itemId, role }: {
   /** Retries failed initial reads when the user opens the settings. */
   function open(event: MouseEvent<HTMLElement>): void {
     setAnchor(event.currentTarget);
-    setError(null);
     void store.load(context).catch(() => undefined);
   }
 
@@ -34,27 +44,19 @@ export function MessageRenderingSettings({ turnId, itemId, role }: {
   async function change(field: keyof MessageRenderingOverride, event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const choice = event.target.value;
     const selected = choice === "default" ? null : choice === "true";
-    setError(null);
     try { await store.save(context, { turnId, itemId, ...override, [field]: selected }); }
-    catch (reason) { setError(String(reason)); }
+    catch (reason) { reportError(reason); }
   }
 
   /** Explicit retry keeps a transient read failure recoverable without leaving the menu. */
   function retry(): void {
-    setError(null);
     void store.load(context).catch(() => undefined);
   }
 
-  const failure = error ?? store.error(context);
+  const failure = store.error(context);
   let retryAction = null;
   if (!loaded) retryAction = <Button size="small" onClick={retry}>{t("messageRendering.retry")}</Button>;
-  let feedback = null;
-  if (failure !== null) {
-    feedback = <Alert severity="error">{t("messageRendering.saveError")}
-      <details><summary>{t("messageRendering.details")}</summary>{failure}</details>
-      {retryAction}
-    </Alert>;
-  }
+
   let icon = <SettingsOutlinedIcon sx={{ fontSize: 15 }} />;
   if (saving || (anchor !== null && !loaded && failure === null)) icon = <CircularProgress size={15} />;
   const fields = (["markdown", "math"] as const).map(field => {
@@ -83,8 +85,8 @@ export function MessageRenderingSettings({ turnId, itemId, role }: {
         sx={{ p: 2, width: 320, maxWidth: "90vw" }}>
         <Typography variant="subtitle2">{t("messageRendering.title")}</Typography>
         {fields}
+        {retryAction}
         <Typography variant="caption" color="text.secondary">{t("messageRendering.description")}</Typography>
-        {feedback}
       </Stack>
     </Popover>
   </>;

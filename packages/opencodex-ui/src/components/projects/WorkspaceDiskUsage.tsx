@@ -11,7 +11,6 @@ export function WorkspaceDiskUsage({ workspace, store, disabled }: {
   const { t, i18n } = useTranslation();
   const result = store.resultFor(workspace);
   const loading = store.loading.has(workspace.id);
-  const error = store.errorFor(workspace);
   let details = <Typography variant="body2" color="text.secondary">{t("workspaceDiskUsage.unknown")}</Typography>;
   let warning = null;
   if (result !== undefined) {
@@ -34,13 +33,12 @@ export function WorkspaceDiskUsage({ workspace, store, disabled }: {
   let buttonLabel = t("workspaceDiskUsage.measure");
   if (result !== undefined) buttonLabel = t("workspaceDiskUsage.refresh");
   if (loading) buttonLabel = t("workspaceDiskUsage.measuring");
-  const failure = error === undefined ? null : <Alert severity="error">{error}</Alert>;
 
   /** Starts only the explicitly selected workspace; opening the inventory never scans files. */
   function handleMeasure(): void { void store.measure(workspace); }
 
   return <Stack spacing={1}>
-    {details}{warning}{failure}
+    {details}{warning}
     <Button onClick={handleMeasure} disabled={disabled || !store.canMeasure(workspace)}>{buttonLabel}</Button>
   </Stack>;
 }

@@ -70,6 +70,10 @@ export class DebugStore {
   /** Rejects late snapshots and refreshes suspended data only when its epoch changes. */
   apply(snapshot: DebugSnapshot): void {
     if (snapshot.revision < this.snapshot.revision) return;
+    if (snapshot.session?.error !== undefined && (snapshot.session.id !== this.snapshot.session?.id
+      || snapshot.session.error !== this.snapshot.session?.error)) {
+      this.root.reportError(snapshot.session.error, "debug");
+    }
     this.snapshot = snapshot;
     const session = snapshot.session;
     const identity = session?.id ?? "";

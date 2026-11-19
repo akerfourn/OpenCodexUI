@@ -118,7 +118,7 @@ export class ProjectWorkspacesStore {
       });
     } catch (error) {
       runInAction(() => {
-        if (generation === this.generation) this.error = errorMessage(error);
+        if (generation === this.generation) this.recordError(error);
       });
     }
   }
@@ -158,7 +158,7 @@ export class ProjectWorkspacesStore {
       }
     } catch (error) {
       runInAction(() => {
-        if (generation === this.activityGeneration && sourceId === this.project.project.sourceId) this.error = errorMessage(error);
+        if (generation === this.activityGeneration && sourceId === this.project.project.sourceId) this.recordError(error);
       });
     } finally {
       runInAction(() => { if (generation === this.activityGeneration) this.isRefreshingManagement = false; });
@@ -186,7 +186,7 @@ export class ProjectWorkspacesStore {
       });
     } catch (error) {
       runInAction(() => {
-        if (this.lockGenerations.get(workspaceId) === generation) this.error = errorMessage(error);
+        if (this.lockGenerations.get(workspaceId) === generation) this.recordError(error);
       });
     } finally {
       runInAction(() => {
@@ -443,11 +443,17 @@ export class ProjectWorkspacesStore {
     try {
       await action();
     } catch (error) {
-      runInAction(() => { this.error = errorMessage(error); });
+      runInAction(() => { this.recordError(error); });
     } finally {
       await this.load();
       runInAction(() => { this.isBusy = false; });
     }
+  }
+
+  /** Preserves operation status without embedding its diagnostics in project panels. */
+  private recordError(error: unknown): void {
+    this.error = errorMessage(error);
+    this.root.reportError(error);
   }
 
   /** Refuses operations against an orphan project. */

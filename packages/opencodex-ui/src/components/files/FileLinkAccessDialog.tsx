@@ -1,7 +1,18 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel,
-  Radio, RadioGroup, Stack, Typography } from "@mui/material";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  Radio,
+  RadioGroup,
+  Stack,
+  Typography
+} from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { OpenCodexFileAccess, OpenCodexFileLinkAccess } from "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceTreeStore } from "../../stores/files/WorkspaceTreeStore";
@@ -18,19 +29,18 @@ export function FileLinkAccessDialog({ tree, files, path, link, onClose }: {
   const { t } = useTranslation();
   const [access, setAccess] = useState<OpenCodexFileAccess>(link.access);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
 
   /** Persists first, then updates open documents without replacing their buffers. */
   async function save(): Promise<void> {
     setSaving(true);
-    setError(null);
     try {
       await tree.setLinkAccess(path, link.destination, access);
       await files.refreshAccess(tree.context);
       onClose();
       tree.refresh();
     } catch (cause) {
-      setError(String(cause));
+      reportError(cause);
     } finally {
       setSaving(false);
     }
@@ -40,10 +50,6 @@ export function FileLinkAccessDialog({ tree, files, path, link, onClose }: {
   function close(): void {
     if (!saving) onClose();
   }
-
-  let errorContent = null;
-  if (error !== null) errorContent = <Alert severity="error">{t("files.access.saveError")}
-    <details><summary>{t("files.details")}</summary>{error}</details></Alert>;
 
   return <Dialog open onClose={close} maxWidth="sm" fullWidth>
     <DialogTitle>{t("files.access.manage")}</DialogTitle>
@@ -56,7 +62,7 @@ export function FileLinkAccessDialog({ tree, files, path, link, onClose }: {
           <FormControlLabel value="readOnly" control={<Radio />} disabled={saving} label={t("files.access.readOnly")} />
           <FormControlLabel value="readWrite" control={<Radio />} disabled={saving} label={t("files.access.readWrite")} />
         </RadioGroup>
-        {errorContent}
+
       </Stack>
     </DialogContent>
     <DialogActions>

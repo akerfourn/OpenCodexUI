@@ -144,10 +144,6 @@ export function ProjectBranchMergeDialog({
             onChange={handleSearchChange}
           />
 
-          {referencesStore.branchErrorMessage !== null ? (
-            <Alert severity="error">{referencesStore.branchErrorMessage}</Alert>
-          ) : null}
-
           {referencesStore.isLoadingBranches ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
               <CircularProgress size={24} />

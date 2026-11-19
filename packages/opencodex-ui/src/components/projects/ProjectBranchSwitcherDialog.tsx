@@ -2,7 +2,6 @@
  * Renders Git branch search, checkout, and creation controls.
  */
 import {
-  Alert,
   Box,
   Button,
   CircularProgress,
@@ -113,10 +112,6 @@ export function ProjectBranchSwitcherDialog({
             disabled={referencesStore.isCheckingOutBranch}
             onChange={handleSearchChange}
           />
-
-          {referencesStore.branchErrorMessage !== null ? (
-            <Alert severity="error">{referencesStore.branchErrorMessage}</Alert>
-          ) : null}
 
           {referencesStore.isLoadingBranches ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>

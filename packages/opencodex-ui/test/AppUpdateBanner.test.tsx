@@ -15,12 +15,10 @@ function createStore(request = vi.fn().mockRejectedValue(new Error("network unav
 }
 
 describe("application update errors", () => {
-  it("should show generic text and accessible actions without exposing raw diagnostics", () => {
+  it("should leave error feedback to the global notification instead of adding a banner", () => {
     const markup = renderToStaticMarkup(<AppUpdateBannerX store={createStore()} />);
-    expect(markup).toContain("updates.error");
-    expect(markup).toContain("updates.details");
-    expect(markup).toContain('aria-label="updates.retry"');
-    expect(markup).toContain('aria-label="updates.dismiss"');
+    expect(markup).toBe("");
+
     expect(markup).not.toContain("raw provider diagnostics");
   });
 

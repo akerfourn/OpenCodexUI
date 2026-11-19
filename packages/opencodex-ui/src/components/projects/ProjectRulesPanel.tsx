@@ -155,9 +155,6 @@ export function ProjectRulesPanel({ projectStore }: ProjectRulesPanelProps) {
       </Stack>
 
       <Stack className="project-rules-content" spacing={1}>
-        {rulesStore.errorMessage !== null ? (
-          <Alert severity="error">{rulesStore.errorMessage}</Alert>
-        ) : null}
 
         {isSourceUnavailable ? (
           <Alert severity="warning">{t("rules.sourceUnavailable")}</Alert>
@@ -207,16 +204,11 @@ export function ProjectRulesPanel({ projectStore }: ProjectRulesPanelProps) {
         ) : null}
 
         {canRestart && status?.runtimeMessage !== null ? (
-          <Alert
-            severity="error"
-            action={(
+          (
               <Button color="inherit" size="small" disabled={rulesStore.isRestarting} onClick={handleRestart}>
                 {t("rules.restart")}
               </Button>
-            )}
-          >
-            {t("rules.restartError", { message: status.runtimeMessage })}
-          </Alert>
+            )
         ) : null}
 
         {rulesStore.isLoading ? <CircularProgress size={18} /> : null}

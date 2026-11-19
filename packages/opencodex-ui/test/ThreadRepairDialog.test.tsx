@@ -74,8 +74,8 @@ describe("conversation repair from the chat menu", () => {
     await act(async () => action("threadRepair.title").click());
     await act(async () => action("threadRepair.submit").click());
     const dialog = document.querySelector('[role="dialog"]')!;
-    expect(dialog.textContent).toContain("threadRepair.failed");
-    expect(dialog.querySelector("details")?.textContent).toContain("Thread is active");
+    expect(dialog.textContent).not.toContain("threadRepair.failed");
+    expect(dialog.querySelector("details")).toBeNull();
     expect(dialog.textContent).not.toContain("threadRepair.success");
     expect(action("threadRepair.submit").hasAttribute("disabled")).toBe(false);
     expect(request).toHaveBeenCalledTimes(1);

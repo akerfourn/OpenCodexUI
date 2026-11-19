@@ -96,7 +96,7 @@ describe("ProjectGoalsStore", () => {
 
     expect(store.isSaving).toBe(false);
     expect(store.errorMessage).toBe("catalogue unavailable");
-    expect(root.appStore.errorMessage).toBe("catalogue unavailable");
+    expect(root.reportError).toHaveBeenCalledWith(expect.objectContaining({ message: "catalogue unavailable" }));
   });
 
   it("should persist execution snapshots separately from the goal definition", async () => {
@@ -224,6 +224,7 @@ function createStoreFixture(
   } as ProjectStore;
   const root = {
     request,
+    reportError: vi.fn(),
     appStore: { errorMessage: null }
   } as unknown as RootStore;
 

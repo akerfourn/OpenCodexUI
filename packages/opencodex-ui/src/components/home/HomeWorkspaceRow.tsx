@@ -13,7 +13,6 @@ export function HomeWorkspaceRow({ owner, workspace }: {
   const { t, i18n } = useTranslation();
   const status = owner.statusFor(workspace);
   const activity = owner.activityFor(workspace);
-  const error = owner.checkErrors.get(workspace.id);
   let activityLabel: string = t("workspaceManagement.unknown");
   const timestamp = Date.parse(activity?.lastActivityAt ?? "");
   if (Number.isFinite(timestamp)) activityLabel = new Intl.DateTimeFormat(i18n.resolvedLanguage,
@@ -24,8 +23,6 @@ export function HomeWorkspaceRow({ owner, workspace }: {
   const pending = owner.hasPending(workspace) ? <Chip size="small" color="warning" label={pendingLabel} /> : null;
   const count = activity === undefined ? null : <Typography variant="caption" color="text.secondary">
     {t("workspaceManagement.conversations", { count: activity.conversationCount })}</Typography>;
-  const failure = error === undefined ? null : <Typography variant="caption" color="error" title={error}>
-    {t("workspaceChanges.unavailable")}</Typography>;
 
   return <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap", py: 1, px: 1.5,
     borderTop: "1px solid", borderColor: "divider" }}>
@@ -37,7 +34,7 @@ export function HomeWorkspaceRow({ owner, workspace }: {
       </Stack>
       <Typography variant="caption" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>{workspace.path}</Typography>
       <Typography variant="caption" color="text.secondary">{t(`workspaceManagement.status.${status}`)}</Typography>
-      {failure}
+
     </Stack>
     <Stack sx={{ flex: "1 1 160px" }}>
       <Typography variant="caption" color="text.secondary">{t("workspaceManagement.lastActivity", { date: activityLabel })}</Typography>

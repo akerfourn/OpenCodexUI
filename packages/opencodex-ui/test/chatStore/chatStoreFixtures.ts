@@ -128,7 +128,7 @@ export function createProjectStore(): ProjectStore {
 
 /** Creates the minimal root-store collaborator used by chat tests. */
 export function createRootStore(): RootStore {
-  return {
+  const root = {
     appStore: {
       models: [
         {
@@ -174,6 +174,10 @@ export function createRootStore(): RootStore {
     },
     request: vi.fn(() => Promise.resolve({ ok: true }))
   } as RootStore;
+  root.reportError = vi.fn((error: unknown) => {
+    root.appStore.errorMessage = error instanceof Error ? error.message : String(error);
+  });
+  return root;
 }
 
 /** Creates one replace-only live plan snapshot. */

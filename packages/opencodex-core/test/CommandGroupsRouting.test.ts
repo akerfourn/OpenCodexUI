@@ -21,11 +21,11 @@ describe("source-independent command group routing", () => {
     expect(effect).toHaveBeenCalledWith(...args);
   });
 
-  it("should leave errors to the group controls without attempting chat recovery", async () => {
-    const handleRequestError = vi.fn();
+  it("should route group errors through the central reporting boundary", async () => {
+    const handleRequestError = vi.fn((_request, error) => { throw error; });
     const runtime = { commandGroups: { create: vi.fn(async () => { throw new Error("Duplicate group"); }) }, handleRequestError } as unknown as OpenCodexBackendRuntime;
     const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
     await expect(router.handleRequest({ type: "projectCommands.groups.create", projectId: "project", name: "Build" })).rejects.toThrow("Duplicate group");
-    expect(handleRequestError).not.toHaveBeenCalled();
+    expect(handleRequestError).toHaveBeenCalledTimes(1);
   });
 });

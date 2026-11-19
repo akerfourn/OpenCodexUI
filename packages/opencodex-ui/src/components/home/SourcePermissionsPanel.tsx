@@ -38,10 +38,9 @@ export function SourcePermissionsPanel({ permissions, root, onClose }: {
 
   const snapshot = permissions.snapshot;
   let details = null;
-  let errorContent = null;
   let successContent = null;
   let progress = null;
-  if (permissions.error !== null) errorContent = <Alert severity="error">{permissions.error}</Alert>;
+
   if (permissions.didSave) successContent = <Alert severity="success">{t("sourcePermissions.saved")}</Alert>;
   if (permissions.isLoading || permissions.isSaving) progress = <CircularProgress size={22} aria-label={t("sourcePermissions.loading")} />;
   if (snapshot !== null) {
@@ -117,7 +116,7 @@ export function SourcePermissionsPanel({ permissions, root, onClose }: {
     <DialogContent dividers>
       <Stack spacing={2}>
         <Typography variant="body2">{t("sourcePermissions.scope")}</Typography>
-        {errorContent}{successContent}{progress}{details}
+        {successContent}{progress}{details}
       </Stack>
     </DialogContent>
     <DialogActions>

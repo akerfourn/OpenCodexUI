@@ -8,7 +8,6 @@ import { useTranslation } from "react-i18next";
 import type { DebugStore } from "../../stores/debug/DebugStore";
 import { DebugConsoleX } from "./DebugConsole";
 import { DebugControlsX } from "./DebugControls";
-import { DebugError } from "./DebugError";
 
 /** App-mounted portal keeps the console alive when tools, projects or conversations change. */
 export function DebugConsoleWindow({ store }: { store: DebugStore }) {
@@ -28,7 +27,7 @@ export function DebugConsoleWindow({ store }: { store: DebugStore }) {
   const session = store.snapshot.session;
   const title = session?.configuration.name ?? t("debug.noSession");
   const heading = session === null ? title : `${title} · ${t(`debug.states.${session.state}`)}`;
-  const error = store.error === null ? null : <DebugError details={store.error} onClose={() => { store.error = null; }} />;
+
   const controls = store.active ? <DebugControlsX store={store} tooltipContainer={host.window.document.body} /> : null;
   return createPortal(<CacheProvider value={cache}>
     <CssBaseline enableColorScheme />
@@ -42,7 +41,7 @@ export function DebugConsoleWindow({ store }: { store: DebugStore }) {
         </Box>
         <Button size="small" onClick={store.consoleWindow.close}>{t("debug.dockConsole")}</Button>
       </Stack>
-      {controls}{error}
+      {controls}
       <DebugConsoleX store={store} detached />
     </Stack>
   </CacheProvider>, host.container);

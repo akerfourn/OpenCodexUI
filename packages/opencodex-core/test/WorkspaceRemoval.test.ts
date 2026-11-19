@@ -33,6 +33,24 @@ describe("safe workspace removal with real Git and SQLite", () => {
   const request = vi.fn();
   const clients = { ensureClient: vi.fn() };
 
+  it("should journal an automatic deletion blocker once without retrying it silently", async () => {
+    const reportFailure = vi.fn();
+    service = new WorkspaceRemovalService(cache.workspaces, clients, gate, inactive, gitRemoval,
+      undefined, () => {}, reportFailure);
+    await service.schedule(primary.projectId, secondary.id, "source");
+    const removal = (await service.queued())[0]!;
+    await fs.writeFile(path.join(checkout, "ignored.txt"), "generated output");
+
+    await service.processQueued(removal.id);
+    await service.processQueued(removal.id);
+
+    expect(reportFailure).toHaveBeenCalledTimes(1);
+    expect(reportFailure).toHaveBeenCalledWith(expect.objectContaining({ id: removal.id }),
+      expect.objectContaining({ message: expect.stringContaining("modified, untracked or ignored") }));
+    expect(await service.queued()).toEqual([]);
+    expect((await fs.stat(checkout)).isDirectory()).toBe(true);
+  });
+
   /** Runs fixture Git without user configuration, signing, hooks or network access. */
   async function git(cwd: string, args: string[]): Promise<string> {
     return (await execute("git", args, { cwd, env: environment })).stdout;

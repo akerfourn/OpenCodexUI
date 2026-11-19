@@ -26,7 +26,6 @@ import {
   canRefreshChat,
   canSteerChat
 } from "./chatActionGuards";
-import { readChatErrorMessage } from "./chatErrorMessage";
 
 /**
  * Stores user-triggered commands and their optimistic chat mutations.
@@ -223,7 +222,7 @@ export class ChatActionsStore {
     } catch (error: unknown) {
       runInAction(() => {
         if (startAttemptId !== null) this.clearPendingTurnAfterStartFailure(startAttemptId);
-        this.root.appStore.errorMessage = readChatErrorMessage(error);
+        this.root.reportError(error);
       });
       return false;
     } finally {
@@ -320,7 +319,7 @@ export class ChatActionsStore {
           this.parent.runtime.clearEditStart();
           this.parent.discardPendingLiveEvents();
           this.parent.timeline.removePendingTurn(pendingTurnId);
-          this.root.appStore.errorMessage = readChatErrorMessage(error);
+          this.root.reportError(error);
         });
       });
     }).catch((error: unknown) => {
@@ -328,7 +327,7 @@ export class ChatActionsStore {
         this.parent.timeline.setTurns(previousTurns);
         this.parent.runtime.clearAfterEditFailure();
         this.parent.discardPendingLiveEvents();
-        this.root.appStore.errorMessage = readChatErrorMessage(error);
+        this.root.reportError(error);
       });
     });
 
@@ -381,7 +380,7 @@ export class ChatActionsStore {
         this.isRenaming = false;
 
         if (this.root.appStore.errorMessage === null) {
-          this.root.appStore.errorMessage = readChatErrorMessage(error);
+          this.root.reportError(error);
         }
       });
     });
@@ -443,7 +442,7 @@ export class ChatActionsStore {
       runInAction(() => {
         this.parent.runtime.clearTurnStart();
         this.parent.discardPendingLiveEvents();
-        this.root.appStore.errorMessage = readChatErrorMessage(error);
+        this.root.reportError(error);
       });
     });
   }

@@ -34,7 +34,7 @@ export function DebugConfigurationDialog({ store, context, configuration, import
       if (!Array.isArray(parsed) || !parsed.every(item => typeof item === "string")) throw new Error(t("debug.argsError"));
       const options = parseDebugAdvancedDraft(advanced, draft.target, draft.request);
       if (await store.saveConfiguration({ ...draft, args: parsed, advanced: options })) { onSaved?.(draft.id); onClose(); }
-      else setError(store.error);
+
     } catch (failure) { setError(String(failure)); }
     finally { setSaving(false); }
   }

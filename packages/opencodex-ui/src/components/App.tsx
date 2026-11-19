@@ -6,8 +6,9 @@ import { FileLinkScope } from "./files/FileLinkScope";
 import { DebugConsoleWindowX } from "./debug/DebugConsoleWindow";
 import { FileCloseDialogX } from "./files/FileCloseDialog";
 import { observer } from "mobx-react-lite";
-import { Box, Button, Snackbar } from "@mui/material";
-import { useTranslation } from "react-i18next";
+import { Box } from "@mui/material";
+import { ApplicationNotificationX } from "./app/ApplicationNotification";
+import { ApplicationErrorProvider } from "./app/ApplicationErrorProvider";
 
 import { HOME_TAB_ID, type RootStore } from "../stores/RootStore";
 import { AppFileDropOverlayX } from "./app/AppFileDropOverlay";
@@ -35,10 +36,6 @@ type AppProps = {
  * @returns Nothing.
  */
 export function App({ store }: AppProps) {
-  const { t } = useTranslation();
-  const errorMessage = store.appStore.errorMessage;
-  const warningMessage = store.appStore.warningMessage;
-  const notificationMessage = errorMessage ?? warningMessage;
   const activeTabId = store.navigationStore.activeTabId;
   const activeProjectStore = store.navigationStore.activeProjectStore;
   const isInstalling = store.appUpdateStore.state.status === "installing";
@@ -51,33 +48,7 @@ export function App({ store }: AppProps) {
   const debugConsoleWindow = <DebugConsoleWindowX store={store.debugStore} />;
   const activityReporter = <ApplicationActivityReporterX store={store} />;
 
-  function handleCloseNotification(): void {
-    if (errorMessage !== null) {
-      store.appStore.clearErrorMessage();
-      return;
-    }
-
-    store.appStore.clearWarningMessage();
-  }
-
-  function handleOpenLogs(): void {
-    store.openLogsHome();
-    store.appStore.clearErrorMessage();
-    store.appStore.clearWarningMessage();
-  }
-
-  const snackbar = (
-    <Snackbar
-      open={notificationMessage !== null}
-      message={notificationMessage?.split("\n")[0] ?? ""}
-      onClose={handleCloseNotification}
-      action={(
-        <Button color="inherit" size="small" onClick={handleOpenLogs}>
-          {t("logs.viewLogs")}
-        </Button>
-      )}
-    />
-  );
+  const snackbar = <ApplicationNotificationX store={store} />;
   let activeView = null;
 
   if (activeTabId === HOME_TAB_ID) {
@@ -96,7 +67,7 @@ export function App({ store }: AppProps) {
 
   if (store.appStore.shouldShowOnboarding) {
     return (
-      <FileLinkMenuProviderX store={store}>
+      <ApplicationErrorProvider store={store}><FileLinkMenuProviderX store={store}>
       <FileLinkScope sourceId={null} projectPath={null}>
       <Box component="main" className="app-shell">
         <OnboardingViewX store={store} />
@@ -108,12 +79,12 @@ export function App({ store }: AppProps) {
         {shutdownOverlay}
       </Box>
       </FileLinkScope>
-      </FileLinkMenuProviderX>
+      </FileLinkMenuProviderX></ApplicationErrorProvider>
     );
   }
 
   return (
-    <FileLinkMenuProviderX store={store}>
+    <ApplicationErrorProvider store={store}><FileLinkMenuProviderX store={store}>
     <FileLinkScope sourceId={null} projectPath={null}>
     <Box component="main" className="app-shell">
       <AppTabsX store={store} />
@@ -132,7 +103,7 @@ export function App({ store }: AppProps) {
       {shutdownOverlay}
     </Box>
     </FileLinkScope>
-    </FileLinkMenuProviderX>
+    </FileLinkMenuProviderX></ApplicationErrorProvider>
   );
 }
 

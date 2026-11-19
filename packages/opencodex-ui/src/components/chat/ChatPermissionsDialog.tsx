@@ -38,11 +38,10 @@ export function ChatPermissionsDialog({ store, onClose }: ChatPermissionsDialogP
   const snapshot = store.snapshot;
   let details = null;
   let progress = null;
-  let errorContent = null;
   let busyContent = null;
   let successContent = null;
   if (store.isLoading || store.isSaving) progress = <CircularProgress size={22} aria-label={t("threadPermissions.loading")} />;
-  if (store.error !== null) errorContent = <Alert severity="error">{store.error}</Alert>;
+
   if (!store.isAvailable) busyContent = <Alert severity="info">{t("threadPermissions.waitForIdle")}</Alert>;
   if (store.didSave) successContent = <Alert severity="success">{t("threadPermissions.saved")}</Alert>;
   if (snapshot !== null) {
@@ -94,7 +93,7 @@ export function ChatPermissionsDialog({ store, onClose }: ChatPermissionsDialogP
     <DialogContent dividers>
       <Stack spacing={2}>
         <Typography variant="body2">{t("threadPermissions.description")}</Typography>
-        {busyContent}{errorContent}{successContent}{progress}{details}
+        {busyContent}{successContent}{progress}{details}
       </Stack>
     </DialogContent>
     <DialogActions>

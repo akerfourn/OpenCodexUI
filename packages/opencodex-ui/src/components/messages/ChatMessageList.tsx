@@ -8,7 +8,6 @@ import { observer } from "mobx-react-lite";
 import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
 import {
   Box,
-  Alert,
   Button,
   CircularProgress,
   Dialog,
@@ -17,8 +16,7 @@ import {
   DialogTitle,
   IconButton,
   TextField,
-  Tooltip,
-  Typography
+  Tooltip
 } from "@mui/material";
 import {
   useCallback,
@@ -140,10 +138,8 @@ export function ChatMessageList({
     <WorkspaceTransitionNoticeX key={event.id} event={event} />
   ));
   const workspaceHistoryError = chatStore.workspaceHistory.error === null ? null : (
-    <Alert severity="warning" action={<Button onClick={() => void chatStore.workspaceHistory.load()}>
-      {t("workspaceHistory.retry")}</Button>}>
-      {t("workspaceHistory.unavailable")}
-    </Alert>
+    <Button onClick={() => void chatStore.workspaceHistory.load()}>
+      {t("workspaceHistory.retry")}</Button>
   );
 
   const handleStartEdit = useCallback((content: string): void => {

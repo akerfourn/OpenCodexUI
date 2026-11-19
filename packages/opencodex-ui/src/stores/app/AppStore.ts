@@ -82,6 +82,10 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
    * @returns Nothing.
    */
   override handleEvent(event: OpenCodexEvent): void {
+    if (event.type === "logs.created" && event.log.type === "error") {
+      this.applyError({ type: "error", message: event.log.message });
+      return;
+    }
     if (event.type === "models.updated") {
       this.models = event.models;
       this.selectedModel = this.selectedModel ?? event.models[0]?.model ?? null;
@@ -207,7 +211,8 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
    * @returns Nothing.
    */
   reconnectDiscordRichPresence(): void {
-    void this.root.request({ type: "discord.reconnect" });
+    // The root request boundary journals and notifies failures before rejecting.
+    void this.root.request({ type: "discord.reconnect" }).catch(() => undefined);
   }
 
   /**
@@ -216,7 +221,8 @@ export class AppStore extends AppOnboardingStore implements RootChildStore {
    * @returns Nothing.
    */
   openDeveloperTools(): void {
-    void this.root.request({ type: "app.openDevTools" });
+    // The root request boundary journals and notifies failures before rejecting.
+    void this.root.request({ type: "app.openDevTools" }).catch(() => undefined);
   }
 
   /**

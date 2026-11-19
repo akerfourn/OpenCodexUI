@@ -1,3 +1,4 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { Box, Button, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
@@ -13,18 +14,18 @@ export function DebugVariableNode({ store, variable, depth = 0 }: {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [children, setChildren] = useState<DebugVariable[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   const [loading, setLoading] = useState(false);
   const epoch = store.snapshot.session?.epoch;
   const frame = store.selectedFrame?.id;
   useEffect(() => {
     if (!open) return;
     let current = true;
-    setLoading(true); setError(null);
+    setLoading(true);
     const filter = variable.indexedVariables ? "indexed" : undefined;
     void store.variables(variable.variablesReference, page * 100, filter).then(values => {
       if (current) setChildren(values);
-    }).catch(failure => { if (current) setError(String(failure)); })
+    }).catch(failure => { if (current) reportError(failure); })
       .finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
   }, [store, variable.variablesReference, variable.indexedVariables, open, page, epoch, frame]);
@@ -32,7 +33,6 @@ export function DebugVariableNode({ store, variable, depth = 0 }: {
   if (open) {
     let feedback;
     if (loading) feedback = <Typography variant="caption">{t("debug.loading")}</Typography>;
-    if (error) feedback = <Typography color="error" variant="caption">{error}</Typography>;
     let more;
     const total = variable.indexedVariables ?? variable.namedVariables ?? 0;
     if (total > 100) more = <Box><Button disabled={page === 0} onClick={() => setPage(page - 1)}>{t("debug.previous")}</Button>

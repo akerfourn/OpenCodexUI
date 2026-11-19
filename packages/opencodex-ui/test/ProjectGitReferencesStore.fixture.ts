@@ -62,6 +62,7 @@ export function createProjectGitReferencesFixture(
   } as unknown as ProjectStore;
   const root = {
     request,
+    reportError: vi.fn(),
     appStore: {
       showWarningMessage: vi.fn(),
       settingsStore: {

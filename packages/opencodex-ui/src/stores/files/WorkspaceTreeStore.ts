@@ -54,6 +54,7 @@ export class WorkspaceTreeStore {
         target: { ...this.context, path }
       });
       if (generation !== this.generation) return;
+      if (!result.ok) this.port.reportError?.(result.details, path);
       runInAction(() => {
         this.directories.set(path, {
           entries: result.ok ? result.value : [],
@@ -64,6 +65,7 @@ export class WorkspaceTreeStore {
       });
     } catch (error) {
       if (generation !== this.generation) return;
+      this.port.reportError?.(error, path);
       runInAction(() => {
         this.directories.set(path, {
           entries: [],
@@ -80,7 +82,11 @@ export class WorkspaceTreeStore {
     const result = await this.port.request<OpenCodexFileResult<unknown>>({
       type: "workspaceFiles.setLinkAccess", target: { ...this.context, path }, destination, access
     });
-    if (!result.ok) throw new Error(result.details);
+    if (!result.ok) {
+      const error = new Error(result.details);
+      this.port.reportError?.(error, path);
+      throw error;
+    }
   }
 
   /** Reloads the root; expanded descendants load when their rows are rendered. */

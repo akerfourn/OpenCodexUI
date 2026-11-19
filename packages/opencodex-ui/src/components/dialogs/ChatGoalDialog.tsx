@@ -207,10 +207,6 @@ export function ChatGoalDialog({
             {t("goal.description")}
           </Typography>
 
-          {goalStore.error !== null ? (
-            <Alert severity="error">{t("goal.error", { message: goalStore.error })}</Alert>
-          ) : null}
-
           {validationError !== null ? <Alert severity="warning">{validationError}</Alert> : null}
 
           {goalStore.isLoading && goalStore.hasLoaded === false ? (

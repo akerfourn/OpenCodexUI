@@ -13,7 +13,6 @@ import { sameDebugContext, type DebugConfiguration, type OpenCodexFileContext } 
 import type { RootStore } from "../../stores/RootStore";
 import { DebugImportStore } from "../../stores/debug/DebugImportStore";
 import { DebugConfigurationDialogX } from "./DebugConfigurationDialog";
-import { DebugError } from "./DebugError";
 import { DebugImportDialogX } from "./DebugImportDialog";
 
 /** Keeps launching prominent while configuration management lives in one workspace-bound menu. */
@@ -45,7 +44,7 @@ export function DebugConfigurationBar({ root, context }: { root: RootStore; cont
   if (editing !== null) editDialog = <DebugConfigurationDialogX store={store} context={context}
     configuration={editing.configuration} onSaved={setSelected} onClose={() => setEditing(null)} />;
   const importDialog = importOpen ? <DebugImportDialogX store={importer} debug={store} onClose={() => setImportOpen(false)} /> : null;
-  const deletionError = removing !== null && store.error !== null ? <DebugError details={store.error} /> : null;
+  const deletionError = removing !== null && store.error !== null ? null : null;
   const emptyHint = configurations.length === 0 ? <Typography variant="caption" color="text.secondary">
     {t("debug.configurationHint")}
   </Typography> : null;

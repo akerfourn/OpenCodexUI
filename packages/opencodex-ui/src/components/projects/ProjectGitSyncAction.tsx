@@ -29,21 +29,14 @@ export function ProjectGitSyncAction({ gitStore, onOpenFile }: ProjectGitSyncAct
   function handlePull(): void { void gitStore.sync.simple("pull"); }
   const issue = gitStore.sync.simpleResult?.issue;
   let notice = null;
-  let details = null;
-  if (issue != null) {
+  if (issue != null && gitStore.sync.simpleResult?.outcome !== "error") {
     let action = null;
     if (issue !== "gitFailed" && issue !== "busy") {
       action = <Button size="small" onClick={handleOpen} disabled={!gitStore.sync.canOpen}>{t("gitSync.open")}</Button>;
     }
     notice = <Alert severity="warning" action={action}>{t(`gitSync.issues.${issue}`)}</Alert>;
-    if (gitStore.sync.simpleResult?.details != null) {
-      details = <details><summary>{t("gitSync.details")}</summary>
-        <Typography component="pre" variant="caption" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-          {gitStore.sync.simpleResult.details}
-        </Typography>
-      </details>;
-    }
   }
+
   let destination = null;
   const target = status.synchronization?.target;
   if (target != null) {
@@ -74,7 +67,7 @@ export function ProjectGitSyncAction({ gitStore, onOpenFile }: ProjectGitSyncAct
   }
   return (
     <>
-      <Stack spacing={1}>{summary}{notice}{details}</Stack>
+      <Stack spacing={1}>{summary}{notice}</Stack>
       <ProjectGitSyncDialogX sync={gitStore.sync} onOpenFile={handleOpenFile} />
     </>
   );

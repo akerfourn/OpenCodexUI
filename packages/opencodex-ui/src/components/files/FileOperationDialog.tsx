@@ -3,7 +3,6 @@ import { observer } from "mobx-react-lite";
 import type { ChangeEvent, FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { FileOperationsStore } from "../../stores/files/FileOperationsStore";
-import { FileErrorX } from "./FileError";
 
 /** Collects names and explicit deletion consent while retaining source errors for retry. */
 export function FileOperationDialog({ operations }: { operations: FileOperationsStore }) {
@@ -31,7 +30,7 @@ export function FileOperationDialog({ operations }: { operations: FileOperations
   const deleteWarning = dialog.isSymbolicLink === true
     ? t("files.operations.deleteLinkWarning") : t("files.operations.deleteWarning");
   const warning = deleting ? <Alert severity="warning">{deleteWarning}</Alert> : null;
-  const error = operations.error === null ? null : <FileErrorX error={operations.error} />;
+
   const destination = dialog.kind === "copy" ? (
     <Typography variant="body2">{t("files.operations.destination", { path: dialog.destinationPath || "/" })}</Typography>
   ) : null;
@@ -47,7 +46,7 @@ export function FileOperationDialog({ operations }: { operations: FileOperations
           {destination}
           {warning}
           {nameField}
-          {error}
+
         </Stack>
       </DialogContent>
       <DialogActions>

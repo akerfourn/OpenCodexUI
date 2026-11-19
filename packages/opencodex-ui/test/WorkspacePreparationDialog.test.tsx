@@ -91,7 +91,7 @@ describe("workspace preparation confirmation", () => {
     const { runPreparation, onClose } = await renderDialog();
     runPreparation.mockRejectedValueOnce(new Error("Trust the project"));
     await act(async () => { button("workspacePreparation.run").click(); });
-    expect(document.body.textContent).toContain("Trust the project");
+    expect(document.body.textContent).not.toContain("Trust the project");
     expect(runPreparation).toHaveBeenCalledOnce();
     expect(onClose).not.toHaveBeenCalled();
   });

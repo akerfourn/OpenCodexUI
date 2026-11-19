@@ -12,14 +12,14 @@ describe("cached workspace history routing", () => {
     expect(history).toHaveBeenCalledWith("thread");
   });
 
-  it("should leave an optional history failure to the timeline without recovering an unrelated chat", async () => {
-    const handleRequestError = vi.fn();
+  it("should journal an optional history failure and preserve its rejection", async () => {
+    const handleRequestError = vi.fn((_request, error) => { throw error; });
     const runtime = { handleRequestError, workspaces: {
       history: vi.fn(async () => { throw new Error("History cache unavailable"); })
     } } as unknown as OpenCodexBackendRuntime;
     const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
     await expect(router.handleRequest({ type: "threads.workspace.history", threadId: "thread" }))
       .rejects.toThrow("History cache unavailable");
-    expect(handleRequestError).not.toHaveBeenCalled();
+    expect(handleRequestError).toHaveBeenCalledTimes(1);
   });
 });

@@ -277,10 +277,6 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
           </Alert>
         ) : null}
 
-        {gitStore.errorMessage !== null ? (
-          <Alert severity="error">{gitStore.errorMessage}</Alert>
-        ) : null}
-
         {gitStore.statusStore.isRepository ? (
           <>
             <ProjectGitSyncActionX key={`${gitStore.sourceId}:${gitStore.projectPath}`}
@@ -289,10 +285,6 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
               <Alert severity="warning" icon={<LockOutlinedIcon fontSize="inherit" />}>
                 {t("git.commitProtectedBranch", { branch: currentBranchName })}
               </Alert>
-            ) : null}
-
-            {tagStore.tagErrorMessage !== null ? (
-              <Alert severity="error">{tagStore.tagErrorMessage}</Alert>
             ) : null}
 
             <ProjectGitFileSectionsX

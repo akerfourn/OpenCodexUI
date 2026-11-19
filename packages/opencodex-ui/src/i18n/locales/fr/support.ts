@@ -3,6 +3,7 @@
  */
 export const frSupport = {
   logs: {
+    errorOccurred: "Une erreur est survenue.",
     applyCleanup: "Nettoyer",
     cancel: "Annuler",
     cleanup: "Nettoyer les logs",

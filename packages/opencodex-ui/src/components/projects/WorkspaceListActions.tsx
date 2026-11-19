@@ -8,7 +8,6 @@ import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { WorkspaceCreateDialogX } from "./WorkspaceCreateDialog";
 import { WorkspaceManagementDialogX } from "./WorkspaceManagementDialog";
 import { WorkspacePendingOperationsX } from "./WorkspacePendingOperations";
-import { WorkspaceOperationError } from "./WorkspaceOperationError";
 
 /** Sidebar catalogue actions keep import and recovery separate from conversation properties. */
 export function WorkspaceListActions({ project }: { project: ProjectStore }) {
@@ -20,7 +19,7 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   useEffect(() => { void store.load(); }, [store]);
   const disabled = store.isBusy || project.isReadOnlyFromCache;
-  const error = <WorkspaceOperationError message={store.error} />;
+
   const skipped = store.skipped.map((item) => (
     <Typography variant="caption" component="div" key={item.path}>
       {t("workspaces.skipped", { path: item.path, reason: item.reason })}
@@ -51,14 +50,14 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
           <MoreVertOutlinedIcon fontSize="small" />
         </IconButton>
       </Box>
-      {error}<WorkspacePendingOperationsX store={store} disabled={disabled} showRemovals={false} />{skipped}{creationDialog}{managementDialog}
+      <WorkspacePendingOperationsX store={store} disabled={disabled} showRemovals={false} />{skipped}{creationDialog}{managementDialog}
       <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
         <MenuItem onClick={handleManagement}>{t("workspaceManagement.title")}</MenuItem>
         <MenuItem disabled={disabled} onClick={handleOpenImport}>{t("workspaces.discover")}</MenuItem>
       </Menu>
       <Dialog open={importing} onClose={store.isBusy ? undefined : () => setImporting(false)} fullWidth maxWidth="sm">
         <DialogTitle>{t("workspaces.importTitle")}</DialogTitle>
-        <DialogContent>{t("workspaces.importHelp")}{error}</DialogContent>
+        <DialogContent>{t("workspaces.importHelp")}</DialogContent>
         <DialogActions>
           <Button disabled={store.isBusy} onClick={() => setImporting(false)}>{t("workspaces.close")}</Button>
           <Button disabled={disabled} onClick={handleImport}>{t("workspaces.discover")}</Button>

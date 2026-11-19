@@ -47,7 +47,6 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [launchCandidate, setLaunchCandidate] = useState<OpenCodexProjectGoal | null>(null);
   const [busyGoalId, setBusyGoalId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const importedNativeChatIdsRef = useRef(new Set<string>());
   const importedProjectIdRef = useRef<string | null>(null);
 
@@ -88,7 +87,7 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
     }
 
     void importNativeGoals(chatsToImport, goalsStore).catch((error: unknown) => {
-      setActionError(readErrorMessage(error));
+      store.reportError(error);
     });
   }, [
     goalsStore,
@@ -101,13 +100,11 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
   ]);
 
   function handleCreate(): void {
-    setActionError(null);
     setSelectedGoal(null);
     setDialogOpen(true);
   }
 
   function handleOpen(goal: OpenCodexProjectGoal): void {
-    setActionError(null);
     setSelectedGoal(goal);
     setDialogOpen(true);
   }
@@ -118,10 +115,9 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
   }
 
   function handleLaunch(goal: OpenCodexProjectGoal): void {
-    setActionError(null);
 
     if (!canLaunchGoal(goal, currentChat)) {
-      setActionError(readLaunchAvailabilityMessage(goal, currentChat, t));
+      store.reportError(readLaunchAvailabilityMessage(goal, currentChat, t));
       return;
     }
 
@@ -141,7 +137,6 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
     }
 
     setBusyGoalId(goal.id);
-    setActionError(null);
 
     try {
       await startProjectGoal(goal, chat, projectStore, goalsStore);
@@ -149,7 +144,7 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
       setDialogOpen(false);
       setSelectedGoal(null);
     } catch (error) {
-      setActionError(readErrorMessage(error));
+      store.reportError(error);
     } finally {
       setBusyGoalId(null);
     }
@@ -159,17 +154,16 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
     const chat = currentChat;
 
     if (chat === null || goal.threadId !== chat.thread.id) {
-      setActionError(t("goals.pauseRequiresCurrentChat"));
+      store.reportError(t("goals.pauseRequiresCurrentChat"));
       return;
     }
 
     setBusyGoalId(goal.id);
-    setActionError(null);
 
     try {
       await pauseProjectGoal(goal, chat, projectStore, goalsStore);
     } catch (error) {
-      setActionError(readErrorMessage(error));
+      store.reportError(error);
     } finally {
       setBusyGoalId(null);
     }
@@ -184,12 +178,11 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
   }
 
   async function mutateCatalogueGoal(operation: () => Promise<OpenCodexProjectGoal>): Promise<void> {
-    setActionError(null);
 
     try {
       await operation();
     } catch (error) {
-      setActionError(readErrorMessage(error));
+      store.reportError(error);
     }
   }
 
@@ -246,10 +239,7 @@ export function ProjectGoalsPanel({ store, projectStore }: ProjectGoalsPanelProp
 
       <Box className="project-goals-content">
         {goalsStore.isLoading ? <CircularProgress size={18} /> : null}
-        {goalsStore.errorMessage !== null && actionError === null ? (
-          <Alert severity="error">{goalsStore.errorMessage}</Alert>
-        ) : null}
-        {actionError !== null ? <Alert severity="error">{actionError}</Alert> : null}
+
         {isReadOnly ? <Alert severity="info">{t("goals.sourceUnavailable")}</Alert> : null}
         {goals.length === 0 && !goalsStore.isLoading ? (
           <Stack spacing={1} sx={{ alignItems: "center", py: 2 }}>
@@ -462,11 +452,6 @@ function isNativeGoalRunning(goal: OpenCodexThreadGoal): boolean {
 /** Returns a stable title for confirmation text. */
 function readChatTitle(chat: ChatStore): string {
   return chat.thread.customTitle ?? chat.thread.title ?? chat.thread.preview ?? chat.thread.id;
-}
-
-/** Converts unknown failures into text suitable for an inline panel alert. */
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /** Imports native goals from newly loaded chats when the catalogue is ready. */

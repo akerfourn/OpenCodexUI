@@ -16,7 +16,7 @@ const request = vi.fn(async () => ({ ok: true }));
 const writeText = vi.fn(async () => undefined);
 const applyError = vi.fn();
 const hasLocalAccess = vi.fn((source: string) => source === "local");
-const store = { request, sourcesStore: { hasLocalAccess }, appStore: { applyError } } as unknown as RootStore;
+const store = { request, sourcesStore: { hasLocalAccess }, reportError: applyError, appStore: { applyError } } as unknown as RootStore;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -138,7 +138,7 @@ describe("file link context menu", () => {
     ));
     await rightClick("a");
     await act(async () => menuItem("files.links.copyLink").click());
-    expect(applyError).toHaveBeenCalledWith({ type: "error", message: "Error: Clipboard denied" });
+    expect(applyError).toHaveBeenCalledWith(expect.objectContaining({ message: "Clipboard denied" }));
   });
 });
 

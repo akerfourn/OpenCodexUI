@@ -24,7 +24,7 @@ export function WorkspaceMoveDialog({ project, workspace, onClose }: {
     || current.removalPending === true || current.movePending === true;
   const selectedRoot = available.find(root => root.id === rootId);
   const invalid = custom ? destination.length === 0 || samePath(destination, current.path) : selectedRoot === undefined;
-  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
+
   const unsavedNotice = unsaved ? <Alert severity="warning">{t("workspaces.moveUnsaved")}</Alert> : null;
   const importedNotice = !current.managed
     ? <Alert severity="info">{t("workspaces.moveImportedHelp")}</Alert> : null;
@@ -66,7 +66,7 @@ export function WorkspaceMoveDialog({ project, workspace, onClose }: {
           onChange={event => { setCustom(event.target.checked); setConfirmed(false); }} />} label={t("workspaces.moveCustom")} />
         <FormControlLabel control={<Checkbox checked={confirmed} disabled={blocked}
           onChange={event => setConfirmed(event.target.checked)} />} label={t("workspaces.moveConfirm")} />
-        {unsavedNotice}{error}
+        {unsavedNotice}
       </DialogContent>
       <DialogActions>
         <Button disabled={store.isBusy} onClick={onClose}>{t("workspaces.close")}</Button>

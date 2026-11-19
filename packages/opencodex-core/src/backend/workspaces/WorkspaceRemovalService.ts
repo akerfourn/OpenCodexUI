@@ -21,7 +21,8 @@ export class WorkspaceRemovalService {
     private readonly requireInactive: (removal: OpenCodexWorkspaceRemoval) => Promise<void>,
     git = new WorkspaceRemovalGit(createRunGit(clients)),
     runtime = new WorkspaceRemovalRuntime(clients),
-    private readonly changed: (projectId: string, sourceId: string) => void = () => {}) {
+    private readonly changed: (projectId: string, sourceId: string) => void = () => {},
+    private readonly reportFailure: (removal: OpenCodexWorkspaceRemoval, error: unknown) => void = () => {}) {
     this.git = git;
     this.runtime = runtime;
   }
@@ -95,7 +96,11 @@ export class WorkspaceRemovalService {
           if (failed?.state === "preparing") {
             const reason = error instanceof WorkspaceSourceBusyError ? null : errorMessage(error);
             await this.repository.removals.defer(id, reason);
-          } else await this.repository.removals.fail(id);
+            if (reason !== null) this.reportFailure(removal, error);
+          } else {
+            await this.repository.removals.fail(id);
+            this.reportFailure(removal, error);
+          }
         } finally {
           this.changed(removal.projectId, removal.sourceId);
         }

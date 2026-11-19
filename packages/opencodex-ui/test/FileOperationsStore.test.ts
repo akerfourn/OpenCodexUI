@@ -37,7 +37,7 @@ function fixture() {
   const fileCloseStore = new FileCloseStore();
   const refresh = vi.fn();
   const getGitStoreForWorkspace = vi.fn(() => ({ statusStore: { refresh } }));
-  const root = { request, fileCloseStore } as unknown as RootStore;
+  const root = { request, fileCloseStore, reportError: vi.fn() } as unknown as RootStore;
   const files = new ProjectFilesStore({ getGitStoreForWorkspace } as unknown as ProjectStore, root);
   const tree = new WorkspaceTreeStore(context, root);
   return { request, fileCloseStore, files, tree, operations: files.operations, refresh, getGitStoreForWorkspace };

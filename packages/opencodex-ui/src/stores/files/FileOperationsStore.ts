@@ -92,6 +92,7 @@ export class FileOperationsStore {
       requested = true;
       const result = await this.root.request<OpenCodexFileResult<{ path: string }>>(request);
       if (!result.ok) {
+        this.root.reportError(result.details, dialog.target.path);
         runInAction(() => { this.error = result; });
         return;
       }
@@ -108,6 +109,7 @@ export class FileOperationsStore {
         if (dialog.kind !== "copy") this.clipboard = null;
       });
     } catch (error) {
+      this.root.reportError(error, dialog.target.path);
       runInAction(() => { this.error = { code: "unavailable", details: String(error) }; });
     } finally {
       runInAction(() => { this.isBusy = false; });

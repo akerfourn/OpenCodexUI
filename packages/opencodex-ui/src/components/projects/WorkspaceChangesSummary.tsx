@@ -1,4 +1,4 @@
-import { Alert, Stack, Typography } from "@mui/material";
+import { Stack, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 import type { OpenCodexWorkspaceChanges } from "@open-codex-ui/opencodex-protocol";
@@ -23,8 +23,8 @@ export function WorkspaceChangesSummary({ changes, error }: { changes?: OpenCode
       <Typography variant="caption" color="text.secondary">{t("workspaceChanges.checkedAt", { date: checkedAt })} — {state}</Typography>
     </Stack>;
   }
-  const failure = error === undefined ? null : <Alert severity="warning" title={error}>{t("workspaceChanges.unavailable")}</Alert>;
-  return <Stack spacing={1}>{content}{failure}</Stack>;
+
+  return <Stack spacing={1}>{content}</Stack>;
 }
 
 export const WorkspaceChangesSummaryX = observer(WorkspaceChangesSummary);

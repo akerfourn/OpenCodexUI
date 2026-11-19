@@ -127,7 +127,8 @@ describe("Home project addition", () => {
     test.request.mockRejectedValueOnce(new Error("Destination directory is not empty"));
     await act(async () => action("home.cloneSubmit").click());
 
-    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Destination directory is not empty");
+    expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain("Destination directory is not empty");
+    expect(test.clone.errorMessage).toBe("Destination directory is not empty");
     expect(test.clone.repositoryUrl).toBe("git@example.test:owner/repo.git");
     expect(test.clone.destinationPath).toBe("C:\\projects\\existing");
     expect(test.app.projectsStore.projects).toEqual([]);

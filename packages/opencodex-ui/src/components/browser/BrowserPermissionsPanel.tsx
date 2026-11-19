@@ -94,24 +94,14 @@ export function BrowserPermissionsPanel({ state, onClose }: {
   } else if (!state.busy) {
     content = <Typography variant="body2">{t("browserPermissions.notLoaded")}</Typography>;
   }
-  let error = null;
-  if (state.errorKey !== null) {
-    error = (
-      <Alert severity="error" sx={{ mb: 2 }}>
-        {t(state.errorKey)}
-        <Typography variant="caption" component="div" sx={{ overflowWrap: "anywhere" }}>
-          {state.errorDetail}
-        </Typography>
-      </Alert>
-    );
-  }
+
   let reloadNotice = null;
   if (state.needsReload) {
     reloadNotice = <Alert severity="info" sx={{ mt: 2 }}>{t("browserPermissions.reloadNotice")}</Alert>;
   }
   return (
     <>
-      <DialogContent>{error}{content}{reloadNotice}</DialogContent>
+      <DialogContent>{content}{reloadNotice}</DialogContent>
       <DialogActions>
         <Button disabled={state.busy || state.snapshot === null} onClick={handleReload}>
           {t("browserPermissions.reload")}

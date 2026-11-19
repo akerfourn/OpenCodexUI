@@ -1,6 +1,6 @@
 import { useRef, useState, type SyntheticEvent } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, Button, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Button, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import ZoomIn from "@mui/icons-material/ZoomIn";
 import ZoomOut from "@mui/icons-material/ZoomOut";
 import { useTranslation } from "react-i18next";
@@ -24,6 +24,7 @@ export function FileImageViewer({ document }: { document: FileDocument }) {
 
   /** Leaves reload and external opening available when the browser cannot decode an image. */
   function handleError(): void {
+    document.reportError(t("files.imageDecodeError"));
     setHasError(true);
   }
 
@@ -58,7 +59,7 @@ export function FileImageViewer({ document }: { document: FileDocument }) {
   }
 
   if (snapshot === null) return null;
-  if (hasError) return <Alert severity="error">{t("files.imageDecodeError")}</Alert>;
+  if (hasError) return null;
 
   const isLoaded = dimensions.width > 0;
   const size = isLoaded ? `${dimensions.width} × ${dimensions.height}` : "";

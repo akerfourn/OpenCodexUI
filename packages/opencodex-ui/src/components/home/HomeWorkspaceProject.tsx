@@ -15,7 +15,7 @@ export function HomeWorkspaceProject({ owner, root, onManage }: {
   const rows = entries.map(workspace => <HomeWorkspaceRowX key={workspace.id} owner={owner} workspace={workspace} />);
   const pending = owner.pendingCount === 0 ? null : <Alert severity="warning" sx={{ borderRadius: 0 }}>
     {t("workspaceHome.journals", { count: owner.pendingCount })}</Alert>;
-  const error = owner.error === null ? null : <Alert severity="error">{owner.error}</Alert>;
+
   const offline = owner.isReadOnlyFromCache ? <Chip size="small" label={t("workspaceHome.offline")} /> : null;
   const progress = owner.isLoading ? <CircularProgress size={16} /> : null;
   const empty = entries.length === 0 ? <Typography variant="body2" color="text.secondary" sx={{ p: 1.5 }}>
@@ -43,7 +43,7 @@ export function HomeWorkspaceProject({ owner, root, onManage }: {
       <Button size="small" onClick={handleOpen}>{t("workspaceHome.openProject")}</Button>
       <Button size="small" onClick={handleManage} disabled={owner.isLoading}>{t("workspaceHome.manage")}</Button>
     </Stack>
-    {pending}{error}{rows}{empty}
+    {pending}{rows}{empty}
   </Box>;
 }
 

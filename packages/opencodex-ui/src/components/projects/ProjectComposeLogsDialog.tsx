@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 /**
  * Renders bounded stdout and stderr logs for a Compose service.
  */
@@ -31,14 +32,14 @@ export function ProjectComposeLogsDialog({ store }: ProjectComposeLogsDialogProp
     store.closeLogs();
   }
 
-  let content = (
+  let content: ReactNode = (
     <Typography color="text.secondary">{t("docker.compose.logs.empty")}</Typography>
   );
 
   if (store.isLoadingLogs) {
     content = <LinearProgress />;
   } else if (store.logsErrorMessage !== null) {
-    content = <Alert severity="error">{store.logsErrorMessage}</Alert>;
+    content = null;
   } else if (store.selectedLogs !== null) {
     const streams = [
       {

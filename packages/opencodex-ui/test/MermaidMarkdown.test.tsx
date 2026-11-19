@@ -1,3 +1,4 @@
+import { ApplicationErrorContext } from "../src/components/app/applicationErrorContext";
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -58,11 +59,13 @@ describe("Mermaid fenced Markdown", () => {
     expect(container.querySelector("img")).not.toBeNull();
   });
 
-  it("should retain invalid source with readable error details", async () => {
+  it("should retain invalid source and send rendering failures to the application journal", async () => {
+    const reportError = vi.fn();
     render.mockRejectedValueOnce(new Error("Parse error near invalid"));
-    await act(async () => root.render(<FileMarkdownContent content={markdown} />));
-    expect(container.textContent).toContain("message.mermaid.invalid");
-    expect(container.querySelector("details")?.textContent).toContain("Parse error");
+    await act(async () => root.render(<ApplicationErrorContext.Provider value={reportError}>
+      <FileMarkdownContent content={markdown} /></ApplicationErrorContext.Provider>));
+    expect(container.textContent).not.toContain("Parse error");
+    expect(reportError).toHaveBeenCalledWith(expect.objectContaining({ message: "Parse error near invalid" }), "Mermaid");
     expect(container.querySelector("pre")?.textContent).toBe(code);
   });
 

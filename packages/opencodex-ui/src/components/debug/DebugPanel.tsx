@@ -7,7 +7,6 @@ import { useTranslation } from "react-i18next";
 import { sameDebugContext } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../../stores/RootStore";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
-import { DebugError } from "./DebugError";
 import { DebugControlsX } from "./DebugControls";
 import { DebugStackX } from "./DebugStack";
 import { DebugBreakpointsX } from "./DebugBreakpoints";
@@ -26,11 +25,11 @@ export function DebugPanel({ store: root, projectStore }: { store: RootStore; pr
   const context = workspace?.sourceId ? { sourceId: workspace.sourceId, projectId: projectStore.project.id,
     workspaceId: workspace.id, workspacePath: workspace.path } : null;
   const session = store.snapshot.session;
-  const error = store.error === null ? null : <DebugError details={store.error} onClose={() => { store.error = null; }} />;
+
   let sessionContent;
   let stack;
   if (session !== null) {
-    const failure = session.error === undefined ? null : <DebugError details={session.error} />;
+
     const progress = ["preparing", "connecting", "stopping"].includes(session.state) ? <LinearProgress /> : null;
     let color: "warning" | "success" | "default" = "default";
     if (session.state === "paused") color = "warning";
@@ -45,7 +44,7 @@ export function DebugPanel({ store: root, projectStore }: { store: RootStore; pr
         </Typography></Tooltip>
         <Chip size="small" color={color} label={t(`debug.states.${session.state}`)} />
       </Stack>
-      {workspaceHint}{progress}{failure}{controls}
+      {workspaceHint}{progress}{controls}
     </Stack>;
     if (session.state === "paused") stack = <DebugSection key={`${session.id}:${session.epoch}`} title={t("debug.stack")} count={store.frames.length} defaultExpanded>
       <DebugStackX store={store} hideTitle />
@@ -69,7 +68,7 @@ export function DebugPanel({ store: root, projectStore }: { store: RootStore; pr
       <Tooltip title={workspace?.path ?? ""}><Typography variant="caption" noWrap color="text.secondary">
         {workspace?.name || workspace?.path}
       </Typography></Tooltip>
-      {error}{configuration}
+      {configuration}
     </Stack>
     {sessionContent}
     <Box sx={{ flexShrink: 0 }}>{stack}{breakpoints}

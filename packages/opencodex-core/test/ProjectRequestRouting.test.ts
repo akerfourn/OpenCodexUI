@@ -129,7 +129,7 @@ function createProjectRoutingFixture() {
   }
   const settings = { get: vi.fn(() => ({ defaultSourceId: "default-source" })) };
   const resolveToolRequest = vi.fn(async (request: OpenCodexRequest) => request);
-  const handleRequestError = vi.fn();
+  const handleRequestError = vi.fn((_request, error) => { throw error; });
   const prepareWorkspace = vi.fn(async (_input: unknown) => response);
   const runtime = { ...ports, settings, resolveToolRequest, handleRequestError,
     automation: { commands: { prepareWorkspace } } } as unknown as OpenCodexBackendRuntime;
@@ -144,14 +144,14 @@ describe("project request routing through the shared router", () => {
     expect(fixture.ports.workspaceRemovals.remove).not.toHaveBeenCalled();
     expect(fixture.ports.workspaceRemovals.schedule).not.toHaveBeenCalled();
   });
-  it("should propagate clone failures to the import dialog instead of swallowing them", async () => {
+  it("should journal clone failures and preserve their rejection", async () => {
     const fixture = createProjectRoutingFixture();
     fixture.ports.projects.clone.mockRejectedValueOnce(new Error("Destination is not empty"));
     await expect(fixture.router.handleRequest({ type: "projects.clone", sourceId: "source",
       repositoryUrl: "git@example.test:repo.git", destinationPath: "/remote/new" })).rejects.toThrow("Destination is not empty");
-    expect(fixture.handleRequestError).not.toHaveBeenCalled();
+    expect(fixture.handleRequestError).toHaveBeenCalledTimes(1);
   });
-  it("should route preparation to command execution and propagate rejection to its dialog", async () => {
+  it("should route preparation and journal rejected execution", async () => {
     const fixture = createProjectRoutingFixture();
     const input = { projectId: "project", workspaceId: "workspace", sourceId: "source", workspacePath: "/secondary",
       command: { id: "command", name: "Prepare", command: "npm ci", executionMode: "workspace" as const,
@@ -160,7 +160,7 @@ describe("project request routing through the shared router", () => {
     expect(fixture.prepareWorkspace).toHaveBeenCalledWith(input);
     fixture.prepareWorkspace.mockRejectedValueOnce(new Error("Trust the project"));
     await expect(fixture.router.handleRequest({ type: "projectWorkspaces.prepare", input })).rejects.toThrow("Trust the project");
-    expect(fixture.handleRequestError).not.toHaveBeenCalled();
+    expect(fixture.handleRequestError).toHaveBeenCalledTimes(1);
   });
   it.each(cases)("should forward $request.type to $effect with its contracted arguments", async ({ request, effect, args }) => {
     const fixture = createProjectRoutingFixture();
@@ -239,7 +239,7 @@ describe("project request routing through the shared router", () => {
     const error = new Error("Source does not own this workspace");
     fixture.resolveToolRequest.mockRejectedValue(error);
 
-    expect(await fixture.router.handleRequest(request)).toBeUndefined();
+    await expect(fixture.router.handleRequest(request)).rejects.toBe(error);
     expect(fixture.ports.context.sync).not.toHaveBeenCalled();
     expect(fixture.handleRequestError).toHaveBeenCalledTimes(1);
     expect(fixture.handleRequestError).toHaveBeenCalledWith(request, error);
@@ -255,7 +255,7 @@ describe("project request routing through the shared router", () => {
       fixture.ports.projects.delete.mockRejectedValue(error);
     }
 
-    expect(await fixture.router.handleRequest(request)).toBeUndefined();
+    await expect(fixture.router.handleRequest(request)).rejects.toBe(error);
     expect(fixture.handleRequestError).toHaveBeenCalledTimes(1);
     expect(fixture.handleRequestError).toHaveBeenCalledWith(request, error);
   });
@@ -267,7 +267,7 @@ describe("project request routing through the shared router", () => {
     const error = new Error("Sync failed");
     fixture.ports.context.sync.mockRejectedValue(error);
 
-    expect(await fixture.router.handleRequest(original)).toBeUndefined();
+    await expect(fixture.router.handleRequest(original)).rejects.toBe(error);
     expect(fixture.handleRequestError).toHaveBeenCalledWith(original, error);
   });
 

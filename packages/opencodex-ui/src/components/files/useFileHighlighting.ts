@@ -22,7 +22,10 @@ export function useFileHighlighting(
     return applyHighlighting({
       isDisposed: () => model.isDisposed(),
       setLanguage: id => monaco.editor.setModelLanguage(model, id)
-    }, enabled ? language : "plaintext", id => fileHighlighting.ensureLanguage(id), setError);
+    }, enabled ? language : "plaintext", id => fileHighlighting.ensureLanguage(id), message => {
+      setError(message);
+      document.reportError(message, "syntax highlighting");
+    });
   }, [document, enabled, language]);
   return { error, language: enabled ? language : "plaintext" };
 }

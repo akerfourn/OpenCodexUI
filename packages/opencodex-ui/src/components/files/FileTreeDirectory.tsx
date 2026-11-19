@@ -6,7 +6,6 @@ import type { WorkspaceTreeStore } from "../../stores/files/WorkspaceTreeStore";
 import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
 import type { ProjectGitStatusStore } from "../../stores/project/git/ProjectGitStatusStore";
 import { FileTreeEntryX } from "./FileTreeEntry";
-import { FileErrorX } from "./FileError";
 
 /** Displays direct children only; descendants mount exclusively for expanded folders. */
 export function FileTreeDirectory({
@@ -42,7 +41,7 @@ export function FileTreeDirectory({
   if (state.error !== null)
     return (
       <>
-        <FileErrorX error={state.error} />
+
         <Button onClick={retry}>{t("files.retry")}</Button>
       </>
     );

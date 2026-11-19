@@ -142,7 +142,7 @@ describe("chat permission controls", () => {
 
     await act(async () => { button("threadPermissions.apply").click(); });
 
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe("Permissions changed remotely");
+    expect(document.body.textContent).not.toContain("Permissions changed remotely");
     expect(document.body.textContent).not.toContain("threadPermissions.saved");
     expect(button("threadPermissions.apply").disabled).toBe(true);
     await act(async () => { button("threadPermissions.refresh").click(); });

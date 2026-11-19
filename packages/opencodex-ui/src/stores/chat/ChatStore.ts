@@ -25,7 +25,6 @@ import { ChatLiveTurnEventsStore } from "./ChatLiveTurnEventsStore";
 import { ChatRuntimeStore } from "./ChatRuntimeStore";
 import { ChatTimelineStore } from "./ChatTimelineStore";
 import { hasActiveRunningTurn } from "./chatTurnUtils";
-import { readChatErrorMessage } from "./chatErrorMessage";
 import { ChatWorkspaceHistoryStore } from "./ChatWorkspaceHistoryStore";
 
 export type { ChatTimelineViewState } from "./ChatTimelineStore";
@@ -131,7 +130,7 @@ export class ChatStore {
     }
 
     void goalsStore.syncNativeGoal(this, goal).catch((error: unknown) => {
-      this.root.appStore.errorMessage = readChatErrorMessage(error);
+      this.root.reportError(error);
     });
   }
 
@@ -221,7 +220,7 @@ export class ChatStore {
       reasoningEffort
     }).catch((error: unknown) => {
       runInAction(() => {
-        this.root.appStore.errorMessage = readChatErrorMessage(error);
+        this.root.reportError(error);
       });
     });
   }

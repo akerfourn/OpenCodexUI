@@ -63,8 +63,6 @@ export function SourceInstanceControlDialog({ sourceId, sourceName, instances, a
       <DialogContentText>{t("sourceInstances.forceHelp")}</DialogContentText>
     </Stack>
   );
-  let errorContent = null;
-  if (error !== undefined) errorContent = <Alert severity="error">{error}</Alert>;
 
   return (
     <Dialog open onClose={handleCancel} fullWidth maxWidth="sm" aria-labelledby="source-instance-control-title">
@@ -73,7 +71,7 @@ export function SourceInstanceControlDialog({ sourceId, sourceName, instances, a
         <Stack spacing={2}>
           <DialogContentText>{t("sourceInstances.scope")}</DialogContentText>
           {activityContent}
-          {errorContent}
+
         </Stack>
       </DialogContent>
       <DialogActions>

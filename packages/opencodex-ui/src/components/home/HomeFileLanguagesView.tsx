@@ -1,6 +1,6 @@
 import { type ChangeEvent, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, Button, FormControlLabel, List, Stack, Switch, TextField, Typography } from "@mui/material";
+import { Button, FormControlLabel, List, Stack, Switch, TextField, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { RootStore } from "../../stores/RootStore";
 import { fileLanguages } from "../../features/fileLanguages/catalogue";
@@ -43,12 +43,7 @@ export function HomeFileLanguagesView({ store }: { store: RootStore }) {
   if (filtered.length > limit) {
     moreButton = <Button onClick={showMore}>{t("fileLanguages.showMore")}</Button>;
   }
-  let error = null;
-  if (preferences.error !== null) {
-    error = <Alert severity="error">{t("fileLanguages.saveError")}
-      <details><summary>{t("fileLanguages.details")}</summary>{preferences.error}</details>
-    </Alert>;
-  }
+
   let content = <Typography color="text.secondary">{t("fileLanguages.empty")}</Typography>;
   if (filtered.length > 0) {
     content = <List dense>{filtered.slice(0, limit).map(language =>
@@ -60,7 +55,7 @@ export function HomeFileLanguagesView({ store }: { store: RootStore }) {
       <Typography variant="h5" component="h2">{t("home.fileLanguages")}</Typography>
       <Typography color="text.secondary">{t("fileLanguages.description")}</Typography>
       <Typography variant="body2">{t("fileLanguages.count", { enabled: enabledCount, total: fileLanguages.length })}</Typography>
-      {error}
+
       <TextField size="small" label={t("fileLanguages.search")} value={search}
         onChange={changeSearch} />
       <FormControlLabel label={t("fileLanguages.enabledOnly")} control={

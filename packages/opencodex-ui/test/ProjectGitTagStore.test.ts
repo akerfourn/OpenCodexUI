@@ -364,6 +364,7 @@ describe("ProjectGitTagStore tags", () => {
         remoteName: "origin",
         remoteError: "cannot compare one tag"
       })
+      .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(project);
 
     await fixture.tagStore.loadTags();
@@ -373,7 +374,7 @@ describe("ProjectGitTagStore tags", () => {
     expect(fixture.tagStore.commitsSinceReferenceTag).toBe(null);
     expect(fixture.tagStore.tagsRemoteName).toBe("origin");
     expect(fixture.tagStore.tagSyncErrorMessage).toBe("cannot compare one tag");
-    expect(fixture.request).toHaveBeenNthCalledWith(2, {
+    expect(fixture.request).toHaveBeenCalledWith({
       type: "projects.preferences.update",
       projectId: "project-1",
       patch: expect.objectContaining({

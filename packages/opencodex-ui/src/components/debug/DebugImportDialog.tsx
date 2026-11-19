@@ -39,7 +39,7 @@ export function DebugImportDialog({ store, debug, onClose }: {
   }
   let content: ReactNode = null;
   if (store.loading) content = <LinearProgress aria-label={t("debug.import.loading")} />;
-  else if (store.error !== null) content = <Alert severity="error">{store.error}</Alert>;
+  else if (store.error !== null) content = null;
   else if (entries.length === 0) content = <Alert severity="info">{t("debug.import.empty")}</Alert>;
   else {
     const choices = entries.map((candidate, index) => {

@@ -35,7 +35,7 @@ export function WorkspaceCreateDialog({ store, onClose }: {
     <TextField label={t("workspaces.revision")} value={revision} disabled={store.isBusy} fullWidth margin="normal"
       onChange={(event) => setRevision(event.target.value)} />
   );
-  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
+
   const invalid = name.trim().length === 0 || name.trim().length > 100 || (rootId === "custom" ? destination.trim().length === 0 : root === undefined)
     || (mode !== "detached" && branch.trim().length === 0)
     || (mode !== "existingBranch" && revision.trim().length === 0);
@@ -71,7 +71,7 @@ export function WorkspaceCreateDialog({ store, onClose }: {
           <MenuItem value="existingBranch">{t("workspaces.existingBranch")}</MenuItem>
           <MenuItem value="detached">{t("workspaces.detached")}</MenuItem>
         </TextField>
-        {branchInput}{revisionInput}{error}
+        {branchInput}{revisionInput}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={store.isBusy}>{t("workspaces.close")}</Button>

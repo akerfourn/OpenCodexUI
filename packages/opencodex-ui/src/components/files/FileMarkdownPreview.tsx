@@ -1,8 +1,9 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { FileLinkScope } from "./FileLinkScope";
-import { Alert, Box } from "@mui/material";
+import { Box } from "@mui/material";
 import { runInAction } from "mobx";
 import { observer } from "mobx-react-lite";
-import { useCallback, useEffect, useRef, useState, type MouseEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, type MouseEvent, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { FileDocument, FileRequestPort } from "../../stores/files/FileDocument";
 import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
@@ -16,13 +17,12 @@ export function FileMarkdownPreview({ document, files, port }: {
 }) {
   const { t } = useTranslation();
   const container = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   const anchor = document.previewAnchor;
   const handleOpenImageLink = useCallback((href: string): void => {
-    setError(null);
     void openMarkdownLink(href, document, files, port)
-      .catch(failure => setError(String(failure)));
-  }, [document, files, port]);
+      .catch(failure => reportError(failure));
+  }, [document, files, port, reportError]);
   useEffect(() => {
     const element = container.current;
     if (element === null) return;
@@ -48,9 +48,8 @@ export function FileMarkdownPreview({ document, files, port }: {
     const href = link?.getAttribute("href");
     if (href === undefined || href === null || link === null || !event.currentTarget.contains(link)) return;
     event.preventDefault();
-    setError(null);
     void openMarkdownLink(href, document, files, port)
-      .catch(failure => setError(String(failure)));
+      .catch(failure => reportError(failure));
   }
   /** Explicit save remains available while the editor is unmounted. */
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -59,17 +58,10 @@ export function FileMarkdownPreview({ document, files, port }: {
       void document.save();
     }
   }
-  const feedback = error === null ? null : (
-    <Alert severity="warning" onClose={() => setError(null)}>
-      {t("files.previewLinkError")}
-      <details><summary>{t("files.details")}</summary>{error}</details>
-    </Alert>
-  );
   return (
     <Box ref={container} role="region" aria-label={t("files.viewPreview")} tabIndex={0}
       onClick={handleClick} onAuxClick={handleClick} onKeyDown={handleKeyDown}
       sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 3, bgcolor: "background.paper" }}>
-      {feedback}
       <FileLinkScope sourceId={document.target?.sourceId ?? null} projectPath={document.target?.workspacePath ?? null}
         documentPath={document.target?.path}>
       <FileMarkdownImageProvider target={document.target} port={port} onOpenLink={handleOpenImageLink}>

@@ -44,12 +44,25 @@ function createFixture() {
     getMainWebContentsId: vi.fn<() => number | undefined>(() => 10),
     openDeveloperTools: vi.fn(() => ({ ok: true as const })),
     openUsageHistory: vi.fn(),
-    handleBackendRequest: vi.fn().mockResolvedValue(undefined)
+    handleBackendRequest: vi.fn().mockResolvedValue(undefined),
+    reportError: vi.fn()
   } satisfies ElectronNativeRequestHandlerOptions;
   return { handler: new ElectronNativeRequestHandler(options), options, overrides, state };
 }
 
 describe("Electron native request handler", () => {
+  it("should report native failures once while leaving backend reporting to its router", async () => {
+    const { handler, options } = createFixture();
+    const nativeError = new Error("Microphone unavailable");
+    options.dictation.handle.mockRejectedValueOnce(nativeError);
+    const request: OpenCodexRequest = { type: "dictation.models.state" };
+    await expect(handler.handle(request, 10)).rejects.toBe(nativeError);
+    expect(options.reportError).toHaveBeenCalledWith(request, nativeError);
+
+    options.handleBackendRequest.mockRejectedValueOnce(new Error("Workspace locked"));
+    await expect(handler.handle({ type: "projects.list" }, 10)).rejects.toThrow("Workspace locked");
+    expect(options.reportError).toHaveBeenCalledTimes(1);
+  });
   it("should pass a main-window recording unchanged to dictation and return its response", async () => {
     const { handler, options } = createFixture();
     const response = { text: "bonjour" };

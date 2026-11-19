@@ -15,6 +15,8 @@ export interface ElectronNativeRequestHandlerOptions {
   openDeveloperTools(): { ok: true };
   openUsageHistory(sourceId: string): void;
   handleBackendRequest(request: OpenCodexRequest): Promise<unknown>;
+  /** Reports native failures; delegated backend requests own their reporting. */
+  reportError?(request: OpenCodexRequest, error: unknown): void;
 }
 
 /** Handles Electron-owned requests before delegating other requests to the backend. */
@@ -24,52 +26,59 @@ export class ElectronNativeRequestHandler {
 
   /** Routes one IPC request, restricting every dictation request to the main renderer. */
   async handle(request: OpenCodexRequest, senderId: number): Promise<unknown> {
-    if (request.type.startsWith("dictation.")) {
-      if (senderId !== this.options.getMainWebContentsId()) {
-        throw new Error("Dictation is only available in the main window.");
+    let delegated = false;
+    try {
+      if (request.type.startsWith("dictation.")) {
+        if (senderId !== this.options.getMainWebContentsId()) {
+          throw new Error("Dictation is only available in the main window.");
+        }
+
+        return await this.options.dictation.handle(request);
       }
 
-      return this.options.dictation.handle(request);
-    }
+      if (request.type === "emojiCatalog.get") {
+        return await this.options.emojiCatalog.get();
+      }
 
-    if (request.type === "emojiCatalog.get") {
-      return this.options.emojiCatalog.get();
-    }
+      if (request.type === "emojiCatalog.update") {
+        return await this.options.emojiCatalog.update(request.overrides);
+      }
 
-    if (request.type === "emojiCatalog.update") {
-      return this.options.emojiCatalog.update(request.overrides);
-    }
+      if (request.type === "app.openDevTools") {
+        return await this.options.openDeveloperTools();
+      }
 
-    if (request.type === "app.openDevTools") {
-      return this.options.openDeveloperTools();
-    }
+      if (request.type === "app.update.state") {
+        return await this.options.appUpdates.getState();
+      }
 
-    if (request.type === "app.update.state") {
-      return this.options.appUpdates.getState();
-    }
+      if (request.type === "app.update.check") {
+        return await this.options.appUpdates.check(request.force === true);
+      }
 
-    if (request.type === "app.update.check") {
-      return this.options.appUpdates.check(request.force === true);
-    }
+      if (request.type === "app.update.download") {
+        return await this.options.appUpdates.download();
+      }
 
-    if (request.type === "app.update.download") {
-      return this.options.appUpdates.download();
-    }
+      if (request.type === "app.update.install") {
+        return await this.options.appUpdates.install();
+      }
 
-    if (request.type === "app.update.install") {
-      return this.options.appUpdates.install();
-    }
+      if (request.type === "app.openUsageHistory") {
+        this.options.openUsageHistory(request.sourceId);
+        return { ok: true };
+      }
 
-    if (request.type === "app.openUsageHistory") {
-      this.options.openUsageHistory(request.sourceId);
-      return { ok: true };
-    }
+      if (request.type === "discord.reconnect") {
+        await this.options.discordPresence.reconnect();
+        return { ok: true };
+      }
 
-    if (request.type === "discord.reconnect") {
-      await this.options.discordPresence.reconnect();
-      return { ok: true };
+      delegated = true;
+      return await this.options.handleBackendRequest(request);
+    } catch (error) {
+      if (!delegated) this.options.reportError?.(request, error);
+      throw error;
     }
-
-    return this.options.handleBackendRequest(request);
   }
 }

@@ -21,6 +21,12 @@ describe("RootStore project activity", () => {
     root.appStore.clearErrorMessage();
     root.openProjectInIde("C:/work", "local");
     await vi.waitFor(() => expect(root.appStore.errorMessage).toContain("code ENOENT"));
+    root.appStore.clearErrorMessage();
+    root.openProjectFolder("C:/work", "local");
+    await vi.waitFor(() => expect(root.appStore.errorMessage).toContain("code ENOENT"));
+    root.appStore.clearErrorMessage();
+    root.openProjectTerminal("C:/work", "local");
+    await vi.waitFor(() => expect(root.appStore.errorMessage).toContain("code ENOENT"));
   });
 
   it("should aggregate project tool activity for the host lifecycle", () => {

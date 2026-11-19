@@ -3,7 +3,6 @@
  */
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import {
-  Alert,
   Box,
   Button,
   CircularProgress,
@@ -92,9 +91,7 @@ export function ProjectGitLogDialog({ logStore, open, onClose }: ProjectGitLogDi
       </DialogTitle>
       <DialogContent dividers onScroll={handleScroll} sx={{ minHeight: 420 }}>
         <Stack spacing={1}>
-          {logStore.logErrorMessage !== null ? (
-            <Alert severity="error">{logStore.logErrorMessage}</Alert>
-          ) : null}
+
           {isInitialLoading ? (
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
               <CircularProgress size={18} />

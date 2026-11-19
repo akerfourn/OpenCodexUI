@@ -43,15 +43,20 @@ export class DictationStore {
   /** Prevents concurrent microphone sessions and model replacement during inference. */
   get busy(): boolean { return this.status !== "idle"; }
 
-  /** Applies content-free host progress notifications. */
-  applyModelState(state: OpenCodexDictationModelState): void { this.modelState = { ...state }; }
+  /** Applies content-free progress and journals changed model failures returned as state. */
+  applyModelState(state: OpenCodexDictationModelState): void {
+    if (typeof state.error === "string" && state.error.length > 0 && state.error !== this.modelState.error) {
+      this.root.reportError(state.error, "dictation models");
+    }
+    this.modelState = { ...state };
+  }
 
   /** Restores installed-model status when opening the settings section. */
   async load(): Promise<void> {
     try {
       const state = await this.root.request<OpenCodexDictationModelState>({ type: "dictation.models.state" });
       runInAction(() => this.applyModelState(state));
-    } catch (error) { runInAction(() => { this.error = errorMessage(error); }); }
+    } catch (error) { runInAction(() => { this.recordError(error); }); }
   }
 
   /** Persists preferences before exposing a new backend selection. */
@@ -63,7 +68,7 @@ export class DictationStore {
       const dictation = { ...this.settings, ...patch };
       const settings = await this.root.request<OpenCodexSettings>({ type: "settings.update", patch: { dictation } });
       runInAction(() => { this.root.settings = settings; });
-    } catch (error) { runInAction(() => { this.error = errorMessage(error); }); }
+    } catch (error) { runInAction(() => { this.recordError(error); }); }
     finally { runInAction(() => { this.managing = false; }); }
   }
 
@@ -78,14 +83,14 @@ export class DictationStore {
         : { type: "dictation.models.remove" as const };
       const state = await this.root.request<OpenCodexDictationModelState>(request);
       runInAction(() => this.applyModelState(state));
-    } catch (error) { runInAction(() => { this.error = errorMessage(error); }); }
+    } catch (error) { runInAction(() => { this.recordError(error); }); }
     finally { runInAction(() => { this.managing = false; }); }
   }
 
   /** Cancels an in-flight model download and leaves cleanup to the host. */
   async cancelDownload(): Promise<void> {
     try { await this.root.request({ type: "dictation.models.cancel" }); }
-    catch (error) { runInAction(() => { this.error = errorMessage(error); }); }
+    catch (error) { runInAction(() => { this.recordError(error); }); }
   }
 
   /** Captures the target composer callback so a later result cannot land in another chat. */
@@ -112,7 +117,7 @@ export class DictationStore {
         return;
       }
       const recording = new AudioRecording(stream, () => { void this.finish(); }, (error) => {
-        if (this.sessionId === id) runInAction(() => { this.error = error.message; this.reset(); });
+        if (this.sessionId === id) runInAction(() => { this.recordError(error); this.reset(); });
       });
       runInAction(() => {
         this.recording = recording;
@@ -121,7 +126,7 @@ export class DictationStore {
       });
     } catch (error) {
       stream?.getTracks().forEach((track) => track.stop());
-      if (this.sessionId === id) runInAction(() => { this.error = errorMessage(error); this.reset(); });
+      if (this.sessionId === id) runInAction(() => { this.recordError(error); this.reset(); });
     }
   }
 
@@ -143,7 +148,7 @@ export class DictationStore {
       if (result.text.trim().length === 0) throw new Error("No speech was recognized.");
       this.onText?.(result.text);
     } catch (error) {
-      if (this.sessionId === id) runInAction(() => { this.error = errorMessage(error); });
+      if (this.sessionId === id) runInAction(() => { this.recordError(error); });
     } finally {
       if (this.sessionId === id) runInAction(() => this.reset());
     }
@@ -156,9 +161,15 @@ export class DictationStore {
     this.reset();
     if (id !== null) {
       void this.root.request({ type: "dictation.cancel", sessionId: id }).catch((error: unknown) => {
-        if (this.sessionId === null) runInAction(() => { this.error = errorMessage(error); });
+        if (this.sessionId === null) runInAction(() => { this.recordError(error); });
       });
     }
+  }
+
+  /** Keeps failure state for controls while routing diagnostics through the application journal. */
+  private recordError(error: unknown): void {
+    this.error = errorMessage(error);
+    this.root.reportError(error);
   }
 
   /** Dismisses a user-visible error without altering the draft. */

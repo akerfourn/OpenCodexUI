@@ -1,4 +1,4 @@
-import { makeAutoObservable, runInAction } from "mobx";
+import { action, makeAutoObservable, runInAction } from "mobx";
 import { canonicalLanguage, detectFileLanguage } from "../../features/fileLanguages/catalogue";
 import type {
   OpenCodexFileTarget,
@@ -17,6 +17,8 @@ import type { FileDiffLayout, FileGitDiffContext, FileOpenIntent, FileViewMode }
 /** Backend port shared by documents and lazy explorers. */
 export interface FileRequestPort {
   request<T>(request: OpenCodexRequest): Promise<T>;
+  /** Reports local viewer failures and structured source refusals through the application journal. */
+  reportError?(error: unknown, context?: string): void;
 }
 
 /** Optional source location usable by other tools, including a future debugger. */
@@ -138,6 +140,7 @@ export class FileDocument {
     makeAutoObservable<this, "port" | "disposed" | "isChecking" | "viewState" | "disposers" |
       "gitDiffRequestGeneration" | "onSaveSuccess">(this, {
       port: false,
+      reportError: action.bound,
       target: false,
       disposed: false,
       isChecking: false,
@@ -309,7 +312,6 @@ export class FileDocument {
       this.error?.code === "accessDenied" || this.error?.code === "readOnly";
   }
 
-
   /** Retains image magnification independently of the mounted viewer. */
   setImageZoom(zoom: number | null): void {
     this.imageZoom = zoom;
@@ -348,7 +350,7 @@ export class FileDocument {
       if (this.disposed) return;
       runInAction(() => {
         if (result.ok) this.acceptSnapshot(result.value);
-        else this.error = result;
+        else this.recordError(result);
       });
     } catch (error) {
       this.fail(error);
@@ -382,7 +384,7 @@ export class FileDocument {
           this.error = null;
           this.hasConflict = false;
         } else {
-          this.error = result;
+          this.recordError(result);
           this.hasConflict ||= result.code === "conflict";
         }
       });
@@ -408,7 +410,7 @@ export class FileDocument {
       if (this.disposed) return;
       runInAction(() => {
         if (!result.ok) {
-          this.error = result;
+          this.recordError(result);
           return;
         }
         if (this.snapshot !== null) this.snapshot.readOnly = result.value.readOnly || this.snapshot.eol === "mixed";
@@ -445,7 +447,7 @@ export class FileDocument {
       if (this.disposed || this.isSaving || (this.audioSnapshot ?? this.pdfSnapshot ?? this.imageSnapshot ?? this.snapshot)?.revision !== revision) return;
       if (!result.ok) {
         runInAction(() => {
-          this.error = result;
+          this.recordError(result);
         });
       } else if (!result.value) {
         if (this.isDirty) {
@@ -503,9 +505,23 @@ export class FileDocument {
     this.version += 1;
   }
 
-  /** Records transport failures locally without replacing the editable buffer. */
+  /** Reports decoding and rendering failures without exposing a source buffer to the logger. */
+  reportError(error: unknown, context = this.name): void {
+    this.port.reportError?.(error, context);
+  }
+
+  /** Retains recoverable file state and reports changed failures once, including background checks. */
+  private recordError(error: FileDocumentError): void {
+    if (this.error?.code !== error.code || this.error.details !== error.details) {
+      this.reportError(error.details);
+    }
+    this.error = error;
+  }
+
+  /** Keeps transport failure state without journaling an already reported backend rejection twice. */
   private fail(error: unknown): void {
     if (this.disposed) return;
+    this.reportError(error);
     runInAction(() => {
       this.error = { code: "unavailable", details: String(error) };
     });

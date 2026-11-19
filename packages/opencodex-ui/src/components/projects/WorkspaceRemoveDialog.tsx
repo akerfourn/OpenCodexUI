@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { workspaceLabel } from "../../stores/project/threads/workspaceThreadGroups";
-import { WorkspaceOperationError } from "./WorkspaceOperationError";
 import { useWorkspaceRemovalInspection } from "./useWorkspaceRemovalInspection";
 import { WorkspaceRemovalInspection } from "./WorkspaceRemovalInspection";
 
@@ -53,7 +52,7 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
         {deferredNotice}
         <TextField label={t("workspaces.removeConfirm", { name })} value={confirmation} fullWidth margin="normal"
           disabled={store.isBusy} autoComplete="off" onChange={event => setConfirmation(event.target.value)} />
-        {unsavedNotice}<WorkspaceOperationError message={store.error} />
+        {unsavedNotice}
       </DialogContent>
       <DialogActions>
         <Button disabled={store.isBusy} onClick={onClose}>{t("workspaces.close")}</Button>

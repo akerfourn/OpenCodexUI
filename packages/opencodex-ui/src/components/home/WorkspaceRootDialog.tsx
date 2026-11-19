@@ -1,3 +1,4 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from "@mui/material";
@@ -16,25 +17,23 @@ export function WorkspaceRootDialog({ store, initial, onSave, onClose, busy, err
   const [label, setLabel] = useState(initial?.label ?? "");
   const [path, setPath] = useState(initial?.path ?? "");
   const [picking, setPicking] = useState(false);
-  const [pickerError, setPickerError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   const disabled = busy || picking;
   const options = sources.map((source) => <MenuItem key={source.id} value={source.id}>{source.name}</MenuItem>);
   const missingSource = sourceId !== "" && !sources.some((source) => source.id === sourceId)
     ? <MenuItem value={sourceId}>{sourceId}</MenuItem> : null;
-  const failure = error ?? pickerError;
-  const errorContent = failure === null ? null : <Alert severity="error">{failure}</Alert>;
+
   const picker = store.sourcesStore.hasLocalAccess(sourceId)
     ? <Button disabled={disabled} onClick={handlePick}>{t("workspaceStorage.browse")}</Button> : null;
 
   /** Native paths are used only when the source explicitly shares the host filesystem. */
   async function handlePick(): Promise<void> {
     setPicking(true);
-    setPickerError(null);
     try {
       const picked = await store.request<string | null>({ type: "projects.context.pickFolder" });
       if (picked !== null) setPath(picked);
     } catch (failure) {
-      setPickerError(failure instanceof Error ? failure.message : String(failure));
+      reportError(failure);
     } finally {
       setPicking(false);
     }
@@ -57,7 +56,7 @@ export function WorkspaceRootDialog({ store, initial, onSave, onClose, busy, err
           disabled={disabled} onChange={(event) => setLabel(event.target.value)} />
         <TextField label={t("workspaces.destination")} value={path} fullWidth margin="normal"
           disabled={disabled} onChange={(event) => setPath(event.target.value)} />
-        {picker}{errorContent}
+        {picker}
       </DialogContent>
       <DialogActions>
         <Button disabled={disabled} onClick={onClose}>{t("workspaces.close")}</Button>

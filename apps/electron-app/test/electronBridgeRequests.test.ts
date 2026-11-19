@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   ipc: { on: vi.fn(), handle: vi.fn(), off: vi.fn(), removeHandler: vi.fn() },
   backend: vi.fn(),
   runtime: {
+    handleRequestError: vi.fn((_request, error) => { throw error; }),
     settings: { get: vi.fn() }, dictation: { dispose: vi.fn() },
     logs: { create: vi.fn() }, approvals: { resolve: vi.fn() }, dispose: vi.fn()
   },

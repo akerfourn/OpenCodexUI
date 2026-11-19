@@ -28,11 +28,22 @@ function fixture() {
     if (request.type === "dictation.transcribe") return { text: "bonjour" };
     return undefined;
   });
-  const root = { settings: { dictation: { ...DEFAULT_DICTATION_SETTINGS, enabled: true } }, request };
-  return { store: new DictationStore(root as unknown as RootStore), request, microphone, stop, stream };
+  const reportError = vi.fn();
+  const root = { settings: { dictation: { ...DEFAULT_DICTATION_SETTINGS, enabled: true } }, request, reportError };
+  return { store: new DictationStore(root as unknown as RootStore), request, microphone, stop, stream, reportError };
 }
 
 describe("dictation draft lifecycle", () => {
+  it("should journal model failures returned as state once without logging recording content", () => {
+    const { store, reportError } = fixture();
+    const state = { installedModelId: null, downloadingModelId: null, progress: null, error: "Model download failed" };
+
+    store.applyModelState(state);
+    store.applyModelState(state);
+
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(reportError).toHaveBeenCalledWith("Model download failed", "dictation models");
+  });
   beforeEach(() => { vi.clearAllMocks(); recording.finish.mockResolvedValue("AAA="); });
   afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 

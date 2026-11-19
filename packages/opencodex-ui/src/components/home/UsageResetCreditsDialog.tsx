@@ -2,7 +2,6 @@
  * Displays source-scoped banked rate-limit resets and confirms their consumption.
  */
 import {
-  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -160,15 +159,7 @@ export function UsageResetCreditsDialog({
     </>
   );
 
-  let errorContent = null;
   const nothingToReset = error === "sources.resetCredits.nothingToReset";
-  if (error !== null && !nothingToReset) {
-    let message = error;
-    if (error === "sources.resetCredits.noCredit") {
-      message = t("sources.resetCredits.noCredit");
-    }
-    errorContent = <Alert severity="error">{message}</Alert>;
-  }
 
   return (
     <Dialog open={open} fullWidth maxWidth="sm" onClose={handleClose}>
@@ -179,7 +170,7 @@ export function UsageResetCreditsDialog({
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          {errorContent}
+
           <UsageResetEligibilityNoticeX
             usage={usage}
             nothingToReset={nothingToReset}

@@ -15,11 +15,13 @@ import {
   mapThreadGoalUpdatedNotification
 } from "../threads/threadGoalMapping.js";
 import { mapThreadTokenUsageNotification } from "../threads/threadTokenUsageMapping.js";
-import type { RuntimeEventPort, RuntimeSettingsPort } from "./runtimePorts.js";
+import type { ApplicationLogPort, RuntimeEventPort, RuntimeSettingsPort } from "./runtimePorts.js";
 import type { UsageRuntimeService } from "../usage/UsageRuntimeService.js";
 
 /** Dependencies used by the notification coordination pipeline. */
 export type RuntimeNotificationCoordinatorOptions = {
+  /** Completed-turn failures also belong in the application error journal. */
+  logs?: ApplicationLogPort;
   /** Records execution ownership before optional UI notification suppression. */
   recordWorkspaceNotification?(notification: CodexNotification, sourceId: string): void;
   /** Reads the current runtime settings. */
@@ -217,6 +219,11 @@ export class RuntimeNotificationCoordinator {
       }
 
       if (notification.method === "turn/completed") {
+        const params = readObject(notification.params);
+        const turn = readObject(params.turn);
+        const message = readString(readObject(turn.error).message);
+        if (message.length > 0) this.options.logs?.persistLog("error", message,
+          { sourceId, threadId: readString(params.threadId), turnId: readString(turn.id) });
         this.options.usage.handleTurnCompleted(sourceId);
       }
     } finally {

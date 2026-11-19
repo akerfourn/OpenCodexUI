@@ -14,7 +14,6 @@ export function HomeWorkspaceSize({ owner, workspace }: {
   const result = owner.sizeFor(workspace);
   const store = owner.diskUsage;
   const loading = store.loading.has(workspace.id);
-  const error = store.errorFor(workspace);
   let label: string = t("workspaceHome.sizeUnknown");
   let detail = null;
   if (result !== undefined) {
@@ -27,8 +26,6 @@ export function HomeWorkspaceSize({ owner, workspace }: {
     detail = <Typography variant="caption" color="text.secondary">{dateLabel}</Typography>;
   }
   const icon = loading ? <CircularProgress size={16} /> : <RefreshOutlinedIcon fontSize="small" />;
-  const failure = error === undefined ? null : <Typography variant="caption" color="error" title={error}>
-    {t("workspaceHome.measureFailed")}</Typography>;
 
   /** Only this button starts a bounded source-side traversal. */
   function handleMeasure(): void {
@@ -45,7 +42,7 @@ export function HomeWorkspaceSize({ owner, workspace }: {
           disabled={owner.isLoading || !store.canMeasure(workspace)} onClick={handleMeasure}>{icon}</IconButton></span>
       </Tooltip>
     </Stack>
-    {detail}{failure}
+    {detail}
   </Stack>;
 }
 

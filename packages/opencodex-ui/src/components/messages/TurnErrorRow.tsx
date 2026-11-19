@@ -3,7 +3,7 @@
  */
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import BugReportOutlinedIcon from "@mui/icons-material/BugReportOutlined";
-import { Alert, Box, IconButton, Tooltip, Typography } from "@mui/material";
+import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 
 type TurnErrorRowProps = {
@@ -37,37 +37,9 @@ export function TurnErrorRow({
     </Tooltip>
   ) : undefined;
 
-  return (
-    <Box
-      component="article"
-      sx={{
-        flex: "0 0 auto",
-        minWidth: 0,
-        px: 0.5,
-        width: "100%",
-        "@media (min-width: 1280px)": {
-          maxWidth: "80%"
-        }
-      }}
-    >
-      <Alert
-        severity="error"
-        variant="outlined"
-        icon={<ErrorOutlineOutlinedIcon fontSize="small" />}
-        sx={{
-          alignItems: "center",
-          px: 1,
-          py: 0.5,
-          "& .MuiAlert-message": {
-            minWidth: 0,
-            overflowWrap: "anywhere",
-            py: 0
-          }
-        }}
-        action={diagnosticAction}
-      >
-        <Typography variant="body2">{message}</Typography>
-      </Alert>
-    </Box>
-  );
+  return <Box component="article" sx={{ display: "flex", alignItems: "center", gap: 0.5, px: 1.5 }}>
+    <ErrorOutlineOutlinedIcon fontSize="small" color="error" />
+    <Typography variant="caption" color="text.secondary">{t("message.turnFailed")}</Typography>
+    {diagnosticAction}
+  </Box>;
 }

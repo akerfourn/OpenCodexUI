@@ -271,7 +271,7 @@ function createStore(
     projectPath: "/workspace/project"
   } as unknown as ProjectStore;
 
-  return new ProjectComposeStore(projectStore, { request } as never);
+  return new ProjectComposeStore(projectStore, { request, reportError: vi.fn() } as never);
 }
 
 /** Creates a snapshot with one running service. */

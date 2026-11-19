@@ -141,13 +141,7 @@ export function MonacoFileDiffEditor({ document, visible, language }: {
   const feedback = document.isGitDiffLoading ? (
     <LinearProgress />
   ) : document.gitDiffError !== null ? (
-    <Alert severity="error">
-      {t("files.diffReadError")}
-      <details>
-        <summary>{t("files.details")}</summary>
-        {document.gitDiffError}
-      </details>
-    </Alert>
+    null
   ) : issueMessage !== null ? (
     <Alert severity={issue === "conflicted" ? "warning" : "info"}>{issueMessage}</Alert>
   ) : null;

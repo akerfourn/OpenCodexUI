@@ -67,6 +67,20 @@ export const MarkdownMessageM = memo(MarkdownMessage);
 - Keep the undecorated component as the source of truth; the suffixed export is
   the wrapper that is actually used by the app.
 
+## Error feedback
+
+- Operational errors belong in the application journal and global snackbar,
+  rather than error banners inside panels, dialogs or file previews.
+- Backend request failures are reported by the shared request boundary. Keep
+  their original rejection object when forwarding them to `RootStore.reportError`
+  so nested catches do not create duplicate log entries.
+- Report local browser and rendering failures at the point of failure through
+  `RootStore.reportError` or `useApplicationErrorReporter`. Do not replay retained
+  errors from rendering or mount effects.
+- Keep field validation, destructive-action explanations, workflow states and
+  recovery controls near their relevant input or action. Technical failure
+  messages remain in the journal.
+
 ## Internationalization
 
 - Keep translation resources under `src/i18n/locales/<language>/`, grouped in

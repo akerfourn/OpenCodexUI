@@ -164,13 +164,7 @@ function renderUpdateStatus(
     );
   }
 
-  if (state.status === "error") {
-    return (
-      <Typography variant="caption" color="error.main">
-        {t("settings.appUpdatesError", { message: state.errorMessage ?? "" })}
-      </Typography>
-    );
-  }
+  if (state.status === "error") return null;
 
   if (state.status === "not-available") {
     return (

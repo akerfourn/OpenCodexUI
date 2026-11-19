@@ -26,7 +26,6 @@ export function HomeSourceInstance({ sourceId, sourceName, instances }: HomeSour
   const isStopped = phase === "stopped";
   const isDisabled = phase === undefined || phase === "stopping" || phase === "updating"
     || (instances.pending.has(sourceId) && phase !== "starting");
-  const error = instances.errors.get(sourceId) ?? snapshot?.error ?? instances.loadError;
   let label = t("sourceInstances.unknown");
   let color = "text.disabled";
   if (phase !== undefined) label = t(`sourceInstances.${phase}`);
@@ -71,10 +70,6 @@ export function HomeSourceInstance({ sourceId, sourceName, instances }: HomeSour
     <SourceInstanceControlDialogX sourceName={sourceName} sourceId={sourceId}
       instances={instances} action={action} onClose={handleClose} />
   );
-  let errorContent = null;
-  if (error !== undefined && error !== null) errorContent = (
-    <Typography variant="caption" color="error.main" sx={{ overflowWrap: "anywhere" }}>{error}</Typography>
-  );
 
   return (
     <Stack spacing={0.25}>
@@ -98,7 +93,7 @@ export function HomeSourceInstance({ sourceId, sourceName, instances }: HomeSour
           </IconButton></span>
         </Tooltip>
       </Stack>
-      {errorContent}
+
       {dialog}
     </Stack>
   );

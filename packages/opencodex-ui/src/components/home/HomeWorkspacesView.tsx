@@ -1,8 +1,18 @@
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
 import {
-  Accordion, AccordionDetails, AccordionSummary, Alert, Button, Checkbox, Chip,
-  CircularProgress, FormControlLabel, MenuItem, Stack, TextField, Typography
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Button,
+  Checkbox,
+  Chip,
+  CircularProgress,
+  FormControlLabel,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography
 } from "@mui/material";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import { useTranslation } from "react-i18next";
@@ -30,7 +40,7 @@ export function HomeWorkspacesView({ store }: { store: RootStore }) {
   const filters: HomeWorkspaceFilter[] = ["all", "active", "completed", "candidate", "pending"];
   const filterChoices = filters.map(filter => <MenuItem key={filter} value={filter}>{t(`workspaceHome.filters.${filter}`)}</MenuItem>);
   const progress = inventory.isLoading ? <CircularProgress size={20} aria-label={t("workspaceHome.loading")} /> : null;
-  const error = inventory.error === null ? null : <Alert severity="error">{inventory.error}</Alert>;
+
   const empty = owners.length === 0 && !inventory.isLoading ? <Typography color="text.secondary">
     {t("workspaceManagement.empty")}</Typography> : null;
   const managedProject = managed === null ? undefined : store.projectsStore.projectStoresById.get(managed.project.id);
@@ -76,7 +86,7 @@ export function HomeWorkspacesView({ store }: { store: RootStore }) {
     </Stack>
     <FormControlLabel control={<Checkbox checked={inventory.showHidden}
       onChange={event => inventory.setShowHidden(event.target.checked)} />} label={t("workspaceHome.showHidden")} />
-    {error}{projects}{empty}{management}
+    {projects}{empty}{management}
     <Accordion disableGutters>
       <AccordionSummary expandIcon={<ExpandMoreOutlinedIcon />}>{t("workspaceHome.storageSettings")}</AccordionSummary>
       <AccordionDetails><WorkspaceStorageSettingsX store={store} /></AccordionDetails>

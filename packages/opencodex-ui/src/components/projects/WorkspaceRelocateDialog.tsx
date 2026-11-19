@@ -17,7 +17,7 @@ export function WorkspaceRelocateDialog({ project, workspace, onClose }: {
   const unsaved = project.files.hasUnsavedWorkspaceDocuments(workspace.id);
   const blocked = store.isBusy || project.isReadOnlyFromCache || unsaved || current.sourceId === null
     || current.removedAt !== null || current.removalPending === true || current.movePending === true;
-  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
+
   const notice = unsaved ? <Alert severity="warning">{t("workspaces.relocateUnsaved")}</Alert> : null;
   const identityHelp = current.isPrimary
     ? <Alert severity="warning">{t("workspaces.relocatePrimaryHelp")}</Alert> : null;
@@ -41,7 +41,7 @@ export function WorkspaceRelocateDialog({ project, workspace, onClose }: {
           disabled={blocked} onChange={event => { setDestination(event.target.value); setConfirmed(false); }} />
         <FormControlLabel control={<Checkbox checked={confirmed} disabled={blocked}
           onChange={event => setConfirmed(event.target.checked)} />} label={t("workspaces.relocateConfirm")} />
-        {notice}{error}
+        {notice}
       </DialogContent>
       <DialogActions>
         <Button disabled={store.isBusy} onClick={onClose}>{t("workspaces.close")}</Button>

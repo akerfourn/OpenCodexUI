@@ -84,7 +84,7 @@ export function ProjectGitRemoteDialog({ referencesStore, open, onClose, syncSto
       <Typography variant="body2" color="text.secondary">{t("gitSync.favoriteHelp")}</Typography>
       <ProjectGitBranchRemoteX sync={syncStore} remotes={referencesStore.remotes} disabled={!canManage} />
     </>;
-    if (syncStore.result?.issue != null) configurationError = <Alert severity="warning">{t(`gitSync.issues.${syncStore.result.issue}`)}</Alert>;
+    if (syncStore.result?.issue != null && syncStore.result.outcome !== "error") configurationError = <Alert severity="warning">{t(`gitSync.issues.${syncStore.result.issue}`)}</Alert>;
   }
 
   let content = (
@@ -135,10 +135,6 @@ export function ProjectGitRemoteDialog({ referencesStore, open, onClose, syncSto
   if (referencesStore.isLoadingRemotes || isSaving) {
     progress = <CircularProgress size={18} aria-label={t("git.remoteLoading")} />;
   }
-  let error = null;
-  if (referencesStore.remoteErrorMessage !== null) {
-    error = <Alert severity="error">{referencesStore.remoteErrorMessage}</Alert>;
-  }
 
   let toolbar = progress;
   if (editing === null) {
@@ -162,7 +158,7 @@ export function ProjectGitRemoteDialog({ referencesStore, open, onClose, syncSto
       <DialogContent dividers>
         <Stack spacing={2}>
           {toolbar}
-          {error}
+
           {configurationError}
           {confirmation}
           {content}

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Alert,
   Box,
@@ -31,14 +32,14 @@ export function HomeDockerLogsDialog({ store }: HomeDockerLogsDialogProps) {
     store.closeLogs();
   }
 
-  let content = (
+  let content: ReactNode = (
     <Typography color="text.secondary">{t("docker.logs.empty")}</Typography>
   );
 
   if (store.isLoadingLogs) {
     content = <LinearProgress />;
   } else if (store.logsErrorMessage !== null) {
-    content = <Alert severity="error">{store.logsErrorMessage}</Alert>;
+    content = null;
   } else if (store.selectedLogs !== null) {
     const streams = [
       {

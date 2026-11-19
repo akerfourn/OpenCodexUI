@@ -109,8 +109,8 @@ describe("reset eligibility information", () => {
     expect(button("Appliquer").disabled).toBe(false);
   });
 
-  it("should preserve unexpected transport errors", async () => {
+  it("should leave transport failure feedback to the global notification", async () => {
     await renderDialog("fr", 90, "Connection interrupted");
-    expect(document.body.textContent).toContain("Connection interrupted");
+    expect(document.body.textContent).not.toContain("Connection interrupted");
   });
 });

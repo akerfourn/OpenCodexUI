@@ -1,21 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, LinearProgress } from "@mui/material";
-import { useTranslation } from "react-i18next";
+import { LinearProgress } from "@mui/material";
 import { TextLayer } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from "pdfjs-dist";
 import type { PdfPageSize } from "./pdfPageLayout";
 import { pdfPixelRatio } from "./pdfRuntime";
 
 /** Renders one page at a time, bounding canvas memory and cancelling superseded work. */
-export function FilePdfPage({ pdf, pageNumber, zoom, width, onScale, onSize }: {
+export function FilePdfPage({ pdf, pageNumber, zoom, width, onScale, onSize, onError }: {
   pdf: PDFDocumentProxy; pageNumber: number; zoom: number | null; width: number; onScale: (scale: number) => void;
   onSize?: (page: number, size: PdfPageSize) => void;
+  onError?: (error: unknown) => void;
 }) {
-  const { t } = useTranslation();
   const container = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const element = container.current;
     if (element === null) return;
@@ -51,7 +49,7 @@ export function FilePdfPage({ pdf, pageNumber, zoom, width, onScale, onSize }: {
         text = new TextLayer({ textContentSource: page.streamTextContent(), container: layer, viewport });
         await text.render();
       } catch (failure) {
-        if (!disposed) setError(String(failure));
+        if (!disposed) onError?.(failure);
       } finally {
         if (!disposed) setBusy(false);
       }
@@ -65,13 +63,8 @@ export function FilePdfPage({ pdf, pageNumber, zoom, width, onScale, onSize }: {
       // The document owns final cleanup; page cleanup can defer while rendering is cancelled.
       page?.cleanup();
     };
-  }, [pdf, pageNumber, zoom, width, onScale, onSize]);
+  }, [pdf, pageNumber, zoom, width, onScale, onSize, onError]);
   const loading = busy ? <LinearProgress /> : null;
-  const feedback = error === null ? null : (
-    <Alert severity="warning">{t("files.pdfUnavailable")}
-      <details><summary>{t("files.details")}</summary>{error}</details>
-    </Alert>
-  );
-  return <>{loading}{feedback}<div ref={container} className="files-pdf-page" /></>;
+  return <>{loading}<div ref={container} className="files-pdf-page" /></>;
 }
 export const FilePdfPageX = observer(FilePdfPage);

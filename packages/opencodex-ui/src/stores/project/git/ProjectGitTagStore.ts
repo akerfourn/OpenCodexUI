@@ -471,6 +471,9 @@ export class ProjectGitTagStore {
    * @param result Tag listing returned by the backend.
    */
   private applyTagListResult(result: OpenCodexGitTagListResult): void {
+    if (result.remoteError !== null && result.remoteError !== this.tagSyncErrorMessage) {
+      this.context.reportWarning(result.remoteError);
+    }
     this.tags = result.tags;
     this.tagsRemoteName = result.remoteName;
     this.tagSyncErrorMessage = result.remoteError;

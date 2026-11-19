@@ -22,7 +22,7 @@ export function WorkspaceSwitchDialog({ project, thread, onClose }: {
     <MenuItem key={item.id} value={item.id}>{workspaceLabel(item, t("workspaces.primary"))}</MenuItem>
   ));
   const emptyHint = empty ? <Alert severity="info">{t("workspaces.emptyConversation")}</Alert> : null;
-  const error = store.error === null ? null : <Alert severity="error">{store.error}</Alert>;
+
   const recovery = store.error === null ? null : <Button disabled={disabled} onClick={handleRecover}>
     {t("workspaces.recover")}
   </Button>;
@@ -47,7 +47,7 @@ export function WorkspaceSwitchDialog({ project, thread, onClose }: {
         <DialogContentText>{destination?.path}</DialogContentText>
         <DialogContentText sx={{ mt: 2 }}>{t("workspaces.switchSummary")}</DialogContentText>
         <DialogContentText sx={{ mt: 2 }}>{t("workspaces.switchHelp")}</DialogContentText>
-        {emptyHint}{error}
+        {emptyHint}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={store.isBusy}>{t("workspaces.close")}</Button>

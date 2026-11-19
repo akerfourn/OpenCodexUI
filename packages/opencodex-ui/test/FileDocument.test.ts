@@ -34,6 +34,22 @@ function deferred<T>() {
 }
 
 describe("file documents", () => {
+  it("should journal repeated structured read failures once without discarding the buffer", async () => {
+    const request = vi.fn().mockResolvedValue({ ok: true, value: baseline });
+    const reportError = vi.fn();
+    const document = new FileDocument("id", "file.txt", { ...context, path: "file.txt" }, "Main",
+      { request, reportError });
+    await document.reload();
+    document.edit("unsaved buffer");
+    request.mockResolvedValue({ ok: false, code: "accessDenied", details: "Read permission denied" });
+
+    await document.reload();
+    await document.reload();
+
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(reportError).toHaveBeenCalledWith("Read permission denied", "file.txt");
+    expect(document.content).toBe("unsaved buffer");
+  });
   it("should preserve edits after save failure and retain the original source target", async () => {
     const { document, request } = await fixture();
     document.edit("user draft");

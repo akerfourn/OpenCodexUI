@@ -1,5 +1,4 @@
 import { ComposerDictationX } from "./ComposerDictation";
-import { DictationError } from "./DictationError";
 import { readFileAttachments, readTransferFiles } from "./fileAttachments";
 /**
  * Renders the chat composer component for the OpenCodex UI.
@@ -106,7 +105,6 @@ export function ChatComposer({
   }
 
   /** Dismisses dictation diagnostics independently of conversation errors. */
-  function handleDictationErrorClose(): void { store.dictationStore.clearError(); }
 
   function handleEmojiSelect(emoji: string): void {
     if (!composer.isSubmitting) composerInputRef.current?.insertText(emoji);
@@ -180,7 +178,7 @@ export function ChatComposer({
       const pickedAttachments = await store.pickFileAttachments();
       composer.addAttachments(pickedAttachments);
     } catch (error) {
-      store.appStore.applyError({ type: "error", message: error instanceof Error ? error.message : String(error) });
+      store.reportError(error);
     }
   }
 
@@ -241,7 +239,7 @@ export function ChatComposer({
     try {
       composer.addAttachments(await readFileAttachments(files));
     } catch (error) {
-      store.appStore.applyError({ type: "error", message: error instanceof Error ? error.message : String(error) });
+      store.reportError(error);
     }
   }
 
@@ -271,7 +269,7 @@ export function ChatComposer({
         disabled={isSubmitting}
         onRemoveAttachment={handleRemoveAttachment}
       />
-      <DictationError message={store.dictationStore.error} onClose={handleDictationErrorClose} />
+
       <ChatRunningModelX chatStore={chatStore} />
       <Stack className="composer-controls" direction="row" spacing={1}>
         <ModelSettingsFields

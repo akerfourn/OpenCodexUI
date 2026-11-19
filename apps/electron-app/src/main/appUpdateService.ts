@@ -307,6 +307,7 @@ export class AppUpdateService {
       return;
     }
 
+    this.options.log("error", message);
     this.publishState({
       status: "error",
       progress: null,

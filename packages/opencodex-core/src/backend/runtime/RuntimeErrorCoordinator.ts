@@ -44,6 +44,7 @@ export class RuntimeErrorCoordinator {
     this.options.logs.persistLog("error", normalized.message, normalized.details);
     this.options.events.emit({
       type: "error",
+      requestType: request.type,
       message: normalized.message,
       details: normalized.details,
       recoverable: recoverableThreadId !== null,

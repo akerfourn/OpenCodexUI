@@ -106,9 +106,6 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
     );
   }
 
-  const errorContent = promptStore.errorMessage === null ? null : (
-    <Alert severity="error">{promptStore.errorMessage}</Alert>
-  );
   const gitVersionContent = appStore.gitVersionStatus === null ? (
     <Alert severity="info">{t("commitPrompt.gitChecking")}</Alert>
   ) : appStore.gitVersionStatus?.status === "ready" ? (
@@ -216,7 +213,6 @@ export function HomeCommitView({ store }: HomeCommitViewProps) {
               </Typography>
             </Box>
 
-            {errorContent}
             {gitVersionContent}
 
             <Stack

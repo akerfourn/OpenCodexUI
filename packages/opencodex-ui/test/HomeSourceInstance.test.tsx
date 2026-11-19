@@ -102,7 +102,8 @@ describe("source instance controls", () => {
     fixture.request.mockRejectedValueOnce(new Error("SOURCE_BUSY"));
     await open();
     await act(async () => { button("stop", true).click(); });
-    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("SOURCE_BUSY");
+    expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain("SOURCE_BUSY");
+    expect(fixture.instances.errors.get("a")).toBe("SOURCE_BUSY");
     expect(document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.checked).toBe(false);
     expect(button("stop", true).disabled).toBe(true);
     expect(fixture.request).toHaveBeenCalledOnce();

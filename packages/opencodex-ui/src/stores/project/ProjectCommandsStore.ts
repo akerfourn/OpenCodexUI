@@ -500,20 +500,6 @@ export class ProjectCommandsStore {
    * @param error Unknown caught error.
    */
   private reportError(error: unknown): void {
-    this.root.appStore.errorMessage = readErrorMessage(error);
+    this.root.reportError(error);
   }
-}
-
-/**
- * Converts unknown errors into displayable command error text.
- *
- * @param error Unknown caught error.
- * @returns Error message.
- */
-function readErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

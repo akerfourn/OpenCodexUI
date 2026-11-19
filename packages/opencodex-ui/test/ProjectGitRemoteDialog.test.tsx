@@ -180,7 +180,7 @@ describe("Git remote management", () => {
     test.request.mockRejectedValueOnce(new Error("Configuration locked"));
     await act(async () => { button("git.remoteRemove upstream").click(); });
     await act(async () => { button("git.remoteRemoveConfirm").click(); });
-    expect(document.body.textContent).toContain("Configuration locked");
+    expect(document.body.textContent).not.toContain("Configuration locked");
     expect(document.querySelector('section[aria-label="upstream"]')).not.toBeNull();
     await act(async () => { button("git.remoteRemoveConfirm").click(); });
     expect(document.querySelector('section[aria-label="upstream"]')).toBeNull();

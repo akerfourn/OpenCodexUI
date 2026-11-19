@@ -1,5 +1,6 @@
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import { useState, type ChangeEvent } from "react";
-import { Alert, FormControlLabel, Stack, Switch, Typography } from "@mui/material";
+import { FormControlLabel, Stack, Switch, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,7 +13,7 @@ import type { RootStore } from "../../stores/RootStore";
 export function HomeMessageRenderingSettings({ store }: { store: RootStore }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const reportError = useApplicationErrorReporter();
   const defaults = normalizeMessageRenderingDefaults(store.settings.messageRendering);
 
   /** Publishes confirmed defaults only after persistence succeeds. */
@@ -20,13 +21,12 @@ export function HomeMessageRenderingSettings({ store }: { store: RootStore }) {
     event: ChangeEvent<HTMLInputElement>): Promise<void> {
     if (saving) return;
     setSaving(true);
-    setError(null);
     const messageRendering = normalizeMessageRenderingDefaults(store.settings.messageRendering);
     messageRendering[role][field] = event.target.checked;
     try {
       const saved = await store.request<OpenCodexSettings>({ type: "settings.update", patch: { messageRendering } });
       store.appStore.settingsStore.replaceSettings({ ...store.settings, messageRendering: saved.messageRendering });
-    } catch (reason) { setError(String(reason)); }
+    } catch (reason) { reportError(reason); }
     finally { setSaving(false); }
   }
 
@@ -42,17 +42,11 @@ export function HomeMessageRenderingSettings({ store }: { store: RootStore }) {
       <Stack direction="row" useFlexGap sx={{ flexWrap: "wrap" }}>{fields}</Stack>
     </Stack>;
   });
-  let feedback = null;
-  if (error !== null) {
-    feedback = <Alert severity="error">{t("messageRendering.saveError")}
-      <details><summary>{t("messageRendering.details")}</summary>{error}</details>
-    </Alert>;
-  }
+
   return <Stack spacing={1}>
     <Typography variant="h6">{t("messageRendering.globalTitle")}</Typography>
     <Typography variant="body2" color="text.secondary">{t("messageRendering.globalDescription")}</Typography>
     {sections}
-    {feedback}
   </Stack>;
 }
 export const HomeMessageRenderingSettingsX = observer(HomeMessageRenderingSettings);

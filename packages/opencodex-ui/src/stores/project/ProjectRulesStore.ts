@@ -394,7 +394,7 @@ export class ProjectRulesStore {
   private reportError(error: unknown): void {
     const message = error instanceof Error ? error.message : String(error);
     this.errorMessage = message;
-    this.root.appStore.errorMessage = message;
+    this.root.reportError(error);
   }
 }
 

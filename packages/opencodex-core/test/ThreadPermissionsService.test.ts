@@ -220,11 +220,11 @@ describe("effective conversation permissions", () => {
   });
 
   it("should propagate permission errors through the router without triggering chat recovery", async () => {
-    const handleRequestError = vi.fn();
+    const handleRequestError = vi.fn((_request, error) => { throw error; });
     const router = new OpenCodexRequestRouter(requestRoutingRuntime({ threadPermissions: service, handleRequestError } as unknown as OpenCodexBackendRuntime));
     liveStatus = "active";
 
     await expect(router.handleRequest({ type: "threadPermissions.read", context })).rejects.toThrow("active");
-    expect(handleRequestError).not.toHaveBeenCalled();
+    expect(handleRequestError).toHaveBeenCalledTimes(1);
   });
 });

@@ -4,7 +4,6 @@ import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 import { DICTATION_LANGUAGES, DICTATION_MODELS, type OpenCodexDictationSettings } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../../stores/RootStore";
-import { DictationError } from "../chat/DictationError";
 
 /** Configures dictation independently from Codex model and conversation settings. */
 export function HomeDictationSettings({ store }: { store: RootStore }) {
@@ -38,7 +37,6 @@ export function HomeDictationSettings({ store }: { store: RootStore }) {
   /** Stops an unfinished download and removes its partial files. */
   function handleCancel(): void { void dictation.cancelDownload(); }
   /** Dismisses diagnostics without changing preferences. */
-  function handleClearError(): void { dictation.clearError(); }
 
   let backendContent;
   if (settings.backend === "codex") {
@@ -76,7 +74,7 @@ export function HomeDictationSettings({ store }: { store: RootStore }) {
           <Button onClick={handleRemove} disabled={locked || state.installedModelId === null}>{t("dictation.remove")}</Button>
         </Stack>
         {progressContent}
-        <DictationError message={state.error} />
+
         <TextField select size="small" label={t("dictation.language")} value={settings.language} onChange={handleLanguage} disabled={locked}>
           {languages}
         </TextField>
@@ -93,7 +91,7 @@ export function HomeDictationSettings({ store }: { store: RootStore }) {
         <MenuItem value="codex">{t("dictation.codex")}</MenuItem>
       </TextField>
       {backendContent}
-      <DictationError message={dictation.error} onClose={handleClearError} />
+
     </Stack>
   );
 }

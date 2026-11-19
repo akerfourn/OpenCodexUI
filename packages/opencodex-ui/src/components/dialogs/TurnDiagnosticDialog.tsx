@@ -80,11 +80,7 @@ export function TurnDiagnosticDialog({
     </Stack>
   ) : (
     <Stack spacing={2}>
-      {diagnosticStore.error !== null ? (
-        <Alert severity="error">
-          {t("turnDiagnostics.loadError", { message: diagnosticStore.error })}
-        </Alert>
-      ) : null}
+
       {diagnostic === null ? (
         <Typography color="text.secondary" sx={{ p: 3, textAlign: "center" }}>
           {t("turnDiagnostics.empty")}

@@ -110,7 +110,7 @@ export function HomeSourceCreateDialog({ open, store, onClose }: HomeSourceCreat
         onClose();
       })
       .catch(() => {
-        setErrorKey("sources.createError");
+        setErrorKey(null);
       })
       .finally(() => {
         setIsSubmitting(false);

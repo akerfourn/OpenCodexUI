@@ -1,8 +1,14 @@
 import {
-  Accordion, AccordionDetails, AccordionSummary, Alert, Button, CircularProgress,
-  Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography
+  Alert,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Stack,
+  Typography
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { observer } from "mobx-react-lite";
 import { useEffect, useState } from "react";
 import { useGitTranslation } from "../../i18n/useGitTranslation";
@@ -87,10 +93,8 @@ export function ProjectGitSyncDialog({ sync, onOpenFile }: ProjectGitSyncDialogP
     actions = <Button disabled={sync.isBusy} onClick={handleRetry}>{t("gitSync.retry")}</Button>;
   }
   let notice = null;
-  if (sync.result?.issue != null) {
-    let severity: "warning" | "error" = "warning";
-    if (sync.result.outcome === "error") severity = "error";
-    notice = <Alert severity={severity}>{t(`gitSync.issues.${sync.result.issue}`)}</Alert>;
+  if (sync.result?.issue != null && sync.result.outcome !== "error") {
+    notice = <Alert severity="warning">{t(`gitSync.issues.${sync.result.issue}`)}</Alert>;
   } else if (sync.result?.outcome === "synchronized") {
     notice = <Alert severity="success">{t("gitSync.synchronized")}</Alert>;
   } else if (sync.result?.outcome === "continued" || sync.result?.outcome === "aborted") {
@@ -102,18 +106,6 @@ export function ProjectGitSyncDialog({ sync, onOpenFile }: ProjectGitSyncDialogP
   }
   let review = null;
   if (sync.plan !== null) review = <ProjectGitSyncPlanX plan={sync.plan} vocabulary={sync.vocabulary} />;
-  let details = null;
-  const technicalDetails = sync.result?.details ?? sync.preferenceError;
-  if (technicalDetails != null) {
-    details = <Accordion disableGutters>
-      <AccordionSummary expandIcon={<ExpandMoreIcon />}>{t("gitSync.details")}</AccordionSummary>
-      <AccordionDetails><Typography component="pre" variant="caption" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-        {technicalDetails}
-      </Typography></AccordionDetails>
-    </Accordion>;
-  }
-  let preferenceError = null;
-  if (sync.preferenceError !== null) preferenceError = <Alert severity="error">{t("gitSync.preferenceFailed")}</Alert>;
   let progress = null;
   if (sync.isBusy) progress = <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
     <CircularProgress size={18} /><Typography variant="body2">{t(`gitSync.phases.${sync.phase}`)}</Typography>
@@ -136,7 +128,7 @@ export function ProjectGitSyncDialog({ sync, onOpenFile }: ProjectGitSyncDialogP
     <Dialog open={sync.isOpen} onClose={handleClose} fullWidth maxWidth="sm">
       <DialogTitle>{t("gitSync.title")}</DialogTitle>
       <DialogContent dividers><Stack spacing={2}>
-        {progress}{notice}{preferenceError}{abortConfirmation}{content}{review}{details}
+        {progress}{notice}{abortConfirmation}{content}{review}
       </Stack></DialogContent>
       <DialogActions sx={{ flexWrap: "wrap", gap: 0.5 }}>
         <Button disabled={sync.isMutating} onClick={handleClose}>{t("gitSync.close")}</Button>
