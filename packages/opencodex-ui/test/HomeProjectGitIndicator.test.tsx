@@ -5,6 +5,7 @@ import { ThemeProvider } from "@mui/material";
 import { createInstance } from "i18next";
 import { I18nextProvider } from "react-i18next";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { observable, runInAction } from "mobx";
 import type { OpenCodexRequest, OpenCodexSource } from "@open-codex-ui/opencodex-protocol";
 import { HomeProjectListItem } from "../src/components/home/HomeProjectListItem";
 import { HomeProjectTreeList } from "../src/components/home/HomeProjectTreeList";
@@ -59,6 +60,7 @@ afterEach(async () => {
 /** Renders the complete row so the indicator's position and project action remain integrated. */
 async function renderRow(status = createStatus()) {
   const test = createHomeProjectGitFixture();
+  test.root.projectsStore.projects = observable(test.projects);
   const project = test.projects[0]!;
   const onOpen = vi.fn();
   test.store.record(project.id, project.path, project.sourceId, status);
@@ -72,6 +74,25 @@ async function renderRow(status = createStatus()) {
 }
 
 describe("Home Git indicators", () => {
+  it("should react to deferrals without another Git read and keep outgoing commits visible", async () => {
+    const status = createStatus({ changedFiles: [createFile("local.env")] });
+    const test = await renderRow(status);
+    expect(container.querySelector('[role="img"]')).not.toBeNull();
+    await act(async () => runInAction(() => {
+      test.root.projectsStore.projects[0]!.preferences = { git: { deferredPaths: ["local.env"] } };
+    }));
+    expect(container.querySelector('[role="img"]')).toBeNull();
+    await act(async () => test.store.record(test.project.id, test.project.path, test.project.sourceId,
+      { ...status, aheadCount: 2 }));
+    const icon = container.querySelector<HTMLElement>('[role="img"]')!;
+    expect(icon.getAttribute("aria-label")).toContain("Push 2 commits");
+    expect(icon.getAttribute("aria-label")).not.toContain("Modifications non enregistrées");
+    expect(getComputedStyle(icon).color).toBe("rgb(9, 105, 218)");
+    await act(async () => runInAction(() => { test.root.projectsStore.projects[0]!.preferences = {}; }));
+    expect(container.querySelector('[role="img"]')?.getAttribute("aria-label")).toContain("Modifications non enregistrées");
+    expect(test.request).not.toHaveBeenCalled();
+  });
+
   it("should show uncommitted files in gray at the end of the project row", async () => {
     const test = await renderRow(createStatus({ stagedFiles: [createFile("staged.ts")] }));
     const icon = container.querySelector<HTMLElement>('[role="img"]')!;

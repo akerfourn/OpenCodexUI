@@ -113,6 +113,12 @@ inputs and diagnostic visible so you can correct the address, access, or path.
 
 ## Git Synchronization
 
+On Home, a gray Git indicator marks uncommitted changes in the main project
+folder. Files and directories deferred in OpenCodexUI are excluded from this
+indicator; staged changes still count. Deferring or restoring a path updates
+the cached indicator without another Git scan. Outgoing commits keep their blue
+indicator regardless of deferred files.
+
 Use **Synchronize and push** in the Git panel to fetch and review the selected
 remote and branch before sending commits. The review shows fresh local/remote
 commit counts and offers rebase or merge when histories have diverged. Its

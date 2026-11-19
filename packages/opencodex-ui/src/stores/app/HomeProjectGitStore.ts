@@ -1,10 +1,11 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import type { OpenCodexGitStatus, OpenCodexProject } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
+import { isPathDeferred } from "../project/git/gitDeferredPaths";
 
 type ProjectScope = Pick<OpenCodexProject, "id" | "sourceId" | "path">;
 
-/** Small, dated observations for the principal folder; no file lists are retained. */
+/** Small, dated summaries for the principal folder, filtered by current project preferences. */
 export interface HomeProjectGitSnapshot {
   project: ProjectScope;
   isRepository: boolean;
@@ -16,10 +17,16 @@ export interface HomeProjectGitSnapshot {
   generation: number;
 }
 
+/** Relative paths let preference changes update summaries without retaining full statuses or rereading Git. */
+interface HomeProjectGitObservation extends Omit<HomeProjectGitSnapshot, "hasChanges"> {
+  changedPaths: string[];
+  hasStagedChanges: boolean;
+}
+
 /** Checks visible Home rows with local Git reads, without opening tabs or starting offline sources. */
 export class HomeProjectGitStore {
   /** Source/path identity is part of every cached observation. */
-  private readonly snapshots = new Map<string, HomeProjectGitSnapshot>();
+  private readonly snapshots = new Map<string, HomeProjectGitObservation>();
   /** Reference counts support multiple views without duplicating their requests. */
   private readonly visible = new Map<string, { project: ProjectScope; users: number }>();
   /** Unstarted work is removed as soon as its row leaves the viewport. */
@@ -51,10 +58,18 @@ export class HomeProjectGitStore {
     return instance?.manuallyStopped !== true && instance?.phase !== "stopping" && instance?.phase !== "updating";
   }
 
-  /** Offline, removed and relocated projects cannot display another folder's observation. */
+  /** Applies live deferrals to cached paths while keeping source identity and staged changes explicit. */
   snapshotFor(project: ProjectScope): HomeProjectGitSnapshot | undefined {
-    if (!this.isCurrent(project) || !this.isAvailable(project)) return undefined;
-    return this.snapshots.get(projectKey(project));
+    const current = this.root.projectsStore.projects.find(item => item.id === project.id
+      && item.sourceId === project.sourceId && item.path === project.path);
+    if (current === undefined || !this.isAvailable(project)) return undefined;
+    const observation = this.snapshots.get(projectKey(project));
+    if (observation === undefined) return undefined;
+    const { changedPaths, hasStagedChanges, ...snapshot } = observation;
+    const deferredPaths = current.preferences.git?.deferredPaths ?? [];
+    return { ...snapshot,
+      hasChanges: hasStagedChanges || changedPaths.some(path => !isPathDeferred(path, deferredPaths))
+    };
   }
 
   /** Starts observing a visible row, reusing observations younger than one minute. */
@@ -93,7 +108,7 @@ export class HomeProjectGitStore {
     this.snapshots.set(key, {
       project, isRepository: status.isRepository, aheadCount: status.aheadCount,
       branchName: status.branchName,
-      hasChanges: status.changedFiles.length > 0 || status.stagedFiles.length > 0,
+      changedPaths: status.changedFiles.map(file => file.path), hasStagedChanges: status.stagedFiles.length > 0,
       checkedAt: this.now(), failed: false, generation: this.generation
     });
   }
@@ -150,7 +165,7 @@ export class HomeProjectGitStore {
       runInAction(() => {
         if (!this.isCurrent(project) || revision !== (this.revisions.get(key) ?? 0)) return;
         this.snapshots.set(key, {
-          project, isRepository: false, hasChanges: false, aheadCount: 0, branchName: null,
+          project, isRepository: false, changedPaths: [], hasStagedChanges: false, aheadCount: 0, branchName: null,
           checkedAt: this.now(), failed: true, generation: this.generation
         });
       });
@@ -164,7 +179,7 @@ export class HomeProjectGitStore {
   }
 
   /** A fresh observation belongs to this Home visit and has a bounded reuse period. */
-  private isFresh(snapshot: HomeProjectGitSnapshot): boolean {
+  private isFresh(snapshot: HomeProjectGitObservation): boolean {
     return snapshot.generation === this.generation && this.now() - snapshot.checkedAt < 60_000;
   }
 }

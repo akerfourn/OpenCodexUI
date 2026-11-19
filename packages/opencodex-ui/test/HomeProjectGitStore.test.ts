@@ -6,6 +6,82 @@ import { createFile, createStatus } from "./ProjectGitStatusStore.fixture";
 import { createHomeProjectGitFixture, settleHomeGit } from "./HomeProjectGit.fixture";
 
 describe("Home project Git observations", () => {
+  it("should ignore deferred files and nested directories when reading status without opening a project", async () => {
+    const test = createHomeProjectGitFixture();
+    const project = test.projects[0]!;
+    project.preferences = { git: { deferredPaths: ["local.env", "./generated\\cache/"] } };
+    const status = createStatus({ changedFiles: [createFile("local.env"),
+      createFile("generated/cache/nested/output.txt", "untracked")] });
+    test.request.mockResolvedValue(status);
+
+    const release = test.store.watch(project);
+    await settleHomeGit();
+
+    expect(test.store.snapshotFor(project)).toMatchObject({ hasChanges: false, aheadCount: 0 });
+    expect(status.changedFiles).toHaveLength(2);
+    expect(test.request).toHaveBeenCalledOnce();
+    expect(test.request).toHaveBeenCalledWith({ type: "git.status", sourceId: project.sourceId, projectPath: project.path });
+    release();
+  });
+
+  it("should keep nearby directory names and staged changes visible despite deferrals", () => {
+    const test = createHomeProjectGitFixture();
+    const project = test.projects[0]!;
+    project.preferences = { git: { deferredPaths: ["src"] } };
+    test.store.record(project.id, project.path, project.sourceId,
+      createStatus({ changedFiles: [createFile("src-backup/file.ts")] }));
+    expect(test.store.snapshotFor(project)?.hasChanges).toBe(true);
+    test.store.record(project.id, project.path, project.sourceId,
+      createStatus({ stagedFiles: [createFile("src/staged.ts")] }));
+    expect(test.store.snapshotFor(project)?.hasChanges).toBe(true);
+    expect(test.request).not.toHaveBeenCalled();
+  });
+
+  it("should apply current preferences to a cached observation when paths are deferred or restored", async () => {
+    const test = createHomeProjectGitFixture();
+    const project = test.projects[0]!;
+    test.request.mockResolvedValue(createStatus({ changedFiles: [createFile("local.env")] }));
+    const release = test.store.watch(project);
+    await settleHomeGit();
+    const checkedAt = test.store.snapshotFor(project)?.checkedAt;
+    expect(test.store.snapshotFor(project)?.hasChanges).toBe(true);
+
+    test.root.projectsStore.projects = [{ ...project, preferences: { git: { deferredPaths: ["local.env"] } } }];
+    expect(test.store.snapshotFor(project)).toMatchObject({ hasChanges: false, checkedAt });
+    test.root.projectsStore.projects = [{ ...project, preferences: {} }];
+    expect(test.store.snapshotFor(project)).toMatchObject({ hasChanges: true, checkedAt });
+    expect(test.request).toHaveBeenCalledOnce();
+    release();
+  });
+
+  it("should use the owning project's preferences even for identical paths on different sources", async () => {
+    const test = createHomeProjectGitFixture(2);
+    const first = test.projects[0]!;
+    const second = test.projects[1]!;
+    second.path = first.path;
+    first.preferences = { git: { deferredPaths: ["local.env"] } };
+    test.request.mockResolvedValue(createStatus({ changedFiles: [createFile("local.env")] }));
+    const releases = test.projects.map(project => test.store.watch(project));
+    await settleHomeGit();
+    expect(test.store.snapshotFor(first)?.hasChanges).toBe(false);
+    expect(test.store.snapshotFor(second)?.hasChanges).toBe(true);
+    releases.forEach(release => release());
+  });
+
+  it("should use preferences received during an in-flight status read", async () => {
+    const test = createHomeProjectGitFixture();
+    const pending = createDeferred<ReturnType<typeof createStatus>>();
+    const project = test.projects[0]!;
+    test.request.mockReturnValueOnce(pending.promise);
+    const release = test.store.watch(project);
+    test.root.projectsStore.projects = [{ ...project, preferences: { git: { deferredPaths: ["local.env"] } } }];
+    pending.resolve(createStatus({ changedFiles: [createFile("local.env")] }));
+    await settleHomeGit();
+    expect(test.store.snapshotFor(project)?.hasChanges).toBe(false);
+    expect(test.request).toHaveBeenCalledOnce();
+    release();
+  });
+
   it("should bound reads to two and discard queued rows that are no longer visible", async () => {
     const test = createHomeProjectGitFixture(5);
     const requests = Array.from({ length: 4 }, () => createDeferred<ReturnType<typeof createStatus>>());
