@@ -51,7 +51,7 @@ export function WorkspaceListActions({ project }: { project: ProjectStore }) {
           <MoreVertOutlinedIcon fontSize="small" />
         </IconButton>
       </Box>
-      {error}<WorkspacePendingOperationsX store={store} disabled={disabled} />{skipped}{creationDialog}{managementDialog}
+      {error}<WorkspacePendingOperationsX store={store} disabled={disabled} showRemovals={false} />{skipped}{creationDialog}{managementDialog}
       <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
         <MenuItem onClick={handleManagement}>{t("workspaceManagement.title")}</MenuItem>
         <MenuItem disabled={disabled} onClick={handleOpenImport}>{t("workspaces.discover")}</MenuItem>

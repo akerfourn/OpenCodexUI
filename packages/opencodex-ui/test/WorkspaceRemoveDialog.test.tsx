@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceRemovalFile } from "@open-codex-ui/opencodex-protocol";
 import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import { WorkspaceRemoveDialogX } from "../src/components/projects/WorkspaceRemoveDialog";
 
@@ -30,12 +30,15 @@ function removeButton(): HTMLButtonElement {
 }
 
 /** Keeps component events real while isolating the store's transport-backed operation. */
-async function renderDialog(unsaved = false, current = workspace, error: string | null = null) {
+async function renderDialog(unsaved = false, current = workspace, error: string | null = null,
+  files: OpenCodexWorkspaceRemovalFile[] = []) {
   const remove = vi.fn(async () => undefined);
   const onClose = vi.fn();
   const project = { isReadOnlyFromCache: false,
     files: { hasUnsavedWorkspaceDocuments: () => unsaved },
-    workspaces: { workspaces: [current], isBusy: false, error, remove }
+    workspaces: { workspaces: [current], isBusy: false, error, remove,
+      inspectRemoval: vi.fn(async () => ({ projectId: current.projectId, workspaceId: current.id,
+        sourceId: current.sourceId, workspacePath: current.path, files, totalFileCount: files.length })) }
   } as unknown as ProjectStore;
   await act(async () => {
     root.render(<WorkspaceRemoveDialogX project={project} workspace={current} onClose={onClose} />);
@@ -57,6 +60,19 @@ afterEach(async () => {
 });
 
 describe("workspace deletion confirmation", () => {
+  it("should show local ignored files before confirmation and require explicit force consent", async () => {
+    const { remove } = await renderDialog(false, workspace, null, [{ path: "cache/", kind: "ignored" }]);
+    await confirmName("Feature");
+    expect(document.body.textContent).toContain("cache/");
+    expect(document.body.textContent).toContain("workspaces.removalFileKinds.ignored");
+    expect(removeButton().disabled).toBe(true);
+    const consent = [...document.querySelectorAll("label")].find(item => item.textContent?.includes("workspaces.forceRemovalConfirm"))!;
+    await act(async () => consent.querySelector<HTMLInputElement>("input")!.click());
+    expect(document.body.textContent).toContain("workspaces.forceRemovalHelp");
+    expect(remove).not.toHaveBeenCalled();
+    await act(async () => removeButton().click());
+    expect(remove).toHaveBeenCalledWith("workspace", false, true, "/checkout");
+  });
   it("should require explicit future deletion consent and the exact name before scheduling", async () => {
     const { remove, onClose } = await renderDialog();
     const checkbox = document.querySelector<HTMLInputElement>('input[type="checkbox"]')!;

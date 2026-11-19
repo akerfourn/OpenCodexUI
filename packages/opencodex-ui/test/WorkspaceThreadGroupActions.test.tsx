@@ -69,7 +69,7 @@ afterEach(async () => {
 describe("contextual secondary workspace movement", () => {
   it("should mark a queued workspace and allow cancellation from its menu while offline", async () => {
     const { cancelDeferredRemoval } = await renderMenu(true, null, null, true);
-    expect(document.querySelector('[aria-label="workspaces.deletionPendingLabel"]')).not.toBeNull();
+    expect(document.querySelector('[aria-label="workspaces.removalDetails"]')).not.toBeNull();
     const cancel = menuItem("workspaces.cancelRemoval")!;
     expect(cancel.getAttribute("aria-disabled")).not.toBe("true");
     expect(menuItem("workspaces.remove")?.getAttribute("aria-disabled")).toBe("true");

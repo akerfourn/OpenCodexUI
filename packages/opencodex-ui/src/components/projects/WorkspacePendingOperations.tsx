@@ -5,14 +5,14 @@ import type { ProjectWorkspacesStore } from "../../stores/project/ProjectWorkspa
 import { WorkspacePendingRemovalX } from "./WorkspacePendingRemoval";
 
 /** Existing journals expose verified recovery in both project and Home management views. */
-export function WorkspacePendingOperations({ store, disabled }: {
-  store: ProjectWorkspacesStore; disabled: boolean;
+export function WorkspacePendingOperations({ store, disabled, showRemovals = true }: {
+  store: ProjectWorkspacesStore; disabled: boolean; showRemovals?: boolean;
 }) {
   const { t } = useTranslation();
   const creations = store.pending.map(item => <Alert severity="warning" key={item.id} action={
     <Button disabled={disabled} onClick={() => void store.recoverCreation(item.id)}>{t("workspaces.recover")}</Button>
   }>{t("workspaces.pending", { path: item.destinationPath })}</Alert>);
-  const removals = store.pendingRemovals.map(item => <WorkspacePendingRemovalX key={item.id}
+  const removals = (showRemovals ? store.pendingRemovals : []).map(item => <WorkspacePendingRemovalX key={item.id}
     removal={item} store={store} disabled={disabled} />);
   const moves = store.pendingMoves.map(item => <Alert severity="warning" key={item.id} action={
     <Button disabled={disabled} onClick={() => void store.recoverMove(item.id)}>{t("workspaces.recover")}</Button>

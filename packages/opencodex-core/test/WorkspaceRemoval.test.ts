@@ -295,4 +295,63 @@ describe("safe workspace removal with real Git and SQLite", () => {
     expect(await service.queued()).toEqual([]);
     expect((await cache.workspaces.get(secondary.id))?.removalPending).toBeUndefined();
   });
+
+  it("should report ignored and untracked contents without chats and reject scheduling before confirmation", async () => {
+    await fs.writeFile(path.join(checkout, "ignored.txt"), "generated output");
+    await fs.writeFile(path.join(checkout, "draft.txt"), "uncommitted draft");
+    const inspection = await service.inspect(primary.projectId, secondary.id, "source");
+    expect(inspection).toMatchObject({ workspaceId: secondary.id, totalFileCount: 2 });
+    expect(inspection.files).toEqual(expect.arrayContaining([
+      { path: "ignored.txt", kind: "ignored" }, { path: "draft.txt", kind: "untracked" }
+    ]));
+    await expect(service.schedule(primary.projectId, secondary.id, "source")).rejects.toThrow("modified, untracked or ignored");
+    expect(await service.pending(primary.projectId)).toEqual([]);
+    expect(await fs.readFile(path.join(checkout, "draft.txt"), "utf8")).toBe("uncommitted draft");
+  });
+
+  it("should remove local files only after explicit force consent and retain the branch", async () => {
+    await fs.writeFile(path.join(checkout, "tracked.txt"), "local tracked edit");
+    await fs.writeFile(path.join(checkout, "ignored.txt"), "generated output");
+    await expect(remove()).rejects.toThrow("modified, untracked or ignored");
+    await service.remove(primary.projectId, secondary.id, "source", true);
+    await expect(fs.stat(checkout)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await git(repository, ["branch", "--list", "topic"])).toContain("topic");
+  });
+
+  it("should refuse force when the reviewed directory no longer matches the workspace", async () => {
+    const dispatch = vi.spyOn(gitRemoval, "remove");
+    await expect(service.remove(primary.projectId, secondary.id, "source", true, "/previous/location"))
+      .rejects.toThrow("Workspace location changed");
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(await service.pending(primary.projectId)).toEqual([]);
+    expect((await fs.stat(checkout)).isDirectory()).toBe(true);
+  });
+
+  it("should persist force consent across restart but still wait for source inactivity", async () => {
+    await fs.writeFile(path.join(checkout, "ignored.txt"), "generated output");
+    await service.schedule(primary.projectId, secondary.id, "source", true);
+    const pending = (await service.queued())[0]!;
+    await cache.close();
+    cache = createOpenCodexSqliteCacheRepository({ directory: path.join(directory, "cache") });
+    service = new WorkspaceRemovalService(cache.workspaces, clients, gate, inactive, gitRemoval);
+    expect((await service.queued())[0]?.force).toBe(true);
+    inactive.mockRejectedValueOnce(new WorkspaceSourceBusyError("Source active"));
+    await service.processQueued(pending.id);
+    expect((await service.queued())[0]?.id).toBe(pending.id);
+    expect((await fs.stat(checkout)).isDirectory()).toBe(true);
+    await service.processQueued(pending.id);
+    expect((await cache.workspaces.get(secondary.id))?.removedAt).toEqual(expect.any(String));
+  });
+
+  it("should preserve an external Git lock and unreferenced commits even when force was authorized", async () => {
+    await git(repository, ["worktree", "lock", "--reason", "Keep this checkout", checkout]);
+    await expect(service.remove(primary.projectId, secondary.id, "source", true)).rejects.toThrow("unlocked Git worktree");
+    await git(repository, ["worktree", "unlock", checkout]);
+    await git(checkout, ["checkout", "--detach"]);
+    await fs.writeFile(path.join(checkout, "tracked.txt"), "detached\n");
+    await git(checkout, ["add", "."]);
+    await git(checkout, ["-c", "commit.gpgsign=false", "commit", "-m", "detached fixture"]);
+    await expect(service.remove(primary.projectId, secondary.id, "source", true)).rejects.toThrow("branch or tag");
+    expect((await fs.stat(checkout)).isDirectory()).toBe(true);
+  });
 });

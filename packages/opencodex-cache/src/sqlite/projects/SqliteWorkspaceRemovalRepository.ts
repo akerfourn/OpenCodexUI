@@ -7,20 +7,27 @@ import type { WorkspaceRemovalRepository } from "../../types/workspaceRemovals.j
 const columns = `id, workspace_id AS workspaceId, project_id AS projectId, source_id AS sourceId,
   primary_workspace_id AS primaryWorkspaceId, project_path AS projectPath,
   workspace_path AS workspacePath, repository_path AS repositoryPath, state, git_exit_code AS gitExitCode,
-  deferred_state AS deferredState, requested_at AS requestedAt, blocked_reason AS blockedReason`;
+  deferred_state AS deferredState, requested_at AS requestedAt, blocked_reason AS blockedReason, force`;
 
 /** SQLite nullable fields are omitted from legacy removal DTOs. */
-interface RemovalRow extends Omit<OpenCodexWorkspaceRemoval, "deferredState" | "requestedAt" | "blockedReason"> {
+interface RemovalRow extends Omit<OpenCodexWorkspaceRemoval, "deferredState" | "requestedAt" | "blockedReason" | "force"> {
   deferredState: OpenCodexWorkspaceRemoval["deferredState"] | null;
   requestedAt: string | null;
   blockedReason: string | null;
+  force: number;
 }
 
 /** Keeps pre-existing journal payloads unchanged when automatic deletion was not requested. */
 function toRemoval(row: RemovalRow): OpenCodexWorkspaceRemoval {
-  const { deferredState, requestedAt, blockedReason, ...removal } = row;
-  if (deferredState == null) return removal;
-  return { ...removal, deferredState, requestedAt: requestedAt ?? undefined, blockedReason };
+  const { deferredState, requestedAt, blockedReason, force, ...fields } = row;
+  const removal: OpenCodexWorkspaceRemoval = { ...fields };
+  if (force === 1) removal.force = true;
+  if (deferredState != null) {
+    removal.deferredState = deferredState;
+    removal.requestedAt = requestedAt ?? undefined;
+    removal.blockedReason = blockedReason;
+  }
+  return removal;
 }
 
 /** Persists removal intent separately from retained workspace and conversation history. */
@@ -30,7 +37,7 @@ export class SqliteWorkspaceRemovalRepository implements WorkspaceRemovalReposit
 
   /** Refuses primary/external workspaces and all durable execution or transition blockers. */
   async begin(projectId: string, workspaceId: string, sourceId: string,
-    primaryWorkspaceId: string, repositoryPath: string, deferred = false): Promise<OpenCodexWorkspaceRemoval> {
+    primaryWorkspaceId: string, repositoryPath: string, deferred = false, force = false): Promise<OpenCodexWorkspaceRemoval> {
     return this.database.transaction(() => {
       const workspace = this.database.prepare(`SELECT path FROM project_workspaces
         WHERE id = ? AND project_id = ? AND source_id = ? AND is_primary = 0 AND managed = 1
@@ -49,10 +56,10 @@ export class SqliteWorkspaceRemovalRepository implements WorkspaceRemovalReposit
       const id = randomUUID();
       this.database.prepare(`INSERT INTO workspace_removals
         (id, workspace_id, project_id, source_id, primary_workspace_id, project_path,
-          workspace_path, repository_path, state, deferred_state, requested_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'preparing', ?, ?)`)
+          workspace_path, repository_path, state, deferred_state, requested_at, force)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'preparing', ?, ?, ?)`)
         .run(id, workspaceId, projectId, sourceId, primaryWorkspaceId, primary.path, workspace.path, repositoryPath,
-          deferred ? "queued" : null, deferred ? new Date().toISOString() : null);
+          deferred ? "queued" : null, deferred ? new Date().toISOString() : null, force ? 1 : 0);
       return this.require(id);
     })();
   }
@@ -103,7 +110,7 @@ export class SqliteWorkspaceRemovalRepository implements WorkspaceRemovalReposit
   }
 
   /** Cancels or retries only the owning project's undispatched intent, including offline. */
-  async updateDeferred(id: string, projectId: string, sourceId: string, action: "cancel" | "retry"): Promise<void> {
+  async updateDeferred(id: string, projectId: string, sourceId: string, action: "cancel" | "retry", force = false): Promise<void> {
     this.database.transaction(() => {
       const removal = this.require(id);
       if (removal.projectId !== projectId || removal.sourceId !== sourceId || removal.state !== "preparing"
@@ -111,8 +118,8 @@ export class SqliteWorkspaceRemovalRepository implements WorkspaceRemovalReposit
         throw new Error("Only this project's waiting or blocked removal can be changed.");
       }
       if (action === "cancel") this.database.prepare("DELETE FROM workspace_removals WHERE id = ?").run(id);
-      else this.database.prepare(`UPDATE workspace_removals SET deferred_state = 'queued', blocked_reason = NULL
-        WHERE id = ?`).run(id);
+      else this.database.prepare(`UPDATE workspace_removals SET deferred_state = 'queued', blocked_reason = NULL,
+        force = CASE WHEN ? = 1 THEN 1 ELSE force END WHERE id = ?`).run(force ? 1 : 0, id);
     })();
   }
 

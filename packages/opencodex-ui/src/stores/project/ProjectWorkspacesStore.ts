@@ -5,6 +5,7 @@ import type {
   OpenCodexProjectWorkspace, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRemoval, OpenCodexWorkspaceMove, OpenCodexWorkspaceDiscoveryResult,
   OpenCodexWorkspaceStart, OpenCodexWorkspaceRoot, OpenCodexWorkspaceLockState
 } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceRemovalInspection } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceActivity } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceWorkStatus } from "@open-codex-ui/opencodex-protocol";
 import type { RootStore } from "../RootStore";
@@ -276,16 +277,23 @@ export class ProjectWorkspacesStore {
   }
 
   /** Deletes only the explicit managed checkout; unsaved buffers are never discarded implicitly. */
-  async remove(workspaceId: string, deferred = false): Promise<void> {
+  async remove(workspaceId: string, deferred = false, force = false, expectedPath?: string): Promise<void> {
     await this.perform(async () => {
       if (this.project.files.hasUnsavedWorkspaceDocuments(workspaceId)) {
         throw new Error("Save or close unsaved workspace documents before removing it.");
       }
       this.project.files.setWorkspaceRemovalPending(workspaceId, true);
       await this.root.request({ type: "projectWorkspaces.remove", projectId: this.project.project.id,
-        workspaceId, sourceId: this.requireSource(), ...(deferred ? { deferred: true } : {}) });
+        workspaceId, sourceId: this.requireSource(), ...(deferred ? { deferred: true } : {}),
+        ...(force ? { force: true, expectedPath } : {}) });
       if (!deferred) this.project.files.closeRemovedWorkspace(workspaceId);
     });
+  }
+
+  /** Reads source-side file hazards without reserving the checkout or changing global UI errors. */
+  async inspectRemoval(workspaceId: string): Promise<OpenCodexWorkspaceRemovalInspection> {
+    return await this.root.request<OpenCodexWorkspaceRemovalInspection>({ type: "projectWorkspaces.removals.inspect",
+      projectId: this.project.project.id, workspaceId, sourceId: this.requireSource() });
   }
 
   /** Cancels waiting intent without contacting or starting an unavailable source. */
@@ -297,10 +305,14 @@ export class ProjectWorkspacesStore {
   }
 
   /** Explicitly retries a blocked safety check; uncertain dispatched operations use recovery instead. */
-  async retryDeferredRemoval(removalId: string): Promise<void> {
+  async retryDeferredRemoval(removalId: string, force = false): Promise<void> {
     await this.perform(async () => {
+      const removal = this.pendingRemovals.find(item => item.id === removalId);
+      if (removal !== undefined && this.project.files.hasUnsavedWorkspaceDocuments(removal.workspaceId)) {
+        throw new Error("Save or close unsaved workspace documents before removing it.");
+      }
       await this.root.request({ type: "projectWorkspaces.removals.retry", removalId,
-        projectId: this.project.project.id, sourceId: this.requireSource() });
+        projectId: this.project.project.id, sourceId: this.requireSource(), ...(force ? { force: true } : {}) });
     }, true);
   }
 

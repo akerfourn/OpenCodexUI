@@ -2,7 +2,6 @@ import AddCommentOutlinedIcon from "@mui/icons-material/AddCommentOutlined";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import ChevronRightOutlinedIcon from "@mui/icons-material/ChevronRightOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import AutoDeleteOutlinedIcon from "@mui/icons-material/AutoDeleteOutlined";
 import MoreVertOutlinedIcon from "@mui/icons-material/MoreVertOutlined";
 import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
 import { Box, IconButton, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
@@ -22,6 +21,7 @@ import { PrimaryWorkspaceMoveDialogX } from "./PrimaryWorkspaceMoveDialog";
 import { WorkspaceRelocateDialogX } from "./WorkspaceRelocateDialog";
 import { WorkspaceRemoveDialogX } from "./WorkspaceRemoveDialog";
 import { WorkspacePreparationDialogX } from "./WorkspacePreparationDialog";
+import { WorkspacePendingRemovalX } from "./WorkspacePendingRemoval";
 
 /** A named, collapsible workspace owns its chat list and local creation action. */
 export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialog }: {
@@ -48,9 +48,8 @@ export function WorkspaceThreadGroup({ group, project, root, onOpenSubAgentDialo
   }
   let name = workspace === null ? t("workspaces.unavailable") : workspaceLabel(workspace, t("workspaces.primary"));
   if (workspace?.removedAt != null) name = t("workspaces.removedName", { name });
-  const removalBadge = workspace?.removalPending === true ? <Tooltip title={t("workspaces.deletionPendingLabel")}>
-    <AutoDeleteOutlinedIcon fontSize="small" color="warning" aria-label={t("workspaces.deletionPendingLabel")} />
-  </Tooltip> : null;
+  const removalBadge = pendingRemoval === undefined ? null : <WorkspacePendingRemovalX removal={pendingRemoval}
+    store={project.workspaces} disabled={project.isReadOnlyFromCache} compact />;
   const newConversationLabel = t("workspaces.newConversationIn", { name });
   const disabled = workspace === null || workspace.removedAt !== null || project.isReadOnlyFromCache
     || workspace.removalPending === true || workspace.movePending === true || project.workspaces.isBusy || project.threadListStore.isCreatingThread;

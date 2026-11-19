@@ -66,15 +66,24 @@ export async function routeProjectRequest(runtime: ProjectRequestRuntime, reques
         request.destinationPath, request.confirmIdentity);
     case "projectWorkspaces.remove":
       if (runtime.workspaceRemovals === null) throw new Error("Workspace removal requires persistent storage.");
-      if (request.deferred === true) {
-        return runtime.workspaceRemovals.schedule(request.projectId, request.workspaceId, request.sourceId);
+      if (request.force === true) {
+        if (typeof request.expectedPath !== "string") throw new Error("Forced deletion requires the reviewed workspace path.");
+        if (request.deferred === true) return runtime.workspaceRemovals.schedule(
+          request.projectId, request.workspaceId, request.sourceId, true, request.expectedPath);
+        return runtime.workspaceRemovals.remove(request.projectId, request.workspaceId, request.sourceId, true, request.expectedPath);
       }
-      return runtime.workspaceRemovals.remove(request.projectId, request.workspaceId, request.sourceId);
+      if (request.deferred === true) {
+        return runtime.workspaceRemovals.schedule(request.projectId, request.workspaceId, request.sourceId, false);
+      }
+      return runtime.workspaceRemovals.remove(request.projectId, request.workspaceId, request.sourceId, false);
+    case "projectWorkspaces.removals.inspect":
+      if (runtime.workspaceRemovals === null) throw new Error("Workspace removal requires persistent storage.");
+      return runtime.workspaceRemovals.inspect(request.projectId, request.workspaceId, request.sourceId);
     case "projectWorkspaces.removals.cancel":
     case "projectWorkspaces.removals.retry":
       if (runtime.workspaceRemovals === null) throw new Error("Workspace removal requires persistent storage.");
       return runtime.workspaceRemovals.updateDeferred(request.removalId, request.projectId, request.sourceId,
-        request.type === "projectWorkspaces.removals.cancel" ? "cancel" : "retry");
+        request.type === "projectWorkspaces.removals.cancel" ? "cancel" : "retry", request.force === true);
     case "projectWorkspaces.removals.list":
       if (runtime.workspaceRemovals === null) return [];
       return runtime.workspaceRemovals.pending(request.projectId);

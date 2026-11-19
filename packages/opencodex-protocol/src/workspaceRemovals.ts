@@ -26,4 +26,23 @@ export interface OpenCodexWorkspaceRemoval {
   requestedAt?: string;
   /** Last safety check that requires an explicit retry. */
   blockedReason?: string | null;
+  /** Explicit consent to discard local tracked, untracked and ignored contents during Git removal. */
+  force?: boolean;
+}
+
+/** Local filesystem changes that would be lost if this managed checkout were removed. */
+export interface OpenCodexWorkspaceRemovalFile {
+  path: string;
+  kind: "tracked" | "untracked" | "ignored";
+}
+
+/** Read-only source inspection; execution repeats the checks before deleting anything. */
+export interface OpenCodexWorkspaceRemovalInspection {
+  projectId: string;
+  workspaceId: string;
+  sourceId: string;
+  workspacePath: string;
+  /** Bounded preview of the complete Git inventory. */
+  files: OpenCodexWorkspaceRemovalFile[];
+  totalFileCount: number;
 }

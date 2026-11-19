@@ -236,10 +236,21 @@ must disappear from the complete loaded-thread inventory; another client can
 therefore block deletion. These checks do not identify every external OS process.
 
 Source-side validation refuses symlink ancestors, changed repository identity,
-locked/prunable checkouts, modified, untracked or ignored files, and detached
-commits not retained by a local branch or tag. Git removes the checkout without
-`--force`; its submodule protections remain enabled. No stash, branch deletion,
-global prune, Compose shutdown or filesystem recursive-delete fallback occurs.
+locked/prunable checkouts, and detached commits not retained by a local branch
+or tag. Modified, untracked and ignored files block deletion by default. The
+confirmation dialog inspects these contents before accepting a request, showing
+their paths and categories independently of the number of conversations.
+
+Explicit file-loss consent allows a single `git worktree remove --force`.
+Migration 55 persists that authorization, defaulting existing requests to no
+force. Git locks, runtime activity, directory and identity validation still
+apply; there is no double-force unlock. The warning covers all uncommitted
+contents, including files created before a deferred deletion runs. A blocked
+request can obtain this authorization from its details dialog after another
+file inspection and name confirmation. Unknown dispatched results still use
+read-only recovery and can never be retried automatically. No stash, branch
+deletion, global prune, Compose shutdown or filesystem recursive-delete fallback
+occurs.
 Compose usage is recorded in SQLite before stack access, so checks still apply
 after a restart or after configuration files disappear. Compose checks cover
 the workspace's stable application namespace; a Compose
@@ -261,9 +272,10 @@ The existing managed-secondary, unsaved-document, execution and transition
 guards still apply when scheduling a request.
 
 Migration 54 retains deferred intent in the removal journal. Queued workspaces
-remain visible with a warning marker, cannot run new work, and open editors
+remain visible with a warning icon button, cannot run new work, and open editors
 become read-only. Waiting or blocked requests can be cancelled even offline,
-from the workspace menu or pending-operation controls. Multiple checkouts in
+from the workspace menu or the icon's details dialog. The sidebar does not keep
+a permanent deletion banner. Multiple checkouts in
 one repository can wait together; only one physical removal may be in progress.
 Identity, creation and movement reservations remain in force while waiting.
 

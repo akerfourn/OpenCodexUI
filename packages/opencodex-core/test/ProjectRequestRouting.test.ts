@@ -41,7 +41,17 @@ const cases: RouteCase[] = [
     destinationPath: "/moved", confirmIdentity: true }, effect: "workspaceRelocations.relocate",
     args: ["project", "workspace", "source", "/moved", true] },
   { request: { type: "projectWorkspaces.remove", projectId: "project", workspaceId: "workspace", sourceId: "source" },
-    effect: "workspaceRemovals.remove", args: ["project", "workspace", "source"] },
+    effect: "workspaceRemovals.remove", args: ["project", "workspace", "source", false] },
+  { request: { type: "projectWorkspaces.remove", projectId: "project", workspaceId: "workspace", sourceId: "source", force: true,
+    expectedPath: "/workspace" }, effect: "workspaceRemovals.remove", args: ["project", "workspace", "source", true, "/workspace"] },
+  { request: { type: "projectWorkspaces.remove", projectId: "project", workspaceId: "workspace", sourceId: "source", deferred: true },
+    effect: "workspaceRemovals.schedule", args: ["project", "workspace", "source", false] },
+  { request: { type: "projectWorkspaces.remove", projectId: "project", workspaceId: "workspace", sourceId: "source", deferred: true, force: true,
+    expectedPath: "/workspace" }, effect: "workspaceRemovals.schedule", args: ["project", "workspace", "source", true, "/workspace"] },
+  { request: { type: "projectWorkspaces.removals.inspect", projectId: "project", workspaceId: "workspace", sourceId: "source" },
+    effect: "workspaceRemovals.inspect", args: ["project", "workspace", "source"] },
+  { request: { type: "projectWorkspaces.removals.retry", projectId: "project", removalId: "removal", sourceId: "source", force: true },
+    effect: "workspaceRemovals.updateDeferred", args: ["removal", "project", "source", "retry", true] },
   { request: { type: "projectWorkspaces.removals.list", projectId: "project" },
     effect: "workspaceRemovals.pending", args: ["project"] },
   { request: { type: "projectWorkspaces.removals.reconcile", removalId: "removal" },
@@ -98,7 +108,7 @@ function createProjectRoutingFixture() {
     workspaceLocks: { read: vi.fn(), update: vi.fn() },
     workspaceMoves: { move: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },
     workspaceRelocations: { relocate: vi.fn() },
-    workspaceRemovals: { remove: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },
+    workspaceRemovals: { remove: vi.fn(), schedule: vi.fn(), inspect: vi.fn(), updateDeferred: vi.fn(), pending: vi.fn(), reconcile: vi.fn() },
     projects: {
       list: vi.fn(), open: vi.fn(), clone: vi.fn(), readStatistics: vi.fn(), pickDirectory: vi.fn(),
       setHidden: vi.fn(), setDisplayName: vi.fn(), updatePreferences: vi.fn(), delete: vi.fn()
@@ -127,6 +137,13 @@ function createProjectRoutingFixture() {
 }
 
 describe("project request routing through the shared router", () => {
+  it("should reject force consent that is not bound to a reviewed workspace path", async () => {
+    const fixture = createProjectRoutingFixture();
+    await expect(fixture.router.handleRequest({ type: "projectWorkspaces.remove", projectId: "project",
+      workspaceId: "workspace", sourceId: "source", force: true })).rejects.toThrow("reviewed workspace path");
+    expect(fixture.ports.workspaceRemovals.remove).not.toHaveBeenCalled();
+    expect(fixture.ports.workspaceRemovals.schedule).not.toHaveBeenCalled();
+  });
   it("should propagate clone failures to the import dialog instead of swallowing them", async () => {
     const fixture = createProjectRoutingFixture();
     fixture.ports.projects.clone.mockRejectedValueOnce(new Error("Destination is not empty"));

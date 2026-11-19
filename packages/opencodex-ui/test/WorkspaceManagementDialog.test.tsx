@@ -46,6 +46,8 @@ async function renderDialog(completed = true) {
     commandsStore: { hasActiveRun: false }, composeStore: { hasNonStoppedContainer: false, pendingServiceNames: new Set() },
     files: { hasUnsavedWorkspaceDocuments: () => false }, workspaces: {
       workspaces: [workspace], pending: [], pendingRemovals: [], pendingMoves: [],
+      inspectRemoval: vi.fn(async () => ({ projectId: "project", workspaceId: "B", sourceId: "source",
+        workspacePath: "/B", files: [], totalFileCount: 0 })),
       isBusy: false, error: null, isRefreshingManagement: false, refreshManagement, remove, setWorkStatus, setRetentionDays,
       loadingLockIds: new Set(), lockStates: new Map([["B", { workspaceId: "B", sourceId: "source", workspacePath: "/B",
         supported: true, lockedReason: null as string | null }]]), activityById: new Map([["B", { workspaceId: "B",

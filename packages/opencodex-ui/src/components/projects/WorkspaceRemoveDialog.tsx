@@ -6,6 +6,8 @@ import type { OpenCodexProjectWorkspace } from "@open-codex-ui/opencodex-protoco
 import type { ProjectStore } from "../../stores/project/ProjectStore";
 import { workspaceLabel } from "../../stores/project/threads/workspaceThreadGroups";
 import { WorkspaceOperationError } from "./WorkspaceOperationError";
+import { useWorkspaceRemovalInspection } from "./useWorkspaceRemovalInspection";
+import { WorkspaceRemovalInspection } from "./WorkspaceRemovalInspection";
 
 /** Names the exact checkout and requires explicit confirmation before irreversible file removal. */
 export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
@@ -18,8 +20,12 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
   const current = store.workspaces.find(item => item.id === workspace.id) ?? workspace;
   const name = workspaceLabel(workspace, t("workspaces.primary"));
   const unsaved = project.files.hasUnsavedWorkspaceDocuments(workspace.id);
-  const blocked = store.isBusy || unsaved || project.isReadOnlyFromCache || workspace.isPrimary
-    || !current.managed || current.removedAt !== null || current.removalPending === true || current.movePending === true;
+  const unavailable = project.isReadOnlyFromCache || workspace.isPrimary
+    || !current.managed || current.removedAt !== null || current.removalPending === true || current.movePending === true
+    || current.path !== workspace.path || current.sourceId !== workspace.sourceId;
+  const inspection = useWorkspaceRemovalInspection(store, workspace, !unavailable);
+  const blocked = store.isBusy || unsaved || unavailable || inspection.loading || inspection.result === null
+    || (inspection.result.totalFileCount > 0 && !inspection.force);
   const unsavedNotice = unsaved ? <Alert severity="warning">{t("workspaces.removeUnsaved")}</Alert> : null;
   const deferredNotice = deferred ? <Alert severity="info">{t("workspaces.deferredRemovalHelp")}</Alert> : null;
   const actionLabel = deferred ? t("workspaces.scheduleRemoval") : t("workspaces.remove");
@@ -27,7 +33,8 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
   /** Closes only after the backend and durable catalogue confirm successful removal. */
   async function handleRemove(): Promise<void> {
     if (blocked || confirmation !== name) return;
-    if (deferred) await store.remove(workspace.id, true);
+    if (inspection.force) await store.remove(workspace.id, deferred, true, workspace.path);
+    else if (deferred) await store.remove(workspace.id, true);
     else await store.remove(workspace.id);
     if (store.error === null) onClose();
   }
@@ -39,6 +46,7 @@ export function WorkspaceRemoveDialog({ project, workspace, onClose }: {
         <Alert severity="warning">{t("workspaces.removeHelp")}</Alert>
         <TextField label={t("workspaces.destination")} value={workspace.path} fullWidth margin="normal"
           slotProps={{ input: { readOnly: true } }} />
+        <WorkspaceRemovalInspection inspection={inspection} disabled={store.isBusy} />
         <FormControlLabel label={t("workspaces.deferRemoval")} control={
           <Checkbox checked={deferred} disabled={store.isBusy} onChange={event => setDeferred(event.target.checked)} />
         } />

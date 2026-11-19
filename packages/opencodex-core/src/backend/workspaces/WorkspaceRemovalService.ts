@@ -1,13 +1,13 @@
 import type { WorkspaceCacheRepository } from "@open-codex-ui/opencodex-cache";
-import type { OpenCodexWorkspaceRemoval } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexWorkspaceRemoval, OpenCodexWorkspaceRemovalInspection } from "@open-codex-ui/opencodex-protocol";
 import type { ClientPort } from "../runtime/runtimePorts.js";
 import { createGitErrorMessage, createRunGit } from "../git/gitCommandRunner.js";
 import { WorkspaceActivityGate } from "./WorkspaceActivityGate.js";
-import { WorkspaceRemovalGit } from "./WorkspaceRemovalGit.js";
+import { WorkspaceRemovalGit, type WorkspaceRemovalTarget } from "./WorkspaceRemovalGit.js";
 import { WorkspaceRemovalRuntime } from "./WorkspaceRemovalRuntime.js";
 import { WorkspaceSourceBusyError } from "./WorkspaceSourceBusyError.js";
 
-/** Coordinates clean-only physical deletion with durable reservations and retained history. */
+/** Coordinates guarded physical deletion with explicit file-loss consent and retained history. */
 export class WorkspaceRemovalService {
   /** Only source-native Git operations can remove checkout files. */
   private readonly git: WorkspaceRemovalGit;
@@ -31,10 +31,10 @@ export class WorkspaceRemovalService {
     return await this.repository.removals.list(projectId);
   }
 
-  /** Removes only a verified, clean managed secondary; branches and conversations are retained. */
-  async remove(projectId: string, workspaceId: string, sourceId: string): Promise<void> {
+  /** Removes a verified managed secondary with explicit consent for file loss; history is retained. */
+  async remove(projectId: string, workspaceId: string, sourceId: string, force = false, expectedPath?: string): Promise<void> {
     await this.activity.exclusive(sourceId, async () => {
-      const removal = await this.begin(projectId, workspaceId, sourceId, false);
+      const removal = await this.begin(projectId, workspaceId, sourceId, false, force, expectedPath);
       try {
         await this.execute(removal);
       } catch (error) {
@@ -47,9 +47,18 @@ export class WorkspaceRemovalService {
   }
 
   /** Persists explicitly authorized future deletion without requiring agents elsewhere to stop. */
-  async schedule(projectId: string, workspaceId: string, sourceId: string): Promise<void> {
-    await this.activity.run(sourceId, async () => { await this.begin(projectId, workspaceId, sourceId, true); });
+  async schedule(projectId: string, workspaceId: string, sourceId: string, force = false, expectedPath?: string): Promise<void> {
+    await this.activity.run(sourceId, async () => { await this.begin(projectId, workspaceId, sourceId, true, force, expectedPath); });
     this.changed(projectId, sourceId);
+  }
+
+  /** Reports file hazards before confirmation without waiting for or unloading active conversations. */
+  async inspect(projectId: string, workspaceId: string, sourceId: string): Promise<OpenCodexWorkspaceRemovalInspection> {
+    return await this.activity.run(sourceId, async () => {
+      const target = await this.context(projectId, workspaceId, sourceId);
+      await this.runtime.requireDirectories(target);
+      return await this.git.inspectFiles(target);
+    });
   }
 
   /** Reads durable waiting requests without starting offline or manually stopped sources. */
@@ -57,9 +66,15 @@ export class WorkspaceRemovalService {
     return await this.repository.removals.queued();
   }
 
-  /** Changes only cancellable, undispatched intent; no source process is required. */
-  async updateDeferred(id: string, projectId: string, sourceId: string, action: "cancel" | "retry"): Promise<void> {
-    await this.repository.removals.updateDeferred(id, projectId, sourceId, action);
+  /** Changes undispatched intent; source access is required only when adding file-loss consent. */
+  async updateDeferred(id: string, projectId: string, sourceId: string, action: "cancel" | "retry", force = false): Promise<void> {
+    if (action === "retry" && force) {
+      const removal = await this.requireRemoval(id);
+      if (removal.projectId !== projectId || removal.sourceId !== sourceId) throw new Error("Removal ownership changed.");
+      await this.requireIdentity(removal);
+      await this.inspect(projectId, removal.workspaceId, sourceId);
+    }
+    await this.repository.removals.updateDeferred(id, projectId, sourceId, action, force);
     this.changed(projectId, sourceId);
   }
 
@@ -92,7 +107,21 @@ export class WorkspaceRemovalService {
 
   /** Freezes managed checkout ownership and repository identity before any future dispatch. */
   private async begin(projectId: string, workspaceId: string, sourceId: string,
-    deferred: boolean): Promise<OpenCodexWorkspaceRemoval> {
+    deferred: boolean, force: boolean, expectedPath?: string): Promise<OpenCodexWorkspaceRemoval> {
+    const target = await this.context(projectId, workspaceId, sourceId);
+    if (expectedPath !== undefined && target.workspacePath !== expectedPath) {
+      throw new Error("Workspace location changed. Review its current path before deleting it.");
+    }
+    if (deferred) {
+      await this.runtime.requireDirectories(target);
+      await this.git.requireClean({ ...target, force });
+    }
+    return await this.repository.removals.begin(projectId, workspaceId, sourceId,
+      target.primaryWorkspaceId, target.repositoryPath, deferred, force);
+  }
+
+  /** Resolves trusted source-native checkout paths without reserving them or accepting renderer paths. */
+  private async context(projectId: string, workspaceId: string, sourceId: string): Promise<WorkspaceRemovalTarget> {
     const workspace = await this.repository.get(workspaceId);
     if (workspace === null || workspace.projectId !== projectId || workspace.sourceId !== sourceId
       || workspace.isPrimary || !workspace.managed || workspace.removedAt !== null) {
@@ -101,7 +130,8 @@ export class WorkspaceRemovalService {
     const primary = (await this.repository.list(projectId)).find(item => item.isPrimary && item.removedAt === null);
     if (primary === undefined || primary.sourceId !== sourceId) throw new Error("Primary workspace is unavailable.");
     const repositoryPath = await this.git.repositoryPath(primary.path, sourceId);
-    return await this.repository.removals.begin(projectId, workspaceId, sourceId, primary.id, repositoryPath, deferred);
+    return { projectId, workspaceId, sourceId, primaryWorkspaceId: primary.id,
+      projectPath: primary.path, workspacePath: workspace.path, repositoryPath };
   }
 
   /** Shares every safety check and the single destructive dispatch between immediate and deferred requests. */

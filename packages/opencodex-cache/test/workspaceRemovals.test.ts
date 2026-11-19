@@ -34,6 +34,23 @@ describe("workspace removal persistence", () => {
     return await workspaces.removals.begin(primary.projectId, secondary.id, "source", primary.id, "/repo/.git");
   }
 
+  it("should preserve force consent across reopening and never authorize it for existing requests", async () => {
+    const removal = await workspaces.removals.begin(primary.projectId, secondary.id, "source", primary.id, "/repo/.git", true);
+    workspaces = new SqliteWorkspaceCacheRepository(database);
+    expect((await workspaces.removals.get(removal.id))?.force).toBeUndefined();
+    await workspaces.removals.claim(removal.id);
+    await workspaces.removals.defer(removal.id, "Local files");
+    await workspaces.removals.updateDeferred(removal.id, primary.projectId, "source", "retry", true);
+    workspaces = new SqliteWorkspaceCacheRepository(database);
+    expect((await workspaces.removals.queued())[0]).toMatchObject({ id: removal.id, force: true });
+    await workspaces.removals.claim(removal.id);
+    await workspaces.removals.submitting(removal.id);
+    await workspaces.removals.fail(removal.id);
+    await expect(workspaces.removals.updateDeferred(removal.id, primary.projectId, "source", "retry", true))
+      .rejects.toThrow("waiting or blocked");
+    expect(await workspaces.removals.queued()).toEqual([]);
+  });
+
   it("should persist waiting deletion across repository recreation and release it only on explicit cancellation", async () => {
     const removal = await workspaces.removals.begin(primary.projectId, secondary.id, "source", primary.id, "/repo/.git", true);
     workspaces = new SqliteWorkspaceCacheRepository(database);

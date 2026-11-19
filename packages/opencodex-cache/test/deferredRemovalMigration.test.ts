@@ -5,8 +5,11 @@ import { SqliteWorkspaceCacheRepository } from "../src/sqlite/projects/SqliteWor
 
 // Build an authentic v53 database before exercising the new migration against retained journals.
 vi.mock("../src/sqlite/migrations/v54", () => ({ applySchemaMigrationV54: vi.fn() }));
+vi.mock("../src/sqlite/migrations/v55", () => ({ applySchemaMigrationV55: vi.fn() }));
 const { applySchemaMigrationV54 } = await vi.importActual<typeof import("../src/sqlite/migrations/v54")>(
   "../src/sqlite/migrations/v54");
+const { applySchemaMigrationV55 } = await vi.importActual<typeof import("../src/sqlite/migrations/v55")>(
+  "../src/sqlite/migrations/v55");
 
 describe("deferred deletion migration from v53", () => {
   it.each(["preparing", "uncertain"])("should preserve %s intent, history and every existing SQL guard", async state => {
@@ -39,7 +42,10 @@ describe("deferred deletion migration from v53", () => {
         deferred_state: null, requested_at: null, blocked_reason: null });
       expect(database.prepare(`SELECT name, sql FROM sqlite_master
         WHERE type = 'trigger' AND sql LIKE '%workspace_removals%' ORDER BY name`).all()).toEqual(triggers);
+      applySchemaMigrationV55(database);
+      applySchemaMigrationV55(database);
       expect(await workspaces.removals.get("retained")).toMatchObject({ id: "retained", state, gitExitCode: null });
+      expect((await workspaces.removals.get("retained"))?.force).toBeUndefined();
       expect(await workspaces.removals.queued()).toEqual([]);
       await expect(workspaces.reserve(secondaryId, null)).rejects.toThrow("pending removal");
       await expect(workspaces.relocate(primary.id, "/moved")).rejects.toThrow("pending removal");
