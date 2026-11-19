@@ -42,7 +42,7 @@ export function ProjectGitRemoteDialog({ referencesStore, open, onClose, syncSto
     if (!isSaving) onClose();
   }
 
-  /** Opens an empty form without reusing another remote's address. */
+  /** Opens a creation form without reusing another remote's address. */
   function handleAdd(): void {
     referencesStore.clearRemoteError();
     setEditing("new");

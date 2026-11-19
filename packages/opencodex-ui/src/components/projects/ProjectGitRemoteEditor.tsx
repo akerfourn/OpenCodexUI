@@ -15,7 +15,11 @@ interface ProjectGitRemoteEditorProps {
 /** Edits a named fetch URL while preserving a separately configured push URL. */
 export function ProjectGitRemoteEditor({ referencesStore, remote, onDone }: ProjectGitRemoteEditorProps) {
   const { t } = useTranslation();
-  const [name, setName] = useState(remote?.name ?? "");
+  const [name, setName] = useState(() => {
+    if (remote !== null) return remote.name;
+    if (referencesStore.remotes.length === 0) return "origin";
+    return "";
+  });
   const [url, setUrl] = useState(remote?.fetchUrl ?? "");
   const isAdding = remote === null;
   const nameExists = isAdding && referencesStore.remotes.some((item) => item.name === name.trim());

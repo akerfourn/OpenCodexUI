@@ -43,8 +43,8 @@ async function typeValue(label: string, value: string): Promise<void> {
 }
 
 /** Renders the real observable store against a deterministic local configuration transport. */
-function fixture() {
-  let remotes: OpenCodexGitRemote[] = [createRemote("origin"), {
+function fixture(initialRemotes?: OpenCodexGitRemote[]) {
+  let remotes: OpenCodexGitRemote[] = initialRemotes ?? [createRemote("origin"), {
     name: "upstream", fetchUrl: "https://upstream.example.test/project.git", pushUrl: "ssh://push.example.test/project.git"
   }];
   const fixture = createProjectGitReferencesFixture({ status: createStatus({ remotes }) });
@@ -86,6 +86,28 @@ afterEach(async () => {
 });
 
 describe("Git remote management", () => {
+  it("should prefill the first remote with an editable origin name and wait for explicit submission", async () => {
+    const test = fixture([]);
+    await test.render();
+    await act(async () => { button("git.remoteAdd").click(); });
+    expect(input("git.remoteName").value).toBe("origin");
+    expect(input("git.remoteName").readOnly).toBe(false);
+    expect(input("git.remoteFetchUrl").value).toBe("");
+    expect(button("git.remoteSave").disabled).toBe(true);
+    expect(test.request.mock.calls.some(([request]) => request.type === "git.remote.upsert")).toBe(false);
+    await typeValue("git.remoteFetchUrl", "https://origin.example.test/project.git");
+    await act(async () => { button("git.remoteSave").click(); });
+    expect(test.request).toHaveBeenCalledWith({ type: "git.remote.upsert", projectPath: "/workspace/project",
+      sourceId: "source-1", name: "origin", url: "https://origin.example.test/project.git", mode: "add" });
+  });
+
+  it("should leave additional remote names empty even when origin is available", async () => {
+    const test = fixture([createRemote("upstream")]);
+    await test.render();
+    await act(async () => { button("git.remoteAdd").click(); });
+    expect(input("git.remoteName").value).toBe("");
+  });
+
   it("should list every remote with its distinct fetch and push addresses", async () => {
     const test = fixture();
     await test.render();
