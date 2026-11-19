@@ -36,6 +36,21 @@ vi.mock("../src/components/projects/ProjectGoalsPanel", () => ({
 
 import { ProjectSidePanel } from "../src/components/projects/ProjectSidePanel";
 
+const toolOrder = ["files.title", "projectTools.git", "projectTools.goals", "projectTools.commands",
+  "debug.title", "projectTools.tasks", "projectTools.context", "projectTools.rules"];
+
+/** Reads visible tool order without depending on MUI's generated classes or tooltip markup. */
+function readToolOrder(markup: string): string[] {
+  const labels = Array.from(markup.matchAll(/<button\b[^>]*aria-label="([^"]+)"[^>]*>/gu), match => match[1]!);
+  return labels.filter(label => toolOrder.includes(label) || label === "projectTools.compose");
+}
+
+/** Reads decorative group boundaries on tool buttons; no extra tab or focus target is introduced. */
+function readGroupStarts(markup: string): string[] {
+  const buttons = Array.from(markup.matchAll(/<button\b[^>]*data-group-start="true"[^>]*>/gu));
+  return buttons.map(button => button[0].match(/aria-label="([^"]+)"/u)![1]!);
+}
+
 describe("ProjectSidePanel", () => {
   it("should keep the expanded project tool selector vertical with an active bubble", () => {
     const markup = renderToStaticMarkup(
@@ -52,6 +67,8 @@ describe("ProjectSidePanel", () => {
     expect(markup).toContain('aria-label="projectTools.closePanel"');
     expect(markup).toContain("MuiTab-root");
     expect(markup).toContain("Mui-selected");
+    expect(readToolOrder(markup)).toEqual(toolOrder);
+    expect(readGroupStarts(markup)).toEqual(["projectTools.commands", "projectTools.tasks"]);
   });
 
   it("should highlight the active tool bubble when collapsed", () => {
@@ -67,6 +84,8 @@ describe("ProjectSidePanel", () => {
     expect(markup).toContain("project-side-panel-tool-button is-active");
     expect(markup).toContain('aria-label="projectTools.git"');
     expect(markup).toContain('aria-pressed="true"');
+    expect(readToolOrder(markup)).toEqual(toolOrder);
+    expect(readGroupStarts(markup)).toEqual(["projectTools.commands", "projectTools.tasks"]);
   });
 
   it("should mark the Debug tool while its project owns a session", () => {
@@ -160,6 +179,9 @@ describe("ProjectSidePanel", () => {
     );
 
     expect(markup).toContain('aria-label="projectTools.compose"');
+    expect(readToolOrder(markup)).toEqual([
+      ...toolOrder.slice(0, 5), "projectTools.compose", ...toolOrder.slice(5)
+    ]);
   });
 
   it("should hide Compose for an orphan project even with stale snapshot state", () => {

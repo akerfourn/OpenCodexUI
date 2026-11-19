@@ -39,6 +39,7 @@ type ProjectSidePanelTabDefinition = {
   label: string;
   icon: ReactElement;
   activity: ProjectSidePanelActivity;
+  startsGroup?: boolean;
 };
 
 type ProjectSidePanelProps = {
@@ -106,7 +107,6 @@ export function ProjectSidePanel({
   const goalsLabel = t("projectTools.goals");
   const composeLabel = t("projectTools.compose");
   const tabs: ProjectSidePanelTabDefinition[] = [
-    { value: "debug", label: t("debug.title"), icon: <BugReportOutlinedIcon fontSize="small" />, activity: "debug" },
     { value: "files", label: t("files.title"), icon: <FolderOutlinedIcon fontSize="small" />, activity: "none" },
     {
       value: "git",
@@ -115,35 +115,19 @@ export function ProjectSidePanel({
       activity: "git"
     },
     {
-      value: "commands",
-      label: commandsLabel,
-      icon: <TerminalOutlinedIcon fontSize="small" />,
-      activity: "commands"
-    },
-    {
-      value: "rules",
-      label: rulesLabel,
-      icon: <RuleOutlinedIcon fontSize="small" />,
-      activity: "none"
-    },
-    {
-      value: "context",
-      label: contextLabel,
-      icon: <FolderCopyOutlinedIcon fontSize="small" />,
-      activity: "none"
-    },
-    {
-      value: "tasks",
-      label: tasksLabel,
-      icon: <ChecklistOutlinedIcon fontSize="small" />,
-      activity: "none"
-    },
-    {
       value: "goals",
       label: goalsLabel,
       icon: <FlagOutlinedIcon fontSize="small" />,
       activity: "goals"
-    }
+    },
+    {
+      value: "commands",
+      label: commandsLabel,
+      icon: <TerminalOutlinedIcon fontSize="small" />,
+      activity: "commands",
+      startsGroup: true
+    },
+    { value: "debug", label: t("debug.title"), icon: <BugReportOutlinedIcon fontSize="small" />, activity: "debug" }
   ];
 
   if (hasComposeFiles) {
@@ -154,6 +138,28 @@ export function ProjectSidePanel({
       activity: "compose"
     });
   }
+
+  tabs.push(
+    {
+      value: "tasks",
+      label: tasksLabel,
+      icon: <ChecklistOutlinedIcon fontSize="small" />,
+      activity: "none",
+      startsGroup: true
+    },
+    {
+      value: "context",
+      label: contextLabel,
+      icon: <FolderCopyOutlinedIcon fontSize="small" />,
+      activity: "none"
+    },
+    {
+      value: "rules",
+      label: rulesLabel,
+      icon: <RuleOutlinedIcon fontSize="small" />,
+      activity: "none"
+    }
+  );
 
   function handleTabChange(_event: React.SyntheticEvent, value: ProjectSidePanelTab): void {
     setSelectedTab(value);
@@ -229,6 +235,7 @@ export function ProjectSidePanel({
                     : "project-side-panel-tool-button"
                 }
                 aria-label={tab.label}
+                data-group-start={tab.startsGroup}
                 aria-pressed={selectedTab === tab.value}
                 onClick={() => handleCollapsedTabClick(tab.value)}
               >
@@ -271,6 +278,7 @@ export function ProjectSidePanel({
               key={tab.value}
               value={tab.value}
               aria-label={tab.label}
+              data-group-start={tab.startsGroup}
               label={
                 <ProjectSidePanelTabLabel
                   projectStore={projectStore}

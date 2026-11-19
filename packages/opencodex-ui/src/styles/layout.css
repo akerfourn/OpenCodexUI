@@ -320,6 +320,22 @@
   display: none;
 }
 
+.project-side-panel-tabs .MuiTab-root[data-group-start="true"],
+.project-side-panel-rail .MuiIconButton-root[data-group-start="true"] {
+  margin-top: 8px;
+}
+
+.project-side-panel [data-group-start="true"]::before {
+  position: absolute;
+  top: -9px;
+  right: 6px;
+  left: 6px;
+  height: 1px;
+  background: var(--vscode-panel-border);
+  content: "";
+  pointer-events: none;
+}
+
 .project-side-panel-tabs .MuiTab-root:hover,
 .project-side-panel-tabs .MuiTab-root:focus-visible,
 .project-side-panel-rail .MuiIconButton-root:hover,
