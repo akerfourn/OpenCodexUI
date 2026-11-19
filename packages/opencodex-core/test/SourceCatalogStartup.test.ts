@@ -42,6 +42,8 @@ describe("Source catalog startup snapshots", () => {
     { version: null, error: null, expected: "unavailable" },
     { version: "0.163.0", error: "Command failed", expected: "unavailable" },
     { version: "0.100.0", error: null, expected: "outdated" },
+    { version: "0.147.0", error: null, expected: "outdated" },
+    { version: "0.148.0", error: null, expected: "ready" },
     { version: "0.100.0", error: "Codex CLI 0.100.0 is older than required 0.147.0.", expected: "outdated" },
     { version: "0.100.0", error: "Command failed", expected: "unavailable" }
   ])("should preserve $expected availability for version $version and error $error", async ({ version, error, expected }) => {

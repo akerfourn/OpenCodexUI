@@ -64,7 +64,7 @@ You must already have Codex CLI installed and configured on your machine.
 
 ## Requirements
 
-- Codex CLI installed locally and available as `codex`.
+- Codex CLI 0.148.0 or newer, installed locally and available as `codex`.
 - A working Codex authentication for that CLI installation.
 
 For development from source:

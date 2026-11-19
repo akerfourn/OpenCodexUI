@@ -10,11 +10,13 @@ import {
 } from "../src/backend/sources/toolVersionDetection";
 
 describe("toolVersionDetection", () => {
-  it("should reject Codex CLI versions older than 0.147.0", () => {
+  it("should reject Codex CLI versions older than 0.148.0", () => {
     expect(isCodexCliVersionSupported("0.146.0")).toBe(false);
-    expect(isCodexCliVersionSupported("0.146.9")).toBe(false);
-    expect(isCodexCliVersionSupported("0.147.0")).toBe(true);
+    expect(isCodexCliVersionSupported("0.147.0")).toBe(false);
+    expect(isCodexCliVersionSupported("0.147.9")).toBe(false);
     expect(isCodexCliVersionSupported("0.148.0")).toBe(true);
+    expect(isCodexCliVersionSupported("0.148.1")).toBe(true);
+    expect(isCodexCliVersionSupported("0.149.0")).toBe(true);
   });
 
   it.skipIf(process.platform === "win32")("should resolve a symbolic-link command target", () => {
