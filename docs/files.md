@@ -71,7 +71,12 @@ a web application that requires remote services.
 
 Chat Markdown preserves native Windows paths and `file:` links for the existing
 source-aware file opener. Markdown images, image-generation results and typed
-tool image outputs display inline with a click-to-zoom view. Tool result images
+tool image outputs display inline with a click-to-zoom view. The modal supports
+wheel and button zoom, bounded drag-to-pan, fit and actual size. Double-click
+toggles detail zoom and fit. Chevrons and the left/right arrow keys navigate
+images within the same message, including Markdown images and attachments;
+navigation stops at the message boundaries. Escape closes the viewer. Each
+image starts fitted when opened or selected. Tool result images
 remain visible when the reasoning history is collapsed.
 
 Local previews read image bytes from the conversation's explicit source,

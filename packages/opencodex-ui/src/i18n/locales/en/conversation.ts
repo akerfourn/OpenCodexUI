@@ -299,6 +299,14 @@ export const enConversation = {
       details: "Error details"
     },
     openImage: "Open image",
+    imageViewer: {
+      title: "Image viewer",
+      previous: "Previous image",
+      next: "Next image",
+      close: "Close image viewer",
+      loading: "Loading image",
+      hint: "Scroll: zoom · Drag: pan · Double-click: zoom / fit · ← →: change image · Escape: close"
+    },
     showAllContent: "Show all",
     showMarkdown: "Show as Markdown",
     showPlainText: "Show as plain text",

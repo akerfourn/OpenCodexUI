@@ -1,74 +1,22 @@
-import { FileAttachmentTileX } from "./FileAttachmentTile";
+import { useContext } from "react";
 import { observer } from "mobx-react-lite";
-/**
- * Renders image attachment previews for chat messages.
- */
-import { Box, Dialog, DialogContent } from "@mui/material";
-import { useState } from "react";
-
+import { Box } from "@mui/material";
 import type { OpenCodexAttachment } from "@open-codex-ui/opencodex-protocol";
-
+import { FileAttachmentTileX } from "./FileAttachmentTile";
 import { ImageAttachmentPreviewTileX } from "./ImageAttachmentPreviewTile";
+import { MessageImageGallery } from "./MessageImageGallery";
+import { MessageImageGalleryContext } from "./MessageImageGalleryContext";
 
-type ImageAttachmentPreviewGridProps = {
-  attachments: OpenCodexAttachment[];
-};
-
-type OpenedImage = {
-  src: string;
-  alt: string;
-};
-
-/**
- * Renders a compact grid of image previews.
- *
- * @param props Component props.
- *
- * @returns Rendered image preview grid.
- */
-export function ImageAttachmentPreviewGrid({ attachments }: ImageAttachmentPreviewGridProps) {
-  const [openedImage, setOpenedImage] = useState<OpenedImage | null>(null);
-
-  function handleOpenImage(src: string, alt: string): void {
-    setOpenedImage({ src, alt });
-  }
-
-  function handleCloseImage(): void {
-    setOpenedImage(null);
-  }
-
-  const tiles = attachments.map((attachment) => {
-    if (attachment.kind === "file") {
-      return <FileAttachmentTileX key={attachment.id} attachment={attachment} />;
-    }
-    return <ImageAttachmentPreviewTileX key={attachment.id} attachment={attachment} onOpen={handleOpenImage} />;
+/** Joins the message gallery, creating an isolated gallery when displayed on its own. */
+export function ImageAttachmentPreviewGrid({ attachments }: { attachments: OpenCodexAttachment[] }) {
+  const gallery = useContext(MessageImageGalleryContext);
+  const tiles = attachments.map(attachment => {
+    if (attachment.kind === "file") return <FileAttachmentTileX key={attachment.id} attachment={attachment} />;
+    return <ImageAttachmentPreviewTileX key={attachment.id} attachment={attachment} />;
   });
-
-  return (
-    <>
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
-        {tiles}
-      </Box>
-      <Dialog open={openedImage !== null} maxWidth="lg" fullWidth onClose={handleCloseImage}>
-        {openedImage !== null ? (
-          <DialogContent sx={{ p: 1, bgcolor: "#0b1017" }}>
-            <Box
-              component="img"
-              src={openedImage.src}
-              alt={openedImage.alt}
-              sx={{
-                display: "block",
-                maxHeight: "80vh",
-                maxWidth: "100%",
-                mx: "auto",
-                objectFit: "contain"
-              }}
-            />
-          </DialogContent>
-        ) : null}
-      </Dialog>
-    </>
-  );
+  const grid = <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>{tiles}</Box>;
+  if (gallery === null) return <MessageImageGallery>{grid}</MessageImageGallery>;
+  return grid;
 }
 
 export const ImageAttachmentPreviewGridX = observer(ImageAttachmentPreviewGrid);

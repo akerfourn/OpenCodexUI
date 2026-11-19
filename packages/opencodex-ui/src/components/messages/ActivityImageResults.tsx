@@ -3,32 +3,42 @@ import { Box } from "@mui/material";
 import type { OpenCodexImageAttachment, OpenCodexTurnItem } from "@open-codex-ui/opencodex-protocol";
 import { ChatImage } from "./ChatImage";
 import { readImageAttachmentSrc } from "./imageAttachmentSource";
+import { MessageImageGallery } from "./MessageImageGallery";
+
+interface ActivityImages {
+  itemId: string;
+  images: OpenCodexImageAttachment[];
+}
 
 /** Collects image outputs once even when raw and structured notifications describe the same result. */
-function collectImages(items: OpenCodexTurnItem[]): OpenCodexImageAttachment[] {
-  const images: OpenCodexImageAttachment[] = [];
+function collectImages(items: OpenCodexTurnItem[]): ActivityImages[] {
+  const groups: ActivityImages[] = [];
   const values = new Set<string>();
   for (const item of items) {
     if (item.role !== "activity") continue;
+    const images: OpenCodexImageAttachment[] = [];
     for (const attachment of item.attachments ?? []) {
       if (attachment.kind !== "image" || values.has(attachment.value)) continue;
       values.add(attachment.value);
       images.push(attachment);
     }
+    if (images.length > 0) groups.push({ itemId: item.id, images });
   }
-  return images;
+  return groups;
 }
 
 /** Keeps generated and tool-result images visible after the reasoning history collapses. */
 export function ActivityImageResults({ items }: { items: OpenCodexTurnItem[] }) {
-  const images = collectImages(items);
-  if (images.length === 0) return null;
-  const previews = images.map((image) => {
-    let localPath: string | undefined;
-    if (image.source === "localPath") localPath = image.value;
-    return <ChatImage key={image.id} src={readImageAttachmentSrc(image)} localPath={localPath}
-      alt={image.name ?? undefined} />;
-  });
+  const groups = collectImages(items);
+  if (groups.length === 0) return null;
+  const previews = groups.map(group => <MessageImageGallery key={group.itemId}>
+    {group.images.map((image) => {
+      let localPath: string | undefined;
+      if (image.source === "localPath") localPath = image.value;
+      return <ChatImage key={image.id} src={readImageAttachmentSrc(image)} localPath={localPath}
+        alt={image.name ?? undefined} />;
+    })}
+  </MessageImageGallery>);
   return <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>{previews}</Box>;
 }
 

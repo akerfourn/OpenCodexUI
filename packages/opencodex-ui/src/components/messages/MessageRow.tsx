@@ -25,6 +25,7 @@ import { CommandActivityRow } from "./CommandActivityRow";
 import { FileChangeActivityRow } from "./FileChangeActivityRow";
 import { EditableMessageActionX } from "./EditableMessageAction";
 import { MessageAttachmentsX } from "./MessageAttachments";
+import { MessageImageGallery } from "./MessageImageGallery";
 import { MarkdownMessageM } from "./MarkdownMessage";
 import { formatMessageTimestamp } from "./messageTimestamp";
 import { PlanActivityRowX } from "./PlanActivityRow";
@@ -107,7 +108,7 @@ export function MessageRow({
     turnTokenUsage !== undefined && turnTokenUsage !== null;
 
   if (role === "user") {
-    return (
+    const messageContent = (
       <Box
         ref={articleRef}
         component="article"
@@ -209,9 +210,10 @@ export function MessageRow({
         </Box>
       </Box>
     );
+    return <MessageImageGallery key={item.id}>{messageContent}</MessageImageGallery>;
   }
 
-  return (
+  const messageContent = (
     <Box
       ref={articleRef}
       component="article"
@@ -367,6 +369,7 @@ export function MessageRow({
       ) : null}
     </Box>
   );
+  return <MessageImageGallery key={item.id}>{messageContent}</MessageImageGallery>;
 }
 
 export const MessageRowX = observer(MessageRow);

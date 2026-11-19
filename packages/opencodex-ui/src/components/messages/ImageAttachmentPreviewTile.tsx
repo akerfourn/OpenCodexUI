@@ -5,15 +5,14 @@ import { readImageAttachmentSrc } from "./imageAttachmentSource";
 
 interface ImageAttachmentPreviewTileProps {
   attachment: OpenCodexImageAttachment;
-  onOpen(src: string, alt: string): void;
 }
 
 /** Resolves historical attachment paths on their source and opens decoded bytes in the grid viewer. */
-export function ImageAttachmentPreviewTile({ attachment, onOpen }: ImageAttachmentPreviewTileProps) {
+export function ImageAttachmentPreviewTile({ attachment }: ImageAttachmentPreviewTileProps) {
   let localPath: string | undefined;
   if (attachment.source === "localPath") localPath = attachment.value;
   return <ChatImage src={readImageAttachmentSrc(attachment)} localPath={localPath}
-    alt={attachment.name ?? undefined} compact onOpen={onOpen} />;
+    alt={attachment.name ?? undefined} compact />;
 }
 
 export const ImageAttachmentPreviewTileX = observer(ImageAttachmentPreviewTile);

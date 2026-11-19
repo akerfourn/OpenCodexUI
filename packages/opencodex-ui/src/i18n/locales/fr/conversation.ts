@@ -301,6 +301,14 @@ export const frConversation = {
       details: "Détails de l'erreur"
     },
     openImage: "Ouvrir l'image",
+    imageViewer: {
+      title: "Visionneuse d’images",
+      previous: "Image précédente",
+      next: "Image suivante",
+      close: "Fermer la visionneuse",
+      loading: "Chargement de l’image",
+      hint: "Molette : zoom · Glisser : déplacer · Double-clic : zoom / ajuster · ← → : changer d’image · Échap : fermer"
+    },
     showAllContent: "Tout afficher",
     showMarkdown: "Afficher en Markdown",
     showPlainText: "Afficher en texte brut",

@@ -1,10 +1,13 @@
-import { useContext, useEffect, useState } from "react";
-import { Box, Dialog, DialogContent, Tooltip } from "@mui/material";
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Box, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { ChatImageContext, type ChatImageContextValue } from "./ChatImageContext";
 import { MarkdownLinkContext } from "./MarkdownLinkContext";
 import { MarkdownLink } from "./MarkdownLink";
 import { readDisplayImageUrl, readMarkdownImagePath } from "./markdownUrls";
+import { ImageViewerDialog } from "./ImageViewerDialog";
+import { MessageImageGalleryContext, type ViewerImage } from "./MessageImageGalleryContext";
+import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 
 interface ChatImageProps {
   src?: string;
@@ -14,7 +17,6 @@ interface ChatImageProps {
   height?: number | string;
   compact?: boolean;
   localPath?: string;
-  onOpen?(src: string, alt: string): void;
 }
 
 interface ImageResolution {
@@ -33,10 +35,15 @@ function readImageDimension(value: number | string | undefined): number | undefi
 }
 
 /** Displays source-owned image bytes with zoom and a navigable unavailable-image fallback. */
-export function ChatImage({ src = "", alt, title, width, height, compact = false, localPath, onOpen }: ChatImageProps) {
+export function ChatImage({ src = "", alt, title, width, height, compact = false, localPath }: ChatImageProps) {
   const { t } = useTranslation();
   const context = useContext(ChatImageContext);
   const links = useContext(MarkdownLinkContext);
+  const gallery = useContext(MessageImageGalleryContext);
+  const reportError = useApplicationErrorReporter();
+  const id = useId();
+  const anchor = useRef<HTMLElement | null>(null);
+  const setAnchor = useCallback((element: HTMLElement | null) => { anchor.current = element; }, []);
   const [resolution, setResolution] = useState<ImageResolution | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const label = alt ?? t("message.attachedImage");
@@ -45,6 +52,18 @@ export function ChatImage({ src = "", alt, title, width, height, compact = false
   const current = resolution?.original === src && resolution.context === context ? resolution : null;
   const imageUrl = current?.url ?? directUrl;
   const hasError = current?.error !== undefined;
+  const image = useMemo<ViewerImage>(() => ({ id, alt: label,
+    async load(): Promise<string> {
+      if (imageUrl !== null && !hasError) return imageUrl;
+      if (path !== null && context !== null) return context.loadImage(path);
+      throw new Error(label);
+    }
+  }), [id, label, imageUrl, hasError, path, context]);
+
+  useEffect(() => {
+    if (gallery === null || (directUrl === null && (path === null || context === null))) return;
+    return gallery.register({ ...image, anchor });
+  }, [gallery, image, directUrl, path, context]);
 
   useEffect(() => {
     if (directUrl !== null || path === null || context === null) return;
@@ -52,15 +71,17 @@ export function ChatImage({ src = "", alt, title, width, height, compact = false
     context.loadImage(path).then((url) => {
       if (!isCancelled) setResolution({ original: src, context, url });
     }).catch((error: unknown) => {
-      if (!isCancelled) setResolution({ original: src, context, url: null, error: String(error) });
+      if (isCancelled) return;
+      setResolution({ original: src, context, url: null, error: t("message.imageUnavailable") });
+      reportError(error, label);
     });
     return () => { isCancelled = true; };
-  }, [src, directUrl, path, context]);
+  }, [src, directUrl, path, context, label, reportError, t]);
 
-  /** Opens a decoded image in the shared attachment viewer or the inline zoom dialog. */
+  /** Opens all registered images from this message, or a standalone image outside a message. */
   function handleOpen(): void {
     if (imageUrl === null || hasError) return;
-    if (onOpen !== undefined) onOpen(imageUrl, label);
+    if (gallery !== null) gallery.open(id);
     else setIsOpen(true);
   }
 
@@ -72,6 +93,7 @@ export function ChatImage({ src = "", alt, title, width, height, compact = false
   /** Retains the source reference when decoding or loading fails. */
   function handleError(): void {
     setResolution({ original: src, context, url: null, error: t("message.imageUnavailable") });
+    reportError(new Error(t("message.imageUnavailable")), label);
   }
 
   if (imageUrl === null || hasError) {
@@ -82,28 +104,25 @@ export function ChatImage({ src = "", alt, title, width, height, compact = false
         requireModifiedClick={links?.requireModifiedClick ?? false}>{label}</MarkdownLink>;
     }
     return <Tooltip title={current?.error ?? t("message.imageUnavailable")}>
-      <Box component="span" role="img" aria-label={t("message.imageUnavailable")}>{fallback}</Box>
+      <Box ref={setAnchor} component="span" role="img" aria-label={t("message.imageUnavailable")}>{fallback}</Box>
     </Tooltip>;
   }
 
   const imageWidth = readImageDimension(width);
   const imageHeight = readImageDimension(height);
+  let viewer = null;
+  if (isOpen) viewer = <ImageViewerDialog images={[image]} initialIndex={0} onClose={handleClose} />;
   let imageSize: { maxWidth: string; maxHeight: number; width: number | string; height: number | string } = {
     maxWidth: "100%", maxHeight: 480, width: imageWidth ?? "auto", height: imageHeight ?? "auto"
   };
   if (compact) imageSize = { maxWidth: "100%", maxHeight: 96, width: "132px", height: "96px" };
   return <>
-    <Box component="button" type="button" aria-label={t("message.openImage")} onClick={handleOpen}
+    <Box ref={setAnchor} component="button" type="button" aria-label={t("message.openImage")} onClick={handleOpen}
       sx={{ display: "inline-block", bgcolor: "transparent", border: 0, p: 0, cursor: "zoom-in", maxWidth: "100%" }}>
       <Box component="img" src={imageUrl} alt={label} title={title} width={imageWidth} height={imageHeight}
         loading="lazy" referrerPolicy="no-referrer"
         onError={handleError} sx={{ ...imageSize, display: "block", objectFit: "contain", borderRadius: 1 }} />
     </Box>
-    <Dialog open={isOpen} maxWidth="lg" fullWidth onClose={handleClose}>
-      <DialogContent>
-        <Box component="img" src={imageUrl} alt={label}
-          sx={{ display: "block", maxHeight: "80vh", maxWidth: "100%", mx: "auto", objectFit: "contain" }} />
-      </DialogContent>
-    </Dialog>
+    {viewer}
   </>;
 }
