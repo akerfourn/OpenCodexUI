@@ -41,6 +41,13 @@ export const enGit = {
     generateInstructionHelp: "Add a one-off constraint for this generation.",
     generateMessage: "Generate message",
     generateMessageUnavailable: "Stage at least one file to generate a message.",
+    generateBlocked: {
+      indexUpdating: "Staging or unstaging files…",
+      preferencesUpdating: "Saving deferred file preferences…",
+      synchronizing: "A Git synchronization operation is in progress…",
+      generating: "A commit message is already being generated…",
+      sourceUnavailable: "This project's Codex source is unavailable."
+    },
     generateRuntime: "Model: {{model}} · Reasoning: {{reasoning}}",
     generatingMessage: "Generating...",
     initializeRepository: "Initialize Git",

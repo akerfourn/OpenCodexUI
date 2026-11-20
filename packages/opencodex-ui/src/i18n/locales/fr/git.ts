@@ -39,6 +39,13 @@ export const frGit = {
     generateInstructionHelp: "Ajoutez une contrainte ponctuelle pour cette génération.",
     generateMessage: "Générer le message",
     generateMessageUnavailable: "Stagez au moins un fichier pour générer un message.",
+    generateBlocked: {
+      indexUpdating: "Préparation ou retrait des fichiers en cours…",
+      preferencesUpdating: "Enregistrement des fichiers mis de côté en cours…",
+      synchronizing: "Une opération de synchronisation Git est en cours…",
+      generating: "Un message de commit est déjà en cours de génération…",
+      sourceUnavailable: "La source Codex de ce projet est indisponible."
+    },
     generateRuntime: "Modèle: {{model}} · Raisonnement: {{reasoning}}",
     generatingMessage: "Génération...",
     initializeRepository: "Initialiser Git",

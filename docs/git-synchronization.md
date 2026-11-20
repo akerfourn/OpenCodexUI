@@ -4,6 +4,16 @@ The project panel keeps ordinary sends and updates separate from advanced
 synchronization. Open **Git actions → Advanced synchronization** to compare
 destinations, choose an integration strategy, or resume a paused operation.
 
+## Commit message availability
+
+Read-only Git refreshes and staging operations have separate loading states.
+Once files are staged, a slow background refresh does not disable commit
+message generation. Actual index changes, deferred-path preference saves,
+synchronization and an ongoing generation still block it; the tooltip explains
+the current reason. Ordinary commit and staging actions retain their busy-state
+guards. Older refresh replies cannot replace a newer accepted status or undo
+the displayed result of staging or unstaging.
+
 ## Favorite repository and branch exceptions
 
 Open **Git actions → Git repositories** and use the star to select the usual

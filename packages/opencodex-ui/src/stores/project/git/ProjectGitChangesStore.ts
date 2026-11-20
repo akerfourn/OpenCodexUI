@@ -30,6 +30,8 @@ export class ProjectGitChangesStore {
   deferredPaths: string[] = [];
   /** Whether deferred-path preferences are being persisted. */
   isUpdatingDeferredPaths = false;
+  /** Whether this workspace's index is being staged or unstaged. */
+  isUpdatingIndex = false;
   /** Changed file paths selected for staging. */
   selectedChangedPaths: string[] = [];
   /** Staged file paths selected for unstaging. */
@@ -350,7 +352,8 @@ export class ProjectGitChangesStore {
    * @param paths File paths.
    */
   private async applyGitStatusRequest(type: "git.stage" | "git.unstage", paths: string[]): Promise<void> {
-    this.parent.statusStore.isLoading = true;
+    if (this.isUpdatingIndex) return;
+    this.isUpdatingIndex = true;
     this.parent.errorMessage = null;
 
     try {
@@ -370,7 +373,7 @@ export class ProjectGitChangesStore {
       });
     } finally {
       runInAction(() => {
-        this.parent.statusStore.isLoading = false;
+        this.isUpdatingIndex = false;
       });
     }
   }

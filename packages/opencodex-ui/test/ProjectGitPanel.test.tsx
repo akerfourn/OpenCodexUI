@@ -260,6 +260,7 @@ function createCommitStore(
     isGeneratingCommitMessage: false,
     canCommit: true,
     canGenerateCommitMessage: true,
+    generationBlockReason: null,
     setCommitMessage: vi.fn(),
     commit: vi.fn(),
     ...overrides

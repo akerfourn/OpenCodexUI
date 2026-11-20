@@ -71,7 +71,7 @@ describe("ProjectGitStore commit workflow", () => {
     for (const testCase of cases) {
       const fixture = createProjectGitCommitFixture({ status: testCase.status });
       fixture.gitStore.commitStore.commitMessage = testCase.message;
-      fixture.gitStore.statusStore.isLoading = testCase.statusLoading ?? false;
+      fixture.gitStore.statusStore.isRefreshing = testCase.statusLoading ?? false;
       fixture.gitStore.changesStore.isUpdatingDeferredPaths =
         testCase.deferredPathsUpdating ?? false;
       fixture.gitStore.commitStore.isCommitting = testCase.committing ?? false;
@@ -349,7 +349,7 @@ describe("ProjectGitStore commit workflow", () => {
         status: createStatus()
       })
     ];
-    cases[2].gitStore.statusStore.isLoading = true;
+    cases[2].gitStore.changesStore.isUpdatingIndex = true;
     cases[3].gitStore.commitStore.isGeneratingCommitMessage = true;
 
     for (const fixture of cases) {
@@ -381,6 +381,30 @@ describe("ProjectGitStore commit workflow", () => {
 
     expect(fixture.gitStore.commitStore.commitMessage).toBe("generated");
     expect(fixture.gitStore.commitStore.isGeneratingCommitMessage).toBe(false);
+  });
+
+  it("should explain each real generation blocker without confusing background reads with staging", () => {
+    const fixture = createProjectGitCommitFixture();
+    const store = fixture.gitStore;
+    store.statusStore.isRefreshing = true;
+    expect(store.commitStore.canGenerateCommitMessage).toBe(true);
+    expect(store.commitStore.generationBlockReason).toBeNull();
+    store.changesStore.isUpdatingIndex = true;
+    expect(store.commitStore.generationBlockReason).toBe("indexUpdating");
+    store.changesStore.isUpdatingIndex = false;
+    store.changesStore.isUpdatingDeferredPaths = true;
+    expect(store.commitStore.generationBlockReason).toBe("preferencesUpdating");
+    store.changesStore.isUpdatingDeferredPaths = false;
+    store.sync.phase = "inspect";
+    expect(store.commitStore.generationBlockReason).toBe("synchronizing");
+    store.sync.phase = null;
+    store.commitStore.isGeneratingCommitMessage = true;
+    expect(store.commitStore.generationBlockReason).toBe("generating");
+    store.commitStore.isGeneratingCommitMessage = false;
+    fixture.applyStatus(createStatus({ stagedFiles: [] }));
+    expect(store.commitStore.generationBlockReason).toBe("noStagedFiles");
+    fixture.setSourceReady(false);
+    expect(store.commitStore.generationBlockReason).toBe("sourceUnavailable");
   });
 
   it("should apply pending messages only when the editor is blank", () => {

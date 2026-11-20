@@ -31,6 +31,11 @@ export function ProjectGitCommitSection({
   onOpenGenerateDialog
 }: ProjectGitCommitSectionProps) {
   const { t } = useTranslation();
+  const blockReason = commitStore.generationBlockReason;
+  let generationTooltip = generateTooltip;
+  if (blockReason !== null && blockReason !== "noStagedFiles") {
+    generationTooltip = t(`git.generateBlocked.${blockReason}`);
+  }
   const commitButton = (
     <Button
       variant="contained"
@@ -59,7 +64,7 @@ export function ProjectGitCommitSection({
         onChange={(event) => commitStore.setCommitMessage(event.target.value)}
       />
       <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
-        <Tooltip title={generateTooltip}>
+        <Tooltip title={generationTooltip}>
           <span>
             <IconButton
               aria-label={t(`${gitLabelsKey}.generateMessage`)}

@@ -13,6 +13,10 @@ import type {
 import { readErrorMessage } from "./gitErrorMessage";
 import type { ProjectGitStore } from "./ProjectGitStore";
 
+/** Read-only background refreshes do not invalidate an already prepared index. */
+export type CommitGenerationBlockReason = "noStagedFiles" | "indexUpdating" | "preferencesUpdating"
+  | "synchronizing" | "generating" | "sourceUnavailable";
+
 /**
  * Stores the editable commit message and commit-related Git actions.
  */
@@ -62,12 +66,18 @@ export class ProjectGitCommitStore {
 
   /** Whether a commit message can be generated for staged files. */
   get canGenerateCommitMessage(): boolean {
-    return (
-      this.parent.changesStore.stagedFilesCount > 0 &&
-      !this.parent.changesStore.isBusy &&
-      !this.isGeneratingCommitMessage &&
-      this.parent.isAvailable
-    );
+    return this.generationBlockReason === null;
+  }
+
+  /** Explains actual blockers while allowing generation during unrelated read-only refreshes. */
+  get generationBlockReason(): CommitGenerationBlockReason | null {
+    if (this.isGeneratingCommitMessage) return "generating";
+    if (!this.parent.isAvailable) return "sourceUnavailable";
+    if (this.parent.changesStore.isUpdatingIndex) return "indexUpdating";
+    if (this.parent.changesStore.isUpdatingDeferredPaths) return "preferencesUpdating";
+    if (this.parent.sync?.isBusy === true) return "synchronizing";
+    if (this.parent.changesStore.stagedFilesCount === 0) return "noStagedFiles";
+    return null;
   }
 
   /** Model configured as the default for commit message generation. */

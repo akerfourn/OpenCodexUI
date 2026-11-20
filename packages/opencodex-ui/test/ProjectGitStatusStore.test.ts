@@ -1,4 +1,4 @@
-import { isObservableProp } from "mobx";
+import { isComputedProp, isObservableProp } from "mobx";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -316,9 +316,10 @@ describe("ProjectGitStore Git status", () => {
     const fixture = createProjectGitStatusFixture();
     fixture.request.mockResolvedValueOnce(createStatus({ isRepository: false }));
 
-    for (const property of ["status", "hasLoaded", "isLoading", "isInitializingRepository"]) {
+    for (const property of ["status", "hasLoaded", "isRefreshing", "isInitializingRepository"]) {
       expect(isObservableProp(fixture.gitStore.statusStore, property)).toBe(true);
     }
+    expect(isComputedProp(fixture.gitStore.statusStore, "isLoading")).toBe(true);
     expect(isObservableProp(fixture.gitStore, "errorMessage")).toBe(true);
 
     const refresh = fixture.gitStore.statusStore.refresh;

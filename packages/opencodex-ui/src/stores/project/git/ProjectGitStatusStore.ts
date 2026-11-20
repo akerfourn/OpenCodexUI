@@ -35,10 +35,14 @@ export class ProjectGitStatusStore {
   readonly directoriesByPath = observable.map<string, GitDirectoryStatus>({}, { deep: false });
   /** Whether an initial status request has completed. */
   hasLoaded = false;
-  /** Whether Git status is loading or mutating. */
-  isLoading = false;
+  /** Whether the latest read-only status request is pending. */
+  isRefreshing = false;
   /** Whether repository initialization is in flight. */
   isInitializingRepository = false;
+  /** Only the latest refresh may publish results or release its read indicator. */
+  private refreshSequence = 0;
+  /** Accepted mutations invalidate snapshots requested before their completion. */
+  private statusRevision = 0;
 
   /**
    * Creates a Git status store attached to its owning aggregate.
@@ -46,9 +50,9 @@ export class ProjectGitStatusStore {
    * @param parent Owning Git store used for project context and coordination.
    */
   constructor(private readonly parent: ProjectGitStore) {
-    makeAutoObservable<ProjectGitStatusStore, "parent" | "filesByPath" | "directoriesByPath">(
+    makeAutoObservable<ProjectGitStatusStore, "parent" | "filesByPath" | "directoriesByPath" | "refreshSequence" | "statusRevision">(
       this,
-      { parent: false, filesByPath: false, directoriesByPath: false },
+      { parent: false, filesByPath: false, directoriesByPath: false, refreshSequence: false, statusRevision: false },
       { autoBind: true }
     );
   }
@@ -58,19 +62,27 @@ export class ProjectGitStatusStore {
     return this.status.isRepository;
   }
 
+  /** General Git actions wait for reads and index mutations, which have independent lifetimes. */
+  get isLoading(): boolean {
+    return this.isRefreshing || this.parent.changesStore.isUpdatingIndex;
+  }
+
   /**
    * Refreshes Git status and dependent tag state.
    *
    * @returns Promise resolved when refresh completes.
    */
   async refresh(): Promise<void> {
+    const sequence = ++this.refreshSequence;
+    const revision = this.statusRevision;
     if (!this.parent.isAvailable) {
+      this.isRefreshing = false;
       this.applyStatus(emptyGitStatus);
       this.hasLoaded = true;
       return;
     }
 
-    this.isLoading = true;
+    this.isRefreshing = true;
     this.parent.errorMessage = null;
 
     try {
@@ -79,6 +91,8 @@ export class ProjectGitStatusStore {
         projectPath: this.parent.projectPath,
         sourceId: this.parent.sourceId
       });
+
+      if (sequence !== this.refreshSequence || revision !== this.statusRevision) return;
 
       runInAction(() => {
         this.applyStatus(status);
@@ -91,13 +105,16 @@ export class ProjectGitStatusStore {
         void this.parent.tagStore.loadTags();
       }
     } catch (error) {
+      if (sequence !== this.refreshSequence || revision !== this.statusRevision) return;
       runInAction(() => {
         this.parent.errorMessage = readErrorMessage(error);
       });
     } finally {
       runInAction(() => {
-        this.isLoading = false;
-        this.hasLoaded = true;
+        if (sequence === this.refreshSequence) {
+          this.isRefreshing = false;
+          this.hasLoaded = true;
+        }
       });
     }
   }
@@ -153,6 +170,7 @@ export class ProjectGitStatusStore {
     this.reconcileFileStatuses(createGitFileStatusIndex(status));
     this.reconcileDirectoryStatuses(createGitDirectoryStatusIndex(this.filesByPath));
     this.parent.reconcileStatus(status);
+    this.statusRevision += 1;
   }
 
   /** Reconciles paths incrementally so unchanged file rows do not rerender. */
