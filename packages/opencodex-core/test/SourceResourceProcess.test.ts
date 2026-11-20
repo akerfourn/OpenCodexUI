@@ -27,9 +27,11 @@ describe("source resource launchers", () => {
 
   it("should carry Windows user arguments as data separately from the trusted encoded script", () => {
     const commandLine = windowsCommandLine("C:\\Codex path\\codex.exe", ["app-server", 'a"b', "", "C:\\trailing\\"], false);
-    const launch = windowsResourceLaunch(commandLine, "low", 50);
+    const launch = windowsResourceLaunch(commandLine, "low", 50,
+      { cwd: "C:\\Project", environment: { Path: "C:\\Tools", SystemRoot: "C:\\Windows" } });
     const payload = JSON.parse(launch.options.env!.OPENCODEX_RESOURCE_LAUNCH!);
-    expect(payload).toEqual({ commandLine, priority: 0x4000, cpuRate: 5000 });
+    expect(payload).toMatchObject({ commandLine, priority: 0x4000, cpuRate: 5000,
+      workingDirectory: "C:\\Project", environmentBlock: expect.any(String) });
     const script = Buffer.from(launch.args.at(-1)!, "base64").toString("utf16le");
     expect(script).not.toContain(commandLine);
     expect(launch.args.join(" ").length).toBeLessThan(32_000);
@@ -81,6 +83,50 @@ describe("source resource launchers", () => {
       expect({ code, error }).toEqual({ code: 0, error: "" });
       expect(JSON.parse(output)).toEqual({ priority: 10, value: "hello JSON-RPC" });
     }, 15_000
+  );
+
+  it.skipIf(process.platform !== "win32")(
+    "should preserve cwd, PATH and Unicode for command lookup despite a polluted intermediate launcher", async () => {
+      const directory = fs.mkdtempSync(path.join(tmpdir(), "opencodex resource context-"));
+      try {
+        const toolsDirectory = path.join(directory, "tools with spaces");
+        const sourceDirectory = path.join(directory, "project with spaces");
+        fs.mkdirSync(toolsDirectory);
+        fs.mkdirSync(sourceDirectory);
+        fs.copyFileSync(process.execPath, path.join(toolsDirectory, "git.exe"));
+        const environment = Object.fromEntries(Object.entries(process.env).filter(([name]) =>
+          name.toUpperCase() !== "PATH" && name.toUpperCase() !== "PSMODULEPATH"));
+        const hostPath = process.env.PATH ?? "";
+        const searchPath = `${toolsDirectory};${hostPath}`;
+        const modulePath = path.join(directory, "PS7 modules");
+        Object.assign(environment, { Path: searchPath, PSModulePath: modulePath,
+          OCUI_RESOURCE_CONTEXT_VALUE: "été — 日本語 🧪", OCUI_RESOURCE_LARGE_VALUE: "x".repeat(24_000) });
+        const contextScript = "process.stdout.write(JSON.stringify({cwd:process.cwd(),path:process.env.Path,"
+          + "modules:process.env.PSModulePath,value:process.env.OCUI_RESOURCE_CONTEXT_VALUE,"
+          + "largeValueLength:process.env.OCUI_RESOURCE_LARGE_VALUE.length,"
+          + "privateTransport:Object.keys(process.env).filter(k=>k.toUpperCase().startsWith('OPENCODEX_RESOURCE_LAUNCH')).length}))";
+        const script = "const r=require('node:child_process').spawnSync('git.exe',['-e',process.argv[1]],{encoding:'utf8'});"
+          + "if(r.error){process.stderr.write(r.error.message);process.exit(1)}"
+          + "process.stdout.write(r.stdout);process.stderr.write(r.stderr);process.exit(r.status)";
+        const launch = windowsResourceLaunch(windowsCommandLine(process.execPath, ["-e", script, contextScript], false),
+          "low", 50, { cwd: sourceDirectory, environment });
+        // Simulate the intermediate process changing search paths, cwd and other environment values.
+        const intermediateEnvironment = { ...launch.options.env, Path: hostPath, OCUI_RESOURCE_CONTEXT_VALUE: "changed by launcher" };
+        const child = spawn(launch.command, launch.args, { ...launch.options, cwd: tmpdir(), env: intermediateEnvironment,
+          stdio: ["pipe", "pipe", "pipe"], timeout: 15_000, killSignal: "SIGKILL" });
+        let output = "";
+        let error = "";
+        child.stdout.on("data", data => { output += String(data); });
+        child.stderr.on("data", data => { error += String(data); });
+        child.stdin.end();
+        const [code] = await once(child, "close");
+        expect({ code, error }).toEqual({ code: 0, error: "" });
+        expect(JSON.parse(output)).toEqual({ cwd: sourceDirectory, path: searchPath,
+          modules: modulePath, value: "été — 日本語 🧪", largeValueLength: 24_000, privateTransport: 0 });
+      } finally {
+        fs.rmSync(directory, { force: true, recursive: true });
+      }
+    }, 20_000
   );
 
   it.skipIf(process.platform !== "win32")(

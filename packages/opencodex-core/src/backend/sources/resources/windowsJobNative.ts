@@ -114,19 +114,21 @@ public static class OpenCodexResourceJob {
     }
 
     /// Forwards the original byte streams directly; PowerShell never interprets the JSON-RPC data.
-    public static int Run(string commandLine, uint priority, uint cpuRate) {
+    public static int Run(string commandLine, uint priority, uint cpuRate, string directory, string environmentBlock) {
         IntPtr job = CreateGroup(priority, cpuRate);
+        IntPtr environment = IntPtr.Zero;
         ProcessInfo child = new ProcessInfo();
         StartupInfo startup = new StartupInfo();
         bool finished = false;
         try {
+            environment = Marshal.StringToHGlobalUni(environmentBlock);
             startup.Size = (uint)Marshal.SizeOf(startup);
             startup.Flags = 0x100 | 0x1; // USESTDHANDLES | USESHOWWINDOW (hidden).
             startup.Input = InheritStream(-10);
             startup.Output = InheritStream(-11);
             startup.Error = InheritStream(-12);
             Require(CreateProcess(null, new StringBuilder(commandLine), IntPtr.Zero, IntPtr.Zero,
-                true, 0x4 | 0x08000000 | priority, IntPtr.Zero, null, ref startup, out child));
+                true, 0x4 | 0x08000000 | 0x400 | priority, environment, directory, ref startup, out child));
             Require(AssignProcessToJobObject(job, child.Process));
             Require(ResumeThread(child.Thread) != 0xFFFFFFFF);
             Require(WaitForSingleObject(child.Process, 0xFFFFFFFF) == 0);
@@ -142,6 +144,7 @@ public static class OpenCodexResourceJob {
             if (startup.Input != IntPtr.Zero) CloseHandle(startup.Input);
             if (startup.Output != IntPtr.Zero) CloseHandle(startup.Output);
             if (startup.Error != IntPtr.Zero) CloseHandle(startup.Error);
+            if (environment != IntPtr.Zero) Marshal.FreeHGlobal(environment);
         }
     }
 }

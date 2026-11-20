@@ -42,10 +42,17 @@ and programs launched independently of the app-server are outside this group.
   downloaded. Codex starts suspended, is assigned to a Job Object with its
   priority and aggregate hard CPU cap, then resumes. The original byte streams
   are inherited directly. Closing the job kills remaining owned descendants.
+  Codex receives an explicit Unicode environment block and the working
+  directory captured from OpenCodexUI, rather than the PowerShell bridge's
+  modified environment. This preserves executable lookup through `PATH`,
+  module search paths and user configuration. Only the bridge clears its
+  inherited `PSModulePath` so PowerShell 7 module paths cannot break Windows
+  PowerShell 5 cmdlet loading; Codex retains the original value.
   Native executable arguments use Windows quoting. Batch shims use `cmd.exe`;
   arguments containing shell expansion or embedded quotes are rejected with
   an instruction to select `codex.exe` instead.
-  Windows release builds test native streams, descendant priority, npm batch
+  Windows release builds test native streams, descendant priority, command
+  lookup through `PATH`, environment and directory preservation, npm batch
   shims and forced launcher cleanup before producing their artifacts.
 - macOS: inherited niceness is supported; no CPU group quota adapter is
   provided. Other platforms show their controls as unavailable.
