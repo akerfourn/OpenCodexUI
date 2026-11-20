@@ -37,3 +37,7 @@ is preserved and stale approval prompts are dismissed.
 These controls do not manage other applications' Codex instances, nor separate
 temporary clients such as dictation sessions. The suspended state is not saved
 across application restarts.
+
+Local sources also provide [CPU scheduling controls](source-resources.md) in
+their configuration dialog. Saved resource policies apply on the next launch;
+saving them does not restart the instance.

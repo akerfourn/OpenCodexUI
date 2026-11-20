@@ -7,6 +7,7 @@ import {
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
 import type { SourceInstanceSnapshot } from "@open-codex-ui/opencodex-protocol";
 import { resolveSourceCommand } from "../sources/sourceMapping.js";
+import { createSourceResourceProcessFactory } from "../sources/resources/sourceResourceProcess.js";
 import type { RuntimeEventPort, RuntimeSettingsPort } from "./runtimePorts.js";
 
 export interface OpenCodexClientPoolOptions {
@@ -30,6 +31,8 @@ export class OpenCodexClientPool {
   private readonly clientsBySourceId = new Map<string, CodexAppServerClient>();
   /** Concurrent first requests share the same initialization promise. */
   private readonly starts = new Map<string, Promise<CodexAppServerClient>>();
+  /** A stop invalidates a launch waiting on OS capability discovery before it owns a process. */
+  private readonly launchGenerations = new Map<string, number>();
   /** Duplicate shutdown requests share a single termination operation. */
   private readonly stops = new Map<string, Promise<void>>();
   /** Last content-free snapshot emitted for each source. */
@@ -47,7 +50,9 @@ export class OpenCodexClientPool {
   /** Waits for all owned processes to exit before releasing the pool. */
   async dispose(): Promise<void> {
     this.disposed = true;
-    await Promise.all([...this.clientsBySourceId.keys()].map(id => this.stopOwnedClient(id, true, false)));
+    const sourceIds = new Set([...this.clientsBySourceId.keys(), ...this.starts.keys()]);
+    await Promise.all([...sourceIds].map(id => this.stopOwnedClient(id, true, false)));
+    await Promise.allSettled(this.starts.values());
   }
 
   /** Reads a snapshot without starting a client or probing an executable. */
@@ -98,6 +103,10 @@ export class OpenCodexClientPool {
   async startClient(sourceId: string): Promise<void> {
     this.requireNotUpdating(sourceId);
     if (this.stops.has(sourceId)) throw new Error("Wait for the source to finish stopping.");
+    const pendingStart = this.starts.get(sourceId);
+    if (pendingStart !== undefined && this.readState(sourceId).phase === "stopped") {
+      await pendingStart.catch(() => undefined);
+    }
     this.manuallyStopped.delete(sourceId);
     await this.ensureClient(sourceId);
   }
@@ -191,9 +200,27 @@ export class OpenCodexClientPool {
   /** Creates and wires a client before sending initialization, retaining its exact identity in callbacks. */
   private async launch(source: CachedSource): Promise<CodexAppServerClient> {
     const settings = this.options.settings.getSettings();
+    const generation = (this.launchGenerations.get(source.id) ?? 0) + 1;
+    this.launchGenerations.set(source.id, generation);
+    this.publish(source.id, "starting");
+    let processFactory: CodexAppServerClientOptions["processFactory"];
+    try {
+      if (source.kind === "local" && source.settings.resources !== undefined) {
+        processFactory = await createSourceResourceProcessFactory(source);
+      }
+    } catch (error) {
+      if (!this.disposed && this.launchGenerations.get(source.id) === generation) {
+        this.publish(source.id, "error", error instanceof Error ? error.message : String(error));
+      }
+      throw error;
+    }
+    if (this.disposed || this.launchGenerations.get(source.id) !== generation) {
+      throw new Error("Codex source initialization was interrupted.");
+    }
     let client!: CodexAppServerClient;
     const clientOptions: CodexAppServerClientOptions = {
       command: resolveSourceCommand(source, settings.codexCommand),
+      processFactory,
       clientInfo: { name: "OpenCodexUI", version: this.options.appVersion ?? "unknown" },
       experimentalApi: settings.experimentalApi,
       logger: message => this.options.logger?.(message),
@@ -260,6 +287,7 @@ export class OpenCodexClientPool {
 
   /** Publishes stopped only after the owned process has exited; failed termination remains inspectable. */
   private async performStop(sourceId: string, client: CodexAppServerClient | undefined): Promise<void> {
+    this.launchGenerations.set(sourceId, (this.launchGenerations.get(sourceId) ?? 0) + 1);
     this.publish(sourceId, "stopping");
     try {
       await client?.dispose();

@@ -5,6 +5,27 @@ import type { TranslationShape } from "../../translationShape.js";
 import type { frSources } from "../fr/sources.js";
 
 export const enSources = {
+  sourceResources: {
+    title: "Resources",
+    scope: "These settings apply to Codex and the programs it starts for this local source. The OpenCodexUI interface keeps its usual priority.",
+    priority: "CPU priority",
+    normal: "Normal",
+    low: "Low",
+    idle: "Very low",
+    priorityHelp: "A low priority favors other applications when the CPU is busy. Without a cap, Codex can still use the available capacity.",
+    cpuLimit: "CPU cap (%)",
+    unlimited: "Unlimited",
+    cpuHelp: "Leave empty for no cap. The percentage refers to the total available CPU capacity and is shared with child processes, rather than assigned to each one.",
+    invalidLimit: "Enter an integer between 1 and 100, or leave empty.",
+    restartNotice: "Saving does not interrupt any chat. Settings apply to subsequent Codex launches. For an instance that is already running, use Restart in the source list when its work has finished.",
+    systemdUnavailable: "The CPU cap requires a working systemd user manager and CPU controller. They are unavailable in this environment.",
+    windowsUnavailable: "Windows resource controls are unavailable. PowerShell and access to Job Objects are required.",
+    platformUnsupported: "CPU caps are not supported on this system.",
+    priorityUnavailable: "Priority control is unavailable in this environment.",
+    reset: "Restore defaults",
+    retry: "Retry",
+    loading: "Detecting available controls"
+  },
   sources: {
       add: "Add",
       auto: "Auto",

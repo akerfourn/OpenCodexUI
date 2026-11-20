@@ -83,9 +83,11 @@ export function HomeSourceBox({
     || instance?.phase === "stopping" || instance?.phase === "updating";
 
   useEffect(() => {
+    // Resource saves refresh this DTO while connection fields can still contain an unsaved draft.
+    if (isEditing) return;
     setNameDraft(source.name);
     setDraft(sourceToDraft(source));
-  }, [source]);
+  }, [source, isEditing]);
 
   function handleEdit(): void {
     onEdit(source.id);

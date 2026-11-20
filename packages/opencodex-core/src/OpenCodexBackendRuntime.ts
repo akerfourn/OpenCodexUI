@@ -27,6 +27,8 @@ import { WorkspaceHtmlPreviewService } from "./backend/files/WorkspaceHtmlPrevie
 import { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import { CodexDictationService } from "./backend/dictation/CodexDictationService.js";
 import { resolveSourceCommand } from "./backend/sources/sourceMapping.js";
+import { SourceResourcesService } from "./backend/sources/SourceResourcesService.js";
+import { createSourceResourceProcessFactory } from "./backend/sources/resources/sourceResourceProcess.js";
 import { resolveWorkspaceToolRequest } from "./backend/workspaces/workspaceToolContext.js";
 import { initializeDefaultWorkspaceRoot } from "./backend/workspaces/initializeDefaultWorkspaceRoot.js";
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
@@ -102,6 +104,8 @@ export class OpenCodexBackendRuntime {
   readonly sourcePermissions: SourcePermissionsService;
   /** Lifecycle controls and content-free status for source-owned app-servers. */
   readonly sourceInstances: SourceInstancesService;
+  /** Optional local process scheduling controls, independent of the Codex RPC schema. */
+  readonly sourceResources: SourceResourcesService;
   /** Isolated experimental speech transcription, outside normal conversation execution. */
   readonly dictation: CodexDictationService;
   /** Fully wired services owned by this runtime instance. */
@@ -123,6 +127,7 @@ export class OpenCodexBackendRuntime {
     this.apis = new BackendRuntimeApis(this.services, options);
     this.sourceInstances = new SourceInstancesService(this.services.projectRuntimeHandler,
       this.services.clientPool, this.services.cacheRepository);
+    this.sourceResources = new SourceResourcesService(this.services.projectRuntimeHandler);
     this.sourcePermissions = new SourcePermissionsService(this.services.projectRuntimeHandler,
       this.services.clientPool, this.services.cacheRepository);
     this.messageRendering = new MessageRenderingService(this.services.cacheRepository);
@@ -209,6 +214,7 @@ export class OpenCodexBackendRuntime {
       const source = await this.services.projectRuntimeHandler.resolveSource(sourceId);
       return new CodexAppServerClient({
         command: resolveSourceCommand(source, this.settings.get().codexCommand),
+        processFactory: await createSourceResourceProcessFactory(source),
         clientInfo: { name: "OpenCodexUI_dictation", version: options.appVersion ?? "unknown" },
         experimentalApi: true, requestTimeoutMs: 20_000
       });

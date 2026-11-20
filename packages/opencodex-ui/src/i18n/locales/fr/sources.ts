@@ -2,6 +2,27 @@
  * French translations for the sources UI domain.
  */
 export const frSources = {
+  sourceResources: {
+    title: "Ressources",
+    scope: "Ces réglages s’appliquent à Codex et aux programmes qu’il lance pour cette source locale. L’interface OpenCodexUI conserve sa priorité habituelle.",
+    priority: "Priorité CPU",
+    normal: "Normale",
+    low: "Basse",
+    idle: "Très basse",
+    priorityHelp: "Une priorité basse favorise les autres applications lorsque le processeur est sollicité. Sans plafond, Codex peut toujours utiliser la capacité disponible.",
+    cpuLimit: "Plafond CPU (%)",
+    unlimited: "Illimité",
+    cpuHelp: "Laissez vide pour ne pas limiter. Le pourcentage porte sur la capacité CPU totale disponible et est partagé avec les processus enfants, pas attribué à chacun.",
+    invalidLimit: "Saisissez un nombre entier entre 1 et 100, ou laissez vide.",
+    restartNotice: "L’enregistrement n’interrompt aucun chat. Les réglages seront appliqués aux prochains démarrages de Codex. Pour une instance déjà ouverte, utilisez Redémarrer dans la liste des sources lorsque son travail est terminé.",
+    systemdUnavailable: "Le plafond CPU nécessite un gestionnaire systemd utilisateur et un contrôleur CPU utilisables. Ils ne sont pas disponibles dans cet environnement.",
+    windowsUnavailable: "Les contrôles de ressources Windows ne sont pas disponibles. PowerShell et l’accès aux Job Objects sont nécessaires.",
+    platformUnsupported: "Le plafond CPU n’est pas pris en charge sur ce système.",
+    priorityUnavailable: "La modification de priorité n’est pas disponible dans cet environnement.",
+    reset: "Rétablir les valeurs par défaut",
+    retry: "Réessayer",
+    loading: "Détection des contrôles disponibles"
+  },
   sources: {
     add: "Ajouter",
     auto: "Auto",

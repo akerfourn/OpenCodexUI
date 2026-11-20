@@ -214,6 +214,9 @@ jobs:
       - name: Build packages
         run: npm run build:packages
 
+      - name: Validate Windows resource launcher
+        run: npm run test -w @open-codex-ui/opencodex-core -- SourceResourceProcess.test.ts
+
       - name: Build Windows packages
         # Generate update metadata locally; the publish job uploads it with the artifacts.
         run: npm run dist -w apps/electron-app -- --publish never

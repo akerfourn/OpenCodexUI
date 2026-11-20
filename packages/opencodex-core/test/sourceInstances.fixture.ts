@@ -48,7 +48,7 @@ export function instanceSource(id = "a"): CachedSource {
 }
 
 /** Uses the actual SDK and pool with deterministic fake process I/O. */
-export function instancePool(autoInitialize = true) {
+export function instancePool(autoInitialize = true, resolveSource = (id: string) => instanceSource(id)) {
   const children: SourceProcess[] = [];
   const clients: CodexAppServerClient[] = [];
   const emit = vi.fn();
@@ -56,7 +56,7 @@ export function instancePool(autoInitialize = true) {
   const pool = new OpenCodexClientPool({
     settings: { getSettings: () => ({ defaultSourceId: "a", codexCommand: "codex", experimentalApi: true } as OpenCodexSettings) },
     appVersion: "test",
-    resolveSource: async id => instanceSource(id ?? "a"),
+    resolveSource: async id => resolveSource(id ?? "a"),
     events: { emit },
     handleNotification: vi.fn(), handleServerRequest: vi.fn(), handleError: vi.fn(),
     handleClose: closed, handleStderr: vi.fn(),

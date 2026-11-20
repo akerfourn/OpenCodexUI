@@ -1,4 +1,5 @@
 import type { CachedSourceColor } from "./foundations.js";
+import type { SourceResourceSettings } from "@open-codex-ui/opencodex-protocol";
 
 export type CachedSourceCommandMode = "auto" | "custom";
 export type CachedSourceKind = "local" | "custom" | "wsl" | "ssh";
@@ -25,6 +26,7 @@ export type CachedSourceLocalSettings = CachedSourceCommonSettings &
   CachedSourceLocalAccessSettings & {
     commandMode: "auto";
     command: null;
+    resources?: SourceResourceSettings;
   };
 
 /**
@@ -67,6 +69,7 @@ export type CachedSourceSettingsPatch = Partial<
     CachedSourceLocalAccessSettings & {
       commandMode: CachedSourceCommandMode;
       command: string | null;
+      resources: SourceResourceSettings;
       hasLocalAccess: boolean;
       distro: string | null;
       codexCommand: string;

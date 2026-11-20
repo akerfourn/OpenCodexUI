@@ -7,6 +7,7 @@ import type {
 } from "@open-codex-ui/opencodex-cache";
 import { createDefaultCachedSource, resolveSourceCommand, toOpenCodexSource } from "./sourceMapping.js";
 import { isCodexCliVersionSupported } from "./toolVersionDetection.js";
+import { requireSourceResourceSupport } from "./resources/resourceCapabilities.js";
 import type {
   OpenCodexCodexUpdateStatus,
   OpenCodexSource,
@@ -208,6 +209,7 @@ export class SourceCatalogService implements SourceCatalogPort {
     sourceSettings: OpenCodexSourceSettingsPatch
   ): Promise<SourceCatalogSourceResult> {
     const repository = this.requireCacheRepository("Source storage is unavailable.");
+    await requireSourceResourceSupport(kind, sourceSettings.resources);
     const createdSource = await repository.createSource(name, { kind, settings: sourceSettings });
     const settings = this.options.settings.getSettings();
     const source = toOpenCodexSource(
@@ -262,6 +264,10 @@ export class SourceCatalogService implements SourceCatalogPort {
   ): Promise<SourceCatalogSourceResult> {
     const repository = this.requireCacheRepository("Source storage is unavailable.");
     const previousSource = await this.resolveSource(sourceId);
+    let nextKind = previousSource.kind;
+    if (patch.settings?.commandMode === "custom") nextKind = "custom";
+    if (patch.settings?.commandMode === "auto") nextKind = "local";
+    await requireSourceResourceSupport(nextKind, patch.settings?.resources);
     const updatedSource = await repository.updateSource(sourceId, patch);
 
     if (hasSourceLaunchCommandChanged(previousSource, updatedSource)) {

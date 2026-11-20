@@ -15,6 +15,28 @@ import {
 } from "../src/backend/sources/SourceCatalogService";
 
 describe("SourceCatalogService", () => {
+  it("should save resource settings without restarting Codex or clearing project associations", async () => {
+    const source = createSource("source-1", "local");
+    const updatedSource = { ...source, settings: { ...source.settings,
+      resources: { priority: "normal" as const, cpuLimitPercent: null } } } as CachedSource;
+    const fixture = createFixture({ sources: [source], updatedSource });
+    const patch = { settings: { resources: { priority: "normal" as const, cpuLimitPercent: null } } };
+
+    await fixture.service.updateSource(source.id, patch);
+
+    expect(fixture.repository.updateSource).toHaveBeenCalledWith(source.id, patch);
+    expect(fixture.repository.clearSourceAssociations).not.toHaveBeenCalled();
+    expect(fixture.clients.restartClient).not.toHaveBeenCalled();
+  });
+
+  it("should reject malformed resource controls before persisting any source changes", async () => {
+    const fixture = createFixture({ sources: [createSource("source-1", "local")] });
+    await expect(fixture.service.updateSource("source-1", { name: "Renamed", settings: {
+      resources: { priority: "low", cpuLimitPercent: 101 }
+    } })).rejects.toThrow("between 1 and 100");
+    expect(fixture.repository.updateSource).not.toHaveBeenCalled();
+  });
+
   it("should await asynchronous update detection before returning list and mutation DTOs", async () => {
     const fixture = createFixture();
     const status = createUpdateStatus(true);

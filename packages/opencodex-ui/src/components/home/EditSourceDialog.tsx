@@ -25,6 +25,8 @@ import { SourcePermissionsStore } from "../../stores/app/SourcePermissionsStore"
 import { SourcePermissionsPanelX } from "./SourcePermissionsPanel";
 import { BrowserPermissionsStore } from "../../stores/app/BrowserPermissionsStore";
 import { BrowserPermissionsPanelX } from "../browser/BrowserPermissionsPanel";
+import { SourceResourcesStore } from "../../stores/app/SourceResourcesStore";
+import { SourceResourcesPanelX } from "./SourceResourcesPanel";
 
 type EditSourceDialogProps = {
   open: boolean;
@@ -66,16 +68,19 @@ export function EditSourceDialog({
   const [tab, setTab] = useState("connection");
   const [permissions] = useState(() => new SourcePermissionsStore(store, sourceId));
   const [browser] = useState(() => new BrowserPermissionsStore(store, { sourceId, threadId: null }));
+  const [resources] = useState(() => new SourceResourcesStore(store, sourceId));
   const canConnect = store.sourcesStore.isSourceReady(sourceId);
   const canConfigureBrowser = supportsBrowserPermissions(store.sourcesStore.findSource(sourceId));
-  const busy = permissions.isSaving || browser.busy;
+  const canConfigureResources = store.sourcesStore.findSource(sourceId)?.kind === "local";
+  const busy = permissions.isSaving || browser.busy || resources.isSaving;
 
   /** Prevents dismissal while a native defaults mutation is in flight. */
   function handleClose(): void { if (!busy) onClose(); }
   /** Keeps connection changes and native defaults in separate forms. */
   function handleTab(_event: SyntheticEvent, value: string): void {
     if (busy) return;
-    if (value === "connection" || value === "permissions" || (value === "browser" && canConfigureBrowser)) setTab(value);
+    if (value === "connection" || value === "permissions" || (value === "browser" && canConfigureBrowser)
+      || (value === "resources" && canConfigureResources)) setTab(value);
   }
 
   let unavailableContent = null;
@@ -102,14 +107,18 @@ export function EditSourceDialog({
   );
   if (tab === "permissions") content = <SourcePermissionsPanelX permissions={permissions} root={store} onClose={handleClose} />;
   if (tab === "browser") content = <BrowserPermissionsPanelX state={browser} onClose={handleClose} />;
+  if (tab === "resources") content = <SourceResourcesPanelX state={resources} onClose={handleClose} />;
   let browserTab = null;
   if (canConfigureBrowser) browserTab = <Tab value="browser" label={t("browserPermissions.title")} disabled={!canConnect || busy} />;
+  let resourcesTab = null;
+  if (canConfigureResources) resourcesTab = <Tab value="resources" label={t("sourceResources.title")} disabled={busy} />;
 
   return (
     <Dialog open={open} fullWidth maxWidth="sm" onClose={handleClose} aria-labelledby="source-configuration-title">
       <DialogTitle id="source-configuration-title">{t("sourcePermissions.title", { name: sourceName })}</DialogTitle>
       <Tabs value={tab} onChange={handleTab} variant="scrollable" scrollButtons="auto" aria-label={t("sourcePermissions.configure")}>
         <Tab value="connection" label={t("sourcePermissions.connection")} disabled={busy} />
+        {resourcesTab}
         <Tab value="permissions" label={t("sourcePermissions.permissions")} disabled={!canConnect || busy} />
         {browserTab}
       </Tabs>

@@ -132,6 +132,7 @@ export type OpenCodexRequest =
   | { type: "attachments.pickFiles" }
   | { type: "attachments.pickImages" }
   | { type: "sources.list" }
+  | { type: "sources.resources.read"; sourceId: string }
   | {
       type: "sources.create";
       name: string;

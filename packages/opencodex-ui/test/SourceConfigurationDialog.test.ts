@@ -62,6 +62,58 @@ describe("source configuration and compact actions", () => {
     vi.unstubAllGlobals();
   });
 
+  it("should discover local resource controls only when their tab opens and save without restarting", async () => {
+    render(true);
+    expect(fixture.request).not.toHaveBeenCalled();
+    fixture.request.mockResolvedValueOnce({ settings: { priority: "normal", cpuLimitPercent: null },
+      capabilities: { priority: true, cpuLimit: true, cpuLimitUnavailableReason: null } });
+
+    await act(async () => { control("sourceResources.title", "tab").click(); });
+    expect(fixture.request.mock.calls).toEqual([[{ type: "sources.resources.read", sourceId: "source-a" }]]);
+    expect(document.body.textContent).toContain("sourceResources.restartNotice");
+    const input = document.querySelector<HTMLInputElement>('input[type="number"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "50");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => { control("sources.save").click(); });
+    expect(fixture.request.mock.calls[1]![0]).toEqual({ type: "sources.update", sourceId: "source-a",
+      patch: { settings: { resources: { priority: "normal", cpuLimitPercent: 50 } } } });
+    expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+    expect(fixture.request).toHaveBeenCalledTimes(2);
+  });
+
+  it("should explain unsupported caps and keep priority available", async () => {
+    fixture.request.mockResolvedValueOnce({ settings: { priority: "normal", cpuLimitPercent: null },
+      capabilities: { priority: true, cpuLimit: false, cpuLimitUnavailableReason: "systemdUnavailable" } });
+    render(true);
+    await act(async () => { control("sourceResources.title", "tab").click(); });
+    expect(document.body.textContent).toContain("sourceResources.systemdUnavailable");
+    expect(document.querySelector<HTMLInputElement>('input[type="number"]')!.disabled).toBe(true);
+    expect(document.querySelector('[role="combobox"]')?.getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("should retain unapplied connection fields when a resource save refreshes source metadata", async () => {
+    render(true);
+    const nameInput = document.querySelector<HTMLInputElement>('input[value="Local test"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(nameInput, "My connection draft");
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    fixture.request.mockResolvedValueOnce({ settings: { priority: "normal", cpuLimitPercent: null },
+      capabilities: { priority: true, cpuLimit: true, cpuLimitUnavailableReason: null } });
+    await act(async () => { control("sourceResources.title", "tab").click(); });
+
+    fixture.source = { ...fixture.source, updatedAt: "resource-settings-saved" };
+    render(true);
+    await act(async () => { control("sourcePermissions.connection", "tab").click(); });
+
+    expect(document.querySelector<HTMLInputElement>('input[value="My connection draft"]')).not.toBeNull();
+    render(false);
+    render(true);
+    expect(document.querySelector<HTMLInputElement>('input[value="Local test"]')).not.toBeNull();
+  });
+
   it("should replace the large default action with a compact accessible star and keep Configure visible", async () => {
     render(false);
     const star = control("sources.setDefault") as HTMLButtonElement;

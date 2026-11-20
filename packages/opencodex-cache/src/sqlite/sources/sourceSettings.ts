@@ -11,6 +11,7 @@ import type {
   CachedSourceSshSettings,
   CachedSourceWslSettings
 } from "../../types.js";
+import { parseSourceResourceSettings, sourceResourcePatch } from "./sourceResourceSettings.js";
 
 /**
  * Creates default settings for a local Codex source.
@@ -55,6 +56,7 @@ export function createSourceSettings(
   patch: CachedSourceSettingsPatch = {}
 ): CachedSourceSettings {
   const color = patch.color !== undefined ? normalizeSourceColor(patch.color) : "blue";
+  const resources = sourceResourcePatch(kind, patch.resources);
 
   if (kind === "custom") {
     return {
@@ -90,6 +92,7 @@ export function createSourceSettings(
     commandMode: "auto",
     command: null,
     color,
+    ...resources,
     openFolderCommand: normalizeNullableText(patch.openFolderCommand ?? null),
     openFileCommand: normalizeNullableText(patch.openFileCommand ?? null)
   };
@@ -144,6 +147,7 @@ export function serializeSourceSettings(settings: CachedSourceSettings): string 
       commandMode: "auto",
       command: null,
       color: settings.color,
+      ...sourceResourcePatch("local", settings.resources),
       openFolderCommand: normalizeNullableText(settings.openFolderCommand),
       openFileCommand: normalizeNullableText(settings.openFileCommand)
     });
@@ -231,6 +235,7 @@ function parseLocalSourceSettings(parsed: Record<string, unknown>): CachedSource
   return {
     commandMode: "auto",
     command: null,
+    ...parseSourceResourceSettings(parsed.resources),
     color: normalizeSourceColor(parsed.color),
     openFolderCommand: normalizeNullableText(readLocalAccessValue(parsed, "openFolderCommand")),
     openFileCommand: normalizeNullableText(readLocalAccessValue(parsed, "openFileCommand"))

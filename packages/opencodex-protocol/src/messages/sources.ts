@@ -1,4 +1,5 @@
 import type { OpenCodexReasoningEffort, OpenCodexReasoningEffortOption } from "./foundations.js";
+import type { SourceResourceSettings } from "../sourceResources.js";
 
 /**
  * Source kind supported by the current app version.
@@ -107,6 +108,7 @@ export type OpenCodexSourceLocalSettings = OpenCodexSourceCommonSettings &
   OpenCodexSourceLocalAccessSettings & {
     commandMode: "auto";
     command: null;
+    resources?: SourceResourceSettings;
   };
 
 /**
@@ -149,6 +151,7 @@ export type OpenCodexSourceSettingsPatch = Partial<
     OpenCodexSourceLocalAccessSettings & {
       commandMode: OpenCodexSourceCommandMode;
       command: string | null;
+      resources: SourceResourceSettings;
       hasLocalAccess: boolean;
       distro: string | null;
       codexCommand: string;

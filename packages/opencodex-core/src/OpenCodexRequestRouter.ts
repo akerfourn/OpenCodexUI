@@ -56,6 +56,8 @@ export class OpenCodexRequestRouter {
     }
 
     switch (request.type) {
+      case "sources.resources.read":
+        return this.runtime.sourceResources.read(request.sourceId);
       case "filePreview.open":
         return this.runtime.filePreviews.open(request.target, request.content);
       case "filePreview.close":

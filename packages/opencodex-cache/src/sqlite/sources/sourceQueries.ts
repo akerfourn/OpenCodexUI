@@ -15,6 +15,7 @@ import type {
 import { DEFAULT_SOURCE_NAME } from "../shared/constants.js";
 import { mapSourceRow } from "../shared/mappers.js";
 import type { SourceRow } from "../shared/rowTypes.js";
+import { sourceResourcePatch } from "./sourceResourceSettings.js";
 import {
   createDefaultLocalSourceSettings,
   createDefaultCustomSourceSettings,
@@ -264,6 +265,7 @@ function mergeSourceSettings(
   kind: CachedSource["kind"],
   patch: CachedSourceSettingsPatch | undefined
 ): CachedSourceSettings {
+  const resourcePatch = sourceResourcePatch(kind, patch?.resources);
   if (kind === "custom") {
     const previousCustom = source.kind === "custom"
       ? source.settings
@@ -329,6 +331,8 @@ function mergeSourceSettings(
   return {
     commandMode: "auto",
     command: null,
+    ...sourceResourcePatch("local", previousLocal.resources),
+    ...resourcePatch,
     color: patch?.color !== undefined ? normalizeSourceColor(patch.color) : previousLocal.color,
     openFolderCommand: patch !== undefined && "openFolderCommand" in patch
       ? normalizeNullableText(patch.openFolderCommand ?? null)
