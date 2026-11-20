@@ -110,6 +110,7 @@ export interface OpenCodexImageReadRequest {
 /** Expected failures remain structured across IPC rather than losing error codes. */
 export type OpenCodexFileErrorCode =
   | "accessDenied"
+  | "notFound"
   | "unavailable"
   | "inaccessible"
   | "symlink"

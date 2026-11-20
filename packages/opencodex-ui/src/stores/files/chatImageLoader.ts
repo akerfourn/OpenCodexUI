@@ -1,5 +1,6 @@
 import type { OpenCodexFileResult, OpenCodexImageSnapshot } from "@open-codex-ui/opencodex-protocol";
 import type { FileRequestPort } from "./FileDocument";
+import { ImageUnavailableError } from "./ImageUnavailableError";
 
 /** Creates a bounded preview cache tied to an immutable conversation source and directory. */
 export function createChatImageLoader(
@@ -13,7 +14,10 @@ export function createChatImageLoader(
     const result = await port.request<OpenCodexFileResult<OpenCodexImageSnapshot>>({
       type: "images.read", sourceId, projectPath, path
     });
-    if (!result.ok) throw new Error(result.details);
+    if (!result.ok) {
+      if (result.code === "notFound") throw new ImageUnavailableError(result.details);
+      throw new Error(result.details);
+    }
     return result.value.dataUrl;
   }
 

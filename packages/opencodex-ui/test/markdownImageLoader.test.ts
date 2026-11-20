@@ -2,6 +2,7 @@ import { isObservable, observable } from "mobx";
 import { describe, expect, it, vi } from "vitest";
 import { createMarkdownImageLoader } from "../src/stores/files/markdownImageLoader";
 import type { FileRequestPort } from "../src/stores/files/FileDocument";
+import { ImageUnavailableError } from "../src/stores/files/ImageUnavailableError";
 
 const target = {
   sourceId: "wsl", projectId: "project", workspaceId: "feature",
@@ -67,5 +68,15 @@ describe("Markdown image reads", () => {
     const loadImage = createMarkdownImageLoader({ request } as FileRequestPort, target);
 
     await expect(loadImage("image.png")).rejects.toThrow("Only image files can be previewed");
+  });
+
+  it("should classify missing optional workspace previews without suppressing access errors", async () => {
+    const request = vi.fn().mockResolvedValueOnce({ ok: false, code: "notFound", details: "Missing image" })
+      .mockResolvedValue({ ok: false, code: "accessDenied", details: "External link access denied" });
+    const loadImage = createMarkdownImageLoader({ request } as FileRequestPort, target);
+    await expect(loadImage("missing.png")).rejects.toBeInstanceOf(ImageUnavailableError);
+    const error = await loadImage("denied.png").catch((failure: unknown) => failure);
+    expect(error).not.toBeInstanceOf(ImageUnavailableError);
+    expect(error).toHaveProperty("message", "External link access denied");
   });
 });

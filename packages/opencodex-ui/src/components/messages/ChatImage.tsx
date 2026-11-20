@@ -8,6 +8,8 @@ import { readDisplayImageUrl, readMarkdownImagePath } from "./markdownUrls";
 import { ImageViewerDialog } from "./ImageViewerDialog";
 import { MessageImageGalleryContext, type ViewerImage } from "./MessageImageGalleryContext";
 import { useApplicationErrorReporter } from "../app/applicationErrorContext";
+import { ImageUnavailableError } from "../../stores/files/ImageUnavailableError";
+import { UnavailableImage } from "./UnavailableImage";
 
 interface ChatImageProps {
   src?: string;
@@ -73,7 +75,7 @@ export function ChatImage({ src = "", alt, title, width, height, compact = false
     }).catch((error: unknown) => {
       if (isCancelled) return;
       setResolution({ original: src, context, url: null, error: t("message.imageUnavailable") });
-      reportError(error, label);
+      if (!(error instanceof ImageUnavailableError)) reportError(error, label);
     });
     return () => { isCancelled = true; };
   }, [src, directUrl, path, context, label, reportError, t]);
@@ -93,17 +95,22 @@ export function ChatImage({ src = "", alt, title, width, height, compact = false
   /** Retains the source reference when decoding or loading fails. */
   function handleError(): void {
     setResolution({ original: src, context, url: null, error: t("message.imageUnavailable") });
-    reportError(new Error(t("message.imageUnavailable")), label);
   }
 
   if (imageUrl === null || hasError) {
     const onOpenLink = links?.onOpenLink ?? context?.onOpenLink;
+    let fallbackHref: string | undefined;
+    if (path !== null || /^https?:\/\//i.test(src)) fallbackHref = src;
+    if (hasError) return <Box ref={setAnchor} component="span">
+      <UnavailableImage label={label} href={fallbackHref} onOpenLink={onOpenLink}
+        requireModifiedClick={links?.requireModifiedClick ?? false} />
+    </Box>;
     let fallback = <>{label}</>;
     if (path !== null && onOpenLink !== undefined) {
       fallback = <MarkdownLink href={src} onOpenLink={onOpenLink}
         requireModifiedClick={links?.requireModifiedClick ?? false}>{label}</MarkdownLink>;
     }
-    return <Tooltip title={current?.error ?? t("message.imageUnavailable")}>
+    return <Tooltip title={t("message.imageUnavailable")}>
       <Box ref={setAnchor} component="span" role="img" aria-label={t("message.imageUnavailable")}>{fallback}</Box>
     </Tooltip>;
   }

@@ -287,6 +287,7 @@ export const enConversation = {
     fileChangeRawView: "Raw data",
     fileChangeVisualView: "Diff view",
     imageUnavailable: "Image missing or unavailable",
+    imageUnavailableHelp: "This image is no longer available. Its file may have been deleted, especially if it was stored in a temporary directory.",
     limitContent: "Limit display",
     linkTooltip: "{{href}} (Ctrl+click)",
     mermaid: {

@@ -3,6 +3,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 import type { FileRequestPort } from "./FileDocument";
 import { resolveMarkdownFileTarget } from "./markdownLinks";
+import { ImageUnavailableError } from "./ImageUnavailableError";
 
 /** Reads inline images through workspace permissions, using the document's captured source. */
 export function createMarkdownImageLoader(
@@ -26,7 +27,10 @@ export function createMarkdownImageLoader(
     const result = await port.request<OpenCodexFileResult<OpenCodexFileReadSnapshot>>({
       type: "workspaceFiles.read", target: imageTarget, previewImages: true
     });
-    if (!result.ok) throw new Error(result.details);
+    if (!result.ok) {
+      if (result.code === "notFound") throw new ImageUnavailableError(result.details);
+      throw new Error(result.details);
+    }
     if (!("kind" in result.value) || result.value.kind !== "image") {
       throw new Error("Only image files can be previewed.");
     }

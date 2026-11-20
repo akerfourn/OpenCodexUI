@@ -289,6 +289,7 @@ export const frConversation = {
     fileChangeRawView: "Données brutes",
     fileChangeVisualView: "Vue diff",
     imageUnavailable: "Image manquante ou non disponible",
+    imageUnavailableHelp: "Cette image n’est plus disponible. Son fichier a pu être supprimé, notamment s’il était stocké dans un dossier temporaire.",
     limitContent: "Limiter l'affichage",
     linkTooltip: "{{href}} (Ctrl+clic)",
     mermaid: {

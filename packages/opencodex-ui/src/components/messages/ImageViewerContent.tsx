@@ -10,6 +10,8 @@ import { useApplicationErrorReporter } from "../app/applicationErrorContext";
 import type { ViewerImage } from "./MessageImageGalleryContext";
 import { readDisplayImageUrl } from "./markdownUrls";
 import { useImageViewport } from "./useImageViewport";
+import { ImageUnavailableError } from "../../stores/files/ImageUnavailableError";
+import { UnavailableImage } from "./UnavailableImage";
 
 interface ImageViewerContentProps {
   image: ViewerImage;
@@ -41,15 +43,14 @@ export function ImageViewerContent({ image, index, count, titleId, onPrevious, o
     }).catch((error: unknown) => {
       if (cancelled) return;
       setFailed(true);
-      reportError(error, t("message.imageViewer.title"));
+      if (!(error instanceof ImageUnavailableError)) reportError(error, t("message.imageViewer.title"));
     });
     return () => { cancelled = true; };
   }, [image, attempt, reportError, t]);
 
-  /** Reports browser decoding failures through the shared journal and notification boundary. */
+  /** Browser image failures are an unavailable preview, not a repeated application error. */
   function handleImageError(): void {
     setFailed(true);
-    reportError(new Error(t("message.imageUnavailable")), t("message.imageViewer.title"));
   }
   /** Allows a source that became available again to be read without closing the gallery. */
   function handleRetry(): void { setAttempt(current => current + 1); }
@@ -64,8 +65,11 @@ export function ImageViewerContent({ image, index, count, titleId, onPrevious, o
   let pendingContent = null;
   if (!failed && (!viewport.isReady || src === null)) pendingContent = <CircularProgress
     aria-label={t("message.imageViewer.loading")} size={32} sx={{ position: "absolute", left: "calc(50% - 16px)", top: "calc(50% - 16px)" }} />;
-  if (failed) pendingContent = <Button onClick={handleRetry} sx={{ position: "absolute", left: "50%", top: "50%",
-    transform: "translate(-50%, -50%)" }}>{t("files.retry")}</Button>;
+  if (failed) pendingContent = <Box sx={{ position: "absolute", left: "50%", top: "50%",
+    transform: "translate(-50%, -50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+    <UnavailableImage label={image.alt} />
+    <Button onClick={handleRetry}>{t("files.retry")}</Button>
+  </Box>;
   let navigation = null;
   if (count > 1) navigation = <>
     <IconButton aria-label={t("message.imageViewer.previous")} disabled={index === 0} onClick={onPrevious}

@@ -276,6 +276,12 @@ async function execute(request) {
 async function respond(request) {
   try { return { ok: true, value: await execute(request) }; }
   catch (error) {
+    // Optional image previews may outlive temporary files; keep absence distinct from source failures.
+    const imagePreview = request.type === 'images.read' ||
+      (request.type === 'workspaceFiles.read' && request.previewImages === true);
+    if (imagePreview && (error.code === 'ENOENT' || error.code === 'ENOTDIR')) {
+      return { ok: false, code: 'notFound', details: error.message };
+    }
     return { ok: false, code: error.fileCode || (error.code === 'ELOOP' ? 'symlink' : 'inaccessible'), details: error.message };
   }
 }

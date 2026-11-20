@@ -8,6 +8,7 @@ import { ChatImage } from "../src/components/messages/ChatImage";
 import { ChatImageContext } from "../src/components/messages/ChatImageContext";
 import { ActivityImageResultsX } from "../src/components/messages/ActivityImageResults";
 import { ApplicationErrorContext } from "../src/components/app/applicationErrorContext";
+import { ImageUnavailableError } from "../src/stores/files/ImageUnavailableError";
 
 const translate = (key: string): string => key;
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: translate }) }));
@@ -148,15 +149,15 @@ describe("message image viewer", () => {
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain("50%");
   });
 
-  it("should report decoding failures in the journal and leave navigation and retry available", async () => {
+  it("should show unavailable browser images locally and leave navigation and retry available", async () => {
     const reportError = vi.fn();
     await act(async () => root.render(<ApplicationErrorContext.Provider value={reportError}>
       {message("error", `![First](${dataUrl})\n\n![Second](${dataUrl})`)}
     </ApplicationErrorContext.Provider>));
     await act(async () => button("message.openImage").click());
     await act(async () => selectedImage()!.dispatchEvent(new Event("error")));
-    expect(reportError).toHaveBeenCalledWith(expect.objectContaining({ message: "message.imageUnavailable" }), "message.imageViewer.title");
-    expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain("message.imageUnavailable");
+    expect(reportError).not.toHaveBeenCalled();
+    expect(document.querySelector('[role="dialog"] [data-image-unavailable]')?.textContent).toBe("First");
     await act(async () => button("files.retry").click());
     expect(selectedImage()?.alt).toBe("First");
     await key("ArrowRight");
@@ -181,6 +182,27 @@ describe("message image viewer", () => {
     await act(async () => button("files.retry").click());
     expect(selectedImage()?.alt).toBe("Unavailable");
     expect(selectedImage()?.getAttribute("src")).toBe(dataUrl);
+  });
+
+  it("should navigate through missing images without reporting them and recover on explicit retry", async () => {
+    const reportError = vi.fn();
+    const loadImage = vi.fn().mockRejectedValue(new ImageUnavailableError("Temporary file deleted"));
+    await act(async () => root.render(<ApplicationErrorContext.Provider value={reportError}>
+      <ChatImageContext.Provider value={{ loadImage, onOpenLink: vi.fn() }}>
+        {message("missing", `![Ready](${dataUrl})\n\n![Missing](/tmp/image.png)\n\n![Next](${dataUrl})`)}
+      </ChatImageContext.Provider>
+    </ApplicationErrorContext.Provider>));
+    await act(async () => button("message.openImage").click());
+    await key("ArrowRight");
+    expect(document.querySelector('[role="dialog"] [data-image-unavailable]')?.textContent).toBe("Missing");
+    expect(reportError).not.toHaveBeenCalled();
+    await key("ArrowRight");
+    expect(selectedImage()?.alt).toBe("Next");
+    await key("ArrowLeft");
+    loadImage.mockResolvedValue(dataUrl);
+    await act(async () => button("files.retry").click());
+    expect(selectedImage()?.alt).toBe("Missing");
+    expect(reportError).not.toHaveBeenCalled();
   });
 
   it("should reuse already resolved source bytes when opening a thumbnail", async () => {

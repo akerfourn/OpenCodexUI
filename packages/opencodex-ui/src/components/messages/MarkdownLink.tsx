@@ -8,6 +8,8 @@ import { useTranslation } from "react-i18next";
 type MarkdownLinkProps = {
   href?: string;
   children?: ReactNode;
+  /** Overrides the native link tooltip for contextual preview states. */
+  title?: string;
   /** Requires a modifier key before opening the link. */
   requireModifiedClick?: boolean;
   /** Handles opening the link externally. */
@@ -24,6 +26,7 @@ type MarkdownLinkProps = {
 export function MarkdownLink({
   href,
   children,
+  title,
   requireModifiedClick = false,
   onOpenLink
 }: MarkdownLinkProps) {
@@ -49,7 +52,7 @@ export function MarkdownLink({
   return (
     <Link
       href={linkHref}
-      title={linkTitle}
+      title={title ?? linkTitle}
       underline="hover"
       onClick={handleClick}
       sx={{

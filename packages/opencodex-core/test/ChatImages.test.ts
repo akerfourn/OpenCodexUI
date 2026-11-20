@@ -54,4 +54,28 @@ describe("conversation image reads", () => {
       .toMatchObject({ ok: false, details: expect.stringContaining("explicit image source") });
     expect(resolveRequestedSource).not.toHaveBeenCalled();
   });
+
+  it("should return a distinct missing preview state after temporary images have been deleted", async () => {
+    const path = join(root, "temporary.png");
+    await writeFile(path, png);
+    await rm(path);
+    const result = await runLocalFileOperation({ type: "images.read", sourceId: "local", projectPath: root, path });
+    expect(result).toMatchObject({ ok: false, code: "notFound", details: expect.stringContaining("ENOENT") });
+  });
+
+  it("should recognize a former directory replaced by a file as a missing image", async () => {
+    const parent = join(root, "former-directory");
+    await writeFile(parent, "file");
+    expect(await runLocalFileOperation({ type: "images.read", sourceId: "local", projectPath: root,
+      path: join(parent, "image.png") })).toMatchObject({ ok: false, code: "notFound" });
+  });
+
+  it("should classify missing workspace image previews without changing ordinary file failures", async () => {
+    const target = { sourceId: "local", projectId: "project", workspaceId: "workspace", workspacePath: root,
+      path: "missing.png" };
+    expect(await runLocalFileOperation({ type: "workspaceFiles.read", target, previewImages: true }))
+      .toMatchObject({ ok: false, code: "notFound" });
+    expect(await runLocalFileOperation({ type: "workspaceFiles.read", target }))
+      .toMatchObject({ ok: false, code: "inaccessible" });
+  });
 });

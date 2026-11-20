@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { FileRequestPort } from "../src/stores/files/FileDocument";
 import { createChatImageLoader } from "../src/stores/files/chatImageLoader";
+import { ImageUnavailableError } from "../src/stores/files/ImageUnavailableError";
 
 describe("conversation image loader", () => {
   it("should coalesce reads using the captured source instead of the currently selected source", async () => {
@@ -29,5 +30,23 @@ describe("conversation image loader", () => {
     await expect(createChatImageLoader(port, null, "/workspace")("image.png"))
       .rejects.toThrow("This conversation has no image source.");
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("should classify missing images as expected absence and allow restored files to load", async () => {
+    const request = vi.fn().mockResolvedValueOnce({ ok: false, code: "notFound", details: "File no longer exists" })
+      .mockResolvedValue({ ok: true, value: { kind: "image", dataUrl: "data:image/png;base64,aGVsbG8=" } });
+    const loadImage = createChatImageLoader({ request } as FileRequestPort, "source", "/workspace");
+    await expect(loadImage("temporary.png")).rejects.toBeInstanceOf(ImageUnavailableError);
+    await expect(loadImage("temporary.png")).resolves.toBe("data:image/png;base64,aGVsbG8=");
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it("should preserve genuine source and access errors instead of classifying them as missing files", async () => {
+    const request = vi.fn().mockResolvedValue({ ok: false, code: "unavailable", details: "Source offline" });
+    const loadImage = createChatImageLoader({ request } as FileRequestPort, "source", "/workspace");
+    const error = await loadImage("temporary.png").catch((failure: unknown) => failure);
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(ImageUnavailableError);
+    expect(error).toHaveProperty("message", "Source offline");
   });
 });

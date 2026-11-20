@@ -83,8 +83,14 @@ Local previews read image bytes from the conversation's explicit source,
 including generated artifacts outside its workspace. Reads are limited to
 supported image formats and 10 MiB per file; they cannot return text files or
 modify files. Remote previews require the source process API and Node.js.
-Unavailable images retain their label and file link without using the host
-filesystem as a fallback.
+Unavailable images retain their label and source link in red, with an error
+icon and an explanatory tooltip, without using the host filesystem as a
+fallback. Missing optional image previews (including expired temporary files)
+and browser image-load failures do not generate journal entries or snackbars
+when a conversation is reopened. Other source, permission and transport
+failures still use the normal application error boundary. Gallery navigation
+and retry remain available for missing images; no permanent negative cache
+prevents reading a restored file.
 
 ## Explorer entry operations
 
