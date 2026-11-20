@@ -8,6 +8,7 @@ import type { OpenCodexGitFile, OpenCodexGitStatus } from "@open-codex-ui/openco
 import type { ProjectGitStore } from "./ProjectGitStore";
 import { readErrorMessage } from "./gitErrorMessage";
 import { areGitFileStatusesEqual, createGitFileStatusIndex } from "./gitFileStatusIndex";
+import { areGitDirectoryStatusesEqual, createGitDirectoryStatusIndex, type GitDirectoryStatus } from "./gitDirectoryStatusIndex";
 
 /** Empty status used when the project has no usable Git repository. */
 const emptyGitStatus: OpenCodexGitStatus = {
@@ -30,6 +31,8 @@ export class ProjectGitStatusStore {
   status: OpenCodexGitStatus = emptyGitStatus;
   /** Git state indexed by workspace-relative path for file-tree rows. */
   readonly filesByPath = observable.map<string, OpenCodexGitFile>({}, { deep: false });
+  /** Ancestor summaries do not require loading folders from the filesystem. */
+  readonly directoriesByPath = observable.map<string, GitDirectoryStatus>({}, { deep: false });
   /** Whether an initial status request has completed. */
   hasLoaded = false;
   /** Whether Git status is loading or mutating. */
@@ -43,9 +46,9 @@ export class ProjectGitStatusStore {
    * @param parent Owning Git store used for project context and coordination.
    */
   constructor(private readonly parent: ProjectGitStore) {
-    makeAutoObservable<ProjectGitStatusStore, "parent" | "filesByPath">(
+    makeAutoObservable<ProjectGitStatusStore, "parent" | "filesByPath" | "directoriesByPath">(
       this,
-      { parent: false, filesByPath: false },
+      { parent: false, filesByPath: false, directoriesByPath: false },
       { autoBind: true }
     );
   }
@@ -148,6 +151,7 @@ export class ProjectGitStatusStore {
   applyStatus(status: OpenCodexGitStatus): void {
     this.status = status;
     this.reconcileFileStatuses(createGitFileStatusIndex(status));
+    this.reconcileDirectoryStatuses(createGitDirectoryStatusIndex(this.filesByPath));
     this.parent.reconcileStatus(status);
   }
 
@@ -161,6 +165,19 @@ export class ProjectGitStatusStore {
       const currentFile = this.filesByPath.get(path);
       if (currentFile === undefined || !areGitFileStatusesEqual(currentFile, nextFile)) {
         this.filesByPath.set(path, nextFile);
+      }
+    }
+  }
+
+  /** Updates only changed ancestor summaries, including disappearance after commit or reset. */
+  private reconcileDirectoryStatuses(next: Map<string, GitDirectoryStatus>): void {
+    for (const path of this.directoriesByPath.keys()) {
+      if (!next.has(path)) this.directoriesByPath.delete(path);
+    }
+    for (const [path, summary] of next) {
+      const previous = this.directoriesByPath.get(path);
+      if (previous === undefined || !areGitDirectoryStatusesEqual(previous, summary)) {
+        this.directoriesByPath.set(path, summary);
       }
     }
   }

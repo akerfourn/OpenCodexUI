@@ -5,6 +5,8 @@ import type { OpenCodexFileRequest, OpenCodexFileResult, OpenCodexFileLinkAccess
 import type { ClientPort, ProjectSourcePort } from "../runtime/runtimePorts.js";
 import { requireToolWorkspace } from "../workspaces/workspaceToolContext.js";
 import { runLocalFileOperation, runSourceFileOperation, type FileWorkerRequest } from "./runFileOperation.js";
+import { readGitIgnoredPaths } from "../git/gitIgnoredPaths.js";
+import { createRunGit } from "../git/gitCommandRunner.js";
 
 /** Uses the normal serialized settings persistence for workspace-specific grants. */
 interface FileAccessSettings {
@@ -67,6 +69,10 @@ export class WorkspaceFilesService {
         throw new Error("Workspace context changed. Reopen the file from its original workspace.");
       }
       const source = await this.sources.resolveRequestedSource(target.sourceId);
+      if (request.type === "workspaceFiles.ignored") {
+        const paths = await readGitIgnoredPaths(createRunGit(this.clients), workspace.path, source.id, request.paths);
+        return { ok: true, value: paths };
+      }
       const grants = normalizeFileLinkGrants(this.settings?.get().fileLinkGrants);
       const permissions = grants.filter(grant => grant.sourceId === target.sourceId &&
         grant.projectId === target.projectId && grant.workspaceId === target.workspaceId &&

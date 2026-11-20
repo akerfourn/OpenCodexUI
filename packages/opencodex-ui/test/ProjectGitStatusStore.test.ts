@@ -296,6 +296,8 @@ describe("ProjectGitStore Git status", () => {
     }));
 
     const indexedFile = fixture.gitStore.statusStore.filesByPath.get(file.path);
+    const indexedDirectory = fixture.gitStore.statusStore.directoriesByPath.get("src");
+    expect(indexedDirectory).toMatchObject({ count: 1, status: "modified", counts: { deleted: 1 } });
     expect(indexedFile).toEqual({ ...file, status: "deleted" });
 
     fixture.gitStore.statusStore.applyStatus(createStatus({
@@ -303,9 +305,11 @@ describe("ProjectGitStore Git status", () => {
       stagedFiles: [file]
     }));
     expect(fixture.gitStore.statusStore.filesByPath.get(file.path)).toBe(indexedFile);
+    expect(fixture.gitStore.statusStore.directoriesByPath.get("src")).toBe(indexedDirectory);
 
     fixture.gitStore.statusStore.applyStatus(createStatus());
     expect(fixture.gitStore.statusStore.filesByPath.has(file.path)).toBe(false);
+    expect(fixture.gitStore.statusStore.directoriesByPath.size).toBe(0);
   });
 
   it("should expose observable status fields and bind detached refresh calls", async () => {

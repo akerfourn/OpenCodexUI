@@ -13,6 +13,7 @@ export type GitProcessResult = Pick<
 
 /** Controls failure handling, timeout, and output capture for one Git command. */
 export type RunGitOptions = {
+  stdin?: string;
   allowFailure?: boolean;
   timeoutMs?: number;
   outputBytesCap?: number;
@@ -44,12 +45,14 @@ export function createRunGit(clients: Pick<ClientPort, "ensureClient">): RunGit 
     }
 
     const client = await clients.ensureClient(sourceId);
-    const response = await runHostProcess(client, {
+    const params: Omit<v2.ProcessSpawnParams, "processHandle"> = {
       command: ["git", ...args],
       cwd: projectPath,
       timeoutMs: options.timeoutMs ?? 30_000,
       outputBytesCap: options.outputBytesCap ?? 2_000_000
-    });
+    };
+    if (options.stdin !== undefined) params.streamStdin = true;
+    const response = await runHostProcess(client, params, options.stdin);
 
     if (response.exitCode !== 0 && options.allowFailure !== true) {
       throw new Error(createGitErrorMessage(response));
@@ -64,11 +67,13 @@ export function createRunGit(clients: Pick<ClientPort, "ensureClient">): RunGit 
  *
  * @param client Codex app-server client.
  * @param params Process spawn params except the generated handle.
+ * @param stdin Optional literal input, sent only after spawn acknowledges the process handle.
  * @returns Captured process result.
  */
 export async function runHostProcess(
   client: CodexAppServerClient,
-  params: Omit<v2.ProcessSpawnParams, "processHandle">
+  params: Omit<v2.ProcessSpawnParams, "processHandle">,
+  stdin?: string
 ): Promise<GitProcessResult> {
   const processHandle = `opencodex-git-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -96,6 +101,10 @@ export async function runHostProcess(
     client.request<v2.ProcessSpawnResponse>("process/spawn", {
       ...params,
       processHandle
+    }).then(async () => {
+      if (stdin === undefined) return;
+      await client.request("process/writeStdin", { processHandle,
+        deltaBase64: Buffer.from(stdin, "utf8").toString("base64"), closeStdin: true });
     }).catch((error: unknown) => {
       clearTimeout(timeout);
       subscription.dispose();

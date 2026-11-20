@@ -6,6 +6,16 @@ import type { OpenCodexBackendRuntime } from "../src/OpenCodexBackendRuntime";
 import { OpenCodexRequestRouter } from "../src/OpenCodexRequestRouter";
 
 describe("OpenCodexRequestRouter workspace routes", () => {
+  it("should route bounded explorer ignore checks through workspace file validation", async () => {
+    const execute = vi.fn(async () => ({ ok: true, value: ["node_modules"] }));
+    const runtime = { files: { execute } } as unknown as OpenCodexBackendRuntime;
+    const router = new OpenCodexRequestRouter(requestRoutingRuntime(runtime));
+    const request: OpenCodexRequest = { type: "workspaceFiles.ignored",
+      target: { projectId: "project", workspaceId: "secondary", sourceId: "wsl", workspacePath: "/repo/secondary", path: "" },
+      paths: ["src", "node_modules"] };
+    await expect(router.handleRequest(request)).resolves.toEqual({ ok: true, value: ["node_modules"] });
+    expect(execute).toHaveBeenCalledWith(request);
+  });
   it("should route creation and recovery without deriving source paths", async () => {
     const workspaces = { discover: vi.fn(), create: vi.fn(), pendingCreations: vi.fn(), reconcileCreation: vi.fn() };
     const runtime = { workspaces } as unknown as OpenCodexBackendRuntime;

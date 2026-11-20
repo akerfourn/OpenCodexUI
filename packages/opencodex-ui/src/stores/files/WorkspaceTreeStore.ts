@@ -6,6 +6,7 @@ import type {
   OpenCodexFileResult
 } from "@open-codex-ui/opencodex-protocol";
 import type { FileRequestPort, FileDocumentError } from "./FileDocument";
+import { WorkspaceGitIgnoreStore } from "./WorkspaceGitIgnoreStore";
 
 /** One directory's independently loaded state. */
 export interface FileDirectoryState {
@@ -17,6 +18,8 @@ export interface FileDirectoryState {
 
 /** Lazy tree tied permanently to one source/workspace; no recursive reads. */
 export class WorkspaceTreeStore {
+  /** Ignore decorations belong to this physical workspace, independently of active selection. */
+  readonly gitIgnore: WorkspaceGitIgnoreStore;
   /** Loaded direct children keyed by relative directory path. */
   readonly directories = observable.map<string, FileDirectoryState>();
   /** Expansion survives tool switches and revisiting this workspace. */
@@ -29,6 +32,7 @@ export class WorkspaceTreeStore {
     readonly context: Readonly<OpenCodexFileContext>,
     private readonly port: FileRequestPort
   ) {
+    this.gitIgnore = new WorkspaceGitIgnoreStore(context, port);
     makeAutoObservable<this, "port" | "generation">(this, { port: false, context: false, generation: false });
   }
 
@@ -91,6 +95,7 @@ export class WorkspaceTreeStore {
 
   /** Reloads the root; expanded descendants load when their rows are rendered. */
   refresh(): void {
+    this.gitIgnore.reset();
     this.generation += 1;
     this.directories.clear();
     void this.load("");
@@ -107,6 +112,20 @@ export class WorkspaceTreeStore {
 
   /** Invalidates outstanding responses when the owning project closes. */
   dispose(): void {
+    this.gitIgnore.reset();
     this.generation += 1;
+  }
+
+  /** Linked ancestors and nested repositories must not inherit the owning repository's ignore rules. */
+  hasRepositoryBoundary(path: string): boolean {
+    let parent = "";
+    for (const name of path.split("/")) {
+      if (name.length === 0) continue;
+      if (parent.length > 0 && this.directories.get(parent)?.entries.some(item => item.name === ".git")) return true;
+      const entry = this.directories.get(parent)?.entries.find(item => item.name === name);
+      if (entry?.linkTarget !== undefined) return true;
+      parent = parent.length === 0 ? name : `${parent}/${name}`;
+    }
+    return path.length > 0 && this.directories.get(path)?.entries.some(item => item.name === ".git") === true;
   }
 }

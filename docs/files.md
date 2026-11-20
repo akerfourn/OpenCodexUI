@@ -276,6 +276,22 @@ broken links remain visible but blocked. External links expose target metadata
 without reading directory contents. Their context menu offers workspace-scoped
 blocked, read-only and read/write access. Special files are not opened.
 
+Git decorations distinguish ignored entries using readable gray text and icons;
+ignoring never disables file actions. Modified and added files use colored
+icons and letter badges. Folder icons and count badges summarize staged and
+unstaged descendants, including collapsed folders; conflicts take priority and
+show an exclamation mark. A `+` marks a partial count when Git groups an
+untracked directory rather than enumerating its files. Tooltips describe each
+kind of change. Summaries use the existing Git snapshot without disk traversal.
+
+Ignore checks batch only displayed entries, in requests of at most 200 paths,
+and run through the owning source with validated workspace-relative paths and
+bounded, NUL-delimited stdin frames. They honor Git rules and tracked-file
+exceptions.
+Refresh invalidates cached rules and late replies. Linked directory contents
+and nested repositories are excluded from parent repository ignore checks;
+links keep their access indicators.
+
 External grants are stored in `settings.json` under `fileLinkGrants`, keyed by
 source, project, workspace, workspace path and canonical destination. The backend
 resolves destinations on the source and injects only matching grants into its

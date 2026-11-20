@@ -65,6 +65,35 @@ describe("gitCommandRunner", () => {
     });
   });
 
+  it("should send literal NUL-delimited Unicode paths through source stdin and close it after spawn", async () => {
+    let notify!: (notification: { method: string; params: unknown }) => void;
+    let processHandle = "";
+    const input = "rapport été [1].log\0line\nbreak.log\0-leading.log\0";
+    const dispose = vi.fn();
+    const request = vi.fn(async (method: string, params: Record<string, unknown>) => {
+      if (method === "process/spawn") processHandle = String(params.processHandle);
+      if (method === "process/writeStdin") {
+        queueMicrotask(() => notify({ method: "process/exited", params: { processHandle, exitCode: 0,
+          stdout: input, stderr: "", stdoutCapReached: false, stderrCapReached: false } }));
+      }
+      return {};
+    });
+    const client = { request, onNotification: (listener: typeof notify) => {
+      notify = listener;
+      return { dispose };
+    } } as unknown as CodexAppServerClient;
+    const ensureClient = vi.fn(async () => client);
+    const result = await createRunGit({ ensureClient })("C:/repo", "windows", ["check-ignore", "-z", "--stdin"], { stdin: input });
+    expect(ensureClient).toHaveBeenCalledWith("windows");
+    expect(request).toHaveBeenNthCalledWith(1, "process/spawn", expect.objectContaining({
+      command: ["git", "check-ignore", "-z", "--stdin"], cwd: "C:/repo", streamStdin: true
+    }));
+    expect(request).toHaveBeenNthCalledWith(2, "process/writeStdin", { processHandle,
+      deltaBase64: Buffer.from(input, "utf8").toString("base64"), closeStdin: true });
+    expect(result.stdout).toBe(input);
+    expect(dispose).toHaveBeenCalledOnce();
+  });
+
   it("should throw the Git output for an unauthorized failure", async () => {
     const client = new FakeCodexClient([
       { exitCode: 128, stdout: "additional context", stderr: "fatal: repository not found" }

@@ -253,6 +253,8 @@ describe("workspace source routing", () => {
       expect(
         await service.execute({ type: "workspaceFiles.read", target: { ...target, ...patch } })
       ).toMatchObject({ ok: false, code: "unavailable" });
+      expect(await service.execute({ type: "workspaceFiles.ignored", target: { ...target, ...patch }, paths: ["src"] }))
+        .toMatchObject({ ok: false, code: "unavailable" });
     }
     get.mockResolvedValue({ ...workspace, removedAt: "2026-01-01" });
     expect(await service.execute({ type: "workspaceFiles.list", target })).toMatchObject({ ok: false });

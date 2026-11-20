@@ -129,6 +129,7 @@ export type OpenCodexFileResult<T> =
 
 /** Dedicated requests keep filesystem operations separate from composer search. */
 export type OpenCodexFileRequest =
+  | { type: "workspaceFiles.ignored"; target: OpenCodexFileTarget; paths: string[] }
   | { type: "workspaceFiles.previewAsset"; target: OpenCodexFileTarget }
   | { type: "workspaceFiles.copy"; target: OpenCodexFileTarget; destinationPath: string; name: string }
   | { type: "workspaceFiles.rename"; target: OpenCodexFileTarget; name: string }

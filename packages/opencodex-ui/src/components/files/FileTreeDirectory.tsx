@@ -26,9 +26,18 @@ export function FileTreeDirectory({
   const { t } = useTranslation();
   const [limit, setLimit] = useState(200);
   const state = tree.directories.get(path);
+  const gitStatus = gitStatusStore.status;
   useEffect(() => {
     if (state === undefined) void tree.load(path);
   }, [tree, path, state]);
+  useEffect(() => {
+    if (state?.loaded !== true || !gitStatus.isRepository || tree.hasRepositoryBoundary(path)) return;
+    const paths = state.entries.slice(0, limit).map(entry => {
+      if (path.length === 0) return entry.name;
+      return `${path}/${entry.name}`;
+    });
+    void tree.gitIgnore.load(paths, gitStatus);
+  }, [tree, path, state?.entries, state?.loaded, limit, gitStatus]);
   /** Retries this directory without reloading other branches. */
   function retry(): void {
     void tree.load(path);

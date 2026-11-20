@@ -15,8 +15,7 @@ import ChevronRight from "@mui/icons-material/ChevronRight";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import { useTranslation } from "react-i18next";
 import type {
-  OpenCodexFileEntry,
-  OpenCodexGitFileState
+  OpenCodexFileEntry
 } from "@open-codex-ui/opencodex-protocol";
 import type { WorkspaceTreeStore } from "../../stores/files/WorkspaceTreeStore";
 import type { ProjectFilesStore } from "../../stores/files/ProjectFilesStore";
@@ -24,6 +23,8 @@ import type { ProjectGitStatusStore } from "../../stores/project/git/ProjectGitS
 import { createExplorerFileOpenIntent } from "../../stores/files/fileOpenIntent";
 import { FileTreeDirectoryX } from "./FileTreeDirectory";
 import { FileTreeContextMenuX } from "./FileTreeContextMenu";
+import { FileTreeGitBadge } from "./FileTreeGitBadge";
+import { describeGitDirectory, fileTreeGitColor } from "./fileTreeGitPresentation";
 
 /** One accessible entry; external links expose workspace-scoped access controls. */
 export function FileTreeEntry({
@@ -49,7 +50,11 @@ export function FileTreeEntry({
   const [managing, setManaging] = useState(false);
   const path = parentPath.length === 0 ? entry.name : `${parentPath}/${entry.name}`;
   const directory = entry.kind === "directory";
-  const gitFile = directory ? undefined : gitStatusStore.filesByPath.get(path);
+  const gitFile = gitStatusStore.filesByPath.get(path);
+  const gitDirectory = directory && gitFile === undefined ? gitStatusStore.directoriesByPath.get(path) : undefined;
+  const gitState = gitFile?.status ?? gitDirectory?.status;
+  const gitColor = fileTreeGitColor(gitState, theme.palette.mode);
+  const ignored = tree.gitIgnore.paths.get(path) === true && gitState === undefined;
   const blocked = entry.linkError !== undefined;
   const expanded = directory && !blocked && tree.expanded.has(path);
   const ariaExpanded = directory ? expanded : undefined;
@@ -87,11 +92,12 @@ export function FileTreeEntry({
     tooltip = `${path} → ${entry.linkTarget}`;
   }
   if (entry.linkError !== undefined) tooltip += ` — ${t(`files.errors.${entry.linkError}`)}`;
-  const gitStatusLabel = gitFile === undefined
-    ? null
-    : t(`files.gitStatus.${gitFile.status}`);
+  let gitStatusLabel: string | null = null;
+  if (gitFile !== undefined) gitStatusLabel = t(`files.gitStatus.${gitFile.status}`);
+  if (gitDirectory !== undefined) gitStatusLabel = describeGitDirectory(gitDirectory, t);
   if (gitStatusLabel !== null) tooltip += ` — ${gitStatusLabel}`;
-  let color = directory ? "primary.main" : "text.primary";
+  if (ignored) tooltip += ` — ${t("files.ignoredByGit")}`;
+  let color = "text.primary";
   let lock = null;
   if (entry.linkAccess?.external) {
     tooltip += ` — ${t(`files.access.${entry.linkAccess.access}`)}`;
@@ -101,6 +107,7 @@ export function FileTreeEntry({
       lock = <LockOutlined sx={{ fontSize: 14 }} />;
     }
   }
+  if (ignored) color = "text.secondary";
   if (disabled) color = "text.disabled";
 
   /** Keeps the context menu usable even when normal opening is prohibited. */
@@ -147,17 +154,10 @@ export function FileTreeEntry({
       createExplorerFileOpenIntent(gitFile)
     );
   }
-  const gitStatusBadge = gitFile === undefined || gitStatusLabel === null ? null : (
-    <Box
-      component="span"
-      className={`git-file-state git-file-state-${gitFile.status}`}
-      title={gitStatusLabel}
-      aria-label={gitStatusLabel}
-      sx={{ ml: "auto" }}
-    >
-      {getStatusDisplay(gitFile.status)}
-    </Box>
-  );
+  let gitStatusBadge = null;
+  if (gitState !== undefined && gitColor !== undefined && gitStatusLabel !== null) {
+    gitStatusBadge = <FileTreeGitBadge status={gitState} summary={gitDirectory} label={gitStatusLabel} color={gitColor} />;
+  }
   return (
     <>
       <Tooltip title={tooltip} placement="left">
@@ -168,14 +168,15 @@ export function FileTreeEntry({
             selected={selected}
             onClick={open}
             role="treeitem"
+            data-git-ignored={ignored}
             aria-expanded={ariaExpanded}
             sx={{ pl: depth * 1.5, gap: 0.5, minHeight: 30, color, cursor: disabled ? "default" : "pointer" }}
           >
             {arrow}
-            {icon}
+            <Box component="span" data-file-icon sx={{ display: "inline-flex", color: gitColor, flexShrink: 0 }}>{icon}</Box>
             {linkIndicator}
             {lock}
-            <Typography variant="body2" noWrap>
+            <Typography variant="body2" noWrap sx={{ minWidth: 0, flex: 1 }}>
               {entry.name}
             </Typography>
             {gitStatusBadge}
@@ -187,17 +188,6 @@ export function FileTreeEntry({
       {children}
     </>
   );
-}
-
-/** Returns the compact Git state marker shared with the Git panel convention. */
-function getStatusDisplay(status: OpenCodexGitFileState): string {
-  if (status === "added" || status === "untracked") return "A";
-  if (status === "modified") return "M";
-  if (status === "deleted") return "D";
-  if (status === "renamed") return "R";
-  if (status === "copied") return "C";
-  if (status === "conflicted") return "!";
-  return "?";
 }
 
 export const FileTreeEntryX = observer(FileTreeEntry);

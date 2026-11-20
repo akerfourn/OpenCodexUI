@@ -84,6 +84,7 @@ export class OpenCodexRequestRouter {
       case "debug":
         return this.runtime.debug.execute(request.action);
       case "workspaceFiles.linkAccess":
+      case "workspaceFiles.ignored":
       case "workspaceFiles.previewAsset":
       case "workspaceFiles.setLinkAccess":
       case "workspaceFiles.stat":
