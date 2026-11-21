@@ -1,5 +1,5 @@
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
-import { CodexProcessError } from "@open-codex-ui/codex-rpc";
+import { CodexProcessError, JsonRpcError } from "@open-codex-ui/codex-rpc";
 
 import {
   normalizeError,
@@ -40,6 +40,9 @@ export class RuntimeErrorCoordinator {
    */
   handleRequestError(request: OpenCodexRequest, error: unknown): never {
     const normalized = normalizeError(error, this.options.settings.getSettings().language);
+    if (error instanceof JsonRpcError && error.requestContext !== undefined) {
+      normalized.details = { requestType: request.type, sourceId: this.readRequestSourceId(request), rpc: normalized.details };
+    }
     const recoverableThreadId = this.readRecoverableThreadId(request, error);
     this.options.logs.persistLog("error", normalized.message, normalized.details);
     this.options.events.emit({

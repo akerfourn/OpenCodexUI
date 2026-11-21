@@ -55,6 +55,33 @@ describe("parseJsonRpcLine", () => {
 });
 
 describe("CodexAppServerClient", () => {
+  it("should resolve host executable names before sending RPC and retain safe rejected-request metadata", async () => {
+    const fakeProcess = new FakeProcess();
+    fakeProcess.stdin.on("finish", () => fakeProcess.emit("close", 0, null));
+    const resolveProcessExecutable = vi.fn(async () => "C:\\Git\\cmd\\git.exe");
+    const client = new CodexAppServerClient({ processFactory: () => fakeProcess, resolveProcessExecutable,
+      requestTimeoutMs: 1_000 });
+    const commands: unknown[] = [];
+    respondToRequests(fakeProcess, request => {
+      if (request.id === undefined) return;
+      if (request.method === "initialize") {
+        fakeProcess.stdout.write(JSON.stringify({ id: request.id, result: {} }) + "\n");
+        return;
+      }
+      commands.push(request.params);
+      fakeProcess.stdout.write(JSON.stringify({ id: request.id, error: { code: -32603,
+        message: "failed to spawn process: program not found" } }) + "\n");
+    });
+    const params = { command: ["git", "commit", "-m", "private-message"], cwd: "C:\\Project", processHandle: "process" };
+    const request = client.request("process/spawn", params);
+    await expect(request).rejects.toMatchObject({ code: -32603, requestContext: {
+      method: "process/spawn", executable: "C:\\Git\\cmd\\git.exe", cwd: "C:\\Project"
+    } });
+    expect(commands).toEqual([{ ...params, command: ["C:\\Git\\cmd\\git.exe", "commit", "-m", "private-message"] }]);
+    expect(params.command[0]).toBe("git");
+    expect(client.isBusy).toBe(false);
+    await client.dispose();
+  });
   it("should expose the source Codex home from initialization without issuing a second handshake", async () => {
     const fakeProcess = new FakeProcess();
     const client = createClient(fakeProcess);

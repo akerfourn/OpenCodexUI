@@ -29,6 +29,7 @@ import { CodexDictationService } from "./backend/dictation/CodexDictationService
 import { resolveSourceCommand } from "./backend/sources/sourceMapping.js";
 import { SourceResourcesService } from "./backend/sources/SourceResourcesService.js";
 import { createSourceResourceProcessFactory } from "./backend/sources/resources/sourceResourceProcess.js";
+import { createSourceExecutableResolver } from "./backend/sources/sourceExecutableResolver.js";
 import { resolveWorkspaceToolRequest } from "./backend/workspaces/workspaceToolContext.js";
 import { initializeDefaultWorkspaceRoot } from "./backend/workspaces/initializeDefaultWorkspaceRoot.js";
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
@@ -215,6 +216,7 @@ export class OpenCodexBackendRuntime {
       return new CodexAppServerClient({
         command: resolveSourceCommand(source, this.settings.get().codexCommand),
         processFactory: await createSourceResourceProcessFactory(source),
+        resolveProcessExecutable: createSourceExecutableResolver(source),
         clientInfo: { name: "OpenCodexUI_dictation", version: options.appVersion ?? "unknown" },
         experimentalApi: true, requestTimeoutMs: 20_000
       });

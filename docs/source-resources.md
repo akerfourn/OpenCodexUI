@@ -6,6 +6,9 @@ These settings are saved per source, including across application restarts.
 WSL, SSH and custom commands do not expose these controls: their execution
 environment cannot be inferred from local file access.
 
+[Command executable lookup](source-command-execution.md) is independent of
+these limits and also applies to native Windows sources using the defaults.
+
 Saving never restarts Codex, changes project associations or interrupts chats.
 The next source launch uses the saved policy. To apply it to an existing
 instance, wait until its work finishes and use Restart in the source list.

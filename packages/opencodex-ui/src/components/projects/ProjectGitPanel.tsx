@@ -254,7 +254,7 @@ export function ProjectGitPanel({ store, projectStore }: ProjectGitPanelProps) {
           <Alert severity="warning">{t("git.sourceUnavailable")}</Alert>
         ) : null}
 
-        {gitStore.isAvailable && gitStore.statusStore.hasLoaded && !gitStore.statusStore.isRepository ? (
+        {gitStore.isAvailable && gitStore.statusStore.hasValidStatus && !gitStore.statusStore.isRepository ? (
           <Alert
             severity="info"
             action={

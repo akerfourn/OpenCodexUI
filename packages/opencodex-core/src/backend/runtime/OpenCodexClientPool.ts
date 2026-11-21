@@ -8,6 +8,7 @@ import type { CachedSource } from "@open-codex-ui/opencodex-cache";
 import type { SourceInstanceSnapshot } from "@open-codex-ui/opencodex-protocol";
 import { resolveSourceCommand } from "../sources/sourceMapping.js";
 import { createSourceResourceProcessFactory } from "../sources/resources/sourceResourceProcess.js";
+import { createSourceExecutableResolver } from "../sources/sourceExecutableResolver.js";
 import type { RuntimeEventPort, RuntimeSettingsPort } from "./runtimePorts.js";
 
 export interface OpenCodexClientPoolOptions {
@@ -221,6 +222,7 @@ export class OpenCodexClientPool {
     const clientOptions: CodexAppServerClientOptions = {
       command: resolveSourceCommand(source, settings.codexCommand),
       processFactory,
+      resolveProcessExecutable: createSourceExecutableResolver(source),
       clientInfo: { name: "OpenCodexUI", version: this.options.appVersion ?? "unknown" },
       experimentalApi: settings.experimentalApi,
       logger: message => this.options.logger?.(message),

@@ -35,6 +35,8 @@ export class ProjectGitStatusStore {
   readonly directoriesByPath = observable.map<string, GitDirectoryStatus>({}, { deep: false });
   /** Whether an initial status request has completed. */
   hasLoaded = false;
+  /** Only a successful status can establish that repository initialization is appropriate. */
+  hasValidStatus = false;
   /** Whether the latest read-only status request is pending. */
   isRefreshing = false;
   /** Whether repository initialization is in flight. */
@@ -78,6 +80,7 @@ export class ProjectGitStatusStore {
     if (!this.parent.isAvailable) {
       this.isRefreshing = false;
       this.applyStatus(emptyGitStatus);
+      this.hasValidStatus = false;
       this.hasLoaded = true;
       return;
     }
@@ -108,6 +111,7 @@ export class ProjectGitStatusStore {
       if (sequence !== this.refreshSequence || revision !== this.statusRevision) return;
       runInAction(() => {
         this.parent.errorMessage = readErrorMessage(error);
+        this.hasValidStatus = false;
       });
     } finally {
       runInAction(() => {
@@ -151,6 +155,7 @@ export class ProjectGitStatusStore {
     } catch (error) {
       runInAction(() => {
         this.parent.errorMessage = readErrorMessage(error);
+        this.hasValidStatus = false;
       });
     } finally {
       runInAction(() => {
@@ -166,6 +171,7 @@ export class ProjectGitStatusStore {
    * @param status Git status snapshot.
    */
   applyStatus(status: OpenCodexGitStatus): void {
+    this.hasValidStatus = true;
     this.status = status;
     this.reconcileFileStatuses(createGitFileStatusIndex(status));
     this.reconcileDirectoryStatuses(createGitDirectoryStatusIndex(this.filesByPath));

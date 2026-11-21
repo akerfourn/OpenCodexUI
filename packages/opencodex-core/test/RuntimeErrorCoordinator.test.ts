@@ -1,4 +1,4 @@
-import { CodexProcessError } from "@open-codex-ui/codex-rpc";
+import { CodexProcessError, JsonRpcError } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexEvent,
   OpenCodexRequest
@@ -13,6 +13,18 @@ import type {
 } from "../src/backend/runtime/runtimePorts";
 
 describe("RuntimeErrorCoordinator", () => {
+  it("should retain the source and failing executable in the journal when Codex provides no error data", () => {
+    const persistLog = vi.fn();
+    const coordinator = createCoordinator({ persistLog });
+    const error = new JsonRpcError("failed to spawn process: program not found", -32603, undefined,
+      { method: "process/spawn", executable: "git", cwd: "C:\\Project" });
+    expect(() => coordinator.handleRequestError({ type: "git.status", projectPath: "C:\\Project", sourceId: "source-windows" }, error))
+      .toThrow("[git]");
+    expect(persistLog).toHaveBeenCalledWith("error", expect.stringContaining("[git]"), {
+      requestType: "git.status", sourceId: "source-windows", rpc: { method: "process/spawn", executable: "git",
+        cwd: "C:\\Project", code: -32603, message: error.message, data: null }
+    });
+  });
   it.each([
     { type: "projectCommands.groups.create", projectId: "project", name: "Build" },
     { type: "threads.workspace.history", threadId: "thread" },

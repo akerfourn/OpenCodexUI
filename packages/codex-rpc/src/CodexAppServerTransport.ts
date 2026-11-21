@@ -8,6 +8,7 @@ import { createDisposable } from "./disposable";
 import { isRecord, parseJsonRpcLine, stringifyJsonLine } from "./events";
 import { defaultProcessFactory, normalizeProcessError } from "./process";
 import { stopCodexProcess } from "./stopCodexProcess";
+import { readRequestContext } from "./processRequest";
 import type {
   CodexAppServerClientOptions,
   CodexNotification,
@@ -16,6 +17,7 @@ import type {
   JsonRpcId,
   JsonRpcMessage,
   JsonRpcRequest,
+  JsonRpcRequestContext,
   ProcessFactory,
   ProcessLike
 } from "./types";
@@ -25,6 +27,7 @@ type PendingRequest = {
   resolve: (result: unknown) => void;
   reject: (error: Error) => void;
   timeout: NodeJS.Timeout;
+  context: JsonRpcRequestContext;
 };
 
 type TransportEvents = {
@@ -173,7 +176,8 @@ export class CodexAppServerTransport {
       this.pendingRequests.set(id, {
         resolve: (result) => resolve(result as T),
         reject,
-        timeout
+        timeout,
+        context: readRequestContext(method, params)
       });
 
       process.stdin.write(stringifyJsonLine(request));
@@ -420,7 +424,7 @@ export class CodexAppServerTransport {
         ? message.error.code
         : undefined;
       const data = isRecord(message.error) ? message.error.data : undefined;
-      pending.reject(new JsonRpcError(messageText, code, data));
+      pending.reject(new JsonRpcError(messageText, code, data, pending.context));
       return;
     }
 

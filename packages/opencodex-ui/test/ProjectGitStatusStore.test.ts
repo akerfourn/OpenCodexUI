@@ -12,6 +12,16 @@ import {
 } from "./ProjectGitStatusStore.fixture";
 
 describe("ProjectGitStore Git status", () => {
+  it("should not establish a non-repository status when Git cannot be launched", async () => {
+    const fixture = createProjectGitStatusFixture({ status: createStatus({ isRepository: false }) });
+    fixture.request.mockRejectedValueOnce(new Error("failed to spawn process: program not found"));
+    await fixture.gitStore.statusStore.refresh();
+    expect(fixture.gitStore.statusStore.hasLoaded).toBe(true);
+    expect(fixture.gitStore.statusStore.hasValidStatus).toBe(false);
+    fixture.request.mockResolvedValueOnce(createStatus({ isRepository: false }));
+    await fixture.gitStore.statusStore.refresh();
+    expect(fixture.gitStore.statusStore.hasValidStatus).toBe(true);
+  });
   it("should refresh repository status, load tags, and reset loading flags", async () => {
     const fixture = createProjectGitStatusFixture();
     const status = createStatus({

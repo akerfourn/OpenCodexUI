@@ -35,9 +35,15 @@ export function normalizeError(
   }
 
   if (error instanceof JsonRpcError) {
+    let details = error.data;
+    let label = labels.codexRejectedRequest;
+    if (error.requestContext !== undefined) {
+      details = { ...error.requestContext, code: error.code ?? null, message: error.message, data: error.data ?? null };
+      if (error.requestContext.executable !== undefined) label += ` [${error.requestContext.executable}]`;
+    }
     return {
-      message: `${labels.codexRejectedRequest}: ${error.message}`,
-      details: error.data
+      message: `${label}: ${error.message}`,
+      details
     };
   }
 

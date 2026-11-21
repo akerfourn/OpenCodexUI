@@ -3,6 +3,7 @@
  */
 import { CodexAppServerTransport } from "./CodexAppServerTransport";
 import { CodexClientActivity } from "./CodexClientActivity";
+import { resolveProcessRequest } from "./processRequest";
 import { CodexProcessError, JsonRpcError } from "./types";
 import type {
   CodexAppServerClientOptions,
@@ -58,6 +59,8 @@ export class CodexAppServerClient {
   private readonly transport: CodexAppServerTransport;
   /** Pending requests and long-running work owned by this connection. */
   private readonly activity: CodexClientActivity;
+  /** Source-owned resolver; remote commands must never be resolved on the local host. */
+  private readonly resolveProcessExecutable: CodexAppServerClientOptions["resolveProcessExecutable"];
   /** Retired source clients cannot silently restart through a retained reference. */
   private disposed = false;
 
@@ -68,6 +71,7 @@ export class CodexAppServerClient {
    */
   constructor(options: CodexAppServerClientOptions = {}) {
     this.transport = new CodexAppServerTransport(options);
+    this.resolveProcessExecutable = options.resolveProcessExecutable;
     this.activity = new CodexClientActivity(options.onActivityChange, options.onActivityDetailsChange);
     this.transport.onServerRequest(request => this.activity.requestApproval(request.id));
     this.transport.onNotification(notification => this.activity.notification(notification));
@@ -129,6 +133,10 @@ export class CodexAppServerClient {
    */
   async request<T>(method: string, params?: unknown): Promise<T> {
     this.requireAvailable();
+    if (this.resolveProcessExecutable !== undefined) {
+      params = await resolveProcessRequest(method, params, this.resolveProcessExecutable);
+      this.requireAvailable();
+    }
     const activityRequest = this.activity.begin(method, params);
     let result: T | undefined;
     try {

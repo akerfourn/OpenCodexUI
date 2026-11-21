@@ -60,6 +60,20 @@ export type ProcessLike = Pick<
 
 export type ProcessFactory = (command: string, args: string[]) => ProcessLike;
 
+/** Resolves host process executables only when the owner knows the source's filesystem space. */
+export type ProcessExecutableResolver = (
+  program: string,
+  cwd: string,
+  environment: Readonly<Record<string, string | null>> | undefined
+) => Promise<string>;
+
+/** Safe request metadata: command arguments, scripts, stdin and environment values are excluded. */
+export interface JsonRpcRequestContext {
+  method: string;
+  executable?: string;
+  cwd?: string;
+}
+
 /** Content-free reasons why stopping an owned client could interrupt work. */
 export interface CodexClientActivitySnapshot {
   requestMethods: string[];
@@ -79,6 +93,8 @@ export type CodexAppServerClientOptions = {
   requestTimeoutMs?: number;
   experimentalApi?: boolean;
   processFactory?: ProcessFactory;
+  /** Optional source-aware resolution for process/spawn and command/exec; never starts another process. */
+  resolveProcessExecutable?: ProcessExecutableResolver;
   logger?: (message: string) => void;
   stderr?: (message: string) => void;
   /** Content-free activity transitions for the owning source connection. */
@@ -93,6 +109,8 @@ export type CodexAppServerClientOptions = {
 export class JsonRpcError extends Error {
   readonly code: number | undefined;
   readonly data: unknown;
+  /** Metadata retained even when the server returns no error data. */
+  readonly requestContext: JsonRpcRequestContext | undefined;
 
   /**
    * Creates a JSON-RPC error wrapper.
@@ -100,12 +118,14 @@ export class JsonRpcError extends Error {
    * @param message Human-readable error message.
    * @param code Optional JSON-RPC error code.
    * @param data Optional raw error payload.
+   * @param requestContext Safe metadata about the rejected request.
    */
-  constructor(message: string, code?: number, data?: unknown) {
+  constructor(message: string, code?: number, data?: unknown, requestContext?: JsonRpcRequestContext) {
     super(message);
     this.name = "JsonRpcError";
     this.code = code;
     this.data = data;
+    this.requestContext = requestContext;
   }
 }
 

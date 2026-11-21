@@ -137,6 +137,14 @@ describe("ProjectGitCommitSection", () => {
 });
 
 describe("ProjectGitPanel", () => {
+  it("should offer initialization only after Git positively reports a non-repository", () => {
+    const statusStore = createStatusStore({ hasLoaded: true, hasValidStatus: false, isRepository: false,
+      status: createStatus({ isRepository: false }) });
+    const props = { store: createRootStore(), projectStore: createProjectStore(createGitStore({ statusStore })) };
+    expect(renderToStaticMarkup(<ProjectGitPanelX {...props} />)).not.toContain("git.initializeRepository");
+    statusStore.hasValidStatus = true;
+    expect(renderToStaticMarkup(<ProjectGitPanelX {...props} />)).toContain("git.initializeRepository");
+  });
   it("should keep the remote update check inside the closed actions menu", () => {
     const gitStore = createGitStore({
       statusStore: createStatusStore({
@@ -305,6 +313,7 @@ function createStatusStore(
   return {
     status: createStatus(),
     hasLoaded: true,
+    hasValidStatus: true,
     isLoading: false,
     isInitializingRepository: false,
     isRepository: true,
