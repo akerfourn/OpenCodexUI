@@ -67,7 +67,7 @@ export function useProjectComposePolling(composeStore: ProjectComposeStore): voi
   const refreshIntervalMs = readComposePollingInterval(composeStore.services);
 
   useEffect(() => {
-    if (!composeStore.isAvailable) {
+    if (!composeStore.isAvailable || composeStore.canAutoRefresh === false) {
       return undefined;
     }
 
@@ -88,7 +88,7 @@ export function useProjectComposePolling(composeStore: ProjectComposeStore): voi
     }
 
     function refreshIfStale(): void {
-      if (isDisposed || !isWindowVisible() || !composeStore.isAvailable) {
+      if (isDisposed || !isWindowVisible() || !composeStore.isAvailable || composeStore.canAutoRefresh === false) {
         return;
       }
 
@@ -131,6 +131,7 @@ export function useProjectComposePolling(composeStore: ProjectComposeStore): voi
   }, [
     composeStore,
     composeStore.isAvailable,
+    composeStore.canAutoRefresh,
     composeStore.lastLoadedAt,
     refreshIntervalMs
   ]);

@@ -2,6 +2,7 @@ import type { DockerCommandExecutor } from "./command.js";
 import { runChecked } from "./execution.js";
 import type { DockerAvailability, DockerVersion } from "./models.js";
 import { parseDockerVersion } from "./parsing.js";
+import { describeDockerFailure } from "./availability.js";
 
 const VERSION_TEMPLATE = [
   "{\"clientVersion\":{{json .Client.Version}},",
@@ -33,10 +34,17 @@ export class DockerSystemClient {
     try {
       return { available: true, version: await this.version() };
     } catch (error: unknown) {
-      return {
-        available: false,
-        message: error instanceof Error ? error.message : "Docker is unavailable."
-      };
+      return describeDockerFailure(error, "docker-version");
     }
+  }
+
+  /** Checks the Compose plugin independently of any project configuration. */
+  async composeVersion(): Promise<string> {
+    const result = await runChecked(this.executor, {
+      command: this.command,
+      args: ["compose", "version", "--short"],
+      timeoutMs: 10_000
+    });
+    return result.stdout.trim();
   }
 }

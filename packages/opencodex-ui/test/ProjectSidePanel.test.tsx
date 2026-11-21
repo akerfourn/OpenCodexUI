@@ -159,6 +159,7 @@ describe("ProjectSidePanel", () => {
       composeStore: {
         hasDetectedComposeFiles: true,
         hasComposeFile: true,
+        hasAttention: true,
         isAvailable: true,
         hasLoaded: true,
         isLoading: false
@@ -179,6 +180,7 @@ describe("ProjectSidePanel", () => {
     );
 
     expect(markup).toContain('aria-label="projectTools.compose"');
+    expect(markup).toContain("MuiBadge-colorWarning");
     expect(readToolOrder(markup)).toEqual([
       ...toolOrder.slice(0, 5), "projectTools.compose", ...toolOrder.slice(5)
     ]);

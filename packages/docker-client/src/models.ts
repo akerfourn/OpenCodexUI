@@ -8,7 +8,18 @@ export interface DockerVersion {
 /** Result of probing the Docker CLI and its selected daemon. */
 export type DockerAvailability =
   | { available: true; version: DockerVersion }
-  | { available: false; message: string };
+  | { available: false; message: string; reason?: DockerUnavailableReason; diagnostics?: DockerFailureDiagnostics };
+
+/** Known setup states are distinct from unexpected command failures. */
+export type DockerUnavailableReason =
+  | "cli-missing" | "compose-missing" | "engine-unreachable" | "permission-denied" | "unknown";
+
+/** Output-free failure metadata suitable for application diagnostics. */
+export interface DockerFailureDiagnostics {
+  operation: string;
+  exitCode?: number | null;
+  code?: string | number;
+}
 
 /** Summary of one container visible to the Docker daemon. */
 export interface DockerContainerSummary {

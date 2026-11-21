@@ -19,8 +19,10 @@ import { useEffect, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { RootStore } from "../../stores/RootStore";
+import type { OpenCodexDockerUnavailableReason } from "@open-codex-ui/opencodex-protocol";
 import { HomeDockerContainerRow } from "./HomeDockerContainerRow";
 import { HomeDockerLogsDialogX } from "./HomeDockerLogsDialog";
+import { DockerAvailabilityNotice } from "../docker/DockerAvailabilityNotice";
 
 interface HomeDockerViewProps {
   store: RootStore;
@@ -59,6 +61,14 @@ export function HomeDockerView({ store }: HomeDockerViewProps) {
 
   let content: ReactNode = null;
   const snapshot = dockerStore.snapshot;
+  let availabilityNotice = null;
+  if (dockerStore.hasAttention) {
+    const availability = snapshot?.availability;
+    let reason: OpenCodexDockerUnavailableReason = "unknown";
+    if (availability?.available === false) reason = availability.reason ?? "unknown";
+    availabilityNotice = <DockerAvailabilityNotice reason={reason} scope="host"
+      isLoading={dockerStore.isLoading} onRefresh={handleRefresh} />;
+  }
 
   if (snapshot?.availability.available === false) {
     content = null;
@@ -119,6 +129,7 @@ export function HomeDockerView({ store }: HomeDockerViewProps) {
       </Stack>
 
       {dockerStore.isLoading ? <LinearProgress /> : null}
+      {availabilityNotice}
 
       {snapshot?.availability.available === true ? (
         <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>

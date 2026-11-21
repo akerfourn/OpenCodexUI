@@ -13,6 +13,46 @@ import {
 import type { SourceDockerProcessClient } from "../src/backend/docker/SourceDockerCommandExecutor";
 
 describe("DockerComposeService", () => {
+  it("should retain Compose discovery when Docker cannot be launched on the source", async () => {
+    const client = new FakeSourceClient({ "compose.yaml": true,
+      spawnError: Object.assign(new Error("failed to spawn process: program not found"), { code: -32603 }) });
+    const service = new DockerComposeService({ clients: { ensureClient: async () => client } });
+    const snapshot = await service.readSnapshot("D:\\Projects\\app", "windows-source");
+    expect(snapshot).toMatchObject({ sourceId: "windows-source", composeFile: "compose.yaml", composeFiles: ["compose.yaml"],
+      errorMessage: null, services: [], availability: { available: false, reason: "cli-missing" } });
+  });
+
+  it("should return a setup state when Docker Desktop cannot reach its engine", async () => {
+    const client = new FakeSourceClient({ "compose.yaml": true, exitCode: 1,
+      stderr: "error during connect: open //./pipe/dockerDesktopLinuxEngine: private-path" });
+    const service = new DockerComposeService({ clients: { ensureClient: async () => client } });
+    const snapshot = await service.readSnapshot("D:\\Projects\\app", "source");
+    expect(snapshot).toMatchObject({ errorMessage: null, availability: { available: false, reason: "engine-unreachable",
+      diagnostics: { exitCode: 1 } } });
+    expect(JSON.stringify(snapshot)).not.toContain("private-path");
+    expect(client.spawnedCommands).toHaveLength(2);
+  });
+
+  it("should distinguish a missing Compose plugin from a missing project file", async () => {
+    const client = new FakeSourceClient({ "compose.yaml": true, exitCode: 1,
+      stderr: "docker: unknown command: docker compose" });
+    const service = new DockerComposeService({ clients: { ensureClient: async () => client } });
+    expect(await service.readSnapshot("/app", "source")).toMatchObject({ composeFile: "compose.yaml", errorMessage: null,
+      availability: { available: false, reason: "compose-missing" } });
+  });
+
+  it("should independently probe runtime prerequisites after a project failure and retain the failed stage", async () => {
+    const client = new FakeSourceClient({ "compose.yaml": true, exitCode: 1,
+      stderr: "project configuration is invalid", versionExitCode: 0, composeVersionExitCode: 0 });
+    const service = new DockerComposeService({ clients: { ensureClient: async () => client } });
+    const snapshot = await service.readSnapshot("D:\\Projects\\app", "source");
+    expect(snapshot.errorMessage).toBe("Docker Compose snapshot failed (exit code 1).");
+    expect(snapshot.diagnostics).toEqual({ operation: "compose-config", exitCode: 1 });
+    expect(client.spawnedCommands.slice(-2).map(command => command.slice(0, 3))).toEqual([
+      ["docker", "version", "--format"], ["docker", "compose", "version"]
+    ]);
+    expect(client.spawnedCwds).toEqual(Array(4).fill("D:\\Projects\\app"));
+  });
   it("should detect a primary Compose stack still running from its previous directory", async () => {
     const client = new FakeSourceClient({ containerOutput: JSON.stringify({ ID: "fixture", Names: "web", State: "running",
       Image: "fixture", Labels: "com.docker.compose.project=legacy-name,com.docker.compose.project.working_dir=/previous" }) });
@@ -355,6 +395,7 @@ class FakeSourceClient implements SourceDockerProcessClient {
     const spawnParams = params as { command: string[]; processHandle: string };
     this.spawnedCommands.push(spawnParams.command);
     this.spawnedCwds.push(String((params as { cwd?: string }).cwd));
+    if (this.options.spawnError !== undefined) throw this.options.spawnError;
     const operation = spawnParams.command.find(arg => ["config", "ps", "up", "stop", "restart", "logs"].includes(arg));
     const stdout = spawnParams.command.includes("ls") ? this.options.containerOutput ?? "" : operation === "logs"
       ? "service logs"
@@ -365,14 +406,23 @@ class FakeSourceClient implements SourceDockerProcessClient {
             .map((entry) => JSON.stringify(entry))
             .join("\n")
           : "";
+    let probeOutput = stdout;
+    let exitCode = this.options.exitCode ?? 0;
+    if (spawnParams.command[1] === "version") {
+      exitCode = this.options.versionExitCode ?? exitCode;
+      probeOutput = JSON.stringify({ clientVersion: "29.0.0", serverVersion: "29.0.0", serverApiVersion: "1.52" });
+    } else if (spawnParams.command[2] === "version") {
+      exitCode = this.options.composeVersionExitCode ?? exitCode;
+      probeOutput = "2.40.0";
+    }
     queueMicrotask(() => {
       for (const listener of this.listeners) {
         listener({
           method: "process/exited",
           params: {
             processHandle: spawnParams.processHandle,
-            exitCode: this.options.exitCode ?? 0,
-            stdout,
+            exitCode,
+            stdout: probeOutput,
             stdoutCapReached: false,
             stderr: this.options.stderr ?? "",
             stderrCapReached: false
@@ -385,6 +435,9 @@ class FakeSourceClient implements SourceDockerProcessClient {
 }
 
 type FakeSourceClientOptions = {
+  spawnError?: Error;
+  versionExitCode?: number;
+  composeVersionExitCode?: number;
   containerOutput?: string;
   "docker-compose.local.yaml"?: boolean;
   "docker-compose.prod.yml"?: boolean;

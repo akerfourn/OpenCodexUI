@@ -13,6 +13,15 @@ import { HomeDockerView } from "../src/components/home/HomeDockerView";
 import type { RootStore } from "../src/stores/RootStore";
 
 describe("HomeDockerView", () => {
+  it("should show an unavailable dependency state instead of an empty successful inventory", () => {
+    const root = createRootStore();
+    Object.assign(root.dockerHostStore, { hasAttention: true,
+      snapshot: { availability: { available: false, reason: "cli-missing", message: "Docker unavailable" }, containers: [] } });
+    const markup = renderToStaticMarkup(<HomeDockerView store={root} />);
+    expect(markup).toContain("docker.availability.cli-missing.title");
+    expect(markup).not.toContain("docker.empty");
+    expect(markup).not.toContain('role="alert"');
+  });
   it("should render existing containers and their safe actions", () => {
     const markup = renderToStaticMarkup(<HomeDockerView store={createRootStore()} />);
 

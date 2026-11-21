@@ -12,7 +12,7 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import WorkspacesOutlinedIcon from "@mui/icons-material/WorkspacesOutlined";
 import SubjectOutlinedIcon from "@mui/icons-material/SubjectOutlined";
-import { List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
+import { Badge, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
@@ -121,7 +121,9 @@ export function HomeSidebar({ store }: HomeSidebarProps) {
         </ListItemButton>
         <ListItemButton selected={selectedSection === "docker"} onClick={selectDocker}>
           <ListItemIcon>
-            <DnsOutlinedIcon fontSize="small" />
+            <Badge variant="dot" color="warning" invisible={store.dockerHostStore?.hasAttention !== true}>
+              <DnsOutlinedIcon fontSize="small" />
+            </Badge>
           </ListItemIcon>
           <ListItemText primary={t("home.docker")} />
         </ListItemButton>

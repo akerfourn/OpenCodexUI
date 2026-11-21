@@ -32,6 +32,9 @@ Unix sources likewise keep their original launch behavior. Commands generated
 internally by the agent, rather than sent through these UI APIs, remain under
 Codex's control.
 
+Docker's optional dependency states and recovery controls are described in
+[Docker availability](docker.md).
+
 ## Failure diagnostics
 
 A rejected RPC retains its method and error code even when Codex returns no

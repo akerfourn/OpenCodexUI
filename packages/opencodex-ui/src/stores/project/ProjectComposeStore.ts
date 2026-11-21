@@ -117,6 +117,18 @@ export class ProjectComposeStore {
     return sourceId !== null && sourceId !== undefined && this.projectStore.isCodexSourceReady;
   }
 
+  /** Keeps dependency and project problems visible without generating repeated polling failures. */
+  get hasAttention(): boolean {
+    const snapshotError = this.snapshot?.errorMessage;
+    return this.snapshot?.availability?.available === false || this.errorMessage !== null
+      || (snapshotError !== undefined && snapshotError !== null);
+  }
+
+  /** Only healthy snapshots are polled; an explicit refresh can always recheck the environment. */
+  get canAutoRefresh(): boolean {
+    return this.isAvailable && !this.hasAttention;
+  }
+
   /** Clears stale Compose state once when its owning source becomes unavailable. */
   invalidateIfUnavailable(): void {
     if (this.isAvailable) {
@@ -228,7 +240,7 @@ export class ProjectComposeStore {
     const projectPath = (this.projectStore.workspacePath ?? this.projectStore.projectPath);
 
     if (sourceId === null || sourceId === undefined || !this.isAvailable ||
-      !this.hasComposeFile || this.isLoading) {
+      !this.hasComposeFile || this.isLoading || this.hasAttention) {
       return;
     }
 
@@ -301,7 +313,7 @@ export class ProjectComposeStore {
     const projectPath = (this.projectStore.workspacePath ?? this.projectStore.projectPath);
 
     if (sourceId === null || sourceId === undefined || !this.isAvailable ||
-      this.pendingServiceNames.has(serviceName) || !this.hasComposeFile || this.isLoading) {
+      this.pendingServiceNames.has(serviceName) || !this.hasComposeFile || this.isLoading || this.hasAttention) {
       return;
     }
 
@@ -354,7 +366,7 @@ export class ProjectComposeStore {
     sourceId: string
   ): Promise<void> {
     try {
-      const snapshot = await this.root.request<OpenCodexDockerComposeSnapshot>({
+      let snapshot = await this.root.request<OpenCodexDockerComposeSnapshot>({
         type: "docker.compose.snapshot.read",
         ...(this.selectedFiles.has(this.composeContextKey)
           ? { composeFile: this.selectedFiles.get(this.composeContextKey)! } : {}),
@@ -368,8 +380,17 @@ export class ProjectComposeStore {
           return;
         }
 
-        if (snapshot.errorMessage !== null && snapshot.errorMessage !== this.snapshot?.errorMessage) {
-          this.root.reportError(snapshot.errorMessage, projectPath);
+        // A failed discovery cannot prove that previously detected files have disappeared.
+        if (snapshot.errorMessage !== null && snapshot.composeFiles === undefined && this.snapshot !== null) {
+          snapshot = { ...snapshot, composeFile: this.snapshot.composeFile, composeFiles: this.snapshot.composeFiles };
+        }
+
+        if (snapshot.errorMessage !== null && (snapshot.errorMessage !== this.snapshot?.errorMessage
+          || JSON.stringify(snapshot.diagnostics) !== JSON.stringify(this.snapshot?.diagnostics))) {
+          const context = { projectPath, sourceId, composeFile: snapshot.composeFile,
+            operation: snapshot.diagnostics?.operation, exitCode: snapshot.diagnostics?.exitCode,
+            errorCode: snapshot.diagnostics?.code, engineAvailable: snapshot.availability?.available };
+          this.root.reportError(snapshot.errorMessage, context);
         }
         this.snapshot = snapshot;
         this.hasLoaded = true;

@@ -8,6 +8,8 @@ import type {
   OpenCodexDockerContainerLogs,
   OpenCodexDockerHostSnapshot
 } from "@open-codex-ui/opencodex-protocol";
+import { describeDockerFailure } from "@open-codex-ui/docker-client";
+import { mapDockerAvailability } from "./dockerAvailability.js";
 
 const DEFAULT_LOG_TAIL = 200;
 const MAX_LOG_TAIL = 2_000;
@@ -38,10 +40,7 @@ export class DockerHostService {
 
     if (!availability.available) {
       return {
-        availability: {
-          available: false,
-          message: availability.message
-        },
+        availability: mapDockerAvailability(availability),
         containers: []
       };
     }
@@ -59,10 +58,7 @@ export class DockerHostService {
       };
     } catch (error: unknown) {
       return {
-        availability: {
-          available: false,
-          message: readErrorMessage(error)
-        },
+        availability: mapDockerAvailability(describeDockerFailure(error, "container-list")),
         containers: []
       };
     }
@@ -135,9 +131,4 @@ function boundText(text: string, maxCharacters: number): { text: string; truncat
     text: text.slice(text.length - maxCharacters),
     truncated: true
   };
-}
-
-/** Normalizes unknown Docker failures for availability diagnostics. */
-function readErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Docker is unavailable.";
 }

@@ -9,7 +9,20 @@ export type OpenCodexDockerAvailability =
   | {
       available: false;
       message: string;
+      reason?: OpenCodexDockerUnavailableReason;
+      diagnostics?: OpenCodexDockerFailureDiagnostics;
     };
+
+/** Optional Docker dependencies have a visible state rather than a repeated application error. */
+export type OpenCodexDockerUnavailableReason =
+  | "cli-missing" | "compose-missing" | "engine-unreachable" | "permission-denied" | "unknown";
+
+/** Safe failure context; command output, scripts and environment values are excluded. */
+export interface OpenCodexDockerFailureDiagnostics {
+  operation: string;
+  exitCode?: number | null;
+  code?: string | number;
+}
 
 /** Display-safe summary of one container in the host Docker context. */
 export interface OpenCodexDockerContainer {
@@ -79,6 +92,10 @@ export interface OpenCodexDockerComposeSnapshot {
   /** No automatic fallback when a remembered file disappears. */
   selectionIssue?: "required" | "missing" | null;
   errorMessage: string | null;
+  /** Unavailable optional tooling does not populate errorMessage. */
+  availability?: OpenCodexDockerAvailability;
+  /** Preserves the failing check without exposing resolved Compose configuration. */
+  diagnostics?: OpenCodexDockerFailureDiagnostics;
   services: OpenCodexDockerComposeService[];
 }
 

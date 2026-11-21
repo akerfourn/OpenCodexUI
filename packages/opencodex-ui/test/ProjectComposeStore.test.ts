@@ -10,6 +10,50 @@ import type { ProjectStore } from "../src/stores/project/ProjectStore";
 import { ProjectComposeStore } from "../src/stores/project/ProjectComposeStore";
 
 describe("ProjectComposeStore", () => {
+  it("should keep unavailable Docker visible, pause polling and recover after an explicit refresh without logging setup errors", async () => {
+    let snapshot: OpenCodexDockerComposeSnapshot = { ...createSnapshot(), services: [],
+      availability: { available: false, reason: "engine-unreachable", message: "Engine unavailable" } };
+    const reportError = vi.fn();
+    const request = vi.fn(async () => snapshot);
+    const project = { project: { sourceId: "source-1" }, projectPath: "/workspace/project", isCodexSourceReady: true };
+    const store = new ProjectComposeStore(project as unknown as ProjectStore, { request, reportError } as never);
+    await store.load();
+    expect(store.hasDetectedComposeFiles).toBe(true);
+    expect(store.hasAttention).toBe(true);
+    expect(store.canAutoRefresh).toBe(false);
+    await store.up("web");
+    expect(request).toHaveBeenCalledOnce();
+    expect(reportError).not.toHaveBeenCalled();
+    snapshot = createSnapshot();
+    await store.load();
+    expect(store.canAutoRefresh).toBe(true);
+    expect(store.hasAttention).toBe(false);
+  });
+
+  it("should journal an unexpected project failure once with its source and failed stage", async () => {
+    const snapshot = { ...createSnapshot(), errorMessage: "Compose check failed", services: [],
+      diagnostics: { operation: "compose-config", exitCode: 1 } };
+    const reportError = vi.fn();
+    const project = { project: { sourceId: "source-1" }, projectPath: "/workspace/project", isCodexSourceReady: true };
+    const store = new ProjectComposeStore(project as unknown as ProjectStore,
+      { request: vi.fn(async () => snapshot), reportError } as never);
+    await store.load();
+    await store.load();
+    expect(reportError).toHaveBeenCalledOnce();
+    expect(reportError.mock.calls[0][1]).toMatchObject({ projectPath: "/workspace/project", sourceId: "source-1",
+      composeFile: "compose.yaml", operation: "compose-config", exitCode: 1 });
+    expect(store.canAutoRefresh).toBe(false);
+  });
+
+  it("should keep the module accessible when discovery fails after a Compose file was detected", async () => {
+    const request = vi.fn(async () => ({ ...createSnapshot(), composeFile: null, errorMessage: "Discovery failed" }));
+    const store = createStore(request);
+    store.snapshot = createSnapshot();
+    await store.load();
+    expect(store.hasDetectedComposeFiles).toBe(true);
+    expect(store.hasAttention).toBe(true);
+    expect(store.canAutoRefresh).toBe(false);
+  });
   it("should not query Compose for an orphan project", async () => {
     const request = vi.fn(async () => createSnapshot());
     const store = createStore(request, null);

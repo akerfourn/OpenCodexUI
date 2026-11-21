@@ -18,10 +18,12 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ProjectStore } from "../../stores/project/ProjectStore";
+import type { OpenCodexDockerUnavailableReason } from "@open-codex-ui/opencodex-protocol";
 import { ProjectComposeLogsDialogX } from "./ProjectComposeLogsDialog";
 import { ProjectComposeServiceDialogX } from "./ProjectComposeServiceDialog";
 import { ProjectComposeServiceRowX } from "./ProjectComposeServiceRow";
 import { useProjectComposePolling } from "./useProjectComposePolling";
+import { DockerAvailabilityNotice } from "../docker/DockerAvailabilityNotice";
 
 type ProjectComposePanelProps = {
   projectStore: ProjectStore;
@@ -101,6 +103,16 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
   ));
   const isSelectedServicePending = selectedService !== null &&
     composeStore.isServicePending(selectedService.name);
+  let availabilityNotice = null;
+  if (composeStore.hasAttention) {
+    const availability = composeStore.snapshot?.availability;
+    let reason: OpenCodexDockerUnavailableReason = "unknown";
+    if (availability?.available === false) {
+      reason = availability.reason ?? "unknown";
+    }
+    availabilityNotice = <Box sx={{ px: 1.5, pt: 1 }}><DockerAvailabilityNotice reason={reason} scope="source"
+      isLoading={composeStore.isLoading} onRefresh={handleRefresh} /></Box>;
+  }
 
   return (
     <section className="project-compose-panel">
@@ -129,6 +141,7 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
       </Stack>
 
       <ProjectComposeFileSelectorX store={composeStore} />
+      {availabilityNotice}
       {composeStore.isLoading ? <LinearProgress /> : null}
 
       {!isAvailable && projectStore.project?.sourceId !== null &&
@@ -147,7 +160,7 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
             </Typography>
           </Stack>
         ) : null}
-        {composeStore.hasLoaded && composeStore.services.length === 0 && composeStore.snapshot?.selectionIssue == null ? (
+        {composeStore.hasLoaded && !composeStore.hasAttention && composeStore.services.length === 0 && composeStore.snapshot?.selectionIssue == null ? (
           <Typography variant="body2" color="text.secondary">
             {t("docker.compose.empty")}
           </Typography>
@@ -159,7 +172,7 @@ export function ProjectComposePanel({ projectStore }: ProjectComposePanelProps) 
         service={selectedService}
         composeFile={composeStore.snapshot?.composeFile ?? null}
         isPending={isSelectedServicePending}
-        isAvailable={isAvailable && !composeStore.isLoading && composeStore.hasComposeFile}
+        isAvailable={isAvailable && !composeStore.isLoading && composeStore.hasComposeFile && !composeStore.hasAttention}
         onClose={handleCloseDetails}
         onStart={handleStart}
         onStop={handleStop}

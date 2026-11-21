@@ -16,8 +16,8 @@ export type SourceDockerProcessClient = Pick<CodexAppServerClient, "request" | "
 
 /** Executes Docker through the source-owned app-server process API. */
 export class SourceDockerCommandExecutor implements DockerCommandExecutor {
-  /** Creates an executor bound to one source app-server client. */
-  constructor(private readonly client: SourceDockerProcessClient) {}
+  /** Binds Docker to one source, with a source-owned default directory for runtime probes. */
+  constructor(private readonly client: SourceDockerProcessClient, private readonly defaultCwd?: string) {}
 
   /** Runs a bounded Docker command and collects its process result. */
   async run(request: DockerCommandRequest): Promise<DockerCommandResult> {
@@ -116,7 +116,7 @@ export class SourceDockerCommandExecutor implements DockerCommandExecutor {
     const spawnParams: Record<string, unknown> = {
       command: [request.command, ...request.args],
       processHandle,
-      cwd: request.cwd,
+      cwd: request.cwd ?? this.defaultCwd,
       streamStdoutStderr: false,
       outputBytesCap,
       timeoutMs

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { OpenCodexDockerComposeSnapshot } from "@open-codex-ui/opencodex-protocol";
 
-import type { ProjectComposeStore } from "../src/stores/project/ProjectComposeStore";
+import { ProjectComposeStore } from "../src/stores/project/ProjectComposeStore";
 import type { ProjectStore } from "../src/stores/project/ProjectStore";
 
 vi.mock("react-i18next", () => ({
@@ -15,6 +15,18 @@ import { readComposeServiceCapabilities } from "../src/components/projects/Proje
 import { ProjectComposeServiceDetails } from "../src/components/projects/ProjectComposeServiceDetails";
 
 describe("ProjectComposePanel", () => {
+  it("should present an unavailable engine as a module state rather than an empty successful project", () => {
+    const project = { project: { path: "/workspace/project", sourceId: "source-1" },
+      projectPath: "/workspace/project", isCodexSourceReady: true } as unknown as ProjectStore;
+    const composeStore = new ProjectComposeStore(project, { request: vi.fn(), reportError: vi.fn() } as never);
+    composeStore.snapshot = { ...createSnapshot(), services: [],
+      availability: { available: false, reason: "engine-unreachable", message: "Engine unavailable" } };
+    composeStore.hasLoaded = true;
+    const markup = renderToStaticMarkup(<ProjectComposePanel projectStore={{ ...project, composeStore } as ProjectStore} />);
+    expect(markup).toContain("docker.availability.engine-unreachable.title");
+    expect(markup).not.toContain("docker.compose.empty");
+    expect(markup).not.toContain('role="alert"');
+  });
   it("should show compact service states that open a detail dialog", () => {
     const snapshot = createSnapshot();
     const unknownService = {

@@ -1,6 +1,34 @@
 /** French translations for host Docker management. */
 export const frDocker = {
   docker: {
+    availability: {
+      close: "Fermer",
+      explain: "Comprendre l’état : {{status}}",
+      recheck: "Revérifier",
+      host: "Cette vérification concerne le Docker de l’ordinateur qui exécute OpenCodexUI et son contexte Docker actif.",
+      source: "Cette vérification concerne l’environnement de la source du projet. Une installation sur l’ordinateur hôte ne suffit pas nécessairement pour une source WSL ou SSH.",
+      pollingPaused: "Le rafraîchissement automatique est suspendu. Après avoir corrigé la situation, cliquez sur Revérifier pour reprendre.",
+      "cli-missing": {
+        title: "Docker introuvable",
+        description: "La commande Docker n’a pas été trouvée. Vérifiez son installation et sa présence dans le PATH de cet environnement, puis redémarrez la source si nécessaire."
+      },
+      "compose-missing": {
+        title: "Compose indisponible",
+        description: "Le plugin Docker Compose n’est pas disponible. Installez ou réparez le plugin Compose v2 dans cet environnement."
+      },
+      "engine-unreachable": {
+        title: "Moteur Docker injoignable",
+        description: "La commande Docker est présente, mais son moteur ne répond pas. Sous Windows ou macOS, vérifiez que Docker Desktop est démarré. Vérifiez aussi le service Docker et le contexte sélectionné."
+      },
+      "permission-denied": {
+        title: "Accès Docker refusé",
+        description: "Cet environnement n’a pas les droits nécessaires pour accéder à Docker. Vérifiez les autorisations d’accès au moteur Docker."
+      },
+      unknown: {
+        title: "Docker à vérifier",
+        description: "Une vérification Docker a échoué. Consultez le journal d’erreurs pour connaître l’étape concernée. Vérifiez aussi la configuration Compose du projet si le moteur fonctionne."
+      }
+    },
     actions: {
       logs: "Voir les logs",
       restart: "Redémarrer",

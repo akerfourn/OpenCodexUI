@@ -76,7 +76,9 @@ describe("DockerClient", () => {
     });
     await expect(client.system.availability()).resolves.toEqual({
       available: false,
-      message: expect.stringContaining("Cannot connect to the Docker daemon")
+      reason: "engine-unreachable",
+      message: "The Docker engine is unreachable in the selected context.",
+      diagnostics: { operation: "docker-version", exitCode: 1 }
     });
     expect(executor.requests[0]?.command).toBe("docker.exe");
   });

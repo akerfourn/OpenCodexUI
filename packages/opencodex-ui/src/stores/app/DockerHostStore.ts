@@ -1,4 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
+import type { ApplicationErrorContext } from "./ApplicationErrorReporter";
 
 import type {
   OpenCodexDockerContainerLogs,
@@ -10,7 +11,7 @@ import type {
 export interface DockerHostRequestPort {
   request<T = unknown>(request: OpenCodexRequest): Promise<T>;
   /** Journals non-throwing Docker availability failures. */
-  reportError(error: unknown, context?: string): void;
+  reportError(error: unknown, context?: ApplicationErrorContext): void;
 }
 
 /** Lifecycle actions supported for existing host containers. */
@@ -42,6 +43,11 @@ export class DockerHostStore {
     makeAutoObservable<DockerHostStore, "root">(this, { root: false });
   }
 
+  /** Optional dependency problems remain visible in Home without recurring error notifications. */
+  get hasAttention(): boolean {
+    return this.snapshot?.availability.available === false || this.errorMessage !== null;
+  }
+
   /** Reads Docker availability and existing containers. */
   async load(): Promise<void> {
     if (this.isLoading) {
@@ -57,9 +63,12 @@ export class DockerHostStore {
       });
 
       runInAction(() => {
-        if (!snapshot.availability.available && (this.snapshot?.availability.available !== false
+        if (!snapshot.availability.available && (snapshot.availability.reason === undefined || snapshot.availability.reason === "unknown")
+          && (this.snapshot?.availability.available !== false
           || this.snapshot.availability.message !== snapshot.availability.message)) {
-          this.root.reportError(snapshot.availability.message, "Docker");
+          this.root.reportError(snapshot.availability.message, { module: "Docker", scope: "host",
+            reason: snapshot.availability.reason, operation: snapshot.availability.diagnostics?.operation,
+            exitCode: snapshot.availability.diagnostics?.exitCode, errorCode: snapshot.availability.diagnostics?.code });
         }
         this.snapshot = snapshot;
         this.hasLoaded = true;

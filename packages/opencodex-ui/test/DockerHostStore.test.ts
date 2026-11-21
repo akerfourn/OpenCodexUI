@@ -12,6 +12,30 @@ import {
 } from "../src/stores/app/DockerHostStore";
 
 describe("DockerHostStore", () => {
+  it("should expose an unavailable optional Docker installation without adding errors on repeated checks", async () => {
+    let snapshot: OpenCodexDockerHostSnapshot = { availability: { available: false, reason: "cli-missing",
+      message: "Docker executable was not found in this environment." }, containers: [] };
+    const reportError = vi.fn();
+    const store = new DockerHostStore({ request: vi.fn(async () => snapshot), reportError });
+    await store.load();
+    await store.load();
+    expect(store.hasAttention).toBe(true);
+    expect(reportError).not.toHaveBeenCalled();
+    snapshot = createSnapshot();
+    await store.load();
+    expect(store.hasAttention).toBe(false);
+  });
+
+  it("should keep unexpected Docker failures in the journal and deduplicate an unchanged state", async () => {
+    const reportError = vi.fn();
+    const store = new DockerHostStore({ request: vi.fn(async () => ({ availability: { available: false,
+      reason: "unknown", message: "Docker check failed", diagnostics: { operation: "container-list", exitCode: 1 } }, containers: [] })),
+      reportError } as unknown as DockerHostRequestPort);
+    await store.load();
+    await store.load();
+    expect(reportError).toHaveBeenCalledOnce();
+    expect(reportError.mock.calls[0][1]).toMatchObject({ scope: "host", operation: "container-list", exitCode: 1 });
+  });
   it("should load and memoize the latest host snapshot", async () => {
     const request = vi.fn(async () => createSnapshot());
     const store = new DockerHostStore({ request } as DockerHostRequestPort);

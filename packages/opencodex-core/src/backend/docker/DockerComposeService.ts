@@ -9,6 +9,8 @@ import {
   DockerClient,
   DockerCommandError,
   DockerResponseError,
+  describeDockerFailure,
+  dockerFailureDiagnostics,
   type DockerComposeContainer as ClientDockerComposeContainer,
   type DockerComposeClient,
   type DockerComposeService as ClientDockerComposeService
@@ -26,6 +28,7 @@ import {
   type SourceDockerProcessClient
 } from "./SourceDockerCommandExecutor.js";
 import type { ClientPort } from "../runtime/runtimePorts.js";
+import { mapDockerAvailability } from "./dockerAvailability.js";
 
 const DEFAULT_LOG_TAIL = 200;
 const MAX_LOG_TAIL = 2_000;
@@ -114,7 +117,31 @@ export class DockerComposeService {
         services: services.map(mapComposeService)
       };
     } catch (error: unknown) {
-      return { ...createErrorSnapshot(projectPath, sourceId, composeFile, "snapshot", error), composeFiles };
+      const failure = describeDockerFailure(error, composeFailureOperation(error, "snapshot"));
+      if (failure.reason !== "unknown") {
+        return { projectPath, sourceId, composeFile, composeFiles, errorMessage: null, services: [],
+          availability: mapDockerAvailability(failure) };
+      }
+      const docker = new DockerClient({ executor: new SourceDockerCommandExecutor(client, projectPath) });
+      let availability = await docker.system.availability();
+      if (!availability.available && availability.reason !== undefined && availability.reason !== "unknown") {
+        return { projectPath, sourceId, composeFile, composeFiles, errorMessage: null, services: [],
+          availability: mapDockerAvailability(availability) };
+      }
+      if (availability.available) {
+        try {
+          await docker.system.composeVersion();
+        } catch (probeError: unknown) {
+          const composeAvailability = describeDockerFailure(probeError, "compose-version");
+          if (composeAvailability.reason !== "unknown") {
+            return { projectPath, sourceId, composeFile, composeFiles, errorMessage: null, services: [],
+              availability: mapDockerAvailability(composeAvailability) };
+          }
+          availability = composeAvailability;
+        }
+      }
+      return { ...createErrorSnapshot(projectPath, sourceId, composeFile, "snapshot", error), composeFiles,
+        availability: mapDockerAvailability(availability) };
     }
   }
 
@@ -370,8 +397,19 @@ function createErrorSnapshot(
     sourceId,
     composeFile,
     errorMessage: createSafeComposeError(operation, error).message,
+    diagnostics: dockerFailureDiagnostics(error, composeFailureOperation(error, operation)),
     services: []
   };
+}
+
+/** Locates the failed Compose stage without retaining arguments or resolved configuration. */
+function composeFailureOperation(error: unknown, fallback: string): string {
+  if (error instanceof DockerCommandError) {
+    for (const operation of ["config", "ps", "up", "stop", "restart", "logs"]) {
+      if (error.request.args.includes(operation)) return `compose-${operation}`;
+    }
+  }
+  return fallback;
 }
 
 /** Identifies the public operation whose failures must be safe to display. */

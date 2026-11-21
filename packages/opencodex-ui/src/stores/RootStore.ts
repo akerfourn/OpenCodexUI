@@ -21,7 +21,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { AppStore } from "./app/AppStore";
-import { ApplicationErrorReporter } from "./app/ApplicationErrorReporter";
+import { ApplicationErrorReporter, type ApplicationErrorContext } from "./app/ApplicationErrorReporter";
 import { AppUpdateStore } from "./app/AppUpdateStore";
 import { ApprovalsStore } from "./app/ApprovalsStore";
 import { ChatEventLogStore } from "./chat/ChatEventLogStore";
@@ -111,7 +111,7 @@ export class RootStore {
   }
 
   /** Journals renderer failures without duplicating errors already reported by the backend. */
-  reportError(error: unknown, context?: string): void {
+  reportError(error: unknown, context?: ApplicationErrorContext): void {
     this.errorReporter.report(error, context);
   }
 

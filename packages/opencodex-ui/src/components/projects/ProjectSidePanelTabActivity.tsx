@@ -65,6 +65,9 @@ function readActivityState(
   }
 
   if (activity === "compose") {
+    if (projectStore.composeStore?.hasAttention === true) {
+      return { hasActivity: true, color: "warning" };
+    }
     return {
       hasActivity: projectStore.composeStore?.hasNonStoppedContainer === true
     };
