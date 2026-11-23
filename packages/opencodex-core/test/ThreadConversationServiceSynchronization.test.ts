@@ -18,6 +18,22 @@ describe("ThreadConversationService synchronization", () => {
     vi.useRealTimers();
   });
 
+  it("should retain personal ownership and archive state when native metadata only reports cwd", async () => {
+    vi.useFakeTimers();
+    const fixture = createFixture({
+      seedTurns: [createTurn("turn-1", "before")], latestTurns: [createTurn("turn-1", "after")]
+    });
+    const entry = fixture.threadTurnCache.get("thread-1")!;
+    entry.thread = { ...entry.thread, discussionEnvironmentId: "personal", isArchived: true };
+
+    await completeTurn(fixture.service, "thread-1", "source-1");
+
+    expect(entry.thread).toMatchObject({ discussionEnvironmentId: "personal", isArchived: true });
+    expect(fixture.indexedThreads).toEqual([
+      expect.objectContaining({ discussionEnvironmentId: "personal", isArchived: true })
+    ]);
+  });
+
   it("emits sync events and writes changed turns in order", async () => {
     vi.useFakeTimers();
     const fixture = createFixture({

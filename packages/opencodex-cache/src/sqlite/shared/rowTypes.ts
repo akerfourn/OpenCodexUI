@@ -18,6 +18,7 @@ export type ThreadRow = {
   parent_thread_id: string | null;
   source_id: string | null;
   cwd: string | null;
+  discussion_environment_id?: string | null;
   project_default_name: string | null;
   project_display_name: string | null;
   branch_name: string | null;
@@ -103,6 +104,10 @@ export type CollaborationEventRow = {
  * Joined SQLite row used to map cached projects.
  */
 export type ProjectRow = {
+  kind?: "project" | "discussion";
+  discussion_key?: string | null;
+  discussion_thread_id?: string | null;
+  discussion_creation_cancelled?: number;
   id: string;
   source_id: string | null;
   source_key: string;

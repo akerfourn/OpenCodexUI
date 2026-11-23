@@ -55,7 +55,7 @@ export async function upsertProject(
     throw new Error("Project could not be read after being cached.");
   }
 
-  ensureProjectTreeItem(database, row.id);
+  if (row.kind !== "discussion") ensureProjectTreeItem(database, row.id);
   return mapProjectRow(row);
 }
 
@@ -66,7 +66,9 @@ export async function upsertProject(
  *
  * @returns Cached project rows.
  */
-export async function listProjects(database: BetterSqliteDatabase): Promise<CachedProject[]> {
+export async function listProjects(
+  database: BetterSqliteDatabase, kind: "project" | "discussion" = "project"
+): Promise<CachedProject[]> {
   const rows = database
     .prepare(
       `
@@ -83,11 +85,12 @@ export async function listProjects(database: BetterSqliteDatabase): Promise<Cach
       FROM projects
       LEFT JOIN threads ON threads.project_id = projects.id
       LEFT JOIN turns ON turns.thread_id = threads.id
+      WHERE projects.kind = @kind
       GROUP BY projects.id
       ORDER BY edited_at DESC, projects.path ASC
       `
     )
-    .all() as ProjectRow[];
+    .all({ kind }) as ProjectRow[];
 
   return rows.map((row) => mapProjectRow(row));
 }

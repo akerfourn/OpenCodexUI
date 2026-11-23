@@ -169,6 +169,7 @@ export async function deleteEmptyUnsyncedThreads(
       DELETE FROM threads
       WHERE
         cwd = @projectPath
+        AND NOT EXISTS (SELECT 1 FROM projects p WHERE p.id = threads.project_id AND p.kind = 'discussion')
         ${sourceClause.sql}
         AND COALESCE(title, '') = ''
         AND COALESCE(codex_title, '') = ''
@@ -255,6 +256,7 @@ export async function listThreads(
       `
       SELECT
         threads.*,
+        CASE WHEN projects.kind = 'discussion' THEN projects.id END AS discussion_environment_id,
         projects.default_name AS project_default_name,
         projects.display_name AS project_display_name
       FROM threads
@@ -325,6 +327,7 @@ export function readThreadRow(database: BetterSqliteDatabase, threadId: string):
       `
       SELECT
         threads.*,
+        CASE WHEN projects.kind = 'discussion' THEN projects.id END AS discussion_environment_id,
         projects.default_name AS project_default_name,
         projects.display_name AS project_display_name
       FROM threads

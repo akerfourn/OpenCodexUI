@@ -255,6 +255,26 @@ export class SqliteOpenCodexCacheRepository implements OpenCodexCacheRepository 
     return await this.projects.upsertProject(projectPath, sourceId);
   }
 
+  /** Lists personal conversation contexts independently of Home projects. */
+  async listDiscussionEnvironments(): Promise<CachedProject[]> {
+    return await this.projects.listDiscussionEnvironments();
+  }
+
+  /** Reserves the physical context belonging to one personal conversation draft. */
+  async createDiscussionEnvironment(path: string, sourceId: string, key: string): Promise<CachedProject> {
+    return await this.projects.createDiscussionEnvironment(path, sourceId, key);
+  }
+
+  /** Releases only abandoned identity allocation, retaining source files and native history. */
+  async cancelDiscussionCreation(environmentId: string, sourceId: string | null): Promise<void> {
+    await this.projects.cancelDiscussionCreation(environmentId, sourceId);
+  }
+
+  /** Retains native creation evidence independently of thread catalogue deletion. */
+  async completeDiscussionCreation(environmentId: string, sourceId: string, threadId: string): Promise<void> {
+    await this.projects.completeDiscussionCreation(environmentId, sourceId, threadId);
+  }
+
   /** Lists cached projects. */
   async listProjects(): Promise<CachedProject[]> {
     return await this.projects.listProjects();

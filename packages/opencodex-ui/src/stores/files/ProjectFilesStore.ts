@@ -250,6 +250,7 @@ export class ProjectFilesStore {
 
   /** Refreshes status for the saved document's captured workspace. */
   refreshGitStatus(target: Readonly<OpenCodexFileTarget>): void {
+    if (this.project.project?.kind === "discussion") return;
     const gitStore = this.project.getGitStoreForWorkspace({
       path: target.workspacePath,
       sourceId: target.sourceId,

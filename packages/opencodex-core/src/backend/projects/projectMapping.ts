@@ -16,6 +16,7 @@ export type ProjectIdentity = NonNullable<ReturnType<typeof createProjectIdentit
  */
 export function toOpenCodexProject(project: CachedProject): OpenCodexProject {
   return {
+    ...(project.kind === "discussion" ? { kind: "discussion" as const } : {}),
     id: project.id,
     sourceId: project.sourceId,
     path: project.path,

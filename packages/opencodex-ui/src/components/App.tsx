@@ -1,3 +1,5 @@
+import { DiscussionsViewX } from "./discussions/DiscussionsView";
+import { DISCUSSIONS_TAB_ID } from "../stores/app/NavigationStore";
 import { FileLinkMenuProviderX } from "./files/FileLinkMenuProvider";
 import { FileLinkScope } from "./files/FileLinkScope";
 /**
@@ -57,6 +59,8 @@ export function App({ store }: AppProps) {
         <HomeViewX store={store} />
       </div>
     );
+  } else if (activeTabId === DISCUSSIONS_TAB_ID) {
+    activeView = <div className="app-view"><DiscussionsViewX store={store} /></div>;
   } else if (activeProjectStore !== null) {
     activeView = (
       <div key={activeProjectStore.project.id} className="app-view">

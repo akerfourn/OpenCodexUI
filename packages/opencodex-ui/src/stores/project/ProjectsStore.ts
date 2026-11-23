@@ -302,6 +302,12 @@ export class ProjectsStore implements RootChildStore {
    * @returns Project store backing the tab.
    */
   openProjectTab(project: OpenCodexProject, activate: boolean): ProjectStore {
+    if (project.kind === "discussion") {
+      const store = this.root.discussionsStore.attachEnvironment(project);
+      this.root.navigationStore.ensureProjectTab(project.id, activate);
+      return store;
+    }
+
     const existingStore = this.projectStoresById.get(project.id)
       ?? this.findProjectStoreByPath(project.path, project.sourceId);
     const projectStore = existingStore ?? new ProjectStore(project, this.root);
@@ -424,6 +430,11 @@ export class ProjectsStore implements RootChildStore {
     }
 
     const project = createClientProject(projectPath, thread.projectName, sourceId);
+    if (thread.discussionEnvironmentId !== undefined) {
+      return this.root.discussionsStore.attachEnvironment({
+        ...project, id: thread.discussionEnvironmentId, kind: "discussion"
+      });
+    }
     this.projects = [project, ...this.projects];
     return this.openProjectTab(project, false);
   }

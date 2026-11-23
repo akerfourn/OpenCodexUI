@@ -1,3 +1,4 @@
+import { DiscussionsSidebarX } from "../discussions/DiscussionsSidebar";
 import { FileLinkScope } from "../files/FileLinkScope";
 /**
  * Renders one opened project workspace.
@@ -59,6 +60,10 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
       root={store} visible={files.isVisible} />
   );
 
+  const sidebar = projectStore.project.kind === "discussion"
+    ? <DiscussionsSidebarX store={store} onOpenSubAgentDialog={handleOpenSubAgentDialog} />
+    : <ProjectThreadListX store={store} projectStore={projectStore} onOpenSubAgentDialog={handleOpenSubAgentDialog} />;
+
   return (
     <FileLinkScope sourceId={projectStore.project.sourceId} projectPath={projectStore.workspacePath}>
       <ResizableSidebarLayout
@@ -66,13 +71,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
         defaultSidebarWidth={320}
         sidebarWidth={layoutStore.workspaceSidebarWidth}
         onSidebarWidthChange={(value) => layoutStore.setWorkspaceSidebarWidth(value)}
-        sidebar={(
-          <ProjectThreadListX
-            store={store}
-            projectStore={projectStore}
-            onOpenSubAgentDialog={handleOpenSubAgentDialog}
-          />
-        )}
+        sidebar={sidebar}
       >
         <ProjectWorkspaceLayout
           defaultPanelWidth={360}
@@ -99,6 +98,7 @@ export function ProjectView({ store, projectStore }: ProjectViewProps) {
           )}
           sidePanel={(
             <ProjectSidePanelX
+              key={projectStore.project.id}
               store={store}
               projectStore={projectStore}
               isCollapsed={layoutStore.isSidePanelCollapsed}

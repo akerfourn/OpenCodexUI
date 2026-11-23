@@ -12,6 +12,7 @@ import { FileOperationDialogX } from "./FileOperationDialog";
 export function FilesExplorer({ projectStore }: { projectStore: ProjectStore }) {
   const { t } = useTranslation();
   const [menu, setMenu] = useState<{ left: number; top: number } | null>(null);
+  const isDiscussion = projectStore.project.kind === "discussion";
   const files = projectStore.files;
   const tree = files.tree;
   const gitStatusStore = projectStore.gitStore.statusStore;
@@ -19,14 +20,14 @@ export function FilesExplorer({ projectStore }: { projectStore: ProjectStore }) 
   const workspaceName = workspace?.name ?? t("files.title");
   useEffect(() => { setMenu(null); }, [tree]);
   useEffect(() => {
-    if (tree !== null && !gitStatusStore.hasLoaded && !gitStatusStore.isLoading) {
+    if (!isDiscussion && tree !== null && !gitStatusStore.hasLoaded && !gitStatusStore.isLoading) {
       void gitStatusStore.refresh();
     }
-  }, [tree, gitStatusStore]);
+  }, [tree, gitStatusStore, isDiscussion]);
   /** Invalidates old directory replies and reloads the root. */
   function refresh(): void {
     tree?.refresh();
-    if (!gitStatusStore.isLoading) void gitStatusStore.refresh();
+    if (!isDiscussion && !gitStatusStore.isLoading) void gitStatusStore.refresh();
   }
   /** Offers paste on empty space and the workspace header, including an empty root. */
   function contextMenu(event: MouseEvent): void {
@@ -39,7 +40,9 @@ export function FilesExplorer({ projectStore }: { projectStore: ProjectStore }) 
   function closeMenu(): void {
     setMenu(null);
   }
-  let content = <Alert severity="info">{t("files.noWorkspace")}</Alert>;
+  let emptyKey = isDiscussion ? "discussions.folderOnFirstSend" : "files.noWorkspace";
+  if (isDiscussion && projectStore.project.path.length > 0) emptyKey = "discussions.setupPendingHelp";
+  let content = <Alert severity="info">{t(emptyKey)}</Alert>;
   if (tree !== null)
     content = (
       <FileTreeDirectoryX

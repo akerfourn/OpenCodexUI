@@ -5,6 +5,14 @@ import type { OpenCodexWorkspaceRetention } from "@open-codex-ui/opencodex-proto
  * Cached project row derived from a source-reported working directory.
  */
 export type CachedProject = {
+  /** Personal execution environments are excluded from the project catalogue. */
+  kind?: "discussion";
+  /** Idempotence token retained for recovering an interrupted personal-chat setup. */
+  discussionKey?: string;
+  /** Confirmed native identity, retained even after explicit thread deletion. */
+  discussionThreadId?: string;
+  /** Abandoning setup preserves directories and any native conversation discovered later. */
+  discussionCreationCancelled?: boolean;
   id: string;
   sourceId: string | null;
   path: string;

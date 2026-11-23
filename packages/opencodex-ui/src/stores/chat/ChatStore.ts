@@ -123,6 +123,7 @@ export class ChatStore {
 
   /** Synchronizes a native goal event with the project-level goal catalogue. */
   syncProjectGoalFromNative(goal: OpenCodexThreadGoal): void {
+    if (this.projectStore.project.kind === "discussion") return;
     const goalsStore = this.projectStore.goalsStore;
 
     if (goalsStore === undefined) {

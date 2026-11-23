@@ -87,7 +87,8 @@ export class ProjectContextStore {
 
   /** Whether the project can use Codex-backed context synchronization. */
   get isAvailable(): boolean {
-    return this.projectStore.project.sourceId !== null && this.projectStore.isCodexSourceReady;
+    return this.projectStore.project.sourceId !== null && this.projectStore.isCodexSourceReady
+      && this.projectStore.workspacePath.length > 0;
   }
 
   /** Whether the context config can be synchronized now. */

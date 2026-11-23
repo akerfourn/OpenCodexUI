@@ -5,6 +5,7 @@ import type { OpenCodexWorkspaceWorkStatusInput } from "@open-codex-ui/opencodex
 import type { OpenCodexWorkspaceTransitionEvent } from "@open-codex-ui/opencodex-protocol";
 import type { OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceDiscoveryResult } from "@open-codex-ui/opencodex-protocol";
 import type {
+  OpenCodexDiscussion,
   OpenCodexApprovalDecision,
   OpenCodexCollaborationEvent,
   OpenCodexCollaborationQuery,
@@ -217,6 +218,12 @@ export interface CodexUpdatesApi {
 
 /** Public thread and turn operations. */
 export interface ThreadsApi {
+  /** Abandons local setup without deleting files or an unknown native conversation. */
+  cancelDiscussionCreation(environmentId: string, sourceId: string | null): Promise<void>;
+  /** Lists personal conversations independently of the project catalogue. */
+  listDiscussions(archived?: boolean): Promise<OpenCodexDiscussion[]>;
+  /** Allocates a personal conversation on first send. */
+  createDiscussion(sourceId: string, clientDraftId: string): Promise<OpenCodexDiscussion>;
   list(
     scope: "currentProject" | "all",
     projectPath: string | null,

@@ -1,8 +1,10 @@
 /**
  * Renders the top-level Home and project tabs.
  */
+import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
+import { DISCUSSIONS_TAB_ID } from "../../stores/app/NavigationStore";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
-import { Box, Tab, Tabs } from "@mui/material";
+import { Badge, Box, Tab, Tabs } from "@mui/material";
 import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
@@ -49,6 +51,10 @@ export function AppTabs({ store }: AppTabsProps) {
           iconPosition="start"
           sx={{ minHeight: 36, py: 0.5 }}
         />
+        <Tab value={DISCUSSIONS_TAB_ID} aria-label={t("discussions.title")} title={t("discussions.title")}
+          icon={<Badge variant="dot" color="primary" invisible={store.discussionsStore.indicatorState === "idle"}>
+            <ChatBubbleOutlineOutlinedIcon fontSize="small" />
+          </Badge>} sx={{ minWidth: 44, minHeight: 36, py: 0.5 }} />
         {navigationStore.projectTabStores.map((projectStore) => (
           <Tab
             key={projectStore.project.id}

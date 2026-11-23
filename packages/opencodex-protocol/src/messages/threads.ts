@@ -24,6 +24,8 @@ export type OpenCodexSubAgentSource = {
  * Thread metadata shown in project chat lists.
  */
 export type OpenCodexThread = {
+  /** Persisted personal conversation context; absent for ordinary project threads. */
+  discussionEnvironmentId?: string;
   id: string;
   sessionId: string | null;
   parentThreadId: string | null;

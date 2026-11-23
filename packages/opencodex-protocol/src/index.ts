@@ -1,3 +1,4 @@
+export type { OpenCodexDiscussion } from "./discussions.js";
 export { normalizeDisabledFileLanguages } from "./fileLanguageSettings.js";
 /**
  * Re-exports the shared OpenCodex protocol contracts.

@@ -21,7 +21,8 @@ export function resolveProject(
   projectPath: string,
   sourceId: string | null,
   threadId: string | null = null,
-  isHidden = false
+  isHidden = false,
+  kind: "project" | "discussion" = "project"
 ): ResolvedProject | null {
   if (threadId !== null) {
     const known = database.prepare(`
@@ -58,15 +59,15 @@ export function resolveProject(
   const now = new Date().toISOString();
   database.prepare(`
     INSERT INTO projects (id, source_id, source_key, path, default_name,
-      is_hidden, created_at, updated_at, last_seen_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      is_hidden, created_at, updated_at, last_seen_at, kind)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(id, sourceId, identity.sourceKey, identity.path, identity.defaultName,
-    Number(isHidden), now, now, now);
+    Number(isHidden), now, now, now, kind);
   database.prepare(`
     INSERT INTO project_workspaces (id, project_id, source_id, source_key, path, is_primary)
     VALUES (?, ?, ?, ?, ?, 1)
   `).run(workspaceId, id, sourceId, identity.sourceKey, identity.path);
-  ensureProjectTreeItem(database, id);
+  if (kind === "project") ensureProjectTreeItem(database, id);
   return { id, sourceId, path: identity.path, workspaceId };
 }
 

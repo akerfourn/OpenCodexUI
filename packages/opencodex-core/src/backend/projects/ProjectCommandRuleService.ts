@@ -1,3 +1,4 @@
+import { readExecutionEnvironment } from "./readExecutionEnvironment.js";
 /**
  * Manages OpenCodexUI-owned project command authorization rules.
  */
@@ -305,8 +306,7 @@ export class ProjectCommandRuleService {
    * @returns Cached project.
    */
   private async readProject(projectId: string, workspaceId?: string): Promise<CachedProject> {
-    const project = (await this.requireRepository().listProjects())
-      .find((candidate) => candidate.id === projectId);
+    const project = await readExecutionEnvironment(this.requireRepository(), projectId);
 
     if (project === undefined) {
       throw new Error("Project not found.");

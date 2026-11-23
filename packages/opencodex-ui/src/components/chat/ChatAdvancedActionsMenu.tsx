@@ -25,6 +25,7 @@ import { useTranslation } from "react-i18next";
 export type ChatAdvancedAction = "review" | "compact";
 
 type ChatAdvancedActionsMenuProps = {
+  canReview?: boolean;
   disabled: boolean;
   attachFilesDisabled: boolean;
   onReview(): void;
@@ -39,6 +40,7 @@ type ChatAdvancedActionsMenuProps = {
  * @returns Rendered menu.
  */
 export function ChatAdvancedActionsMenu({
+  canReview = true,
   disabled,
   onReview,
   onCompact,
@@ -87,6 +89,13 @@ export function ChatAdvancedActionsMenu({
     }
   }
 
+  const reviewAction = canReview ? (
+    <MenuItem disabled={disabled} onClick={() => handleSelectAction("review")}>
+      <ListItemIcon><RateReviewOutlinedIcon fontSize="small" /></ListItemIcon>
+      <ListItemText>{t("composer.advanced.review")}</ListItemText>
+    </MenuItem>
+  ) : null;
+
   const titleKey = pendingAction === "compact"
     ? "composer.advanced.compactTitle"
     : "composer.advanced.reviewTitle";
@@ -122,12 +131,7 @@ export function ChatAdvancedActionsMenu({
           </ListItemIcon>
           <ListItemText>{t("composer.attachFile")}</ListItemText>
         </MenuItem>
-        <MenuItem disabled={disabled} onClick={() => handleSelectAction("review")}>
-          <ListItemIcon>
-            <RateReviewOutlinedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>{t("composer.advanced.review")}</ListItemText>
-        </MenuItem>
+        {reviewAction}
         <MenuItem disabled={disabled} onClick={() => handleSelectAction("compact")}>
           <ListItemIcon>
             <CompressOutlinedIcon fontSize="small" />

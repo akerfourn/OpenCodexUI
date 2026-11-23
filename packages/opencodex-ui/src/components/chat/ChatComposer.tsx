@@ -190,6 +190,7 @@ export function ChatComposer({
     query: string,
     searchMode: OpenCodexFileSearchMode
   ): Promise<OpenCodexFileSearchResult[]> => {
+    if (projectStore.workspacePath.length === 0) return [];
     return await store.request<OpenCodexFileSearchResult[]>({
       type: "files.search",
       projectPath: projectStore.workspacePath,
@@ -203,6 +204,7 @@ export function ChatComposer({
   const searchProjectSkills = useCallback(async (
     query: string
   ): Promise<OpenCodexSkillSearchResult[]> => {
+    if (projectStore.workspacePath.length === 0) return [];
     return await store.request<OpenCodexSkillSearchResult[]>({
       type: "skills.search",
       projectPath: projectStore.workspacePath,
@@ -286,6 +288,7 @@ export function ChatComposer({
         />
         <div className="spacer" />
         <ChatAdvancedActionsMenu
+          canReview={projectStore.project.kind !== "discussion"}
           disabled={areAdvancedActionsDisabled}
           attachFilesDisabled={!canAttachFiles}
           onReview={handleReview}

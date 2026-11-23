@@ -10,6 +10,25 @@ import {
 import { buildManagedPermissionProfile } from "../src/backend/projects/projectContextConfig";
 
 describe("ProjectContextService", () => {
+  it("should synchronize personal context without adding it to the project catalogue or losing its kind", async () => {
+    const environment = { id: "personal", kind: "discussion", sourceId: "source", path: "/personal", preferences: {} };
+    const repository = {
+      listProjects: async () => [], listDiscussionEnvironments: async () => [environment],
+      updateProjectPreferences: async (_id: string, preferences: unknown) => ({ ...environment, preferences })
+    } as unknown as OpenCodexCacheRepository;
+    const writeFile = vi.fn(async () => undefined);
+    const client = { getMetadata: async () => ({ isDirectory: true }), createDirectory: async () => undefined,
+      readFile: async () => ({ dataBase64: "" }), writeFile } as unknown as CodexAppServerClient;
+    const ensureClient = vi.fn(async () => client);
+    const service = new ProjectContextService({ cacheRepository: repository, clients: { ensureClient } });
+
+    const result = await service.syncProjectContext("personal");
+
+    expect(result).toMatchObject({ id: "personal", kind: "discussion", sourceId: "source" });
+    expect(writeFile).toHaveBeenCalledWith("/personal/.codex/config.toml", expect.any(String));
+    expect(ensureClient).toHaveBeenCalledWith("source");
+  });
+
   it("should materialize shared context in the selected workspace without marking the primary as synced", async () => {
     const project = { id: "project", sourceId: "source", path: "/primary", preferences: {} };
     const updateProjectPreferences = vi.fn();

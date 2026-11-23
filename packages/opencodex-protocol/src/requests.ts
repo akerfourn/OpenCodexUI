@@ -175,6 +175,9 @@ export type OpenCodexRequest =
       searchTerm?: string;
       archived?: boolean;
     }
+  | { type: "discussions.list"; archived?: boolean }
+  | { type: "discussions.create"; sourceId: string; clientDraftId: string }
+  | { type: "discussions.cancelCreation"; environmentId: string; sourceId: string | null }
   | { type: "threads.open"; threadId: string; sourceId?: string | null }
   | { type: "threads.goal.read"; threadId: string; sourceId?: string | null }
   | {

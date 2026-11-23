@@ -2,6 +2,23 @@
  * French translations for the navigation UI domain.
  */
 export const frNavigation = {
+  discussions: {
+    setupPending: "Création à terminer",
+    setupPendingHelp: "La création de cette discussion a été interrompue. Utilisez son menu pour vérifier la création, ou réessayez l’envoi de votre message.",
+    verifySetup: "Vérifier la création",
+    abandonSetup: "Abandonner la création",
+    abandonSetupTitle: "Abandonner cette création ?",
+    abandonSetupDescription: "Seule la demande de création dans OpenCodexUI sera abandonnée. Les fichiers et une éventuelle conversation déjà créée dans Codex seront conservés. Aucun message ne sera envoyé.",
+    folderOnFirstSend: "Le dossier de cette discussion sera créé au premier envoi.",
+    title: "Discussions hors projet",
+    newConversation: "Nouvelle discussion",
+    newSource: "Source des nouvelles discussions",
+    search: "Rechercher une discussion",
+    noConversations: "Aucune discussion dans cette liste.",
+    showActive: "Afficher les discussions actives",
+    showArchived: "Afficher les discussions archivées",
+    description: "Un espace pour vos tâches du quotidien. Chaque discussion conserve sa source et dispose de son propre dossier de travail, créé au premier envoi."
+  },
   threadRepair: {
     title: "Réparer la conversation",
     description: "Vérifiez l’état de cette conversation auprès de Codex et levez les blocages laissés par une opération interrompue.",

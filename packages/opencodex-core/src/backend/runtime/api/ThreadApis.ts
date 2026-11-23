@@ -1,3 +1,4 @@
+import type { OpenCodexDiscussion } from "@open-codex-ui/opencodex-protocol";
 import type {
   OpenCodexCollaborationEvent,
   OpenCodexCollaborationQuery,
@@ -22,6 +23,9 @@ import type {
 /** Handler methods exposed by the public thread facade. */
 export type ThreadsHandler = Pick<
   ThreadRuntimeHandler,
+  | "listDiscussions"
+  | "createDiscussion"
+  | "cancelDiscussionCreation"
   | "listThreads"
   | "archiveThread"
   | "deleteThread"
@@ -64,6 +68,21 @@ export class ThreadsApi implements ThreadsApiContract {
    */
   constructor(handler: ThreadsHandler) {
     this.handler = handler;
+  }
+
+  /** Lists cached personal conversations. */
+  async listDiscussions(archived = false): Promise<OpenCodexDiscussion[]> {
+    return await this.handler.listDiscussions(archived);
+  }
+
+  /** Creates one source-owned personal conversation. */
+  async createDiscussion(sourceId: string, clientDraftId: string): Promise<OpenCodexDiscussion> {
+    return await this.handler.createDiscussion(sourceId, clientDraftId);
+  }
+
+  /** Abandons an unfinished identity allocation, retaining source files and native history. */
+  async cancelDiscussionCreation(environmentId: string, sourceId: string | null): Promise<void> {
+    await this.handler.cancelDiscussionCreation(environmentId, sourceId);
   }
 
   /** Lists threads in the requested scope. */

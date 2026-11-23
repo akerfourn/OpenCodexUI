@@ -85,6 +85,7 @@ function hashString(value: string): number {
  */
 export function toOpenCodexThread(thread: CachedThreadSummary): OpenCodexThread {
   const mappedThread: OpenCodexThread = {
+    ...(thread.discussionEnvironmentId === undefined ? {} : { discussionEnvironmentId: thread.discussionEnvironmentId }),
     id: thread.id,
     sessionId: thread.sessionId,
     parentThreadId: thread.parentThreadId,
@@ -136,6 +137,7 @@ export function withSourceId<T extends OpenCodexThread>(thread: T, sourceId: str
  */
 export function toCachedThreadSummary(thread: OpenCodexThreadWithProjectState): CachedThreadSummary {
   const cachedThread: CachedThreadSummary = {
+    ...(thread.discussionEnvironmentId === undefined ? {} : { discussionEnvironmentId: thread.discussionEnvironmentId }),
     id: thread.id,
     sessionId: thread.sessionId,
     parentThreadId: thread.parentThreadId,

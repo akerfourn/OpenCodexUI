@@ -1,3 +1,5 @@
+import { DiscussionsService } from "./DiscussionsService.js";
+import type { OpenCodexDiscussion } from "@open-codex-ui/opencodex-protocol";
 import type { CodexNotification } from "@open-codex-ui/codex-rpc";
 import type {
   OpenCodexCollaborationEvent,
@@ -33,6 +35,8 @@ export type {
 
 /** Owns thread services, thread-scoped state, and their runtime-facing facade. */
 export class ThreadRuntimeHandler {
+  /** Source-owned personal chat environments share the existing conversation runtime. */
+  private readonly discussions: DiscussionsService;
   /** Native per-chat permission reads and explicitly requested changes. */
   readonly permissions: ThreadPermissionsService;
   /** Source-owned context and persistent execution guards. */
@@ -53,6 +57,23 @@ export class ThreadRuntimeHandler {
     this.threadConversationService = services.threadConversationService;
     this.notifications = services.notifications;
     this.workspaceExecution = services.workspaceExecution;
+    this.discussions = new DiscussionsService(options.cacheRepository, options.clients,
+      (cwd, sourceId, workspaceId, draftId) => this.createThread(cwd, sourceId, workspaceId, draftId));
+  }
+
+  /** Lists personal chats without connecting unrelated sources. */
+  async listDiscussions(archived = false): Promise<OpenCodexDiscussion[]> {
+    return await this.discussions.list(archived);
+  }
+
+  /** Creates a personal chat on first send in its explicit source. */
+  async createDiscussion(sourceId: string, clientDraftId: string): Promise<OpenCodexDiscussion> {
+    return await this.discussions.create(sourceId, clientDraftId);
+  }
+
+  /** Abandons a personal chat's unfinished local setup without deleting source files. */
+  async cancelDiscussionCreation(environmentId: string, sourceId: string | null): Promise<void> {
+    await this.discussions.cancelCreation(environmentId, sourceId);
   }
 
   /** Exposes cache-backed preparatory workspace operations without UI state. */

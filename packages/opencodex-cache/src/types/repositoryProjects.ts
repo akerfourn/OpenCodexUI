@@ -44,6 +44,18 @@ export interface CollaborationCacheRepository {
 
 /** Cache contract for cached projects and project groups. */
 export interface ProjectCacheRepository {
+  /** Lists internal personal conversation environments, including orphaned sources. */
+  listDiscussionEnvironments(): Promise<CachedProject[]>;
+
+  /** Allocates one source-owned conversation context idempotently by draft token. */
+  createDiscussionEnvironment(path: string, sourceId: string, key: string): Promise<CachedProject>;
+
+  /** Abandons only unbound setup reservations; keeps source files and native history untouched. */
+  cancelDiscussionCreation(environmentId: string, sourceId: string | null): Promise<void>;
+
+  /** Retains the confirmed native identity independently of future archive or deletion actions. */
+  completeDiscussionCreation(environmentId: string, sourceId: string, threadId: string): Promise<void>;
+
   /**
    * Inserts or refreshes a cached project.
    *

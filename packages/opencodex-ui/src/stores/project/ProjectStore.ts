@@ -199,6 +199,10 @@ export class ProjectStore {
   ensureThreadSource(thread: OpenCodexThread): OpenCodexThread {
     const sourceId = this.resolveThreadSourceId(thread);
 
+    if (this.project.kind === "discussion") {
+      return { ...thread, sourceId, discussionEnvironmentId: thread.discussionEnvironmentId ?? this.project.id };
+    }
+
     if (sourceId === thread.sourceId) {
       return thread;
     }
@@ -273,6 +277,7 @@ export class ProjectStore {
    * @returns `true` when Git, commands, Compose, debug, or goals should display an activity marker.
    */
   get hasSidePanelActivity(): boolean {
+    if (this.project.kind === "discussion") return false;
     const hasComposeActivity = this.composeStore.isAvailable &&
       this.composeStore.hasComposeFile &&
       this.composeStore.hasNonStoppedContainer;
@@ -447,11 +452,16 @@ export class ProjectStore {
 
   /** Refreshes this project's thread list. */
   refreshThreads(sourceIdOverride?: string | null): void {
+    if (this.project.kind === "discussion" && this.project.path.length === 0) return;
     this.threadListStore.refresh(sourceIdOverride);
   }
 
   /** Creates a new thread in this project. */
   createThread(): void {
+    if (this.project.kind === "discussion") {
+      this.root.discussionsStore.createDraft();
+      return;
+    }
     this.threadListStore.createThread();
   }
 

@@ -6,6 +6,8 @@ import type { OpenCodexWorkspaceRetention } from "../workspaceRetention.js";
  * Cached project known by OpenCodexUI.
  */
 export type OpenCodexProject = {
+  /** Personal execution environments are excluded from the project catalogue. */
+  kind?: "discussion";
   id: string;
   sourceId: string | null;
   path: string;

@@ -1,3 +1,4 @@
+import { DiscussionsStore } from "./discussions/DiscussionsStore";
 import { MessageRenderingStore } from "./chat/MessageRenderingStore";
 import { DebugStore } from "./debug/DebugStore";
 import { openApplicationLink } from "./files/openApplicationLink";
@@ -80,6 +81,8 @@ export class RootStore {
   readonly navigationStore = new NavigationStore(this);
   readonly pluginsStore = new PluginsStore(this);
   readonly projectsStore = new ProjectsStore(this);
+  /** Personal conversations retain their own source and execution context. */
+  readonly discussionsStore = new DiscussionsStore(this);
   readonly projectGroupsStore = new ProjectGroupsStore(this);
   readonly sourcesStore = new SourcesStore(this);
   /** Lifecycle of app-server processes owned by each configured source. */
@@ -147,7 +150,7 @@ export class RootStore {
    * @returns `true` when at least one project should display an activity marker.
    */
   get hasPendingProjectActivity(): boolean {
-    return this.debugStore.active || this.navigationStore.projectTabStores.some((projectStore) => (
+    return this.debugStore.active || [...this.projectsStore.projectStoresById.values()].some((projectStore) => (
       projectStore.hasSidePanelActivity ||
       Array.from(projectStore.files.documents.values()).some(document => document.isDirty || document.isSaving)
     ));

@@ -7,6 +7,8 @@ import type { CachedThreadTokenUsage } from "./usage.js";
  * Cached summary row used to list and identify Codex threads.
  */
 export type CachedThreadSummary = {
+  /** Persisted personal conversation context; absent for ordinary project threads. */
+  discussionEnvironmentId?: string;
   id: string;
   sessionId: string | null;
   parentThreadId: string | null;

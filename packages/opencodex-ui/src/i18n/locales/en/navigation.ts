@@ -5,6 +5,23 @@ import type { TranslationShape } from "../../translationShape.js";
 import type { frNavigation } from "../fr/navigation.js";
 
 export const enNavigation = {
+  discussions: {
+    setupPending: "Setup needs attention",
+    setupPendingHelp: "This chat’s creation was interrupted. Use its menu to verify the setup, or retry sending your message.",
+    verifySetup: "Verify chat creation",
+    abandonSetup: "Abandon setup",
+    abandonSetupTitle: "Abandon this chat setup?",
+    abandonSetupDescription: "Only the local setup request in OpenCodexUI will be abandoned. Files and any conversation already created in Codex will be retained. No message will be sent.",
+    folderOnFirstSend: "This chat’s working directory will be created when you send the first message.",
+    title: "Chats outside projects",
+    newConversation: "New chat",
+    newSource: "Source for new chats",
+    search: "Search chats",
+    noConversations: "No chats in this list.",
+    showActive: "Show active chats",
+    showArchived: "Show archived chats",
+    description: "A space for everyday tasks. Each chat keeps its source and has its own working directory, created when you send the first message."
+  },
   threadRepair: {
     title: "Repair conversation",
     description: "Check this conversation’s state with Codex and resolve blockers left by an interrupted operation.",

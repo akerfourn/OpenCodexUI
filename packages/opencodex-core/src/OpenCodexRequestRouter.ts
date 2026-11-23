@@ -137,6 +137,12 @@ export class OpenCodexRequestRouter {
           request.query,
           request.limit ?? 8
         );
+      case "discussions.list":
+        return this.runtime.threads.listDiscussions(request.archived ?? false);
+      case "discussions.cancelCreation":
+        return this.runtime.threads.cancelDiscussionCreation(request.environmentId, request.sourceId);
+      case "discussions.create":
+        return this.runtime.threads.createDiscussion(request.sourceId, request.clientDraftId);
       case "threads.list":
         return this.runtime.threads.list(
           request.scope,

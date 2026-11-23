@@ -1,3 +1,4 @@
+import { readExecutionEnvironment } from "./readExecutionEnvironment.js";
 /**
  * Owns source and project cache operations.
  */
@@ -229,8 +230,7 @@ export class ProjectSourceService {
       throw new Error(`Workspace retention days must be null or an integer from 1 to ${maxWorkspaceRetentionDays}.`);
     }
     const repository = this.requireCacheRepository("Project preferences storage is unavailable.");
-    const projects = await repository.listProjects();
-    const previousProject = projects.find((project) => project.id === projectId);
+    const previousProject = await readExecutionEnvironment(repository, projectId);
 
     if (previousProject === undefined) {
       throw new Error(`Project not found: ${projectId}`);

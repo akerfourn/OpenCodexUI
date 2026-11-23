@@ -1,5 +1,5 @@
 import { makeAutoObservable, runInAction } from "mobx";
-import type { OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
+import type { OpenCodexDiscussion, OpenCodexThread } from "@open-codex-ui/opencodex-protocol";
 import type { ChatStore } from "../../chat/ChatStore";
 import type { RootStore } from "../../RootStore";
 import type { ProjectStore } from "../ProjectStore";
@@ -25,9 +25,9 @@ export class ProjectDraftsStore {
   }
 
   /** Opens an empty local chat without sending any backend request. */
-  create(projectPath: string, workspaceId?: string): void {
+  create(projectPath: string, workspaceId?: string, clientDraftId = `draft:${crypto.randomUUID()}`): void {
     const thread: OpenCodexThread = {
-      id: `draft:${crypto.randomUUID()}`, sessionId: null, parentThreadId: null,
+      id: clientDraftId, sessionId: null, parentThreadId: null,
       codexTitle: "", customTitle: null, title: "", preview: "", model: null,
       reasoningEffort: null, projectName: this.project.project.defaultName,
       projectPath, sourceId: this.project.project.sourceId, branchName: null,
@@ -51,10 +51,15 @@ export class ProjectDraftsStore {
     if (chat.isLocalDraft) {
       const clientDraftId = chat.thread.id;
       const workspaceId = this.workspaceIds.get(clientDraftId);
-      const result = await this.root.request<{ thread: OpenCodexThread }>({
-        type: "threads.create", clientDraftId, projectPath: chat.thread.projectPath,
-        sourceId: chat.sourceId, ...(workspaceId === undefined ? {} : { workspaceId })
-      });
+      let result: { thread: OpenCodexThread };
+      if (this.project.project.kind === "discussion") {
+        result = await this.createDiscussion(chat, clientDraftId);
+      } else {
+        result = await this.root.request<{ thread: OpenCodexThread }>({
+          type: "threads.create", clientDraftId, projectPath: chat.thread.projectPath,
+          sourceId: chat.sourceId, ...(workspaceId === undefined ? {} : { workspaceId })
+        });
+      }
       runInAction(() => { this.adopt(clientDraftId, result.thread); });
       if (chat.isLocalDraft) throw new Error("The local conversation is no longer available.");
     }
@@ -64,6 +69,19 @@ export class ProjectDraftsStore {
       type: "threads.updateComposerSettings", threadId: chat.thread.id,
       model: chat.composer.selectedModel, reasoningEffort: chat.composer.reasoningEffort
     });
+  }
+
+  /** Allocates a personal context only when its first message is sent. */
+  private async createDiscussion(chat: ChatStore, clientDraftId: string): Promise<{ thread: OpenCodexThread }> {
+    if (chat.sourceId === null) throw new Error("Discussion has no execution source.");
+    const result = await this.root.request<OpenCodexDiscussion>({
+      type: "discussions.create", sourceId: chat.sourceId, clientDraftId
+    });
+    const thread = result.threads[0];
+    if (thread === undefined) throw new Error("Codex returned no personal conversation.");
+    runInAction(() => this.root.discussionsStore.materializeEnvironment(result.environment, this.project));
+    await this.project.workspaces.load();
+    return { thread };
   }
 
   /** Whether a conversation still owns an unsent first turn and draft settings. */

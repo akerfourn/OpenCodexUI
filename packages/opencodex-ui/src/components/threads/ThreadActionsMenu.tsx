@@ -41,10 +41,21 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   const chat = project.chatsById.get(thread.id);
   const isLocalDraft = chat?.isLocalDraft === true;
   const isSubmitting = chat?.composer.isSubmitting === true;
+  const pendingSetup = isLocalDraft && project.project.kind === "discussion" && project.project.path.length > 0;
+  const deleteActionLabel = pendingSetup ? t("discussions.abandonSetup") : t("sidebar.deleteThread");
+  const deleteTitle = pendingSetup ? t("discussions.abandonSetupTitle") : t("sidebar.deleteThreadTitle");
+  const deleteDescription = pendingSetup ? t("discussions.abandonSetupDescription")
+    : t("sidebar.deleteThreadDescription", { thread: title });
+  const deleteConfirm = pendingSetup ? t("discussions.abandonSetup") : t("sidebar.deleteThreadConfirm");
+  const setupRecovery = pendingSetup ? (
+    <MenuItem disabled={project.isReadOnlyFromCache || isSubmitting} onClick={handleSetupRecovery}>
+      <ListItemIcon><BuildOutlinedIcon fontSize="small" /></ListItemIcon>{t("discussions.verifySetup")}
+    </MenuItem>
+  ) : null;
   const archiving = list.archivingThreadId === thread.id || isSubmitting;
   const archiveIcon = list.isShowingArchivedThreads ? <UnarchiveOutlinedIcon fontSize="small" /> : <ArchiveOutlinedIcon fontSize="small" />;
   const archiveLabel = list.isShowingArchivedThreads ? t("sidebar.unarchiveThread") : t("sidebar.archiveThread");
-  const workspaceAction = list.isShowingArchivedThreads ? null : (
+  const workspaceAction = list.isShowingArchivedThreads || project.project.kind === "discussion" ? null : (
     <MenuItem disabled={project.isReadOnlyFromCache || project.workspaces.isBusy || isSubmitting} onClick={handleWorkspace}>
       <ListItemIcon><AccountTreeOutlinedIcon fontSize="small" /></ListItemIcon>{t("workspaces.switch")}
     </MenuItem>
@@ -58,7 +69,7 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
     <ThreadRepairDialogX key={thread.id} threadId={thread.id} sourceId={sourceId}
       title={title} project={project} root={root} onClose={() => setRepairOpen(false)} />
   ) : null;
-  const permissionsDisabled = project.isReadOnlyFromCache || sourceId === null
+  const permissionsDisabled = project.isReadOnlyFromCache || sourceId === null || thread.isArchived
     || (chat !== undefined && !chat.permissions.isAvailable);
   const permissionsDialog = permissionsStore === null ? null : (
     <ChatPermissionsDialogX store={permissionsStore} onClose={handlePermissionsClose} />
@@ -121,6 +132,11 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   }
   /** Discards unsubmitted selections by unmounting the permission dialog. */
   function handlePermissionsClose(): void { setPermissionsStore(null); }
+  /** Verifies identity allocation without sending the pending first message. */
+  function handleSetupRecovery(): void {
+    setAnchor(null);
+    void root.discussionsStore.recoverCreation(project);
+  }
   /** Requests confirmation for the existing destructive action. */
   function handleDeleteDialog(): void {
     setAnchor(null);
@@ -129,7 +145,8 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
   /** Deletes the explicitly confirmed conversation. */
   function handleDelete(): void {
     setDeleteOpen(false);
-    list.deleteThread(thread.id);
+    if (pendingSetup) void root.discussionsStore.cancelCreation(project);
+    else list.deleteThread(thread.id);
   }
   return (
     <span onClick={stopPropagation}>
@@ -138,6 +155,7 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
       <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }}>
         {workspaceAction}
+        {setupRecovery}
         {browserAction}
         <MenuItem disabled={permissionsDisabled} onClick={handlePermissions}>
           <ListItemIcon><SecurityOutlinedIcon fontSize="small" /></ListItemIcon>{t("threadPermissions.button")}
@@ -153,7 +171,7 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
           <ListItemIcon><BuildOutlinedIcon fontSize="small" /></ListItemIcon>{t("threadRepair.title")}
         </MenuItem>
         <MenuItem disabled={isSubmitting} onClick={handleDeleteDialog}>
-          <ListItemIcon><DeleteOutlineOutlinedIcon color="error" fontSize="small" /></ListItemIcon>{t("sidebar.deleteThread")}
+          <ListItemIcon><DeleteOutlineOutlinedIcon color="error" fontSize="small" /></ListItemIcon>{deleteActionLabel}
         </MenuItem>
       </Menu>
       {workspaceDialog}
@@ -161,11 +179,11 @@ export function ThreadActionsMenu({ project, root, thread, title, onOpenSubAgent
       {permissionsDialog}
       {repairDialog}
       <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)}>
-        <DialogTitle>{t("sidebar.deleteThreadTitle")}</DialogTitle>
-        <DialogContent><DialogContentText>{t("sidebar.deleteThreadDescription", { thread: title })}</DialogContentText></DialogContent>
+        <DialogTitle>{deleteTitle}</DialogTitle>
+        <DialogContent><DialogContentText>{deleteDescription}</DialogContentText></DialogContent>
         <DialogActions>
           <Button disabled={archiving} onClick={() => setDeleteOpen(false)}>{t("sidebar.deleteThreadCancel")}</Button>
-          <Button color="error" disabled={archiving} variant="contained" onClick={handleDelete}>{t("sidebar.deleteThreadConfirm")}</Button>
+          <Button color="error" disabled={archiving} variant="contained" onClick={handleDelete}>{deleteConfirm}</Button>
         </DialogActions>
       </Dialog>
       <ChatEventLogDialogX open={logOpen} sourceId={project.resolveThreadSourceId(thread)} threadId={thread.id}

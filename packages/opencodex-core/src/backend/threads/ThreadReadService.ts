@@ -209,6 +209,11 @@ export class ThreadReadService {
       throw error;
     }
 
+    if (effectiveSnapshot !== null) {
+      thread = { ...thread, isArchived: effectiveSnapshot.thread.isArchived,
+        ...(effectiveSnapshot.thread.discussionEnvironmentId === undefined ? {}
+          : { discussionEnvironmentId: effectiveSnapshot.thread.discussionEnvironmentId }) };
+    }
     const cacheEntry = this.options.threadTurnCache.getOrCreate(thread);
     const hadLoadedLatest = cacheEntry.hasLoadedLatest;
     let latestTurns: unknown[];

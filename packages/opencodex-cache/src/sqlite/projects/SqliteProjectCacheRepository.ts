@@ -8,6 +8,7 @@ import type {
   CachedProjectGroupUpdateInput,
   CachedProjectPreferences
 } from "../../types/projects.js";
+import { cancelDiscussionCreation, completeDiscussionCreation, createDiscussionEnvironment } from "./discussionEnvironments.js";
 import type { ProjectCacheRepository } from "../../types/repositoryProjects.js";
 import {
   assignProjectToGroup,
@@ -39,6 +40,26 @@ export class SqliteProjectCacheRepository implements ProjectCacheRepository {
   /** Inserts or refreshes a cached project. */
   async upsertProject(projectPath: string, sourceId: string | null = null): Promise<CachedProject> {
     return await upsertProject(this.database, projectPath, sourceId);
+  }
+
+  /** Lists conversation-owned contexts separately from real projects. */
+  async listDiscussionEnvironments(): Promise<CachedProject[]> {
+    return await listProjects(this.database, "discussion");
+  }
+
+  /** Reuses the persisted draft token without changing source or directory. */
+  async createDiscussionEnvironment(path: string, sourceId: string, key: string): Promise<CachedProject> {
+    return await createDiscussionEnvironment(this.database, path, sourceId, key);
+  }
+
+  /** Cancels identity setup without running filesystem or native deletion commands. */
+  async cancelDiscussionCreation(environmentId: string, sourceId: string | null): Promise<void> {
+    await cancelDiscussionCreation(this.database, environmentId, sourceId);
+  }
+
+  /** Keeps the confirmed native identity as an idempotence tombstone after deletion. */
+  async completeDiscussionCreation(environmentId: string, sourceId: string, threadId: string): Promise<void> {
+    await completeDiscussionCreation(this.database, environmentId, sourceId, threadId);
   }
 
   /** Lists cached projects. */

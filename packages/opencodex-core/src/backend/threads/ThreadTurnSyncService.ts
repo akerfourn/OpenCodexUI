@@ -272,6 +272,9 @@ export class ThreadTurnSyncService {
         cacheEntry.thread.model,
         cacheEntry.thread.reasoningEffort
       ),
+      ...(cacheEntry.thread.discussionEnvironmentId === undefined ? {}
+        : { discussionEnvironmentId: cacheEntry.thread.discussionEnvironmentId }),
+      isArchived: cacheEntry.thread.isArchived,
       sourceId: cacheEntry.thread.sourceId
     };
 
@@ -414,6 +417,9 @@ export class ThreadTurnSyncService {
 
     return {
       ...mapThread(responseObject.thread, model, reasoningEffort),
+      ...(currentThread?.discussionEnvironmentId === undefined ? {}
+        : { discussionEnvironmentId: currentThread.discussionEnvironmentId }),
+      isArchived: currentThread?.isArchived ?? false,
       sourceId
     };
   }

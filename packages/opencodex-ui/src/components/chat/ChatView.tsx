@@ -86,7 +86,7 @@ export function ChatView({ store, projectStore, onOpenSubAgentDialog }: ChatView
         </Alert>
       ) : null}
       {messageContent}
-      {isReadOnlyProject ? null : (
+      {isReadOnlyProject || currentThread.isArchived ? null : (
         <ChatComposerX
           store={store}
           chatStore={chatStore}

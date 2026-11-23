@@ -40,7 +40,7 @@ export class ThreadCreationService {
     parameters: Partial<v2.ThreadStartParams> = {}
   ): Promise<OpenCodexThread> {
     const currentProjectPath = this.resolveCurrentProjectPath(projectPath);
-    await this.options.projects.cacheProject(currentProjectPath, sourceId);
+    const environment = await this.options.projects.cacheProject(currentProjectPath, sourceId);
     const response = await client.startThread({
       ...parameters,
       cwd: currentProjectPath,
@@ -49,11 +49,15 @@ export class ThreadCreationService {
     verifyWorkspaceThreadCreation(response, parameters, currentProjectPath);
     const responseObject = readObject(response);
 
-    return withSourceId(mapThread(
+    const thread = withSourceId(mapThread(
       responseObject.thread,
       readString(responseObject.model),
       readReasoningEffort(responseObject.reasoningEffort)
     ), sourceId);
+    if (environment?.kind === "discussion") {
+      thread.discussionEnvironmentId = environment.id;
+    }
+    return thread;
   }
 
   /**

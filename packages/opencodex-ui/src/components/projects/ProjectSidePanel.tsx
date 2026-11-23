@@ -63,8 +63,9 @@ export function ProjectSidePanel({
   onCollapsedChange
 }: ProjectSidePanelProps) {
   const { t } = useTranslation();
+  const isDiscussion = projectStore.project?.kind === "discussion";
   const composeStore = projectStore.composeStore;
-  const [selectedTab, setSelectedTab] = useState<ProjectSidePanelTab>("git");
+  const [selectedTab, setSelectedTab] = useState<ProjectSidePanelTab>(isDiscussion ? "files" : "git");
   const projectPath = projectStore.workspacePath ?? projectStore.project?.path;
   const projectId = projectStore.project?.id;
   const sourceId = projectStore.project?.sourceId;
@@ -76,23 +77,23 @@ export function ProjectSidePanel({
       typeof composeStore.invalidateIfUnavailable === "function") {
       composeStore.invalidateIfUnavailable();
     }
-  }, [composeStore, composeStore?.isAvailable, projectPath, sourceId]);
+  }, [composeStore, composeStore?.isAvailable, projectPath, sourceId, isDiscussion]);
 
   useEffect(() => {
-    if (composeStore !== undefined && sourceId !== null && sourceId !== undefined &&
+    if (!isDiscussion && composeStore !== undefined && sourceId !== null && sourceId !== undefined &&
       composeStore.isAvailable && !composeStore.hasLoaded && !composeStore.isLoading) {
       void composeStore.load();
     }
-  }, [composeStore, composeStore?.isAvailable, projectPath, sourceId]);
+  }, [composeStore, composeStore?.isAvailable, projectPath, sourceId, isDiscussion]);
 
   useEffect(() => {
     const goalsStore = projectStore.goalsStore;
 
-    if (goalsStore !== undefined && projectId !== undefined &&
+    if (!isDiscussion && goalsStore !== undefined && projectId !== undefined &&
       !goalsStore.hasLoaded && !goalsStore.isLoading) {
       void goalsStore.loadGoals();
     }
-  }, [projectId, projectStore.goalsStore]);
+  }, [projectId, projectStore.goalsStore, isDiscussion]);
 
   useEffect(() => {
     if (selectedTab === "compose" && !hasComposeFiles) {
@@ -160,6 +161,12 @@ export function ProjectSidePanel({
       activity: "none"
     }
   );
+
+  if (isDiscussion) {
+    const allowedTabs = projectStore.project.path.length === 0 ? ["files"] : ["files", "context", "rules"];
+    const availableTabs = tabs.filter((tab) => allowedTabs.includes(tab.value));
+    tabs.splice(0, tabs.length, ...availableTabs);
+  }
 
   function handleTabChange(_event: React.SyntheticEvent, value: ProjectSidePanelTab): void {
     setSelectedTab(value);

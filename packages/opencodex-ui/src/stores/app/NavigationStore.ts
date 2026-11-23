@@ -4,10 +4,12 @@ import type { ProjectStore } from "../project/ProjectStore";
 import type { RootStore } from "../RootStore";
 
 export const HOME_TAB_ID = "home";
+export const DISCUSSIONS_TAB_ID = "discussions";
 
 /** Tab descriptor used by the project workspace shell. */
 export type OpenCodexAppTab =
   | { id: typeof HOME_TAB_ID; type: "home" }
+  | { id: typeof DISCUSSIONS_TAB_ID; type: "discussions" }
   | { id: string; type: "project"; projectId: string };
 
 /**
@@ -15,7 +17,9 @@ export type OpenCodexAppTab =
  */
 export class NavigationStore {
   /** Open tabs in display order. */
-  tabs: OpenCodexAppTab[] = [{ id: HOME_TAB_ID, type: "home" }];
+  tabs: OpenCodexAppTab[] = [
+    { id: HOME_TAB_ID, type: "home" }, { id: DISCUSSIONS_TAB_ID, type: "discussions" }
+  ];
   /** Identifier of the selected tab. */
   activeTabId = HOME_TAB_ID;
   /** Project currently waiting for close confirmation. */
@@ -38,6 +42,7 @@ export class NavigationStore {
   get activeProjectStore(): ProjectStore | null {
     const tab = this.tabs.find((entry) => entry.id === this.activeTabId);
 
+    if (tab?.type === "discussions") return this.root.discussionsStore.selected;
     if (tab?.type !== "project") {
       return null;
     }
@@ -80,6 +85,12 @@ export class NavigationStore {
     this.activeTabId = HOME_TAB_ID;
   }
 
+  /** Opens the fixed personal-chat tab without allocating any project tab. */
+  activateDiscussions(): void {
+    this.activeTabId = DISCUSSIONS_TAB_ID;
+    this.markActiveProjectChatSeen();
+  }
+
   /**
    * Ensures a project tab exists and optionally activates it.
    *
@@ -89,6 +100,14 @@ export class NavigationStore {
    * @returns Nothing.
    */
   ensureProjectTab(projectId: string, activate: boolean): void {
+    const environment = this.root.projectsStore.projectStoresById.get(projectId);
+    if (environment?.project.kind === "discussion") {
+      if (activate) {
+        this.root.discussionsStore.selectedEnvironmentId = projectId;
+        this.activateDiscussions();
+      }
+      return;
+    }
     if (!this.tabs.some((tab) => tab.id === projectId)) {
       this.tabs = [...this.tabs, { id: projectId, type: "project", projectId }];
     }

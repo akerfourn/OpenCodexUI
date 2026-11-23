@@ -44,6 +44,7 @@ export function mapThreadRow(row: ThreadRow): CachedThreadSummary {
   const projectName = row.project_display_name ?? row.project_default_name;
   const title = resolveCachedThreadTitle(row.codex_title, row.custom_title, row.preview ?? "");
   const thread: CachedThreadSummary = {
+    ...(row.discussion_environment_id == null ? {} : { discussionEnvironmentId: row.discussion_environment_id }),
     id: row.id,
     sessionId: row.session_id,
     parentThreadId: row.parent_thread_id,
@@ -119,6 +120,10 @@ function parseSubAgentSource(value: string | null): OpenCodexSubAgentSource | nu
  */
 export function mapProjectRow(row: ProjectRow): CachedProject {
   return {
+    ...(row.kind === "discussion" ? { kind: "discussion" as const } : {}),
+    ...(row.discussion_key == null ? {} : { discussionKey: row.discussion_key }),
+    ...(row.discussion_thread_id == null ? {} : { discussionThreadId: row.discussion_thread_id }),
+    ...(row.discussion_creation_cancelled === 1 ? { discussionCreationCancelled: true } : {}),
     id: row.id,
     sourceId: row.source_id,
     path: row.path,

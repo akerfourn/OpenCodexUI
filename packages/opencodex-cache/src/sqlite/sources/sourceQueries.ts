@@ -191,7 +191,7 @@ export async function getSourceProjectCount(
   sourceId: string
 ): Promise<number> {
   const row = database
-    .prepare("SELECT COUNT(*) AS count FROM projects WHERE source_id = @sourceId")
+    .prepare("SELECT COUNT(*) AS count FROM projects WHERE source_id = @sourceId AND kind = 'project'")
     .get({ sourceId }) as { count: number } | undefined;
 
   return row?.count ?? 0;

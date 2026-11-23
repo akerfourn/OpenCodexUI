@@ -1,3 +1,4 @@
+import { readExecutionEnvironment } from "./readExecutionEnvironment.js";
 /**
  * Synchronizes project context folders into Codex project-local config.
  */
@@ -89,6 +90,7 @@ export class ProjectContextService {
     }
 
     return {
+      ...(updatedProject.kind === "discussion" ? { kind: "discussion" as const } : {}),
       id: updatedProject.id,
       sourceId: updatedProject.sourceId,
       path: updatedProject.path,
@@ -129,14 +131,14 @@ export class ProjectContextService {
     repository: OpenCodexCacheRepository,
     projectId: string
   ): Promise<OpenCodexProject> {
-    const projects = await repository.listProjects();
-    const project = projects.find((candidate) => candidate.id === projectId);
+    const project = await readExecutionEnvironment(repository, projectId);
 
     if (project === undefined) {
       throw new Error("Project not found.");
     }
 
     return {
+      ...(project.kind === "discussion" ? { kind: "discussion" as const } : {}),
       id: project.id,
       sourceId: project.sourceId,
       path: project.path,
