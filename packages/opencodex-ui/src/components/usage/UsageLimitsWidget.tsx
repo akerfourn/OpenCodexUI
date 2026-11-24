@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import type { OpenCodexUsageWindow } from "@open-codex-ui/opencodex-protocol";
 
 import type { UsageStore } from "../../stores/app/UsageStore";
-import { UsageWindowBar } from "./UsageWindowBar";
+import { UsageWindowBarX } from "./UsageWindowBar";
 import { formatUsageReset } from "./usageTimeFormat";
 
 type UsageLimitsWidgetProps = {
@@ -42,7 +42,7 @@ export function UsageLimitsWidget({ store }: UsageLimitsWidgetProps) {
     return null;
   }
 
-  const tooltip = windows.map((window) => {
+  const windowSummaries = windows.map((window) => {
     const label = t(`usage.labels.${window.label}`);
 
     return t("usage.tooltip", {
@@ -51,7 +51,8 @@ export function UsageLimitsWidget({ store }: UsageLimitsWidgetProps) {
       remainingPercent: Math.round(window.remainingPercent),
       reset: formatUsageReset(window.resetsAt, i18n.language, t)
     });
-  }).join("\n");
+  });
+  const tooltip = [...windowSummaries, t("usage.paceLegend")].join("\n");
 
   return (
     <Tooltip
@@ -62,7 +63,7 @@ export function UsageLimitsWidget({ store }: UsageLimitsWidgetProps) {
     >
       <Stack className="usage-limits-widget" spacing={0.75}>
         {windows.map((window, index) => (
-          <UsageWindowBar key={`${window.label}:${index}`} window={window} />
+          <UsageWindowBarX key={`${window.label}:${index}`} window={window} />
         ))}
       </Stack>
     </Tooltip>

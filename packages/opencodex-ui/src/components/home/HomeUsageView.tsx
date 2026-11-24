@@ -9,7 +9,6 @@ import {
   Box,
   Button,
   Chip,
-  LinearProgress,
   Paper,
   Stack,
   Tooltip,
@@ -26,6 +25,7 @@ import type {
 
 import type { RootStore } from "../../stores/RootStore";
 import { readUsageLabel, readUsageLimitId } from "../../stores/app/UsageStore";
+import { UsageWindowProgress } from "../usage/UsageWindowProgress";
 import { formatUsageResetDate, formatUsageResetRelative } from "../usage/usageTimeFormat";
 
 type HomeUsageViewProps = {
@@ -238,13 +238,17 @@ function UsageWindowRow({ window, tone }: UsageWindowRowProps) {
       <Typography variant="body2" sx={{ minWidth: 72 }}>
         {label}
       </Typography>
-      <LinearProgress
-        variant="determinate"
-        value={window.remainingPercent}
+      <UsageWindowProgress
+        label={label}
+        remainingPercent={window.remainingPercent}
+        windowDurationMins={window.windowDurationMins}
+        resetsAt={window.resetsAt}
         color={tone === "default" ? "primary" : "secondary"}
-        sx={{ flex: "1 1 auto", height: 10, borderRadius: 999 }}
       />
-      <Tooltip title={t("usagePage.usedPercentTooltip", { usedPercent })}>
+      <Tooltip
+        title={`${t("usagePage.usedPercentTooltip", { usedPercent })}\n${t("usage.paceLegend")}`}
+        slotProps={{ tooltip: { sx: { whiteSpace: "pre-line" } } }}
+      >
         <Typography variant="body2" color="text.secondary" sx={{ minWidth: 42, textAlign: "right" }}>
           {remainingPercent}%
         </Typography>

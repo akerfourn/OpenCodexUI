@@ -1,10 +1,13 @@
 /**
  * Renders one compact usage progress bar.
  */
-import { Box, LinearProgress, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
+import { observer } from "mobx-react-lite";
 import { useTranslation } from "react-i18next";
 
 import type { OpenCodexUsageWindow } from "@open-codex-ui/opencodex-protocol";
+
+import { UsageWindowProgress } from "./UsageWindowProgress";
 
 type UsageWindowBarProps = {
   window: OpenCodexUsageWindow;
@@ -37,15 +40,12 @@ export function UsageWindowBar({ window }: UsageWindowBarProps) {
       >
         {label}
       </Typography>
-      <LinearProgress
-        variant="determinate"
-        value={window.remainingPercent}
+      <UsageWindowProgress
+        label={label}
+        remainingPercent={window.remainingPercent}
+        windowDurationMins={window.windowDurationMins}
+        resetsAt={window.resetsAt}
         color={readProgressColor(window.remainingPercent)}
-        sx={{
-          flex: "1 1 auto",
-          height: 12,
-          borderRadius: 999
-        }}
       />
       <Typography
         variant="caption"
@@ -65,6 +65,9 @@ export function UsageWindowBar({ window }: UsageWindowBarProps) {
   );
 }
 
+export const UsageWindowBarX = observer(UsageWindowBar);
+
+/** Highlights windows with little quota remaining. */
 function readProgressColor(remainingPercent: number): "primary" | "warning" | "error" {
   if (remainingPercent <= 10) {
     return "error";

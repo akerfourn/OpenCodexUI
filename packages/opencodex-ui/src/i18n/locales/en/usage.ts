@@ -12,7 +12,9 @@ export const enUsage = {
       weekly: "Week",
       usage: "Usage"
     },
-    tooltip: "{{label}}: {{usedPercent}}% used, {{remainingPercent}}% remaining. Reset: {{reset}}"
+    tooltip: "{{label}}: {{usedPercent}}% used, {{remainingPercent}}% remaining. Reset: {{reset}}",
+    paceLegend: "The marker shows how much quota would remain at a steady pace.",
+    paceValue: "{{remainingPercent}}% remaining, {{targetPercent}}% expected at a steady pace."
   },
   usagePage: {
     default: "Default",

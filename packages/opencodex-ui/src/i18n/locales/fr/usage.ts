@@ -9,7 +9,9 @@ export const frUsage = {
       weekly: "Sem.",
       usage: "Usage"
     },
-    tooltip: "{{label}}: {{usedPercent}} % utilisés, {{remainingPercent}} % restants. Reset: {{reset}}"
+    tooltip: "{{label}}: {{usedPercent}} % utilisés, {{remainingPercent}} % restants. Reset: {{reset}}",
+    paceLegend: "Le trait indique le quota qu’il resterait à rythme constant.",
+    paceValue: "{{remainingPercent}} % restants, {{targetPercent}} % attendus à rythme constant."
   },
   usagePage: {
     default: "Par défaut",
