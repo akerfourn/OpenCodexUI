@@ -10,6 +10,7 @@ export const enMessageRendering = {
     "assistant": "Assistant messages",
     "markdown": "Markdown rendering",
     "math": "Equation rendering",
+    "visualizations": "HTML visualizations in assistant replies",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "inherit": "Default ({{value}})",

@@ -12,6 +12,7 @@ describe("message rendering settings", () => {
   it("should apply role defaults to old settings without discarding unrelated preferences", async () => {
     await writeFile(join(directory, "settings.json"), JSON.stringify({ language: "fr", colorScheme: "dark" }));
     expect(await new SettingsStore(directory).load()).toMatchObject({ language: "fr", colorScheme: "dark",
+      chatVisualizationsEnabled: true,
       messageRendering: { user: { markdown: true, math: false }, assistant: { markdown: true, math: true } } });
   });
 
@@ -19,7 +20,9 @@ describe("message rendering settings", () => {
     const store = new SettingsStore(directory);
     const settings = await store.load();
     const messageRendering = { user: { markdown: false, math: true }, assistant: { markdown: true, math: false } };
-    await store.save({ ...settings, messageRendering });
-    expect((await new SettingsStore(directory).load()).messageRendering).toEqual(messageRendering);
+    await store.save({ ...settings, messageRendering, chatVisualizationsEnabled: false });
+    expect(await new SettingsStore(directory).load()).toMatchObject({
+      messageRendering, chatVisualizationsEnabled: false
+    });
   });
 });

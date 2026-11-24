@@ -1,6 +1,8 @@
 import { MessageRenderingProvider } from "./MessageRenderingProvider";
 import { CodexFollowupContext } from "./CodexFollowupContext";
 import { ChatImageProvider } from "./ChatImageProvider";
+import { ChatVisualizationContext } from "./ChatVisualizationContext";
+import { createChatVisualizationLoader } from "../../stores/files/chatVisualizationLoader";
 /**
  * Renders the chat message list component for the OpenCodex UI.
  */
@@ -21,6 +23,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   Fragment,
@@ -81,6 +84,12 @@ export function ChatMessageList({
   const isTurnDiagnosticsVisible = store.settings.developerMode;
   const isWorking = chatStore.runtime.isWorking || chatStore.runtime.isStartingTurn;
   const sourceId = chatStore.sourceId;
+  const visualizationWorkspace = chatStore.visualizationWorkspace;
+  const readVisualization = useMemo(
+    () => createChatVisualizationLoader(store, visualizationWorkspace),
+    [store, visualizationWorkspace]
+  );
+  const visualizationReader = store.settings.chatVisualizationsEnabled === false ? null : readVisualization;
   const handleOpenLink = useCallback((href: string) => {
     chatStore.openLink(href);
   }, [chatStore]);
@@ -228,6 +237,7 @@ export function ChatMessageList({
 
   return (
     <MessageRenderingProvider store={store.messageRenderingStore} sourceId={sourceId} threadId={currentThread.id}>
+    <ChatVisualizationContext.Provider value={visualizationReader}>
     <CodexFollowupContext.Provider value={chatStore.composer}>
     <ChatImageProvider port={store} sourceId={sourceId} projectPath={currentThread.projectPath}
       onOpenLink={handleOpenLink}>
@@ -419,6 +429,7 @@ export function ChatMessageList({
     </Box>
     </ChatImageProvider>
     </CodexFollowupContext.Provider>
+    </ChatVisualizationContext.Provider>
     </MessageRenderingProvider>
   );
 }

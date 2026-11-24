@@ -291,6 +291,11 @@ export const frConversation = {
     imageUnavailable: "Image manquante ou non disponible",
     imageUnavailableHelp: "Cette image n’est plus disponible. Son fichier a pu être supprimé, notamment s’il était stocké dans un dossier temporaire.",
     limitContent: "Limiter l'affichage",
+    visualization: {
+      title: "Visualisation HTML",
+      loading: "Chargement de la visualisation…",
+      unavailable: "La visualisation est indisponible dans ce workspace."
+    },
     linkTooltip: "{{href}} (Ctrl+clic)",
     mermaid: {
       diagram: "Diagramme Mermaid",

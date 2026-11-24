@@ -15,13 +15,14 @@ describe("HTML preview navigation boundary", () => {
     }
   });
 
-  it("should allow live preview documents and preserve main application navigation", () => {
+  it("should allow live previews, inline documents and main application navigation", () => {
     const contents = new EventEmitter();
     configureFilePreviewNavigation(contents as unknown as WebContents,
       url => url === "http://127.0.0.1:12345/capability/page.html");
     const preventDefault = vi.fn();
     contents.emit("will-frame-navigate", { isMainFrame: false,
       url: "http://127.0.0.1:12345/capability/page.html", preventDefault });
+    contents.emit("will-frame-navigate", { isMainFrame: false, url: "about:srcdoc", preventDefault });
     contents.emit("will-frame-navigate", { isMainFrame: true, url: "file:///app/index.html", preventDefault });
     expect(preventDefault).not.toHaveBeenCalled();
   });

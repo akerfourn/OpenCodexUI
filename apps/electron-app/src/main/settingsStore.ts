@@ -14,6 +14,7 @@ import type { OpenCodexSettings } from "@open-codex-ui/opencodex-protocol";
  */
 export const defaultSettings: OpenCodexSettings = {
   messageRendering: normalizeMessageRenderingDefaults(),
+  chatVisualizationsEnabled: true,
   fileOpeningMode: "integrated",
   folderOpeningMode: "external",
   dictation: { ...DEFAULT_DICTATION_SETTINGS },
@@ -79,6 +80,7 @@ export class SettingsStore {
         ...defaultSettings,
         ...parsed,
         messageRendering: normalizeMessageRenderingDefaults(parsed.messageRendering),
+        chatVisualizationsEnabled: parsed.chatVisualizationsEnabled !== false,
         folderOpeningMode: parsed.folderOpeningMode === "system" ? "system" as const : "external" as const,
         fileOpeningMode: parsed.fileOpeningMode === "external" ? "external" as const : "integrated" as const,
         fileLinkGrants: normalizeFileLinkGrants(parsed.fileLinkGrants),

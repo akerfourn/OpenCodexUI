@@ -290,6 +290,11 @@ export const enConversation = {
     imageUnavailableHelp: "This image is no longer available. Its file may have been deleted, especially if it was stored in a temporary directory.",
     limitContent: "Limit display",
     linkTooltip: "{{href}} (Ctrl+click)",
+    visualization: {
+      title: "HTML visualization",
+      loading: "Loading visualization…",
+      unavailable: "The visualization is unavailable in this workspace."
+    },
     mermaid: {
       diagram: "Mermaid diagram",
       loading: "Rendering diagram…",

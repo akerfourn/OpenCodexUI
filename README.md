@@ -18,6 +18,7 @@ You must already have Codex CLI installed and configured on your machine.
 - Local Electron desktop application.
 - Uses the existing local Codex CLI installation.
 - Project and source management.
+- Inline HTML visualizations in completed assistant replies.
 - [Default Codex permissions](docs/source-permissions.md) per source.
 - [Browser permissions](docs/browser-permissions.md) per local source and chat.
 - [Codex instance status and controls](docs/source-instances.md) per source.
@@ -112,6 +113,27 @@ sources also offer a folder picker. Git uses the source's configured credentials
 
 Cloning opens the project only after Git succeeds. A failed import keeps its
 inputs and diagnostic visible so you can correct the address, access, or path.
+
+## Inline Visualizations
+
+An assistant can save a self-contained HTML file in the conversation's
+workspace and reference it on its own line of Markdown.
+
+```text
+visualize{"path":"output/chart.html","title":"Quota history","mode":"wide"}
+```
+
+`path` is required. `title` and `mode` are optional. Relative paths start at
+the conversation's workspace root, and absolute paths for inline rendering
+must stay inside that workspace on its own source. Inline styles, scripts
+and data assets run in an isolated frame.
+Embed dependencies in the HTML file. Remote assets and ChatGPT host APIs
+are unavailable in this renderer.
+
+The setting under **Settings → Message display defaults** is enabled by
+default. Disabling it displays a link that opens the HTML file through the
+usual file opener. The referenced file must remain available to reopen the
+visualization.
 
 ## Git Synchronization
 

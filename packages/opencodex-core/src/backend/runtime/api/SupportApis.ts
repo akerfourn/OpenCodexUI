@@ -325,6 +325,9 @@ export class SettingsApi implements SettingsApiContract {
     if (patch.messageRendering !== undefined) {
       nextSettings.messageRendering = normalizeMessageRenderingDefaults(patch.messageRendering);
     }
+    if (patch.chatVisualizationsEnabled !== undefined && typeof patch.chatVisualizationsEnabled !== "boolean") {
+      throw new Error("Invalid chat visualization preference");
+    }
     if (patch.folderOpeningMode !== undefined && patch.folderOpeningMode !== "external" && patch.folderOpeningMode !== "system") {
       throw new Error("Invalid folder opening mode");
     }

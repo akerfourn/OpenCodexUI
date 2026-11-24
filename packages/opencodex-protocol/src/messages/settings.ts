@@ -37,6 +37,8 @@ export const DEFAULT_LOG_POLICIES: OpenCodexLogPolicies = {
 export type OpenCodexSettings = {
   /** Presentation defaults; individual message exceptions live in SQLite. */
   messageRendering?: MessageRenderingDefaults;
+  /** Inline assistant visualizations are enabled when this preference is absent. */
+  chatVisualizationsEnabled?: boolean;
   /** @deprecated Read only to migrate legacy debugger data to SQLite, then removed. */
   debug?: DebugPreferences;
   /** File explorer permissions only; does not affect Codex or command execution. */

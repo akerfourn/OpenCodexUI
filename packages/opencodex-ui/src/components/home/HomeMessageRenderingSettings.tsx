@@ -30,6 +30,23 @@ export function HomeMessageRenderingSettings({ store }: { store: RootStore }) {
     finally { setSaving(false); }
   }
 
+  /** Updates the global switch after the backend confirms persistence. */
+  async function changeVisualizations(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const saved = await store.request<OpenCodexSettings>({
+        type: "settings.update",
+        patch: { chatVisualizationsEnabled: event.target.checked }
+      });
+      store.appStore.settingsStore.replaceSettings({
+        ...store.settings,
+        chatVisualizationsEnabled: saved.chatVisualizationsEnabled
+      });
+    } catch (reason) { reportError(reason); }
+    finally { setSaving(false); }
+  }
+
   const sections = (["user", "assistant"] as const).map(role => {
     const fields = (["markdown", "math"] as const).map(field => (
       <FormControlLabel key={field} label={t(`messageRendering.${field}`)} control={
@@ -47,6 +64,10 @@ export function HomeMessageRenderingSettings({ store }: { store: RootStore }) {
     <Typography variant="h6">{t("messageRendering.globalTitle")}</Typography>
     <Typography variant="body2" color="text.secondary">{t("messageRendering.globalDescription")}</Typography>
     {sections}
+    <FormControlLabel label={t("messageRendering.visualizations")} control={
+      <Switch checked={store.settings.chatVisualizationsEnabled !== false} disabled={saving}
+        onChange={(event) => { void changeVisualizations(event); }} />
+    } />
   </Stack>;
 }
 export const HomeMessageRenderingSettingsX = observer(HomeMessageRenderingSettings);

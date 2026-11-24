@@ -17,6 +17,7 @@ import type {
 
 import type { ProjectStore } from "../project/ProjectStore";
 import type { RootStore } from "../RootStore";
+import type { ChatVisualizationWorkspace } from "../files/chatVisualizationLoader";
 import { ChatActionsStore } from "./ChatActionsStore";
 import { ChatComposerStore } from "./ChatComposerStore";
 import { ChatGoalStore } from "./ChatGoalStore";
@@ -110,6 +111,22 @@ export class ChatStore {
   /** Opens references in this conversation's source and physical workspace. */
   openLink(href: string): void {
     this.projectStore.openLink(href, this.thread.projectPath, this.sourceId);
+  }
+
+  /** Identifies the persisted workspace that owns this conversation's inline files. */
+  get visualizationWorkspace(): ChatVisualizationWorkspace | null {
+    const sourceId = this.sourceId;
+    const projectPath = this.thread.projectPath;
+    if (sourceId === null || projectPath === null) return null;
+    const workspace = this.projectStore.workspaces.workspaces.find(
+      (item) => item.path === projectPath && item.sourceId === sourceId && item.removedAt === null
+    );
+    return {
+      sourceId,
+      projectId: this.projectStore.project.id,
+      workspaceId: workspace?.id ?? null,
+      workspacePath: projectPath
+    };
   }
 
   /**

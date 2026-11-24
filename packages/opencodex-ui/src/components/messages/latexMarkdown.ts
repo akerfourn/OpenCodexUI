@@ -5,6 +5,7 @@
  * use `\(...\)` and `\[...\]`. This compatibility pass runs before Markdown
  * parsing and deliberately leaves fenced and inline code untouched.
  */
+import { isVisualizationReferenceLine } from "./remarkVisualizations";
 
 type FenceCharacter = "`" | "~";
 
@@ -68,6 +69,8 @@ function normalizeMarkdownPart(part: string, state: LatexDelimiterState): string
     state.fencedCode = openingFence;
     return part;
   }
+
+  if (isVisualizationReferenceLine(part)) return part;
 
   return normalizeMarkdownLine(part, state);
 }

@@ -7,6 +7,7 @@ export const frMessageRendering = {
     "assistant": "Messages de l’agent",
     "markdown": "Rendu Markdown",
     "math": "Rendu des équations",
+    "visualizations": "Visualisations HTML dans les réponses de l’agent",
     "enabled": "Activé",
     "disabled": "Désactivé",
     "inherit": "Par défaut ({{value}})",

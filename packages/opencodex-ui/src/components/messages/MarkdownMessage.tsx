@@ -52,10 +52,13 @@ export type MarkdownMessageProps = {
   renderMarkdown?: boolean;
   /** Bypasses math parsing and delimiter normalization when false. */
   renderMath?: boolean;
+  /** Recognizes workspace HTML references in completed assistant messages. */
+  renderVisualizationReferences?: boolean;
 };
 
 type RenderedMarkdownProps = {
   renderMath: boolean;
+  renderVisualizationReferences: boolean;
   markdown: string;
   isStreaming: boolean;
   shouldHighlightSyntax: boolean;
@@ -81,7 +84,8 @@ export function MarkdownMessage({
   onOpenLink,
   optimizeLargeContent = true,
   renderMarkdown,
-  renderMath = true
+  renderMath = true,
+  renderVisualizationReferences = false
 }: MarkdownMessageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentProfile = useMemo<MarkdownContentProfile>(
@@ -118,6 +122,7 @@ export function MarkdownMessage({
   ) : (
     <RenderedMarkdownM
       renderMath={renderMath}
+      renderVisualizationReferences={renderVisualizationReferences}
       markdown={renderedMarkdown}
       isStreaming={isStreaming}
       shouldHighlightSyntax={shouldHighlightSyntax}
@@ -156,6 +161,7 @@ export const MarkdownMessageM = memo(MarkdownMessage);
  */
 function RenderedMarkdown({
   renderMath,
+  renderVisualizationReferences,
   markdown,
   isStreaming,
   shouldHighlightSyntax,
@@ -176,8 +182,8 @@ function RenderedMarkdown({
       ? "highlighted"
       : "standard";
   const markdownTree = useMemo(
-    () => createMarkdownRenderTree(markdownForRendering, renderVariant, renderMath),
-    [markdownForRendering, renderVariant, renderMath]
+    () => createMarkdownRenderTree(markdownForRendering, renderVariant, renderMath, renderVisualizationReferences),
+    [markdownForRendering, renderVariant, renderMath, renderVisualizationReferences]
   );
   const linkContext = useMemo<MarkdownLinkContextValue>(() => ({
     requireModifiedClick,

@@ -91,6 +91,7 @@ export function MessageRow({
     plan = null
   } = item;
   const renderingContext = useContext(MessageRenderingContext);
+  const renderVisualizationReferences = role === "assistant";
   const renderingRole = role === "user" ? "user" : "assistant";
   let rendering = resolveMessageRendering(undefined, renderingRole);
   let renderingSettings = null;
@@ -273,6 +274,7 @@ export function MessageRow({
             : <ActivityKindIcon kind={kind} />}
           <Box sx={{ minWidth: 0, flex: "1 1 auto" }}>
             <MarkdownMessageM renderMarkdown={rendering.markdown} renderMath={rendering.math}
+              renderVisualizationReferences={renderVisualizationReferences}
               markdown={content}
               isStreaming={isStreaming}
               requireModifiedClick
@@ -284,6 +286,7 @@ export function MessageRow({
       ) : (
         <>
           <MarkdownMessageM renderMarkdown={rendering.markdown} renderMath={rendering.math}
+            renderVisualizationReferences={renderVisualizationReferences}
             markdown={content}
             isStreaming={isStreaming}
             requireModifiedClick

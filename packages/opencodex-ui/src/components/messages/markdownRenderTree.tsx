@@ -18,6 +18,8 @@ import { MarkdownLinkContext } from "./MarkdownLinkContext";
 import { transformMarkdownUrl } from "./markdownUrls";
 import { ChatImage } from "./ChatImage";
 import { MarkdownDiagramContext } from "./MarkdownDiagramContext";
+import { ChatVisualization } from "./ChatVisualization";
+import { remarkVisualizations } from "./remarkVisualizations";
 
 export type MarkdownRenderVariant = "streaming" | "standard" | "highlighted";
 
@@ -27,6 +29,8 @@ const textRemarkPlugins = [remarkGfm, remarkCodexDirectives];
 const highlightPlugin: [typeof rehypeHighlight, { plainText: string[] }] = [rehypeHighlight, { plainText: ["mermaid"] }];
 const syntaxRehypePlugins = [highlightPlugin];
 const remarkPlugins = [remarkGfm, remarkMath, remarkCodexDirectives];
+const visualizationRemarkPlugins = [...remarkPlugins, remarkVisualizations];
+const textVisualizationRemarkPlugins = [...textRemarkPlugins, remarkVisualizations];
 const rehypeKatexOptions: RehypeKatexOptions = {
   strict: "ignore",
   trust: false
@@ -39,8 +43,12 @@ const mathRehypePlugins = [katexPlugin];
 const highlightedRehypePlugins = [katexPlugin, highlightPlugin];
 const plainRehypePlugins: [] = [];
 
-const markdownComponents: Components & { "codex-directive": typeof CodexDirectiveSpanX } = {
+const markdownComponents: Components & {
+  "codex-directive": typeof CodexDirectiveSpanX;
+  "codex-visualization": typeof ChatVisualization;
+} = {
   "codex-directive": CodexDirectiveSpanX,
+  "codex-visualization": ChatVisualization,
   pre: PreBlock,
   code: InlineCode,
   a: ContextualMarkdownLink,
@@ -61,11 +69,15 @@ const markdownComponents: Components & { "codex-directive": typeof CodexDirectiv
 export function createMarkdownRenderTree(
   markdown: string,
   variant: MarkdownRenderVariant,
-  renderMath = true
+  renderMath = true,
+  renderVisualizationReferences = false
 ): ReactElement {
+  const plugins = renderMath ? remarkPlugins : textRemarkPlugins;
+  const pluginsWithVisualizations = renderMath ? visualizationRemarkPlugins : textVisualizationRemarkPlugins;
+  const recognizesVisualizations = renderVisualizationReferences && variant !== "streaming";
   const createTree = (): ReactElement => <MarkdownDiagramContext.Provider value={variant !== "streaming"}>
     {ReactMarkdown({
-    remarkPlugins: renderMath ? remarkPlugins : textRemarkPlugins,
+    remarkPlugins: recognizesVisualizations ? pluginsWithVisualizations : plugins,
     rehypePlugins: getRehypePlugins(variant, renderMath),
     components: markdownComponents,
     urlTransform: transformMarkdownUrl,
@@ -78,7 +90,7 @@ export function createMarkdownRenderTree(
   }
 
   return getCachedMarkdownRender(
-    [variant, String(renderMath), markdown].join("\u0000"),
+    [variant, String(renderMath), String(recognizesVisualizations), markdown].join("\u0000"),
     markdown.length,
     createTree
   );

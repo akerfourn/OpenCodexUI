@@ -5,7 +5,10 @@ export function configureFilePreviewNavigation(
   contents: Pick<WebContents, "on">, isActiveUrl: (url: string) => boolean
 ): void {
   contents.on("will-frame-navigate", details => {
-    if (!details.isMainFrame && !isActiveUrl(details.url)) details.preventDefault();
+    // Inline visualizations load their source document directly, without a network URL.
+    if (!details.isMainFrame && details.url !== "about:srcdoc" && !isActiveUrl(details.url)) {
+      details.preventDefault();
+    }
   });
   contents.on("will-redirect", details => {
     if (!details.isMainFrame && !isActiveUrl(details.url)) details.preventDefault();
