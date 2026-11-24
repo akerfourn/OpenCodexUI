@@ -146,6 +146,21 @@ export class ProjectGitStore {
     return this.projectStore.isCodexSourceReady;
   }
 
+  /** A ready app-server can generate even if its separate CLI detection failed. */
+  get canUseSourceForCommitGeneration(): boolean {
+    const sourceId = this.sourceId;
+    if (sourceId === null) return false;
+    const sources = this.root.sourcesStore;
+    const isDetectedReady = sourceId === this.projectStore.project.sourceId
+      ? this.isAvailable
+      : sources.isSourceReady(sourceId);
+    if (isDetectedReady) return true;
+
+    const source = sources.findSource(sourceId);
+    return source?.codex.status === "unavailable" &&
+      this.root.sourceInstancesStore.states.get(sourceId)?.phase === "ready";
+  }
+
   /** Returns the project path used by Git requests. */
   get projectPath(): string {
     return this.workspace?.path ?? this.projectStore.projectPath;

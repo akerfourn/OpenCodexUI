@@ -72,7 +72,7 @@ export class ProjectGitCommitStore {
   /** Explains actual blockers while allowing generation during unrelated read-only refreshes. */
   get generationBlockReason(): CommitGenerationBlockReason | null {
     if (this.isGeneratingCommitMessage) return "generating";
-    if (!this.parent.isAvailable) return "sourceUnavailable";
+    if (!this.parent.canUseSourceForCommitGeneration) return "sourceUnavailable";
     if (this.parent.changesStore.isUpdatingIndex) return "indexUpdating";
     if (this.parent.changesStore.isUpdatingDeferredPaths) return "preferencesUpdating";
     if (this.parent.sync?.isBusy === true) return "synchronizing";

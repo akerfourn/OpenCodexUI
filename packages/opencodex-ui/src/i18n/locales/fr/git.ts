@@ -44,7 +44,7 @@ export const frGit = {
       preferencesUpdating: "Enregistrement des fichiers mis de côté en cours…",
       synchronizing: "Une opération de synchronisation Git est en cours…",
       generating: "Un message de commit est déjà en cours de génération…",
-      sourceUnavailable: "La source Codex de ce projet est indisponible."
+      sourceUnavailable: "La génération nécessite une source Codex disponible. Consultez son état dans Accueil → Sources."
     },
     generateRuntime: "Modèle: {{model}} · Raisonnement: {{reasoning}}",
     generatingMessage: "Génération...",

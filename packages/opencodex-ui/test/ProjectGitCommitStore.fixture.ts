@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { observable } from "mobx";
 
 import type {
   OpenCodexGitFile,
@@ -7,7 +8,9 @@ import type {
   OpenCodexGitTagListResult,
   OpenCodexProject,
   OpenCodexRequest,
-  OpenCodexSettings
+  OpenCodexSettings,
+  OpenCodexToolAvailabilityStatus,
+  SourceInstanceSnapshot
 } from "@open-codex-ui/opencodex-protocol";
 
 import { ProjectGitStore } from "../src/stores/project/git/ProjectGitStore";
@@ -43,6 +46,8 @@ export type ProjectGitCommitFixture = {
   request: ReturnType<typeof vi.fn>;
   root: RootStore;
   setSourceReady: (value: boolean) => void;
+  sourceInstances: Map<string, SourceInstanceSnapshot>;
+  sourceDiagnostics: Map<string, OpenCodexToolAvailabilityStatus>;
   statusRefresh: ReturnType<typeof vi.spyOn>;
 };
 
@@ -52,6 +57,9 @@ export function createProjectGitCommitFixture(
 ): ProjectGitCommitFixture {
   let currentProject = options.project ?? createProject();
   let sourceReady = options.sourceReady ?? true;
+  const sourceId = currentProject.sourceId ?? "source-1";
+  const sourceDiagnostics = observable.map<string, OpenCodexToolAvailabilityStatus>([[sourceId, "unavailable"]]);
+  const sourceInstances = observable.map<string, SourceInstanceSnapshot>();
   let gitStore: ProjectGitStore;
   const request = vi.fn<(request: OpenCodexRequest) => Promise<unknown>>();
   const projectStoreSurface = {
@@ -71,6 +79,14 @@ export function createProjectGitCommitFixture(
   } as unknown as ProjectStore;
   const root = {
     request,
+    sourcesStore: {
+      isSourceReady: (id: string) => sourceDiagnostics.get(id) === "ready",
+      findSource: (id: string) => {
+        const status = sourceDiagnostics.get(id);
+        return status === undefined ? null : { codex: { status } };
+      }
+    },
+    sourceInstancesStore: { states: sourceInstances },
     appStore: {
       showWarningMessage: vi.fn(),
       settingsStore: {
@@ -98,6 +114,8 @@ export function createProjectGitCommitFixture(
     setSourceReady: (value) => {
       sourceReady = value;
     },
+    sourceInstances,
+    sourceDiagnostics,
     statusRefresh: statusRefreshSpy
   };
 }

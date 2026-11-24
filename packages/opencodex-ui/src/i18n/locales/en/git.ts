@@ -46,7 +46,7 @@ export const enGit = {
       preferencesUpdating: "Saving deferred file preferences…",
       synchronizing: "A Git synchronization operation is in progress…",
       generating: "A commit message is already being generated…",
-      sourceUnavailable: "This project's Codex source is unavailable."
+      sourceUnavailable: "Generation requires an available Codex source. Check its status in Home → Sources."
     },
     generateRuntime: "Model: {{model}} · Reasoning: {{reasoning}}",
     generatingMessage: "Generating...",

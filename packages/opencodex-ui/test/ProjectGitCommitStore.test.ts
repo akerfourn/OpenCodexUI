@@ -1,6 +1,7 @@
 import { isComputedProp, isObservableProp } from "mobx";
 import { describe, expect, it } from "vitest";
 
+import { ProjectGitStore } from "../src/stores/project/git/ProjectGitStore";
 import {
   createFile,
   createProjectGitCommitFixture,
@@ -405,6 +406,37 @@ describe("ProjectGitStore commit workflow", () => {
     expect(store.commitStore.generationBlockReason).toBe("noStagedFiles");
     fixture.setSourceReady(false);
     expect(store.commitStore.generationBlockReason).toBe("sourceUnavailable");
+  });
+
+  it("should generate when the workspace app-server is ready despite a failed CLI check", async () => {
+    const fixture = createProjectGitCommitFixture({ sourceReady: false });
+    const { commitStore, sourceId } = fixture.gitStore;
+    const otherProject = createProjectGitCommitFixture({
+      sourceReady: false,
+      project: { ...createProject(), id: "project-2", path: "/workspace/other-project" }
+    });
+    const otherGitStore = new ProjectGitStore(otherProject.projectStore, fixture.root);
+    otherGitStore.statusStore.applyStatus(createStatus());
+
+    commitStore.setCommitMessage("manual draft");
+    expect(commitStore.canCommit).toBe(true);
+    expect(commitStore.generationBlockReason).toBe("sourceUnavailable");
+    expect(otherGitStore.commitStore.generationBlockReason).toBe("sourceUnavailable");
+
+    const runningSource = { sourceId: sourceId!, phase: "ready" as const, isActive: false,
+      manuallyStopped: false, error: null };
+    fixture.sourceInstances.set("another-source", { ...runningSource, sourceId: "another-source" });
+    expect(commitStore.canGenerateCommitMessage).toBe(false);
+
+    fixture.sourceInstances.set(runningSource.sourceId, runningSource);
+    fixture.request.mockResolvedValueOnce({ message: "generated" });
+    expect(commitStore.canGenerateCommitMessage).toBe(true);
+    expect(otherGitStore.commitStore.canGenerateCommitMessage).toBe(true);
+    await commitStore.generateCommitMessage("");
+    expect(commitStore.commitMessage).toBe("generated");
+
+    fixture.sourceDiagnostics.set(runningSource.sourceId, "outdated");
+    expect(commitStore.generationBlockReason).toBe("sourceUnavailable");
   });
 
   it("should apply pending messages only when the editor is blank", () => {
