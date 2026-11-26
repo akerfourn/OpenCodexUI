@@ -7,6 +7,7 @@ import { createOpenCodexSqliteCacheRepository, type OpenCodexCacheRepository } f
 import type { OpenCodexWorkspaceCreateInput } from "@open-codex-ui/opencodex-protocol";
 import { WorkspaceCreationService } from "../src/backend/workspaces/WorkspaceCreationService";
 import type { GitWorktreeCreationLifecycle } from "../src/backend/git/GitWorktreeService";
+import { JsonRpcError } from "@open-codex-ui/codex-rpc";
 
 const head = "a".repeat(40);
 const entry = { path: "/secondary", head, branch: "refs/heads/topic", detached: false,
@@ -75,7 +76,10 @@ describe("durable workspace creation", () => {
       input = { ...input, projectId: primary.projectId, destinationPath: destination };
       client.request.mockResolvedValue({ config: { projects: { [configuredPath]: { trust_level: "trusted" } } } });
       client.getMetadata.mockImplementation(async value => {
-        if (value === destination && !destinationExists) throw new Error("File not found");
+        if (value === destination && !destinationExists) {
+          throw new JsonRpcError("Le chemin d’accès spécifié est introuvable. (os error 3)", -32603, null,
+            { method: "fs/getMetadata", path: value });
+        }
         return { isDirectory: true, isSymlink: false };
       });
       git.list.mockImplementation(async () => {
@@ -177,6 +181,30 @@ describe("durable workspace creation", () => {
   it("should not mistake an unsupported metadata API for an absent destination", async () => {
     client.getMetadata.mockRejectedValue(new Error("Method not found"));
     await expect(service.create(input)).rejects.toThrow("Method not found");
+    expect(git.create).not.toHaveBeenCalled();
+    expect(await service.pending(input.projectId)).toEqual([]);
+  });
+
+  it("should preserve the actual missing parent error instead of attempting Git creation", async () => {
+    const error = new JsonRpcError("Path not found (os error 2)", -32603, null, { method: "fs/getMetadata", path: "/" });
+    client.getMetadata.mockImplementation(async value => {
+      if (value === "/secondary") throw new Error("File not found");
+      throw error;
+    });
+
+    await expect(service.create(input)).rejects.toBe(error);
+
+    expect(git.create).not.toHaveBeenCalled();
+    expect(await service.pending(input.projectId)).toEqual([]);
+  });
+
+  it("should not treat a denied metadata read as a missing destination", async () => {
+    const error = new JsonRpcError("Access is denied (os error 5)", -32603, null,
+      { method: "fs/getMetadata", path: input.destinationPath });
+    client.getMetadata.mockRejectedValue(error);
+
+    await expect(service.create(input)).rejects.toBe(error);
+
     expect(git.create).not.toHaveBeenCalled();
     expect(await service.pending(input.projectId)).toEqual([]);
   });

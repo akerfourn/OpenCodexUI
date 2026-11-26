@@ -55,6 +55,27 @@ describe("parseJsonRpcLine", () => {
 });
 
 describe("CodexAppServerClient", () => {
+  it("should keep the failing filesystem path in RPC errors even when the server omits error data", async () => {
+    const fakeProcess = new FakeProcess();
+    fakeProcess.stdin.on("finish", () => fakeProcess.emit("close", 0, null));
+    const client = createClient(fakeProcess);
+    respondToRequests(fakeProcess, request => {
+      if (request.id === undefined) return;
+      if (request.method === "initialize") {
+        fakeProcess.stdout.write(JSON.stringify({ id: request.id, result: {} }) + "\n");
+        return;
+      }
+      fakeProcess.stdout.write(JSON.stringify({ id: request.id, error: {
+        code: -32603, message: "Path not found (os error 3)"
+      } }) + "\n");
+    });
+
+    await expect(client.getMetadata("D:\\Workspaces\\missing")).rejects.toMatchObject({
+      code: -32603, requestContext: { method: "fs/getMetadata", path: "D:\\Workspaces\\missing" }
+    });
+    expect(client.isBusy).toBe(false);
+    await client.dispose();
+  });
   it("should resolve host executable names before sending RPC and retain safe rejected-request metadata", async () => {
     const fakeProcess = new FakeProcess();
     fakeProcess.stdin.on("finish", () => fakeProcess.emit("close", 0, null));

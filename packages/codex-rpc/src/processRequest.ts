@@ -22,10 +22,12 @@ export async function resolveProcessRequest(
   return { ...params, command: [executable, ...params.command.slice(1)] };
 }
 
-/** Captures enough context to locate spawn failures without recording potentially sensitive arguments. */
+/** Captures process locations and filesystem targets without arguments, file contents or credentials. */
 export function readRequestContext(method: string, params: unknown): JsonRpcRequestContext {
   const context: JsonRpcRequestContext = { method };
-  if ((method !== "process/spawn" && method !== "command/exec") || !isRecord(params)) return context;
+  if (!isRecord(params)) return context;
+  if (method.startsWith("fs/") && typeof params.path === "string") context.path = params.path;
+  if (method !== "process/spawn" && method !== "command/exec") return context;
   if (Array.isArray(params.command) && typeof params.command[0] === "string") context.executable = params.command[0];
   if (typeof params.cwd === "string") context.cwd = params.cwd;
   return context;

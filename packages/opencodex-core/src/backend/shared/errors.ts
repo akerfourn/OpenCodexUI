@@ -40,6 +40,7 @@ export function normalizeError(
     if (error.requestContext !== undefined) {
       details = { ...error.requestContext, code: error.code ?? null, message: error.message, data: error.data ?? null };
       if (error.requestContext.executable !== undefined) label += ` [${error.requestContext.executable}]`;
+      if (error.requestContext.path !== undefined) label += ` [${error.requestContext.path}]`;
     }
     return {
       message: `${label}: ${error.message}`,

@@ -2,6 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { readRequestContext, resolveProcessRequest } from "../src/processRequest";
 
 describe("source process request boundary", () => {
+  it.each(["fs/getMetadata", "fs/readDirectory", "fs/readFile", "fs/writeFile", "fs/createDirectory"])(
+    "should retain only the filesystem path when %s fails", method => {
+      expect(readRequestContext(method, { path: "D:\\Workspaces\\project\\workspace", dataBase64: "private-content",
+        env: { API_KEY: "private-key" }, command: ["private-command"], input: "private-input" })).toEqual({
+        method, path: "D:\\Workspaces\\project\\workspace"
+      });
+    }
+  );
   it("should replace only the executable and retain native argument boundaries and process options", async () => {
     const resolve = vi.fn(async () => "C:\\Git with spaces\\git.exe");
     const params = { command: ["git", "commit", "-m", "literal & $HOME"], cwd: "C:\\Project",

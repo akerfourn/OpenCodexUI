@@ -11,6 +11,14 @@ import {
 } from "../src/backend/shared/errors";
 
 describe("backend error classification", () => {
+  it("should show the source-native filesystem path in the message and structured error details", () => {
+    const path = "D:\\Workspaces\\missing";
+    const error = new JsonRpcError("Path not found (os error 3)", -32603, null, { method: "fs/getMetadata", path });
+    expect(normalizeError(error, "en")).toEqual({
+      message: `Codex app-server rejected the request [${path}]: Path not found (os error 3)`,
+      details: { method: "fs/getMetadata", path, code: -32603, message: error.message, data: null }
+    });
+  });
   it("should retain executable diagnostics even when Codex returns no error data", () => {
     const error = new JsonRpcError("failed to spawn process: program not found", -32603, undefined,
       { method: "process/spawn", executable: "git", cwd: "C:\\Project" });

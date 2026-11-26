@@ -72,6 +72,8 @@ export interface JsonRpcRequestContext {
   method: string;
   executable?: string;
   cwd?: string;
+  /** Source-native filesystem target, excluding file contents and other request payloads. */
+  path?: string;
 }
 
 /** Content-free reasons why stopping an owned client could interrupt work. */

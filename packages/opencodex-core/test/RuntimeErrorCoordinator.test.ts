@@ -13,6 +13,23 @@ import type {
 } from "../src/backend/runtime/runtimePorts";
 
 describe("RuntimeErrorCoordinator", () => {
+  it("should journal a nested workspace source and the exact failing filesystem path", () => {
+    const persistLog = vi.fn();
+    const emit = vi.fn();
+    const coordinator = createCoordinator({ persistLog, emit });
+    const path = "D:\\Workspaces\\missing";
+    const error = new JsonRpcError("Path not found (os error 3)", -32603, null, { method: "fs/getMetadata", path });
+    const request = { type: "projectWorkspaces.create", input: { projectId: "project", sourceId: "source-windows",
+      destinationPath: "D:\\Workspaces\\missing\\feature", start: { mode: "detached", startPoint: "HEAD" } } } satisfies OpenCodexRequest;
+
+    expect(() => coordinator.handleRequestError(request, error)).toThrow(path);
+
+    const details = { requestType: request.type, sourceId: "source-windows", rpc: {
+      method: "fs/getMetadata", path, code: -32603, message: error.message, data: null
+    } };
+    expect(persistLog).toHaveBeenCalledWith("error", expect.stringContaining(path), details);
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: "error", sourceId: "source-windows", details }));
+  });
   it("should retain the source and failing executable in the journal when Codex provides no error data", () => {
     const persistLog = vi.fn();
     const coordinator = createCoordinator({ persistLog });

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { prepareWorkspaceStorage, resolveWorkspaceStorage } from "./WorkspaceStoragePaths.js";
-import { normalizeWorkspaceSourcePath as normalizeCreationPath } from "./workspaceSourcePath.js";
+import { isMissingWorkspacePathError, normalizeWorkspaceSourcePath as normalizeCreationPath } from "./workspaceSourcePath.js";
 import path from "node:path";
 import type { WorkspaceCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRoot } from
@@ -98,9 +98,7 @@ export class WorkspaceCreationService {
     try {
       await client.getMetadata(creation.destinationPath);
     } catch (error) {
-      if (!(error instanceof Error) || !/no such file|\b(file|path)\b.*\bnot found\b/iu.test(error.message)) {
-        throw error;
-      }
+      if (!isMissingWorkspacePathError(error, creation.destinationPath)) throw error;
       exists = false;
     }
     if (exists) {

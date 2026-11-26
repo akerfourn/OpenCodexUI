@@ -1,5 +1,6 @@
 import type { OpenCodexRequest } from "@open-codex-ui/opencodex-protocol";
 import { CodexProcessError, JsonRpcError } from "@open-codex-ui/codex-rpc";
+import { readObject } from "../../mapping.js";
 
 import {
   normalizeError,
@@ -117,10 +118,10 @@ export class RuntimeErrorCoordinator {
    * @returns Source identifier, or `null` when unavailable.
    */
   private readRequestSourceId(request: OpenCodexRequest): string | null {
-    if (!("sourceId" in request)) {
-      return null;
+    const record = readObject(request);
+    for (const context of [record, readObject(record.input), readObject(record.target), readObject(record.action)]) {
+      if (typeof context.sourceId === "string") return context.sourceId;
     }
-
-    return typeof request.sourceId === "string" ? request.sourceId : null;
+    return null;
   }
 }
