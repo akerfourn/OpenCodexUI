@@ -2,7 +2,7 @@ import type { CachedProjectCommand, OpenCodexCacheRepository } from "@open-codex
 import type { OpenCodexWorkspacePreparationInput } from "@open-codex-ui/opencodex-protocol";
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import type { ClientPort } from "../runtime/runtimePorts.js";
-import { readObject } from "../../mapping.js";
+import { isWorkspaceProjectTrusted } from "./workspaceProjectTrust.js";
 import { requireToolWorkspace } from "./workspaceToolContext.js";
 import { WorkspaceRemovalRuntime } from "./WorkspaceRemovalRuntime.js";
 
@@ -22,7 +22,7 @@ export async function readWorkspacePreparation(
   }
   const client = await clients.ensureClient(input.sourceId);
   const response = await client.request<v2.ConfigReadResponse>("config/read", { cwd: project.path });
-  if (readObject(readObject(response.config.projects)[project.path]).trust_level !== "trusted") {
+  if (!isWorkspaceProjectTrusted(response.config.projects, project.path)) {
     throw new Error("Trust the project in its Codex source before preparing a workspace.");
   }
   await new WorkspaceRemovalRuntime(clients).requireDirectories({

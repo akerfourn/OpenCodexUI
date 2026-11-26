@@ -65,6 +65,17 @@ describe("explicit workspace preparation", () => {
     expect(getMetadata).toHaveBeenCalledWith("D:\\");
   });
 
+  it("should recognize Windows project trust with different case and separators before preparation", async () => {
+    const { service, input, config, request } = fixture(true);
+    delete config.config.projects["C:\\repos\\app"];
+    config.config.projects["c:/REPOS/App"] = { trust_level: "trusted" };
+
+    await service.prepareWorkspace(input);
+
+    expect(request).toHaveBeenCalledWith("config/read", { cwd: "C:\\repos\\app" });
+    expect(request).toHaveBeenCalledWith("process/spawn", expect.objectContaining({ cwd: input.workspacePath }));
+  });
+
   it("should reject an untrusted project before any process or shell probe", async () => {
     const { service, input, config, request } = fixture();
     config.config.projects["/repos/app"]!.trust_level = "untrusted";

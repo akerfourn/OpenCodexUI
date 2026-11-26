@@ -4,7 +4,7 @@ import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceMove, OpenCodexWorksp
   "@open-codex-ui/opencodex-protocol";
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import type { ClientPort } from "../runtime/runtimePorts.js";
-import { readObject } from "../../mapping.js";
+import { isWorkspaceProjectTrusted } from "./workspaceProjectTrust.js";
 import { createGitErrorMessage, createRunGit } from "../git/gitCommandRunner.js";
 import { WorkspaceMoveGit } from "./WorkspaceMoveGit.js";
 import { WorkspaceActivityGate } from "./WorkspaceActivityGate.js";
@@ -103,7 +103,7 @@ export class WorkspaceMoveService {
     await this.runtime.requireDirectories(intent);
     const client = await this.clients.ensureClient(intent.sourceId);
     const config = await client.request<v2.ConfigReadResponse>("config/read", { cwd: intent.projectPath });
-    if (readObject(readObject(config.config.projects)[intent.projectPath]).trust_level !== "trusted") {
+    if (!isWorkspaceProjectTrusted(config.config.projects, intent.projectPath)) {
       throw new Error("Trust the project in its Codex source before moving a worktree.");
     }
     if (!await this.missing(intent, intent.destinationPath)) throw new Error("Move destination must not already exist.");

@@ -6,7 +6,7 @@ import type { WorkspaceCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexProjectWorkspace, OpenCodexWorkspaceCreateInput, OpenCodexWorkspaceCreation, OpenCodexWorkspaceRoot } from
   "@open-codex-ui/opencodex-protocol";
 import type { v2 } from "@open-codex-ui/codex-rpc";
-import { readObject } from "../../mapping.js";
+import { isWorkspaceProjectTrusted } from "./workspaceProjectTrust.js";
 import type { ClientPort } from "../runtime/runtimePorts.js";
 import { GitWorktreeService } from "../git/GitWorktreeService.js";
 import { createRunGit } from "../git/gitCommandRunner.js";
@@ -91,8 +91,7 @@ export class WorkspaceCreationService {
   private async requireDestination(creation: OpenCodexWorkspaceCreation): Promise<void> {
     const client = await this.clients.ensureClient(creation.sourceId);
     const response = await client.request<v2.ConfigReadResponse>("config/read", { cwd: creation.projectPath });
-    const project = readObject(readObject(response.config.projects)[creation.projectPath]);
-    if (project.trust_level !== "trusted") {
+    if (!isWorkspaceProjectTrusted(response.config.projects, creation.projectPath)) {
       throw new Error("Trust the project in its Codex source before creating a worktree.");
     }
     let exists = true;

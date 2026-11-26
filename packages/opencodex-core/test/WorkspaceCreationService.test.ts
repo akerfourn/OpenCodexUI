@@ -67,6 +67,40 @@ describe("durable workspace creation", () => {
     expect(git.create).toHaveBeenCalledWith("/repo", "source", "/secondary", input.start, expect.any(Object));
   });
 
+  it.each(["d:\\projets\\perso\\opencodexui", "d:/projets/perso/opencodexui"])(
+    "should create a Windows workspace when the trusted path uses a different spelling: %s", async configuredPath => {
+      const projectPath = "D:\\Projets\\Perso\\OpenCodexUI";
+      const destination = "D:\\Workspaces\\topic";
+      const primary = await cache.workspaces.resolvePath(projectPath, "source");
+      input = { ...input, projectId: primary.projectId, destinationPath: destination };
+      client.request.mockResolvedValue({ config: { projects: { [configuredPath]: { trust_level: "trusted" } } } });
+      client.getMetadata.mockImplementation(async value => {
+        if (value === destination && !destinationExists) throw new Error("File not found");
+        return { isDirectory: true, isSymlink: false };
+      });
+      git.list.mockImplementation(async () => {
+        const entries = [{ ...entry, path: projectPath, branch: "refs/heads/main" }];
+        if (destinationExists) entries.push({ ...entry, path: destination });
+        return entries;
+      });
+
+      const workspace = await service.create(input);
+
+      expect(workspace).toMatchObject({ projectId: primary.projectId, sourceId: "source", path: destination, managed: true });
+      expect(client.request).toHaveBeenCalledWith("config/read", { cwd: projectPath });
+      expect(clients.ensureClient.mock.calls.every(([sourceId]) => sourceId === "source")).toBe(true);
+      expect(git.create).toHaveBeenCalledWith(projectPath, "source", destination, input.start, expect.any(Object));
+      expect(await service.pending(primary.projectId)).toEqual([]);
+    }
+  );
+
+  it("should keep POSIX trust paths case-sensitive before creating a worktree", async () => {
+    client.request.mockResolvedValue({ config: { projects: { "/Repo": { trust_level: "trusted" } } } });
+    await expect(service.create(input)).rejects.toThrow("Trust the project in its Codex source before creating a worktree.");
+    expect(git.create).not.toHaveBeenCalled();
+    expect(client.getMetadata).not.toHaveBeenCalled();
+  });
+
   it.each(["source", "path", "trust", "existing"])("should refuse invalid %s before mutation", async (reason) => {
     if (reason === "source") input.sourceId = "other";
     if (reason === "path") input.destinationPath = "relative";

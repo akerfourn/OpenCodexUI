@@ -3,7 +3,7 @@ import type { WorkspaceCacheRepository } from "@open-codex-ui/opencodex-cache";
 import type { OpenCodexWorkspaceMove, OpenCodexWorkspaceMoveInput, OpenCodexWorkspaceRoot } from "@open-codex-ui/opencodex-protocol";
 import type { v2 } from "@open-codex-ui/codex-rpc";
 import type { ClientPort } from "../runtime/runtimePorts.js";
-import { readObject } from "../../mapping.js";
+import { isWorkspaceProjectTrusted } from "./workspaceProjectTrust.js";
 import { PrimaryMoveFiles } from "./PrimaryMoveFiles.js";
 import { PrimaryMoveGit } from "./PrimaryMoveGit.js";
 import { primaryMovePath } from "./primaryMovePaths.js";
@@ -45,7 +45,7 @@ export class PrimaryWorkspaceMoveService {
       const context = { projectId: primary.projectId, workspaceId: primary.id, sourceId: input.sourceId, workspacePath: primary.path };
       const client = await this.clients.ensureClient(input.sourceId);
       const config = await client.request<v2.ConfigReadResponse>("config/read", { cwd: primary.path });
-      if (readObject(readObject(config.config.projects)[primary.path]).trust_level !== "trusted") {
+      if (!isWorkspaceProjectTrusted(config.config.projects, primary.path)) {
         throw new Error("Trust the project in its Codex source before moving its directory.");
       }
       const observation = await this.files.inspect(context);
