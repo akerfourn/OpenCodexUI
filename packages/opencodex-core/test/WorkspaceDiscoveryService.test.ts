@@ -6,6 +6,7 @@ import { createOpenCodexSqliteCacheRepository, type OpenCodexCacheRepository } f
   "@open-codex-ui/opencodex-cache";
 import { WorkspaceDiscoveryService } from "../src/backend/workspaces/WorkspaceDiscoveryService";
 import type { GitWorktree } from "../src/backend/git/gitWorktreeParsers";
+import { JsonRpcError } from "@open-codex-ui/codex-rpc";
 
 /** Produces source metadata without filesystem or branch mutation. */
 function entry(path: string): GitWorktree {
@@ -81,6 +82,27 @@ describe("source-owned workspace discovery", () => {
     expect((await service.discover(projectId, "source")).skipped)
       .toEqual([{ path: "/external", reason: "unavailable" }]);
     expect(await cache.workspaces.list(projectId)).toHaveLength(1);
+  });
+
+  it.each([
+    "Le fichier spécifié est introuvable. (os error 2)",
+    "Le chemin d’accès spécifié est introuvable. (os error 3)"
+  ])("should skip an absent Windows checkout reported as: %s", async message => {
+    const primaryPath = "C:\\Projects\\app";
+    const missingPath = "C:\\Workspaces\\missing";
+    const primary = await cache.workspaces.resolvePath(primaryPath, "source");
+    git.repositoryPath.mockResolvedValue(`${primaryPath}\\.git`);
+    git.list.mockResolvedValue([entry(primaryPath), entry(missingPath)]);
+    client.getMetadata.mockImplementation(async value => {
+      if (value === missingPath) throw new JsonRpcError(message, -32603, null, { method: "fs/getMetadata", path: value });
+      return { isDirectory: true, isSymlink: false };
+    });
+
+    const result = await service.discover(primary.projectId, "source");
+
+    expect(result.skipped).toEqual([{ path: missingPath, reason: "unavailable" }]);
+    expect(result.workspaces).toHaveLength(1);
+    expect(result.workspaces[0].path).toBe(primaryPath);
   });
 
   it("should not publish a partial batch when source access fails", async () => {

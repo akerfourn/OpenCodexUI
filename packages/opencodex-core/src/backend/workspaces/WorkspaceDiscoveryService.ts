@@ -4,7 +4,7 @@ import type { OpenCodexWorkspaceDiscoveryResult, OpenCodexWorkspaceDiscoverySkip
 import type { ClientPort } from "../runtime/runtimePorts.js";
 import { GitWorktreeService } from "../git/GitWorktreeService.js";
 import { createRunGit } from "../git/gitCommandRunner.js";
-import { normalizeWorkspaceSourcePath } from "./workspaceSourcePath.js";
+import { isMissingWorkspacePathError, normalizeWorkspaceSourcePath } from "./workspaceSourcePath.js";
 
 /** Explicitly discovers source-local Git checkouts without claiming ownership of their files. */
 export class WorkspaceDiscoveryService {
@@ -45,9 +45,7 @@ export class WorkspaceDiscoveryService {
         const metadata = await client.getMetadata(path);
         available = metadata.isDirectory && !metadata.isSymlink;
       } catch (error) {
-        if (!(error instanceof Error) || !/no such file|\b(file|path)\b.*\bnot found\b/iu.test(error.message)) {
-          throw error;
-        }
+        if (!isMissingWorkspacePathError(error, path)) throw error;
         available = false;
       }
       if (!available) {

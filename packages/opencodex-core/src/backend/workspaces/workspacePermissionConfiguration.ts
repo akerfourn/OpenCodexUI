@@ -3,6 +3,7 @@ import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 import { readObject } from "../../mapping.js";
 import { buildManagedConfigBlock, buildManagedPermissionProfile, replaceManagedBlock, joinSourcePath,
   type ManagedConfigBlockInput } from "../projects/projectContextConfig.js";
+import { isMissingWorkspacePathError } from "./workspaceSourcePath.js";
 
 /** Writes only the owned config block and verifies the complete source-loaded policy. */
 export async function writeWorkspacePermissionConfiguration(
@@ -20,9 +21,7 @@ export async function writeWorkspacePermissionConfiguration(
       const metadata = await client.getMetadata(value);
       if (metadata.isSymlink !== false) throw new Error("Workspace configuration must not use symbolic links.");
     } catch (error) {
-      if (!(error instanceof Error) || !/no such file|\b(file|path)\b.*\bnot found\b/iu.test(error.message)) {
-        throw error;
-      }
+      if (!isMissingWorkspacePathError(error, value)) throw error;
     }
   }
   await client.createDirectory(directory);
@@ -30,9 +29,7 @@ export async function writeWorkspacePermissionConfiguration(
   try {
     previous = Buffer.from((await client.readFile(configPath)).dataBase64, "base64").toString("utf8");
   } catch (error) {
-    if (!(error instanceof Error) || !/no such file|\b(file|path)\b.*\bnot found\b/iu.test(error.message)) {
-      throw error;
-    }
+    if (!isMissingWorkspacePathError(error, configPath)) throw error;
   }
   const next = replaceManagedBlock(previous, buildManagedConfigBlock(input), input.profileId);
   if (next !== previous) {

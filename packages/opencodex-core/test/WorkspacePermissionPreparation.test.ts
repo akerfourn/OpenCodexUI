@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenCodexCacheRepository, WorkspaceTransitionRecord } from "@open-codex-ui/opencodex-cache";
-import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
+import { JsonRpcError, type CodexAppServerClient } from "@open-codex-ui/codex-rpc";
+import { parse } from "smol-toml";
 import { WorkspacePermissionPreparation } from "../src/backend/workspaces/WorkspacePermissionPreparation";
 import { workspacePermissionInput } from "../src/backend/workspaces/workspacePermissionProfile";
 import { buildManagedPermissionProfile } from "../src/backend/projects/projectContextConfig";
@@ -60,6 +61,62 @@ describe("workspace permission preparation", () => {
     expect(expected.approvalPolicy).toBe("never");
     expect(expected.config).toHaveProperty(`permissions.${expected.activePermissionProfile.id}`);
     expect(updateProjectPreferences).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "Le fichier spécifié est introuvable. (os error 2)",
+    "Le chemin d’accès spécifié est introuvable. (os error 3)"
+  ])("should initialize a missing Windows workspace configuration reported as: %s", async message => {
+    const selection = { ...transition, fromPath: "C:\\Projects\\app", toPath: "C:\\Workspaces\\feature" };
+    const directory = `${selection.toPath}\\.codex`;
+    const configPath = `${directory}\\config.toml`;
+    getForThread.mockResolvedValue(selection);
+    listProjects.mockResolvedValue([{ ...project, preferences: {} }]);
+    const input = workspacePermissionInput(selection, []);
+    const profile = buildManagedPermissionProfile(input);
+    client.request.mockResolvedValue({ config: { default_permissions: input.profileId,
+      permissions: { [input.profileId]: profile } } });
+    client.getMetadata.mockImplementation(async value => {
+      if (value === directory || value === configPath) {
+        throw new JsonRpcError(message, -32603, null, { method: "fs/getMetadata", path: value });
+      }
+      return { isDirectory: true, isSymlink: false };
+    });
+    client.readFile.mockRejectedValue(new JsonRpcError(message, -32603, null, { method: "fs/readFile", path: configPath }));
+
+    const expected = await service.prepare(selection, approval);
+
+    expect(client.createDirectory).toHaveBeenCalledWith(directory);
+    expect(client.writeFile).toHaveBeenCalledWith(configPath, expect.any(String));
+    const config = parse(Buffer.from(client.writeFile.mock.calls[0][1], "base64").toString("utf8"));
+    expect(config.default_permissions).toBe(expected.activePermissionProfile.id);
+    expect(config.permissions).toMatchObject({ [input.profileId]: { workspace_roots: { [selection.toPath]: true } } });
+    expect(expected).toMatchObject({ cwd: selection.toPath, runtimeWorkspaceRoots: [selection.toPath], ...approval });
+    expect(clients.ensureClient).toHaveBeenCalledWith(selection.sourceId);
+    expect(updateProjectPreferences).not.toHaveBeenCalled();
+  });
+
+  it("should stop on a Windows access error before creating or overwriting configuration", async () => {
+    const error = new JsonRpcError("Accès refusé. (os error 5)", -32603, null,
+      { method: "fs/getMetadata", path: "/B/.codex" });
+    client.getMetadata.mockImplementation(async value => {
+      if (value === "/B/.codex") throw error;
+      return { isDirectory: true, isSymlink: false };
+    });
+
+    await expect(service.prepare(transition, approval)).rejects.toBe(error);
+
+    expect(client.createDirectory).not.toHaveBeenCalled();
+    expect(client.writeFile).not.toHaveBeenCalled();
+  });
+
+  it("should reject a symbolic configuration directory without replacing it", async () => {
+    client.getMetadata.mockImplementation(async value => ({ isDirectory: true, isSymlink: value === "/B/.codex" }));
+
+    await expect(service.prepare(transition, approval)).rejects.toThrow("must not use symbolic links");
+
+    expect(client.createDirectory).not.toHaveBeenCalled();
+    expect(client.writeFile).not.toHaveBeenCalled();
   });
 
   it("should avoid rewriting an identical managed configuration", async () => {
