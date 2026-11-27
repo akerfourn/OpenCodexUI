@@ -2,6 +2,7 @@
  * Covers the JSON-RPC parsing helpers and the Codex app-server client lifecycle.
  */
 import { EventEmitter } from "node:events";
+import { readFileSync } from "node:fs";
 import { PassThrough } from "node:stream";
 
 import { describe, expect, it, vi } from "vitest";
@@ -153,6 +154,46 @@ describe("CodexAppServerClient", () => {
 
     await client.start();
     await expect(client.request("demo/method")).resolves.toEqual({ method: "demo/method" });
+  });
+
+  it("should correlate replies when notifications and reverse requests are interleaved", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+    const onNotification = vi.fn();
+    const onServerRequest = vi.fn();
+    const fixture = new URL("../../../tests/fixtures/codex-rpc/parallel-exchange.jsonl", import.meta.url);
+    const [initialization, ...exchange] = readFileSync(fixture, "utf8").trimEnd().split(/\r?\n/);
+    client.onNotification(onNotification);
+    client.onServerRequest(onServerRequest);
+    respondToRequests(fakeProcess, (request) => {
+      if (request.method === "initialize") {
+        fakeProcess.stdout.write(initialization + "\n");
+        return;
+      }
+      if (request.method === "model/list") {
+        fakeProcess.stdout.write(exchange.join("\n") + "\n");
+      }
+    });
+
+    await client.start();
+    const thread = expect(client.request("thread/read")).rejects.toMatchObject({
+      code: -32042,
+      message: "Permission denied",
+      data: { reason: "policy" }
+    });
+    const models = expect(client.request("model/list")).resolves.toEqual({ data: [] });
+
+    await Promise.all([thread, models]);
+    expect(onNotification.mock.calls).toEqual([[{
+      method: "item/agentMessage/delta",
+      params: { delta: "Bonjour" }
+    }]]);
+    expect(onServerRequest.mock.calls).toEqual([[{
+      id: 2,
+      method: "item/commandExecution/requestApproval",
+      params: { threadId: "t1" }
+    }]]);
+    await client.stop();
   });
 
   it("should send configured client info during initialization", async () => {

@@ -1,3 +1,3 @@
 [workspace]
-members = ["daemon"]
+members = ["codex-rpc", "daemon"]
 resolver = "3"

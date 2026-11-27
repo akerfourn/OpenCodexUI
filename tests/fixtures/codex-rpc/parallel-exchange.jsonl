@@ -1,0 +1,5 @@
+{"id":1,"result":{"codexHome":"synthetic-home"}}
+{"method":"item/agentMessage/delta","params":{"delta":"Bonjour"}}
+{"id":2,"method":"item/commandExecution/requestApproval","params":{"threadId":"t1"}}
+{"id":3,"result":{"data":[]}}
+{"id":2,"error":{"code":-32042,"message":"Permission denied","data":{"reason":"policy"}}}

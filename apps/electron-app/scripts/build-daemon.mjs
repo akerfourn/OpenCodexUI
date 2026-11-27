@@ -43,7 +43,7 @@ export async function buildRustDaemon(
   const hostTarget = stdout.match(/^host: (.+)$/m)?.[1];
   // Native builds use the shorter output path needed by MSVC in deep worktrees.
   const isNative = target === hostTarget && process.env.CARGO_BUILD_TARGET === undefined;
-  const args = ["build", "--locked", "--release", "--target-dir", targetDirectory];
+  const args = ["build", "--package", "opencodex-daemon", "--locked", "--release", "--target-dir", targetDirectory];
   if (!isNative) args.push("--target", target);
 
   await runCargo(args);
