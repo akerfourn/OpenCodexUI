@@ -63,6 +63,78 @@ describe("workspace permission preparation", () => {
     expect(updateProjectPreferences).not.toHaveBeenCalled();
   });
 
+  it("should accept the nullable permission fields returned by Codex 0.172 on Windows", async () => {
+    const selection = { ...transition, fromPath: "C:\\Projects\\app", toPath: "C:\\Workspaces\\feature" };
+    getForThread.mockResolvedValue(selection);
+    listProjects.mockResolvedValue([{ ...project, preferences: {} }]);
+    const input = workspacePermissionInput(selection, []);
+    const profile = buildManagedPermissionProfile(input);
+    const loaded = { ...profile,
+      credentials: null,
+      filesystem: { ...profile.filesystem, glob_scan_max_depth: null },
+      network: { ...profile.network,
+        proxy_url: null, enable_socks5: null, transparent_tcp: null, socks_url: null,
+        enable_socks5_udp: null, allow_upstream_proxy: null, dangerously_allow_non_loopback_proxy: null,
+        dangerously_allow_all_unix_sockets: null, mode: null, domains: null, unix_sockets: null,
+        allow_local_binding: null, mitm: null
+      }
+    };
+    client.request.mockResolvedValue({ config: {
+      default_permissions: input.profileId, permissions: { [input.profileId]: loaded }
+    } });
+
+    const expected = await service.prepare(selection, approval);
+
+    expect(expected).toMatchObject({ cwd: selection.toPath, runtimeWorkspaceRoots: [selection.toPath], ...approval });
+    expect(expected.sandbox).toMatchObject({ networkAccess: false, writableRoots: [] });
+    expect(client.request).toHaveBeenCalledWith("config/read", { cwd: selection.toPath });
+    expect(loaded.credentials).toBeNull();
+    expect(loaded.network.transparent_tcp).toBeNull();
+  });
+
+  it.each([
+    { field: "credentials", override: { credentials: {} } },
+    { field: "network", override: { network: { enabled: false, transparent_tcp: false } } },
+    { field: "unrecognized_policy", override: { unrecognized_policy: null } }
+  ])("should reject an unexpected $field setting instead of discarding it", async ({ field, override }) => {
+    const input = workspacePermissionInput(transition, project.preferences.context.folders);
+    const profile = buildManagedPermissionProfile(input);
+    client.request.mockResolvedValue({ config: {
+      default_permissions: input.profileId, permissions: { [input.profileId]: { ...profile, ...override } }
+    } });
+
+    await expect(service.prepare(transition, approval)).rejects.toThrow(`differing profile fields: ${field}`);
+  });
+
+  it("should identify configuration mismatches without exposing profile values", async () => {
+    const input = workspacePermissionInput(transition, project.preferences.context.folders);
+    const profile = buildManagedPermissionProfile(input);
+    client.request.mockResolvedValue({ config: {
+      default_permissions: ":read-only", permissions: { [input.profileId]: { ...profile,
+        credentials: { secret: "private-credential-value" }, network: { enabled: true }
+      } }
+    } });
+
+    const preparation = service.prepare(transition, approval);
+
+    await expect(preparation).rejects.toThrow("[/B/.codex/config.toml]");
+    await expect(preparation).rejects.toThrow(`Expected default_permissions="${input.profileId}", loaded=":read-only"`);
+    await expect(preparation).rejects.toThrow("differing profile fields: credentials, network");
+    await expect(preparation).rejects.not.toThrow("private-credential-value");
+  });
+
+  it("should reject a different default even when the destination profile matches exactly", async () => {
+    const input = workspacePermissionInput(transition, project.preferences.context.folders);
+    const profile = buildManagedPermissionProfile(input);
+    client.request.mockResolvedValue({ config: {
+      default_permissions: ":read-only", permissions: { [input.profileId]: profile }
+    } });
+
+    await expect(service.prepare(transition, approval)).rejects.toThrow(
+      'loaded=":read-only"; differing profile fields: none'
+    );
+  });
+
   it.each([
     "Le fichier spécifié est introuvable. (os error 2)",
     "Le chemin d’accès spécifié est introuvable. (os error 3)"

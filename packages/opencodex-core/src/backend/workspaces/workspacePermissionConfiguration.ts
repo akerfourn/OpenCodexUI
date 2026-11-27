@@ -38,20 +38,30 @@ export async function writeWorkspacePermissionConfiguration(
   const effective = await client.request<v2.ConfigReadResponse>("config/read", { cwd: input.projectPath });
   const loaded = normalizeLoadedProfile(readObject(effective.config.permissions)[input.profileId]);
   if (effective.config.default_permissions !== input.profileId || !isDeepStrictEqual(loaded, profile)) {
-    throw new Error("Codex did not load the exact destination permission profile; check project trust and overrides.");
+    const expected = readObject(profile);
+    const fields = new Set([...Object.keys(expected), ...Object.keys(loaded)]);
+    const differences = [...fields].filter(key => !isDeepStrictEqual(expected[key], loaded[key])).sort();
+    const differingFields = differences.length === 0 ? "none" : differences.join(", ");
+    throw new Error(`Codex did not load the exact destination permission profile [${configPath}]. ` +
+      `Expected default_permissions=${JSON.stringify(input.profileId)}, ` +
+      `loaded=${JSON.stringify(effective.config.default_permissions ?? null)}; ` +
+      `differing profile fields: ${differingFields}. Check project trust and overrides.`);
   }
 }
 
 /** Codex serializes these optional schema fields as null when they are absent from TOML. */
 function normalizeLoadedProfile(value: unknown): Record<string, unknown> {
   const profile = structuredClone(readObject(value));
+  if (profile.credentials === null) {
+    delete profile.credentials;
+  }
   const filesystem = readObject(profile.filesystem);
   if (filesystem.glob_scan_max_depth === null) {
     delete filesystem.glob_scan_max_depth;
   }
   profile.filesystem = filesystem;
   const network = readObject(profile.network);
-  const optional = ["proxy_url", "enable_socks5", "socks_url", "enable_socks5_udp", "allow_upstream_proxy",
+  const optional = ["proxy_url", "enable_socks5", "transparent_tcp", "socks_url", "enable_socks5_udp", "allow_upstream_proxy",
     "dangerously_allow_non_loopback_proxy", "dangerously_allow_all_unix_sockets", "mode", "domains",
     "unix_sockets", "allow_local_binding", "mitm"];
   for (const key of optional) {
