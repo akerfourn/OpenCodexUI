@@ -155,7 +155,7 @@ jobs:
           cache: npm
 
       - name: Install Linux packaging dependencies
-        run: sudo apt-get update && sudo apt-get install -y imagemagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick xvfb
 
       - name: Install dependencies
         run: npm ci
@@ -165,6 +165,10 @@ jobs:
 
       - name: Build packages
         run: npm run build:packages
+
+      - name: Test Rust daemon
+        working-directory: rust
+        run: cargo test --locked
 
       - name: Build Linux packages
         # Generate update metadata locally; the publish job uploads it with the artifacts.
@@ -177,8 +181,11 @@ jobs:
           test -s apps/electron-app/release/latest-linux.yml
           test -s apps/electron-app/release/linux-unpacked/resources/app-update.yml
 
+      - name: Verify bundled daemon on Linux
+        timeout-minutes: 2
+        run: xvfb-run -a apps/electron-app/release/linux-unpacked/open-codex-ui --no-sandbox --check-rust-daemon
+
       - name: Upload Linux artifacts
-        if: ${{ always() }}
         uses: actions/upload-artifact@v6
         with:
           name: linux-artifacts
@@ -217,6 +224,10 @@ jobs:
       - name: Validate Windows process launches
         run: npm run test -w @open-codex-ui/opencodex-core -- SourceResourceProcess.test.ts SourceExecutableResolver.test.ts SourceResourceDefaults.test.ts
 
+      - name: Test Rust daemon
+        working-directory: rust
+        run: cargo test --locked
+
       - name: Build Windows packages
         # Generate update metadata locally; the publish job uploads it with the artifacts.
         run: npm run dist -w apps/electron-app -- --publish never
@@ -228,8 +239,15 @@ jobs:
           test -s apps/electron-app/release/latest.yml
           test -s apps/electron-app/release/win-unpacked/resources/app-update.yml
 
+      - name: Verify bundled daemon on Windows
+        timeout-minutes: 2
+        shell: pwsh
+        run: |
+          $app = 'apps/electron-app/release/win-unpacked/OpenCodexUI.exe'
+          $process = Start-Process -FilePath $app -ArgumentList '--check-rust-daemon' -WindowStyle Hidden -Wait -PassThru
+          if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+
       - name: Upload Windows artifacts
-        if: ${{ always() }}
         uses: actions/upload-artifact@v6
         with:
           name: windows-artifacts

@@ -50,6 +50,7 @@ type ElectronBridgeServerOptions = {
   onSettingsUpdated(settings: OpenCodexSettings): void;
   onApplicationCloseResponse(shouldClose: boolean): void;
   onApplicationUpdateInstallStateChanged(installing: boolean): void;
+  prepareApplicationUpdateInstall?(): Promise<void>;
 };
 
 /**
@@ -94,7 +95,8 @@ export class ElectronBridgeServer {
       allowPrerelease: options.settings.allowPrereleaseUpdates === true,
       emit: (state) => this.emit({ type: "app.update.state", state }),
       log: (level, message) => logger(`[updater:${level}] ${message}`),
-      onInstallStateChanged: options.onApplicationUpdateInstallStateChanged
+      onInstallStateChanged: options.onApplicationUpdateInstallStateChanged,
+      prepareInstall: options.prepareApplicationUpdateInstall
     }, isAutomaticUpdateSupported() ? createNativeAppUpdater() : undefined);
 
     this.runtime = new OpenCodexBackendRuntime({

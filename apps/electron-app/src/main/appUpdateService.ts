@@ -32,6 +32,8 @@ type AppUpdateServiceOptions = {
   emit(state: OpenCodexAppUpdateState): void;
   log(level: AppUpdateLogLevel, message: string): void;
   onInstallStateChanged(installing: boolean): void;
+  /** Releases resources that hold installed files open. */
+  prepareInstall?(): Promise<void>;
 };
 
 /**
@@ -155,13 +157,23 @@ export class AppUpdateService {
     this.options.onInstallStateChanged(true);
     this.installTimer = setTimeout(() => {
       this.installTimer = null;
-      try {
-        updater.quitAndInstall(false, true);
-      } catch (error) {
-        this.applyError(error);
-      }
+      void this.installPreparedUpdate(updater);
     }, 100);
     return this.getState();
+  }
+
+  /** Waits for resource shutdown before handing control to the platform installer. */
+  private async installPreparedUpdate(updater: AppUpdater): Promise<void> {
+    try {
+      await this.options.prepareInstall?.();
+      if (!this.isDisposed) {
+        updater.quitAndInstall(false, true);
+      }
+    } catch (error) {
+      if (!this.isDisposed) {
+        this.applyError(error);
+      }
+    }
   }
 
   /** Releases timers and updater event listeners during application shutdown. */

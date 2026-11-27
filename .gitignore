@@ -12,3 +12,5 @@ release/
 /.count-cache
 
 /apps/electron-app/build/debug-adapter/
+/apps/electron-app/build/daemon/
+/rust/target/

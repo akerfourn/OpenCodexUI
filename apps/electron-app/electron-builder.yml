@@ -6,6 +6,7 @@ directories:
   output: release
 
 afterPack: scripts/after-pack.cjs
+beforePack: scripts/build-daemon.mjs
 
 files:
   - dist/**/*
@@ -14,6 +15,8 @@ files:
   - "!node_modules/onnxruntime-node/**/libonnxruntime_providers_tensorrt*"
 
 extraResources:
+  - from: build/daemon/${os}/${arch}
+    to: daemon
   - from: build/debug-adapter/1.140.0/js-debug
     to: debug-adapter/js-debug
   - from: build/icon.ico

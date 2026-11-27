@@ -74,6 +74,8 @@ For development from source:
 
 - Node.js 20 or newer.
 - npm 10 or newer.
+- Rust and the platform linker for desktop development and packaging.
+  Rustup selects the toolchain pinned in `rust/rust-toolchain.toml`.
 
 ## Install From A Release
 
@@ -176,8 +178,9 @@ Start the Electron app in development mode:
 npm run dev
 ```
 
-The dev script starts the Vite renderer, rebuilds monorepo packages used by the
-app, and restarts Electron when backend or main-process code changes.
+The dev script builds the local Rust daemon, starts the Vite renderer, rebuilds
+the monorepo packages used by the app, and restarts Electron when backend or
+main-process code changes.
 
 UI changes are picked up by Vite without manually restarting the app.
 
@@ -224,6 +227,11 @@ Build an unpacked local distribution:
 ```bash
 npm run dist:dir
 ```
+
+The desktop package embeds the Rust daemon for its target OS and architecture.
+Run the packaged application with `--check-rust-daemon` to check that it can
+launch the embedded executable, complete an IPC ping, and stop it on EOF.
+The flag exits before loading the application profile or opening a window.
 
 `npm test` rebuilds `better-sqlite3` for Node.js.
 `npm run dev` rebuilds it for Electron.

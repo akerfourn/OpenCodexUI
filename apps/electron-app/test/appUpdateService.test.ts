@@ -138,6 +138,48 @@ describe("AppUpdateService", () => {
     service.dispose();
   });
 
+  it("should wait for the bundled process to stop before installing an update", async () => {
+    vi.useFakeTimers();
+    const updater = createFakeUpdater();
+    const prepareInstall = vi.fn(async () => {
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    });
+    const service = new AppUpdateService({
+      currentVersion: "1.14.0", isPackaged: true, allowPrerelease: false,
+      emit: vi.fn(), log: vi.fn(), onInstallStateChanged: vi.fn(), prepareInstall
+    }, updater as unknown as AppUpdater);
+    updater.emit("update-downloaded", createUpdateInfo("1.15.0"));
+
+    service.install();
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(prepareInstall).toHaveBeenCalledOnce();
+    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(updater.quitAndInstall).toHaveBeenCalledWith(false, true);
+    service.dispose();
+  });
+
+  it("should report preparation failures without starting the installer", async () => {
+    vi.useFakeTimers();
+    const updater = createFakeUpdater();
+    const changed = vi.fn();
+    const service = new AppUpdateService({
+      currentVersion: "1.14.0", isPackaged: true, allowPrerelease: false,
+      emit: vi.fn(), log: vi.fn(), onInstallStateChanged: changed,
+      prepareInstall: vi.fn().mockRejectedValue(new Error("daemon is still running"))
+    }, updater as unknown as AppUpdater);
+    updater.emit("update-downloaded", createUpdateInfo("1.15.0"));
+
+    service.install();
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(updater.quitAndInstall).not.toHaveBeenCalled();
+    expect(service.getState()).toMatchObject({ status: "error", errorMessage: "daemon is still running" });
+    expect(changed.mock.calls).toEqual([[true], [false]]);
+    service.dispose();
+  });
+
   it("should recover from a synchronous installer exception and cancel deferred installs on disposal", async () => {
     vi.useFakeTimers();
     const updater = createFakeUpdater();

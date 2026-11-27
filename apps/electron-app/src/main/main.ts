@@ -19,9 +19,11 @@ import {
 } from "./contextMenuLocale.js";
 import { setContextMenuLanguage } from "./contextMenu.js";
 import { ElectronBridgeServer } from "./electronBridgeServer.js";
+import { RustDaemonProcess } from "./RustDaemonProcess.js";
 import { SettingsStore } from "./settingsStore.js";
 
 let bridgeServer: ElectronBridgeServer | null = null;
+let rustDaemon: RustDaemonProcess | null = null;
 let mainWindow: BrowserWindow | null = null;
 let usageHistoryWindow: BrowserWindow | null = null;
 let contextMenuLanguage: ContextMenuLanguage = "fr";
@@ -45,6 +47,12 @@ app.setAppUserModelId("io.opencodexui.app");
  */
 async function main(): Promise<void> {
   await app.whenReady();
+  if (process.argv.includes("--check-rust-daemon")) {
+    await checkRustDaemon();
+    app.exit(0);
+    return;
+  }
+
   Menu.setApplicationMenu(null);
 
   const settingsStore = new SettingsStore(app.getPath("userData"));
@@ -77,6 +85,7 @@ async function main(): Promise<void> {
       isApplicationUpdateInstallInProgress = installing;
       isApplicationUpdateRestartReady = false;
     },
+    prepareApplicationUpdateInstall: stopRustDaemon,
     openUsageHistory: (sourceId) => {
       openUsageHistoryWindow({
         sourceId,
@@ -90,6 +99,8 @@ async function main(): Promise<void> {
   bridgeServer.attachWindow(window);
   bridgeServer.register();
   bridgeServer.startApplicationUpdates();
+  rustDaemon = launchRustDaemon();
+  void rustDaemon.waitUntilReady().catch(handleRustDaemonStartupError);
 
   app.on("activate", () => {
     if (mainWindow === null || mainWindow.isDestroyed()) {
@@ -139,8 +150,57 @@ process.once("SIGINT", () => {
 
 void main().catch((error: unknown) => {
   console.error(`[OpenCodexUI] startup failed: ${String(error)}`);
-  app.exit(1);
+  void disposeAndExit(1);
 });
+
+/** Starts the companion from the development build or the installed resource directory. */
+function launchRustDaemon(): RustDaemonProcess {
+  const resources = app.isPackaged
+    ? path.join(process.resourcesPath, "daemon")
+    : path.join(__dirname, "..", "..", "build", "daemon", "dev");
+  const filename = process.platform === "win32" ? "opencodex-daemon.exe" : "opencodex-daemon";
+  return new RustDaemonProcess(path.join(resources, filename));
+}
+
+/** Exercises the installed companion through the same launcher, with no user profile loaded. */
+async function checkRustDaemon(): Promise<void> {
+  const daemon = launchRustDaemon();
+  rustDaemon = daemon;
+  await daemon.waitUntilReady();
+  const exit = await daemon.dispose();
+  rustDaemon = null;
+  if (exit.code !== 0) {
+    throw new Error(`Rust daemon did not stop cleanly (code ${exit.code}, signal ${exit.signal}).`, {
+      cause: exit.error
+    });
+  }
+
+  console.info("[OpenCodexUI] Rust daemon IPC and shutdown verified");
+}
+
+/** Reports a failed startup while keeping the desktop backend available. */
+async function handleRustDaemonStartupError(error: unknown): Promise<void> {
+  console.error(`[OpenCodexUI] Rust daemon startup failed: ${String(error)}`);
+  try {
+    await stopRustDaemon();
+  } catch (cleanupError) {
+    console.error(`[OpenCodexUI] Rust daemon cleanup failed: ${String(cleanupError)}`);
+  }
+}
+
+/** Releases the companion before application exit or replacement of its executable. */
+async function stopRustDaemon(): Promise<void> {
+  const daemon = rustDaemon;
+  if (daemon === null) return;
+
+  const exit = await daemon.dispose();
+  if (rustDaemon !== daemon) return;
+
+  rustDaemon = null;
+  if (exit.code !== 0) {
+    console.error(`[OpenCodexUI] Rust daemon stopped with code ${exit.code}, signal ${exit.signal}`, exit.error);
+  }
+}
 
 /**
  * Disposes backend resources before the Electron process exits.
@@ -171,7 +231,15 @@ async function disposeAndExit(code: number): Promise<void> {
     });
 
     try {
-      await Promise.race([bridgeServer?.dispose() ?? Promise.resolve(), cleanupTimeout]);
+      const results = await Promise.race([
+        Promise.allSettled([bridgeServer?.dispose(), stopRustDaemon()]),
+        cleanupTimeout
+      ]);
+      for (const result of results ?? []) {
+        if (result.status === "rejected") {
+          console.error(`[OpenCodexUI] cleanup failed during shutdown: ${String(result.reason)}`);
+        }
+      }
     } finally {
       if (timeoutId !== undefined) {
         clearTimeout(timeoutId);

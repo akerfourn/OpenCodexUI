@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
 import { createServer, loadConfigFromFile } from "vite";
 
+import { buildRustDaemon } from "./build-daemon.mjs";
 import { createWorkspaceResolvePlugin } from "./workspaceAliases.js";
 
 const require = createRequire(import.meta.url);
@@ -35,6 +36,7 @@ main().catch((error) => {
  * @returns Promise resolved once the dev workflow has been initialized.
  */
 async function main() {
+  await buildRustDaemon();
   await prepareDebugAdapter();
   await rebuildNativeDependenciesForElectron();
 
