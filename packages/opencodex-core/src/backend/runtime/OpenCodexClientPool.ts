@@ -1,5 +1,6 @@
 import {
   CodexAppServerClient,
+  createRustCodexProcessFactory,
   type CodexAppServerClientOptions,
   type CodexNotification,
   type CodexServerRequest
@@ -14,6 +15,8 @@ import type { RuntimeEventPort, RuntimeSettingsPort } from "./runtimePorts.js";
 export interface OpenCodexClientPoolOptions {
   settings: Pick<RuntimeSettingsPort, "getSettings">;
   appVersion: string | null;
+  /** Absolute path enabling the relay for local source launches. */
+  rustCodexDaemonPath?: string;
   resolveSource(sourceId: string | null): Promise<CachedSource>;
   events: Pick<RuntimeEventPort, "emit">;
   logger?(message: string): void;
@@ -204,10 +207,14 @@ export class OpenCodexClientPool {
     const generation = (this.launchGenerations.get(source.id) ?? 0) + 1;
     this.launchGenerations.set(source.id, generation);
     this.publish(source.id, "starting");
+    const relayPath = source.kind === "local" ? this.options.rustCodexDaemonPath : undefined;
     let processFactory: CodexAppServerClientOptions["processFactory"];
     try {
-      if (source.kind === "local" && source.settings.resources !== undefined) {
-        processFactory = await createSourceResourceProcessFactory(source);
+      if (source.kind === "local" && (source.settings.resources !== undefined || relayPath !== undefined)) {
+        processFactory = await createSourceResourceProcessFactory(source, relayPath !== undefined);
+      }
+      if (relayPath !== undefined) {
+        processFactory = createRustCodexProcessFactory(relayPath, processFactory);
       }
     } catch (error) {
       if (!this.disposed && this.launchGenerations.get(source.id) === generation) {
@@ -217,6 +224,9 @@ export class OpenCodexClientPool {
     }
     if (this.disposed || this.launchGenerations.get(source.id) !== generation) {
       throw new Error("Codex source initialization was interrupted.");
+    }
+    if (relayPath !== undefined) {
+      this.options.logger?.("Launching local Codex app-server through the Rust relay.");
     }
     let client!: CodexAppServerClient;
     const clientOptions: CodexAppServerClientOptions = {

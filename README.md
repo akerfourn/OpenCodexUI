@@ -184,6 +184,19 @@ main-process code changes.
 
 UI changes are picked up by Vite without manually restarting the app.
 
+To try the Rust Codex relay, set `OPENCODEX_RUST_CODEX_TRANSPORT=1` before
+launching the development app. In PowerShell:
+
+```powershell
+$env:OPENCODEX_RUST_CODEX_TRANSPORT = "1"
+npm run dev
+```
+
+Open a conversation on a local source, send a message, and check that its
+response streams. The terminal reports when that source starts through the
+Rust relay. The regular development command in a fresh terminal selects the
+TypeScript transport.
+
 By default, opening the app does not create a project from the process working
 directory. To force an initial project for development:
 
@@ -206,7 +219,8 @@ npm test
 ```
 
 From the `rust/` directory, `cargo test --workspace --locked` runs the
-daemon and Codex JSONL transport tests with synthetic messages.
+daemon and Codex JSONL transport tests with synthetic messages and a fake
+app-server process launched with Node.js.
 Both transport suites replay the same synthetic fixture at
 `tests/fixtures/codex-rpc/parallel-exchange.jsonl`.
 

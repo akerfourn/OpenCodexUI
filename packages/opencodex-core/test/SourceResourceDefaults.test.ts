@@ -12,6 +12,17 @@ vi.mock("node:child_process", async importOriginal => {
 });
 
 describe("default source process launch", () => {
+  it.skipIf(process.platform !== "win32")(
+    "should prepare an owned Windows job for an opt-in relay with default resource settings",
+    async () => {
+      const factory = await createSourceResourceProcessFactory(instanceSource(), true);
+
+      expect(factory).toBeTypeOf("function");
+      expect(spawn).not.toHaveBeenCalled();
+      expect(execFile).not.toHaveBeenCalled();
+    }
+  );
+
   it("should retain the original SDK process factory when resources have never been configured", async () => {
     const source = instanceSource("windows-source");
 

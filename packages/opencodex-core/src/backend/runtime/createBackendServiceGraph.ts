@@ -75,6 +75,7 @@ export function createBackendServiceGraph(
   clientPool = new OpenCodexClientPool({
     settings,
     appVersion: options.appVersion ?? null,
+    rustCodexDaemonPath: options.rustCodexDaemonPath,
     resolveSource: (sourceId) => projectRuntimeHandler.resolveSource(sourceId),
     events,
     logger: options.logger,

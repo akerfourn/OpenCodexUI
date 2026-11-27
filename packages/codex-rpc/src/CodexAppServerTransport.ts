@@ -21,7 +21,7 @@ import type {
   ProcessFactory,
   ProcessLike
 } from "./types";
-import { CodexProcessError, JsonRpcError } from "./types";
+import { CodexProcessError, DEFAULT_CODEX_REQUEST_TIMEOUT_MS, JsonRpcError } from "./types";
 
 type PendingRequest = {
   resolve: (result: unknown) => void;
@@ -70,7 +70,7 @@ export class CodexAppServerTransport {
     this.command = options.command ?? "codex";
     this.args = options.args ?? ["app-server"];
     this.clientInfo = options.clientInfo ?? { name: "OpenCodexUI", version: "unknown" };
-    this.requestTimeoutMs = options.requestTimeoutMs ?? 120_000;
+    this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_CODEX_REQUEST_TIMEOUT_MS;
     this.experimentalApi = options.experimentalApi ?? true;
     this.processFactory = options.processFactory ?? defaultProcessFactory;
     this.logger = options.logger ?? (() => undefined);
@@ -130,6 +130,8 @@ export class CodexAppServerTransport {
       return;
     }
 
+    // Keep draining the pipe after detaching the parser so the relay can flush and exit.
+    process.stdout.resume();
     try {
       if (waitForExit) await stopCodexProcess(process);
       else process.kill();
@@ -320,6 +322,13 @@ export class CodexAppServerTransport {
       this.events.emit("error", processError);
       this.rejectPendingRequests(processError);
       this.startPromise = null;
+    });
+
+    process.stdin.on("error", (error: Error) => {
+      this.logger("Codex app-server input failed: " + error.message);
+      if (this.process === process && !this.isStopping) {
+        this.rejectPendingRequests(normalizeProcessError(error, this.command));
+      }
     });
 
     process.once("close", (code: number | null, signal: NodeJS.Signals | null) => {

@@ -1,13 +1,13 @@
 import { execFile, spawn } from "node:child_process";
 import { copyFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const appRoot = fileURLToPath(new URL("../", import.meta.url));
 const rustRoot = fileURLToPath(new URL("../../../rust/", import.meta.url));
 const execFileAsync = promisify(execFile);
-const cargo = process.env.CARGO ?? "cargo";
 
 const rustTargets = {
   darwin: {
@@ -39,14 +39,13 @@ export async function buildRustDaemon(
   }
 
   const targetDirectory = join(rustRoot, "target");
-  const { stdout } = await execFileAsync(cargo, ["--version", "--verbose"], { cwd: rustRoot });
-  const hostTarget = stdout.match(/^host: (.+)$/m)?.[1];
+  const { cargo, hostTarget } = await findCargo();
   // Native builds use the shorter output path needed by MSVC in deep worktrees.
   const isNative = target === hostTarget && process.env.CARGO_BUILD_TARGET === undefined;
   const args = ["build", "--package", "opencodex-daemon", "--locked", "--release", "--target-dir", targetDirectory];
   if (!isNative) args.push("--target", target);
 
-  await runCargo(args);
+  await runCargo(cargo, args);
 
   const executable = platform === "win32" ? "opencodex-daemon.exe" : "opencodex-daemon";
   const outputDirectory = isNative ? targetDirectory : join(targetDirectory, target);
@@ -62,8 +61,35 @@ export async function beforePack(context) {
   await buildRustDaemon(context.electronPlatformName, arch, join(appRoot, "build", "daemon", os, arch));
 }
 
+/** Finds Cargo and reads its host target using the workspace's toolchain. */
+async function findCargo() {
+  const configuredCargo = process.env.CARGO;
+  const cargoHome = process.env.CARGO_HOME ?? join(homedir(), ".cargo");
+  const executable = process.platform === "win32" ? "cargo.exe" : "cargo";
+  const rustupCargo = resolve(rustRoot, cargoHome, "bin", executable);
+  const candidates = configuredCargo === undefined ? ["cargo", rustupCargo] : [configuredCargo];
+
+  let missingCargo;
+  for (const cargo of candidates) {
+    try {
+      const { stdout } = await execFileAsync(cargo, ["--version", "--verbose"], {
+        cwd: rustRoot,
+        windowsHide: true
+      });
+      return { cargo, hostTarget: stdout.match(/^host: (.+)$/m)?.[1] };
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      missingCargo = error;
+    }
+  }
+
+  throw new Error("Cargo could not be found. Set CARGO to Cargo's full path or install Rust with rustup.", {
+    cause: missingCargo
+  });
+}
+
 /** Runs Cargo from the workspace so rustup resolves its pinned toolchain. */
-async function runCargo(args) {
+async function runCargo(cargo, args) {
   await new Promise((resolve, reject) => {
     const child = spawn(cargo, args, { cwd: rustRoot, stdio: "inherit", windowsHide: true });
     child.once("error", (error) => {

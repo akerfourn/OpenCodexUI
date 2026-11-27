@@ -1,4 +1,7 @@
 use std::io::{self, BufRead, Write};
+use std::time::Duration;
+
+mod codex_stdio;
 
 /// Serves the private launcher's health check until the parent closes its input.
 fn serve(input: impl BufRead, mut output: impl Write) -> io::Result<()> {
@@ -14,9 +17,37 @@ fn serve(input: impl BufRead, mut output: impl Write) -> io::Result<()> {
     Ok(())
 }
 
-/// Uses inherited pipes so the process exits when its parent closes them.
+/// Serves the launcher ping or relays the private pipes for one Codex source.
 fn main() -> io::Result<()> {
-    serve(io::stdin().lock(), io::stdout().lock())
+    let mut args = std::env::args_os().skip(1);
+    let Some(mode) = args.next() else {
+        return serve(io::stdin().lock(), io::stdout().lock());
+    };
+    if mode != "--codex-stdio" {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Unknown daemon mode.",
+        ));
+    }
+
+    let timeout_ms = args
+        .next()
+        .and_then(|value| value.to_str().and_then(|value| value.parse::<u64>().ok()))
+        .filter(|milliseconds| *milliseconds > 0)
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Expected a positive Codex request timeout in milliseconds.",
+            )
+        })?;
+    let executable = args.next().ok_or_else(|| {
+        io::Error::new(io::ErrorKind::InvalidInput, "Expected a Codex executable.")
+    })?;
+    let status = codex_stdio::relay(executable, args, Duration::from_millis(timeout_ms))?;
+    if !status.success() {
+        std::process::exit(status.code().unwrap_or(1));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

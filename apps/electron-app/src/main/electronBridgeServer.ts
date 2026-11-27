@@ -45,6 +45,8 @@ type ElectronBridgeServerOptions = {
   projectPath: string | null;
   appVersion: string;
   userDataPath: string;
+  /** Experimental relay selected by the development launcher. */
+  rustCodexDaemonPath?: string;
   saveSettings(settings: OpenCodexSettings): Promise<void>;
   openUsageHistory(sourceId: string): void;
   onSettingsUpdated(settings: OpenCodexSettings): void;
@@ -105,6 +107,7 @@ export class ElectronBridgeServer {
         electron: true,
         entrypoint: resolveDebugAdapterPath(app.isPackaged, process.resourcesPath, app.getAppPath(), process.cwd())
       },
+      rustCodexDaemonPath: options.rustCodexDaemonPath,
       settings: options.settings,
       projectPath: options.projectPath,
       appVersion: options.appVersion,

@@ -3,3 +3,9 @@ edition = "2024"
 name = "opencodex-daemon"
 publish = false
 version = "0.1.0"
+
+[dependencies]
+codex-rpc = { path = "../codex-rpc" }
+
+[dev-dependencies]
+serde_json = "1"

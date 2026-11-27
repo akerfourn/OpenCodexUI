@@ -9,7 +9,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CodexAppServerClient } from "../src/CodexAppServerClient";
 import { parseJsonRpcLine } from "../src/events";
-import { JsonRpcError } from "../src/types";
+import { createRustCodexProcessFactory } from "../src/rustCodexProcess";
+import { DEFAULT_CODEX_REQUEST_TIMEOUT_MS, JsonRpcError } from "../src/types";
 import type { ProcessLike } from "../src/types";
 
 /**
@@ -56,6 +57,24 @@ describe("parseJsonRpcLine", () => {
 });
 
 describe("CodexAppServerClient", () => {
+  it("should keep source launcher policy when starting Codex through Rust", () => {
+    const fakeProcess = new FakeProcess();
+    const launch = vi.fn(() => fakeProcess);
+    const factory = createRustCodexProcessFactory("rust-daemon", launch);
+
+    const child = factory('custom-codex --profile "with spaces"', ["app-server"]);
+
+    expect(launch).toHaveBeenCalledWith("rust-daemon", [
+      "--codex-stdio",
+      String(DEFAULT_CODEX_REQUEST_TIMEOUT_MS),
+      "custom-codex",
+      "--profile",
+      "with spaces",
+      "app-server"
+    ]);
+    expect(child).toBe(fakeProcess);
+  });
+
   it("should keep the failing filesystem path in RPC errors even when the server omits error data", async () => {
     const fakeProcess = new FakeProcess();
     fakeProcess.stdin.on("finish", () => fakeProcess.emit("close", 0, null));
@@ -376,6 +395,20 @@ describe("CodexAppServerClient", () => {
 
     await expect(pendingRequest).rejects.toThrow("Codex app-server process exited.");
     expect(closeSpy).toHaveBeenCalledWith({ code: 17, signal: "SIGTERM" });
+  });
+
+  it("should reject outstanding calls when the process input pipe fails", async () => {
+    const fakeProcess = new FakeProcess();
+    const client = createClient(fakeProcess);
+    respondToInitialize(fakeProcess);
+    await client.start();
+    const request = expect(client.request("model/list")).rejects.toThrow("Broken input pipe");
+
+    const error = Object.assign(new Error("Broken input pipe"), { code: "EPIPE" });
+    fakeProcess.stdin.emit("error", error);
+
+    await request;
+    await client.stop();
   });
 
   it("should send exact JSONL for notifications and server responses", async () => {

@@ -3,6 +3,7 @@ import type { CodexAppServerClient, v2 } from "@open-codex-ui/codex-rpc";
 import { readObject } from "../../mapping.js";
 import { buildManagedConfigBlock, buildManagedPermissionProfile, replaceManagedBlock, joinSourcePath,
   type ManagedConfigBlockInput } from "../projects/projectContextConfig.js";
+import { isMissingWorkspacePathError } from "./workspaceSourcePath.js";
 
 /** Writes only the owned config block and verifies the complete source-loaded policy. */
 export async function writeWorkspacePermissionConfiguration(
@@ -20,9 +21,7 @@ export async function writeWorkspacePermissionConfiguration(
       const metadata = await client.getMetadata(value);
       if (metadata.isSymlink !== false) throw new Error("Workspace configuration must not use symbolic links.");
     } catch (error) {
-      if (!(error instanceof Error) || !/no such file|\b(file|path)\b.*\bnot found\b/iu.test(error.message)) {
-        throw error;
-      }
+      if (!isMissingWorkspacePathError(error, value)) throw error;
     }
   }
   await client.createDirectory(directory);
@@ -30,9 +29,7 @@ export async function writeWorkspacePermissionConfiguration(
   try {
     previous = Buffer.from((await client.readFile(configPath)).dataBase64, "base64").toString("utf8");
   } catch (error) {
-    if (!(error instanceof Error) || !/no such file|\b(file|path)\b.*\bnot found\b/iu.test(error.message)) {
-      throw error;
-    }
+    if (!isMissingWorkspacePathError(error, configPath)) throw error;
   }
   const next = replaceManagedBlock(previous, buildManagedConfigBlock(input), input.profileId);
   if (next !== previous) {
@@ -48,15 +45,18 @@ export async function writeWorkspacePermissionConfiguration(
 /** Codex serializes these optional schema fields as null when they are absent from TOML. */
 function normalizeLoadedProfile(value: unknown): Record<string, unknown> {
   const profile = structuredClone(readObject(value));
+  if (profile.credentials === null) {
+    delete profile.credentials;
+  }
   const filesystem = readObject(profile.filesystem);
   if (filesystem.glob_scan_max_depth === null) {
     delete filesystem.glob_scan_max_depth;
   }
   profile.filesystem = filesystem;
   const network = readObject(profile.network);
-  const optional = ["proxy_url", "enable_socks5", "socks_url", "enable_socks5_udp", "allow_upstream_proxy",
-    "dangerously_allow_non_loopback_proxy", "dangerously_allow_all_unix_sockets", "mode", "domains",
-    "unix_sockets", "allow_local_binding", "mitm"];
+  const optional = ["proxy_url", "enable_socks5", "transparent_tcp", "socks_url", "enable_socks5_udp",
+    "allow_upstream_proxy", "dangerously_allow_non_loopback_proxy", "dangerously_allow_all_unix_sockets",
+    "mode", "domains", "unix_sockets", "allow_local_binding", "mitm"];
   for (const key of optional) {
     if (network[key] === null) {
       delete network[key];

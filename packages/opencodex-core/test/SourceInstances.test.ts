@@ -1,3 +1,4 @@
+import { once } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { SourceInstancesService } from "../src/backend/sources/SourceInstancesService";
 import { instancePool, instanceSource } from "./sourceInstances.fixture";
@@ -14,9 +15,11 @@ describe("source-owned instances", () => {
   });
 
   it("should keep command execution protected even when no chat is active", async () => {
-    const { pool } = instancePool();
+    const { pool, children } = instancePool();
     const client = await pool.ensureClient("a");
+    const sent = once(children[0]!.stdin, "data");
     const command = expect(client.request("command/exec", { command: ["build"] })).rejects.toThrow("stopped");
+    await sent;
     expect(pool.readState("a").isActive).toBe(true);
     expect(pool.readState("a").activity?.requestMethods).toEqual(["command/exec"]);
     await expect(pool.stopClient("a")).rejects.toThrow("SOURCE_BUSY");
@@ -27,7 +30,9 @@ describe("source-owned instances", () => {
   it("should publish updated reasons while busy and keep returned snapshots detached from pool state", async () => {
     const { pool, children, emit } = instancePool();
     await pool.ensureClient("a");
+    const sent = once(children[0]!.stdin, "data");
     const command = expect(pool.getClient("a")!.request("command/exec", {})).rejects.toThrow("stopped");
+    await sent;
     children[0]!.notification("turn/started", { threadId: "thread", turn: { id: "turn" } });
     const snapshot = pool.readState("a");
     expect(snapshot.activity).toMatchObject({ requestMethods: ["command/exec"], turnCount: 1 });

@@ -33,13 +33,17 @@ export function posixResourceCommand(
   return { command: executable, args: argumentsList };
 }
 
-/** Keeps default launches unchanged; a configured source must obtain enforcement before Codex starts. */
-export async function createSourceResourceProcessFactory(source: CachedSource): Promise<ProcessFactory | undefined> {
+/** Applies source limits and optionally owns an intermediate relay's Windows process tree. */
+export async function createSourceResourceProcessFactory(
+  source: CachedSource,
+  ownWindowsTree = false
+): Promise<ProcessFactory | undefined> {
   if (source.kind !== "local") return undefined;
   const resources = source.settings.resources;
   await requireSourceResourceSupport(source.kind, resources);
-  if (resources === undefined || (resources.priority === "normal" && resources.cpuLimitPercent === null)) return undefined;
-  const policy = { ...resources };
+  const policy = { priority: resources?.priority ?? "normal", cpuLimitPercent: resources?.cpuLimitPercent ?? null };
+  const hasLimits = policy.priority !== "normal" || policy.cpuLimitPercent !== null;
+  if (!hasLimits && !(ownWindowsTree && process.platform === "win32")) return undefined;
   return (command, args) => {
     const resolved = resolveCodexCommand(command, args);
     if (process.platform === "win32") {

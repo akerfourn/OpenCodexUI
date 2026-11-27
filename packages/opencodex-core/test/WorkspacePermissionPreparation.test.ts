@@ -69,6 +69,18 @@ describe("workspace permission preparation", () => {
     expect(client.writeFile).toHaveBeenCalledTimes(1);
   });
 
+  it("should accept unset credential and transparent TCP settings returned by Codex", async () => {
+    const input = workspacePermissionInput(transition, project.preferences.context.folders);
+    const profile = buildManagedPermissionProfile(input);
+    client.request.mockResolvedValue({ config: {
+      default_permissions: input.profileId,
+      permissions: { [input.profileId]: { ...profile, credentials: null,
+        network: { ...profile.network, transparent_tcp: null } } }
+    } });
+
+    await expect(service.prepare(transition, approval)).resolves.toMatchObject({ cwd: "/B" });
+  });
+
   it("should refuse stale reservations before source access", async () => {
     getForThread.mockResolvedValue(null);
     await expect(service.prepare(transition, approval)).rejects.toThrow("current durable");
@@ -82,17 +94,25 @@ describe("workspace permission preparation", () => {
     expect(client.writeFile).not.toHaveBeenCalled();
   });
 
-  it.each(["missing", "network", "extra-root", "extra-rule"])("should refuse effective configuration mismatch: %s", async (kind) => {
-    const input = workspacePermissionInput(transition, project.preferences.context.folders);
-    const profile = buildManagedPermissionProfile(input);
-    if (kind === "network") profile.network = { enabled: true };
-    if (kind === "extra-root") profile.workspace_roots["/A"] = true;
-    if (kind === "extra-rule") profile.filesystem["/A"] = "write";
-    client.request.mockResolvedValue({ config: {
-      default_permissions: input.profileId, permissions: kind === "missing" ? {} : { [input.profileId]: profile }
-    } });
-    await expect(service.prepare(transition, approval)).rejects.toThrow("exact destination permission");
-  });
+  it.each(["missing", "network", "extra-root", "extra-rule", "credentials", "transparent-tcp"])(
+    "should refuse effective configuration mismatch: %s", async (kind) => {
+      const input = workspacePermissionInput(transition, project.preferences.context.folders);
+      const profile = buildManagedPermissionProfile(input);
+      if (kind === "network") profile.network = { enabled: true };
+      if (kind === "extra-root") profile.workspace_roots["/A"] = true;
+      if (kind === "extra-rule") profile.filesystem["/A"] = "write";
+      const loadedProfile = {
+        ...profile,
+        ...(kind === "credentials" ? { credentials: {} } : {}),
+        network: { ...profile.network, transparent_tcp: kind === "transparent-tcp" ? true : null }
+      };
+      client.request.mockResolvedValue({ config: {
+        default_permissions: input.profileId,
+        permissions: kind === "missing" ? {} : { [input.profileId]: loadedProfile }
+      } });
+      await expect(service.prepare(transition, approval)).rejects.toThrow("exact destination permission");
+    }
+  );
 
   it("should preserve unmanaged default permissions without writing over them", async () => {
     client.readFile.mockResolvedValue({ dataBase64: Buffer.from('default_permissions = ":read-only"\n').toString("base64") });
@@ -112,11 +132,17 @@ describe("workspace permission preparation", () => {
     expect(client.writeFile).not.toHaveBeenCalled();
   });
 
-  it("should create the managed config when the source explicitly reports a missing file", async () => {
-    client.readFile.mockRejectedValue(new Error("No such file or directory"));
-    await expect(service.prepare(transition, approval)).resolves.toMatchObject({ cwd: "/B" });
-    expect(client.writeFile).toHaveBeenCalledTimes(1);
-  });
+  it.each(["No such file or directory", "Le fichier spécifié est introuvable. (os error 2)"])(
+    "should create the managed config when the source reports a missing file: %s", async (message) => {
+      const absent = new Error(message);
+      client.getMetadata.mockResolvedValueOnce({ isDirectory: true, isSymlink: false })
+        .mockRejectedValueOnce(absent).mockRejectedValueOnce(absent);
+      client.readFile.mockRejectedValue(absent);
+
+      await expect(service.prepare(transition, approval)).resolves.toMatchObject({ cwd: "/B" });
+      expect(client.writeFile).toHaveBeenCalledTimes(1);
+    }
+  );
 });
 
 describe("workspace-specific permission identities", () => {

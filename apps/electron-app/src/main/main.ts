@@ -71,11 +71,13 @@ async function main(): Promise<void> {
   });
   attachMainWindow(window);
 
+  const rustCodexDaemonPath = resolveRustCodexDaemonPath();
   bridgeServer = new ElectronBridgeServer({
     settings,
     projectPath,
     appVersion: app.getVersion(),
     userDataPath,
+    rustCodexDaemonPath,
     saveSettings: (nextSettings) => settingsStore.save(nextSettings),
     onSettingsUpdated: (nextSettings) => {
       applyContextMenuLanguage(nextSettings.language);
@@ -99,8 +101,10 @@ async function main(): Promise<void> {
   bridgeServer.attachWindow(window);
   bridgeServer.register();
   bridgeServer.startApplicationUpdates();
-  rustDaemon = launchRustDaemon();
-  void rustDaemon.waitUntilReady().catch(handleRustDaemonStartupError);
+  if (rustCodexDaemonPath === undefined) {
+    rustDaemon = launchRustDaemon();
+    void rustDaemon.waitUntilReady().catch(handleRustDaemonStartupError);
+  }
 
   app.on("activate", () => {
     if (mainWindow === null || mainWindow.isDestroyed()) {
@@ -155,11 +159,24 @@ void main().catch((error: unknown) => {
 
 /** Starts the companion from the development build or the installed resource directory. */
 function launchRustDaemon(): RustDaemonProcess {
+  return new RustDaemonProcess(resolveRustDaemonPath());
+}
+
+/** Selects the development relay at startup before the source pool can open Codex. */
+function resolveRustCodexDaemonPath(): string | undefined {
+  if (app.isPackaged || process.env.OPENCODEX_RUST_CODEX_TRANSPORT !== "1") {
+    return undefined;
+  }
+  return resolveRustDaemonPath();
+}
+
+/** Resolves the daemon executable for either desktop launch mode. */
+function resolveRustDaemonPath(): string {
   const resources = app.isPackaged
     ? path.join(process.resourcesPath, "daemon")
     : path.join(__dirname, "..", "..", "build", "daemon", "dev");
   const filename = process.platform === "win32" ? "opencodex-daemon.exe" : "opencodex-daemon";
-  return new RustDaemonProcess(path.join(resources, filename));
+  return path.join(resources, filename);
 }
 
 /** Exercises the installed companion through the same launcher, with no user profile loaded. */

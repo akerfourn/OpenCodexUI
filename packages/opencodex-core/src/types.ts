@@ -19,6 +19,8 @@ export interface FolderLinkOptions {
 export type OpenCodexBackendOptions = {
   /** Pinned standalone DAP adapter and its Node-compatible host runtime. */
   debugAdapter?: { entrypoint: string; executable: string; electron?: boolean };
+  /** Absolute relay executable path for the main connections of local sources. */
+  rustCodexDaemonPath?: string;
   settings: OpenCodexSettings;
   projectPath: string | null;
   appVersion?: string | null;

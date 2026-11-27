@@ -5,6 +5,9 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 export type JsonRpcId = string | number;
 
+/** Keeps the relay's request lifetime aligned with the main client. */
+export const DEFAULT_CODEX_REQUEST_TIMEOUT_MS: number = 120_000;
+
 export type JsonRpcRequest = {
   jsonrpc?: "2.0";
   id: JsonRpcId;

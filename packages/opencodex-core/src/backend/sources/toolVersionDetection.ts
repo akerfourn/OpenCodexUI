@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import {
   readCodexCommandCandidates,
   resolveCodexCommand,
+  type ProcessExecutableResolver,
   type ResolvedCodexCommand
 } from "@open-codex-ui/codex-rpc";
 import type {
@@ -15,6 +16,7 @@ import type {
 } from "@open-codex-ui/opencodex-protocol";
 
 import type { CachedSource } from "@open-codex-ui/opencodex-cache";
+import { createSourceExecutableResolver } from "./sourceExecutableResolver.js";
 import { resolveSourceCommand } from "./sourceMapping.js";
 
 type ProcessResult = {
@@ -71,7 +73,8 @@ export async function readCodexVersionStatus(
  * @returns Git availability with detected version when available.
  */
 export async function readGitVersionStatus(): Promise<OpenCodexToolVersionStatus> {
-  return await readCommandVersionStatus("git", ["--version"], false, "Git");
+  const resolveExecutable = createSourceExecutableResolver({ kind: "local" });
+  return await readCommandVersionStatus("git", ["--version"], false, "Git", resolveExecutable);
 }
 
 /**
@@ -133,18 +136,21 @@ async function readResolvedCommandVersionStatus(
  * @param args Arguments appended to the command.
  * @param shell Whether Node should launch through a shell.
  * @param label Tool label used in diagnostics.
+ * @param resolveExecutable Optional native executable lookup before spawning.
  * @returns Tool availability status.
  */
 async function readCommandVersionStatus(
   command: string,
   args: string[],
   shell: boolean,
-  label: string
+  label: string,
+  resolveExecutable?: ProcessExecutableResolver
 ): Promise<OpenCodexToolVersionStatus> {
   const checkedAt = new Date().toISOString();
 
   try {
-    const result = await runProcess(command, args, shell);
+    const executable = await resolveExecutable?.(command, process.cwd(), undefined) ?? command;
+    const result = await runProcess(executable, args, shell);
     const output = [result.stdout, result.stderr].join("\n").trim();
     const version = parseVersion(output);
 
