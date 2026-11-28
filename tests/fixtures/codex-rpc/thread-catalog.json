@@ -1,0 +1,77 @@
+{
+  "codexPages": [
+    {
+      "data": [
+        {
+          "id": "worker",
+          "name": "  Worker  ",
+          "preview": "preview",
+          "cwd": "C:\\Work\\Project",
+          "updatedAt": 1700000000.125,
+          "gitInfo": { "branch": "topic" },
+          "threadSource": "subAgent",
+          "source": { "subagent": { "thread_spawn": {
+            "parent_thread_id": "parent", "depth": 1.0, "agent_nickname": "Scout", "agent_role": "reviewer"
+          } } },
+          "canAcceptDirectInput": false,
+          "status": { "type": "idle" },
+          "turns": [{ "id": "excluded" }]
+        }
+      ],
+      "nextCursor": "next:/+=あ",
+      "backwardsCursor": "back"
+    },
+    {
+      "data": [
+        { "id": "worker", "name": "Duplicate" },
+        { "id": "parent", "preview": "Fallback title", "status": "notLoaded" }
+      ],
+      "nextCursor": null
+    }
+  ],
+  "daemonPages": [
+    {
+      "threads": [
+        {
+          "id": "worker",
+          "sessionId": null,
+          "parentThreadId": "parent",
+          "codexTitle": "  Worker  ",
+          "preview": "preview",
+          "projectPath": "C:\\Work\\Project",
+          "branchName": "topic",
+          "updatedAtUnixSeconds": 1700000000.125,
+          "threadSource": "subAgent",
+          "agentNickname": "Scout",
+          "agentRole": "reviewer",
+          "subAgentSource": {
+            "kind": "threadSpawn", "parentThreadId": "parent", "depth": 1, "agentPath": null,
+            "agentNickname": "Scout", "agentRole": "reviewer", "label": null
+          },
+          "canAcceptDirectInput": false,
+          "status": "idle"
+        }
+      ],
+      "nextCursor": "next:/+=あ",
+      "backwardsCursor": "back"
+    },
+    {
+      "threads": [
+        {
+          "id": "worker", "sessionId": null, "parentThreadId": null, "codexTitle": "Duplicate",
+          "preview": "", "projectPath": null, "branchName": null, "updatedAtUnixSeconds": null,
+          "threadSource": null, "agentNickname": null, "agentRole": null, "subAgentSource": null,
+          "canAcceptDirectInput": null, "status": null
+        },
+        {
+          "id": "parent", "sessionId": null, "parentThreadId": null, "codexTitle": "",
+          "preview": "Fallback title", "projectPath": null, "branchName": null, "updatedAtUnixSeconds": null,
+          "threadSource": null, "agentNickname": null, "agentRole": null, "subAgentSource": null,
+          "canAcceptDirectInput": null, "status": "notLoaded"
+        }
+      ],
+      "nextCursor": null,
+      "backwardsCursor": null
+    }
+  ]
+}

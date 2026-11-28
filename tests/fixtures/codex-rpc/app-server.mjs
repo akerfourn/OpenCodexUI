@@ -1,4 +1,4 @@
-import { writeSync } from "node:fs";
+import { readFileSync, writeSync } from "node:fs";
 import { createInterface } from "node:readline";
 
 let initialized = false;
@@ -6,6 +6,8 @@ let initializeRequest;
 let waitingForStartupReply = false;
 let turnId;
 const startupMode = process.argv[2];
+const { codexPages } = JSON.parse(readFileSync(new URL("./thread-catalog.json", import.meta.url), "utf8"));
+let lastCatalogFilters;
 
 /** Emits small synthetic frames before returning to the fixture's message loop. */
 function send(frame) {
@@ -51,6 +53,19 @@ createInterface({ input: process.stdin }).on("line", (line) => {
   if (!initialized) throw new Error("Expected the initialized notification.");
 
   switch (frame.method) {
+    case "thread/list": {
+      lastCatalogFilters = frame.params;
+      const cursor = frame.params?.cursor;
+      if (cursor != null && cursor !== codexPages[0].nextCursor) {
+        send({ id: frame.id, error: { code: -32052, message: "Invalid cursor", data: { cursor } } });
+      } else {
+        send({ id: frame.id, result: cursor == null ? codexPages[0] : codexPages[1] });
+      }
+      return;
+    }
+    case "test/catalog-filters":
+      send({ id: frame.id, result: lastCatalogFilters });
+      return;
     case "test/initialization":
       send({ id: frame.id, result: { initializeRequest, downstreamId: frame.id } });
       return;

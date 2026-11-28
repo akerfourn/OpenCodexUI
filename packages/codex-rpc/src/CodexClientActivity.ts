@@ -5,7 +5,7 @@ import type { CodexClientActivitySnapshot, CodexNotification, JsonRpcId } from "
 const PASSIVE_REQUESTS = new Set([
   "account/read", "account/rateLimits/read", "app/list", "config/read", "configRequirements/read",
   "mcpServerStatus/list", "model/list", "plugin/list", "skills/list",
-  "thread/list", "thread/loaded/list", "thread/read"
+  "thread/list", "thread/loaded/list", "thread/read", "opencodex/threads/list"
 ]);
 
 /** Content-free request identity used to settle overlapping requests and order native status changes. */

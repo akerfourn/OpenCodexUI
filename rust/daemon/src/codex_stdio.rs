@@ -5,11 +5,12 @@ use std::sync::{Arc, Mutex, MutexGuard, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use codex_rpc::{CodexRelay, CodexTransport, JsonRpcResponse, TransportError};
+use codex_rpc::{ClientFrame, CodexRelay, CodexTransport, JsonRpcResponse, TransportError};
 
 use crate::codex_session::{
     OpenSession, read_initialize_response, require_server_reply, write_line,
 };
+use crate::thread_catalog::adapt_call;
 
 const SHUTDOWN_GRACE: Duration = Duration::from_millis(600);
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
@@ -96,8 +97,10 @@ pub fn relay(
         .name("codex-input".into())
         .spawn(move || {
             let result = read_lines(io::stdin().lock(), |line| {
-                if let Some(frame) = client_session.route_client(line, started.elapsed())? {
-                    client_session.write_server(&frame)?;
+                match client_session.route_client(line, started.elapsed())? {
+                    Some(ClientFrame::ToServer(frame)) => client_session.write_server(&frame)?,
+                    Some(ClientFrame::ToClient(frame)) => write_line(io::stdout(), &frame)?,
+                    None => {}
                 }
                 Ok(())
             });
@@ -247,14 +250,14 @@ impl Session {
     }
 
     /// Keeps normal requests behind readiness while allowing replies to startup server requests.
-    fn route_client(&self, line: &str, elapsed: Duration) -> io::Result<Option<String>> {
+    fn route_client(&self, line: &str, elapsed: Duration) -> io::Result<Option<ClientFrame>> {
         match &mut *lock(&self.phase)? {
             Phase::Opening => {
                 require_server_reply(line)?;
-                Ok(Some(line.to_owned()))
+                Ok(Some(ClientFrame::ToServer(line.to_owned())))
             }
             Phase::Ready(relay) => relay
-                .relay_client_line(line, elapsed)
+                .relay_client_frame(line, elapsed, adapt_call)
                 .map_err(invalid_transport),
             Phase::Failed => Ok(None),
         }

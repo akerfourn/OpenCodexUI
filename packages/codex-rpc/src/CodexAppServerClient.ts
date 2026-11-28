@@ -84,6 +84,11 @@ export class CodexAppServerClient {
     return await this.transport.getCodexHome();
   }
 
+  /** Whether this source supports daemon-native catalog requests. */
+  get usesDaemonSession(): boolean {
+    return this.transport.opensDaemonSession;
+  }
+
   /**
    * Starts the Codex app-server process and runs the JSON-RPC initialization handshake.
    *

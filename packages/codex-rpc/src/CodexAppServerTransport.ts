@@ -48,7 +48,8 @@ export class CodexAppServerTransport {
   private readonly requestTimeoutMs: number;
   private readonly experimentalApi: boolean;
   private readonly processFactory: ProcessFactory;
-  private readonly opensDaemonSession: boolean;
+  /** Whether the process opens a private daemon session. */
+  readonly opensDaemonSession: boolean;
   private readonly logger: (message: string) => void;
   private readonly stderr: (message: string) => void;
   private readonly events = new EventEmitter<TransportEvents>();

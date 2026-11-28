@@ -1,13 +1,32 @@
+use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 use crate::message::{Message, decode_line};
-use crate::{CodexTransport, JsonRpcId, ServerEvent, TransportError};
+use crate::{CodexTransport, JsonRpcId, JsonRpcResponse, ServerEvent, TransportError};
 
 /// The original client ID and expiry for a request sent to Codex.
 struct PendingClientCall {
     client_id: JsonRpcId,
     expires_at: Duration,
+    map_result: Option<fn(Value) -> Value>,
+}
+
+/// Describes how a client RPC is handled on this connection.
+pub enum CallAdaptation {
+    PassThrough,
+    Translate {
+        method: &'static str,
+        params: Value,
+        map_result: fn(Value) -> Value,
+    },
+    Reject(Value),
+}
+
+/// A frame to write to either side of the connection.
+pub enum ClientFrame {
+    ToServer(String),
+    ToClient(String),
 }
 
 /// Relays a single app-server connection while keeping each direction's IDs independent.
@@ -38,6 +57,20 @@ impl CodexRelay {
         line: &str,
         elapsed: Duration,
     ) -> Result<Option<String>, TransportError> {
+        Ok(self
+            .relay_client_frame(line, elapsed, |_, _| CallAdaptation::PassThrough)?
+            .map(|frame| match frame {
+                ClientFrame::ToServer(line) | ClientFrame::ToClient(line) => line,
+            }))
+    }
+
+    /// Adapts owned calls alongside raw RPC, retaining each result adapter with its request ID.
+    pub fn relay_client_frame(
+        &mut self,
+        line: &str,
+        elapsed: Duration,
+        adapt: impl FnOnce(&str, Option<&Value>) -> CallAdaptation,
+    ) -> Result<Option<ClientFrame>, TransportError> {
         self.expire_pending(elapsed);
         match decode_line(line)? {
             Some(Message::Call {
@@ -45,17 +78,32 @@ impl CodexRelay {
                 method,
                 params,
             }) => {
-                let request = self.transport.request(&method, params)?;
+                let (method, params, map_result) = match adapt(&method, params.as_ref()) {
+                    CallAdaptation::PassThrough => (method.as_str(), params, None),
+                    CallAdaptation::Translate {
+                        method,
+                        params,
+                        map_result,
+                    } => (method, Some(params), Some(map_result)),
+                    CallAdaptation::Reject(error) => {
+                        return self
+                            .transport
+                            .respond(client_id, JsonRpcResponse::Error(error))
+                            .map(|line| Some(ClientFrame::ToClient(line)));
+                    }
+                };
+                let request = self.transport.request(method, params)?;
                 self.pending.insert(
                     request.id,
                     PendingClientCall {
                         client_id,
                         expires_at: elapsed.saturating_add(self.request_timeout),
+                        map_result,
                     },
                 );
-                Ok(Some(request.line))
+                Ok(Some(ClientFrame::ToServer(request.line)))
             }
-            Some(_) => Ok(Some(terminated_line(line))),
+            Some(_) => Ok(Some(ClientFrame::ToServer(terminated_line(line)))),
             None => Ok(None),
         }
     }
@@ -71,6 +119,12 @@ impl CodexRelay {
             Ok(Some(ServerEvent::Response { id, response })) => {
                 let Some(pending) = self.pending.remove(&id) else {
                     return Ok(None);
+                };
+                let response = match (pending.map_result, response) {
+                    (Some(map_result), JsonRpcResponse::Success(result)) => {
+                        JsonRpcResponse::Success(map_result(result))
+                    }
+                    (_, response) => response,
                 };
                 self.transport
                     .respond(pending.client_id, response)

@@ -3,11 +3,13 @@ import path from "node:path";
 import type {
   OpenCodexReasoningEffort,
   OpenCodexSubAgentSource,
-  OpenCodexThread
+  OpenCodexThread,
+  SourceThreadSummary
 } from "@open-codex-ui/opencodex-protocol";
 
 import {
   readNullableString,
+  readNullableNumber,
   readObject,
   readString,
   readTimestamp
@@ -26,12 +28,13 @@ export function mapThread(
   model: string | null = null,
   reasoningEffort: OpenCodexReasoningEffort | null = null
 ): OpenCodexThread {
+  return mapThreadSummary(readCodexThreadSummary(value), model, reasoningEffort);
+}
+
+/** Adapts Codex metadata for the direct connection. */
+function readCodexThreadSummary(value: unknown): SourceThreadSummary {
   const thread = readObject(value);
   const gitInfo = readObject(thread.gitInfo);
-  const projectPath = readNullableString(thread.cwd);
-  const codexTitle = readString(thread.name);
-  const preview = readString(thread.preview);
-  const title = resolveDisplayTitle(codexTitle, null, preview);
   const subAgentSource = readSubAgentSource(thread.source);
   const parentThreadId = readNullableString(thread.parentThreadId)
     ?? subAgentSource?.parentThreadId
@@ -41,24 +44,38 @@ export function mapThread(
     id: readString(thread.id),
     sessionId: readNullableString(thread.sessionId),
     parentThreadId,
-    codexTitle,
-    customTitle: null,
-    title,
-    preview,
-    model,
-    reasoningEffort,
-    projectName: projectPath === null ? null : path.basename(projectPath),
-    projectPath,
-    sourceId: null,
+    codexTitle: readString(thread.name),
+    preview: readString(thread.preview),
+    projectPath: readNullableString(thread.cwd),
     branchName: readNullableString(gitInfo.branch),
-    updatedAt: readTimestamp(thread.updatedAt),
-    isArchived: false,
+    updatedAtUnixSeconds: readNullableNumber(thread.updatedAt),
     threadSource: readNullableString(thread.threadSource),
     agentNickname: readNullableString(thread.agentNickname) ?? subAgentSource?.agentNickname ?? null,
     agentRole: readNullableString(thread.agentRole) ?? subAgentSource?.agentRole ?? null,
     subAgentSource,
     canAcceptDirectInput: readNullableBoolean(thread.canAcceptDirectInput),
-    status: readThreadStatus(thread.status) ?? undefined
+    status: readThreadStatus(thread.status)
+  };
+}
+
+/** Adds application display fields to metadata received from either connection. */
+export function mapThreadSummary(
+  summary: SourceThreadSummary,
+  model: string | null = null,
+  reasoningEffort: OpenCodexReasoningEffort | null = null
+): OpenCodexThread {
+  const { updatedAtUnixSeconds, status, ...thread } = summary;
+  return {
+    ...thread,
+    customTitle: null,
+    title: resolveDisplayTitle(thread.codexTitle, null, thread.preview),
+    model,
+    reasoningEffort,
+    projectName: thread.projectPath === null ? null : path.basename(thread.projectPath),
+    sourceId: null,
+    updatedAt: readTimestamp(updatedAtUnixSeconds),
+    isArchived: false,
+    status: status ?? undefined
   };
 }
 

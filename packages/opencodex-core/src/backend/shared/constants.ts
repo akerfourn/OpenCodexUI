@@ -1,3 +1,5 @@
+import type { OpenCodexThreadSourceKind } from "@open-codex-ui/opencodex-protocol";
+
 /**
  * Shared backend constants and internal request parameter types.
  */
@@ -7,17 +9,7 @@ export const THREAD_INITIAL_CACHED_TURNS = 10;
 export const THREAD_TURNS_PAGE_SIZE = 20;
 export const LEGACY_DEFAULT_SOURCE_ID = "default";
 
-export type ThreadSourceKind =
-  | "cli"
-  | "vscode"
-  | "exec"
-  | "appServer"
-  | "subAgent"
-  | "subAgentReview"
-  | "subAgentCompact"
-  | "subAgentThreadSpawn"
-  | "subAgentOther"
-  | "unknown";
+export type ThreadSourceKind = OpenCodexThreadSourceKind;
 
 export type ThreadListParams = {
   cursor?: string | null;

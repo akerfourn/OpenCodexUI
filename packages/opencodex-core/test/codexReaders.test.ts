@@ -1,7 +1,8 @@
 /**
  * Covers model capability normalization from Codex app-server responses.
  */
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it, vi } from "vitest";
 
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 
@@ -54,6 +55,37 @@ describe("Codex model readers", () => {
 });
 
 describe("Codex thread readers", () => {
+  it("should read the same paginated catalog through both transports", async () => {
+    const fixture = JSON.parse(readFileSync(new URL(
+      "../../../tests/fixtures/codex-rpc/thread-catalog.json", import.meta.url
+    ), "utf8"));
+    const direct = vi.fn().mockResolvedValueOnce(fixture.codexPages[0]).mockResolvedValueOnce(fixture.codexPages[1]);
+    const daemon = vi.fn().mockResolvedValueOnce(fixture.daemonPages[0]).mockResolvedValueOnce(fixture.daemonPages[1]);
+    const filters = {
+      limit: 1, sortKey: "updated_at", sortDirection: "desc",
+      cwd: "C:\\Work\\Project", archived: false, sourceKinds: ["subAgent"],
+      searchTerm: "Worker", ancestorThreadId: "parent"
+    } as const;
+    const params = { ...filters, sourceKinds: [...filters.sourceKinds] };
+
+    const directThreads = await readThreadPages({ listThreads: direct } as unknown as CodexAppServerClient, params);
+    const daemonThreads = await readThreadPages({
+      usesDaemonSession: true, request: daemon
+    } as unknown as CodexAppServerClient, params);
+
+    expect(daemonThreads).toEqual(directThreads);
+    expect(daemonThreads.map(({ id, title }) => ({ id, title }))).toEqual([
+      { id: "worker", title: "Worker" }, { id: "parent", title: "Fallback title" }
+    ]);
+    expect(daemon.mock.calls).toEqual([
+      ["opencodex/threads/list", {
+        pageSize: 1, sortBy: "updatedAt", sortDirection: "desc", workingDirectories: [filters.cwd],
+        archived: false, sourceKinds: ["subAgent"], searchTerm: "Worker", ancestorThreadId: "parent"
+      }],
+      ["opencodex/threads/list", expect.objectContaining({ cursor: fixture.daemonPages[0].nextCursor })]
+    ]);
+  });
+
   it("should deduplicate threads repeated across paginated responses", async () => {
     const responses: unknown[] = [
       {

@@ -3,6 +3,7 @@ use std::time::Duration;
 
 mod codex_session;
 mod codex_stdio;
+mod thread_catalog;
 
 /// Serves the private launcher's health check until the parent closes its input.
 fn serve(input: impl BufRead, mut output: impl Write) -> io::Result<()> {

@@ -4,6 +4,8 @@
 import type { CodexAppServerClient } from "@open-codex-ui/codex-rpc";
 import {
   DEFAULT_OPEN_CODEX_REASONING_EFFORTS,
+  type DaemonThreadListInput,
+  type DaemonThreadListPage,
   type OpenCodexModel,
   type OpenCodexReasoningEffort,
   type OpenCodexReasoningEffortOption,
@@ -11,6 +13,7 @@ import {
 } from "@open-codex-ui/opencodex-protocol";
 
 import { mapThread, readObject, readString } from "../../mapping.js";
+import { mapThreadSummary } from "../../mapping/threadMapping.js";
 import { THREAD_LIST_MAX_PAGES, type ThreadListParams } from "./constants.js";
 
 /**
@@ -29,9 +32,9 @@ export async function readThreadPages(
 
   for (let page = 0; page < THREAD_LIST_MAX_PAGES; page += 1) {
     const params = cursor === null ? baseParams : { ...baseParams, cursor };
-    const response = await client.listThreads(params);
-    threads.push(...readThreads(response));
-    cursor = readString(readObject(response).nextCursor) || null;
+    const response = await readThreadPage(client, params);
+    threads.push(...response.threads);
+    cursor = response.nextCursor;
 
     if (cursor === null) {
       break;
@@ -39,6 +42,27 @@ export async function readThreadPages(
   }
 
   return deduplicateThreadsById(threads);
+}
+
+/** Reads a catalog page through the source's configured connection. */
+async function readThreadPage(
+  client: CodexAppServerClient,
+  params: ThreadListParams
+): Promise<{ threads: OpenCodexThread[]; nextCursor: string | null }> {
+  if (!client.usesDaemonSession) {
+    const response = await client.listThreads(params);
+    return { threads: readThreads(response), nextCursor: readString(readObject(response).nextCursor) || null };
+  }
+
+  const { limit, sortKey, cwd, ...filters } = params;
+  const input: DaemonThreadListInput = { ...filters, pageSize: limit };
+  if (sortKey === "created_at") input.sortBy = "createdAt";
+  if (sortKey === "updated_at") input.sortBy = "updatedAt";
+  if (sortKey === null) input.sortBy = null;
+  if (cwd !== undefined) input.workingDirectories = typeof cwd === "string" ? [cwd] : cwd;
+
+  const page = await client.request<DaemonThreadListPage>("opencodex/threads/list", input);
+  return { threads: page.threads.map(thread => mapThreadSummary(thread)), nextCursor: page.nextCursor || null };
 }
 
 /**

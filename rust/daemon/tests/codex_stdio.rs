@@ -10,6 +10,71 @@ use serde_json::{Value, json};
 const TEST_TIMEOUT: Duration = Duration::from_secs(8);
 
 #[test]
+fn test_daemon_should_adapt_paginated_catalog_requests_alongside_raw_calls() {
+    let mut relay = TestRelay::start();
+    relay.open();
+    let fixture: Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/codex-rpc/thread-catalog.json"
+    ))
+    .unwrap();
+
+    relay.send(json!({
+        "id": "first", "method": "opencodex/threads/list",
+        "params": { "pageSize": 1, "sortBy": "updatedAt", "sortDirection": "desc",
+                    "workingDirectories": ["C:\\Work\\Project"], "archived": false,
+                    "sourceKinds": ["subAgent"], "searchTerm": "Worker", "ancestorThreadId": "parent" }
+    }));
+    relay.send(json!({ "id": 2, "method": "test/catalog-filters" }));
+    assert_eq!(relay.receive()["result"], fixture["daemonPages"][0]);
+    assert_eq!(
+        relay.receive()["result"],
+        json!({
+            "limit": 1, "sortKey": "updated_at", "sortDirection": "desc", "cwd": "C:\\Work\\Project",
+            "archived": false, "sourceKinds": ["subAgent"], "searchTerm": "Worker", "ancestorThreadId": "parent"
+        })
+    );
+
+    let cursor = &fixture["daemonPages"][0]["nextCursor"];
+    relay.send(
+        json!({ "id": 3, "method": "opencodex/threads/list", "params": { "cursor": cursor } }),
+    );
+    relay.send(json!({ "id": 4, "method": "thread/list", "params": { "cursor": cursor } }));
+    assert_eq!(
+        relay.receive(),
+        json!({
+            "jsonrpc": "2.0", "id": 3, "result": fixture["daemonPages"][1]
+        })
+    );
+    assert_eq!(relay.receive()["result"], fixture["codexPages"][1]);
+    relay.expect_clean_shutdown();
+}
+
+#[test]
+fn test_daemon_should_return_catalog_errors_without_closing_the_session() {
+    let mut relay = TestRelay::start();
+    relay.open();
+    relay.send(json!({
+        "id": "bad-filter", "method": "opencodex/threads/list", "params": { "sortBy": "unknown" }
+    }));
+    let reply = relay.receive();
+    assert_eq!(reply["id"], "bad-filter");
+    assert_eq!(reply["error"]["code"], -32602);
+    relay.send(json!({
+        "id": "bad-cursor", "method": "opencodex/threads/list", "params": { "cursor": "expired" }
+    }));
+    assert_eq!(
+        relay.receive(),
+        json!({
+            "jsonrpc": "2.0", "id": "bad-cursor",
+            "error": { "code": -32052, "message": "Invalid cursor", "data": { "cursor": "expired" } }
+        })
+    );
+    relay.send(json!({ "id": "retry", "method": "opencodex/threads/list" }));
+    assert_eq!(relay.receive()["result"]["threads"][0]["id"], "worker");
+    relay.expect_clean_shutdown();
+}
+
+#[test]
 fn test_daemon_should_initialize_codex_before_forwarding_client_requests() {
     let mut relay = TestRelay::start();
     relay.open();

@@ -39,6 +39,7 @@ export * from "./threadPermissions";
 export * from "./sourcePermissions";
 export * from "./sourceInstances";
 export * from "./sourceResources";
+export * from "./daemonThreads.js";
 
 export type { OpenCodexWorkspaceMove, OpenCodexWorkspaceMoveInput } from "./workspaceMoves.js";
 
