@@ -1,6 +1,5 @@
 import {
   CodexAppServerClient,
-  createRustCodexProcessFactory,
   type CodexAppServerClientOptions,
   type CodexNotification,
   type CodexServerRequest
@@ -213,9 +212,6 @@ export class OpenCodexClientPool {
       if (source.kind === "local" && (source.settings.resources !== undefined || relayPath !== undefined)) {
         processFactory = await createSourceResourceProcessFactory(source, relayPath !== undefined);
       }
-      if (relayPath !== undefined) {
-        processFactory = createRustCodexProcessFactory(relayPath, processFactory);
-      }
     } catch (error) {
       if (!this.disposed && this.launchGenerations.get(source.id) === generation) {
         this.publish(source.id, "error", error instanceof Error ? error.message : String(error));
@@ -232,6 +228,7 @@ export class OpenCodexClientPool {
     const clientOptions: CodexAppServerClientOptions = {
       command: resolveSourceCommand(source, settings.codexCommand),
       processFactory,
+      rustCodexDaemonPath: relayPath,
       resolveProcessExecutable: createSourceExecutableResolver(source),
       clientInfo: { name: "OpenCodexUI", version: this.options.appVersion ?? "unknown" },
       experimentalApi: settings.experimentalApi,

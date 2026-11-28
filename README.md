@@ -197,6 +197,14 @@ response streams. The terminal reports when that source starts through the
 Rust relay. The regular development command in a fresh terminal selects the
 TypeScript transport.
 
+The dev client opens each local daemon session with an
+`opencodex/session/open` JSON-RPC request on stdin. It supplies
+`protocolVersion: 1`, `clientInfo` and `experimentalApi`. The daemon
+initializes Codex and replies with `status: "ready"` and the source's
+`codexHome` (or `null` when Codex omits it). Startup failures are returned
+as correlated errors. The remaining messages use the Codex JSON-RPC format
+on the same pipes.
+
 By default, opening the app does not create a project from the process working
 directory. To force an initial project for development:
 

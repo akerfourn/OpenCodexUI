@@ -9,6 +9,7 @@ import { isRecord, parseJsonRpcLine, stringifyJsonLine } from "./events";
 import { defaultProcessFactory, normalizeProcessError } from "./process";
 import { stopCodexProcess } from "./stopCodexProcess";
 import { readRequestContext } from "./processRequest";
+import { createRustCodexProcessFactory } from "./rustCodexProcess";
 import type {
   CodexAppServerClientOptions,
   CodexNotification,
@@ -47,6 +48,7 @@ export class CodexAppServerTransport {
   private readonly requestTimeoutMs: number;
   private readonly experimentalApi: boolean;
   private readonly processFactory: ProcessFactory;
+  private readonly opensDaemonSession: boolean;
   private readonly logger: (message: string) => void;
   private readonly stderr: (message: string) => void;
   private readonly events = new EventEmitter<TransportEvents>();
@@ -72,7 +74,11 @@ export class CodexAppServerTransport {
     this.clientInfo = options.clientInfo ?? { name: "OpenCodexUI", version: "unknown" };
     this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_CODEX_REQUEST_TIMEOUT_MS;
     this.experimentalApi = options.experimentalApi ?? true;
-    this.processFactory = options.processFactory ?? defaultProcessFactory;
+    const daemonPath = options.rustCodexDaemonPath;
+    this.opensDaemonSession = daemonPath !== undefined;
+    this.processFactory = daemonPath === undefined
+      ? options.processFactory ?? defaultProcessFactory
+      : createRustCodexProcessFactory(daemonPath, options.processFactory, this.requestTimeoutMs);
     this.logger = options.logger ?? (() => undefined);
     this.stderr = options.stderr ?? (() => undefined);
   }
@@ -100,8 +106,17 @@ export class CodexAppServerTransport {
       return this.startPromise;
     }
 
-    this.startPromise = this.startProcess();
-    return this.startPromise;
+    if (this.process !== null || this.isStopping) {
+      throw new CodexProcessError("The previous Codex app-server process is still stopping.");
+    }
+
+    const starting = this.startProcess();
+    this.startPromise = starting;
+    try {
+      await starting;
+    } finally {
+      if (this.startPromise === starting) this.startPromise = null;
+    }
   }
 
   /**
@@ -110,10 +125,12 @@ export class CodexAppServerTransport {
    * @returns Promise resolved once local process state has been cleared.
    */
   async stop(waitForExit = false): Promise<void> {
+    const waitForShutdown = waitForExit || this.opensDaemonSession;
     this.isStopping = true;
     this.rejectPendingRequests(new CodexProcessError("Codex app-server stopped."));
     this.isInitialized = false;
     this.startPromise = null;
+    this.codexHome = null;
 
     this.stdoutReader?.close();
     this.stdoutReader = null;
@@ -125,7 +142,7 @@ export class CodexAppServerTransport {
       return;
     }
 
-    if (process.killed && !waitForExit) {
+    if (process.killed && !waitForShutdown) {
       this.isStopping = false;
       return;
     }
@@ -133,31 +150,35 @@ export class CodexAppServerTransport {
     // Keep draining the pipe after detaching the parser so the relay can flush and exit.
     process.stdout.resume();
     try {
-      if (waitForExit) await stopCodexProcess(process);
+      if (waitForShutdown) await stopCodexProcess(process);
       else process.kill();
-      if (this.process === process) this.process = null;
+      if (this.process === process) {
+        this.process = null;
+        this.isStopping = false;
+      }
     } catch (error) {
       this.logger(`Codex app-server shutdown kill failed: ${String(error)}`);
       this.isStopping = false;
-      if (waitForExit) throw error;
+      if (waitForShutdown) throw error;
     }
   }
 
   /**
    * Sends a JSON-RPC request and waits for its correlated response.
    *
-   * `initialize` is intentionally allowed through without starting the transport;
-   * it is sent by `startProcess` after the process and readers have been installed.
-   *
    * @param method JSON-RPC method name to invoke.
    * @param params Optional request parameters.
    * @returns Promise resolved with the typed JSON-RPC result.
    */
   async request<T>(method: string, params?: unknown): Promise<T> {
-    if (!this.isInitialized && method !== "initialize") {
+    if (!this.isInitialized) {
       await this.start();
     }
+    return await this.sendRequest<T>(method, params);
+  }
 
+  /** Sends a correlated request on the current pipe, including during startup. */
+  private async sendRequest<T>(method: string, params?: unknown): Promise<T> {
     const process = this.requireProcess();
     const id = this.nextId;
     this.nextId += 1;
@@ -298,13 +319,14 @@ export class CodexAppServerTransport {
     try {
       this.process = this.processFactory(this.command, this.args);
     } catch (error) {
-      this.startPromise = null;
       throw normalizeProcessError(error, this.command);
     }
 
     const process = this.process;
     this.stdoutReader = createInterface({ input: process.stdout });
-    this.stdoutReader.on("line", (line) => this.handleLine(line));
+    this.stdoutReader.on("line", (line) => {
+      if (this.process === process && !this.isStopping) this.handleLine(line);
+    });
 
     process.stderr.on("data", (chunk: Buffer | string) => {
       const message = String(chunk).trim();
@@ -313,15 +335,15 @@ export class CodexAppServerTransport {
     });
 
     process.once("error", (error: Error) => {
+      if (this.process !== process) return;
       if (this.isStopping) {
         this.logger(`Codex app-server process error during shutdown: ${error.message}`);
         return;
       }
 
       const processError = normalizeProcessError(error, this.command);
-      this.events.emit("error", processError);
       this.rejectPendingRequests(processError);
-      this.startPromise = null;
+      this.events.emit("error", processError);
     });
 
     process.stdin.on("error", (error: Error) => {
@@ -332,29 +354,55 @@ export class CodexAppServerTransport {
     });
 
     process.once("close", (code: number | null, signal: NodeJS.Signals | null) => {
+      if (this.process !== process) return;
       const wasStopping = this.isStopping;
       this.isStopping = false;
       this.isInitialized = false;
-      this.startPromise = null;
+      this.codexHome = null;
       this.process = null;
 
       if (!wasStopping) {
-        this.events.emit("close", { code, signal });
         this.rejectPendingRequests(new CodexProcessError("Codex app-server process exited."));
+        this.events.emit("close", { code, signal });
       }
     });
 
-    await this.initialize();
-    this.isInitialized = true;
+    try {
+      const codexHome = await this.initialize();
+      if (this.process !== process || this.isStopping) {
+        throw new CodexProcessError("Codex session initialization was interrupted.");
+      }
+      this.codexHome = codexHome;
+      this.isInitialized = true;
+    } catch (error) {
+      if (this.process === process && !this.isStopping) {
+        try {
+          await this.stop(true);
+        } catch (shutdownError) {
+          this.logger(`Failed to stop an uninitialized Codex process: ${String(shutdownError)}`);
+        }
+      }
+      throw error;
+    }
   }
 
   /**
-   * Sends the initial JSON-RPC handshake expected by the app-server.
-   *
-   * @returns Promise resolved once the initialization exchange finishes.
+   * Opens the daemon session or sends the direct Codex handshake.
    */
-  private async initialize(): Promise<void> {
-    const response = await this.request<{ codexHome?: string }>("initialize", {
+  private async initialize(): Promise<string | null> {
+    if (this.opensDaemonSession) {
+      const response = await this.sendRequest<unknown>("opencodex/session/open", {
+        protocolVersion: 1,
+        clientInfo: this.clientInfo,
+        experimentalApi: this.experimentalApi
+      });
+      if (!isRecord(response) || response.status !== "ready"
+        || (typeof response.codexHome !== "string" && response.codexHome !== null)) {
+        throw new CodexProcessError("The Rust daemon returned an invalid session readiness response.");
+      }
+      return response.codexHome;
+    }
+    const response = await this.sendRequest<{ codexHome?: string }>("initialize", {
       clientInfo: this.clientInfo,
       capabilities: {
         experimentalApi: this.experimentalApi,
@@ -362,8 +410,8 @@ export class CodexAppServerTransport {
       }
     });
 
-    this.codexHome = response.codexHome ?? null;
     this.notify("initialized");
+    return response.codexHome ?? null;
   }
 
   /**

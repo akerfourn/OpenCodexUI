@@ -6,13 +6,14 @@ import { DEFAULT_CODEX_REQUEST_TIMEOUT_MS, type ProcessFactory, type ProcessLike
 /** Places the Rust stdio relay inside the source's existing launch policy. */
 export function createRustCodexProcessFactory(
   daemonPath: string,
-  launch: ProcessFactory = spawnHiddenProcess
+  launch: ProcessFactory = spawnHiddenProcess,
+  requestTimeoutMs = DEFAULT_CODEX_REQUEST_TIMEOUT_MS
 ): ProcessFactory {
   return (command, args) => {
     const resolved = resolveCodexCommand(command, args);
     return launch(daemonPath, [
       "--codex-stdio",
-      String(DEFAULT_CODEX_REQUEST_TIMEOUT_MS),
+      String(requestTimeoutMs),
       resolved.command,
       ...resolved.args
     ]);

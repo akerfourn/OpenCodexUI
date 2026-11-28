@@ -1,6 +1,7 @@
 use std::io::{self, BufRead, Write};
 use std::time::Duration;
 
+mod codex_session;
 mod codex_stdio;
 
 /// Serves the private launcher's health check until the parent closes its input.
@@ -43,8 +44,9 @@ fn main() -> io::Result<()> {
     let executable = args.next().ok_or_else(|| {
         io::Error::new(io::ErrorKind::InvalidInput, "Expected a Codex executable.")
     })?;
-    let status = codex_stdio::relay(executable, args, Duration::from_millis(timeout_ms))?;
-    if !status.success() {
+    if let Some(status) = codex_stdio::relay(executable, args, Duration::from_millis(timeout_ms))?
+        && !status.success()
+    {
         std::process::exit(status.code().unwrap_or(1));
     }
     Ok(())

@@ -98,6 +98,8 @@ export type CodexAppServerClientOptions = {
   requestTimeoutMs?: number;
   experimentalApi?: boolean;
   processFactory?: ProcessFactory;
+  /** Selects daemon-owned initialization using the source's process launch policy. */
+  rustCodexDaemonPath?: string;
   /** Optional source-aware resolution for process/spawn and command/exec; never starts another process. */
   resolveProcessExecutable?: ProcessExecutableResolver;
   logger?: (message: string) => void;

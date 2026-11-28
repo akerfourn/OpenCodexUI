@@ -1,11 +1,15 @@
 use std::ffi::OsString;
 use std::io::{self, BufRead, BufReader, Write};
-use std::process::{Child, Command, ExitStatus, Stdio};
-use std::sync::{Arc, Mutex, mpsc};
+use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
+use std::sync::{Arc, Mutex, MutexGuard, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use codex_rpc::CodexRelay;
+use codex_rpc::{CodexRelay, CodexTransport, JsonRpcResponse, TransportError};
+
+use crate::codex_session::{
+    OpenSession, read_initialize_response, require_server_reply, write_line,
+};
 
 const SHUTDOWN_GRACE: Duration = Duration::from_millis(600);
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
@@ -21,12 +25,27 @@ struct StreamExit {
     result: io::Result<()>,
 }
 
-/// Starts the server for one source and owns its pipes until either side disconnects.
+enum Phase {
+    Opening,
+    Ready(CodexRelay),
+    Failed,
+}
+
+struct Session {
+    phase: Mutex<Phase>,
+    server_input: Mutex<Option<ChildStdin>>,
+}
+
+/// Opens one source and owns its app-server pipes until either side disconnects.
 pub fn relay(
     executable: OsString,
     args: impl Iterator<Item = OsString>,
     request_timeout: Duration,
-) -> io::Result<ExitStatus> {
+) -> io::Result<Option<ExitStatus>> {
+    let Some(open) = OpenSession::read(io::stdin().lock(), io::stdout())? else {
+        return Ok(None);
+    };
+    let started = Instant::now();
     let mut command = Command::new(executable);
     command
         .args(args)
@@ -34,8 +53,18 @@ pub fn relay(
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());
     hide_window(&mut command);
-    let mut server = OwnedServer(command.spawn()?);
-    let input = server
+    let mut server = match command.spawn() {
+        Ok(child) => OwnedServer(child),
+        Err(error) => {
+            let error = io::Error::new(
+                error.kind(),
+                format!("Unable to start Codex app-server: {error}"),
+            );
+            open.failed(io::stdout(), &error)?;
+            return Err(error);
+        }
+    };
+    let mut input = server
         .0
         .stdin
         .take()
@@ -45,38 +74,54 @@ pub fn relay(
         .stdout
         .take()
         .ok_or_else(|| io::Error::other("Codex app-server stdout is unavailable."))?;
-    let state = Arc::new(Mutex::new(CodexRelay::new(request_timeout)));
-    let (finished, stream_exits) = mpsc::channel();
-    let started = Instant::now();
+    let mut transport = CodexTransport::new();
+    let initialize = transport
+        .request("initialize", Some(open.initialize_params.clone()))
+        .map_err(invalid_transport)?;
+    if let Err(error) = write_line(&mut input, &initialize.line) {
+        open.failed(io::stdout(), &error)?;
+        return Err(error);
+    }
 
-    let client_state = Arc::clone(&state);
+    let session = Arc::new(Session {
+        phase: Mutex::new(Phase::Opening),
+        server_input: Mutex::new(Some(input)),
+    });
+    let open = Arc::new(open);
+    let (finished, stream_exits) = mpsc::channel();
+
+    let client_session = Arc::clone(&session);
     let client_finished = finished.clone();
     thread::Builder::new()
         .name("codex-input".into())
         .spawn(move || {
-            let result = forward_lines(
-                io::stdin().lock(),
-                input,
-                &client_state,
-                started,
-                Direction::Client,
-            );
+            let result = read_lines(io::stdin().lock(), |line| {
+                if let Some(frame) = client_session.route_client(line, started.elapsed())? {
+                    client_session.write_server(&frame)?;
+                }
+                Ok(())
+            });
+            // Closing the input pipe allows the server to exit before the shutdown grace expires.
+            let closed = client_session.close_input();
             // The supervisor can finish while this thread is still waiting for client input.
             let _ = client_finished.send(StreamExit {
                 direction: Direction::Client,
-                result,
+                result: result.and(closed),
             });
         })?;
 
+    let server_session = Arc::clone(&session);
+    let server_open = Arc::clone(&open);
     thread::Builder::new()
         .name("codex-output".into())
         .spawn(move || {
-            let result = forward_lines(
+            let result = forward_server(
                 BufReader::new(output),
-                io::stdout(),
-                &state,
+                &server_session,
+                &server_open,
+                transport,
                 started,
-                Direction::Server,
+                request_timeout,
             );
             let _ = finished.send(StreamExit {
                 direction: Direction::Server,
@@ -84,48 +129,204 @@ pub fn relay(
             });
         })?;
 
-    wait_for_server(&mut server, stream_exits)
+    wait_for_server(
+        &mut server,
+        stream_exits,
+        &session,
+        &open,
+        started,
+        request_timeout,
+    )
+    .map(Some)
 }
 
-/// Routes complete lines with a short state lock and flushes each one to the other process.
-fn forward_lines(
-    mut reader: impl BufRead,
-    mut writer: impl Write,
-    state: &Mutex<CodexRelay>,
+/// Finishes initialization before forwarding the remaining server output.
+fn forward_server(
+    mut server: impl BufRead,
+    session: &Session,
+    open: &OpenSession,
+    transport: CodexTransport,
     started: Instant,
-    direction: Direction,
+    request_timeout: Duration,
+) -> io::Result<()> {
+    let mut client = io::stdout();
+    match finish_open(
+        &mut server,
+        &mut client,
+        session,
+        open,
+        transport,
+        request_timeout,
+    ) {
+        Ok(true) => {}
+        Ok(false) => return Ok(()),
+        Err(error) => {
+            if session.fail_open()? {
+                open.failed(&mut client, &error)?;
+            }
+            return Err(error);
+        }
+    }
+    read_lines(server, |line| {
+        if let Some(frame) = session.route_server(line, started.elapsed())? {
+            write_line(&mut client, &frame)?;
+        }
+        Ok(())
+    })
+}
+
+/// Completes the Codex handshake on its own pipe before reporting readiness.
+fn finish_open(
+    server: impl BufRead,
+    mut client: impl Write,
+    session: &Session,
+    open: &OpenSession,
+    mut transport: CodexTransport,
+    request_timeout: Duration,
+) -> io::Result<bool> {
+    let result = match read_initialize_response(server, &mut client, &mut transport)? {
+        JsonRpcResponse::Success(result) => result,
+        JsonRpcResponse::Error(error) => {
+            if session.fail_open()? {
+                open.rejected(&mut client, error)?;
+            }
+            return Err(io::Error::other(
+                "Codex app-server rejected initialization.",
+            ));
+        }
+    };
+    if !result.is_object() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Codex app-server returned an invalid initialization result.",
+        ));
+    }
+    let initialized = transport
+        .notify("initialized", None)
+        .map_err(invalid_transport)?;
+    session.write_server(&initialized)?;
+    if !session.activate(CodexRelay::with_transport(transport, request_timeout))? {
+        return Ok(false);
+    }
+    open.ready(client, result["codexHome"].as_str())?;
+    Ok(true)
+}
+
+/// Reads complete JSONL frames without discarding bytes already buffered during startup.
+fn read_lines(
+    mut reader: impl BufRead,
+    mut forward: impl FnMut(&str) -> io::Result<()>,
 ) -> io::Result<()> {
     let mut line = String::new();
     while reader.read_line(&mut line)? != 0 {
-        let forward = {
-            let mut relay = state
-                .lock()
-                .map_err(|_| io::Error::other("Codex relay state is unavailable."))?;
-            let elapsed = started.elapsed();
-            match direction {
-                Direction::Client => relay.relay_client_line(&line, elapsed),
-                Direction::Server => relay.relay_server_line(&line, elapsed),
-            }
-            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?
-        };
-        if let Some(frame) = forward {
-            writer.write_all(frame.as_bytes())?;
-            writer.flush()?;
-        }
+        forward(&line)?;
         line.clear();
     }
     Ok(())
 }
 
-/// Drains server output and bounds shutdown after EOF, errors, or a process exit.
+impl Session {
+    /// Retires an incomplete session, giving exactly one worker the right to report failure.
+    fn fail_open(&self) -> io::Result<bool> {
+        let mut phase = lock(&self.phase)?;
+        if !matches!(*phase, Phase::Opening) {
+            return Ok(false);
+        }
+        *phase = Phase::Failed;
+        Ok(true)
+    }
+
+    /// Enables ordinary relay traffic after the initialized notification was written.
+    fn activate(&self, relay: CodexRelay) -> io::Result<bool> {
+        let mut phase = lock(&self.phase)?;
+        if !matches!(*phase, Phase::Opening) {
+            return Ok(false);
+        }
+        *phase = Phase::Ready(relay);
+        Ok(true)
+    }
+
+    /// Keeps normal requests behind readiness while allowing replies to startup server requests.
+    fn route_client(&self, line: &str, elapsed: Duration) -> io::Result<Option<String>> {
+        match &mut *lock(&self.phase)? {
+            Phase::Opening => {
+                require_server_reply(line)?;
+                Ok(Some(line.to_owned()))
+            }
+            Phase::Ready(relay) => relay
+                .relay_client_line(line, elapsed)
+                .map_err(invalid_transport),
+            Phase::Failed => Ok(None),
+        }
+    }
+
+    /// Correlates app-server output after the handshake has finished.
+    fn route_server(&self, line: &str, elapsed: Duration) -> io::Result<Option<String>> {
+        let mut phase = lock(&self.phase)?;
+        let Phase::Ready(relay) = &mut *phase else {
+            return Ok(None);
+        };
+        relay
+            .relay_server_line(line, elapsed)
+            .map_err(invalid_transport)
+    }
+
+    /// Serializes control and client frames without holding the phase lock during IO.
+    fn write_server(&self, line: &str) -> io::Result<()> {
+        let mut input = lock(&self.server_input)?;
+        let input = input.as_mut().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "Codex app-server input is closed.",
+            )
+        })?;
+        write_line(input, line)
+    }
+
+    /// Releases Codex stdin on client disconnect even if the output worker is still running.
+    fn close_input(&self) -> io::Result<()> {
+        lock(&self.server_input)?.take();
+        Ok(())
+    }
+}
+
+/// Treats poisoned relay state as a process error instead of continuing with inconsistent state.
+fn lock<T>(mutex: &Mutex<T>) -> io::Result<MutexGuard<'_, T>> {
+    mutex
+        .lock()
+        .map_err(|_| io::Error::other("Codex session state is unavailable."))
+}
+
+/// Preserves wire parsing and routing errors for the process supervisor.
+fn invalid_transport(error: TransportError) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidData, error)
+}
+
+/// Bounds initialization and drains server output after EOF, errors, or a process exit.
 fn wait_for_server(
     server: &mut OwnedServer,
     stream_exits: mpsc::Receiver<StreamExit>,
+    session: &Session,
+    open: &OpenSession,
+    started: Instant,
+    request_timeout: Duration,
 ) -> io::Result<ExitStatus> {
     let mut output_closed = false;
     let mut closing_since = None;
+    let mut open_timeout = Some(request_timeout);
 
     loop {
+        if open_timeout.is_some_and(|timeout| started.elapsed() >= timeout) {
+            open_timeout = None;
+            if session.fail_open()? {
+                let error = io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "Timed out initializing Codex app-server.",
+                );
+                open.failed(io::stdout(), &error)?;
+                return Err(error);
+            }
+        }
         if let Some(status) = server.0.try_wait()? {
             if output_closed {
                 return Ok(status);

@@ -20,8 +20,13 @@ pub struct CodexRelay {
 impl CodexRelay {
     /// Uses the client's request timeout to retire unanswered correlations.
     pub fn new(request_timeout: Duration) -> Self {
+        Self::with_transport(CodexTransport::new(), request_timeout)
+    }
+
+    /// Continues an initialized connection with the same downstream request ID sequence.
+    pub fn with_transport(transport: CodexTransport, request_timeout: Duration) -> Self {
         Self {
-            transport: CodexTransport::new(),
+            transport,
             pending: BTreeMap::new(),
             request_timeout,
         }

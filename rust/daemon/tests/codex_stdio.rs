@@ -10,9 +10,124 @@ use serde_json::{Value, json};
 const TEST_TIMEOUT: Duration = Duration::from_secs(8);
 
 #[test]
+fn test_daemon_should_initialize_codex_before_forwarding_client_requests() {
+    let mut relay = TestRelay::start();
+    relay.open();
+
+    relay.send(json!({ "id": "probe", "method": "test/initialization" }));
+
+    assert_eq!(
+        relay.receive()["result"],
+        json!({
+            "initializeRequest": {
+                "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                "params": {
+                    "clientInfo": { "name": "OpenCodexUI", "version": "fixture" },
+                    "capabilities": { "experimentalApi": false, "requestAttestation": false },
+                },
+            },
+            "downstreamId": 2,
+        })
+    );
+    relay.expect_clean_shutdown();
+}
+
+#[test]
+fn test_daemon_should_forward_a_server_request_while_opening() {
+    let mut relay = TestRelay::with_server("request-during-initialize", 120_000);
+    relay.request_open(1);
+    assert_eq!(
+        relay.receive(),
+        json!({ "id": 1, "method": "test/startup-request" })
+    );
+
+    relay.send(json!({ "id": 1, "result": { "confirmed": true } }));
+
+    relay.expect_ready();
+    relay.expect_clean_shutdown();
+}
+
+#[test]
+fn test_daemon_should_preserve_error_details_when_codex_refuses_initialization() {
+    let mut relay = TestRelay::with_server("deny-initialize", 120_000);
+
+    relay.request_open(1);
+
+    assert_eq!(
+        relay.receive(),
+        json!({
+            "jsonrpc": "2.0", "id": "open", "error": {
+                "code": -32042, "message": "Initialization refused", "data": { "reason": "fixture" }
+            },
+        })
+    );
+    assert_ne!(relay.exit_code(), 0);
+}
+
+#[test]
+fn test_daemon_should_report_failure_when_codex_closes_before_initialize_reply() {
+    let mut relay = TestRelay::with_server("exit-during-initialize", 120_000);
+
+    relay.request_open(1);
+
+    assert_eq!(
+        relay.receive()["error"]["message"],
+        "Codex app-server closed its output during initialization."
+    );
+    assert_ne!(relay.exit_code(), 0);
+}
+
+#[test]
+fn test_daemon_should_stop_a_server_that_does_not_finish_initialization() {
+    let mut relay = TestRelay::with_server("stall-initialize", 350);
+
+    relay.request_open(1);
+
+    // The server may report startup progress before the deadline on a fast runner.
+    let mut reply = relay.receive();
+    if reply["method"] == "test/initialization-pending" {
+        reply = relay.receive();
+    }
+    assert_eq!(reply["id"], "open");
+    assert_eq!(
+        reply["error"]["message"],
+        "Timed out initializing Codex app-server."
+    );
+    assert_ne!(relay.exit_code(), 0);
+}
+
+#[test]
+fn test_daemon_should_stop_opening_when_the_client_disconnects() {
+    let mut relay = TestRelay::with_server("stall-initialize", 120_000);
+    relay.request_open(1);
+    assert_eq!(relay.receive()["method"], "test/initialization-pending");
+
+    drop(relay.process.stdin.take());
+
+    assert_ne!(relay.exit_code(), 0);
+}
+
+#[test]
+fn test_daemon_should_reject_an_unsupported_session_protocol_version() {
+    let mut relay = TestRelay::start();
+
+    relay.request_open(2);
+
+    assert_eq!(
+        relay.receive(),
+        json!({
+            "jsonrpc": "2.0", "id": "open", "error": {
+                "code": -32602, "message": "Unsupported daemon session protocol version."
+            },
+        })
+    );
+    assert_ne!(relay.exit_code(), 0);
+}
+
+#[test]
 fn test_daemon_should_relay_a_streaming_turn_when_the_server_requests_approval() {
     let mut relay = TestRelay::start();
-    relay.initialize();
+    relay.open();
     relay
         .send(json!({ "id": "resume", "method": "thread/resume", "params": { "threadId": "t1" } }));
     assert_eq!(relay.receive()["result"]["thread"]["id"], "t1");
@@ -43,14 +158,13 @@ fn test_daemon_should_relay_a_streaming_turn_when_the_server_requests_approval()
         })
     );
     assert_eq!(relay.receive()["method"], "turn/completed");
-    drop(relay.process.stdin.take());
-    assert_eq!(relay.exit_code(), 0);
+    relay.expect_clean_shutdown();
 }
 
 #[test]
 fn test_daemon_should_stop_its_server_when_it_ignores_client_eof() {
     let mut relay = TestRelay::start();
-    relay.initialize();
+    relay.open();
     relay.send(json!({ "id": "stall", "method": "test/stall" }));
     assert_eq!(relay.receive()["id"], "stall");
 
@@ -62,7 +176,7 @@ fn test_daemon_should_stop_its_server_when_it_ignores_client_eof() {
 #[test]
 fn test_daemon_should_close_its_client_pipes_when_the_server_exits_with_pending_calls() {
     let mut relay = TestRelay::start();
-    relay.initialize();
+    relay.open();
     relay.send(json!({ "id": "pending", "method": "test/pending" }));
     relay.send(json!({ "id": "exit", "method": "test/exit" }));
 
@@ -84,11 +198,29 @@ struct TestRelay {
 impl TestRelay {
     /// Starts the relay and reads its stdout independently from the input pipe.
     fn start() -> Self {
+        Self::with_server("normal", 120_000)
+    }
+
+    /// Runs one synthetic startup behavior with a bounded initialization deadline.
+    fn with_server(behavior: &str, timeout_ms: u64) -> Self {
         let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../tests/fixtures/codex-rpc/app-server.mjs");
+        // Launch Node itself so forced shutdown cannot leave a runtime behind a package-manager shim.
+        let resolved_node = Command::new("node")
+            .args(["-p", "process.execPath"])
+            .output()
+            .expect("Node must be available to run the synthetic app-server");
+        assert!(
+            resolved_node.status.success(),
+            "could not resolve the Node executable"
+        );
+        let node = std::str::from_utf8(&resolved_node.stdout).unwrap().trim();
         let mut process = Command::new(env!("CARGO_BIN_EXE_opencodex-daemon"))
-            .args(["--codex-stdio", "120000", "node"])
+            .arg("--codex-stdio")
+            .arg(timeout_ms.to_string())
+            .arg(node)
             .arg(fixture)
+            .arg(behavior)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -105,16 +237,38 @@ impl TestRelay {
         Self { process, output }
     }
 
-    /// Completes the standard initialization exchange before running the scenario.
-    fn initialize(&mut self) {
-        self.send(json!({ "id": "initialize", "method": "initialize" }));
+    /// Opens the daemon session and waits for the readiness reply.
+    fn open(&mut self) {
+        self.request_open(1);
+        self.expect_ready();
+    }
+
+    /// Sends only the daemon-side open request, leaving the Codex handshake to Rust.
+    fn request_open(&mut self, protocol_version: u64) {
+        self.send(json!({
+            "jsonrpc": "2.0", "id": "open", "method": "opencodex/session/open",
+            "params": {
+                "protocolVersion": protocol_version,
+                "clientInfo": { "name": "OpenCodexUI", "version": "fixture" },
+                "experimentalApi": false,
+            },
+        }));
+    }
+
+    /// Checks the complete daemon readiness response without consuming later notifications.
+    fn expect_ready(&self) {
         assert_eq!(
             self.receive(),
             json!({
-                "jsonrpc": "2.0", "id": "initialize", "result": { "codexHome": "synthetic-home" },
+                "jsonrpc": "2.0", "id": "open", "result": { "status": "ready", "codexHome": "synthetic-home" },
             })
         );
-        self.send(json!({ "method": "initialized" }));
+    }
+
+    /// Closes the client input and waits for a graceful app-server shutdown.
+    fn expect_clean_shutdown(&mut self) {
+        drop(self.process.stdin.take());
+        assert_eq!(self.exit_code(), 0);
     }
 
     /// Sends one JSONL frame to the relay.

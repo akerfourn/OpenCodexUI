@@ -2,7 +2,10 @@ import { writeSync } from "node:fs";
 import { createInterface } from "node:readline";
 
 let initialized = false;
+let initializeRequest;
+let waitingForStartupReply = false;
 let turnId;
+const startupMode = process.argv[2];
 
 /** Emits small synthetic frames before returning to the fixture's message loop. */
 function send(frame) {
@@ -12,16 +15,45 @@ function send(frame) {
 createInterface({ input: process.stdin }).on("line", (line) => {
   const frame = JSON.parse(line);
   if (frame.method === "initialize") {
+    if (initializeRequest !== undefined) throw new Error("Received a second initialize request.");
+    initializeRequest = frame;
+    if (startupMode === "deny-initialize") {
+      send({ id: frame.id, error: { code: -32042, message: "Initialization refused", data: { reason: "fixture" } } });
+      return;
+    }
+    if (startupMode === "exit-during-initialize") process.exit(17);
+    if (startupMode === "stall-initialize") {
+      setInterval(() => undefined, 60_000);
+      send({ method: "test/initialization-pending" });
+      return;
+    }
+    if (startupMode === "request-during-initialize") {
+      waitingForStartupReply = true;
+      send({ id: frame.id, method: "test/startup-request" });
+      return;
+    }
     send({ id: frame.id, result: { codexHome: "synthetic-home" } });
     return;
   }
+  if (waitingForStartupReply) {
+    if (frame.id !== initializeRequest.id || frame.result?.confirmed !== true) {
+      throw new Error("Expected the response to the startup request.");
+    }
+    waitingForStartupReply = false;
+    send({ id: initializeRequest.id, result: { codexHome: "synthetic-home" } });
+    return;
+  }
   if (frame.method === "initialized") {
+    if (initializeRequest === undefined || initialized) throw new Error("Received an unexpected initialized notification.");
     initialized = true;
     return;
   }
   if (!initialized) throw new Error("Expected the initialized notification.");
 
   switch (frame.method) {
+    case "test/initialization":
+      send({ id: frame.id, result: { initializeRequest, downstreamId: frame.id } });
+      return;
     case "thread/resume":
       send({ id: frame.id, result: { thread: { id: frame.params.threadId, turns: [] } } });
       return;
